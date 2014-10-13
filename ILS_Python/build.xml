@@ -1,0 +1,26 @@
+<project name="ILS-Python" default="deploy" basedir=".">
+	<property name="repo.dir" value="${basedir}/../../.." />
+	<property name="blt.build.dir" value="${repo.dir}/blt/workspace/BLT_Build/temp_modl" />
+	<property name="external.jar.dir" value="${repo.dir}/external/lib" />
+	
+	<target name="clean" description="Remove previous python" >
+		<delete dir="${ignition.py.lib}/ils/block" />
+		<delete dir="${ignition.py.lib}/ils/blt" />
+		<delete dir="${ignition.py.lib}/ils/common" />
+		<delete dir="${ignition.py.lib}/ils/constants" />
+		<delete dir="${ignition.py.lib}/ils/diagToolkit" />
+		<delete dir="${ignition.py.lib}/ils/io" />
+		<delete dir="${ignition.py.lib}/ils/queue" />
+		<delete dir="${ignition.py.lib}/ils/recipeToolkit" />
+		<delete dir="${ignition.py.lib}/emc" />
+	</target>
+	
+	<target name="deploy" depends="clean" description="Install Python">
+		<echo message="Deploying python scripts to ${ignition.py.lib}" />
+		<copy todir="${ignition.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+	</target>
+</project>

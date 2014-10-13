@@ -1,0 +1,33 @@
+<project name="ILS-Python" default="install-jars" basedir=".">
+	<property name="repo.dir" value="${basedir}/../../.." />
+	<property name="blt.build.dir" value="${repo.dir}/blt/workspace/BLT_Build/temp_modl" />
+	<property name="external.jar.dir" value="${repo.dir}/external/lib" />
+	
+	
+	<!-- This target is used exclusively within the BLT ecliopse setting. 
+	     Its function is to copy jar files into the Ignition install area
+	     in order to make the classes accessible through Jython blocks.
+	   -->
+	<target name="install-jars" >
+		<echo message="Copying jar files into ${ignition.py.lib}/../../lib/core/common" />
+		<copy todir="${ignition.py.lib}/../../lib/core/common">
+			<fileset dir="${blt.build.dir}">
+				<include name="ils-common.jar" />
+				<include name="blt-common.jar" />
+			</fileset>
+		</copy>
+		
+		<copy todir="${ignition.py.lib}/../../lib/core/common">
+			<fileset dir="${external.jar.dir}">
+				<include name="jackson*.jar" />
+			</fileset>
+		</copy>
+		<copy todir="${ignition.py.lib}/../../lib/core/gateway">
+			<fileset dir="${blt.build.dir}">
+				<include name="commons-math3-3.1.1.jar" />
+				<include name="blt-gateway.jar" />
+				<include name="block-definition.jar" />
+			</fileset>
+		</copy>
+		</target>
+</project>
