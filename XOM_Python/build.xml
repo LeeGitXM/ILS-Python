@@ -1,4 +1,4 @@
-<project name="EMC_Python" default="deploy" basedir=".">
+<project name="XOM-Python" default="deploy" basedir=".">
 	<property name="repo.dir" value="${basedir}/../../.." />
 	<property name="blt.build.dir" value="${repo.dir}/blt/workspace/BLT_Build/temp_modl" />
 	<property name="external.jar.dir" value="${repo.dir}/external/lib" />
@@ -20,11 +20,6 @@
 		<copy todir="${ignition.py.lib}">
 			<fileset dir="${basedir}/src">
 				<include name="emc/**/*.py" />
-			</fileset>
-		</copy>
-		<copy todir="${ignition.py.lib}">
-			<fileset dir="${basedir}/src">
-				<include name="ils/**/*.py" />
 			</fileset>
 		</copy>
 	</target>
