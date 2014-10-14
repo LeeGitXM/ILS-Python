@@ -37,6 +37,8 @@ MINUTE = "MINUTE";
 HOUR = "HOUR";
 TIME_UNIT_TYPE = "TIME";
 
+BY_NAME = "stepsByName";
+
 def getResponse(id):
     pass
 

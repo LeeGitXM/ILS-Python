@@ -35,7 +35,6 @@ PROJECT = 'project'
 DATABASE = 'database'
 RESPONSE = 'response'
 LOCATION = 'location'
-BY_NAME = 'byName'
 UNIT = '.unit'
 INSTANCE_ID = 'instanceId'
 
