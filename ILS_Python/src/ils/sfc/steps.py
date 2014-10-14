@@ -5,9 +5,9 @@ Created on Sep 30, 2014
 
 @author: rforbes
 '''
-from com.ils.sfc.common import IlsSfcNames
+#from com.ils.sfc.common import IlsSfcNames
 from ils.sfc.util import * 
-from system.ils.sfc import *
+from system.ils.sfc import * # this maps Java classes
 from ils.queue.message import insert
 from ils.queue.message import clear
 from system.sfc import cancelChart
@@ -20,7 +20,7 @@ def queueInsert(chartProperties, stepProperties):
     queues the step's message
     '''
     print('line 1')
-    currentMsgQueue = s88Get(None, chartProperties, IlsSfcNames.MESSAGE_ID, OPERATION) 
+    currentMsgQueue = s88Get(None, chartProperties, MESSAGE_ID, OPERATION) 
     message = getStepProperty(stepProperties, MESSAGE)  
     status = getStepProperty(stepProperties, STATUS)  
     database = chartProperties[DATABASE]
@@ -94,7 +94,7 @@ def controlPanelMessage(chartProperties, stepProperties):
 def timedDelay(chartProperties, stepProperties):
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
     delay = getStepProperty(stepProperties, DELAY) 
-    delayUnit = getStepProperty(stepProperties, DELAY_UNIT) 
+    delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     delaySeconds = Unit.convert(delayUnit, SECOND, delay)
     sleep(delaySeconds)
       

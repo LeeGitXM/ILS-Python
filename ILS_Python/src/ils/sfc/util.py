@@ -4,8 +4,9 @@ Created on Sep 30, 2014
 @author: rforbes
 '''
 import system.util
-from com.ils.sfc.common import IlsSfcNames 
-from com.ils.sfc.util import IlsResponseManager
+from system.ils.sfc import * # this maps Java classes
+#from com.ils.sfc.common import IlsSfcNames 
+#from com.ils.sfc.util import IlsResponseManager
 from ils.sfc.constants import RESPONSE_HANDLER
 from ils.common.units import Unit
 import logging
@@ -114,20 +115,20 @@ def getPropertiesByLocation(stepName, chartProperties, location):
     '''
     Get the property dictionary of the element at the given location.
     '''
-    if location == IlsSfcNames.SUPERIOR:
+    if location == SUPERIOR:
         return chartProperties[PARENT_SCOPE]       
-    elif location == IlsSfcNames.PROCEDURE or location == IlsSfcNames.PHASE or location == IlsSfcNames.OPERATION:
+    elif location == PROCEDURE or location == PHASE or location == OPERATION:
         return getPropertiesByLevel(chartProperties, location)
-    elif location == IlsSfcNames.LOCAL:
+    elif location == LOCAL:
         props = chartProperties[BY_NAME].get(stepName, None)
         if props == None:
             props = dict()
             chartProperties[BY_NAME][stepName] = props
         return props
-    elif location == IlsSfcNames.NAMED:
+    elif location == NAMED:
         return chartProperties[BY_NAME]
-    elif location == IlsSfcNames.PREVIOUS:
-        return chartProperties[BY_NAME].get(IlsSfcNames.PREVIOUS, None)
+    elif location == PREVIOUS:
+        return chartProperties[BY_NAME].get(PREVIOUS, None)
     else:
         logger.error("unknown property location type %s", location)
         
@@ -156,7 +157,7 @@ def sendMessage(project, handler, payload):
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
     messageId = createUniqueId()
-    payload[IlsSfcNames.MESSAGE_ID] = messageId
+    payload[MESSAGE_ID] = messageId
     print 'sending message to clients', project, handler
     system.util.sendMessage(project, handler, payload, "C")
     return messageId
@@ -187,7 +188,7 @@ def waitOnResponse(requestId, chartScope):
         # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
             # TODO: log that we're bailing
         # return None
-        response = IlsResponseManager.getResponse(requestId)
+        response = getResponse(requestId)
     return response
 
 def sendResponse(requestPayload, responsePayload):
@@ -195,8 +196,8 @@ def sendResponse(requestPayload, responsePayload):
     This method is called from CLIENT scope to 
     send a reply to the Gateway
     '''
-    messageId = requestPayload[IlsSfcNames.MESSAGE_ID]
-    responsePayload[IlsSfcNames.MESSAGE_ID] = messageId    
+    messageId = requestPayload[MESSAGE_ID]
+    responsePayload[MESSAGE_ID] = messageId    
     project = system.util.getProjectName()
     system.util.sendMessage(project, RESPONSE_HANDLER, responsePayload, "G")
     
