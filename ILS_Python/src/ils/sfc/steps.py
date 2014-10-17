@@ -13,6 +13,7 @@ from ils.queue.message import clear
 from system.sfc import cancelChart
 from system.sfc import pauseChart
 from time import sleep
+import system.tag
 
 def queueInsert(chartProperties, stepProperties):
     '''
@@ -20,7 +21,7 @@ def queueInsert(chartProperties, stepProperties):
     queues the step's message
     '''
     print('line 1')
-    currentMsgQueue = s88Get(None, chartProperties, MESSAGE_ID, OPERATION) 
+    currentMsgQueue = s88Get(None, chartProperties, MESSAGE_ID, OPERATION)
     message = getStepProperty(stepProperties, MESSAGE)  
     status = getStepProperty(stepProperties, STATUS)  
     database = chartProperties[DATABASE]
@@ -35,7 +36,7 @@ def setQueue(chartProperties, stepProperties):
     # TODO: what to use for scope here ?:
     recipeLocation = OPERATION
     stepName = getStepProperty(stepProperties, NAME) 
-    s88Set(stepName, chartProperties, MESSAGE_QUEUE, queue, recipeLocation)
+    s88Set(stepName, chartProperties, MESSAGE_QUEUE, queue, recipeLocation, True)
 
 def showQueue(chartProperties, stepProperties):
     '''
@@ -73,7 +74,7 @@ def yesNo(chartProperties, stepProperties):
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
     stepName = getStepProperty(stepProperties, NAME) 
-    s88Set(stepName, chartProperties, key, value, recipeLocation)
+    s88Set(stepName, chartProperties, key, value, recipeLocation, False)
 
 def abort(chartProperties, stepProperties):
     ''' Abort the chart execution'''
@@ -98,9 +99,134 @@ def timedDelay(chartProperties, stepProperties):
     delaySeconds = Unit.convert(delayUnit, SECOND, delay)
     sleep(delaySeconds)
       
-def postDelayNotification():
-    pass
+def postDelayNotification(chartProperties, stepProperties):
+    project = chartProperties[PROJECT];
+    message = getStepProperty(stepProperties, MESSAGE) 
+    payload = dict()
+    payload[MESSAGE] = message
+    sendMessage(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
 
-def deleteDelayNotification():
-    pass
-  
+def deleteDelayNotifications(chartProperties, stepProperties):
+    project = chartProperties[PROJECT];
+    payload = dict()
+    sendMessage(project, DELETE_DELAY_NOTIFICATIONS_HANDLER, payload)
+
+def enableDisable(chartProperties, stepProperties):
+    project = chartProperties[PROJECT];
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties, payload)
+    sendMessage(project, ENABLE_DISABLE_HANDLER, payload)
+
+def selectInput(chartProperties, stepProperties):
+    # extract properties
+    project = chartProperties[PROJECT];
+    prompt = getStepProperty(stepProperties, PROMPT) 
+    choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
+    choicesKey = getStepProperty(stepProperties, CHOICES_KEY) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
+    stepName = getStepProperty(stepProperties, NAME) 
+
+    choices = s88Get(stepName, chartProperties, choicesKey, choicesRecipeLocation)
+    
+    # send message
+    payload = dict()
+    payload[PROMPT] = prompt
+    payload[CHOICES] = choices
+    
+    messageId = sendMessage(project, SELECT_INPUT_HANDLER, payload) 
+    
+    response = waitOnResponse(messageId, chartProperties)
+    value = response[RESPONSE]
+    s88Set(stepName, chartProperties, key, value, recipeLocation, False)
+
+def getLimitedInput(chartProperties, stepProperties):
+    project = chartProperties[PROJECT];
+    prompt = getStepProperty(stepProperties, PROMPT) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
+    stepName = getStepProperty(stepProperties, NAME) 
+    minimumValue = getStepProperty(stepProperties, MINIMUM_VALUE)
+    maximumValue = getStepProperty(stepProperties, MAXIMUM_VALUE) 
+    
+    payload = dict()
+    payload[PROMPT] = prompt
+    payload[MINIMUM_VALUE] = minimumValue
+    payload[MAXIMUM_VALUE] = maximumValue
+    
+    messageId = sendMessage(project, LIMITED_INPUT_HANDLER, payload) 
+    
+    response = waitOnResponse(messageId, chartProperties)
+    value = response[RESPONSE]
+    s88Set(stepName, chartProperties, key, value, recipeLocation, False)
+
+def dialogMessage(chartProperties, stepProperties):
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties,payload)
+    project = chartProperties[PROJECT];
+    sendMessage(project, DIALOG_MSG_HANDLER, payload)
+
+
+def collectData(chartProperties, stepProperties):
+    tagPath = getStepProperty(stepProperties, TAG_PATH)
+    stepName = getStepProperty(stepProperties, NAME) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
+    value = system.tag.read(tagPath)
+    s88Set(stepName, chartProperties, key, value, recipeLocation, False)
+    
+def getInput(chartProperties, stepProperties):
+    project = chartProperties[PROJECT];
+    prompt = getStepProperty(stepProperties, PROMPT) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
+    stepName = getStepProperty(stepProperties, NAME) 
+   
+    payload = dict()
+    payload[PROMPT] = prompt
+    
+    messageId = sendMessage(project, INPUT_HANDLER, payload)
+    
+    response = waitOnResponse(messageId, chartProperties)
+    value = response[RESPONSE]
+    s88Set(stepName, chartProperties, key, value, recipeLocation, False)
+
+def rawQuery(chartProperties, stepProperties):
+    database = getStepProperty(stepProperties, DATABASE) 
+    sql = getStepProperty(stepProperties, SQL) 
+    result = system.db.runQuery(sql, database) # returns a PyDataSet
+    stepName = getStepProperty(stepProperties, NAME) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
+    s88Set(stepName, chartProperties, key, result, recipeLocation, False)
+
+def simpleQuery(chartProperties, stepProperties):
+    database = getStepProperty(stepProperties, DATABASE) 
+    sql = getStepProperty(stepProperties, SQL) 
+    processedSql = substituteScopeReferences(chartProperties, stepProperties, sql)
+    resultsMode = getStepProperty(stepProperties, RESULTS_MODE) 
+    fetchMode = getStepProperty(stepProperties, FETCH_MODE) 
+    stepName = getStepProperty(stepProperties, NAME) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    keyMode = getStepProperty(stepProperties, KEY_MODE) 
+    key = getStepProperty(stepProperties, KEY) 
+    dbRows = system.db.runQuery(processedSql, database) 
+    if keyMode == STATIC: # fetchMode must be SINGLE
+        recipeData = s88Get(stepName, chartProperties, key, recipeLocation)
+        rowData = dbRows[0]
+        copyData(rowData, recipeData)
+    elif keyMode == DYNAMIC:
+        key = s88Get(stepName, chartProperties, key, recipeLocation)
+        recipeDataByKey = dict() # ??? extract and index
+        if fetchMode == MULTIPLE:# returns a PyDataSet
+            for row in dbRows:
+                if row.get(key, None) == key:
+                    recipeData = recipeDataByKey.get(key, None)
+                    if recipeData != None:
+                        for colKey in row.keys():
+                            recipeData[colKey] = row[colKey]
+
+def copyData(fromDict, toDict):
+    for key in fromDict.keys:
+        toDict[key] = fromDict[key]
+    

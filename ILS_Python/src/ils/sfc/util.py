@@ -41,8 +41,15 @@ INSTANCE_ID = 'instanceId'
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
 YES_NO_HANDLER = 'sfcYesNo'
+DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
+POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
 CONTROL_PANEL_MSG_HANDLER = 'sfcControlPanelMessage'
+DIALOG_MSG_HANDLER = 'sfcDialogMessage'
 TIMED_DELAY_HANDLER = 'sfcTimedDelay'
+SELECT_INPUT_HANDLER = 'sfcSelectInput'
+LIMITED_INPUT_HANDLER = 'sfcLimitedInput'
+INPUT_HANDLER = 'sfcInput'
+ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
 
 counter = 0
 
@@ -76,10 +83,10 @@ def s88GetWithUnits(stepName, chartProperties, ckey, location, newUnitNameOrNone
             logger.error("No unit found for property %s in step %s when new unit %s was requested", ckey, stepName, newUnitNameOrNone)
     return value
 
-def s88Set(stepName, chartProperties, ckey, value, location):
+def s88Set(stepName, chartProperties, ckey, value, location, createIfAbsent):
     s88SetWithUnits(stepName, chartProperties, ckey, value, location, None)
     
-def s88SetWithUnits(stepName, chartProperties, ckey, value, location, unitsOrNone):
+def s88SetWithUnits(stepName, chartProperties, ckey, value, location, unitsOrNone, createIfAbsent):
     '''
     Set data at the given location with a possible compound (dot-separated) key.
     Intermediate layers in a dot-separated path will be created if not present.
@@ -96,6 +103,8 @@ def s88SetWithUnits(stepName, chartProperties, ckey, value, location, unitsOrNon
             subProps = dict()
             props[key] = subProps
         props = subProps
+    if not (createIfAbsent or props.has_key(finalKey)):
+        raise KeyError('key ' + location + ": " +  ckey + "does not exist")
     props[finalKey] = value
     if unitsOrNone != None:
         props[finalKey + UNIT] = unitsOrNone
@@ -205,3 +214,8 @@ def sendControlPanelMessage(chartProperties, stepProperties):
     transferStepPropertiesToMessage(stepProperties,payload)
     project = chartProperties[PROJECT];
     sendMessage(project, CONTROL_PANEL_MSG_HANDLER, payload)
+
+def substituteScopeReferences(chartProperties, stepProperties, sql):
+    ''' Substitute for scope variable references, e.g. 'local:selected-emp.val'
+    '''
+    pass
