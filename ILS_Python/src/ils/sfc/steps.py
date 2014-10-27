@@ -188,7 +188,7 @@ def collectData(chartProperties, stepProperties):
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     value = system.tag.read(tagPath)
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, False)
+    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True)
     
 def getInput(chartProperties, stepProperties):
     project = chartProperties[PROJECT];
