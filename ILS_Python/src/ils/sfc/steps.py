@@ -163,12 +163,18 @@ def getLimitedInput(chartProperties, stepProperties):
     payload[PROMPT] = prompt
     payload[MINIMUM_VALUE] = minimumValue
     payload[MAXIMUM_VALUE] = maximumValue
+    responseIsValid = False
+    while not responseIsValid:
+        messageId = sendMessage(project, LIMITED_INPUT_HANDLER, payload)   
+        responseMsg = waitOnResponse(messageId, chartProperties)
+        responseValue = responseMsg[RESPONSE]
+        try:
+            floatValue = float(responseValue)
+            responseIsValid = floatValue >= minimumValue and floatValue <= maximumValue
+        except ValueError:
+            payload[PROMPT] = 'Input is not valid. ' + prompt  
     
-    messageId = sendMessage(project, LIMITED_INPUT_HANDLER, payload) 
-    
-    response = waitOnResponse(messageId, chartProperties)
-    value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, False)
+    s88Set(chartProperties, stepProperties, key, floatValue, recipeLocation, True)
 
 def dialogMessage(chartProperties, stepProperties):
     payload = dict()
