@@ -1,5 +1,5 @@
 <project name="ILS-Python" default="install-jars" basedir=".">
-	<property name="repo.dir" value="${basedir}/../../.." />
+	<property name="repo.dir" value="${basedir}/../.." />
 	<property name="blt.build.dir" value="${repo.dir}/blt/workspace/BLT_Build/temp_modl" />
 	<property name="external.jar.dir" value="${repo.dir}/external/lib" />
 	
