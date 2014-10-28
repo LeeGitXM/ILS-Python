@@ -48,6 +48,7 @@ SELECT_INPUT_HANDLER = 'sfcSelectInput'
 LIMITED_INPUT_HANDLER = 'sfcLimitedInput'
 INPUT_HANDLER = 'sfcInput'
 ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
+SAVE_DATA_HANDLER = 'sfcSaveData'
 
 counter = 0
 
@@ -142,6 +143,7 @@ def getLocalScope(chartProperties, stepProperties):
 def getPropertiesByLocation(chartProperties, stepProperties, location, create=False):
     '''
     Get the property dictionary of the element at the given location.
+    Return None if not found.
     '''
     if location == SUPERIOR:
         return chartProperties[PARENT_SCOPE]       
@@ -278,17 +280,48 @@ def copyData(pyDataSet, rowIndex, toDict):
         value = pyDataSet.getValueAt(rowIndex, colIndex)
         toDict[key] = value
 
-def printSpace(level):
+def writeSpace(level, file):
     for i in range(level):
-        print('   '),
+        file.write('   '),
         
-def printObj(obj, level):
+def writeObj(obj, level, file):
     if hasattr(obj, 'keys'):
-        print '' # newline
+        file.write('\n') # newline
         for key in obj:
-            printSpace(level)
-            print key,
-            printObj(obj[key], level + 1)
+            writeSpace(level, file)
+            file.write(key)
+            writeObj(obj[key], level + 1, file)
     else:
         #printSpace(level)
-        print ': ', obj
+        file.write( ': ')
+        file.write(str(obj))
+        file.write('\n')
+
+def prettyPrintDict(dict):
+    '''
+    print a dictionary into a nice, readable indented form
+    returns a string containing the pretty-printed representation
+    '''
+    import StringIO
+    out = StringIO.StringIO()
+    printObj(dict, 0, out)
+    result = out.getvalue()
+    out.close()
+    return result
+
+def printSpace(level, out):
+    for i in range(level):
+        out.write('   '),
+        
+def printObj(obj, level, out):
+    if hasattr(obj, 'keys'):
+        out.write('\n') # newline
+        for key in obj:
+            printSpace(level, out)
+            out.write(key)
+            printObj(obj[key], level + 1, out)
+    else:
+        #printSpace(level)
+        out.write( ': ')
+        out.write(str(obj))
+        out.write('\n')

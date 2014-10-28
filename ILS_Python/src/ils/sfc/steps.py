@@ -245,12 +245,50 @@ def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
             dkey = newObj[key]
             recipeData[dkey] = newObj
      
-def debugProperties(chartProperties, stepProperties):
+def saveData(chartProperties, stepProperties):
+    import time
+    
+    # extract property values
     project = chartProperties[PROJECT];
-    # printObj(chartProperties, 0)
-    payload = dict()
-    properties = dict()
-    for key in chartProperties:
-        properties[key] = chartProperties[key]
-    payload['properties'] = properties
-    sendMessage(project, 'sfcDebugProperties', payload)
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    directory = getStepProperty(stepProperties, DIRECTORY) 
+    fileName = getStepProperty(stepProperties, FILENAME) 
+    extension = getStepProperty(stepProperties, EXTENSION) 
+    doTimestamp = getStepProperty(stepProperties, TIMESTAMP) 
+    printFile = getStepProperty(stepProperties, PRINT_FILE) 
+    viewFile = getStepProperty(stepProperties, VIEW_FILE) 
+    
+    # lookup the directory if it is a variab,e
+    if directory.startswith('['):
+        directory = chartProperties.get(directory, None)
+        if directory == None:
+            getLogger().error("directory key " + directory + " not found")
+            
+    # create timestamp if requested
+    if doTimestamp: 
+        timestamp = "-" + time.strftime("%Y%m%d%H%M")
+    else:
+        timestamp = ""
+    
+    # get the data at the given location
+    data = getPropertiesByLocation(chartProperties, stepProperties, recipeLocation, False)
+    if chartProperties == None:
+        getLogger.error("data for location " + recipeLocation + " not found")
+    
+    # write the file
+    filepath = directory + '/' + fileName + timestamp + extension
+    fp = open(filepath, 'w')
+    writeObj(data, 0, fp)
+    fp.close()
+    
+    # send message to client for view/print
+    if printFile or viewFile:
+        payload = dict()
+        #payloadData = dict()
+        #for key in data:
+        #    payloadData[key] = data[key]
+        payload[DATA] = prettyPrintDict(data)
+        payload[FILEPATH] = filepath
+        payload[PRINT_FILE] = printFile
+        payload[VIEW_FILE] = viewFile
+        sendMessage(project, SAVE_DATA_HANDLER, payload)
