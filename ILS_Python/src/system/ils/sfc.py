@@ -1,37 +1,69 @@
 '''
-Dummy constants to prevent compile errors.
+Created on Oct 14, 2014
 
 @author: rforbes
 '''
-
-def getResponse(key):
-    pass
-
-NAME = "name";
+ACKNOWLEDGEMENT_REQUIRED = "acknowledge";
+CALLBACK = "callback";
+COMMAND = "callback";
+CHOICES= "choices";
+CHOICES_KEY = "choicesKey";
+CHOICES_RECIPE_LOCATION = "choicesRecipeLocation";
+DATABASE = "database";
 DESCRIPTION = "description";
+DELAY = "delay";
+DELAY_UNIT = "delayUnit";
+DIALOG = "dialog";
+DYNAMIC = "dynamic";
+ENABLE = "enable";
+FETCH_MODE = "fetchMode";
 KEY = "key";
+KEY_MODE = "keyMode";
 MESSAGE = "message";
+METHOD = "method";
+MINIMUM_VALUE = "minimumValue";
+MAXIMUM_VALUE = "maximumValue";
+MULTIPLE = "multiple";
+NAME = "name";
+POST_TO_QUEUE = "postToQueue";
+POST_NOTIFICATION = "postNotification";
+PRIORITY = "priority";
 PROMPT = "prompt";
 QUEUE = "queue";
-RECIPE_LOCATION = "recipeLocation";
+RECIPE = "recipe";
+RECIPE_LOCATION = "recipeLocation"; 
+RESULTS_MODE = "resultsMode"; 
+SINGLE = "single";
+SQL = "sql";
+STATIC = "static";
 STATUS = "status";
-ACKNOWLEDGEMENT_REQUIRED = "ack. req'd";
-PRIORITY = "priority";
-MESSAGE_ID = "messageId";
-POST_TO_QUEUE = "postToQueue";
+STRATEGY = "strategy";
+TAG_PATH = "tagPath";
+TIME_DELAY_STRATEGY = "timeDelayStrategy"
 TIMEOUT = "timeout";
 TIMEOUT_UNIT = "timeoutUnit";
-RESPONSE_HANDLER = ""
-TIME_UNIT_TYPE = "Time";
-POST_NOTIFICATION = ""
-DELAY = ""
-DELAY_UNIT = ""
-SECOND = ""
-# Possible recipe locations
-LOCAL = 'local'
-PREVIOUS = 'previous'
-SUPERIOR = 'superior'
-NAMED = 'named'
-PROCEDURE = 'procedure'
-PHASE = 'phase'
-OPERATION = 'operation'
+UPDATE = "update";
+UPDATE_OR_CREATE = "updateOrCreate";
+
+MESSAGE_ID = 'messageId'
+
+RECIPE_LOCATION = "recipeLocation";
+LOCAL = "local";
+PREVIOUS = "previous";
+SUPERIOR = "superior";
+NAMED = "named";
+PROCEDURE = "procedure";
+PHASE = "phase";
+OPERATION = "operation";    
+
+SECOND= "SECOND";
+MINUTE = "MINUTE";
+HOUR = "HOUR";
+TIME_UNIT_TYPE = "TIME";
+
+BY_NAME = "stepsByName";
+
+def getResponse(id):
+    pass
+
+

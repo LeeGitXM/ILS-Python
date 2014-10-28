@@ -4,11 +4,12 @@ Created on Sep 30, 2014
 @author: rforbes
 '''
 import system.util
-from system.ils.sfc import *
+from system.ils.sfc import * # this maps Java classes
+#from com.ils.sfc.common import IlsSfcNames 
+#from com.ils.sfc.util import IlsResponseManager
+from ils.sfc.constants import RESPONSE_HANDLER
 from ils.common.units import Unit
 import logging
-
-logger = logging.getLogger('ilssfc')
 
 # Chart states:
 Aborted = 0
@@ -32,33 +33,47 @@ PROJECT = 'project'
 DATABASE = 'database'
 RESPONSE = 'response'
 LOCATION = 'location'
-BY_NAME = 'byName'
 UNIT = '.unit'
 INSTANCE_ID = 'instanceId'
 
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
 YES_NO_HANDLER = 'sfcYesNo'
+DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
+POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
 CONTROL_PANEL_MSG_HANDLER = 'sfcControlPanelMessage'
+DIALOG_MSG_HANDLER = 'sfcDialogMessage'
 TIMED_DELAY_HANDLER = 'sfcTimedDelay'
+SELECT_INPUT_HANDLER = 'sfcSelectInput'
+LIMITED_INPUT_HANDLER = 'sfcLimitedInput'
+INPUT_HANDLER = 'sfcInput'
+ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
 
 counter = 0
 
-def s88Get(stepName, chartProperties, ckey, location):
-    return s88GetWithUnits(stepName, chartProperties, ckey, location, None)
+def getLogger():
+    return logging.getLogger('ilssfc')
 
-def s88GetWithUnits(stepName, chartProperties, ckey, location, newUnitNameOrNone):
+def s88Get(chartProperties, stepProperties, ckey, location, create = False):
+    return s88GetWithUnits(chartProperties, stepProperties, ckey, location, create)
+
+def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitNameOrNone, create = False):
     # Get the properties dictionary from the proper location
-    value = getPropertiesByLocation(stepName, chartProperties, location)
+    # ? is SUPERIOR always just one level?
+    value = getPropertiesByLocation(chartProperties, stepProperties, location, create)
     # get value via the key path:
     keys = ckey.split('.')
     for key in keys:
         parent = value
         finalKey = key
-        value = property.get(key, None)
+        value = value.get(key, None)
         if value == None:
-            logger.warn("null value at key %s in property %s in step %s", key, ckey, stepName)
-            return None
+            if create:
+                value = dict()
+                parent[key] = dict()
+            else:
+                getLogger().warn("null value at key %s in property %s", key, ckey)
+                return None
     # Do unit conversion if necessary:
     if newUnitNameOrNone != None:
         existingUnitName = parent.get(finalKey + UNIT, None)
@@ -69,22 +84,22 @@ def s88GetWithUnits(stepName, chartProperties, ckey, location, newUnitNameOrNone
                 if existingUnit != None and newUnit != None:
                     value = existingUnit.convertTo(newUnit, value)
                 else:
-                    logger.error("No unit found for %s and/or %s", existingUnitName, newUnitNameOrNone)                   
+                    getLogger().error("No unit found for %s and/or %s", existingUnitName, newUnitNameOrNone)                   
         else:
-            logger.error("No unit found for property %s in step %s when new unit %s was requested", ckey, stepName, newUnitNameOrNone)
+            getLogger().error("No unit found for property %s when new unit %s was requested", ckey, newUnitNameOrNone)
     return value
 
-def s88Set(stepName, chartProperties, ckey, value, location):
-    s88SetWithUnits(stepName, chartProperties, ckey, value, location, None)
+def s88Set(chartProperties, stepProperties, ckey, value, location, createIfAbsent = False):
+    s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, None, createIfAbsent)
     
-def s88SetWithUnits(stepName, chartProperties, ckey, value, location, unitsOrNone):
+def s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, unitsOrNone, createIfAbsent):
     '''
     Set data at the given location with a possible compound (dot-separated) key.
     Intermediate layers in a dot-separated path will be created if not present.
     If units are given, store them as well
     '''
     # Get the properties dictionary from the proper location
-    props = getPropertiesByLocation(stepName, chartProperties, location)
+    props = getPropertiesByLocation(chartProperties, stepProperties, location, createIfAbsent)
     # set value via the key path, creating intermediate levels if necessary:
     keys = ckey.split('.')
     finalKey = keys.pop()
@@ -94,6 +109,8 @@ def s88SetWithUnits(stepName, chartProperties, ckey, value, location, unitsOrNon
             subProps = dict()
             props[key] = subProps
         props = subProps
+    if not (createIfAbsent or props.has_key(finalKey)):
+        raise KeyError('key ' + location + ": " +  ckey + "does not exist")
     props[finalKey] = value
     if unitsOrNone != None:
         props[finalKey + UNIT] = unitsOrNone
@@ -107,8 +124,22 @@ def getWithPath(properties, key):
     '''
     Get a value using a potentially compound key
     '''
-    
-def getPropertiesByLocation(stepName, chartProperties, location):
+
+def getLocalScope(chartProperties, stepProperties):
+    '''
+    Get the local scope dictionary, creating it if necessary. 
+    As this is dependent on a key convention, ALL accesses to 
+    local scope should go through this method in case the 
+    convention changes...
+    '''
+    stepName = getStepProperty(stepProperties, NAME)
+    localScope = chartProperties[BY_NAME].get(stepName, None)
+    if localScope == None:
+        localScope = dict()
+        chartProperties[BY_NAME][stepName] = localScope
+    return localScope
+
+def getPropertiesByLocation(chartProperties, stepProperties, location, create=False):
     '''
     Get the property dictionary of the element at the given location.
     '''
@@ -117,17 +148,13 @@ def getPropertiesByLocation(stepName, chartProperties, location):
     elif location == PROCEDURE or location == PHASE or location == OPERATION:
         return getPropertiesByLevel(chartProperties, location)
     elif location == LOCAL:
-        props = chartProperties[BY_NAME].get(stepName, None)
-        if props == None:
-            props = dict()
-            chartProperties[BY_NAME][stepName] = props
-        return props
+        return getLocalScope(chartProperties, stepProperties)
     elif location == NAMED:
         return chartProperties[BY_NAME]
     elif location == PREVIOUS:
         return chartProperties[BY_NAME].get(PREVIOUS, None)
     else:
-        logger.error("unknown property location type %s", location)
+        getLogger().error("unknown property location type %s", location)
         
 def getPropertiesByLevel(chartProperties, location):
     ''' Use of PROCEDURE, PHASE, and OPERATION depends on the charts at
@@ -203,3 +230,65 @@ def sendControlPanelMessage(chartProperties, stepProperties):
     transferStepPropertiesToMessage(stepProperties,payload)
     project = chartProperties[PROJECT];
     sendMessage(project, CONTROL_PANEL_MSG_HANDLER, payload)
+
+def substituteScopeReferences(chartProperties, stepProperties, sql):
+    ''' Substitute for scope variable references, e.g. 'local:selected-emp.val'
+    '''
+    # really wish Python had a do-while loop...
+    while True:
+        ref = findBracketedScopeReference(sql)
+        if ref != None:
+            location, key = parseBracketedScopeReference(ref)
+            value = s88Get(chartProperties, stepProperties, key, location)
+            sql = sql.replace(ref, str(value))
+        else:
+            break
+    return sql
+
+def findBracketedScopeReference(string):
+    '''
+     Find the first bracketed reference in the string, e.g. {local:selected-emp.val}
+     or return None if not found
+     '''
+    lbIndex = string.find('{')
+    rbIndex = string.find('}')
+    colonIndex = string.find(':')
+    if lbIndex != -1 and rbIndex != -1 and colonIndex != -1 and colonIndex > lbIndex and rbIndex > colonIndex:
+        return string[lbIndex : rbIndex+1]
+    else:
+        return None
+    
+def parseBracketedScopeReference(bracketedRef):
+    '''
+    Break a bracked reference into location and key--e.g. {local:selected-emp.val} gets
+    broken into 'local' and 'selected-emp.val'
+    '''   
+    colonIndex = bracketedRef.index(':')
+    location = bracketedRef[1 : colonIndex].strip()
+    key = bracketedRef[colonIndex + 1 : len(bracketedRef) - 1].strip()
+    return location, key
+
+def copyData(pyDataSet, rowIndex, toDict):
+    '''
+    Copy data from one row of a PyDataSet into a dictionary,
+    using the column names as the keys
+    '''
+    for colIndex in range(pyDataSet.columnCount):
+        key = pyDataSet.getColumnName(colIndex)
+        value = pyDataSet.getValueAt(rowIndex, colIndex)
+        toDict[key] = value
+
+def printSpace(level):
+    for i in range(level):
+        print('   '),
+        
+def printObj(obj, level):
+    if hasattr(obj, 'keys'):
+        print '' # newline
+        for key in obj:
+            printSpace(level)
+            print key,
+            printObj(obj[key], level + 1)
+    else:
+        #printSpace(level)
+        print ': ', obj
