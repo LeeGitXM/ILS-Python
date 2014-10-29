@@ -149,7 +149,7 @@ def selectInput(chartProperties, stepProperties):
     
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, False)
+    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True)
 
 def getLimitedInput(chartProperties, stepProperties):
     project = chartProperties[PROJECT];
