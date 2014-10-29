@@ -292,3 +292,14 @@ def saveData(chartProperties, stepProperties):
         payload[PRINT_FILE] = printFile
         payload[VIEW_FILE] = viewFile
         sendMessage(project, SAVE_DATA_HANDLER, payload)
+        
+def printFile(chartProperties, stepProperties):   
+    # extract property values
+    computer = getStepProperty(stepProperties, COMPUTER) 
+    payload = dict()
+    if computer == SERVER:
+        fileName = getStepProperty(stepProperties, FILENAME) 
+        payload[MESSAGE] = readFile(fileName)
+    transferStepPropertiesToMessage(stepProperties, payload)
+    project = chartProperties[PROJECT];
+    sendMessage(project, PRINT_FILE_HANDLER, payload)

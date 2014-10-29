@@ -49,6 +49,7 @@ LIMITED_INPUT_HANDLER = 'sfcLimitedInput'
 INPUT_HANDLER = 'sfcInput'
 ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
 SAVE_DATA_HANDLER = 'sfcSaveData'
+PRINT_FILE_HANDLER = 'sfcPrintFile'
 
 counter = 0
 
@@ -197,7 +198,7 @@ def getStepProperty(stepProperties, pname):
 
 def transferStepPropertiesToMessage(stepProperties, payload):
     for prop in stepProperties.getProperties():
-        payload[prop.getName()] = prop.getValue()
+        payload[prop.getName()] = stepProperties.getOrDefault(prop)
  
 def waitOnResponse(requestId, chartScope):
     '''
@@ -325,3 +326,19 @@ def printObj(obj, level, out):
         out.write( ': ')
         out.write(str(obj))
         out.write('\n')
+
+def readFile(filepath):
+    '''
+    Read the contents of a file into a string
+    '''
+    import StringIO
+    out = StringIO.StringIO()
+    fp = open(filepath, 'r')
+    line = "dummy"
+    while line != "":
+        line = fp.readline()
+        out.write(line)
+    fp.close()
+    result = out.getvalue()
+    out.close()
+    return result   
