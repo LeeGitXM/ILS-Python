@@ -50,6 +50,7 @@ INPUT_HANDLER = 'sfcInput'
 ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
 SAVE_DATA_HANDLER = 'sfcSaveData'
 PRINT_FILE_HANDLER = 'sfcPrintFile'
+PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
 
 counter = 0
 

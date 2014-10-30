@@ -303,3 +303,9 @@ def printFile(chartProperties, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     project = chartProperties[PROJECT];
     sendMessage(project, PRINT_FILE_HANDLER, payload)
+
+def printWindow(chartProperties, stepProperties):   
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties, payload)
+    project = chartProperties[PROJECT];
+    sendMessage(project, PRINT_WINDOW_HANDLER, payload)
