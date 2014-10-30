@@ -1,10 +1,13 @@
 '''
+Lower-level utilities supporting sfcs
+
 Created on Sep 30, 2014
 
 @author: rforbes
 '''
 import system.util
 from system.ils.sfc import * # this maps Java classes
+from ils.sfc.api import *
 #from com.ils.sfc.common import IlsSfcNames 
 #from com.ils.sfc.util import IlsResponseManager
 from ils.sfc.constants import RESPONSE_HANDLER
@@ -33,7 +36,6 @@ PROJECT = 'project'
 DATABASE = 'database'
 RESPONSE = 'response'
 LOCATION = 'location'
-UNIT = '.unit'
 INSTANCE_ID = 'instanceId'
 
 # client message handlers
@@ -51,72 +53,14 @@ ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
 SAVE_DATA_HANDLER = 'sfcSaveData'
 PRINT_FILE_HANDLER = 'sfcPrintFile'
 PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
+CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
+SHOW_WINDOW_HANDLER = 'sfcShowWindow'
 
 counter = 0
 
 def getLogger():
     return logging.getLogger('ilssfc')
 
-def s88Get(chartProperties, stepProperties, ckey, location, create = False):
-    return s88GetWithUnits(chartProperties, stepProperties, ckey, location, create)
-
-def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitNameOrNone, create = False):
-    # Get the properties dictionary from the proper location
-    # ? is SUPERIOR always just one level?
-    value = getPropertiesByLocation(chartProperties, stepProperties, location, create)
-    # get value via the key path:
-    keys = ckey.split('.')
-    for key in keys:
-        parent = value
-        finalKey = key
-        value = value.get(key, None)
-        if value == None:
-            if create:
-                value = dict()
-                parent[key] = dict()
-            else:
-                getLogger().warn("null value at key %s in property %s", key, ckey)
-                return None
-    # Do unit conversion if necessary:
-    if newUnitNameOrNone != None:
-        existingUnitName = parent.get(finalKey + UNIT, None)
-        if existingUnitName != None:
-            if existingUnitName != newUnitNameOrNone:
-                existingUnit = Unit.getUnit(existingUnitName)
-                newUnit = Unit.getUnit(newUnitNameOrNone)
-                if existingUnit != None and newUnit != None:
-                    value = existingUnit.convertTo(newUnit, value)
-                else:
-                    getLogger().error("No unit found for %s and/or %s", existingUnitName, newUnitNameOrNone)                   
-        else:
-            getLogger().error("No unit found for property %s when new unit %s was requested", ckey, newUnitNameOrNone)
-    return value
-
-def s88Set(chartProperties, stepProperties, ckey, value, location, createIfAbsent = False):
-    s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, None, createIfAbsent)
-    
-def s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, unitsOrNone, createIfAbsent):
-    '''
-    Set data at the given location with a possible compound (dot-separated) key.
-    Intermediate layers in a dot-separated path will be created if not present.
-    If units are given, store them as well
-    '''
-    # Get the properties dictionary from the proper location
-    props = getPropertiesByLocation(chartProperties, stepProperties, location, createIfAbsent)
-    # set value via the key path, creating intermediate levels if necessary:
-    keys = ckey.split('.')
-    finalKey = keys.pop()
-    for key in keys:
-        subProps = props.get(key, None)
-        if subProps == None:
-            subProps = dict()
-            props[key] = subProps
-        props = subProps
-    if not (createIfAbsent or props.has_key(finalKey)):
-        raise KeyError('key ' + location + ": " +  ckey + "does not exist")
-    props[finalKey] = value
-    if unitsOrNone != None:
-        props[finalKey + UNIT] = unitsOrNone
 
 def printCounter():
     global counter
@@ -149,7 +93,7 @@ def getPropertiesByLocation(chartProperties, stepProperties, location, create=Fa
     '''
     if location == SUPERIOR:
         return chartProperties[PARENT_SCOPE]       
-    elif location == PROCEDURE or location == PHASE or location == OPERATION:
+    elif location == PROCEDURE or location == PHASE or location == OPERATION or location == GLOBAL:
         return getPropertiesByLevel(chartProperties, location)
     elif location == LOCAL:
         return getLocalScope(chartProperties, stepProperties)
@@ -158,7 +102,7 @@ def getPropertiesByLocation(chartProperties, stepProperties, location, create=Fa
     elif location == PREVIOUS:
         return chartProperties[BY_NAME].get(PREVIOUS, None)
     else:
-        getLogger().error("unknown property location type %s", location)
+        reportUnexpectedError("unknown property location type %s", location)
         
 def getPropertiesByLevel(chartProperties, location):
     ''' Use of PROCEDURE, PHASE, and OPERATION depends on the charts at
@@ -343,3 +287,11 @@ def readFile(filepath):
     result = out.getvalue()
     out.close()
     return result   
+
+def reportUnexpectedError(msg):
+    '''
+    Report an unexpected error so that it is visible to the operator--
+    e.g. put in a message queue
+    '''
+    getLogger.error(msg)
+    #TODO: message the client, or queue a message that the client will see

@@ -1,5 +1,6 @@
 '''
-Methods that are associated with particular SFC step types
+Methods that are associated with particular SFC step types, matching
+one-to-one with step calls in the Java class JythonCall
 
 Created on Sep 30, 2014
 
@@ -309,3 +310,16 @@ def printWindow(chartProperties, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     project = chartProperties[PROJECT];
     sendMessage(project, PRINT_WINDOW_HANDLER, payload)
+    
+def closeWindow(chartProperties, stepProperties):   
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties, payload)
+    project = chartProperties[PROJECT];
+    sendMessage(project, CLOSE_WINDOW_HANDLER, payload)
+
+def showWindow(chartProperties, stepProperties):   
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties, payload)
+    project = chartProperties[PROJECT];
+    sendMessage(project, SHOW_WINDOW_HANDLER, payload) 
+

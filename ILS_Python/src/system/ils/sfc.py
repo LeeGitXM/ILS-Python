@@ -23,6 +23,7 @@ EXTENSION = 'extension'
 FETCH_MODE = "fetchMode";
 FILEPATH = "filepath"
 FILENAME = "filename"
+GLOBAL = "global"
 KEY = "key";
 KEY_MODE = "keyMode";
 MESSAGE = "message";
