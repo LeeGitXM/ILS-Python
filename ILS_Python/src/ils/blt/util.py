@@ -12,7 +12,6 @@ import xom.block
 from xom.block import *
 
 
-
 log = LogUtil.getLogger("com.ils.block")
 
 # We've received a value on our input (there is only one)
