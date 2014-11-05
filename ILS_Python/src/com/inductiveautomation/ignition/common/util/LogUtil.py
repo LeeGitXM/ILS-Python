@@ -5,8 +5,7 @@ Created on Nov 5, 2014
 '''
 from com.inductiveautomation.ignition.common.util import LoggerEx
 
-class LogUtil(object):
-    # A static method ...
-    def getLogger(self,name):
-        logger = LoggerEx()
-        return logger
+
+def getLogger(name):
+    logger = LoggerEx()
+    return logger

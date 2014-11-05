@@ -2,7 +2,7 @@
 #
 # Utility functions for dealing with Python classes for
 # the block language toolkit. 
-#
+# 
 from com.inductiveautomation.ignition.common.util import LogUtil
 from ils.block import basicblock
 # NOTE: We need these two imports in order to get the classes generically.
