@@ -4,15 +4,9 @@
 	<property name="external.jar.dir" value="${repo.dir}/external/lib" />
 	
 	<target name="clean" description="Remove previous python" >
-		<delete dir="${ignition.py.lib}/ils/block" />
-		<delete dir="${ignition.py.lib}/ils/blt" />
-		<delete dir="${ignition.py.lib}/ils/common" />
-		<delete dir="${ignition.py.lib}/ils/constants" />
-		<delete dir="${ignition.py.lib}/ils/diagToolkit" />
-		<delete dir="${ignition.py.lib}/ils/io" />
-		<delete dir="${ignition.py.lib}/ils/queue" />
-		<delete dir="${ignition.py.lib}/ils/recipeToolkit" />
-		<delete dir="${ignition.py.lib}/emc" />
+		<delete includeemptydirs="true">
+			<fileset dir="${ignition.py.lib}/ils" includes="ils/**"/>
+		</delete>
 	</target>
 	
 	<target name="deploy" depends="clean" description="Install Python">

@@ -10,6 +10,9 @@ def openWindow(window):
 def openWindowInstance(window):
     return "True"
 
+def closeWindow(windowPath):
+    pass
+
 def centerWindow(window):
     return "True"
 

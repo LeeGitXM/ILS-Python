@@ -6,44 +6,21 @@ Created on Sep 30, 2014
 @author: rforbes
 '''
 import system.util
-from system.ils.sfc import * # this maps Java classes
-from ils.sfc.api import *
+from system.ils.sfc import getResponse
+from ils.sfc.common.constants import *
+from ils.sfc.gateway.api import * 
 #from com.ils.sfc.common import IlsSfcNames 
 #from com.ils.sfc.util import IlsResponseManager
-from ils.sfc.constants import RESPONSE_HANDLER
 from ils.common.units import Unit
 import logging
-
-# Chart states:
-Aborted = 0
-Aborting = 1
-Canceled = 2
-Canceling = 3
-Initial = 4
-Paused = 5
-Pausing = 6
-Resuming = 7
-Running = 8
-Starting = 9
-Stopped = 10
-Stopping = 11
-    
-# Chart scope keys
-MESSAGE_QUEUE = 'messageQueue'
-PARENT_SCOPE = 'chart.parent'
-CHART_STATE = 'chart.state'
-PROJECT = 'project'
-DATABASE = 'database'
-RESPONSE = 'response'
-LOCATION = 'location'
-INSTANCE_ID = 'instanceId'
+from ils.sfc.common.util import getChartRunId
+from ils.sfc.common.util import getDatabase
 
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
 YES_NO_HANDLER = 'sfcYesNo'
 DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
 POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
-CONTROL_PANEL_MSG_HANDLER = 'sfcControlPanelMessage'
 DIALOG_MSG_HANDLER = 'sfcDialogMessage'
 TIMED_DELAY_HANDLER = 'sfcTimedDelay'
 SELECT_INPUT_HANDLER = 'sfcSelectInput'
@@ -55,6 +32,8 @@ PRINT_FILE_HANDLER = 'sfcPrintFile'
 PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
 CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
 SHOW_WINDOW_HANDLER = 'sfcShowWindow'
+UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
+CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
 
 counter = 0
 
@@ -92,7 +71,7 @@ def getPropertiesByLocation(chartProperties, stepProperties, location, create=Fa
     Return None if not found.
     '''
     if location == SUPERIOR:
-        return chartProperties[PARENT_SCOPE]       
+        return chartProperties[CHART_PARENT]        
     elif location == PROCEDURE or location == PHASE or location == OPERATION or location == GLOBAL:
         return getPropertiesByLevel(chartProperties, location)
     elif location == LOCAL:
@@ -102,7 +81,7 @@ def getPropertiesByLocation(chartProperties, stepProperties, location, create=Fa
     elif location == PREVIOUS:
         return chartProperties[BY_NAME].get(PREVIOUS, None)
     else:
-        reportUnexpectedError("unknown property location type %s", location)
+        reportUnexpectedError(chartProperties, "unknown property location type %s", location)
         
 def getPropertiesByLevel(chartProperties, location):
     ''' Use of PROCEDURE, PHASE, and OPERATION depends on the charts at
@@ -112,12 +91,12 @@ def getPropertiesByLevel(chartProperties, location):
     if location == thisLocation:
         return chartProperties
     else:
-        parentProperties = chartProperties[PARENT_SCOPE]
+        parentProperties = chartProperties[CHART_PARENT] 
         if parentProperties != None:
             return getPropertiesByLevel(parentProperties, location)
         else:
             return None
-        
+
 def createUniqueId():
     '''
     create a unique id
@@ -130,7 +109,6 @@ def sendMessage(project, handler, payload):
     # TODO: restrict to a particular client session
     messageId = createUniqueId()
     payload[MESSAGE_ID] = messageId
-    print 'sending message to clients', project, handler
     system.util.sendMessage(project, handler, payload, "C")
     return messageId
     
@@ -154,31 +132,26 @@ def waitOnResponse(requestId, chartScope):
     '''
     import time
     response = None
-    while response == None:
-        time.sleep(10);
+    #TODO: have some configurable timeout logic here
+    sleepTime = 10 # seconds
+    maxCycles = 5 * 60 / sleepTime
+    cycle = 0
+    while response == None and cycle < maxCycles:
+        time.sleep(sleepTime);
+        cycle = cycle + 1
         # chartState = chartScope[CHART_STATE]
         # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
             # TODO: log that we're bailing
         # return None
         response = getResponse(requestId)
+    if response == None:
+        reportUnexpectedError(chartScope, "timed out waiting for response for requestId" + requestId)
     return response
-
-def sendResponse(requestPayload, responsePayload):
-    '''
-    This method is called from CLIENT scope to 
-    send a reply to the Gateway
-    '''
-    messageId = requestPayload[MESSAGE_ID]
-    responsePayload[MESSAGE_ID] = messageId    
-    project = system.util.getProjectName()
-    system.util.sendMessage(project, RESPONSE_HANDLER, responsePayload, "G")
     
-def sendControlPanelMessage(chartProperties, stepProperties):
-    payload = dict()
-    transferStepPropertiesToMessage(stepProperties,payload)
+def sendUpdateControlPanelMsg(chartProperties):
     project = chartProperties[PROJECT];
-    sendMessage(project, CONTROL_PANEL_MSG_HANDLER, payload)
-
+    sendMessage(project, CP_UPDATE_HANDLER, dict())
+    
 def substituteScopeReferences(chartProperties, stepProperties, sql):
     ''' Substitute for scope variable references, e.g. 'local:selected-emp.val'
     '''
@@ -192,6 +165,13 @@ def substituteScopeReferences(chartProperties, stepProperties, sql):
         else:
             break
     return sql
+
+def addControlPanelMessage(chartProperties, message, ackRequired):
+    from ils.sfc.common.sessions import addControlPanelMessage 
+    chartRunId = getChartRunId(chartProperties)
+    db = getDatabase(chartProperties)
+    addControlPanelMessage(message, ackRequired, chartRunId, db)
+    sendUpdateControlPanelMsg(chartProperties)
 
 def findBracketedScopeReference(string):
     '''
@@ -272,26 +252,17 @@ def printObj(obj, level, out):
         out.write(str(obj))
         out.write('\n')
 
-def readFile(filepath):
-    '''
-    Read the contents of a file into a string
-    '''
-    import StringIO
-    out = StringIO.StringIO()
-    fp = open(filepath, 'r')
-    line = "dummy"
-    while line != "":
-        line = fp.readline()
-        out.write(line)
-    fp.close()
-    result = out.getvalue()
-    out.close()
-    return result   
-
-def reportUnexpectedError(msg):
+def reportUnexpectedError(chartProps, msg):
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
     '''
-    getLogger.error(msg)
+    project = chartProps[PROJECT]
+    getLogger().error(msg)
+    payload = dict()
+    payload[MESSAGE] = msg
+    sendMessage(project, UNEXPECTED_ERROR_HANDLER, payload)
     #TODO: message the client, or queue a message that the client will see
+    
+
+    

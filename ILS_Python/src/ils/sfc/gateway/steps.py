@@ -7,8 +7,9 @@ Created on Sep 30, 2014
 @author: rforbes
 '''
 #from com.ils.sfc.common import IlsSfcNames
-from ils.sfc.util import * 
-from system.ils.sfc import * # this maps Java classes
+from ils.sfc.gateway.util import * 
+from ils.sfc.common.constants import *
+
 from ils.queue.message import insert
 from ils.queue.message import clear
 from system.sfc import cancelChart
@@ -26,14 +27,14 @@ def queueInsert(chartProperties, stepProperties):
     message = getStepProperty(stepProperties, MESSAGE)  
     status = getStepProperty(stepProperties, STATUS)  
     database = chartProperties[DATABASE]
-    insert(currentMsgQueue, status, message, database)
+    insert(currentMsgQueue, status, message, database) 
     
 def setQueue(chartProperties, stepProperties):
     '''
     action for java SetQueueStep
     sets the chart's current message queue
     '''
-    queue = getStepProperty(stepProperties, QUEUE)  
+    queue = getStepProperty(stepProperties, QUEUE)
     # TODO: what to use for scope here ?:
     recipeLocation = OPERATION
     s88Set(chartProperties, stepProperties, MESSAGE_QUEUE, queue, recipeLocation, True)
@@ -75,22 +76,23 @@ def yesNo(chartProperties, stepProperties):
     value = response[RESPONSE]
     s88Set(chartProperties, stepProperties, key, value, recipeLocation, False)
 
-def abort(chartProperties, stepProperties):
+def cancel(chartProperties, stepProperties):
     ''' Abort the chart execution'''
-    chartId = chartProperties[INSTANCE_ID]
-    print chartId.getClass().getName()
-    cancelChart(str(chartId))
-    sendControlPanelMessage(chartProperties, stepProperties)
+    from ils.sfc.gateway.api import cancelChart
+    cancelChart(chartProperties)
+    addControlPanelMessage(chartProperties, "Chart canceled", False)
     
 def pause(chartProperties, stepProperties):
     ''' Pause the chart execution'''
-    chartId = chartProperties[INSTANCE_ID]
-    pauseChart(str(chartId))
-    sendControlPanelMessage(chartProperties, stepProperties)
+    from ils.sfc.gateway.api import pauseChart
+    pauseChart(chartProperties)
+    addControlPanelMessage(chartProperties, "Chart paused", False)
     
 def controlPanelMessage(chartProperties, stepProperties):
-    sendControlPanelMessage(chartProperties, stepProperties)
-    
+    message = getStepProperty(stepProperties, MESSAGE)
+    ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
+    addControlPanelMessage(chartProperties, message, ackRequired)
+   
 def timedDelay(chartProperties, stepProperties):
     timeDelayStrategy = getStepProperty(stepProperties, TIME_DELAY_STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
@@ -294,7 +296,8 @@ def saveData(chartProperties, stepProperties):
         payload[VIEW_FILE] = viewFile
         sendMessage(project, SAVE_DATA_HANDLER, payload)
         
-def printFile(chartProperties, stepProperties):   
+def printFile(chartProperties, stepProperties):  
+    from ils.sfc.common.util import readFile
     # extract property values
     computer = getStepProperty(stepProperties, COMPUTER) 
     payload = dict()

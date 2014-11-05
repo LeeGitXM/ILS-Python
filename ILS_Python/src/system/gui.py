@@ -15,6 +15,9 @@ def createPopupMenu(txt):
 def errorBox(txt):
     return "txt"
 
+def findWindow(windowName):
+    pass
+
 def inputBox(txt):
     return "txt"
 

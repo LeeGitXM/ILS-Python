@@ -8,3 +8,9 @@ def cancelChart(chartId):
 
 def pauseChart(chartId):
     pass
+
+def resumeChart(chartId):
+    pass
+
+def startChart(chartName, payload):
+    pass

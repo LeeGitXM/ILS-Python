@@ -16,6 +16,8 @@ def commitTransaction(tx):
 def dateFormat(timestamp, format):
     return True
 
+def getConnections():
+    pass
 
 def rollbackTransaction(tx):
     return True
