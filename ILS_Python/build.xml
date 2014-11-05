@@ -12,7 +12,6 @@
 		<delete dir="${ignition.py.lib}/ils/io" />
 		<delete dir="${ignition.py.lib}/ils/queue" />
 		<delete dir="${ignition.py.lib}/ils/recipeToolkit" />
-		<delete dir="${ignition.py.lib}/emc" />
 	</target>
 	
 	<target name="deploy" depends="clean" description="Install Python">

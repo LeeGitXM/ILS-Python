@@ -11,7 +11,11 @@ Created on Jul 9, 2014
 import traceback
 import string
 import ils.io
+import ils.io.opcoutput
 from ils.io import *
+
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.io")
 
 # Chuck isn't sure why this doesn't work!
 import system
@@ -27,7 +31,7 @@ def tagWriter(tagPath, val):
 # Command a BasicIO object
 def command(tagPath, command):
     tagPath = str(tagPath)
-    print "%s received command: %s" % (tagPath, command)
+    log.trace("%s received command: %s" % (tagPath, command))
  
     # If the tagname ends in ".command" then trim it off
     if tagPath.endswith('/command'):
@@ -37,39 +41,37 @@ def command(tagPath, command):
  
     # Get the name of the Python class that corresponds to this UDT.
     pythonClass = system.tag.read(parentTagPath + "/pythonClass").value
-    pythonClass = pythonClass.lower()+"/"+pythonClass
-    print "Python Class: ", pythonClass
+    pythonClass = pythonClass.lower()+"."+pythonClass
+
     status = False
     reason = ""
     # Dynamically create an object (that won't live very long)
     try:
         cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
-        print "Executing: ", cmd
         tag = eval(cmd)
-        print "Created tag: ", tag
         if string.upper(command) == "WRITEDATUM":
             status,reason = tag.writeDatum()
         else:
             reason = "Unrecognized command: "+command
-            print reason
+            log.error(reason)
     except:
         reason = "ERROR instantiating ils.io."+ pythonClass+" ("+traceback.format_exc()+")" 
-        print "ils.io.wrapper - "+reason
+        log.error(reason)
         
     return status,reason
 
 #
 # Write to RecipeData
 def writeRecipeDetail(tagName, command):
-    print "     downloading recipe detail: ", tagName
+    log.trace("downloading recipe detail: %s" % (tagName))
     tagName = str(tagName)
                
     # Strip off the '/command'
     if tagName.endswith('/command'):
         parentTagName = tagName[:len(tagName) - 8]
     else:
-        reason = "ERROR: Unexpected tag path: "+ tagName
-        print reason
+        reason = "Unexpected tag path: %s" % (tagName)
+        log.error(reason)
         return False,reason
                
     # Strip off the tagname to get just the path
