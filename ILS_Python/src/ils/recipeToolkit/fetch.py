@@ -6,8 +6,8 @@ Created on Sep 10, 2014
 
 import system
  
-def map(recipeKey):
-    SQL = "select * from RecipeMap where RecipeKey = '%s'" % (recipeKey)
+def recipeMap(recipeKey):
+    SQL = "select * from RtRecipeMap where RecipeKey = '%s'" % (recipeKey)
     print SQL
     pds = system.db.runQuery(SQL)
     

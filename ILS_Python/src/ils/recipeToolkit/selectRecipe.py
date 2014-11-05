@@ -7,13 +7,13 @@ Created on Sep 10, 2014
 import system
 
 def initialize(rootContainer):
-    print "In recipe.selectRecipe.initialize()..."
+    print "In recipeToolkit.selectRecipe.initialize()..."
 
     recipeKey = rootContainer.recipeKey
     print "Recipe Key: %s" % (recipeKey)
 
-    from ils.recipeToolkit.fetch import map
-    recipeMap = map(recipeKey)
+    from ils.recipeToolkit.fetch import recipeMap
+    recipeMap = recipeMap(recipeKey)
     print "Map: ", recipeMap
     
     family = recipeMap['RecipeFamily']
@@ -45,7 +45,7 @@ def okCallback(event):
     
     # Save the grade and type to the recipe map table.
     # grade looks like an int, but it is probably a string
-    SQL = "update RecipeMap set CurrentRecipeGrade = %s, CurrentRecipeVersion = %s, Status = 'Initializing', "\
+    SQL = "update RtRecipeMap set CurrentRecipeGrade = %s, CurrentRecipeVersion = %s, Status = 'Initializing', "\
         "Timestamp = getdate() where RecipeKey = '%s'" \
         % (str(grade), version, recipeKey)
     

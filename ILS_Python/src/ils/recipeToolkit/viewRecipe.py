@@ -9,7 +9,7 @@ def showCurrentRecipeCallback(recipeKey):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
     # but it is probably a stringgggg
-    SQL = "select CurrentRecipeGrade from RecipeMap where RecipeKey = '%s'" % (recipeKey)
+    SQL = "select CurrentRecipeGrade from RtRecipeMap where RecipeKey = '%s'" % (recipeKey)
     print "SQL: ", SQL
     pds = system.db.runQuery(SQL)
 
@@ -34,9 +34,8 @@ def showCurrentRecipeCallback(recipeKey):
 
 def showMidRunRecipeCallback(recipeKey):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
-    # Fetch the grade and type from the recipe map table. The grade looks like an int, 
-    # but it is probably a stringgggg
-    SQL = "select CurrentRecipeGrade from RecipeMap where RecipeKey = '%s'" % (recipeKey)
+    # Fetch the grade and type from the recipe map table. The grade looks like an int, but it is probably a string
+    SQL = "select CurrentRecipeGrade from RtRecipeMap where RecipeKey = '%s'" % (recipeKey)
     print "SQL: ", SQL
     pds = system.db.runQuery(SQL)
 
@@ -73,10 +72,9 @@ def initialize(rootContainer):
     version = rootContainer.version
 
     # fetch the recipe map which will specify the database and table containing the recipe
-    from ils.recipeToolkit.fetch import map
-    recipeMap = map(recipeKey)
+    from ils.recipeToolkit.fetch import recipeMap
+    recipeMap = recipeMap(recipeKey)
 
-    recipeUnitPrefix = recipeMap['RecipeUnitPrefix']
     status = recipeMap['Status']
     rootContainer.status = status
     timestamp = recipeMap['Timestamp']
@@ -91,7 +89,7 @@ def initialize(rootContainer):
 
     # Fetch the recipe
     from ils.recipeToolkit.fetch import details
-    pds = details(recipeUnitPrefix, grade, version)
+    pds = details(recipeKey, grade, version)
 
     # Put the raw recipe into a dataset attribute of the table
     table = rootContainer.getComponent('Power Table')
@@ -219,7 +217,7 @@ def createOPCTags(table, provider, recipeKey):
     #------------------------------------------------------------
     # Fetch the alias to OPC server map from the EMC database
     def fetchOPCServers():
-        SQL = "select * from RecipeServerMap"
+        SQL = "select * from RtWriteLocation"
         pds = system.db.runQuery(SQL)
         print "Fetched ", len(pds), " OPC servers..."
         return pds

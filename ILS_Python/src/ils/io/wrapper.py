@@ -10,11 +10,11 @@ Created on Jul 9, 2014
 '''
 import traceback
 import string
+import ils.io
+from ils.io import *
 
 # Chuck isn't sure why this doesn't work!
-#import system
-
-import system.tag as tag
+import system
 
 # This is a simple integration test of the Eclipse/Python to Ignition framework
 def hello():
@@ -22,10 +22,11 @@ def hello():
 
 # This is another simple integration test of the Eclipse/Python to Ignition framework
 def tagWriter(tagPath, val):
-    tag.write(tagPath, val)
+    system.tag.write(tagPath, val)
 
 # Command a BasicIO object
 def command(tagPath, command):
+    tagPath = str(tagPath)
     print "%s received command: %s" % (tagPath, command)
  
     # If the tagname ends in ".command" then trim it off
@@ -35,22 +36,25 @@ def command(tagPath, command):
         parentTagPath = tagPath
  
     # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = tag.read(parentTagPath + "/pythonClass").value
-    pythonClass = pythonClass.lowerCase()+"/"+pythonClass
+    pythonClass = system.tag.read(parentTagPath + "/pythonClass").value
+    pythonClass = pythonClass.lower()+"/"+pythonClass
     print "Python Class: ", pythonClass
     status = False
     reason = ""
     # Dynamically create an object (that won't live very long)
     try:
-        tag = eval("emc.io." + pythonClass + "("+parentTagPath+")" )
+        cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
+        print "Executing: ", cmd
+        tag = eval(cmd)
+        print "Created tag: ", tag
         if string.upper(command) == "WRITEDATUM":
             status,reason = tag.writeDatum()
         else:
             reason = "Unrecognized command: "+command
             print reason
     except:
-        reason = "ERROR instantiating emc.io."+ pythonClass+" ("+traceback.format_exc()+")" 
-        print "emc.io.wrapper - "+reason
+        reason = "ERROR instantiating ils.io."+ pythonClass+" ("+traceback.format_exc()+")" 
+        print "ils.io.wrapper - "+reason
         
     return status,reason
 
@@ -73,18 +77,18 @@ def writeRecipeDetail(tagName, command):
     print "Path: <%s>" % (path)
  
     # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = tag.read(path + "/pythonClass").value
+    pythonClass = system.tag.read(path + "/pythonClass").value
     pythonClass = pythonClass.lowerCase()+"/"+pythonClass
     print "Python Class: ", pythonClass
     status = False
     reason = ""
     # Dynamically create an object (that won't live very long)
     try:
-        writer = eval("emc.io." + pythonClass + "("+path+")" )
+        writer = eval("io." + pythonClass + "("+path+")" )
         status, reason = writer.writeRecipeDetail(command)
     except:
-        reason = "ERROR instantiating emc.io."+ pythonClass+" ("+traceback.format_exc()+")" 
-        print "emc.io.wrapper - "+reason
+        reason = "ERROR instantiating io."+ pythonClass+" ("+traceback.format_exc()+")" 
+        print "io.wrapper - "+reason
         
     print "Done with writeRecipeDetail: ", path,command
     return status, reason

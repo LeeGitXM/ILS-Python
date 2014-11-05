@@ -6,7 +6,7 @@ Either a float or text output to OPC.
 Created on Jul 9, 2014
 @author: phassler
 '''
-import emc.io.basicio as basicio
+import ils.io.basicio as basicio
 import string
 import system.tag as systemtag
 import time
