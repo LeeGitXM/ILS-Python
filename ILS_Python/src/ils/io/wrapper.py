@@ -10,11 +10,15 @@ Created on Jul 9, 2014
 '''
 import traceback
 import string
+import ils.io
+import ils.io.opcoutput
+from ils.io import *
+
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.io")
 
 # Chuck isn't sure why this doesn't work!
-#import system
-
-import system.tag as tag
+import system
 
 # This is a simple integration test of the Eclipse/Python to Ignition framework
 def hello():
@@ -22,11 +26,12 @@ def hello():
 
 # This is another simple integration test of the Eclipse/Python to Ignition framework
 def tagWriter(tagPath, val):
-    tag.write(tagPath, val)
+    system.tag.write(tagPath, val)
 
 # Command a BasicIO object
 def command(tagPath, command):
-    print "%s received command: %s" % (tagPath, command)
+    tagPath = str(tagPath)
+    log.trace("%s received command: %s" % (tagPath, command))
  
     # If the tagname ends in ".command" then trim it off
     if tagPath.endswith('/command'):
@@ -35,37 +40,38 @@ def command(tagPath, command):
         parentTagPath = tagPath
  
     # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = tag.read(parentTagPath + "/pythonClass").value
-    pythonClass = pythonClass.lowerCase()+"/"+pythonClass
-    print "Python Class: ", pythonClass
+    pythonClass = system.tag.read(parentTagPath + "/pythonClass").value
+    pythonClass = pythonClass.lower()+"."+pythonClass
+
     status = False
     reason = ""
     # Dynamically create an object (that won't live very long)
     try:
-        tag = eval("emc.io." + pythonClass + "("+parentTagPath+")" )
+        cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
+        tag = eval(cmd)
         if string.upper(command) == "WRITEDATUM":
             status,reason = tag.writeDatum()
         else:
             reason = "Unrecognized command: "+command
-            print reason
+            log.error(reason)
     except:
-        reason = "ERROR instantiating emc.io."+ pythonClass+" ("+traceback.format_exc()+")" 
-        print "emc.io.wrapper - "+reason
+        reason = "ERROR instantiating ils.io."+ pythonClass+" ("+traceback.format_exc()+")" 
+        log.error(reason)
         
     return status,reason
 
 #
 # Write to RecipeData
 def writeRecipeDetail(tagName, command):
-    print "     downloading recipe detail: ", tagName
+    log.trace("downloading recipe detail: %s" % (tagName))
     tagName = str(tagName)
                
     # Strip off the '/command'
     if tagName.endswith('/command'):
         parentTagName = tagName[:len(tagName) - 8]
     else:
-        reason = "ERROR: Unexpected tag path: "+ tagName
-        print reason
+        reason = "Unexpected tag path: %s" % (tagName)
+        log.error(reason)
         return False,reason
                
     # Strip off the tagname to get just the path
@@ -73,18 +79,18 @@ def writeRecipeDetail(tagName, command):
     print "Path: <%s>" % (path)
  
     # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = tag.read(path + "/pythonClass").value
+    pythonClass = system.tag.read(path + "/pythonClass").value
     pythonClass = pythonClass.lowerCase()+"/"+pythonClass
     print "Python Class: ", pythonClass
     status = False
     reason = ""
     # Dynamically create an object (that won't live very long)
     try:
-        writer = eval("emc.io." + pythonClass + "("+path+")" )
+        writer = eval("io." + pythonClass + "("+path+")" )
         status, reason = writer.writeRecipeDetail(command)
     except:
-        reason = "ERROR instantiating emc.io."+ pythonClass+" ("+traceback.format_exc()+")" 
-        print "emc.io.wrapper - "+reason
+        reason = "ERROR instantiating io."+ pythonClass+" ("+traceback.format_exc()+")" 
+        print "io.wrapper - "+reason
         
     print "Done with writeRecipeDetail: ", path,command
     return status, reason

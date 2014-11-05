@@ -3,7 +3,7 @@ Created on Jul 9, 2014
 
 @author: chuckc
 '''
-import emc.io.recipe as recipe
+import ils.io.recipe as recipe
 import system.tag as systemtag
 
 class RecipeDetail(recipe.Recipe):

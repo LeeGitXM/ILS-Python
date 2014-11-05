@@ -7,13 +7,13 @@ Created on Sep 10, 2014
 import system
 
 # I Need to pass the table because in a project with multiple consoles I have two diffferent download tables
-def logMaster(unit, grade, version):
+def logMaster(unitId, grade, version):
 
     print "Logging"
-    SQL = "insert into RtDownloadMaster (Unit, Grade, Version, DownloadStartTime) " \
+    SQL = "insert into RtDownloadMaster (UnitId, Grade, Version, DownloadStartTime) " \
         " values (?, ?, ?, getdate())"
     print SQL
-    logId = system.db.runPrepUpdate(SQL, args=[unit, grade, version], getKey=True)
+    logId = system.db.runPrepUpdate(SQL, args=[unitId, grade, version], getKey=True)
     return logId
 
 # I Need to pass the table because in a project with multiple consoles I have two diffferent download tables
