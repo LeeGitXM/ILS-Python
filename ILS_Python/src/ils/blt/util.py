@@ -83,7 +83,7 @@ def getNewBlockInstances():
     for name in dir(xom.block):
         if not name.startswith('__') and not name == 'basicblock':
             className = eval("xom.block."+name+".getClassName()")
-            constructor = "emc.block."+name.lower() +"."+className+"()"
+            constructor = "xom.block."+name.lower() +"."+className+"()"
             obj = eval(constructor)
             print "getNewBlockInstances:",name,'=',obj.__class__
             instances.append(obj) 
