@@ -9,6 +9,8 @@ Created on Sep 30, 2014
 #from com.ils.sfc.common import IlsSfcNames
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
+from ils.sfc.common.util import sendMessage
+from ils.sfc.common.util import getLogger
 
 from ils.queue.message import insert
 from ils.queue.message import clear
@@ -89,10 +91,30 @@ def pause(chartProperties, stepProperties):
     addControlPanelMessage(chartProperties, "Chart paused", False)
     
 def controlPanelMessage(chartProperties, stepProperties):
+    import time
+    from ils.sfc.common.sessions import getAckTime
+    from ils.sfc.common.sessions import timeOutControlPanelMessageAck
+    from ils.common.units import Unit
     message = getStepProperty(stepProperties, MESSAGE)
     ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
-    addControlPanelMessage(chartProperties, message, ackRequired)
-   
+    msgId = addControlPanelMessage(chartProperties, message, ackRequired)
+    if ackRequired:
+        database = chartProperties[DATABASE]
+        timeout = message = getStepProperty(stepProperties, TIMEOUT)
+        timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
+        timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout)
+        sleepSeconds = 15
+        elapsedSeconds = 0
+        startTime = time.time()
+        ackTime = None
+        while ackTime == None and (timeoutSeconds > 0 and elapsedSeconds < timeoutSeconds):
+            time.sleep(sleepSeconds);
+            ackTime = getAckTime(msgId, database)
+            elapsedSeconds = time.time() - startTime
+        if ackTime == None:
+            timeOutControlPanelMessageAck(msgId, database)
+        sendUpdateControlPanelMsg(chartProperties)
+            
 def timedDelay(chartProperties, stepProperties):
     timeDelayStrategy = getStepProperty(stepProperties, TIME_DELAY_STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 

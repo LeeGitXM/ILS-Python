@@ -12,7 +12,6 @@ from ils.sfc.gateway.api import *
 #from com.ils.sfc.common import IlsSfcNames 
 #from com.ils.sfc.util import IlsResponseManager
 from ils.common.units import Unit
-import logging
 from ils.sfc.common.util import getChartRunId
 from ils.sfc.common.util import getDatabase
 
@@ -32,14 +31,7 @@ PRINT_FILE_HANDLER = 'sfcPrintFile'
 PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
 CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
 SHOW_WINDOW_HANDLER = 'sfcShowWindow'
-UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
 CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
-
-counter = 0
-
-def getLogger():
-    return logging.getLogger('ilssfc')
-
 
 def printCounter():
     global counter
@@ -81,7 +73,7 @@ def getPropertiesByLocation(chartProperties, stepProperties, location, create=Fa
     elif location == PREVIOUS:
         return chartProperties[BY_NAME].get(PREVIOUS, None)
     else:
-        reportUnexpectedError(chartProperties, "unknown property location type %s", location)
+        handleUnexpectedError(chartProperties, "unknown property location type %s", location)
         
 def getPropertiesByLevel(chartProperties, location):
     ''' Use of PROCEDURE, PHASE, and OPERATION depends on the charts at
@@ -96,22 +88,7 @@ def getPropertiesByLevel(chartProperties, location):
             return getPropertiesByLevel(parentProperties, location)
         else:
             return None
-
-def createUniqueId():
-    '''
-    create a unique id
-    '''
-    import uuid
-    return str(uuid.uuid4())
-    
-def sendMessage(project, handler, payload):
-    # TODO: check returned list of recipients
-    # TODO: restrict to a particular client session
-    messageId = createUniqueId()
-    payload[MESSAGE_ID] = messageId
-    system.util.sendMessage(project, handler, payload, "C")
-    return messageId
-    
+        
 def getStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
     for prop in stepProperties.getProperties():
@@ -145,10 +122,11 @@ def waitOnResponse(requestId, chartScope):
         # return None
         response = getResponse(requestId)
     if response == None:
-        reportUnexpectedError(chartScope, "timed out waiting for response for requestId" + requestId)
+        handleUnexpectedError(chartScope, "timed out waiting for response for requestId" + requestId)
     return response
     
 def sendUpdateControlPanelMsg(chartProperties):
+    from ils.sfc.common.util import sendMessage
     project = chartProperties[PROJECT];
     sendMessage(project, CP_UPDATE_HANDLER, dict())
     
@@ -170,8 +148,9 @@ def addControlPanelMessage(chartProperties, message, ackRequired):
     from ils.sfc.common.sessions import addControlPanelMessage 
     chartRunId = getChartRunId(chartProperties)
     db = getDatabase(chartProperties)
-    addControlPanelMessage(message, ackRequired, chartRunId, db)
+    msgId = addControlPanelMessage(message, ackRequired, chartRunId, db)
     sendUpdateControlPanelMsg(chartProperties)
+    return msgId
 
 def findBracketedScopeReference(string):
     '''
@@ -251,18 +230,8 @@ def printObj(obj, level, out):
         out.write( ': ')
         out.write(str(obj))
         out.write('\n')
-
-def reportUnexpectedError(chartProps, msg):
-    '''
-    Report an unexpected error so that it is visible to the operator--
-    e.g. put in a message queue
-    '''
-    project = chartProps[PROJECT]
-    getLogger().error(msg)
-    payload = dict()
-    payload[MESSAGE] = msg
-    sendMessage(project, UNEXPECTED_ERROR_HANDLER, payload)
-    #TODO: message the client, or queue a message that the client will see
     
-
+def getChartState(uuid):
+    from system.ils.sfc import getChartState
+    return getChartState(uuid)
     

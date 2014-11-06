@@ -6,6 +6,7 @@ Created on Oct 31, 2014
 ABORTED = 'Aborted'
 ACK_REQUIRED = "ackRequired"
 ACK_TIME = "ackTime"
+ACK_TIMED_OUT = "ackTimedOut"
 BY_NAME = 'byName'
 CALLBACK = "callback"
 CANCELED = 'canceled'

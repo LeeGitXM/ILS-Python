@@ -15,6 +15,7 @@ class ControlPanel:
     chartProperties = None
     messageIndex = None
     messages = None
+    timer = None
     
     def  __init__(self, _window, _chartProperties):
         self.window = _window
@@ -76,7 +77,7 @@ class ControlPanel:
          
     def setMessage(self, index):
         from java.awt import Color
-        from ils.sfc.common.constants import MESSAGE,  CREATE_TIME, ACK_REQUIRED, ACK_TIME
+        from ils.sfc.common.constants import MESSAGE,  CREATE_TIME, ACK_REQUIRED, ACK_TIME, ACK_TIMED_OUT
         if index >= len(self.messages) or index < 0:
             return
         self.messageIndex = index
@@ -85,19 +86,24 @@ class ControlPanel:
         createTime = row[CREATE_TIME]
         ackRequired = row[ACK_REQUIRED]
         ackTime = row[ACK_TIME]    
+        ackTimedOut = row[ACK_TIMED_OUT]        
         self.getMessageArea().setText(msg)
-        if ackRequired:
+        if ackTimedOut:
+            self.getMessageArea().setBackground(Color.pink)
+        elif ackRequired:
             self.getMessageArea().setBackground(Color.red)
         else:
             self.getMessageArea().setBackground(Color.white)
         self.getSelectedMsgField().setText("%d of %d" % (self.messageIndex + 1, len(self.messages)))       
-        self.getAckButton().setEnabled(ackRequired and ackTime == None)
+        self.getAckButton().setEnabled(ackRequired and ackTime == None and not ackTimedOut)
         if ackTime != None:
             status = "<html>Acknowledged<br>" + str(ackTime) + "</html>"
+        elif ackTimedOut:
+            status = "<html>Ack Timed Out</html>"
         else:
             status = "<html>Created<br>" + str(createTime) + "</html>"
         self.getMessageStatusLabel().setText(status)
-        
+    
     def getComponent(self, name):
         return self.rootContainer.getComponent(name)
 
@@ -163,7 +169,7 @@ class ControlPanel:
 def reconnect():
     from ils.sfc.common.sessions import getRunningSessions
     from ils.sfc.common.util import getDatabaseFromSystem
-    from ils.sfc.common.constants import CHART_NAME, CHART_RUN_ID, DATABASE, INSTANCE_ID, USER
+    from ils.sfc.common.constants import CHART_NAME, CHART_RUN_ID, DATABASE, INSTANCE_ID, USER, PROJECT
     database = getDatabaseFromSystem()
     user = system.security.getUsername()
     runningSessions = getRunningSessions(user, database)
@@ -173,6 +179,7 @@ def reconnect():
         chartProperties[DATABASE] = database
         chartProperties[CHART_NAME] = session[CHART_NAME]
         chartProperties[INSTANCE_ID] = session[CHART_RUN_ID]
+        chartProperties[PROJECT] = system.util.getProjectName()
         createControlPanel(chartProperties)
 
 def createControlPanel(chartProperties):
