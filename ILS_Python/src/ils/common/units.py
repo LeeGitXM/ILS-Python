@@ -125,9 +125,14 @@ class Unit(object):
     @staticmethod
     def quoteSqlString(string):
         return "'" + string.replace("'", "''") + "'"
-    
+
     @staticmethod
-    def readFromDb():
+    def lazyInitialize(database):
+        if len(Unit.unitsByName.keys()) == 0:
+            Unit.readFromDb(database)
+            
+    @staticmethod
+    def readFromDb(database):
         '''read unit info from the project's default database'''
         import system.db
         Unit.clearUnits()
@@ -143,7 +148,9 @@ class Unit(object):
             unit.b = row["b"]
             unit.isBaseUnit = row["isBaseUnit"]
             newUnits[unit.name] = unit
+        Unit.addUnits(newUnits)
         # Read the aliases
+        newUnits = dict()
         results = system.db.runQuery("select * from UnitAliases")
         for row in results:
             realUnit = Unit.getUnit(row["name"])

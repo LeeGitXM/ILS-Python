@@ -234,4 +234,10 @@ def printObj(obj, level, out):
 def getChartState(uuid):
     from system.ils.sfc import getChartState
     return getChartState(uuid)
+
+def lazyInitializeGatewayEnvironment(database):  
+    '''ensure that any required initialization of the client environment
+       has been done, but don't re-initialize'''
+    from ils.common.units import Unit
+    Unit.lazyInitialize(database)
     
