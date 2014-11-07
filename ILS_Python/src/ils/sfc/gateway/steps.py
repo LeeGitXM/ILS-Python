@@ -24,12 +24,11 @@ def queueInsert(chartProperties, stepProperties):
     action for java QueueMessageStep
     queues the step's message
     '''
-    print('line 1')
-    currentMsgQueue = s88Get(chartProperties, stepProperties, MESSAGE_ID, OPERATION)
+    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
     message = getStepProperty(stepProperties, MESSAGE)  
-    status = getStepProperty(stepProperties, STATUS)  
+    priority = getStepProperty(stepProperties, PRIORITY)  
     database = chartProperties[DATABASE]
-    insert(currentMsgQueue, status, message, database) 
+    insert(currentMsgQueue, priority, message, database) 
     
 def setQueue(chartProperties, stepProperties):
     '''
@@ -46,7 +45,7 @@ def showQueue(chartProperties, stepProperties):
     action for java ShowQueueStep
     send a message to the client to show the current message queue
     '''
-    currentMsgQueue = s88Get(chartProperties, stepProperties, MESSAGE_QUEUE, OPERATION) 
+    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
     payload = dict()
     payload[QUEUE] = currentMsgQueue 
     project = chartProperties[PROJECT];
@@ -57,7 +56,7 @@ def clearQueue(chartProperties, stepProperties):
     action for java ClearQueueStep
     delete all messages from the current message queue
     '''
-    currentMsgQueue = s88Get(chartProperties, stepProperties, MESSAGE_QUEUE, OPERATION) 
+    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
     database = chartProperties[DATABASE]
     clear(currentMsgQueue, database)
 
@@ -95,9 +94,16 @@ def controlPanelMessage(chartProperties, stepProperties):
     from ils.sfc.common.sessions import getAckTime
     from ils.sfc.common.sessions import timeOutControlPanelMessageAck
     from ils.common.units import Unit
+    from ils.queue.message import insert
     message = getStepProperty(stepProperties, MESSAGE)
+    database = chartProperties[DATABASE]
     ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
     msgId = addControlPanelMessage(chartProperties, message, ackRequired)
+    postToQueue = getStepProperty(stepProperties, POST_TO_QUEUE)
+    if postToQueue:
+        currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
+        priority = getStepProperty(stepProperties, PRIORITY)
+        insert(currentMsgQueue, priority, message, database)
     if ackRequired:
         database = chartProperties[DATABASE]
         timeout = message = getStepProperty(stepProperties, TIMEOUT)

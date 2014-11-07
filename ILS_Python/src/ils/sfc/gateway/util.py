@@ -241,3 +241,6 @@ def lazyInitializeGatewayEnvironment(database):
     from ils.common.units import Unit
     Unit.lazyInitialize(database)
     
+def getCurrentMessageQueue(chartProperties, stepProperties):
+    from ils.sfc.common.constants import MESSAGE_ID, OPERATION
+    return s88Get(chartProperties, stepProperties, MESSAGE_ID, OPERATION)
