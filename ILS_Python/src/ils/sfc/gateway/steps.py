@@ -9,6 +9,8 @@ Created on Sep 30, 2014
 #from com.ils.sfc.common import IlsSfcNames
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
+from ils.sfc.common.util import sendMessage
+from ils.sfc.common.util import getLogger
 
 from ils.queue.message import insert
 from ils.queue.message import clear
@@ -22,12 +24,11 @@ def queueInsert(chartProperties, stepProperties):
     action for java QueueMessageStep
     queues the step's message
     '''
-    print('line 1')
-    currentMsgQueue = s88Get(chartProperties, stepProperties, MESSAGE_ID, OPERATION)
+    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
     message = getStepProperty(stepProperties, MESSAGE)  
-    status = getStepProperty(stepProperties, STATUS)  
+    priority = getStepProperty(stepProperties, PRIORITY)  
     database = chartProperties[DATABASE]
-    insert(currentMsgQueue, status, message, database) 
+    insert(currentMsgQueue, priority, message, database) 
     
 def setQueue(chartProperties, stepProperties):
     '''
@@ -44,7 +45,7 @@ def showQueue(chartProperties, stepProperties):
     action for java ShowQueueStep
     send a message to the client to show the current message queue
     '''
-    currentMsgQueue = s88Get(chartProperties, stepProperties, MESSAGE_QUEUE, OPERATION) 
+    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
     payload = dict()
     payload[QUEUE] = currentMsgQueue 
     project = chartProperties[PROJECT];
@@ -55,7 +56,7 @@ def clearQueue(chartProperties, stepProperties):
     action for java ClearQueueStep
     delete all messages from the current message queue
     '''
-    currentMsgQueue = s88Get(chartProperties, stepProperties, MESSAGE_QUEUE, OPERATION) 
+    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
     database = chartProperties[DATABASE]
     clear(currentMsgQueue, database)
 
@@ -89,10 +90,37 @@ def pause(chartProperties, stepProperties):
     addControlPanelMessage(chartProperties, "Chart paused", False)
     
 def controlPanelMessage(chartProperties, stepProperties):
+    import time
+    from ils.sfc.common.sessions import getAckTime
+    from ils.sfc.common.sessions import timeOutControlPanelMessageAck
+    from ils.common.units import Unit
+    from ils.queue.message import insert
     message = getStepProperty(stepProperties, MESSAGE)
+    database = chartProperties[DATABASE]
     ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
-    addControlPanelMessage(chartProperties, message, ackRequired)
-   
+    msgId = addControlPanelMessage(chartProperties, message, ackRequired)
+    postToQueue = getStepProperty(stepProperties, POST_TO_QUEUE)
+    if postToQueue:
+        currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
+        priority = getStepProperty(stepProperties, PRIORITY)
+        insert(currentMsgQueue, priority, message, database)
+    if ackRequired:
+        database = chartProperties[DATABASE]
+        timeout = message = getStepProperty(stepProperties, TIMEOUT)
+        timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
+        timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout)
+        sleepSeconds = 15
+        elapsedSeconds = 0
+        startTime = time.time()
+        ackTime = None
+        while ackTime == None and (timeoutSeconds > 0 and elapsedSeconds < timeoutSeconds):
+            time.sleep(sleepSeconds);
+            ackTime = getAckTime(msgId, database)
+            elapsedSeconds = time.time() - startTime
+        if ackTime == None:
+            timeOutControlPanelMessageAck(msgId, database)
+        sendUpdateControlPanelMsg(chartProperties)
+            
 def timedDelay(chartProperties, stepProperties):
     timeDelayStrategy = getStepProperty(stepProperties, TIME_DELAY_STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 

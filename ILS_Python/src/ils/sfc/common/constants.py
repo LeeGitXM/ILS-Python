@@ -6,7 +6,8 @@ Created on Oct 31, 2014
 ABORTED = 'Aborted'
 ACK_REQUIRED = "ackRequired"
 ACK_TIME = "ackTime"
-BY_NAME = 'byName'
+ACK_TIMED_OUT = "ackTimedOut"
+BY_NAME = 'stepsByName'
 CALLBACK = "callback"
 CANCELED = 'canceled'
 CHART_NAME = 'chartName'

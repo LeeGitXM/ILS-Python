@@ -8,6 +8,7 @@ Created on Oct 30, 2014
 
 import ils.sfc.gateway.util
 from ils.common.units import Unit
+from ils.sfc.common.util import handleUnexpectedError
 
 UNIT = '.unit'
 
@@ -29,7 +30,7 @@ def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitName
                 value = dict()
                 parent[key] = dict()
             else:
-                ils.sfc.gateway.util.reportUnexpectedError("null value at key %s in property %s", key, ckey)
+                handleUnexpectedError("null value at key %s in property %s", key, ckey)
                 return None
     # Do unit conversion if necessary:
     if newUnitNameOrNone != None:
@@ -41,9 +42,9 @@ def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitName
                 if existingUnit != None and newUnit != None:
                     value = existingUnit.convertTo(newUnit, value)
                 else:
-                    ils.sfc.gateway.util.reportUnexpectedError("No unit found for %s and/or %s", existingUnitName, newUnitNameOrNone)                   
+                    handleUnexpectedError("No unit found for %s and/or %s", existingUnitName, newUnitNameOrNone)                   
         else:
-            ils.sfc.gateway.util.reportUnexpectedError("No unit found for property %s when new unit %s was requested", ckey, newUnitNameOrNone)
+            handleUnexpectedError("No unit found for property %s when new unit %s was requested", ckey, newUnitNameOrNone)
     return value
 
 def s88Set(chartProperties, stepProperties, ckey, value, location, createIfAbsent = False):

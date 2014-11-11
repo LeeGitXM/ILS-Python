@@ -6,6 +6,8 @@ Created on Sep 16, 2014
 @author: rforbes
 '''
 
+
+
 class Unit(object):
     '''
     Represents a unit of measure, with reference to a base unit conversion
@@ -98,7 +100,10 @@ class Unit(object):
     @staticmethod
     def getUnit(name):
         '''Get the unit with the given name (or alias)'''
-        return Unit.unitsByName.get(name)
+        unit = Unit.unitsByName.get(name)
+        if unit == None:
+            print 'Failed to find unit: ' + name
+        return unit
 
     def getInsertStatement(self):
         '''Get a sql statement that will insert this unit into a SQL Server database'''
@@ -120,9 +125,14 @@ class Unit(object):
     @staticmethod
     def quoteSqlString(string):
         return "'" + string.replace("'", "''") + "'"
-    
+
     @staticmethod
-    def readFromDb():
+    def lazyInitialize(database):
+        if len(Unit.unitsByName.keys()) == 0:
+            Unit.readFromDb(database)
+            
+    @staticmethod
+    def readFromDb(database):
         '''read unit info from the project's default database'''
         import system.db
         Unit.clearUnits()
@@ -138,7 +148,9 @@ class Unit(object):
             unit.b = row["b"]
             unit.isBaseUnit = row["isBaseUnit"]
             newUnits[unit.name] = unit
+        Unit.addUnits(newUnits)
         # Read the aliases
+        newUnits = dict()
         results = system.db.runQuery("select * from UnitAliases")
         for row in results:
             realUnit = Unit.getUnit(row["name"])

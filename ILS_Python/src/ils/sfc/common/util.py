@@ -6,6 +6,7 @@ Created on Nov 3, 2014
 import system
 
 from ils.sfc.common.constants import CHART_PARENT, INSTANCE_ID, DATABASE
+UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
 
 def readFile(filepath):
     '''
@@ -22,6 +23,31 @@ def readFile(filepath):
     result = out.getvalue()
     out.close()
     return result   
+
+def sendMessage(project, handler, payload):
+    # TODO: check returned list of recipients
+    # TODO: restrict to a particular client session
+    from ils.sfc.common.constants import MESSAGE_ID
+    messageId = createUniqueId()
+    payload[MESSAGE_ID] = messageId
+    system.util.sendMessage(project, handler, payload, "C")
+    return messageId
+
+def getLogger():
+    import logging
+    return logging.getLogger('ilssfc')
+
+def handleUnexpectedError(chartProps, msg):
+    '''
+    Report an unexpected error so that it is visible to the operator--
+    e.g. put in a message queue
+    '''
+    from ils.sfc.common.constants import PROJECT, MESSAGE
+    project = chartProps[PROJECT]
+    getLogger().error(msg)
+    payload = dict()
+    payload[MESSAGE] = msg
+    sendMessage(project, UNEXPECTED_ERROR_HANDLER, payload)
 
 def boolToBit(bool):
     if bool:
@@ -52,3 +78,10 @@ def getDatabaseFromSystem():
             system.gui.warningBox("several database connections are available; one will be chosen randomly")        
         db = connections.getValueAt(0, 'name')
         return db
+
+def createUniqueId():
+    '''
+    create a unique id
+    '''
+    import uuid
+    return str(uuid.uuid4())

@@ -11,3 +11,6 @@ def setResponse(payload):
 
 def addSession(pyDict):
     pass
+
+def getChartState(uuid):
+    pass

@@ -1,7 +1,6 @@
 '''
 All SFC Client Message Handlers
 '''
-import system.nav
 import system.gui
 from system.print import createPrintJob
 
@@ -111,5 +110,16 @@ def sfcUpdateControlPanel(payload):
     from ils.sfc.client.controlPanel import updateControlPanels 
     updateControlPanels()
 
+def sfcChartStarted(payload):
+    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME, USER, DATABASE
+    from ils.sfc.common.sessions import createSession
+    from ils.sfc.client.controlPanel import createControlPanel
+    chartRunId = payload[INSTANCE_ID] 
+    project = payload[PROJECT]
+    chartName = payload[CHART_NAME]
+    user = payload[USER]
+    database = payload[DATABASE]
+    createSession(user, chartName, chartRunId, database)
+    createControlPanel(payload)
 
 
