@@ -27,7 +27,7 @@ def updateLogMaster(logId, status, totalDownloads, passedDownloads, failedDownlo
 
     
 # Log the results of an individual write
-def logDetail(downloadId, tag, outputVal, status, storeVal, compareVal, recommendVal, reason):
+def logDetail(downloadId, tag, outputVal, status, storeVal, compareVal, recommendVal, reason, errorMessage):
     
     #TODO need a NAN
     if outputVal == None:
@@ -44,12 +44,15 @@ def logDetail(downloadId, tag, outputVal, status, storeVal, compareVal, recommen
     else:
         success = False
 
+    if errorMessage == "":
+        errorMessage = None
+        
     print "Logging"
     
     SQL = "insert into RtDownloadDetail (DownloadId, Timestamp, Tag, OutputValue, Success, StoreValue, CompareValue, "\
-        " RecommendedValue, Reason) " \
-        " values (?, getdate(), ?, ?, ?, ?, ?, ?, ?)"
+        " RecommendedValue, Reason, Error) " \
+        " values (?, getdate(), ?, ?, ?, ?, ?, ?, ?, ?)"
     
     print SQL
     
-    system.db.runPrepUpdate(SQL, [downloadId, tag, outputVal, success, storeVal, compareVal, recommendVal, reason])
+    system.db.runPrepUpdate(SQL, [downloadId, tag, outputVal, success, storeVal, compareVal, recommendVal, reason, errorMessage])

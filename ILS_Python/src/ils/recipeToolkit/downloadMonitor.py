@@ -87,6 +87,7 @@ def monitor(rootContainer):
                 if downloadType == 'IMMEDIATE' or downloadType == 'DEFERRED VALUE' or downloadType == 'DEFERRED LOW LIMIT' or downloadType == 'DEFERRED HIGH LIMIT':
                     writeLocation = record["Write Location"]    
                     pendVal = record["Pend"]
+                    reason = record["Reason"]
                     
                     if writeLocation == localG2WriteAlias:
                         from ils.recipeToolkit.common import formatLocalTagName
@@ -98,11 +99,11 @@ def monitor(rootContainer):
                         from ils.common.util import equalityCheck
                         if equalityCheck(pendVal, val, recipeMinimumDifference, recipeMinimumRelativeDifference):
                             successes = successes + 1
-                            logDetail(logId, record["Store Tag"], pendVal, "Success", val, compareVal, recommendVal, "")
+                            logDetail(logId, record["Store Tag"], pendVal, "Success", val, compareVal, recommendVal, reason, "")
                             ds = system.dataset.setValue(ds, i, "Download Status", "Success")
                         else:
                             failures = failures + 1
-                            logDetail(logId, record["Store Tag"], pendVal, "Failure", val, compareVal, recommendVal, "Local write error")
+                            logDetail(logId, record["Store Tag"], pendVal, "Failure", val, compareVal, recommendVal, reason, "Local write error")
                             ds = system.dataset.setValue(ds, i, "Download Status", "Failure")
                         
                     else:
@@ -116,12 +117,12 @@ def monitor(rootContainer):
                         if string.upper(writeStatus) == 'SUCCESS':
                             successes = successes + 1
                             ds = system.dataset.setValue(ds, i, "Download Status", "Success")
-                            logDetail(logId, record["Store Tag"], pendVal, "Success", val, compareVal, recommendVal, reason)
+                            logDetail(logId, record["Store Tag"], pendVal, "Success", val, compareVal, recommendVal, reason, "")
                         elif string.upper(writeStatus) == 'FAILURE':
                             failures = failures + 1 
                             ds = system.dataset.setValue(ds, i, "Download Status", "Failure")
-                            reason = system.tag.read(storTagName + '/writeErrorMessage').value
-                            logDetail(logId, record["Store Tag"], pendVal, "Failure", val, compareVal, recommendVal, reason)
+                            errorMessage = system.tag.read(storTagName + '/writeErrorMessage').value
+                            logDetail(logId, record["Store Tag"], pendVal, "Failure", val, compareVal, recommendVal, reason, errorMessage)
                         else:
                             pending = pending + 1 
             
