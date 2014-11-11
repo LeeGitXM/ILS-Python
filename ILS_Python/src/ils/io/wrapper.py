@@ -10,9 +10,12 @@ Created on Jul 9, 2014
 '''
 import traceback
 import string
+
+# These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
 import ils.io.opcoutput
-from ils.io import *
+import ils.io.opcconditionaloutput
+import ils.io.recipedetail
 
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io")
@@ -29,9 +32,11 @@ def tagWriter(tagPath, val):
     system.tag.write(tagPath, val)
 
 # Command a BasicIO object
-def command(tagPath, command):
+def write(tagPath, command):
+
     tagPath = str(tagPath)
-    log.trace("%s received command: %s" % (tagPath, command))
+
+    log.trace("Tag <%s> received command: %s" % (tagPath, command))
  
     # If the tagname ends in ".command" then trim it off
     if tagPath.endswith('/command'):
@@ -55,43 +60,41 @@ def command(tagPath, command):
             reason = "Unrecognized command: "+command
             log.error(reason)
     except:
-        reason = "ERROR instantiating ils.io."+ pythonClass+" ("+traceback.format_exc()+")" 
+        reason = "ERROR writing to %s, a <%s> (%s)" % (tagPath, pythonClass, traceback.format_exc()) 
         log.error(reason)
         
     return status,reason
 
 #
 # Write to RecipeData
-def writeRecipeDetail(tagName, command):
-    log.trace("downloading recipe detail: %s" % (tagName))
-    tagName = str(tagName)
-               
-    # Strip off the '/command'
-    if tagName.endswith('/command'):
-        parentTagName = tagName[:len(tagName) - 8]
+def writeRecipeDetail(tagPath, command):
+    tagPath = str(tagPath)
+    
+    log.trace("Recipe Detail <%s> received command: %s" % (tagPath, command))
+
+    # If the tagname ends in ".command" then trim it off
+    if tagPath.endswith('/command'):
+        parentTagPath = tagPath[:len(tagPath) - 8]
     else:
-        reason = "Unexpected tag path: %s" % (tagName)
+        reason = "Unexpected tag path: %s" % (tagPath)
         log.error(reason)
         return False,reason
                
-    # Strip off the tagname to get just the path
-    path = parentTagName[:parentTagName.rfind('/')+1]
-    print "Path: <%s>" % (path)
- 
-    # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = system.tag.read(path + "/pythonClass").value
-    pythonClass = pythonClass.lowerCase()+"/"+pythonClass
-    print "Python Class: ", pythonClass
+    # The recipe detail UDT does not allow for multiple implementations of recipe detail via a named Java
+    # tag class.  If there are variations of a recipe detail, then I can always add a tagClass property / tag in 
+    # Recipe Details UDT.
+    pythonClass = "recipedetail.RecipeDetail"
     status = False
     reason = ""
     # Dynamically create an object (that won't live very long)
     try:
-        writer = eval("io." + pythonClass + "("+path+")" )
+        cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
+        writer = eval(cmd)
         status, reason = writer.writeRecipeDetail(command)
     except:
         reason = "ERROR instantiating io."+ pythonClass+" ("+traceback.format_exc()+")" 
-        print "io.wrapper - "+reason
+        log.error("Error in writeRecipeDetail(): %s" % (reason))
         
-    print "Done with writeRecipeDetail: ", path,command
+    log.trace("Leaving writeRecipeDetail(): %s - %s - %s - %s" % (tagPath, command, status, reason))
     return status, reason
     

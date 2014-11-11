@@ -10,8 +10,11 @@
 '''
 # NOTE: Subclasses must be added to __init__.py 
 #       for automatic import.
-import system.tag as systemtag
+import system
 import time
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.io")
+
 class Recipe():
 
     # Path is the root tag path of the UDT which this object encapsulates
@@ -26,19 +29,18 @@ class Recipe():
         self.path = str(tagPath)
     
     # Helper method that confirms that a write has completed. 
-    def writeConfirm(self,subpath,command, val):
-        tagPath = self.path+"/"+subpath
-        print "Recipe.confirmWrite ", tagPath, command, val
+    def writeConfirm(self, tagPath, command, val):
+        log.trace("Entering Recipe.confirmWrite(): %s - %s - %s" % (tagPath, command, str(val)))
  
         # Record the current command being executed.
-        systemtag.write(tagPath + '/command', command)
+        system.tag.write(tagPath + '/command', command)
                                
         # wait until the tag is confirmed
-        print "Waiting for the write to be confirmed..."
+        log.trace("Waiting for the write to be confirmed...")
                                
         for i in range(0,12):
-            status = systemtag.read(tagPath + "/writeStatus").value
-            print "Confirm status for %s: %s" % (self.path, status)
+            status = system.tag.read(tagPath + "/writeStatus").value
+            log.trace("  confirm status for %s: %s" % (self.path, status))
                                                                                
             if status == "Failure":
                 return False,"Read failure on confirm attempt"

@@ -213,6 +213,7 @@ def update(rootContainer):
 def createOPCTags(table, provider, recipeKey):
     import string
     from ils.recipeToolkit.tagFactory import createRecipeDetailUDT
+    from ils.recipeToolkit.common import formatLocalTagPathAndName
     
     #------------------------------------------------------------
     # Fetch the alias to OPC server map from the EMC database
@@ -340,7 +341,19 @@ def createOPCTags(table, provider, recipeKey):
         dataType = ''
         if writeLocation == localG2WriteAlias:
             downloadType = "Immediate"
+
+            tagName = record['Store Tag']       
+            tagPath, tagName = formatLocalTagPathAndName(provider, tagName)
             
+            # Determine the data type by browsing the tag
+            browseTags = system.tag.browseTags(parentPath=tagPath, tagPath="*"+tagName)
+            browseTag = browseTags[0]
+            dataType = browseTag.dataType
+            dataType = str(dataType)
+            
+            if dataType == "Float8":
+                dataType = "Float"
+                
         elif writeLocation != "" and writeLocation != None:
             modeAttribute = record['Mode Attribute']
             modeAttributeValue = record['Mode Attribute Value']

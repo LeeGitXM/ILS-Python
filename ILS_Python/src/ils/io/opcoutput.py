@@ -8,10 +8,11 @@ Created on Jul 9, 2014
 '''
 import ils.io.basicio as basicio
 import string
-import system.tag as systemtag
+import system
 import time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io")
+
 
 class OPCOutput(basicio.BasicIO):
     def __init__(self,path):
@@ -35,7 +36,7 @@ class OPCOutput(basicio.BasicIO):
         log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
  
         for i in range(0,13):
-            qv = systemtag.read(self.path + "/tag")
+            qv = system.tag.read(self.path + "/tag")
             log.trace("%s Quality: comparing %f-%s to %f" % (self.path, qv.value, qv.quality, val))
             if qv.value == val and string.upper(str(qv.quality)) == 'GOOD':
                 return True, ""
@@ -52,36 +53,38 @@ class OPCOutput(basicio.BasicIO):
     def writeDatum(self):
         
         # Get the value to be read - this must be there BEFORE the command is set       
-        val = systemtag.read(self.path + "/WriteVal").value
+        val = system.tag.read(self.path + "/writeVal").value
         
         log.info("Writing <%s> to %s, an OPCOutput" % (str(val), self.path))
 
-        log.trace("Initializing %s/WriteConfirmed to False" % (self.path))                   
-        systemtag.write(self.path + "/WriteConfirmed", False)
+        log.trace("Initializing %s status and  to False" % (self.path))                   
+        system.tag.write(self.path + "/writeConfirmed", False)
+        system.tag.write(self.path + "/writeStatus", "")
+        system.tag.write(self.path + "/WwiteErrorMessage", "")
                                
         status,reason = self.checkConfig()
         if status == False :              
-            systemtag.write(self.path + "/WriteStatus", "Failure")
-            systemtag.write(self.path + "/WriteMessage", reason)
-            log.info("Aborting write to %s, checkConfig failed due to %s" % (self.path, reason))
+            system.tag.write(self.path + "/writeStatus", "Failure")
+            system.tag.write(self.path + "/writeErrorMessage", reason)
+            log.info("Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
             return status,reason
  
         # Update the status to "Writing"
-        systemtag.write(self.path + "/WriteStatus", "Writing")
+        system.tag.write(self.path + "/writeStatus", "Writing")
  
         # Write the value to the OPC tag
-        log.trace("  Writing value <%s> to %s/Tag" % (str(val), self.path))
-        status = systemtag.write(self.path + "/Tag", val)
+        log.trace("  Writing value <%s> to %s/tag" % (str(val), self.path))
+        status = system.tag.write(self.path + "/tag", val)
         log.trace("  Write status: %s" % (status))
                                
         status, msg = self.checkWrite(val)
  
         if status:
             log.trace("Confirmed: %s - %s - %s" % (self.path, status, msg))
-            systemtag.write(self.path + "/WriteStatus", "Success")
+            system.tag.write(self.path + "/writeStatus", "Success")
         else:
             log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, msg))
-            systemtag.write(self.path + "/WriteStatus", "Failure")
-            systemtag.write(self.path + "/WriteMessage", msg)
+            system.tag.write(self.path + "/writeStatus", "Failure")
+            system.tag.write(self.path + "/writeMessage", msg)
  
         return status, msg

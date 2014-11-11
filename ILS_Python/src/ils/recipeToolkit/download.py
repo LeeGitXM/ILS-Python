@@ -16,10 +16,10 @@ import ils.recipeToolkit.update as update
 log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 
 def automatedDownloadHandler():
-    print "In automatedDownloadHandler"
+    log.info("Starting an automated recipe download...")
 
 def downloadCallback(rootContainer):
-    print "In downloadCallback() "
+    log.info("Starting a download...")
 
     recipeKey = rootContainer.getPropertyValue("recipeKey")
     print recipeKey
@@ -48,7 +48,7 @@ def downloadCallback(rootContainer):
 # progress will be monitored after the user confirms the download.  Any writes that are still
 # pending after this interval will be deemed a failure.
 def setDownloadTimeout(rootContainer):
-    rootContainer.downloadTimeout = 300
+    rootContainer.downloadTimeout = 20
 
 
 def download(rootContainer, recipeMap):
@@ -58,7 +58,7 @@ def download(rootContainer, recipeMap):
     def resetTags(table, provider, recipeKey):
         import string
         
-        print "  ...resetting tags..."    
+        log.trace("Resetting tags...")    
         ds = table.processedData
         pds = system.dataset.toPyDataSet(ds)
     
@@ -68,7 +68,8 @@ def download(rootContainer, recipeMap):
         for record in pds:
             download = record["Download"]
             downloadType = record["Download Type"]
-            if string.upper(downloadType) == 'IMMEDIATE' or string.upper(downloadType) == 'DEFERRED':
+
+            if download and (string.upper(downloadType) == 'IMMEDIATE' or string.upper(downloadType) == 'DEFERRED VALUE'):
                 tagName = record["Store Tag"]
                     
                 # Convert to Ignition tagname
@@ -85,6 +86,7 @@ def download(rootContainer, recipeMap):
                 vals.append(False)
     
         # Write them all at once
+        print "Resetting: ", tags
         status = system.tag.writeAll(tags, vals)
         return
     #------------------------------------
@@ -183,6 +185,9 @@ def writeImmediate(table, provider, recipeKey, logId, writeEnabled):
     log.trace("====================================")
     if writeEnabled:
         log.info("Writing to immediate LOCAL tags...")
+        print "Local Tags: ", localTags
+        print "Local Values: ", localVals
+        
         status = system.tag.writeAll(localTags, localVals)
         log.trace("   write results (0 = failed immediate, 1 = success, 2 = pending)")
         for i in range(0, len(status)):
@@ -219,7 +224,7 @@ def writeDeferred(table, provider, recipeKey, logId, writeEnabled):
     import string
     from ils.recipeToolkit.common import formatTagName
 
-    log.trace("******************************************")
+    log.trace("=====================================")
     log.trace("Writing to deferred OPC tags...")
     
     # Collect all of the details that need to be downloaded
@@ -227,11 +232,12 @@ def writeDeferred(table, provider, recipeKey, logId, writeEnabled):
     ds = table.processedData
     pds = system.dataset.toPyDataSet(ds)
 
+    rootTags = []   # I'll use this later to determine which recipe detail onjects to use
     tags = []
     vals = []
 
     i = 0
-    print "  ...writing values to the memory tags..." 
+    log.trace("  ...writing to the /writeVal and /writeStatus memory tags...") 
     for record in pds:
         download = record["Download"]
         downloadType = string.upper(record["Download Type"])
@@ -241,40 +247,56 @@ def writeDeferred(table, provider, recipeKey, logId, writeEnabled):
 
             # Convert to Ignition tagname        
             tagName = formatTagName(provider, recipeKey, tagName)
+            rootTags.append(str(tagName))
             
             # Write the value to be sent to the DCS
-            tags.append(tagName + '/WriteVal')
+            tags.append(tagName + '/writeVal')
             vals.append(pendVal)
             
             # Update status to indicate we are writing
-            tags.append(tagName + '/WriteStatus')
+            tags.append(tagName + '/writeStatus')
             vals.append('Pending')
 
             ds = system.dataset.setValue(ds, i, 'Download Status', 'Pending')
 
         i = i + 1
-    
+
+    status = system.tag.writeAll(tags, vals)
+
     # This needs to get to the visible data somehow...
     table.processedData = ds
     
-    # Write all of the PEND values to the memort tags - they will be downloaded from the gateway
-    status = system.tag.writeAll(tags, vals)
-
-    print "  ...setting write command for each recipe details..."
+    # Write the "write" command to the recipe details which will initiate the download in the gateway
+    log.trace("  ...writing the write command to the recipe details...")
+    log.trace("     The root of the tags that will be written are: %s" % (str(rootTags)))
+    
     tags = []
     vals = []
     path = '[' + provider + ']Recipe/' + recipeKey
     for udtType in ['Recipe Data/Recipe Details']:
-        print udtType
         details = system.tag.browseTags(path, udtParentType=udtType)
-        
+
         for detail in details:
-            print detail.name
+#            print "Checking recipe detail named: ", detail.name
             tagName = formatTagName(provider, recipeKey, detail.name)
-            tags.append(tagName + '/command')
-            vals.append('write')
+
+            highLimitTagName = system.tag.read(tagName+'/highLimitTagName').value
+            highLimitTagName = formatTagName(provider, recipeKey, highLimitTagName)
+            lowLimitTagName = system.tag.read(tagName+'/lowLimitTagName').value
+            lowLimitTagName = formatTagName(provider, recipeKey, lowLimitTagName)
+            valueTagName = system.tag.read(tagName+'/valueTagName').value
+            valueTagName = formatTagName(provider, recipeKey, valueTagName)
+            
+#            print "   High: ", highLimitTagName
+#            print "    Low: ", lowLimitTagName
+#            print "  Value: ", valueTagName
+            
+            if highLimitTagName in rootTags or lowLimitTagName in rootTags or valueTagName in rootTags:
+                log.trace("     adding %s to the deferred value write list..." % (tagName))
+                tags.append(tagName + '/command')
+                vals.append('write')
 
     # Write all of the COMMAND values at once which will kick off the writes in the gateway
     status = system.tag.writeAll(tags, vals)
-
+    log.trace("=====================================")
     return

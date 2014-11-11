@@ -13,7 +13,10 @@
 # WARNING: basic imports (like sys) fail here, but succeed in subclasses.
 #          Could it be from the import * in util.py? 
 # NOTE: Subclasses must be added to __init__.py.
-import system.tag as systemtag
+import system
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.io")
+
 class BasicIO():
 
     # Path is the root tag path of the UDT which this object encapsulates
@@ -31,14 +34,19 @@ class BasicIO():
     def checkConfig(self):
         # Check that the tag exists
         reason = ""
-        tagExists = systemtag.exists(self.path)
+        tagExists = system.tag.exists(self.path)
         if not(tagExists):
             reason = "Tag %s does not exist!" % self.path
-            print reason
+            log.error(reason)
+            return False, reason
  
+        writeEnabled = system.tag.read("[XOM]Configuration/writeEnabled").value
+        if not(writeEnabled):
+            log.info('Write bypassed for %s because writes are inhibited!' % (self.path))
+            return False, 'Writing is currently inhibited'
         # TODO: Check if there is an item ID and an OPC server
                                                
-        return tagExists,reason
+        return True, ""
     
     # Do nothing
     def checkWrite(self, val):
@@ -51,4 +59,4 @@ class BasicIO():
     # After doing nothing    
     def writeDatum(self):
         commandPath = self.path+"/command"
-        systemtag.write(commandPath,"")
+        system.tag.write(commandPath,"")

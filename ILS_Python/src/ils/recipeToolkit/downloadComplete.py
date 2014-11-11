@@ -4,14 +4,17 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system
+import ils.recipeToolkit.update as update
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 
 # This is called once it is deemed that the download is complete.  
 # It summarizes the results of the download.
 def downloadComplete(rootContainer):
     import string
 
-    console = rootContainer.getPropertyValue("console")
-    provider = rootContainer.getPropertyValue("provider")
+    log.info("Download complete...")
+    logId = rootContainer.getPropertyValue("logId")
     grade = rootContainer.getPropertyValue("grade")
     recipeKey = rootContainer.getPropertyValue("recipeKey")
     recipeType = rootContainer.getPropertyValue("recipeType")
@@ -36,17 +39,22 @@ def downloadComplete(rootContainer):
             else:
                 failures = failures + 1
 
-    print "There are %i downloads (%i success, %i failed)" % (downloads, successes, failures)
+    log.info("...there were %i downloads (%i success, %i failed)" % (downloads, successes, failures))
 
     from ils.recipeToolkit.common import setBackgroundColor
-    if failures == 0:    
+    if failures == 0:
+        status = "Success"
+        update.recipeMapStatus(recipeKey, 'Download Passed')
         setBackgroundColor(rootContainer, "screenBackgroundColorSuccess")
     else:
+        status = "Failed"
+        update.recipeMapStatus(recipeKey, 'Download Failed')
         setBackgroundColor(rootContainer, "screenBackgroundColorFail")
 
-    # Write a logbook message
+    # Write a logbook message TODO - Do I need to do this
     txt = "Recipe MANUAL download of %s for %s using %s has completed.  %i writes confirmed.  %i writes NOT confirmed." % \
         (grade, recipeKey, recipeType, successes, failures)
     
-    from ils.queue.log import insert
-    insert("Logfile", txt)
+    # Update the Master down table
+    from ils.recipeToolkit.log import updateLogMaster
+    updateLogMaster(logId, status, downloads, successes, failures)

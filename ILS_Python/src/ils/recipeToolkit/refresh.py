@@ -7,7 +7,7 @@ Created on Sep 10, 2014
 import system
 
 # Update the processedData to include the tag values and then make the subset of processed data that will
-# be shown and piy it in table.data.  (If the user is an engineer then processed data is all data, but 
+# be shown and put it in table.data.  (If the user is an engineer then processed data is all data, but 
 # operators only see a subset of the data.
 def refresh(rootContainer):
     import string
@@ -113,7 +113,7 @@ def refresh(rootContainer):
                 storVal = values[idx].value
                 quality = values[idx].quality
                 
-            ds = system.dataset.setValue(ds, i, 2, storVal)
+            ds = system.dataset.setValue(ds, i, 'Stor', storVal)
 
     
         compTag = record['Comp Tag']
@@ -127,11 +127,11 @@ def refresh(rootContainer):
                 compVal = values[idx].value
                 quality = values[idx].quality
 
-            ds = system.dataset.setValue(ds, i, 3, compVal)
+            ds = system.dataset.setValue(ds, i, "Comp", compVal)
             if downloadType == 'MidRun':
                 ds = system.dataset.setValue(ds, i, "Pend", compVal)
                 
-            print "line %i - step %i :: stor: %s - comp: %s" % (i, step, str(storVal), str(compVal))
+#            print "line %i - step %i :: stor: %s - comp: %s" % (i, step, str(storVal), str(compVal))
         
         # This will override any reason that may have already been entered, which diesn't seem right
         if writeLocation == "" or writeLocation == None:
@@ -140,7 +140,7 @@ def refresh(rootContainer):
             from ils.common.util import isText
             pendValIsText = isText(pendVal)
             storValIsText = isText(storVal)
-            print "StorVal: %s (Text: %s) PendVal: %s (Text: %s)" % (str(storVal), str(storValIsText), str(pendVal), str(pendValIsText))
+#            print "StorVal: %s (Text: %s) PendVal: %s (Text: %s)" % (str(storVal), str(storValIsText), str(pendVal), str(pendValIsText))
 
             # Check if they are both text
             if storValIsText and pendValIsText:
@@ -206,4 +206,3 @@ def refreshVisibleData(table):
             row = row + 1
 
         table.data = system.dataset.deleteRows(ds, deleteRows)
-    print "  ...table refresh is complete!"
