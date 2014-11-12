@@ -11,34 +11,36 @@ import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
 
 
 class BasicBlock():
-    # Properties are a dictionary of attributes keyed by name
-    # Properties attributes: name, value, editable, type(STRING,DOUBLE,INTEGER,BOOLEAN,OBJECT)
-    #            The name attribute is set automatically to the key
-    # - property values are cached in the Gateway java proxy
-    # - values should not be changed except by call from the proxy
-    properties = {}
-    # Input ports are named stubs for incoming connections
-    # Ports have properties: name,connectionType
-    inports = []
-    # Outports are named stubs for outgoing connections
-    # Connection types are: data,information,signal,truthvalue
-    outports = []
-    # Each block has a unique id that matches its proxy object
-    uuid = ""
-    parentuuid=""
-    # This is the handler that takes care of injecting results
-    # into the execution engine.
-    handler = None
+    
     
     def __init__(self):
-        self.initialize()
+        # Properties are a dictionary of attributes keyed by name
+        # Properties attributes: name, value, editable, type(STRING,DOUBLE,INTEGER,BOOLEAN,OBJECT)
+        #            The name attribute is set automatically to the key
+        # - property values are cached in the Gateway java proxy
+        # - values should not be changed except by call from the proxy
+        self.properties = {}
+        # Input ports are named stubs for incoming connections
+        # Ports have properties: name,connectionType
+        self.inports = []
+        # Outports are named stubs for outgoing connections
+        # Connection types are: data,information,signal,truthvalue
+        self.outports = []
+        # Each block has a unique id that matches its proxy object
+        self.uuid = ""
+        self.parentuuid=""
+        # This is the handler that takes care of injecting results
+        # into the execution engine.
         self.handler = PythonRequestHandler()
+        self.initialize()
     
     # Set the default properties and connection ports
     # For the super class there are none.
     
     def initialize(self):    
-        self.className = 'emc.block.basicblock.BasicBlock'
+        self.className = 'xom.block.basicblock.BasicBlock'
+        
+        
     # Called when a value has arrived on one of our input ports
     # By default, we do nothing
     def acceptValue(self,value,quality,port):
