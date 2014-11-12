@@ -31,6 +31,8 @@ class ControlPanel:
     messages = None
     timer = None
     flashing = False
+    buttonsByWindowName = dict()
+    toolbarDataHeader = ['text', 'window']
     
     def  __init__(self, _window, _chartProperties):
         self.window = _window
@@ -56,7 +58,6 @@ class ControlPanel:
     
     def update(self):
         '''something has changed; update the UI'''
-        print 'updating cp'
         from java.awt import Color
         from ils.sfc.common.sessions import getControlPanelMessages
         from ils.sfc.common.sessions import getSession
@@ -129,6 +130,9 @@ class ControlPanel:
 
     def getMsgPanelComponent(self, name):
         return self.rootContainer.getComponent('messageCenterPanel').getComponent(name)
+
+    def getToolbar(self):
+        return self.rootContainer.getComponent('toolbar')
     
     def getPauseButton(self):
         return self.getComponent('commandButtons').getComponent("pauseButton")
@@ -184,8 +188,24 @@ class ControlPanel:
         from ils.sfc.gateway.api import cancelChart
         cancelChart(self.chartProperties)
     
-    # Message Handlers:
+    def addToolbarButton(self, label, windowPath):
+        self.buttonsByWindowName[windowPath] = label
+        self.createToolbarButtons()
 
+    def removeToolbarButton(self, windowPath):
+        self.buttonsByWindowName.pop(windowPath)
+        self.createToolbarButtons()
+        
+    def createToolbarButtons(self):
+        from system.dataset import toDataSet
+        toolbar = self.getToolbar()
+        rows = list()
+        for window in self.buttonsByWindowName.keys():
+            button = self.buttonsByWindowName[window]
+            rows.append([button,window]); 
+        dataset = toDataSet(self.toolbarDataHeader, rows)
+        toolbar.templateParams = dataset
+        
 def reconnect():
     import system
     from ils.sfc.common.sessions import getRunningSessions
@@ -206,7 +226,6 @@ def reconnect():
 def createControlPanel(chartProperties):
     import system
     from ils.sfc.common.constants import INSTANCE_ID
-    print 'creating cp'
     window = system.nav.openWindowInstance(CONTROL_PANEL_NAME)
     chartRunId = chartProperties[INSTANCE_ID]
     window.getRootContainer().chartRunId = chartRunId

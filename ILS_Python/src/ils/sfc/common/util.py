@@ -61,7 +61,7 @@ def getTopLevelProperties(chartProperties):
     return chartProperties
 
 def getChartRunId(chartProperties):
-    return getTopLevelProperties(chartProperties)[INSTANCE_ID]
+    return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
 
 def getDatabase(chartProperties):
     return getTopLevelProperties(chartProperties)[DATABASE]

@@ -19,6 +19,19 @@ from system.sfc import pauseChart
 from time import sleep
 import system.tag
 
+def invokeStep(chartProperties, stepProperties, methodName):
+    '''
+    A single point to invoke all step methods, in order to do exception handling
+    '''
+    import sys
+    func = globals()[methodName]
+    try:
+        func(chartProperties, stepProperties)
+    except Exception, e:
+        msg = "Unexpected error: " + type(e).__name__ + " " + str(e)
+        print msg
+        handleUnexpectedError(chartProperties, msg)
+         
 def queueInsert(chartProperties, stepProperties):
     '''
     action for java QueueMessageStep
@@ -345,12 +358,18 @@ def printWindow(chartProperties, stepProperties):
 def closeWindow(chartProperties, stepProperties):   
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
+    payload[INSTANCE_ID] = getChartRunId(chartProperties)
     project = chartProperties[PROJECT];
     sendMessage(project, CLOSE_WINDOW_HANDLER, payload)
 
 def showWindow(chartProperties, stepProperties):   
+    from ils.sfc.common.util import getChartRunId
     payload = dict()
+    payload[INSTANCE_ID] = getChartRunId(chartProperties)
     transferStepPropertiesToMessage(stepProperties, payload)
     project = chartProperties[PROJECT];
+    security = payload[SECURITY]
+    #TODO: implement security
+
     sendMessage(project, SHOW_WINDOW_HANDLER, payload) 
 

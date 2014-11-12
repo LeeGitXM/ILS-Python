@@ -4,16 +4,19 @@ All SFC Client Message Handlers
 import system.gui
 from system.print import createPrintJob
 
-from ils.sfc.common.constants import MESSAGE, PROMPT, INPUT, SERVER, RESPONSE, DATA, FILEPATH
-from ils.sfc.common.constants import COMPUTER, FILENAME, PRINT_FILE, VIEW_FILE
+from ils.sfc.common.constants import MESSAGE, PROMPT, INPUT, SERVER, RESPONSE, DATA, FILEPATH, WINDOW
+from ils.sfc.common.constants import COMPUTER, INSTANCE_ID, FILENAME, PRINT_FILE, VIEW_FILE, LABEL
 import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
 from ils.sfc.client.controlPanel import ControlPanel
 
 def sfcCloseWindow(payload):
-    windowPath = payload[MESSAGE] 
+    from ils.sfc.client.controlPanel import getController
+    windowPath = payload[WINDOW] 
     system.nav.closeWindow(windowPath)
-    # TODO: hide/remove button from Control Panel
+    controlPanel = getController(payload[INSTANCE_ID])
+    if controlPanel != None:
+        controlPanel.removeToolbarButton(windowPath)
 
 def sfcDeleteDelayNotifications(payload):
     pass
@@ -84,11 +87,20 @@ def sfcShowQueue(payload):
     system.nav.openWindow('Queue/Message Queue')
 
 def sfcShowWindow(payload):
-    windowPath = payload['message']
-    security = payload['security']
-    label = payload['label']
-    position = payload['position']
-    scale = payload['scale']
+    from ils.sfc.client.util import openWindow
+    from ils.sfc.client.controlPanel import getController
+    from ils.sfc.common.constants import POSITION, SCALE, WINDOW, INSTANCE_ID
+    windowPath = payload[WINDOW]
+    label = payload[LABEL]
+    position = payload[POSITION]
+    scale = payload[SCALE]
+    openWindow(windowPath, position, scale)
+    chartRunId = payload[INSTANCE_ID]
+    controlPanel = getController(chartRunId)
+    if controlPanel != None:
+        controlPanel.addToolbarButton(label, windowPath)
+    else:
+        print 'couldnt find control panel for run ', chartRunId
 
 def sfcTimedDelay(payload):
     pass
