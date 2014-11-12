@@ -121,7 +121,7 @@ def controlPanelMessage(chartProperties, stepProperties):
         database = chartProperties[DATABASE]
         timeout = message = getStepProperty(stepProperties, TIMEOUT)
         timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
-        timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout)
+        timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout, database)
         sleepSeconds = 15
         elapsedSeconds = 0
         startTime = time.time()
@@ -135,13 +135,13 @@ def controlPanelMessage(chartProperties, stepProperties):
         sendUpdateControlPanelMsg(chartProperties)
             
 def timedDelay(chartProperties, stepProperties):
+    database = chartProperties[DATABASE]
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
     key = getStepProperty(stepProperties, KEY) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     # TODO: we need a better solution for unit initialization:
-    Unit.lazyInitialize(chartProperties[DATABASE])
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
@@ -152,7 +152,7 @@ def timedDelay(chartProperties, stepProperties):
         handleUnexpectedError(chartProperties, "Callback strategy not implemented: ")
     else:
         handleUnexpectedError(chartProperties, "unknown delay strategy: " + timeDelayStrategy)
-    delaySeconds = Unit.convert(delayUnit, SECOND, delay)
+    delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
     if postNotification:
         payload = dict()
         payload[MESSAGE] = str(delay) + ' ' + delayUnit + " remaining."

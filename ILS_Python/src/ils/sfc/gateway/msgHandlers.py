@@ -16,7 +16,6 @@ def sfcStartChart(payload):
     from ils.sfc.common.constants import CHART_NAME, INSTANCE_ID, PROJECT, DATABASE
     chartName = payload[CHART_NAME]
     project = payload[PROJECT]
-    database = payload[DATABASE]
     chartRunId = system.sfc.startChart(chartName, payload)
     payload[INSTANCE_ID] = chartRunId
     system.util.sendMessage(project, 'sfcChartStarted', payload, "C")

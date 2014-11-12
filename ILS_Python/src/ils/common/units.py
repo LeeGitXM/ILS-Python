@@ -45,9 +45,9 @@ class Unit(object):
         return otherUnit.fromBaseUnits(self.toBaseUnits(value))
 
     @staticmethod
-    def convert(fromUnitName, toUnitName, value):
-        fromUnit = Unit.getUnit(fromUnitName)
-        toUnit = Unit.getUnit(toUnitName)
+    def convert(fromUnitName, toUnitName, value, database):
+        fromUnit = Unit.getUnit(fromUnitName, database)
+        toUnit = Unit.getUnit(toUnitName, database)
         return fromUnit.convertTo(toUnit, value)
         
     @staticmethod
@@ -98,8 +98,12 @@ class Unit(object):
         return result
     
     @staticmethod
-    def getUnit(name):
+    def getUnit(name, database = None):
+        from ils.sfc.common.util import getDatabaseFromSystem
+        if database == None:
+            database = getDatabaseFromSystem();
         '''Get the unit with the given name (or alias)'''
+        Unit.lazyInitialize(database)
         unit = Unit.unitsByName.get(name)
         if unit == None:
             print 'Failed to find unit: ' + name
@@ -149,7 +153,6 @@ class Unit(object):
             unit.isBaseUnit = row["isBaseUnit"]
             newUnits[unit.name] = unit
         Unit.addUnits(newUnits)
-        print 'added units ', newUnits
         # Read the aliases
         newUnits = dict()
         results = system.db.runQuery("select * from UnitAliases")
@@ -159,11 +162,11 @@ class Unit(object):
                 newUnits[row["alias"]] = realUnit
         Unit.addUnits(newUnits)
         
-def unitsOfSameType(unitName):
+def unitsOfSameType(unitName, database = None):
     '''
     Get all units of the same type as the given one
     '''
-    unit = Unit.getUnit(unitName)
+    unit = Unit.getUnit(unitName, database)
     if unit != None:
         return Unit.getUnitsOfType(unit.type)
     else:

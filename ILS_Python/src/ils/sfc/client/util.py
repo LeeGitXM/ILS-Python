@@ -16,12 +16,6 @@ def sendResponse(request, response):
     replyPayload[MESSAGE_ID] = messageId    
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
-    
-def lazyInitializeClientEnvironment(database):  
-    '''ensure that any required initialization of the client environment
-       has been done, but don't re-initialize'''
-    from ils.common.units import Unit
-    Unit.lazyInitialize(database)
        
 def runChart(chartName):
     from ils.sfc.common.sessions import createSession 
@@ -29,7 +23,6 @@ def runChart(chartName):
     from ils.sfc.client.controlPanel import createControlPanel
     project = system.util.getProjectName()
     database = getDatabaseFromSystem()
-    lazyInitializeClientEnvironment(database)
     user = system.security.getUsername()
     initialChartProps = dict()
     initialChartProps[PROJECT] = project

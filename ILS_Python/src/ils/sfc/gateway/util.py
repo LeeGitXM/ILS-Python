@@ -11,7 +11,6 @@ from ils.sfc.common.constants import *
 from ils.sfc.gateway.api import * 
 #from com.ils.sfc.common import IlsSfcNames 
 #from com.ils.sfc.util import IlsResponseManager
-from ils.common.units import Unit
 from ils.sfc.common.util import getChartRunId
 from ils.sfc.common.util import getDatabase
 
