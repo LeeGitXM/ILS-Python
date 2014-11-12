@@ -149,6 +149,7 @@ class Unit(object):
             unit.isBaseUnit = row["isBaseUnit"]
             newUnits[unit.name] = unit
         Unit.addUnits(newUnits)
+        print 'added units ', newUnits
         # Read the aliases
         newUnits = dict()
         results = system.db.runQuery("select * from UnitAliases")

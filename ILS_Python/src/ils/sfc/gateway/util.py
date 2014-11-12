@@ -73,7 +73,7 @@ def getPropertiesByLocation(chartProperties, stepProperties, location, create=Fa
     elif location == PREVIOUS:
         return chartProperties[BY_NAME].get(PREVIOUS, None)
     else:
-        handleUnexpectedError(chartProperties, "unknown property location type %s", location)
+        handleUnexpectedError(chartProperties, "unknown property location type " +  location)
         
 def getPropertiesByLevel(chartProperties, location):
     ''' Use of PROCEDURE, PHASE, and OPERATION depends on the charts at
@@ -234,12 +234,6 @@ def printObj(obj, level, out):
 def getChartState(uuid):
     from system.ils.sfc import getChartState
     return getChartState(uuid)
-
-def lazyInitializeGatewayEnvironment(database):  
-    '''ensure that any required initialization of the client environment
-       has been done, but don't re-initialize'''
-    from ils.common.units import Unit
-    Unit.lazyInitialize(database)
     
 def getCurrentMessageQueue(chartProperties, stepProperties):
     from ils.sfc.common.constants import MESSAGE_ID, OPERATION

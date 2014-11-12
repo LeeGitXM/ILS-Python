@@ -135,11 +135,13 @@ def controlPanelMessage(chartProperties, stepProperties):
         sendUpdateControlPanelMsg(chartProperties)
             
 def timedDelay(chartProperties, stepProperties):
-    timeDelayStrategy = getStepProperty(stepProperties, TIME_DELAY_STRATEGY) 
+    timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
     key = getStepProperty(stepProperties, KEY) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    # TODO: we need a better solution for unit initialization:
+    Unit.lazyInitialize(chartProperties[DATABASE])
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
@@ -147,6 +149,9 @@ def timedDelay(chartProperties, stepProperties):
         delay = s88Get(chartProperties, stepProperties, key, recipeLocation)
     elif timeDelayStrategy == CALLBACK:
         pass # TODO: implement script callback--value can be dynamic
+        handleUnexpectedError(chartProperties, "Callback strategy not implemented: ")
+    else:
+        handleUnexpectedError(chartProperties, "unknown delay strategy: " + timeDelayStrategy)
     delaySeconds = Unit.convert(delayUnit, SECOND, delay)
     if postNotification:
         payload = dict()
