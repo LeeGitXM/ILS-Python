@@ -4,6 +4,9 @@ Created on Aug 28, 2014
 @author: ILS
 '''
 
+def toDataSet(header, rows):
+    pass
+
 def addColumn(dataset):
     return True
 
@@ -15,9 +18,6 @@ def deleteRows(dataset, rows):
 
 def setValue(dataset, row, columnIndexOrName, val):
     return dataset
-
-def toDataSet(dataset):
-    return True
 
 def toPyDataSet(dataset):
     return True

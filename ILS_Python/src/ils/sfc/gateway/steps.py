@@ -19,6 +19,19 @@ from system.sfc import pauseChart
 from time import sleep
 import system.tag
 
+def invokeStep(chartProperties, stepProperties, methodName):
+    '''
+    A single point to invoke all step methods, in order to do exception handling
+    '''
+    import sys
+    func = globals()[methodName]
+    try:
+        func(chartProperties, stepProperties)
+    except Exception, e:
+        msg = "Unexpected error: " + type(e).__name__ + " " + str(e)
+        print msg
+        handleUnexpectedError(chartProperties, msg)
+         
 def queueInsert(chartProperties, stepProperties):
     '''
     action for java QueueMessageStep
@@ -108,7 +121,7 @@ def controlPanelMessage(chartProperties, stepProperties):
         database = chartProperties[DATABASE]
         timeout = message = getStepProperty(stepProperties, TIMEOUT)
         timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
-        timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout)
+        timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout, database)
         sleepSeconds = 15
         elapsedSeconds = 0
         startTime = time.time()
@@ -122,11 +135,13 @@ def controlPanelMessage(chartProperties, stepProperties):
         sendUpdateControlPanelMsg(chartProperties)
             
 def timedDelay(chartProperties, stepProperties):
-    timeDelayStrategy = getStepProperty(stepProperties, TIME_DELAY_STRATEGY) 
+    database = chartProperties[DATABASE]
+    timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
     key = getStepProperty(stepProperties, KEY) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    # TODO: we need a better solution for unit initialization:
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
@@ -134,7 +149,10 @@ def timedDelay(chartProperties, stepProperties):
         delay = s88Get(chartProperties, stepProperties, key, recipeLocation)
     elif timeDelayStrategy == CALLBACK:
         pass # TODO: implement script callback--value can be dynamic
-    delaySeconds = Unit.convert(delayUnit, SECOND, delay)
+        handleUnexpectedError(chartProperties, "Callback strategy not implemented: ")
+    else:
+        handleUnexpectedError(chartProperties, "unknown delay strategy: " + timeDelayStrategy)
+    delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
     if postNotification:
         payload = dict()
         payload[MESSAGE] = str(delay) + ' ' + delayUnit + " remaining."
@@ -345,12 +363,18 @@ def printWindow(chartProperties, stepProperties):
 def closeWindow(chartProperties, stepProperties):   
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
+    payload[INSTANCE_ID] = getChartRunId(chartProperties)
     project = chartProperties[PROJECT];
     sendMessage(project, CLOSE_WINDOW_HANDLER, payload)
 
 def showWindow(chartProperties, stepProperties):   
+    from ils.sfc.common.util import getChartRunId
     payload = dict()
+    payload[INSTANCE_ID] = getChartRunId(chartProperties)
     transferStepPropertiesToMessage(stepProperties, payload)
     project = chartProperties[PROJECT];
+    security = payload[SECURITY]
+    #TODO: implement security
+
     sendMessage(project, SHOW_WINDOW_HANDLER, payload) 
 

@@ -3,6 +3,18 @@ Created on Oct 31, 2014
 
 @author: rforbes
 '''
+CENTER = 'center'
+TOP_LEFT = 'topLeft'
+TOP_CENTER = 'topCenter'
+TOP_RIGHT = 'topRight'
+BOTTOM_LEFT = 'bottomLeft'
+BOTTOM_CENTER = 'bottomCenter'
+BOTTOM_RIGHT = 'bottomRight'
+RIGHT = "right"
+LEFT = "left"
+TOP = 'top'
+BOTTOM = 'bottom'
+
 ABORTED = 'Aborted'
 ACK_REQUIRED = "ackRequired"
 ACK_TIME = "ackTime"
@@ -38,6 +50,7 @@ INPUT = 'input'
 INSTANCE_ID = 'instanceId'
 KEY = "key"
 KEY_MODE = "keyMode"
+LABEL = 'label'
 LOCATION = 'location'
 MESSAGE = "message"
 MESSAGE_ID = 'messageId'
@@ -48,6 +61,7 @@ MAXIMUM_VALUE = "maximumValue"
 MULTIPLE = "multiple"
 NAME = "name"
 PAUSED = 'Paused'
+POSITION = 'position'
 POST_TO_QUEUE = "postToQueue"
 POST_NOTIFICATION = "postNotification"
 PRINT_FILE = "printFile"
@@ -60,6 +74,8 @@ RECIPE_LOCATION = "recipeLocation"
 RESPONSE = 'response'
 RESULTS_MODE = "resultsMode" 
 RUNNING = "Running"
+SCALE = 'scale'
+SECURITY = 'security'
 SERVER = 'server'
 SINGLE = "single"
 SQL = "sql"
@@ -68,7 +84,7 @@ STATUS = "status"
 STOPPED = 'Stopped'
 STRATEGY = "strategy"
 TAG_PATH = "tagPath"
-TIME_DELAY_STRATEGY = "timeDelayStrategy"
+STRATEGY = "strategy"
 TIMEOUT = "timeout"
 TIMEOUT_UNIT = "timeoutUnit"
 TIMESTAMP = "timestamp"
@@ -76,6 +92,8 @@ UPDATE = "update"
 UPDATE_OR_CREATE = "updateOrCreate"
 USER = 'user'
 VIEW_FILE = "viewFile"
+WINDOW = 'window'
+
 MESSAGE_ID = 'messageId'
 MESSAGE_QUEUE = 'messageQueue'
 RECIPE_LOCATION = "recipeLocation"

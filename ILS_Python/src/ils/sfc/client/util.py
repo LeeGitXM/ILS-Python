@@ -16,12 +16,6 @@ def sendResponse(request, response):
     replyPayload[MESSAGE_ID] = messageId    
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
-    
-def lazyInitializeClientEnvironment(database):  
-    '''ensure that any required initialization of the client environment
-       has been done, but don't re-initialize'''
-    from ils.common.units import Unit
-    Unit.lazyInitialize(database)
        
 def runChart(chartName):
     from ils.sfc.common.sessions import createSession 
@@ -29,7 +23,6 @@ def runChart(chartName):
     from ils.sfc.client.controlPanel import createControlPanel
     project = system.util.getProjectName()
     database = getDatabaseFromSystem()
-    lazyInitializeClientEnvironment(database)
     user = system.security.getUsername()
     initialChartProps = dict()
     initialChartProps[PROJECT] = project
@@ -46,4 +39,25 @@ def onAbort(chartProperties):
     '''this should be called from every SFC chart's onPause hook'''
     updateSessionStatus(chartProperties, ABORTED)
     
- 
+def openWindow(windowName, position, scale):
+    '''Open the given window inside the main window with the given position and size'''
+    newWindow = system.nav.openWindowInstance(windowName)
+    mainWindow = newWindow.parent
+    position = position.lower()
+    width = mainWindow.getWidth() * scale
+    height = mainWindow.getHeight() * scale
+    if position.endswith(LEFT):
+        ulx = 0
+    elif position.endswith(CENTER):
+        ulx = .5 * mainWindow.getWidth() - .5 * width
+    else:
+        ulx = mainWindow.getWidth() - width
+
+    if position.startswith(TOP):
+        uly = 0
+    elif position.startswith(CENTER):
+        uly = .5 * mainWindow.getHeight() - .5 * height
+    else:
+        uly = mainWindow.getHeight() - height
+    newWindow.setSize(int(width), int(height))
+    newWindow.setLocation(int(ulx), int(uly))

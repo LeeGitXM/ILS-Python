@@ -18,6 +18,7 @@ def s88Get(chartProperties, stepProperties, ckey, location, create = False):
 def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitNameOrNone, create = False):
     # Get the properties dictionary from the proper location
     # ? is SUPERIOR always just one level?
+    from ils.sfc.common.constants import DATABASE
     value = ils.sfc.gateway.util.getPropertiesByLocation(chartProperties, stepProperties, location, create)
     # get value via the key path:
     keys = ckey.split('.')
@@ -37,8 +38,9 @@ def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitName
         existingUnitName = parent.get(finalKey + UNIT, None)
         if existingUnitName != None:
             if existingUnitName != newUnitNameOrNone:
-                existingUnit = Unit.getUnit(existingUnitName)
-                newUnit = Unit.getUnit(newUnitNameOrNone)
+                database = chartProperties[DATABASE]
+                existingUnit = Unit.getUnit(existingUnitName, database)
+                newUnit = Unit.getUnit(newUnitNameOrNone, database)
                 if existingUnit != None and newUnit != None:
                     value = existingUnit.convertTo(newUnit, value)
                 else:
