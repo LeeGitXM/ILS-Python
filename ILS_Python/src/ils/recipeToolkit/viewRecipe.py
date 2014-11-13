@@ -78,7 +78,8 @@ def initialize(rootContainer):
     status = recipeMap['Status']
     rootContainer.status = status
     timestamp = recipeMap['Timestamp']
-    rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/YY HH:mm")
+    print "Status:", status, timestamp
+    rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/yy HH:mm")
 
     # Set the background color based on the status
     from ils.recipeToolkit.common import setBackgroundColor
@@ -227,7 +228,7 @@ def createOPCTags(table, provider, recipeKey):
     # find the OPC server that corresponds to the 
     def determineOPCServer(writeLocation, opcServers):
         serverName = 'Unknown'
-        scanClass = 'unknown'
+        scanClass = 'Unknown'
         for server in opcServers:
             if writeLocation == server['Alias']:
                 serverName = server['ServerName']
@@ -325,8 +326,13 @@ def createOPCTags(table, provider, recipeKey):
     recipeDetailTagValues = []
     specialValueNAN = system.tag.read("Recipe/Constants/Special Values/NAN").value
     localG2WriteAlias = system.tag.read("Recipe/Constants/localG2WriteAlias").value
-    print "*** The local G2 write alias is: <%s> ***" % (localG2WriteAlias)
+
+    # There needs to be at least one OPC write alias or nothing will work!
     opcServers = fetchOPCServers()
+    if len(opcServers) == 0:
+        system.gui.errorBox("The RtWriteLocation table in the SQL*Server database is not configured properly.  The OPC server aliases must be configured before tags can be created.")
+        return tags
+    
     # I'm not sure that we can force a device read in Ignition so put together a list of tags and we'll
     # read them all in one read. (I'm not sure that we were actually doing a device read anyway)
 
@@ -363,6 +369,9 @@ def createOPCTags(table, provider, recipeKey):
             storeTag = record['Store Tag']
             if storeTag != "":
                 opcServer, scanClass = determineOPCServer(writeLocation, opcServers)
+                
+                if string.upper(opcServer) == 'UNKNOWN':
+                    system.gui.warningBox("%s will be created with an unknown OPC Server, update the alias %s" % (storeTag, writeLocation)) 
 
                 # There is a store tag, so assume it will be an immediate download, may change to deferred later
                 downloadType = "Immediate"

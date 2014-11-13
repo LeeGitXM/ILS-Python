@@ -6,6 +6,8 @@ Created on Sep 10, 2014
 
 import system
 
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+
 def gateway():
     from ils.recipeToolkit.version import version
     version = version()
@@ -14,8 +16,15 @@ def gateway():
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     createTags("[" + provider + "]")
+    
+    log = LogUtil.getLogger("com.ils.recipeToolkit.download")
+    log.info("Initializing the recipe toolkit")
 
-#
+def client():
+    print "In recipeToolkit.startup.client()"
+    log = LogUtil.getLogger("com.ils.recipeToolkit.download")
+    log.info("Initializing the recipe toolkit")
+
 def createTags(tagProvider):
     print "Creating global constant memory tags...."
     headers = ['Path', 'Name', 'Data Type', 'Value']
@@ -32,14 +41,16 @@ def createTags(tagProvider):
     data.append([path, "backgroundColorNoChange", "String", "lightblue"])  #'#ADD8E6'  light blue
     data.append([path, "backgroundColorMismatch", "String", "plum"])
     data.append([path, "backgroundColorError", "String", "pink"])
+    data.append([path, "backgroundColorWritePending", "String", "yellow"])
+    data.append([path, "backgroundColorWriteError", "String", "red"])
+    data.append([path, "backgroundColorWriteSuccess", "String", "lime"])
     
     data.append([path, "screenBackgroundColorInitializing", "String", "lightGrey"])
     data.append([path, "screenBackgroundColorDownloading", "String", "white"])
     data.append([path, "screenBackgroundColorSuccess", "String", "limegreen"])
     data.append([path, "screenBackgroundColorUnknown", "String", "magenta"])
     data.append([path, "screenBackgroundColorFail", "String", "red"])
-    
-   
+       
     ds = system.dataset.toDataSet(headers, data)
     from ils.recipeToolkit.tagFactory import createConfigurationTags
     createConfigurationTags(ds)

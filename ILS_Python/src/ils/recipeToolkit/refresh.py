@@ -34,6 +34,9 @@ def refresh(rootContainer):
     recipeMinimumDifference = table.getPropertyValue("recipeMinimumDifference")
     recipeMinimumRelativeDifference = table.getPropertyValue("recipeMinimumRelativeDifference")
 
+    print "recipeMinimumDifference: ", recipeMinimumDifference
+    print "recipeMinimumRelativeDifference: ", recipeMinimumRelativeDifference
+
     ds = table.processedData
     pds = system.dataset.toPyDataSet(ds)
         
@@ -43,7 +46,7 @@ def refresh(rootContainer):
 
     tagNames = []
     localTagNames = []
-    print "  ...extracting tagnames from the table..."
+    print "  ...extracting tag names from the table..."
     for record in pds:
         step = record['Step']
         changeLevel = record['Change Level']
@@ -131,10 +134,12 @@ def refresh(rootContainer):
             if downloadType == 'MidRun':
                 ds = system.dataset.setValue(ds, i, "Pend", compVal)
                 
-#            print "line %i - step %i :: stor: %s - comp: %s" % (i, step, str(storVal), str(compVal))
+        print "line %i - step %i :: pend: %s - stor: %s - comp: %s" % (i, step, str(pendVal), str(storVal), str(compVal))
         
         # This will override any reason that may have already been entered, which diesn't seem right
         if writeLocation == "" or writeLocation == None:
+            reason = ""
+        elif pendVal == None or pendVal == "":
             reason = ""
         else:
             from ils.common.util import isText
@@ -152,7 +157,7 @@ def refresh(rootContainer):
             else:
                 # They aren't both text, so if only one is text, then they don't match 
                 if storValIsText or pendValIsText:
-                    reason = "Set to recipe value"
+                    reason = "Set to recipe value (one value is a text)"
                     download = True
                 else:
                     storVal = float(storVal)
@@ -162,6 +167,7 @@ def refresh(rootContainer):
                     if minThreshold < recipeMinimumDifference:
                         minThreshold = recipeMinimumDifference
 
+                    print "Min Threshold: ", minThreshold
                     if abs(storVal - float(pendVal)) < minThreshold:
                         reason = ""
                     else:
@@ -181,7 +187,7 @@ def refresh(rootContainer):
     rootContainer.status = "Refreshed"
     from ils.common.util import getDate
     timestamp = getDate()
-    rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/YY HH:mm")
+    rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/yy HH:mm")
 
 #--------------------------------------------------------------------------------
 # This script takes the processed data, considers the role of the users, and filters out OE data
