@@ -7,6 +7,7 @@ Created on Oct 31, 2014
 CONTROL_PANEL_NAME = 'SFCControlPanel'
 controlPanelsByChartRunId = dict()
 FLASH_INTERVAL = 3.
+import system.dataset
 
 def flash(obj):
     from java.awt import Color
@@ -31,8 +32,12 @@ class ControlPanel:
     messages = None
     timer = None
     flashing = False
-    buttonsByWindowName = dict()
-    toolbarDataHeader = ['text', 'window']
+    pauseMask = True
+    resumeMask = True
+    cancelMask = True
+    toolbarDataHeader = ['text', 'windowPath', 'windowId', 'chartRunId'] # these are the button properties
+    toolbarDataset = system.dataset.toDataSet(toolbarDataHeader, [])
+    windowsById = dict()
     
     def  __init__(self, _window, _chartProperties):
         self.window = _window
@@ -58,18 +63,17 @@ class ControlPanel:
     
     def update(self):
         '''something has changed; update the UI'''
-        from java.awt import Color
         from ils.sfc.common.sessions import getControlPanelMessages
-        from ils.sfc.common.sessions import getSession
-        from ils.sfc.common.constants import STATUS, RUNNING, PAUSED, STOPPED, ABORTED, OPERATION
         self.messages = getControlPanelMessages(self.getChartRunId(), self.getDatabase())
         numMessages = len(self.messages)
         if numMessages > 0:
             if self.messageIndex == None:
                 self.messageIndex = numMessages - 1 # latest msg
             self.setMessage(self.messageIndex)
-        session = getSession(self.getChartRunId(), self.getDatabase())
-        status = session[STATUS]
+        
+    def updateStatus(self, status):
+        from java.awt import Color
+        from ils.sfc.common.constants import RUNNING, PAUSED, STOPPED, ABORTED
         statusField = self.getStatusField()
         statusField.setText(status)
         if status == RUNNING:
@@ -84,14 +88,17 @@ class ControlPanel:
         elif status == STOPPED:
             statusField.setBackground(Color.blue)
             self.enableChartButtons(False, False, False)
-        operation = session[OPERATION]
-        self.getOperationField().setText(operation)
-        
-    def enableChartButtons(self, pause, resume, cancel):
-        self.getPauseButton().setEnabled(pause)
-        self.getResumeButton().setEnabled(resume)
-        self.getCancelButton().setEnabled(cancel)
 
+    def setCommandMask(self, pause, resume, cancel):
+        self.pauseMask= pause
+        self.resumeMask = resume
+        self.cancelMask = cancel
+        self.enableChartButtons(self.getPauseButton().isEnabled(), self.getResumeButton().isEnabled(), self.getCancelButton().isEnabled())
+    
+    def enableChartButtons(self, pause, resume, cancel):
+        self.getPauseButton().setEnabled(pause and self.pauseMask)
+        self.getResumeButton().setEnabled(resume and self.resumeMask)
+        self.getCancelButton().setEnabled(cancel and self.cancelMask)
 
     def setMessage(self, index):
         from java.awt import Color
@@ -188,49 +195,51 @@ class ControlPanel:
         from ils.sfc.gateway.api import cancelChart
         cancelChart(self.chartProperties)
     
-    def addToolbarButton(self, label, windowPath):
-        self.buttonsByWindowName[windowPath] = label
-        self.createToolbarButtons()
+    def topWindow(self, windowId):
+        window = self.windowsById[windowId]
+        window.toFront()
+        
+    def addWindow(self, label, windowPath, window, windowId):
+        self.windowsById[windowId] = window
+        newRow = [label, windowPath, windowId, self.getChartRunId()]
+        self.toolbarDataset = system.dataset.addRow(self.toolbarDataset, newRow)
+        self.getToolbar().templateParams = self.toolbarDataset
 
-    def removeToolbarButton(self, windowPath):
-        self.buttonsByWindowName.pop(windowPath)
-        self.createToolbarButtons()
-        
-    def createToolbarButtons(self):
-        from system.dataset import toDataSet
-        toolbar = self.getToolbar()
-        rows = list()
-        for window in self.buttonsByWindowName.keys():
-            button = self.buttonsByWindowName[window]
-            rows.append([button,window]); 
-        dataset = toDataSet(self.toolbarDataHeader, rows)
-        toolbar.templateParams = dataset
-        
+    def removeWindow(self, windowId):
+        for i in range(self.toolbarDataset.getRowCount()):
+            rowWindowId = self.toolbarDataset.getValueAt(i,2)
+            print 'comparing ', rowWindowId, windowId
+            if rowWindowId == windowId:      
+                window = self.windowsById.pop(windowId)        
+                system.nav.closeWindow(window)
+                self.toolbarDataset = system.dataset.deleteRow(self.toolbarDataset, i)
+                self.getToolbar().templateParams = self.toolbarDataset
+                break
+                
+    def removeWindows(self, windowPath):
+        rowsToRemove = []
+        for i in range(self.toolbarDataset.getRowCount()):
+            rowWindowName = self.toolbarDataset.getValueAt(i,1)
+            if rowWindowName == windowPath:
+                rowWindowId = self.toolbarDataset.getValueAt(i,2)
+                window = self.windowsById.pop(rowWindowId)     
+                system.nav.closeWindow(window)
+                rowsToRemove.append(i)
+        self.toolbarDataset = system.dataset.deleteRows(self.toolbarDataset, rowsToRemove)
+        self.getToolbar().templateParams = self.toolbarDataset
+             
 def reconnect():
-    import system
-    from ils.sfc.common.sessions import getRunningSessions
-    from ils.sfc.common.util import getDatabaseFromSystem
-    from ils.sfc.common.constants import CHART_NAME, CHART_RUN_ID, DATABASE, INSTANCE_ID, USER, PROJECT
-    database = getDatabaseFromSystem()
-    user = system.security.getUsername()
-    runningSessions = getRunningSessions(user, database)
-    for session in runningSessions:
-        chartProperties = dict()
-        chartProperties[USER] = user
-        chartProperties[DATABASE] = database
-        chartProperties[CHART_NAME] = session[CHART_NAME]
-        chartProperties[INSTANCE_ID] = session[CHART_RUN_ID]
-        chartProperties[PROJECT] = system.util.getProjectName()
-        createControlPanel(chartProperties)
+    from ils.sfc.client.util import registerClient
+    registerClient()
 
 def createControlPanel(chartProperties):
-    import system
     from ils.sfc.common.constants import INSTANCE_ID
     window = system.nav.openWindowInstance(CONTROL_PANEL_NAME)
     chartRunId = chartProperties[INSTANCE_ID]
     window.getRootContainer().chartRunId = chartRunId
     controller = ControlPanel(window, chartProperties)
     controlPanelsByChartRunId[chartRunId] = controller
+    return controller
 
 def getController(chartRunId):
     return controlPanelsByChartRunId.get(chartRunId, None)
@@ -238,6 +247,19 @@ def getController(chartRunId):
 def updateControlPanels():
     for controller in controlPanelsByChartRunId.values():
         controller.update()
+
+def updateChartStatus(payload):
+    from ils.sfc.common.constants import STATUS
+    chartInfoByRunId = payload[STATUS] 
+    for chartRunId in chartInfoByRunId.keys():
+        existingPanel = controlPanelsByChartRunId.get(chartRunId, None)
+        chartInfo = chartInfoByRunId[chartRunId]
+        if existingPanel != None:
+            status = chartInfo[STATUS]
+            existingPanel.updateStatus(status)
+        else:
+            #TODO: check for matching user
+             createControlPanel(chartInfo)
 
 def removeControlPanel(chartRunId):
     cp = controlPanelsByChartRunId.pop(chartRunId, None)

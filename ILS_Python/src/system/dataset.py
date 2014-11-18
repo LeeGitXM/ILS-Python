@@ -7,6 +7,9 @@ Created on Aug 28, 2014
 def toDataSet(header, rows):
     pass
 
+def addRow():
+    pass
+
 def addColumn(dataset):
     return True
 

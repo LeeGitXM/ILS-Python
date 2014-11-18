@@ -14,3 +14,15 @@ def addSession(pyDict):
 
 def getChartState(uuid):
     pass
+
+def getRunningCharts():
+    pass
+
+def setSfcProjectInfo(str, str):
+    pass
+
+def getSfcProjectName():
+    pass
+
+def getSfcProjectDatabase():
+    pass

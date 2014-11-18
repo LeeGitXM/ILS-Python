@@ -9,6 +9,7 @@ from ils.sfc.common.constants import COMPUTER, INSTANCE_ID, FILENAME, PRINT_FILE
 import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
 from ils.sfc.client.controlPanel import ControlPanel
+from ils.sfc.common.util import getChartRunId
 
 def sfcCloseWindow(payload):
     from ils.sfc.client.controlPanel import getController
@@ -16,16 +17,43 @@ def sfcCloseWindow(payload):
     system.nav.closeWindow(windowPath)
     controlPanel = getController(payload[INSTANCE_ID])
     if controlPanel != None:
-        controlPanel.removeToolbarButton(windowPath)
-
-def sfcDeleteDelayNotifications(payload):
-    pass
+        controlPanel.removeWindows(windowPath)
 
 def sfcDialogMessage(payload):
-    pass
+    from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, DIALOG, METHOD, MESSAGE, MESSAGE_ID, ACK_REQUIRED, POSITION, SCALE
+    from ils.sfc.client.util import openWindow
+    from ils.sfc.client.controlPanel import getController
+    from ils.sfc.common.util import createUniqueId
+   #Todo: is special dialog needed?
+    chartRunId = payload[CHART_RUN_ID]
+    dialog = payload[DIALOG]
+    # ? what is method used for ?
+    method = payload[METHOD]
+    # do we care about ack? I thnk it just holds up step execution if true
+    position = payload[POSITION]
+    scale = payload[SCALE]
+    windowProps = dict()
+    windowProps[ACK_REQUIRED] = payload[ACK_REQUIRED]
+    windowProps[MESSAGE_ID] = payload[MESSAGE_ID]
+    windowProps[MESSAGE] = payload[MESSAGE]
+    windowProps[CHART_RUN_ID]  = chartRunId
+    windowId = createUniqueId()
+    windowProps[WINDOW_ID]  = windowId
+    window = openWindow(dialog, position, scale, windowProps, windowId)
+    controlPanel = getController(chartRunId)
+    #TODO: what should label be? unique?
+    label = "Notification"
+    if controlPanel != None:
+       controlPanel.addWindow(label, dialog, window)
+    else:
+        print 'couldnt find control panel for run ', chartRunId
 
 def sfcEnableDisable(payload):
-    pass
+    from ils.sfc.client.controlPanel import getController
+    from ils.sfc.common.constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL
+    chartRunId = getChartRunId(payload)
+    controlPanel = getController(chartRunId)
+    controlPanel.setCommandMask(payload[ENABLE_PAUSE], payload[ENABLE_RESUME], payload[ENABLE_CANCEL])
 
 def sfcInput(payload):
     prompt = payload[PROMPT]
@@ -36,9 +64,6 @@ def sfcLimitedInput(payload):
     prompt = payload[PROMPT]
     response = system.gui.inputBox(prompt, INPUT)
     sendResponse(payload, response)
-
-def sfcPostDelayNotification(payload):
-    pass
 
 def sfcPrintFile(payload):
     computer = payload[COMPUTER]
@@ -89,22 +114,37 @@ def sfcShowQueue(payload):
 def sfcShowWindow(payload):
     from ils.sfc.client.util import openWindow
     from ils.sfc.client.controlPanel import getController
+    from ils.sfc.common.util import createUniqueId
     from ils.sfc.common.constants import POSITION, SCALE, WINDOW, INSTANCE_ID
     windowPath = payload[WINDOW]
     label = payload[LABEL]
     position = payload[POSITION]
     scale = payload[SCALE]
-    openWindow(windowPath, position, scale)
+    windowProperties = dict()
+    window = openWindow(windowPath, position, scale, windowProperties)
     chartRunId = payload[INSTANCE_ID]
     controlPanel = getController(chartRunId)
+    windowId = createUniqueId()
     if controlPanel != None:
-        controlPanel.addToolbarButton(label, windowPath)
+        controlPanel.addWindow(label, windowPath, window, windowId)
     else:
         print 'couldnt find control panel for run ', chartRunId
 
-def sfcTimedDelay(payload):
-    pass
+def sfcPostDelayNotification(payload):
+    from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID
+    from ils.sfc.client.api import showDelayNotification
+    showDelayNotification(payload[CHART_RUN_ID], payload[MESSAGE], False, payload[WINDOW_ID])
 
+def sfcDeleteDelayNotifications(payload):
+    from ils.sfc.common.constants import CHART_RUN_ID
+    from ils.sfc.client.api import removeDelayNotifications
+    removeDelayNotifications(payload[CHART_RUN_ID])
+
+def sfcDeleteDelayNotification(payload):
+    from ils.sfc.common.constants import CHART_RUN_ID, WINDOW_ID
+    from ils.sfc.client.api import removeDelayNotification
+    removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
+        
 def sfcYesNo(payload):
     prompt = payload[PROMPT]
     response = system.gui.confirm(prompt, 'Input', False)
@@ -122,16 +162,6 @@ def sfcUpdateControlPanel(payload):
     from ils.sfc.client.controlPanel import updateControlPanels 
     updateControlPanels()
 
-def sfcChartStarted(payload):
-    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME, USER, DATABASE
-    from ils.sfc.common.sessions import createSession
-    from ils.sfc.client.controlPanel import createControlPanel
-    chartRunId = payload[INSTANCE_ID] 
-    project = payload[PROJECT]
-    chartName = payload[CHART_NAME]
-    user = payload[USER]
-    database = payload[DATABASE]
-    createSession(user, chartName, chartRunId, database)
-    createControlPanel(payload)
-
-
+def sfcUpdateChartStatus(payload):
+    from ils.sfc.client.controlPanel import updateChartStatus 
+    updateChartStatus(payload)

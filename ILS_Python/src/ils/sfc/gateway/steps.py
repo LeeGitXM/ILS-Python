@@ -6,6 +6,9 @@ Created on Sep 30, 2014
 
 @author: rforbes
 '''
+
+s88CreateOverride = True # force create of recipe keys
+
 #from com.ils.sfc.common import IlsSfcNames
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
@@ -51,7 +54,7 @@ def setQueue(chartProperties, stepProperties):
     queue = getStepProperty(stepProperties, QUEUE)
     # TODO: what to use for scope here ?:
     recipeLocation = OPERATION
-    s88Set(chartProperties, stepProperties, MESSAGE_QUEUE, queue, recipeLocation, True)
+    s88Set(chartProperties, stepProperties, MESSAGE_QUEUE, queue, recipeLocation, True or s88CreateOverride)
 
 def showQueue(chartProperties, stepProperties):
     '''
@@ -88,7 +91,7 @@ def yesNo(chartProperties, stepProperties):
     messageId = sendMessage(project, YES_NO_HANDLER, payload)
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, False)
+    s88Set(chartProperties, stepProperties, key, value, recipeLocation, False or s88CreateOverride)
 
 def cancel(chartProperties, stepProperties):
     ''' Abort the chart execution'''
@@ -135,6 +138,7 @@ def controlPanelMessage(chartProperties, stepProperties):
         sendUpdateControlPanelMsg(chartProperties)
             
 def timedDelay(chartProperties, stepProperties):
+    from ils.sfc.common.util import createUniqueId
     database = chartProperties[DATABASE]
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
@@ -155,16 +159,22 @@ def timedDelay(chartProperties, stepProperties):
     delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
     if postNotification:
         payload = dict()
+        payload[CHART_RUN_ID] = getChartRunId(chartProperties)
         payload[MESSAGE] = str(delay) + ' ' + delayUnit + " remaining."
+        payload[ACK_REQUIRED] = False
+        payload[WINDOW_ID] = createUniqueId()
         project = chartProperties[PROJECT];
         sendMessage(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
     sleep(delaySeconds)
+    if postNotification:
+        sendMessage(project, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
       
 def postDelayNotification(chartProperties, stepProperties):
     project = chartProperties[PROJECT];
     message = getStepProperty(stepProperties, MESSAGE) 
     payload = dict()
     payload[MESSAGE] = message
+    payload[ACK_REQUIRED] = chartProperties[ACK_REQUIRED]
     sendMessage(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
 
 def deleteDelayNotifications(chartProperties, stepProperties):
@@ -176,6 +186,7 @@ def enableDisable(chartProperties, stepProperties):
     project = chartProperties[PROJECT];
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
+    payload[INSTANCE_ID] = chartProperties[INSTANCE_ID]
     sendMessage(project, ENABLE_DISABLE_HANDLER, payload)
 
 def selectInput(chartProperties, stepProperties):
@@ -198,7 +209,7 @@ def selectInput(chartProperties, stepProperties):
     
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True)
+    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
 
 def getLimitedInput(chartProperties, stepProperties):
     project = chartProperties[PROJECT];
@@ -223,21 +234,21 @@ def getLimitedInput(chartProperties, stepProperties):
         except ValueError:
             payload[PROMPT] = 'Input is not valid. ' + prompt  
     
-    s88Set(chartProperties, stepProperties, key, floatValue, recipeLocation, True)
+    s88Set(chartProperties, stepProperties, key, floatValue, recipeLocation, True or s88CreateOverride)
 
 def dialogMessage(chartProperties, stepProperties):
+    from ils.sfc.common.util import getChartRunId
     payload = dict()
     transferStepPropertiesToMessage(stepProperties,payload)
     project = chartProperties[PROJECT];
     sendMessage(project, DIALOG_MSG_HANDLER, payload)
-
 
 def collectData(chartProperties, stepProperties):
     tagPath = getStepProperty(stepProperties, TAG_PATH)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     value = system.tag.read(tagPath)
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True)
+    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
     
 def getInput(chartProperties, stepProperties):
     project = chartProperties[PROJECT];
@@ -252,7 +263,7 @@ def getInput(chartProperties, stepProperties):
     
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True)
+    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
 
 def rawQuery(chartProperties, stepProperties):
     database = getStepProperty(stepProperties, DATABASE) 
@@ -260,7 +271,7 @@ def rawQuery(chartProperties, stepProperties):
     result = system.db.runQuery(sql, database) # returns a PyDataSet
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
-    s88Set(chartProperties, stepProperties, key, result, recipeLocation, False)
+    s88Set(chartProperties, stepProperties, key, result, recipeLocation, False or s88CreateOverride)
 
 def simpleQuery(chartProperties, stepProperties):
     database = getStepProperty(stepProperties, DATABASE) 

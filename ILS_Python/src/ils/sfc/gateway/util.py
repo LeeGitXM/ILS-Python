@@ -18,6 +18,7 @@ from ils.sfc.common.util import getDatabase
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
 YES_NO_HANDLER = 'sfcYesNo'
 DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
+DELETE_DELAY_NOTIFICATION_HANDLER = 'sfcDeleteDelayNotification'
 POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
 DIALOG_MSG_HANDLER = 'sfcDialogMessage'
 TIMED_DELAY_HANDLER = 'sfcTimedDelay'
@@ -31,6 +32,7 @@ PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
 CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
 SHOW_WINDOW_HANDLER = 'sfcShowWindow'
 CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
+UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
 
 def printCounter():
     global counter
@@ -237,3 +239,7 @@ def getChartState(uuid):
 def getCurrentMessageQueue(chartProperties, stepProperties):
     from ils.sfc.common.constants import MESSAGE_ID, OPERATION
     return s88Get(chartProperties, stepProperties, MESSAGE_ID, OPERATION)
+
+def sendChartStatus(projectName, payload):
+    from ils.sfc.common.util import sendMessage
+    sendMessage(projectName, UPDATE_CHART_STATUS_HANDLER, payload)
