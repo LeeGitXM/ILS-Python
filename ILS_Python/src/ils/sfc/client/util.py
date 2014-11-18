@@ -74,3 +74,12 @@ def openWindow(windowName, position, scale, windowProps):
         uly = mainWindow.getHeight() - height
     newWindow.setSize(int(width), int(height))
     newWindow.setLocation(int(ulx), int(uly))
+
+def testQuery(query, database):
+    from java.lang import Exception
+    try:
+        results = system.db.runQuery(query, database)
+        system.gui.messageBox("Query is OK; returned %d row(s)"%len(results))
+    except Exception, e:
+        cause = e.getCause()
+        system.gui.messageBox("query failed: %s"%cause.getMessage())
