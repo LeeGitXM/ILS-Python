@@ -4,9 +4,42 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system
+import system, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.download")
+
+def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database):
+    from java.util import Date
+    
+    log.trace("Starting the automated download monitor...")
+    
+    localG2WriteAlias = system.tag.read("[" + provider + "]/Recipe/Constants/localG2WriteAlias").value
+    recipeMinimumDifference = system.tag.read("[" + provider + "]/Recipe/Constants/recipeMinimumDifference").value
+    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Recipe/Constants/recipeMinimumRelativeDifference").value
+       
+    from ils.recipeToolkit.downloadComplete import downloadCompleteRunner
+    
+    # Check the status of pending downloads
+    pending = 1
+    deltaTime = 0
+    while pending > 0 and deltaTime < downloadTimeout * 1000:
+        time.sleep(5)
+#        pending = monitor(rootContainer)
+        pending, dsProcessed = monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, dsProcessed, database)
+
+        # Check to see if we have timed out
+        now = Date()
+        deltaTime = now.getTime() - downloadStartTime.getTime()
+        log.trace("The download has been running for: %s seconds" % (str(deltaTime / 1000.0)))
+        
+    if deltaTime > downloadTimeout * 1000:
+        log.info("The download has exceeded the allowed time, aborting the download monitor!") 
+        downloadCompleteRunner(dsProcessed, logId, recipeKey, grade, version, "Automated", "Grade Change", database)
+    
+    if pending == 0:
+        log.info("All downloads have completed (there are no pending downloads), ending the download monitor!")
+        downloadCompleteRunner(dsProcessed, logId, recipeKey, grade, version,  "Automated", "Grade Change", database)
+        
 
 def start(rootContainer):
     log.info("Starting the download monitor timer...")
@@ -22,7 +55,23 @@ def runner(rootContainer):
     from ils.recipeToolkit.downloadComplete import downloadComplete
     
     # Check the status of pending downloads
-    pending = monitor(rootContainer)
+    provider = rootContainer.getPropertyValue("provider")
+    recipeKey = rootContainer.getPropertyValue("recipeKey")
+    logId = rootContainer.logId
+    
+    localG2WriteAlias = system.tag.read("/Recipe/Constants/localG2WriteAlias").value
+    
+    table = rootContainer.getComponent("Power Table")
+    recipeMinimumDifference = table.getPropertyValue("recipeMinimumDifference")
+    recipeMinimumRelativeDifference = table.getPropertyValue("recipeMinimumRelativeDifference")
+    ds = table.processedData
+    
+    pending, ds = monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds)
+
+    table.processedData = ds
+    from ils.recipeToolkit.refresh import refreshVisibleData
+    refreshVisibleData(table)
+    
     if pending == 0:
         log.info("All downloads have completed (there are no pending downloads), disabling the download timer")
         timer.running = False
@@ -42,21 +91,12 @@ def runner(rootContainer):
 # This is called from a timer on the window and monitors the download.  Part of monitoring is to 
 # animate the table to indicate the success or failure of a tag.
 # Monitor every row of the table that is marked to be downloaded
-def monitor(rootContainer):
+def monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds, database = ""):
     import string
     from ils.recipeToolkit.log import logDetail
 
     log.trace("  Starting project.recipe.downloadMonitor.monitor()")
-    provider = rootContainer.getPropertyValue("provider")
-    recipeKey = rootContainer.getPropertyValue("recipeKey")
-    table = rootContainer.getComponent("Power Table")
-    localG2WriteAlias = system.tag.read("/Recipe/Constants/localG2WriteAlias").value
-    recipeMinimumDifference = table.getPropertyValue("recipeMinimumDifference")
-    recipeMinimumRelativeDifference = table.getPropertyValue("recipeMinimumRelativeDifference")
-
-    logId = rootContainer.logId
-
-    ds = table.processedData
+    
     pds = system.dataset.toPyDataSet(ds)
 
     i = 0
@@ -77,9 +117,7 @@ def monitor(rootContainer):
             if downloadStatus == 'PENDING':
                 log.trace("Checking step: %s" % (str(step)))
                 storTagName = record["Store Tag"]
-                
-                #TODO Get these 
-                compareVal = record["Comp"]
+                compTagName = record["Comp Tag"]
                 recommendVal = record["Recc"]
                 reason = ""
                 
@@ -91,38 +129,47 @@ def monitor(rootContainer):
                     
                     if writeLocation == localG2WriteAlias:
                         from ils.recipeToolkit.common import formatLocalTagName
-                        storTagName = formatLocalTagName(provider, storTagName)
-                        val = system.tag.read(storTagName).value
-                        log.trace("Comparing local value %s to %s" % (str(pendVal), str(val)))
-                        ds = system.dataset.setValue(ds, i, "Stor", val)
-                        ds = system.dataset.setValue(ds, i, "Comp", val)
+                        tagName = formatLocalTagName(provider, storTagName)
+                        storVal = system.tag.read(tagName).value
+                        tagName = formatLocalTagName(provider, compTagName)
+                        compVal = system.tag.read(tagName).value
+                        log.trace("Comparing local value %s to %s" % (str(pendVal), str(storVal)))
+                        ds = system.dataset.setValue(ds, i, "Stor", storVal)
+                        ds = system.dataset.setValue(ds, i, "Comp", compVal)
                         from ils.common.util import equalityCheck
-                        if equalityCheck(pendVal, val, recipeMinimumDifference, recipeMinimumRelativeDifference):
+                        if equalityCheck(pendVal, storVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
                             successes = successes + 1
-                            logDetail(logId, record["Store Tag"], pendVal, "Success", val, compareVal, recommendVal, reason, "")
-                            ds = system.dataset.setValue(ds, i, "Download Status", "Success")
+                            status = "Success"
+                            errorMessage = ""
                         else:
                             failures = failures + 1
-                            logDetail(logId, record["Store Tag"], pendVal, "Failure", val, compareVal, recommendVal, reason, "Local write error")
-                            ds = system.dataset.setValue(ds, i, "Download Status", "Failure")
+                            status = "Failure"
+                            errorMessage = "Local write error"
+                            
+                        logDetail(logId, storTagName, pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database)
+                        ds = system.dataset.setValue(ds, i, "Download Status", status)
                         
                     else:
                         from ils.recipeToolkit.common import formatTagName
-                        storTagName = formatTagName(provider, recipeKey, storTagName)
-                        writeStatus = system.tag.read(storTagName + '/writeStatus').value
-                        val = system.tag.read(storTagName + '/tag').value
-                        ds = system.dataset.setValue(ds, i, "Stor", val)
-                        ds = system.dataset.setValue(ds, i, "Comp", val)
-                        log.trace("  %s -> %s - %s" % (storTagName, val, writeStatus))
-                        if string.upper(writeStatus) == 'SUCCESS':
-                            successes = successes + 1
-                            ds = system.dataset.setValue(ds, i, "Download Status", "Success")
-                            logDetail(logId, record["Store Tag"], pendVal, "Success", val, compareVal, recommendVal, reason, "")
-                        elif string.upper(writeStatus) == 'FAILURE':
-                            failures = failures + 1 
-                            ds = system.dataset.setValue(ds, i, "Download Status", "Failure")
-                            errorMessage = system.tag.read(storTagName + '/writeErrorMessage').value
-                            logDetail(logId, record["Store Tag"], pendVal, "Failure", val, compareVal, recommendVal, reason, errorMessage)
+                        writeStatus = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/writeStatus').value
+                        
+                        if string.upper(writeStatus) == 'SUCCESS' or string.upper(writeStatus) == 'FAILURE':
+                            if string.upper(writeStatus) == 'SUCCESS':
+                                successes = successes + 1
+                                status = 'Success'
+                                errorMessage = ''
+                            else:
+                                failures = failures + 1 
+                                status = 'Failure'
+                                errorMessage = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/writeErrorMessage').value
+
+                            ds = system.dataset.setValue(ds, i, "Download Status", status)
+                            storVal = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/tag').value
+                            ds = system.dataset.setValue(ds, i, "Stor", storVal)
+                            compVal = system.tag.read(formatTagName(provider, recipeKey, compTagName) + '/tag').value
+                            ds = system.dataset.setValue(ds, i, "Comp", compVal)
+                            log.trace("  %s -> %s - %s" % (storTagName, storVal, writeStatus))
+                            logDetail(logId, record["Store Tag"], pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database) 
                         else:
                             pending = pending + 1 
             
@@ -141,8 +188,6 @@ def monitor(rootContainer):
         i = i + 1
 
     log.info("There are %i downloads (%i success, %i failed, %i pending)" % (downloads, successes, failures, pending))
-    table.processedData = ds
-    from ils.recipeToolkit.refresh import refreshVisibleData
-    refreshVisibleData(table)
+
     
-    return pending
+    return pending, ds

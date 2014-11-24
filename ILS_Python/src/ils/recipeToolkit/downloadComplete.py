@@ -11,16 +11,32 @@ log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 # This is called once it is deemed that the download is complete.  
 # It summarizes the results of the download.
 def downloadComplete(rootContainer):
-    import string
-
-    log.info("Download complete...")
     logId = rootContainer.getPropertyValue("logId")
     grade = rootContainer.getPropertyValue("grade")
+    version = rootContainer.getPropertyValue("version")
     recipeKey = rootContainer.getPropertyValue("recipeKey")
-    recipeType = rootContainer.getPropertyValue("recipeType")
+    downloadType = rootContainer.getPropertyValue("downloadType")
     table = rootContainer.getComponent("Power Table")
 
     ds = table.processedData
+    
+    status, downloads, successes, failures = downloadCompleteRunner(ds, logId, recipeKey, grade, version, "Manual", downloadType)
+
+    from ils.recipeToolkit.common import setBackgroundColor
+    if failures == 0:
+        setBackgroundColor(rootContainer, "screenBackgroundColorSuccess")
+    else:
+        setBackgroundColor(rootContainer, "screenBackgroundColorFail")
+
+    # Update the status of the rootContainer so the user can do a refresh
+    rootContainer.status = status
+
+#
+def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManual, gradeChangeOrMidRun, database=""):
+    import string
+
+    log.info("Download complete...")
+
     pds = system.dataset.toPyDataSet(ds)
 
     downloads = 0
@@ -31,7 +47,7 @@ def downloadComplete(rootContainer):
         downloadType = record["Download Type"]
         downloadStatus = string.upper(record["Download Status"])
 
-        if download:        
+        if download:
             downloads = downloads + 1
 
             if downloadStatus == 'SUCCESS':
@@ -41,20 +57,23 @@ def downloadComplete(rootContainer):
 
     log.info("...there were %i downloads (%i success, %i failed)" % (downloads, successes, failures))
 
-    from ils.recipeToolkit.common import setBackgroundColor
     if failures == 0:
         status = "Success"
-        update.recipeMapStatus(recipeKey, 'Download Passed')
-        setBackgroundColor(rootContainer, "screenBackgroundColorSuccess")
+        update.recipeMapStatus(recipeKey, 'Download Passed', database)
     else:
         status = "Failed"
-        update.recipeMapStatus(recipeKey, 'Download Failed')
-        setBackgroundColor(rootContainer, "screenBackgroundColorFail")
+        update.recipeMapStatus(recipeKey, 'Download Failed', database)
 
-    # Write a logbook message TODO - Do I need to do this
-    txt = "Recipe MANUAL download of %s for %s using %s has completed.  %i writes confirmed.  %i writes NOT confirmed." % \
-        (grade, recipeKey, recipeType, successes, failures)
-    
+    # Write a log book message
+    txt = "%s Recipe download of %s - grade %s - version %s - type %s has completed.  %i writes confirmed.  %i writes NOT confirmed." % \
+        (automatedOrManual, recipeKey, grade, str(version), gradeChangeOrMidRun, successes, failures)
+
+    # Insert a message into the log book queue that we are starting a manual download
+    from ils.queue.log import insert
+    insert(txt, database)
+
     # Update the Master down table
     from ils.recipeToolkit.log import updateLogMaster
-    updateLogMaster(logId, status, downloads, successes, failures)
+    updateLogMaster(logId, status, downloads, successes, failures, database)
+
+    return status, downloads, successes, failures

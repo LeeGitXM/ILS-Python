@@ -3,11 +3,17 @@ Created on Jul 9, 2014
 
 @author: chuckc
 '''
+def addTag(parentPath, name, tagType, dataType, attributes, parameters, overrides):
+    return []
+
 def browseTags(path, udtParentType):
     return []
 
 def browseTagsSimple(path, sort):
     return []
+
+def editTag(tagPath, attributes, parameters):
+    return True
 
 def exists(tagPath):
     return True
@@ -23,6 +29,8 @@ def removeTags(paths):
 
 def write(tagPath,command):
     pass
+
+
 
 def writeAll(tags, vals):
     return True

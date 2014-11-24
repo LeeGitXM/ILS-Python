@@ -4,7 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system
+import system, string
 
 def isText(val):
 
@@ -32,18 +32,19 @@ def isFloattOrSpecialValue(val):
     
     return isFloat
 
-def getDate():
+
+def getDate(database = ""):
     SQL = "select getdate()"
-    theDate = system.db.runScalarQuery(SQL)
+    theDate = system.db.runScalarQuery(SQL, database)
     return theDate
 
 
-def formatDate(theDate, format = 'MM/dd/YY'):
+def formatDate(theDate, format = 'MM/dd/yy'):
     theDate = system.db.dateFormat(theDate, format)
     return theDate
 
     
-def formatDateTime(theDate, format = 'MM/dd/YY hh:ss'):
+def formatDateTime(theDate, format = 'MM/dd/yy hh:ss'):
     theDate = system.db.dateFormat(theDate, format)
     return theDate
 
@@ -54,11 +55,23 @@ def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDiff
     val1IsText = isText(val1)
     val2IsText = isText(val2)
 
-    if val1IsText and val2IsText:
+    # When we write a NaN we read back a Null value which looks like a '' - Treat these as equal
+    if string.upper(str(val1)) == "NAN" or string.upper(str(val2)) == "NAN":
+        val1 = string.upper(str(val1))
+        val2 = string.upper(str(val2))
+        print "At least one of the value to be compared is NaN: <%s> <%s>" % (val1, val2)
+
+        if (val1 == 'NAN' or val1 == '' or val1 == 'NONE' or val1 == None) and (val2 == 'NAN' or val2 == '' or val2 == 'NONE' or val2 == None):
+            return True
+        else:
+            return False
+        
+    elif val1IsText and val2IsText:
         if val1 == val2:
             return True
         else:
             return False
+
     else:
         # They aren't both text, so if only one is text, then they don't match 
         if val1IsText or val2IsText:
@@ -72,6 +85,7 @@ def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDiff
                 return True
             else:
                 return False
+
 
 # Verify that val2 is the same data type as val1.  Make sure to treat special values such as NaN as a float
 def dataTypeMatch(val1, val2):

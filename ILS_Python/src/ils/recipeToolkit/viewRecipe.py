@@ -3,12 +3,38 @@ Created on Sep 10, 2014
 
 @author: Pete
 '''
-import system
+import system, string
 
+# This runs in the client when it receives a message that an automated download message has been received
+def automatedDownloadMessageHandler(payload):
+    targetPost = payload.get("post", "None")
+    myPost = system.tag.read("[Client]Post").value
+
+    # If the message was intended for another post then bail    
+    if string.upper(targetPost) != string.upper(myPost):return
+    
+    grade = payload.get("grade", "")
+    version = payload.get("version", 0)
+    recipeKey = payload.get("recipeKey", "")
+    downloadType = 'GradeChange'
+    
+    # Save the grade and type to the recipe map table.
+    # grade looks like an int, but it is probably a string
+    SQL = "update RtRecipeMap set CurrentRecipeGrade = %s, CurrentRecipeVersion = %s, Status = 'Initializing', "\
+        "Timestamp = getdate() where RecipeKey = '%s'" \
+        % (str(grade), version, recipeKey)
+    
+    print "SQL: ", SQL
+    rows = system.db.runUpdateQuery(SQL)
+    print "Successfully updated %i rows" % (rows)
+
+    system.nav.openWindow('Recipe/Recipe Viewer', {'recipeKey': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType})
+    system.nav.centerWindow('Recipe/Recipe Viewer')
+    
 def showCurrentRecipeCallback(recipeKey):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
-    # but it is probably a stringgggg
+    # but it is probably a string
     SQL = "select CurrentRecipeGrade from RtRecipeMap where RecipeKey = '%s'" % (recipeKey)
     print "SQL: ", SQL
     pds = system.db.runQuery(SQL)
@@ -60,10 +86,44 @@ def showMidRunRecipeCallback(recipeKey):
 
 
 def initialize(rootContainer):
-    import string
-
     print "In project.recipe.viewRecipe.initialize()..."
 
+    #=============================================================================================
+    # This function is definitely a workaround.  When I try to bind my custom color properties directly to a tag, they 
+    # don't work the very first time I open a window.  So here I will explicitly read the tags and set the properties, 
+    # which is exactly what a binding is supposed to do automatically
+    def initializeTableColors(table):
+        color = system.tag.read("/Recipe/Constants/backgroundColorError").value
+        table.setPropertyValue("backgroundColorError", color)
+        
+        color = system.tag.read("/Recipe/Constants/backgroundColorMismatch").value
+        table.setPropertyValue("backgroundColorMismatch", color)
+        
+        color = system.tag.read("/Recipe/Constants/backgroundColorNoChange").value
+        table.setPropertyValue("backgroundColorNoChange", color)
+        
+        color = system.tag.read("/Recipe/Constants/backgroundColorReadOnly").value
+        table.setPropertyValue("backgroundColorReadOnly", color)
+
+        color = system.tag.read("/Recipe/Constants/backgroundColorReadWrite").value
+        table.setPropertyValue("backgroundColorReadWrite", color)
+
+        color = system.tag.read("/Recipe/Constants/backgroundColorWriteError").value
+        table.setPropertyValue("backgroundColorWriteError", color)
+
+        color = system.tag.read("/Recipe/Constants/backgroundColorWritePending").value
+        table.setPropertyValue("backgroundColorWritePending", color)
+
+        color = system.tag.read("/Recipe/Constants/backgroundColorWriteSuccess").value
+        table.setPropertyValue("backgroundColorWriteSuccess", color)
+        
+        val = system.tag.read("/Recipe/Constants/recipeMinimumDifference").value
+        table.setPropertyValue("recipeMinimumDifference", val)
+        
+        val = system.tag.read("/Recipe/Constants/recipeMinimumRelativeDifference").value
+        table.setPropertyValue("recipeMinimumRelativeDifference", val)
+    #=======================================================================================
+        
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     rootContainer.provider = provider
@@ -92,18 +152,21 @@ def initialize(rootContainer):
     from ils.recipeToolkit.fetch import details
     pds = details(recipeKey, grade, version)
 
-    # Put the raw recipe into a dataset attribute of the table
+    # Initialize table colors and put the raw recipe into a dataset attribute of the table
     table = rootContainer.getComponent('Power Table')
+    initializeTableColors(table)
     table.rawData = pds
 
-    # Update the table
-    dsProcessed = update(rootContainer)
-
+    # Create the processed data set by adding some columns to the raw recipe data. 
+    dsProcessed = update(pds)
+    table.processedData = dsProcessed
+    
     # Reset the recipe detail objects
     resetRecipeDetails(provider, recipeKey)
 
     # Create any OPC tags that are required by the recipe
-    tags = createOPCTags(table, provider, recipeKey)
+    dsProcessed, tags = createOPCTags(table.processedData, provider, recipeKey)
+    table.processedData = dsProcessed
     
     # Sweep the folder of recipe tags and delete any that are not needed
     sweepTags(provider, recipeKey, tags)
@@ -147,21 +210,16 @@ def resetRecipeDetails(provider, recipeKey):
 
 # Update the table with the recipe data - this is called when we change the grade.  This does not
 # incorporate the DCS data, that is done in refresh()
-def update(rootContainer):
+def update(rawData):
     print "In project.recipe.viewRecipe.update()"
-    print "Updating the table with data from the recipe database and the DCS"
+    print "Updating the table with data from the recipe database"
 
-    from ils.common.user import isAE
-    isAE = isAE()
-    table = rootContainer.getComponent('Power Table')
-    rawData = table.rawData
-    
     headers = ['Descriptor', 'Pend', 'Stor', 'Comp', 'Recc', 'High Limit', 'Low Limit', 'Reason',\
         'Store Tag', 'Comp Tag', 'Change Level', 'Write Location', 'Step', 'Mode Attribute', \
-        'Mode Attribute Value', 'Download Type', 'Download', 'Data Type', 'Download Status', 'ValueId']
+        'Mode Attribute Value', 'Download Type', 'Download', 'Data Type', 'Plan Status', 'Download Status', 'ValueId']
         
     data = []
-    for record in system.dataset.toPyDataSet(rawData):
+    for record in rawData:
         step = record['PresentationOrder']
         descriptor = record['Description']
         valueId = record['ValueId']
@@ -169,6 +227,7 @@ def update(rootContainer):
         download = False
         dataType = ''
         downloadStatus = ''
+        planStatus = ''
         
         if descriptor != None:
             pend = record['RecommendedValue']
@@ -203,24 +262,24 @@ def update(rootContainer):
             reason = ''
 
         vals = [descriptor, pend, stor, comp, recommendedValue, highLimit, lowLimit, reason, storeTag, compareTag, changeLevel, \
-            writeLocation, step, modeAttribute, modeValue, downloadType, download, dataType, downloadStatus, valueId]
+            writeLocation, step, modeAttribute, modeValue, downloadType, download, dataType, planStatus, downloadStatus, valueId]
         data.append(vals)
 
-    ds = system.dataset.toDataSet(headers, data)
-    table.processedData = ds
-    return ds
+    dsProcessed = system.dataset.toDataSet(headers, data)
+    
+    return dsProcessed
 
 
-def createOPCTags(table, provider, recipeKey):
-    import string
+# ds is the processed data of the table
+def createOPCTags(ds, provider, recipeKey, database = ""):
     from ils.recipeToolkit.tagFactory import createRecipeDetailUDT
     from ils.recipeToolkit.common import formatLocalTagPathAndName
     
     #------------------------------------------------------------
     # Fetch the alias to OPC server map from the EMC database
-    def fetchOPCServers():
+    def fetchOPCServers(database):
         SQL = "select * from RtWriteLocation"
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database)
         print "Fetched ", len(pds), " OPC servers..."
         return pds
     #------------------------------------------------------------
@@ -279,7 +338,7 @@ def createOPCTags(table, provider, recipeKey):
 
         return modeAttribute, modeAttributeValue
     #------------------------------------------------------------
-    # Determine if recc is a float or a text - everything is stored in the table as text.
+    # Determine if the recommended is a float or a text - everything is stored in the table as text.
     def determineTagClass(recc, modeAttribute, modeAttributeValue, specialValueNAN):
     
         try:
@@ -317,18 +376,20 @@ def createOPCTags(table, provider, recipeKey):
         return className, dataType, conditionalDataType
     #------------------------------------------------------------
 
-    print "Creating recipe tags..."
+    print "Creating OPC recipe tags..."
     
-    ds = table.processedData
-    pds = system.dataset.toPyDataSet(ds)
     tags = []
     recipeDetailTagNames = []
     recipeDetailTagValues = []
-    specialValueNAN = system.tag.read("Recipe/Constants/Special Values/NAN").value
-    localG2WriteAlias = system.tag.read("Recipe/Constants/localG2WriteAlias").value
-
+    specialValueNAN = system.tag.read("[" + provider + "]Recipe/Constants/Special Values/NAN").value
+    localG2WriteAlias = system.tag.read("[" + provider + "]Recipe/Constants/localG2WriteAlias").value
+    itemIdPrefix = system.tag.read("[" + provider + "]Recipe/Constants/itemIdPrefix").value
+    
+    print "Special NAN Value: ", specialValueNAN
+    print "Local G2 Alias: ", localG2WriteAlias
+    
     # There needs to be at least one OPC write alias or nothing will work!
-    opcServers = fetchOPCServers()
+    opcServers = fetchOPCServers(database)
     if len(opcServers) == 0:
         system.gui.errorBox("The RtWriteLocation table in the SQL*Server database is not configured properly.  The OPC server aliases must be configured before tags can be created.")
         return tags
@@ -337,15 +398,17 @@ def createOPCTags(table, provider, recipeKey):
     # read them all in one read. (I'm not sure that we were actually doing a device read anyway)
 
     i = 0
+    pds = system.dataset.toPyDataSet(ds)
     for record in pds:
         step = record['Step']
         changeLevel = record['Change Level']
         writeLocation = record['Write Location']
     
-#        print "\nStep: ", step, writeLocation
+#       print "\nStep: ", step, writeLocation
         downloadType = "Skip"
         dataType = ''
         if writeLocation == localG2WriteAlias:
+#           print "Handling a local tag"
             downloadType = "Immediate"
 
             tagName = record['Store Tag']       
@@ -353,14 +416,20 @@ def createOPCTags(table, provider, recipeKey):
             
             # Determine the data type by browsing the tag
             browseTags = system.tag.browseTags(parentPath=tagPath, tagPath="*"+tagName)
-            browseTag = browseTags[0]
-            dataType = browseTag.dataType
-            dataType = str(dataType)
             
-            if dataType == "Float8":
+            if len(browseTags) == 0:
+                print "The tag %s does not exist" % (tagName)
                 dataType = "Float"
+            else:
+                browseTag = browseTags[0]
+                dataType = browseTag.dataType
+                dataType = str(dataType)
+            
+                if dataType == "Float8":
+                    dataType = "Float"
                 
         elif writeLocation != "" and writeLocation != None:
+#            print "Handling an OPC tag"
             modeAttribute = record['Mode Attribute']
             modeAttributeValue = record['Mode Attribute Value']
             recc = record['Recc']
@@ -381,10 +450,11 @@ def createOPCTags(table, provider, recipeKey):
                 modeAttribute, modeAttributeValue = determineOPCTypeModeAndVal(modeAttribute, modeAttributeValue)
                 UDTType, dataType, conditionalDataType = determineTagClass(recc, modeAttribute, modeAttributeValue, specialValueNAN)
 #                print "The OPC server is: ", opcServer, " and class name (UDT) is: ", UDTType
-                itemId = storeTag
+                itemId = itemIdPrefix + storeTag
 
                 path = "/Recipe/" + recipeKey
                 from ils.recipeToolkit.tagFactory import createUDT
+                # The tag factory will check if the tag already exists
                 createUDT(UDTType, provider, path, dataType, tagName, opcServer, scanClass, itemId, conditionalDataType)
 
                 # The tags list list all of the tags that are required for this recipe.  It will be used
@@ -473,9 +543,8 @@ def createOPCTags(table, provider, recipeKey):
 
     # Update the recipe detail objects, they were previously reset, now update
     results = system.tag.writeAll(recipeDetailTagNames, recipeDetailTagValues)
-
-    table.processedData = ds
-    return tags
+    
+    return ds, tags
 
 # This is called whenever we fetch a new recipe from the database.  It deletes any recipe tags that are 
 # not needed by the current recipe.

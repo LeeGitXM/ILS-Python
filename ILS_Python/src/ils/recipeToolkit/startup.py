@@ -7,18 +7,16 @@ Created on Sep 10, 2014
 import system
 
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.recipeToolkit")
 
 def gateway():
     from ils.recipeToolkit.version import version
     version = version()
-    print "Starting Recipe Toolkit ", version
+    log.info("Starting Recipe Toolkit version %s" % (version))
 
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     createTags("[" + provider + "]")
-    
-    log = LogUtil.getLogger("com.ils.recipeToolkit.download")
-    log.info("Initializing the recipe toolkit")
 
 def client():
     print "In recipeToolkit.startup.client()"
@@ -32,9 +30,11 @@ def createTags(tagProvider):
     path = tagProvider + "Recipe/Constants/"
 
     data.append([path, "localG2WriteAlias", "String", "LocalG2"])
+    data.append([path, "itemIdPrefix", "String", ""])
     data.append([path, "recipeMinimumDifference", "Float8", "0.00001"])
     data.append([path, "recipeMinimumRelativeDifference", "Float8", "0.00001"])
     data.append([path, "recipeWriteEnabled", "Boolean", "True"])
+    data.append([path, "downloadTimeout", "Int4", "120"])
 
     data.append([path, "backgroundColorReadOnly", "String", "lightblue"])  #'#ADD8E6'  light blue
     data.append([path, "backgroundColorReadWrite", "String", "lightcyan"]) #'#E0FFFF' light cyan

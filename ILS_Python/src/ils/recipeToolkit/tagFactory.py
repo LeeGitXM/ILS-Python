@@ -5,8 +5,11 @@ Created on Sep 10, 2014
 '''
 import system
 
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.recipeToolkit")
+
 def createConfigurationTags(ds):
-    print "Creating configuration tags..."
+    log.info("Creating configuration tags...")
     pds = system.dataset.toPyDataSet(ds)
 
     for row in pds:
@@ -18,9 +21,8 @@ def createConfigurationTags(ds):
         fullName = path + name
                 
         # Check if the tag exists
-        print "Checking: " + fullName
         if not(system.tag.exists(fullName)):
-            print "  ...creating configuration tag " + fullName 
+            log.info("  ...creating configuration tag %s" % (fullName)) 
             system.tag.addTag(parentPath = path, name = name, tagType = "DB", dataType = dataType)
     
             if dataType == "Int8":
@@ -30,9 +32,8 @@ def createConfigurationTags(ds):
             elif dataType == "Boolean":
                 from ils.common.cast import toBool
                 val = toBool(val)
-            
-#            print "  ...initializing ", fullName, " to ", val
-            system.tag.writeToTag(fullName, val)
+
+            system.tag.write(fullName, val)
 
 
 # Create a recipe data tag
@@ -40,7 +41,7 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
     import string
 
     #----------------------------------------------------
-    # TODO - The permissive may actually need a suffic of .MODEATTR /enum
+    # The permissive may actually need a suffix of .MODEATTR /enum
     def morphItemIdPermissive(itemId):
         permissiveItemId = itemId[:itemId.rfind('.')] + '.MODEATTR'
         return permissiveItemId
@@ -54,7 +55,7 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
 #        print tagName, " already exists!"
         pass
     else:
-        print "Creating a %s\n  Name: %s\n  Path: %s\n  Item Id: %s\n  Data Type: %s\n  Scan Class: %s\n  Server: %s\n  Conditional Data Type: %s" % (UDTType, tagName, tagPath, itemId, dataType, scanClass, serverName, conditionalDataType) 
+        log.info("Creating a %s, Name: %s, Path: %s, Item Id: %s, Data Type: %s, Scan Class: %s, Server: %s, Conditional Data Type: %s" % (UDTType, tagName, tagPath, itemId, dataType, scanClass, serverName, conditionalDataType))
         if UDTType == 'Basic IO/OPC Output':
             system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
                 attributes={"UDTParentType":UDTType}, 
@@ -67,15 +68,13 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
 
             # Override the data type of the permissive - the default is integer
             if string.lower(conditionalDataType) == "string":
-                print "Overriding the permissive tag datatype..."
-                system.tag.editTag(tagPath=tagPath,
-                    overrides={"permissive":{"DataType":"String"}})
+                log.info("Overriding the permissive tag datatype...")
+                system.tag.editTag(tagPath=tagPath, overrides={"permissive":{"DataType":"String"}})
 
     # Now do any additional overrides that may be necessary - Remember the UDTs are floats, so if we are making int or string tags, I'll need to override the UDT
     if string.lower(dataType) == "string":
-        print "Overriding the tag datatype..."
-        system.tag.editTag(tagPath=tagPath,
-            overrides={"tag":{"DataType":"String"}})
+        log.info("Overriding the tag datatype...")
+        system.tag.editTag(tagPath=tagPath, overrides={"tag":{"DataType":"String"}})
 
 
 # Create a recipe detail UDT
@@ -89,6 +88,6 @@ def createRecipeDetailUDT(UDTType, provider, path, tagName):
 #        print tagName, " already exists!"
         pass
     else:
-        print "Creating a %s\n  Name: %s\n  Path: %s\n" % (UDTType, tagName, tagPath) 
+        log.info("Creating a %s, Name: %s, Path: %s" % (UDTType, tagName, tagPath)) 
         system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType} )

@@ -31,15 +31,19 @@ class OPCOutput(basicio.BasicIO):
     # amount of time to wait is the tricky part.  In a simulated environment, as soon as the scan
     # class ran we read the value back, so the amount of time to wait was the scan class.  I don't
     # know if we will be able to do a device read, i.e., send the value all the way down to the
-    # device and read it back.  If we can do that, then the time may be longer.
+    # device and read it back.  If we can do that, then the time may be longer. 
     def checkWrite(self, val):  
         log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
  
         for i in range(0,13):
             qv = system.tag.read(self.path + "/tag")
-            log.trace("%s Quality: comparing %f-%s to %f" % (self.path, qv.value, qv.quality, val))
-            if qv.value == val and string.upper(str(qv.quality)) == 'GOOD':
-                return True, ""
+            log.trace("%s Quality: comparing %s-%s to %s" % (self.path, str(qv.value), str(qv.quality), str(val)))
+            if string.upper(str(val)) == "NAN":
+                if qv.value == None:
+                    return True, ""
+            else:
+                if qv.value == val and string.upper(str(qv.quality)) == 'GOOD':
+                    return True, ""
 
             # TODO - This is hard coded!
             # Time in seconds
@@ -54,6 +58,8 @@ class OPCOutput(basicio.BasicIO):
         
         # Get the value to be read - this must be there BEFORE the command is set       
         val = system.tag.read(self.path + "/writeVal").value
+        if val == None:
+            val = float("NaN")
         
         log.info("Writing <%s> to %s, an OPCOutput" % (str(val), self.path))
 
