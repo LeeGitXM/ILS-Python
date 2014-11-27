@@ -11,7 +11,6 @@ from ils.sfc.common.constants import *
 from ils.sfc.gateway.api import * 
 #from com.ils.sfc.common import IlsSfcNames 
 #from com.ils.sfc.util import IlsResponseManager
-from ils.common.units import Unit
 from ils.sfc.common.util import getChartRunId
 from ils.sfc.common.util import getDatabase
 
@@ -19,6 +18,7 @@ from ils.sfc.common.util import getDatabase
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
 YES_NO_HANDLER = 'sfcYesNo'
 DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
+DELETE_DELAY_NOTIFICATION_HANDLER = 'sfcDeleteDelayNotification'
 POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
 DIALOG_MSG_HANDLER = 'sfcDialogMessage'
 TIMED_DELAY_HANDLER = 'sfcTimedDelay'
@@ -32,6 +32,7 @@ PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
 CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
 SHOW_WINDOW_HANDLER = 'sfcShowWindow'
 CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
+UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
 
 def printCounter():
     global counter
@@ -73,7 +74,7 @@ def getPropertiesByLocation(chartProperties, stepProperties, location, create=Fa
     elif location == PREVIOUS:
         return chartProperties[BY_NAME].get(PREVIOUS, None)
     else:
-        handleUnexpectedError(chartProperties, "unknown property location type %s", location)
+        handleUnexpectedError(chartProperties, "unknown property location type " +  location)
         
 def getPropertiesByLevel(chartProperties, location):
     ''' Use of PROCEDURE, PHASE, and OPERATION depends on the charts at
@@ -234,13 +235,11 @@ def printObj(obj, level, out):
 def getChartState(uuid):
     from system.ils.sfc import getChartState
     return getChartState(uuid)
-
-def lazyInitializeGatewayEnvironment(database):  
-    '''ensure that any required initialization of the client environment
-       has been done, but don't re-initialize'''
-    from ils.common.units import Unit
-    Unit.lazyInitialize(database)
     
 def getCurrentMessageQueue(chartProperties, stepProperties):
     from ils.sfc.common.constants import MESSAGE_ID, OPERATION
     return s88Get(chartProperties, stepProperties, MESSAGE_ID, OPERATION)
+
+def sendChartStatus(projectName, payload):
+    from ils.sfc.common.util import sendMessage
+    sendMessage(projectName, UPDATE_CHART_STATUS_HANDLER, payload)

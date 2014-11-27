@@ -24,6 +24,15 @@ def readFile(filepath):
     out.close()
     return result   
 
+def getChartState(chartProperties):
+    from system.ils.sfc import getChartState
+    #note: getChartState requires a java UUID
+    return getChartState(chartProperties[INSTANCE_ID])
+
+def getRunningCharts(chartProperties):
+    from system.ils.sfc import getRunningCharts
+    return getRunningCharts()
+
 def sendMessage(project, handler, payload):
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
@@ -61,7 +70,7 @@ def getTopLevelProperties(chartProperties):
     return chartProperties
 
 def getChartRunId(chartProperties):
-    return getTopLevelProperties(chartProperties)[INSTANCE_ID]
+    return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
 
 def getDatabase(chartProperties):
     return getTopLevelProperties(chartProperties)[DATABASE]

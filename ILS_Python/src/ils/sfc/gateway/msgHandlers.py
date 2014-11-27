@@ -12,14 +12,8 @@ def sfcResponse(payload):
     messageId = payload[MESSAGE_ID]
     setResponse(messageId, payload)
 
-def sfcStartChart(payload):
-    from ils.sfc.common.constants import CHART_NAME, INSTANCE_ID, PROJECT, DATABASE
-    from ils.sfc.gateway.util import lazyInitializeGatewayEnvironment
-    chartName = payload[CHART_NAME]
-    project = payload[PROJECT]
-    database = payload[DATABASE]
-    lazyInitializeGatewayEnvironment(database)
-    chartRunId = system.sfc.startChart(chartName, payload)
-    payload[INSTANCE_ID] = chartRunId
-    system.util.sendMessage(project, 'sfcChartStarted', payload, "C")
+def sfcRegisterClient(payload):
+    from ils.sfc.common.constants import  PROJECT, DATABASE
+    from system.ils.sfc import setSfcProjectInfo
+    setSfcProjectInfo(payload[PROJECT], payload[DATABASE])
 

@@ -34,7 +34,10 @@ def getSession(chartRunId, db):
     '''Get the session for the given chart'''
     sql = "select * from " + SESSION_TABLE + " where chartRunId = '%s'" % (chartRunId)
     results = system.db.runQuery(sql, db)
-    return results[0]
+    if len(results) > 0:
+        return results[0]
+    else:
+        return None
 
 def updateSessionStatus(chartProperties, status):
     '''

@@ -18,6 +18,9 @@ def errorBox(txt):
 def findWindow(windowName):
     pass
 
+def getWindow(name):
+    pass
+
 def inputBox(txt):
     return "txt"
 
