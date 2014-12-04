@@ -1,8 +1,8 @@
 '''
 Copyright 2014 ILS Automation
 
-A thin wrapper for receiving commands/requests addressed
-to the Output subsystem.
+A thin wrapper for receiving commands/requests addressed to the Output subsystem.  These methods 
+run on the gateway because they are launched by tag change scripts.
 
 Created on Jul 9, 2014
 
@@ -16,6 +16,9 @@ import ils.io
 import ils.io.opcoutput
 import ils.io.opcconditionaloutput
 import ils.io.recipedetail
+import ils.io.controller
+import ils.io.pkscontroller
+import ils.io.tdccontroller
 
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io")
@@ -55,7 +58,15 @@ def write(tagPath, command):
         cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
         tag = eval(cmd)
         if string.upper(command) == "WRITEDATUM":
-            status,reason = tag.writeDatum()
+            status, reason = tag.writeDatum()
+        elif string.upper(command) == "WRITEWITHNOCHECK":
+            status, reason = tag.writeWithNoCheck()
+        elif string.upper(command) == "WRITERAMP":
+            status, reason = tag.writeRamp()
+        elif string.upper(command) == "RESET":
+            status, reason = tag.reset()
+        elif string.upper(command) == "WRITEOUTPUT":
+            status, reason = tag.writeOutput()
         else:
             reason = "Unrecognized command: "+command
             log.error(reason)

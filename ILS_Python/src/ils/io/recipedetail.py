@@ -39,17 +39,17 @@ class RecipeDetail(recipe.Recipe):
 
         if writeHighLimit:
             oldHighLimitValue = system.tag.read(rootPath + highLimitTagName + '/tag').value
-            newHighLimitValue = system.tag.read(rootPath + highLimitTagName + '/writeVal').value                   
+            newHighLimitValue = system.tag.read(rootPath + highLimitTagName + '/writeValue').value                   
             log.trace("Changing High limit from %s to %s" % (str(oldHighLimitValue), str(newHighLimitValue)))
 
         if writeLowLimit:
             oldLowLimitValue = system.tag.read(rootPath + lowLimitTagName + '/tag').value
-            newLowLimitValue = system.tag.read(rootPath + lowLimitTagName + '/writeVal').value                    
+            newLowLimitValue = system.tag.read(rootPath + lowLimitTagName + '/writeValue').value                    
             log.trace("Changing Low limit from %s to %s" % (str(oldLowLimitValue), str(newLowLimitValue)))
 
         if writeValue:
             oldValue = system.tag.read(rootPath + valueTagName + '/tag').value
-            newValue = system.tag.read(rootPath + valueTagName + '/writeVal').value
+            newValue = system.tag.read(rootPath + valueTagName + '/writeValue').value
             log.trace("Changing Value from %s to %s" % (str(oldValue), str(newValue)))
 
         highLimitWritten = False
@@ -65,7 +65,7 @@ class RecipeDetail(recipe.Recipe):
             if newHighLimitValue > oldHighLimitValue:
                 log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
                 highLimitWritten = True
-                confirmed, r = self.writeConfirm(rootPath + highLimitTagName, 'WRITEDATUM', newHighLimitValue)
+                confirmed, r = self.writeDatum(rootPath + highLimitTagName, 'WRITEDATUM', newHighLimitValue)
                 reason = reason + r
                 status = status and confirmed
 
@@ -74,25 +74,25 @@ class RecipeDetail(recipe.Recipe):
             if newLowLimitValue < oldLowLimitValue:
                 log.trace("** Writing the Low limit: %s **" % (str(newLowLimitValue)))
                 lowLimitWritten = True
-                confirmed, r = self.writeConfirm(rootPath + lowLimitTagName, 'WRITEDATUM', newLowLimitValue)
+                confirmed, r = self.writeDatum(rootPath + lowLimitTagName, newLowLimitValue)
                 reason = reason + r
                 status = status and confirmed
  
         if writeValue:
             log.trace("** Writing the Value: %s **" % (str(newValue)))
-            confirmed, r = self.writeConfirm(rootPath + valueTagName, 'WRITEDATUM', newValue)
+            confirmed, r = self.writeDatum(rootPath + valueTagName, newValue)
             reason = reason + r
             status = status and confirmed
                 
         if writeHighLimit and not(highLimitWritten):
             log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
-            confirmed, r = self.writeConfirm(rootPath + highLimitTagName, 'WRITEDATUM', newHighLimitValue)
+            confirmed, r = self.writeDatum(rootPath + highLimitTagName, newHighLimitValue)
             reason = reason + r
             status = status and confirmed
                 
         if writeLowLimit and not(lowLimitWritten):
             log.trace("** Write the low limit: %s **" % (str(newLowLimitValue)))
-            confirmed, r = self.writeConfirm(rootPath + lowLimitTagName, 'WRITEDATUM', newLowLimitValue)
+            confirmed, r = self.writeDatum(rootPath + lowLimitTagName, newLowLimitValue)
             reason = reason + r
             status = status and confirmed
                 

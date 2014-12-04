@@ -4,8 +4,10 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system, string
-
+import system, string, time
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from java.util import Date
+ 
 def isText(val):
 
     try:
@@ -49,50 +51,29 @@ def formatDateTime(theDate, format = 'MM/dd/yy hh:ss'):
     return theDate
 
 
-# Compare two tag values taking into account that a float may be disguised as a text string and also
-# calling two floats the same if they are almost the same.
-def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDifference):
-    val1IsText = isText(val1)
-    val2IsText = isText(val2)
-
-    # When we write a NaN we read back a Null value which looks like a '' - Treat these as equal
-    if string.upper(str(val1)) == "NAN" or string.upper(str(val2)) == "NAN":
-        val1 = string.upper(str(val1))
-        val2 = string.upper(str(val2))
-        print "At least one of the value to be compared is NaN: <%s> <%s>" % (val1, val2)
-
-        if (val1 == 'NAN' or val1 == '' or val1 == 'NONE' or val1 == None) and (val2 == 'NAN' or val2 == '' or val2 == 'NONE' or val2 == None):
-            return True
-        else:
-            return False
-        
-    elif val1IsText and val2IsText:
-        if val1 == val2:
-            return True
-        else:
-            return False
-
-    else:
-        # They aren't both text, so if only one is text, then they don't match 
-        if val1IsText or val2IsText:
-            return False
-        else:
-            minThreshold = abs(recipeMinimumRelativeDifference * float(val1))
-            if minThreshold < recipeMinimumDifference:
-                minThreshold = recipeMinimumDifference
-
-            if abs(float(val1) - float(val2)) < minThreshold:
-                return True
-            else:
-                return False
-
-
-# Verify that val2 is the same data type as val1.  Make sure to treat special values such as NaN as a float
-def dataTypeMatch(val1, val2):
-    val1IsFloat = isText(val1)
-    val2IsFloat = isText(val2)
+# Returns the m and b constants from the equation y = mx + b
+def equationOfLine(x1, y1, x2, y2):
     
-    if val1IsFloat != val2IsFloat:
-        return False
+    # Found a horizontal line
+    if (y2 - y1) == 0:
+        return 0.0, y1
     
-    return True
+    # Found a vertical line which isn't handled very well
+    if (x2 - x1) == 0:
+        return 999999.0, 0.0
+    
+    m = (y2 - y1) / (x2 - x1)
+    b = y1 - m * x1
+    
+    return m, b
+
+# Calculate the Y value for a line given an X value and the slope and y-Intercept
+def calculateYFromEquationOfLine(x, m, b):
+    y = x * m + b
+    return y
+
+# Calculate the Y value for a line given an X value and the slope and y-Intercept
+def calculateXFromEquationOfLine(y, m, b):
+    x = (y - b) / m
+    return x
+

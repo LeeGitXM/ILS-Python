@@ -6,67 +6,62 @@ Either a float or text output to OPC.
 Created on Jul 9, 2014
 @author: phassler
 '''
-import ils.io.basicio as basicio
+import ils.io.opctag as opctag
 import string
 import system
 import time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io")
+from java.util import Date
+from ils.io.util import equalityCheck
 
-
-class OPCOutput(basicio.BasicIO):
+class OPCOutput(opctag.OPCTag):
     def __init__(self,path):
-        basicio.BasicIO.__init__(self,path)
+        opctag.OPCTag.__init__(self,path)
         
     # Check some basic things about this OPC tag to determine if a write is likely to succeed!
     def checkConfig(self):
         # Check that the tag exists
-        tagExists, reason = basicio.BasicIO.checkConfig(self)
+        tagExists, reason = opctag.OPCTag.checkConfig(self)
         # TODO: Check if there is an item ID and an OPC server
                                                
         return tagExists, reason
  
-    # Implement a simple write check.  We know the value that we tried to write, read the tag for a
-    # reasonable amount of time.  As soon as we read the value back we are done.  Figuring out the
-    # amount of time to wait is the tricky part.  In a simulated environment, as soon as the scan
-    # class ran we read the value back, so the amount of time to wait was the scan class.  I don't
-    # know if we will be able to do a device read, i.e., send the value all the way down to the
-    # device and read it back.  If we can do that, then the time may be longer. 
-    def checkWrite(self, val):  
+    # Reset the UDT in preparation for a write 
+    def reset(self):
+        status = True
+        msg = ""
+        system.tag.write(self.path + '/command', '')
+        system.tag.write(self.path + '/badValue', False)
+        system.tag.write(self.path + '/writeConfirmed', False)
+        system.tag.write(self.path + '/writeErrorMessage', '')
+        system.tag.write(self.path + '/writeStatus', 'Reset')
+        return status, msg
+ 
+ 
+    # Implement a simple write confirmation.  Use the standard utility routine to perform the check.
+    def confirmWrite(self, val):  
         log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
  
-        for i in range(0,13):
-            qv = system.tag.read(self.path + "/tag")
-            log.trace("%s Quality: comparing %s-%s to %s" % (self.path, str(qv.value), str(qv.quality), str(val)))
-            if string.upper(str(val)) == "NAN":
-                if qv.value == None:
-                    return True, ""
-            else:
-                if qv.value == val and string.upper(str(qv.quality)) == 'GOOD':
-                    return True, ""
-
-            # TODO - This is hard coded!
-            # Time in seconds
-            time.sleep(5)
-
-        log.info("Write of <%s> to %s was not confirmed!" % (str(val), self.path))
-        return False, "Value was not confirmed"    
+        from ils.io.util import confirmWrite
+        confirmation, errorMessage = confirmWrite(self.path + "/value", val)
+        return confirmation, errorMessage
+   
     
-    # Write without confirmation.
+    # Write with confirmation.
     # Assume the UDT structure of an OPC Output
     def writeDatum(self):
         
-        # Get the value to be read - this must be there BEFORE the command is set       
-        val = system.tag.read(self.path + "/writeVal").value
+        # Get the value to be written - this must be there BEFORE the command is set       
+        val = system.tag.read(self.path + "/writeValue").value
         if val == None:
             val = float("NaN")
         
         log.info("Writing <%s> to %s, an OPCOutput" % (str(val), self.path))
 
-        log.trace("Initializing %s status and  to False" % (self.path))                   
         system.tag.write(self.path + "/writeConfirmed", False)
         system.tag.write(self.path + "/writeStatus", "")
-        system.tag.write(self.path + "/WwiteErrorMessage", "")
+        system.tag.write(self.path + "/writeErrorMessage", "")
                                
         status,reason = self.checkConfig()
         if status == False :              
@@ -76,21 +71,66 @@ class OPCOutput(basicio.BasicIO):
             return status,reason
  
         # Update the status to "Writing"
-        system.tag.write(self.path + "/writeStatus", "Writing")
+        system.tag.write(self.path + "/writeStatus", "Writing Value")
  
         # Write the value to the OPC tag
         log.trace("  Writing value <%s> to %s/tag" % (str(val), self.path))
-        status = system.tag.write(self.path + "/tag", val)
+        status = system.tag.write(self.path + "/value", val)
         log.trace("  Write status: %s" % (status))
                                
-        status, msg = self.checkWrite(val)
+        status, msg = self.confirmWrite(val)
  
         if status:
             log.trace("Confirmed: %s - %s - %s" % (self.path, status, msg))
             system.tag.write(self.path + "/writeStatus", "Success")
+            system.tag.write(self.path + "/writeConfirmed", True)
         else:
             log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, msg))
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeMessage", msg)
  
         return status, msg
+    
+    # Write with NO confirmation.
+    # Assume the UDT structure of an OPC Output
+    def writeWithNoCheck(self):
+        
+        # Get the value to be written - this must be there BEFORE the command is set       
+        val = system.tag.read(self.path + "/writeValue").value
+        if val == None:
+            val = float("NaN")
+        
+        log.info("Writing <%s> to %s, an OPCOutput with no confirmation" % (str(val), self.path))
+
+        system.tag.write(self.path + "/writeConfirmed", False)
+        system.tag.write(self.path + "/writeStatus", "")
+        system.tag.write(self.path + "/writeErrorMessage", "")
+                               
+        status,reason = self.checkConfig()
+
+        if status == False :              
+            system.tag.write(self.path + "/writeStatus", "Failure")
+            system.tag.write(self.path + "/writeErrorMessage", reason)
+            log.info("Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
+            return status,reason
+ 
+        # Update the status to "Writing"
+        system.tag.write(self.path + "/writeStatus", "Writing Value")
+ 
+        # Write the value to the OPC tag
+        log.trace("  Writing value <%s> to %s/tag" % (str(val), self.path))
+        status = system.tag.write(self.path + "/value", val)
+        log.trace("  Write status: %s" % (status))
+                               
+        if status == 0:
+            success = False
+            errorMessage = "Write failed immediately"
+            system.tag.write(self.path + "/writeStatus", "Failure")
+        else:
+            success = True
+            errorMessage = ""
+            system.tag.write(self.path + "/writeStatus", "Success")
+            
+        log.trace("Write Status: %s - %s - %s" % (self.path, str(success), errorMessage))
+ 
+        return success, errorMessage

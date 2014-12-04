@@ -188,18 +188,12 @@ def resetRecipeDetails(provider, recipeKey):
     for udtType in ['Recipe Data/Recipe Details']:
         details = system.tag.browseTags(path, udtParentType=udtType)
         for detail in details:
-            tags.append(path + detail.name + "/value")
-            vals.append(-1)
             tags.append(path + detail.name + "/valueTagName")
             vals.append("")
                     
-            tags.append(path + detail.name + "/highLimit")
-            vals.append(-1)
             tags.append(path + detail.name + "/highLimitTagName")
             vals.append("")
                 
-            tags.append(path + detail.name + "/lowLimit")
-            vals.append(-1)
             tags.append(path + detail.name + "/lowLimitTagName")
             vals.append("")
             

@@ -54,3 +54,26 @@ def createTags(tagProvider):
     ds = system.dataset.toDataSet(headers, data)
     from ils.recipeToolkit.tagFactory import createConfigurationTags
     createConfigurationTags(ds)
+    
+    # Now make two additional tags that are used to test how long the system has been RUNNING
+    # First, make the tag that records when the gateway was restarted
+    name = "startTime"
+    fullName = path + name
+    if not(system.tag.exists(fullName)):
+        print "Creating the start time tag" 
+        system.tag.addTag(parentPath = path, name = name, tagType = "MEMORY", dataType = "DateTime")
+    
+    # Unlike the configuration tags where we do not overwrite the value once it has been set, this needs to 
+    # be reset EVERY time we restart
+    import ils.common.util as util
+    now = util.getDate()
+    system.tag.write(fullName, now)
+    
+    # Now make an expression tag that calculates how many seconds the gateway has been running
+    name = "runningSeconds"
+    fullName = path + name
+    if not(system.tag.exists(fullName)):
+        print "Creating the running time tag" 
+        expr = "dateDiff({[.]startTime}, now(0), 'sec')"
+        system.tag.addTag(parentPath=path, name=name, tagType="EXPRESSION", dataType="Int8", attributes={"Expression":expr})
+

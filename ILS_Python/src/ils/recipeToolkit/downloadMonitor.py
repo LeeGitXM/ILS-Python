@@ -136,7 +136,7 @@ def monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, rec
                         log.trace("Comparing local value %s to %s" % (str(pendVal), str(storVal)))
                         ds = system.dataset.setValue(ds, i, "Stor", storVal)
                         ds = system.dataset.setValue(ds, i, "Comp", compVal)
-                        from ils.common.util import equalityCheck
+                        from ils.io.util import equalityCheck
                         if equalityCheck(pendVal, storVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
                             successes = successes + 1
                             status = "Success"
@@ -164,9 +164,9 @@ def monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, rec
                                 errorMessage = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/writeErrorMessage').value
 
                             ds = system.dataset.setValue(ds, i, "Download Status", status)
-                            storVal = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/tag').value
+                            storVal = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/value').value
                             ds = system.dataset.setValue(ds, i, "Stor", storVal)
-                            compVal = system.tag.read(formatTagName(provider, recipeKey, compTagName) + '/tag').value
+                            compVal = system.tag.read(formatTagName(provider, recipeKey, compTagName) + '/value').value
                             ds = system.dataset.setValue(ds, i, "Comp", compVal)
                             log.trace("  %s -> %s - %s" % (storTagName, storVal, writeStatus))
                             logDetail(logId, record["Store Tag"], pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database) 

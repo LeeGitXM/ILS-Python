@@ -24,6 +24,10 @@ def automatedDownloadHandler(tagPath, grade):
     else:
         parentTagPath = tagPath
 
+    if grade == "" or grade == None:
+        log.trace('Exiting automatedDownloadHandler because a NULL grade was detected.')
+        return
+    
     automatedDownload = system.tag.read(parentTagPath + "/automatedDownload").value
     post = system.tag.read(parentTagPath + "/post").value
     project = system.tag.read(parentTagPath + "/project").value
@@ -31,16 +35,22 @@ def automatedDownloadHandler(tagPath, grade):
     recipeKey = system.tag.read(parentTagPath + "/recipeKey").value
     
     grade = str(grade)
-    import ils.recipeToolkit.fetch.fetchHighestVersion as fetchHighestVersion
-    version = fetchHighestVersion(recipeKey, grade, database)
 
+    from ils.recipeToolkit.fetch import  fetchHighestVersion
+    version = fetchHighestVersion(recipeKey, grade, database)
+    if version < 0:
+        log.error("Aborting the automated download because a recipe was not found for Unit: %s, Grade %s"% (str(recipeKey), str(grade)))
+        return
+
+    log.info("******************************")
     log.info("Starting an automated recipe download of %s - %s - %s (Post: %s, Automated: %s)" % (project, recipeKey, grade, post, str(automatedDownload)))
-        
+    log.info("******************************")
+
     if automatedDownload:
         fullyAutomatedDownload(post, project, database, recipeKey, grade, version)
     else:
         # Send a message to open the 
-        print "Send a message"
+        log.trace("Sending a message to every client to post a download GUI")
         system.util.sendMessage(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
 
 
@@ -158,6 +168,9 @@ def download(rootContainer, recipeMap):
     recipeToolkit_common.setBackgroundColor(rootContainer, "screenBackgroundColorDownloading")
     resetTags(table.processedData, provider, recipeKey)
 
+    # Reset the recipe detail objects
+    resetRecipeDetails(provider, recipeKey)
+
     unit = rootContainer.recipeKey
     unitId = recipeToolkit_fetch.fetchUnitId(unit)
     grade = rootContainer.grade
@@ -199,23 +212,43 @@ def resetTags(ds, provider, recipeKey):
         if download and (string.upper(downloadType) == 'IMMEDIATE' or string.upper(downloadType) == 'DEFERRED VALUE'):
             tagName = record["Store Tag"]
                     
-            # Convert to Ignition tagname
+            # Convert to Ignition tag name
             from ils.recipeToolkit.common import formatTagName
             tagName = formatTagName(provider, recipeKey, tagName)
+            log.trace("Resetting %s" % (tagName))
     
             tags.append(tagName + '/command')
             vals.append('')
-            tags.append(tagName + '/writeMessage')
+            tags.append(tagName + '/writeErrorMessage')
             vals.append('')
             tags.append(tagName + '/writeStatus')
             vals.append('')
             tags.append(tagName + '/writeConfirmed')
             vals.append(False)
-    
+            tags.append(tagName + '/badValue')
+            vals.append(False)
+
     # Write them all at once
     print "Resetting: ", tags
     status = system.tag.writeAll(tags, vals)
     return
+
+# Reset the command tag in all of the recipe detail objects.  This really isn't necessary for the detail objects that
+# were newly created, but is necessary for ones that were existing.  
+def resetRecipeDetails(provider, recipeKey):
+    print "Resetting recipe details..."
+            
+    tags = []
+    vals = []
+    path = "[%s]Recipe/%s/" % (provider, recipeKey)
+
+    for udtType in ['Recipe Data/Recipe Details']:
+        details = system.tag.browseTags(path, udtParentType=udtType)
+        for detail in details:           
+            tags.append(path + detail.name + "/command")
+            vals.append("")
+            
+    system.tag.writeAll(tags, vals)
 
 
 # Log any tags that are skipped by the operator
@@ -285,10 +318,14 @@ def writeImmediate(ds, provider, recipeKey, logId, writeEnabled):
             else:
                 # Convert to Ignition tagname            
                 tagName = formatTagName(provider, recipeKey, tagName)
-                tags.append(tagName + '/WriteVal')
+                tags.append(tagName + '/writeValue')
                 vals.append(pendVal)
                 commandTags.append(tagName + '/Command')
                 commandVals.append('WriteDatum')
+                modeAttributeValue = record['Mode Attribute Value']
+                if modeAttributeValue != '':
+                    commandTags.append(tagName + '/PermissiveValue')
+                    commandVals.append(modeAttributeValue)
 
             ds = system.dataset.setValue(ds, i, 'Download Status', 'Pending')
 
@@ -359,18 +396,24 @@ def writeDeferred(ds, provider, recipeKey, logId, writeEnabled):
         if download and (downloadType == 'DEFERRED VALUE' or downloadType == 'DEFERRED LOW LIMIT' or downloadType == 'DEFERRED HIGH LIMIT'):
             pendVal = record["Pend"]
             tagName = record["Store Tag"]
+            log.trace("     %s" % (tagName))
 
             # Convert to Ignition tagname        
             tagName = formatTagName(provider, recipeKey, tagName)
             rootTags.append(str(tagName))
             
             # Write the value to be sent to the DCS
-            tags.append(tagName + '/writeVal')
+            tags.append(tagName + '/writeValue')
             vals.append(pendVal)
             
             # Update status to indicate we are writing
             tags.append(tagName + '/writeStatus')
             vals.append('Pending')
+            
+            modeAttributeValue = record['Mode Attribute Value']
+            if modeAttributeValue != '':
+                tags.append(tagName + '/PermissiveValue')
+                vals.append(modeAttributeValue)
 
             ds = system.dataset.setValue(ds, i, 'Download Status', 'Pending')
 

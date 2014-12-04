@@ -30,8 +30,13 @@ def ids(familyName):
 # Given a unit name (Recipe Key) and a grade, fetch the highest active version.
 def fetchHighestVersion(unitName, grade, database = ""):
     unitId = fetchUnitId(unitName, database)
-    SQL = "select max(Version) from RtGradeMaster where UnitId = %s and grade = %s" % (unitId, grade)
+    print "Fetching the highest ACTIVE version for unit: %s (%s) - grade: %s" % (str(unitName), str(unitId), str(grade))
+    if unitId == None:
+        return -1
+    
+    SQL = "select max(Version) from RtGradeMaster where UnitId = %s and grade = %s and Active = 1" % (unitId, grade)
     version = system.db.runScalarQuery(SQL, database)
+    print "Fetched version: ", version
     return version
 
 

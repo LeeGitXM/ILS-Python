@@ -28,29 +28,19 @@ class Recipe():
     def initialize(self,tagPath):    
         self.path = str(tagPath)
     
-    # Helper method that confirms that a write has completed. 
-    def writeConfirm(self, tagPath, command, val):
-        log.trace("Entering Recipe.confirmWrite(): %s - %s - %s" % (tagPath, command, str(val)))
+    # Pass the WRITEDATUM command along and then wait for a confirmation. 
+    def writeDatum(self, tagPath, val):
+        log.trace("Entering Recipe.writeDatum(): %s - %s" % (tagPath, str(val)))
  
         # Record the current command being executed.
-        system.tag.write(tagPath + '/command', command)
+        system.tag.write(tagPath + '/command', 'WRITEDATUM')
                                
         # wait until the tag is confirmed
         log.trace("Waiting for the write to be confirmed...")
-                               
-        for i in range(0,12):
-            status = system.tag.read(tagPath + "/writeStatus").value
-            log.trace("  confirm status for %s: %s" % (self.path, status))
-                                                                               
-            if status == "Failure":
-                return False,"Read failure on confirm attempt"
-            elif  status == "Success" :
-                return True,"" 
-                            
-            time.sleep(5)
-            i = i+1                    
+        from ils.io.util import waitForWriteConfirm
+        confirmed, errorMessage = waitForWriteConfirm(tagPath)                 
         
-        return False,"Write not confirmed"   
+        return confirmed, errorMessage   
     
     # Basic method does nothing
     def writeRecipeDetail(self,command):

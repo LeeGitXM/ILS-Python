@@ -17,14 +17,18 @@ def refresh(rootContainer):
     downloadType = rootContainer.getPropertyValue("downloadType")
     recipeKey = rootContainer.getPropertyValue("recipeKey")
     rootContainer.status = "Refreshing"
+
+    from ils.recipeToolkit.common import setBackgroundColor
+    setBackgroundColor(rootContainer, "screenBackgroundColorInitializing")
+    
     table = rootContainer.getComponent("Power Table")
     processedData = table.processedData
     processedData = refresher(recipeKey, processedData, downloadType)
-    
+
     table.processedData = processedData
-    
+
     refreshVisibleData(table)
-    
+
     rootContainer.status = "Refreshed"
     from ils.common.util import getDate
     timestamp = getDate()
@@ -35,7 +39,7 @@ def automatedRefresh(recipeKey, processedData, database):
 
     # The downloadType is either GradeChange or MidRun
     downloadType = "GradeChange"
-    
+
     processedData = refresher(recipeKey, processedData, downloadType, database)
     return processedData
 
@@ -44,8 +48,8 @@ def automatedRefresh(recipeKey, processedData, database):
 # be shown and put it in table.data.  (If the user is an engineer then processed data is all data, but 
 # operators only see a subset of the data.
 def refresher(recipeKey, ds, downloadType, database = ""):
-    print "---------------\nRefreshing Recipe Table..."
-    
+    print "---------------\nRefreshing Recipe Table for a %s download..." % (downloadType)
+
     #===============================================
     # This checks if the reason is one of the standard reasons or a custom one entered by the operator.
     # We'd like to NOT overwrite a operator entered reason when pressing refresh.
@@ -54,10 +58,10 @@ def refresher(recipeKey, ds, downloadType, database = ""):
             return False
         return True
     #===============================================
-    
+
     from ils.common.config import getTagProvider
     provider = getTagProvider()
-    
+
     from ils.recipeToolkit.update import recipeMapStatus
     recipeMapStatus(recipeKey, "Refreshing", database)
 
@@ -69,7 +73,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
     print "recipeMinimumRelativeDifference: ", recipeMinimumRelativeDifference
 
     pds = system.dataset.toPyDataSet(ds)
-        
+
     # I'm not sure that we can force a device read in Ignition so put together a list of tags and we'll
     # read them all in one read. 
     # (I'm not sure that we were actually doing a device read anyway)
@@ -99,20 +103,20 @@ def refresher(recipeKey, ds, downloadType, database = ""):
             else:
                 if storTag not in tagNames:
                     tagNames.append(compTag)
-    
+
     # Now convert from MS Access tagnames to Ignition tagnames - First OPC Tags
     print "  ...converting tag names from SQL*Server format to Ignition format..."
     tags = []
     for tagName in tagNames:
         from ils.recipeToolkit.common import formatTagName
         tagName = formatTagName(provider, recipeKey, tagName)
-        tags.append(tagName + '/Tag')
+        tags.append(tagName + '/value')
 
     print "  ...reading tag values..."
 #    print tags
     values = system.tag.readAll(tags)
 #    print values
-    
+
     # Now the local tags
     print "  ...converting *local* tagnames from SQL*Server format to Ignition format..."
     tags = []
@@ -123,7 +127,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
 
     print "  ...reading *local* tag values..."
     localValues = system.tag.readAll(tags)
-    
+
     # We have now read all of the tags, merge the values back into the Python dataset
     print "  ...updating table dataset...."
     i = 0    
@@ -139,7 +143,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
         reason = record['Reason']
         download = False
         planStatus = "readOnly"
-    
+
         storTag = record['Store Tag']
         if writeLocation != "" and writeLocation != None and storTag != "":
             if writeLocation == localG2WriteAlias:
@@ -150,7 +154,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
                 idx = tagNames.index(storTag)
                 storVal = values[idx].value
                 storQuality = str(values[idx].quality)
-                
+
             ds = system.dataset.setValue(ds, i, 'Stor', storVal)
     
         compTag = record['Comp Tag']
@@ -171,41 +175,47 @@ def refresher(recipeKey, ds, downloadType, database = ""):
                 
         print "line %i - step %i :: pend: %s - stor: %s (%s)- comp: %s (%s)" % (i, step, str(pendVal), str(storVal), str(storQuality), str(compVal), str(compQuality))
         
-        # This will override any reason that may have already been entered, which diesn't seem right
-        if writeLocation == "" or writeLocation == None:
+        # This will override any reason that may have already been entered, which doesn't seem right
+        if downloadType == 'MidRun':
             reason = ""
-        elif (pendVal == None or pendVal == "") and (reccVal != "" and reccVal != None):
-            if reason == "":
-                reason = "Enter a reason to skip"
-            planStatus = "skip"
         else:
-            if string.upper(storQuality) == 'NOT FOUND':
-                reason = "Error: Tag does not exist!"
-                planStatus = "Error"
+            if writeLocation == "" or writeLocation == None:
+                reason = ""
+                planStatus = "noChange"
+                download = False
+            elif (pendVal == None or pendVal == "") and (reccVal != "" and reccVal != None):
+                if reason == "":
+                    reason = "Enter a reason to skip"
+                planStatus = "skipped"
             else:
-                from ils.common.util import equalityCheck
-                if equalityCheck(pendVal, storVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
-                    download = False
-                    planStatus = "noChange"
-                    if equalityCheck(pendVal, reccVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
-                        reason = ""    
-                    else:
-                        # If they have entered a reason then don't overwrite it
-                        if not(enteredReason(reason)):
-                            reason = "Enter reason for changing the recommended value"
+                if string.upper(storQuality) == 'NOT FOUND':
+                    reason = "Error: Tag does not exist!"
+                    planStatus = "Error"
                 else:
-                    download = True
-                    planStatus = "mismatch"
-                    if equalityCheck(pendVal, reccVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
-                        reason = "Set to recipe value"
+                    from ils.io.util import equalityCheck
+                    if equalityCheck(pendVal, storVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
+                        download = False
+                        planStatus = "noChange"
+                        if equalityCheck(pendVal, reccVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
+                            reason = ""    
+                        else:
+                            # If they have entered a reason then don't overwrite it
+                            if not(enteredReason(reason)):
+                                reason = "Enter reason for changing the recommended value"
                     else:
-                        # If they have entered a reason then don't overwrite it
-                        if not(enteredReason(reason)):
-                            reason = "Enter reason for changing the recommended value"
+                        download = True
+                        planStatus = "mismatch"
+                        if equalityCheck(pendVal, reccVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
+                            reason = "Set to recipe value"
+                        else:
+                            # If they have entered a reason then don't overwrite it
+                            if not(enteredReason(reason)):
+                                reason = "Enter reason for changing the recommended value"
 
         ds = system.dataset.setValue(ds, i, "Reason", reason)
         ds = system.dataset.setValue(ds, i, "Download", download)
         ds = system.dataset.setValue(ds, i, "Plan Status", planStatus)
+        ds = system.dataset.setValue(ds, i, "Download Status", "")
 #        print "Reason: ", reason
 #        print ""
 

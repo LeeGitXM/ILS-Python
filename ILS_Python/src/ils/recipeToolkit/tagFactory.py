@@ -20,11 +20,10 @@ def createConfigurationTags(ds):
         
         fullName = path + name
                 
-        # Check if the tag exists
+        # Check if the tag exists, only set the default value when we create the tag
         if not(system.tag.exists(fullName)):
             log.info("  ...creating configuration tag %s" % (fullName)) 
-            system.tag.addTag(parentPath = path, name = name, tagType = "DB", dataType = dataType)
-    
+            
             if dataType == "Int8":
                 val = int(val)
             elif dataType == "Float4":
@@ -32,9 +31,9 @@ def createConfigurationTags(ds):
             elif dataType == "Boolean":
                 from ils.common.cast import toBool
                 val = toBool(val)
-
-            system.tag.write(fullName, val)
-
+            
+            system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType, value=val)
+    
 
 # Create a recipe data tag
 def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass, itemId, conditionalDataType):
@@ -43,7 +42,9 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
     #----------------------------------------------------
     # The permissive may actually need a suffix of .MODEATTR /enum
     def morphItemIdPermissive(itemId):
-        permissiveItemId = itemId[:itemId.rfind('.')] + '.MODEATTR'
+        # I have hard coded MODEATTR here even though it is a field in the recipe database, we may need to
+        # get this out of the recipe rather than hard coding it.
+        permissiveItemId = itemId[:itemId.rfind('.')] + '.MODEATTR /enum'
         return permissiveItemId
     #-----------------------------------------------------
     UDTType = 'Basic IO/' + UDTType
