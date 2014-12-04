@@ -170,16 +170,20 @@ def timedDelay(chartProperties, stepProperties):
         sendMessage(project, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
       
 def postDelayNotification(chartProperties, stepProperties):
+    from ils.sfc.common.util import createUniqueId
     project = chartProperties[PROJECT];
     message = getStepProperty(stepProperties, MESSAGE) 
     payload = dict()
     payload[MESSAGE] = message
-    payload[ACK_REQUIRED] = chartProperties[ACK_REQUIRED]
+    print 'step props ', stepProperties
+    payload[CHART_RUN_ID] = getChartRunId(chartProperties)
+    payload[WINDOW_ID] = createUniqueId()
     sendMessage(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
 
 def deleteDelayNotifications(chartProperties, stepProperties):
     project = chartProperties[PROJECT];
     payload = dict()
+    payload[CHART_RUN_ID] = getChartRunId(chartProperties)
     sendMessage(project, DELETE_DELAY_NOTIFICATIONS_HANDLER, payload)
 
 def enableDisable(chartProperties, stepProperties):
