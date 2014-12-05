@@ -108,20 +108,6 @@ class PKSController(controller.Controller):
         confirmation, errorMessage = confirmWrite(self.path + "/" + valType + "/value", val)
         return confirmation, errorMessage
 
-#TODO CLEAN    
-#        for i in range(0,13):
-#            qv = system.tag.read(self.path + "/" + valType + "/value")
-#            log.trace("%s Quality: comparing %s-%s to %s" % (self.path, str(qv.value), str(qv.quality), str(val)))
-#            if qv.value == val and string.upper(str(qv.quality)) == 'GOOD':
-#                return True, ""
-
-            # TODO - This is hard coded!
-            # Time in seconds
-#            time.sleep(5)
-
-#        log.info("Write of <%s> to %s was not confirmed!" % (str(val), self.path))
-#        return False, "Value was not confirmed"   
-
 
     # This method makes sequential writes to ramp either the SP or OP of an Experion controller.  
     # There is no native output ramping capability in EPKS and this method fills the gap.  

@@ -65,8 +65,6 @@ def write(tagPath, command):
             status, reason = tag.writeRamp()
         elif string.upper(command) == "RESET":
             status, reason = tag.reset()
-        elif string.upper(command) == "WRITEOUTPUT":
-            status, reason = tag.writeOutput()
         else:
             reason = "Unrecognized command: "+command
             log.error(reason)
