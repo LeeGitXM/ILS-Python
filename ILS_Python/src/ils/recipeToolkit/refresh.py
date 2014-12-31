@@ -175,6 +175,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
                 
         print "line %i - step %i :: pend: %s - stor: %s (%s)- comp: %s (%s)" % (i, step, str(pendVal), str(storVal), str(storQuality), str(compVal), str(compQuality))
         
+        # Based on everything that we have collected about this tag, determine if we should download it
         # This will override any reason that may have already been entered, which doesn't seem right
         if downloadType == 'MidRun':
             reason = ""
@@ -182,6 +183,10 @@ def refresher(recipeKey, ds, downloadType, database = ""):
             if writeLocation == "" or writeLocation == None:
                 reason = ""
                 planStatus = "noChange"
+                download = False
+            elif (pendVal == None or pendVal == "") and (reccVal == None or reccVal == ""):
+                reason = ""
+                planStatus = "skipped"
                 download = False
             elif (pendVal == None or pendVal == "") and (reccVal != "" and reccVal != None):
                 if reason == "":

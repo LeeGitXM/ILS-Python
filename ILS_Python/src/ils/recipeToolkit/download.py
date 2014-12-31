@@ -306,6 +306,7 @@ def writeImmediate(ds, provider, recipeKey, logId, writeEnabled):
         log.trace("%s - %s - %s - %s" % (str(step), tagName, str(download), downloadType))
         if string.upper(downloadType) == 'IMMEDIATE' and download:
             pendVal = record["Pend"]
+            print step, tagName, pendVal
             if string.upper(pendVal) == "NAN":
                 pendVal = float("NaN")
             tagName = record["Store Tag"]
