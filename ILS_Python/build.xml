@@ -4,7 +4,7 @@
 	<property name="external.jar.dir" value="${repo.dir}/external/lib" />
 	
 	<target name="clean" description="Remove previous python" >
-		<delete includeemptydirs="true">
+		<delete includeemptydirs="true" quiet="true">
 			<fileset dir="${ignition.py.lib}/ils" includes="ils/**"/>
 		</delete>
 	</target>

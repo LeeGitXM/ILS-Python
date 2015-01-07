@@ -93,7 +93,9 @@ TIMEOUT_UNIT = "timeoutUnit"
 TIMESTAMP = "timestamp"
 UPDATE = "update"
 UPDATE_OR_CREATE = "updateOrCreate"
+UNITS = "units"
 USER = 'user'
+VALUE = 'value'
 VIEW_FILE = "viewFile"
 WINDOW = 'window'
 WINDOW_ID = 'windowId'
@@ -101,18 +103,20 @@ WINDOW_PROPERTIES = 'windowProperties'
 
 MESSAGE_ID = 'messageId'
 MESSAGE_QUEUE = 'messageQueue'
-RECIPE_LOCATION = "recipeLocation"
-LOCAL = "local"
-PREVIOUS = "previous"
-SUPERIOR = "superior"
-NAMED = "named"
-PROCEDURE = "procedure"
-PHASE = "phase"
-OPERATION = "operation"    
+RECIPE_LOCATION = "recipeLocation"  
 
 SECOND= "SECOND"
 MINUTE = "MINUTE"
 HOUR = "HOUR"
 TIME_UNIT_TYPE = "TIME"
+
+#Recipe scopes:
+LOCAL_SCOPE = 'Local'
+PREVIOUS_SCOPE = 'Previous'
+SUPERIOR_SCOPE ='Superior'
+PHASE_SCOPE ='Phase'
+OPERATION_SCOPE = 'Operation'
+UNIT_PROCEDURE_SCOPE = 'UnitProcedure'
+NAMED_SCOPE = 'Named'
 
 

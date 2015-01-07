@@ -4,7 +4,7 @@ one-to-one with step calls in the Java class JythonCall
 
 Created on Sep 30, 2014
 
-@author: rforbes
+@author: rforbes`
 '''
 
 s88CreateOverride = True # force create of recipe keys
@@ -52,8 +52,7 @@ def setQueue(chartProperties, stepProperties):
     sets the chart's current message queue
     '''
     queue = getStepProperty(stepProperties, QUEUE)
-    # TODO: what to use for scope here ?:
-    recipeLocation = OPERATION
+    recipeLocation = getDefaultMessageQueueScope()
     s88Set(chartProperties, stepProperties, MESSAGE_QUEUE, queue, recipeLocation, True or s88CreateOverride)
 
 def showQueue(chartProperties, stepProperties):
@@ -83,7 +82,7 @@ def yesNo(chartProperties, stepProperties):
     response is received, put response in chart properties
     '''
     prompt = getStepProperty(stepProperties, PROMPT) 
-    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    recipeLocation = getRecipeScope(stepProperties) 
     key = getStepProperty(stepProperties, KEY) 
     payload = dict()
     payload[PROMPT] = prompt 
@@ -288,13 +287,16 @@ def simpleQuery(chartProperties, stepProperties):
     simpleQueryProcessRows(chartProperties, stepProperties, dbRows)
 
 def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
+    from system.ils.sfc import getRecipeData
+    from ils.sfc.common.constants import ID
     resultsMode = getStepProperty(stepProperties, RESULTS_MODE)
     fetchMode = getStepProperty(stepProperties, FETCH_MODE) 
     createFlag = fetchMode == UPDATE_OR_CREATE
-    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    recipeLocation = getRecipeScope(stepProperties) 
     keyMode = getStepProperty(stepProperties, KEY_MODE) 
     key = getStepProperty(stepProperties, KEY) 
-    recipeData = getPropertiesByLocation(chartProperties, stepProperties, recipeLocation, createFlag)
+    stepId = getStepId(stepProperties)
+    recipeData = getRecipeData(recipeLocation, stepId, None, createFlag)
     if keyMode == STATIC: # fetchMode must be SINGLE
         if dbRows.rowCount > 1:
             getLogger().warn('More than one row returned for single query')
@@ -311,10 +313,11 @@ def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
      
 def saveData(chartProperties, stepProperties):
     import time
-    
+    from system.ils.sfc import getRecipeData
     # extract property values
     project = chartProperties[PROJECT];
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
     directory = getStepProperty(stepProperties, DIRECTORY) 
     fileName = getStepProperty(stepProperties, FILENAME) 
     extension = getStepProperty(stepProperties, EXTENSION) 
@@ -335,14 +338,15 @@ def saveData(chartProperties, stepProperties):
         timestamp = ""
     
     # get the data at the given location
-    data = getPropertiesByLocation(chartProperties, stepProperties, recipeLocation, False)
+    stepId = getStepId(stepProperties)
+    recipeData = getRecipeData(recipeLocation, stepId, key)
     if chartProperties == None:
         getLogger.error("data for location " + recipeLocation + " not found")
     
     # write the file
     filepath = directory + '/' + fileName + timestamp + extension
     fp = open(filepath, 'w')
-    writeObj(data, 0, fp)
+    writeObj(recipeData, 0, fp)
     fp.close()
     
     # send message to client for view/print
@@ -351,7 +355,7 @@ def saveData(chartProperties, stepProperties):
         #payloadData = dict()
         #for key in data:
         #    payloadData[key] = data[key]
-        payload[DATA] = prettyPrintDict(data)
+        payload[DATA] = prettyPrintDict(recipeData)
         payload[FILEPATH] = filepath
         payload[PRINT_FILE] = printFile
         payload[VIEW_FILE] = viewFile

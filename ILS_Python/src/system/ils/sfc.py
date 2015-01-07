@@ -26,3 +26,9 @@ def getSfcProjectName():
 
 def getSfcProjectDatabase():
     pass
+
+def getRecipeData(scopeString, stepId, path):
+    pass
+
+def setRecipeData(scopeString, stepId, path, value, create):
+    pass

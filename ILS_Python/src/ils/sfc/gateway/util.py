@@ -57,39 +57,11 @@ def getLocalScope(chartProperties, stepProperties):
         localScope = dict()
         chartProperties[BY_NAME][stepName] = localScope
     return localScope
+        
+def getStepId(stepProperties):
+    # need to translate the UUID to a string:
+    return str(getStepProperty(stepProperties, ID))
 
-def getPropertiesByLocation(chartProperties, stepProperties, location, create=False):
-    '''
-    Get the property dictionary of the element at the given location.
-    Return None if not found.
-    '''
-    if location == SUPERIOR:
-        return chartProperties[CHART_PARENT]        
-    elif location == PROCEDURE or location == PHASE or location == OPERATION or location == GLOBAL:
-        return getPropertiesByLevel(chartProperties, location)
-    elif location == LOCAL:
-        return getLocalScope(chartProperties, stepProperties)
-    elif location == NAMED:
-        return chartProperties[BY_NAME]
-    elif location == PREVIOUS:
-        return chartProperties[BY_NAME].get(PREVIOUS, None)
-    else:
-        handleUnexpectedError(chartProperties, "unknown property location type " +  location)
-        
-def getPropertiesByLevel(chartProperties, location):
-    ''' Use of PROCEDURE, PHASE, and OPERATION depends on the charts at
-        those levels setting the LOCATION property 
-    '''
-    thisLocation = chartProperties.get(LOCATION, None)
-    if location == thisLocation:
-        return chartProperties
-    else:
-        parentProperties = chartProperties[CHART_PARENT] 
-        if parentProperties != None:
-            return getPropertiesByLevel(parentProperties, location)
-        else:
-            return None
-        
 def getStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
     for prop in stepProperties.getProperties():
@@ -205,7 +177,7 @@ def writeObj(obj, level, file):
 
 def prettyPrintDict(dict):
     '''
-    print a dictionary into a nice, readable indented form
+    print a java dictionary into a nice, readable indented form
     returns a string containing the pretty-printed representation
     '''
     import StringIO
@@ -220,9 +192,10 @@ def printSpace(level, out):
         out.write('   '),
         
 def printObj(obj, level, out):
-    if hasattr(obj, 'keys'):
+    import java.util.HashMap
+    if isinstance(obj, java.util.HashMap) :
         out.write('\n') # newline
-        for key in obj:
+        for key in obj.keySet():
             printSpace(level, out)
             out.write(key)
             printObj(obj[key], level + 1, out)
@@ -235,11 +208,17 @@ def printObj(obj, level, out):
 def getChartState(uuid):
     from system.ils.sfc import getChartState
     return getChartState(uuid)
-    
+
+def getDefaultMessageQueueScope():
+    return OPERATION_SCOPE
+
 def getCurrentMessageQueue(chartProperties, stepProperties):
-    from ils.sfc.common.constants import MESSAGE_ID, OPERATION
-    return s88Get(chartProperties, stepProperties, MESSAGE_ID, OPERATION)
+    return s88Get(chartProperties, stepProperties, MESSAGE_ID, getDefaultMessageQueueScope())
 
 def sendChartStatus(projectName, payload):
     from ils.sfc.common.util import sendMessage
     sendMessage(projectName, UPDATE_CHART_STATUS_HANDLER, payload)
+    
+def getRecipeScope(stepProperties):
+    return getStepProperty(stepProperties,RECIPE_LOCATION)
+ 
