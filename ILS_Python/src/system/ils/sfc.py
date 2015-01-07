@@ -32,3 +32,6 @@ def getRecipeData(scopeString, stepId, path):
 
 def setRecipeData(scopeString, stepId, path, value, create):
     pass
+
+def getWorkingRecipeData():
+    pass

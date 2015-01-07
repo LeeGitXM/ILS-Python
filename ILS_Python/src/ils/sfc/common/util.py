@@ -5,8 +5,7 @@ Created on Nov 3, 2014
 '''
 import system
 
-from ils.sfc.common.constants import CHART_PARENT, INSTANCE_ID, DATABASE
-UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
+from ils.sfc.common.constants import CHART_PARENT, INSTANCE_ID, DATABASE, RECIPE_DATA
 
 def readFile(filepath):
     '''
@@ -46,18 +45,6 @@ def getLogger():
     import logging
     return logging.getLogger('ilssfc')
 
-def handleUnexpectedError(chartProps, msg):
-    '''
-    Report an unexpected error so that it is visible to the operator--
-    e.g. put in a message queue
-    '''
-    from ils.sfc.common.constants import PROJECT, MESSAGE
-    project = chartProps[PROJECT]
-    getLogger().error(msg)
-    payload = dict()
-    payload[MESSAGE] = msg
-    sendMessage(project, UNEXPECTED_ERROR_HANDLER, payload)
-
 def boolToBit(bool):
     if bool:
         return 1
@@ -87,6 +74,10 @@ def getDatabaseFromSystem():
             system.gui.warningBox("several database connections are available; one will be chosen randomly")        
         db = connections.getValueAt(0, 'name')
         return db
+    
+# this should really be in client.util
+def handleUnexpectedClientError(message):
+    system.gui.errorBox(message, 'Unexpected Error')
 
 def createUniqueId():
     '''

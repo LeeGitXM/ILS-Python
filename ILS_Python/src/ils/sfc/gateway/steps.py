@@ -10,6 +10,8 @@ Created on Sep 30, 2014
 s88CreateOverride = True # force create of recipe keys
 
 #from com.ils.sfc.common import IlsSfcNames
+from ils.sfc.gateway.api import s88Set, s88Get
+from ils.common.units import Unit
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
 from ils.sfc.common.util import sendMessage
@@ -33,7 +35,7 @@ def invokeStep(chartProperties, stepProperties, methodName):
     except Exception, e:
         msg = "Unexpected error: " + type(e).__name__ + " " + str(e)
         print msg
-        handleUnexpectedError(chartProperties, msg)
+        handleUnexpectedGatewayError(chartProperties, msg)
          
 def queueInsert(chartProperties, stepProperties):
     '''
@@ -152,9 +154,9 @@ def timedDelay(chartProperties, stepProperties):
         delay = s88Get(chartProperties, stepProperties, key, recipeLocation)
     elif timeDelayStrategy == CALLBACK:
         pass # TODO: implement script callback--value can be dynamic
-        handleUnexpectedError(chartProperties, "Callback strategy not implemented: ")
+        handleUnexpectedGatewayError(chartProperties, "Callback strategy not implemented: ")
     else:
-        handleUnexpectedError(chartProperties, "unknown delay strategy: " + timeDelayStrategy)
+        handleUnexpectedGatewayError(chartProperties, "unknown delay strategy: " + timeDelayStrategy)
     delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
     if postNotification:
         payload = dict()
@@ -287,16 +289,14 @@ def simpleQuery(chartProperties, stepProperties):
     simpleQueryProcessRows(chartProperties, stepProperties, dbRows)
 
 def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
-    from system.ils.sfc import getRecipeData
-    from ils.sfc.common.constants import ID
+    # TODO: use results mode
     resultsMode = getStepProperty(stepProperties, RESULTS_MODE)
     fetchMode = getStepProperty(stepProperties, FETCH_MODE) 
     createFlag = fetchMode == UPDATE_OR_CREATE
     recipeLocation = getRecipeScope(stepProperties) 
     keyMode = getStepProperty(stepProperties, KEY_MODE) 
     key = getStepProperty(stepProperties, KEY) 
-    stepId = getStepId(stepProperties)
-    recipeData = getRecipeData(recipeLocation, stepId, None, createFlag)
+    recipeData = s88Get(chartProperties, stepProperties, key, recipeLocation, createFlag)
     if keyMode == STATIC: # fetchMode must be SINGLE
         if dbRows.rowCount > 1:
             getLogger().warn('More than one row returned for single query')
@@ -313,7 +313,6 @@ def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
      
 def saveData(chartProperties, stepProperties):
     import time
-    from system.ils.sfc import getRecipeData
     # extract property values
     project = chartProperties[PROJECT];
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
@@ -338,8 +337,7 @@ def saveData(chartProperties, stepProperties):
         timestamp = ""
     
     # get the data at the given location
-    stepId = getStepId(stepProperties)
-    recipeData = getRecipeData(recipeLocation, stepId, key)
+    recipeData = s88Get(chartProperties, stepProperties, key, recipeLocation)
     if chartProperties == None:
         getLogger.error("data for location " + recipeLocation + " not found")
     

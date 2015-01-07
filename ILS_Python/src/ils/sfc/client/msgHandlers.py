@@ -155,8 +155,9 @@ def sfcYesNo(payload):
     sendResponse(payload, replyPayload)
 
 def sfcUnexpectedError(payload):
+    from ils.sfc.common.util import handleUnexpectedClientError
     message = payload[MESSAGE]
-    system.gui.errorBox(message, 'Unexpected Error')
+    handleUnexpectedClientError(message)
 
 def sfcUpdateControlPanel(payload):
     from ils.sfc.client.controlPanel import updateControlPanels 

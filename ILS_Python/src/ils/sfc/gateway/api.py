@@ -7,21 +7,23 @@ Created on Oct 30, 2014
 '''
 
 from ils.common.units import Unit
-from ils.sfc.common.util import handleUnexpectedError
+from ils.sfc.gateway.util import handleUnexpectedGatewayError
 
 UNIT = '.unit'
 
 def s88Get(chartProperties, stepProperties, ckey, location, create = False):
-    return s88GetWithUnits(chartProperties, stepProperties, ckey, location, create)
+    return s88GetWithUnits(chartProperties, stepProperties, ckey, location, None, create)
 
 def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitNameOrNone, create = False):
-    from ils.sfc.common.constants import DATABASE
+    from ils.sfc.common.constants import DATABASE, RECIPE_DATA
     from ils.sfc.gateway.util import getStepId
     from system.ils.sfc import getRecipeData
 
+    from ils.sfc.gateway.util import getWorkingRecipeData
+    
     stepId = getStepId(stepProperties);
-    # this value is a java Map
-    value = getRecipeData(location, stepId, ckey) 
+    workingRecipeData = getWorkingRecipeData(chartProperties)
+    value = getRecipeData(workingRecipeData, location, stepId, ckey) 
     existingUnitName = None
     # TODO: fix the unit access
     # Do unit conversion if necessary:
@@ -34,9 +36,9 @@ def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitName
                 if existingUnit != None and newUnit != None:
                     value = existingUnit.convertTo(newUnit, value)
                 else:
-                    handleUnexpectedError("No unit found for %s and/or %s", existingUnitName, newUnitNameOrNone)                   
+                    handleUnexpectedGatewayError(chartProperties, "No unit found for %s and/or %s" % (existingUnitName, newUnitNameOrNone))                   
         else:
-            handleUnexpectedError("No unit found for property %s when new unit %s was requested", ckey, newUnitNameOrNone)
+            handleUnexpectedGatewayError(chartProperties, "No unit found for property %s when new unit %s was requested" % (ckey, newUnitNameOrNone))
     return value
 
 def s88Set(chartProperties, stepProperties, ckey, value, location, createIfAbsent = False):
@@ -50,9 +52,11 @@ def s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, unit
     '''
     from ils.sfc.gateway.util import getStepId
     from system.ils.sfc import setRecipeData
-     
+    from ils.sfc.gateway.util import getWorkingRecipeData
+    
     stepId = getStepId(stepProperties);
-    setRecipeData(location, stepId, ckey, value, createIfAbsent) 
+    workingRecipeData = getWorkingRecipeData(chartProperties)
+    setRecipeData(workingRecipeData, location, stepId, ckey, value, createIfAbsent) 
         
 def pauseChart(chartProperties):
     from system.sfc import pauseChart

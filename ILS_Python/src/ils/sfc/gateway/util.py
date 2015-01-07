@@ -5,12 +5,8 @@ Created on Sep 30, 2014
 
 @author: rforbes
 '''
-import system.util
 from system.ils.sfc import getResponse
 from ils.sfc.common.constants import *
-from ils.sfc.gateway.api import * 
-#from com.ils.sfc.common import IlsSfcNames 
-#from com.ils.sfc.util import IlsResponseManager
 from ils.sfc.common.util import getChartRunId
 from ils.sfc.common.util import getDatabase
 
@@ -43,20 +39,6 @@ def getWithPath(properties, key):
     '''
     Get a value using a potentially compound key
     '''
-
-def getLocalScope(chartProperties, stepProperties):
-    '''
-    Get the local scope dictionary, creating it if necessary. 
-    As this is dependent on a key convention, ALL accesses to 
-    local scope should go through this method in case the 
-    convention changes...
-    '''
-    stepName = getStepProperty(stepProperties, NAME)
-    localScope = chartProperties[BY_NAME].get(stepName, None)
-    if localScope == None:
-        localScope = dict()
-        chartProperties[BY_NAME][stepName] = localScope
-    return localScope
         
 def getStepId(stepProperties):
     # need to translate the UUID to a string:
@@ -95,7 +77,7 @@ def waitOnResponse(requestId, chartScope):
         # return None
         response = getResponse(requestId)
     if response == None:
-        handleUnexpectedError(chartScope, "timed out waiting for response for requestId" + requestId)
+        handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
     return response
     
 def sendUpdateControlPanelMsg(chartProperties):
@@ -106,6 +88,7 @@ def sendUpdateControlPanelMsg(chartProperties):
 def substituteScopeReferences(chartProperties, stepProperties, sql):
     ''' Substitute for scope variable references, e.g. 'local:selected-emp.val'
     '''
+    from ils.sfc.gateway.api import s88Get
     # really wish Python had a do-while loop...
     while True:
         ref = findBracketedScopeReference(sql)
@@ -137,7 +120,34 @@ def findBracketedScopeReference(string):
         return string[lbIndex : rbIndex+1]
     else:
         return None
+
+# Get the chart's own working copy of all the recipe data, creating it 
+# if it doesn't exist
+def getWorkingRecipeData(chartProperties):
+    from ils.sfc.common.util import getTopLevelProperties 
+    from system.ils.sfc import getWorkingRecipeData
+    topChartProperties = getTopLevelProperties(chartProperties)
+    if not (RECIPE_DATA in topChartProperties):
+        data = getWorkingRecipeData()
+        topChartProperties[RECIPE_DATA] = data
+    data = topChartProperties[RECIPE_DATA]
+    return data
     
+def handleUnexpectedGatewayError(chartProps, msg):
+    from ils.sfc.common.util import getLogger
+    from ils.sfc.common.util import sendMessage
+    UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
+    '''
+    Report an unexpected error so that it is visible to the operator--
+    e.g. put in a message queue
+    '''
+    from ils.sfc.common.constants import PROJECT, MESSAGE
+    project = chartProps[PROJECT]
+    getLogger().error(msg)
+    payload = dict()
+    payload[MESSAGE] = msg
+    sendMessage(project, UNEXPECTED_ERROR_HANDLER, payload)
+
 def parseBracketedScopeReference(bracketedRef):
     '''
     Break a bracked reference into location and key--e.g. {local:selected-emp.val} gets
@@ -213,6 +223,7 @@ def getDefaultMessageQueueScope():
     return OPERATION_SCOPE
 
 def getCurrentMessageQueue(chartProperties, stepProperties):
+    from ils.sfc.gateway.api import s88Get 
     return s88Get(chartProperties, stepProperties, MESSAGE_ID, getDefaultMessageQueueScope())
 
 def sendChartStatus(projectName, payload):

@@ -73,6 +73,7 @@ PROMPT = "prompt"
 QUEUE = "queue"
 RECIPE = "recipe"
 RECIPE_LOCATION = "recipeLocation" 
+RECIPE_DATA = "recipeData"
 RESPONSE = 'response'
 RESULTS_MODE = "resultsMode" 
 RUNNING = "Running"
