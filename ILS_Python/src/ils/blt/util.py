@@ -21,12 +21,11 @@ log = LogUtil.getLogger("com.ils.block")
 #  value - the new value, a truth-value
 #  quality - the quality of the new value
 def acceptValue(block,port,value,quality):
-    print 'ils.blt.util.acceptValue(block) ...'
+    #print 'ils.blt.util.acceptValue(block) ...'
     
     if block!=None:
-        print "util: ",block.__class__," received ",value,",",quality," on ",port
+        print "util: ",block.__class__,"received",value,",",quality,"on",port
         block.acceptValue(value,quality,port)
-    
 #  ============== Externally callable ======
 # Create an instance of a particular class.
 # The arglist contains:
@@ -75,7 +74,7 @@ def getBlockProperties(block,properties):
 # executable blocks appear in this package -- and that
 # the class has the same name as its file.
 def getNewBlockInstances():
-    log.info('getNewBlockInstances ...' )
+    log.debug('getNewBlockInstances ...' )
     instances = []
     # dir only lists modules that have actually been imported
     print dir(xom.block)
@@ -93,7 +92,7 @@ def getNewBlockInstances():
 # Return a new instance of the specified class of block.
 # A fully-qualified class must be specified. Use the null constructor.
 def getNewBlockInstance(className):
-    log.infof('getNewBlockInstance: %s',className)
+    log.debugf('getNewBlockInstance: %s',className)
     constructor = className+"()"
     obj = eval(constructor)
     return obj
@@ -103,7 +102,7 @@ def getNewBlockInstance(className):
 # then create a dictionary of prototype attributes from each. 
 # Communicate results in 'prototypes', a list known to the gateway. 
 def getBlockPrototypes(prototypes):
-    log.info("getBlockPrototypes")
+    log.debug("getBlockPrototypes")
     instances = getNewBlockInstances()
     for obj in instances:
         print 'getBlockPrototype:',obj.__class__
@@ -116,10 +115,8 @@ def getBlockPrototypes(prototypes):
 # as specified in the Gateway startup script.
 # 
 def setBlockProperty(block,prop):
-    print 'util.setBlockProperty(block) ...'
-
+    log.debug('util.setBlockProperty(block) ...')
     if block!=None:
-        print block.__class__
-        block.setProperties(property.get("name"),prop)
+        block.setProperty(prop.get("name","??"),prop)
     
 
