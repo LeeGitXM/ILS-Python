@@ -18,6 +18,12 @@ def errorBox(txt):
 def findWindow(windowName):
     pass
 
+def getOpenedWindows():
+    return 
+
+def getOpenedWindowNames():
+    return 
+
 def getWindow(name):
     pass
 

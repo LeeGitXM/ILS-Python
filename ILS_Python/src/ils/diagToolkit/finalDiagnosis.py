@@ -8,59 +8,133 @@ import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.diagToolkit.finalDiagnosis")
 
+
+def notifyClients(project, console):
+    print "Notifying %s clients" % (console)
+    system.util.sendMessage(project=project, messageHandler="consoleManager", payload={'type':'setpointSpreadsheet', 'console':console}, scope="C")
+
+# The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 
+# change in a FD / Recommendation.  The idea is that the gateway will send a message to all clients.  The payload of the 
+# message includes the console name.  If the client is responsible for the console and the setpoint spreadsheet is not 
+# already displayed, then display it.  There are a number of stratagies that could be used to determine if a client is 
+# responsible for / interested in a certain console.  The first one I will try is to check to see if the console window
+# is open.  (This depends on a reliable policy for keeping the console displayed)
+def handleNotification(payload):
+    print "Handling a notification", payload
+    
+    console=payload.get('console', '')
+    windows = system.gui.getOpenedWindows()
+    
+    # First check if the setpoint spreadsheet is already open.  This does not check which console's
+    # spreadsheet is open, it assumes a client can only be interested in one console.
+    for window in windows:
+        windowPath=window.getPath()
+        pos = windowPath.find('Setpoint Spreadsheet')
+        if pos >= 0:
+            print "The spreadsheet is already open!"
+            rootContainer=window.rootContainer
+            rootContainer.refresh=True
+            return
+    
+    # Now check if this client is interested in the console     
+    for window in windows:
+        windowPath=window.getPath()
+        pos = windowPath.find(console)
+        if pos >= 0:
+            print "Found an interested window - post the setpoint spreadsheet"
+            system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'console': console})
+            system.nav.centerWindow('DiagToolkit/Setpoint Spreadsheet')
+            return
+
 # Insert a record into the diagnosis queue
 def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
-    print "Post a diagnosis entry"
+    print "Post a diagnosis entry, using database: ", database
 
     # TODO - need to look this up somehow
     grade = 28
+    
     # Lookup the application Id
-    from ils.diagToolkit.common import fetchFinalDiagnosisId
-    finalDiagnosisId = fetchFinalDiagnosisId(application, family, finalDiagnosis, database)
+    from ils.diagToolkit.common import fetchFinalDiagnosis
+    record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
+    finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
         log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
         return
     
     print "Fetched Final Diagnosis ID: ", finalDiagnosisId
-    textRecommendation = "What is going on here?"
+    
+    textRecommendation = record.get('TextRecommendation', 'Unknown Text')
     
     # Insert an entry into the diagnosis queue
-    SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, RecommendationStatus, UUID, DiagramUUID) "\
-        "values (%i, 'Active', getdate(), '%s', '%s', 'NONE-MADE', '%s', '%s')" \
+    SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
+        "RecommendationStatus, UUID, DiagramUUID, ManualMove, ManualMoveValue, RecommendationMultiplier) "\
+        "values (%i, 'Active', getdate(), '%s', '%s', 'NONE-MADE', '%s', '%s', 0, 0.0, 1.0)" \
         % (finalDiagnosisId, grade, textRecommendation, UUID, diagramUUID)
 
     print SQL
     system.db.runUpdateQuery(SQL, database)
+    print "Inserted the diagnosis entry..."
 
+    print "Starting to manage..."
+    manage(application, database)
+    print "...back from manage!"
+    
+    #TODO Need to look these up somehow
+    project="XOM"
+    console="VFU"
+    print "Starting to notify..."
+    notifyClients(project, console)
+    print "...back from Notify!"
+    
 # Clear the final diagnosis (make the status = 'InActive') 
 def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
     print "Clearing..."
 
-    from ils.diagToolkit.common import fetchFinalDiagnosisId
-    finalDiagnosisId = fetchFinalDiagnosisId(application, family, finalDiagnosis, database)
+    from ils.diagToolkit.common import fetchFinalDiagnosis
+    record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
+    finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
-        return
+        log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
+        return    
 
     # Insert an entry into the diagnosis queue
     SQL = "update DtDiagnosisEntry set Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
     print SQL
 
     system.db.runUpdateQuery(SQL, database)
+    
+    print "Starting to manage as a result of a cleared Final Diagnosis..."
+    manage(application, database)
+    print "...back from manage!"
+    
+    #TODO Need to look these up somehow
+    project="XOM"
+    console="VFU"
+    print "Starting to notify..."
+    notifyClients(project, console)
+    print "...back from Notify!"
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
 def manage(application, database=""):
     log.trace("Managing diagnosis for application: %s" % (application))
 
     # -------------------------------------------------------
-    # Merge the list of output dictionaries for a final diagnosis with the list for all final diagnosis
+    # Merge the list of output dictionaries for a final diagnosis into the list of all outputs
     def mergeOutputs(quantOutputs, fdQuantOutputs):
-        print "**** TODO finalDiagnosis.mergeOutputs() *****"
-        quantOutputs = fdQuantOutputs
-        print "The merged outputs are: ", quantOutputs
+        print "Merging ", fdQuantOutputs, "\n\ninto\n\n", quantOutputs
+        for fdQuantOutput in fdQuantOutputs:
+            fdId = fdQuantOutput.get('QuantOutputId', -1)
+            found = False
+            for quantOutput in quantOutputs:
+                qoId = quantOutput.get('QuantOutputId', -1)
+                if fdId == qoId:
+                    # It already exists so don't overwrite it
+                    found = True
+            if not(found):
+                quantOutputs.append(fdQuantOutput)
         return quantOutputs
     # -------------------------------------------------------
-    # There are two lists.  The first is a list of all quant outputs and the send is the list of all recommendations.
+    # There are two lists.  The first is a list of all quant outputs and the second is the list of all recommendations.
     # Merge the lists into one so the recommendations are with the appropriate output
     def mergeRecommendations(quantOutputs, recommendations):
 #        print "Merging Outputs: ", quantOutputs
@@ -84,37 +158,55 @@ def manage(application, database=""):
     # -------------------------------------------------------  
     
     from ils.diagToolkit.common import clearQuantOutputRecommendations
-    clearQuantOutputRecommendations(application)
+    clearQuantOutputRecommendations(application, database)
+    
+    from ils.diagToolkit.common import deleteRecommendations      
+    deleteRecommendations(application, database)
           
     from ils.diagToolkit.common import fetchActiveDiagnosis
-    pds = fetchActiveDiagnosis(application)
+    pds = fetchActiveDiagnosis(application, database)
+    from ils.common.database import toDict
+    records=toDict(pds)
     
     # If there are no active diagnosis then there is nothing to manage
-    if len(pds) == 0:
+    if len(records) == 0:
         print "Exiting the diagnosis manager because there are no active diagnosis!"
         # TODO we may need to clear something!
         return
     
+    print "In manage(), using database:  ", database
+    
+    # Sort out the families with the highest family priorities - this works because the records are fetched in 
+    # descending order.
     list1 = []
     highestPriority = pds[0]['FamilyPriority']
-    for record in pds:
+    for record in records:
         if record['FamilyPriority'] == highestPriority:
             print record['Family'], record['FamilyPriority'], record['FinalDiagnosis'], record['FinalDiagnosisPriority']
             list1.append(record)
+    print "The families with the highest priorities are: ", list1
 
     # Sort out diagnosis where there are multiple diagnosis for the same family
-    family = ''
+    print "\nSorting diagnosis with highest diagnosis priorities..."
+    lastFamily = ''
+    highestPriority = -1
     list2 = []
     for record in list1:
-        if record['Family'] != family:
-            family = record['Family']
-            finalDiagnosisPriority = record['FinalDiagnosisPriority']
+        print record
+        family = record['Family']
+        finalDiagnosisPriority = record['FinalDiagnosisPriority']
+        if family != lastFamily:
+            lastFamily = family
+            highestPriority = finalDiagnosisPriority
             list2.append(record)
-        elif finalDiagnosisPriority == record['FinalDiagnosisPriority']:
+        elif finalDiagnosisPriority >= highestPriority:
             list2.append(record)
+        else:
+            print "Filtering out: ", record
     
     # Calculate the recommendations for each final diagnosis
-    print "The final diagnosis that must be acted upon has been determined, now calculating preliminary recommendations..."
+    print "The families / final diagnosis with the highest priorities are: ", list2
+    print "\nMaking recommendations..."
     
     quantOutputs = []   # A list of quantOutput dictionaries
     for record in list2:
@@ -125,12 +217,13 @@ def manage(application, database=""):
         
         # Fetch all of the quant outputs for the final diagnosis
         from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
-        pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis)
+        pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis, database)
         quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
         
         from ils.diagToolkit.recommendation import makeRecommendation
-        textRecommendation, recommendations = makeRecommendation(record['Application'], record['Family'], record['FinalDiagnosis'], 
-                                                                 record['FinalDiagnosisId'], record['DiagnosisEntryId'])
+        textRecommendation, recommendations = makeRecommendation(
+                record['Application'], record['Family'], record['FinalDiagnosis'], 
+                record['FinalDiagnosisId'], record['DiagnosisEntryId'], database)
         quantOutputs = mergeRecommendations(quantOutputs, recommendations)
 
     print "Recommendations have been made, now calculating the final recommendations"

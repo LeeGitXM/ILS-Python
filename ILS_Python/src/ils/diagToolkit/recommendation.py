@@ -69,7 +69,7 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, va
     SQL = "insert into DtRecommendation (RecommendationDefinitionId,DiagnosisEntryId,Recommendation,AutoRecommendation,AutoOrManual) "\
         "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
     print SQL
-    recommendationId = system.db.runUpdateQuery(SQL,getKey=True)
+    recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
     return recommendationId
 
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made.
@@ -89,6 +89,7 @@ def calculateFinalRecommendation(quantOutput):
             recommendationValue = recommendation.get('ManualRecommendation', 0.0)
     
         feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
+        print "  Feedback Method: ", feedbackMethod
         if feedbackMethod == 'MOST POSITIVE':
             if i == 0: 
                 finalRecommendation = recommendationValue 

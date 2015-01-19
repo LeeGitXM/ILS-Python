@@ -8,7 +8,8 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
-# This gets called at the beginning of each recommendation management cycle.  It clears all of the dynamic attributes of a Quant Output
+# This gets called at the beginning of each recommendation management cycle.  It clears all of the dynamic attributes of 
+# a Quant Output.  
 def clearQuantOutputRecommendations(application, database=""):
     SQL = "update DtQuantOutput set FeedbackOutput = 0.0, OutputLimitedStatus = '', OutputLimited = 0, "\
         " OutputPercent = 0.0, FeedbackOutputManual = 0.0, FeedbackOutputConditioned = 0.0, "\
@@ -23,6 +24,22 @@ def clearQuantOutputRecommendations(application, database=""):
     system.db.runUpdateQuery(SQL, database)
     return
 
+# Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
+# and is the first step in evaluating the active FDs and calculating new recommendations.
+def deleteRecommendations(application, database):
+    log.trace("Deleting recommendations for %s" % (application))
+    SQL = "delete from DtRecommendation " \
+        " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
+        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+        " and A.Application = '%s')" % (application)
+    log.trace(SQL)
+    system.db.runUpdateQuery(SQL, database)
+    return
+    
+
 # Lookup the application Id given the name
 def fetchApplicationId(application, database=""):
     SQL = "select ApplicationId from DtApplication where Application = '%s'" % (application)
@@ -31,8 +48,9 @@ def fetchApplicationId(application, database=""):
     return applicationId
 
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
-def fetchFinalDiagnosisId(application, family, finalDiagnosis, database=""):
-    SQL = "select finalDiagnosisId "\
+def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
+    SQL = "select FD.FinalDiagnosisId, FD.FinalDiagnosis, FD.FamilyId, FD.FinalDiagnosisPriority, FD.CalculationMethod, "\
+        " FD.PostTextRecommendation, FD.TextRecommendationCallback, FD.RefreshRate, FD.TextRecommendation "\
         " from DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
         " where A.ApplicationId = F.ApplicationId "\
         " and FD.FamilyId = F.FamilyId "\
@@ -40,12 +58,20 @@ def fetchFinalDiagnosisId(application, family, finalDiagnosis, database=""):
         " and F.family = '%s'" \
         " and FD.FinalDiagnosis = '%s'" % (application, family, finalDiagnosis)
     log.trace(SQL)
-    finalDiagnosisId = system.db.runScalarQuery(SQL, database)
-    return finalDiagnosisId
+    pds = system.db.runQuery(SQL, database)
+    from ils.common.database import toDict
+    records=toDict(pds)
+    if len(records) == 0:
+        record={}
+    else:
+        record = records[0]
+    return record
 
 # Fetch all of the active final diagnosis for an application
 def fetchActiveDiagnosis(application, database=""):
-    SQL = "select A.Application, F.Family, FD.FinalDiagnosis, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, DE.DiagnosisEntryId, F.FamilyPriority "\
+    SQL = "select A.Application, F.Family, FD.FinalDiagnosis, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
+        " DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
+        " DE.RecommendationErrorText "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
@@ -53,7 +79,7 @@ def fetchActiveDiagnosis(application, database=""):
         " and DE.Status = 'Active' " \
         " and not (FD.CalculationMethod != 'Constant' and (DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.Application = '%s'"\
-        " order by FamilyPriority, FinalDiagnosisPriority"  % (application) 
+        " order by FamilyPriority DESC, FinalDiagnosisPriority DESC"  % (application) 
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -100,8 +126,19 @@ def fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis, database=
         outputList.append(output)
     return pds, outputList
 
+
+# Fetch the SQC blocks that led to a Final Diagnosis becoming true.
+# We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
+# or 2) At the time we want to know the SQC blocks, we could query the diagram.
+def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis, database=""):
+    #TODO Need to implement this
+    print "**** NEED TO IMPLEMENT fetchSQCRootCauseForFinalDiagnosis() ****"
+    sqcRootCause=[]
+    return sqcRootCause
+
+
 def fetchActiveOutputsForConsole(console, database=""):
-    SQL = "select A.Application, QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
+    SQL = "select distinct A.Application, QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride "\
         " from DtConsole C, DtConsoleSubscription CS, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
         " where C.ConsoleId = CS.ConsoleId "\
@@ -111,7 +148,20 @@ def fetchActiveOutputsForConsole(console, database=""):
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
         " and C.Console = '%s' "\
+        " and QO.Active = 1"\
         " order by A.Application, QO.QuantOutput"  % (console)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+# Fetch applications for a console
+def fetchApplicationsForConsole(console, database=""):
+    SQL = "select distinct A.Application "\
+        " from DtConsole C, DtConsoleSubscription CS, DtApplication A "\
+        " where C.ConsoleId = CS.ConsoleId "\
+        " and CS.ApplicationId = A.ApplicationId "\
+        " and C.Console = '%s' "\
+        " order by A.Application"  % (console)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
