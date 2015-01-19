@@ -14,7 +14,7 @@ from ils.sfc.gateway.api import s88Set, s88Get
 from ils.common.units import Unit
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
-from ils.sfc.common.util import sendMessage
+from ils.sfc.common.util import sendMessageToClient
 from ils.sfc.common.util import getLogger
 
 from ils.queue.message import insert
@@ -62,11 +62,12 @@ def showQueue(chartProperties, stepProperties):
     action for java ShowQueueStep
     send a message to the client to show the current message queue
     '''
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
     payload = dict()
     payload[QUEUE] = currentMsgQueue 
-    project = chartProperties[PROJECT];
-    sendMessage(project, SHOW_QUEUE_HANDLER, payload)
+    sendMessageToClient(project, SHOW_QUEUE_HANDLER, payload)
 
 def clearQueue(chartProperties, stepProperties):
     '''
@@ -83,13 +84,14 @@ def yesNo(chartProperties, stepProperties):
     Get a yes/no response from the user; block until a
     response is received, put response in chart properties
     '''
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     prompt = getStepProperty(stepProperties, PROMPT) 
     recipeLocation = getRecipeScope(stepProperties) 
     key = getStepProperty(stepProperties, KEY) 
     payload = dict()
     payload[PROMPT] = prompt 
-    project = chartProperties[PROJECT];
-    messageId = sendMessage(project, YES_NO_HANDLER, payload)
+    messageId = sendMessageToClient(project, YES_NO_HANDLER, payload)
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
     s88Set(chartProperties, stepProperties, key, value, recipeLocation, False or s88CreateOverride)
@@ -140,6 +142,8 @@ def controlPanelMessage(chartProperties, stepProperties):
             
 def timedDelay(chartProperties, stepProperties):
     from ils.sfc.common.util import createUniqueId
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     database = chartProperties[DATABASE]
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
@@ -164,39 +168,42 @@ def timedDelay(chartProperties, stepProperties):
         payload[MESSAGE] = str(delay) + ' ' + delayUnit + " remaining."
         payload[ACK_REQUIRED] = False
         payload[WINDOW_ID] = createUniqueId()
-        project = chartProperties[PROJECT];
-        sendMessage(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
+        sendMessageToClient(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
     sleep(delaySeconds)
     if postNotification:
-        sendMessage(project, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
+        sendMessageToClient(project, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
       
 def postDelayNotification(chartProperties, stepProperties):
     from ils.sfc.common.util import createUniqueId
-    project = chartProperties[PROJECT];
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     message = getStepProperty(stepProperties, MESSAGE) 
     payload = dict()
     payload[MESSAGE] = message
     print 'step props ', stepProperties
     payload[CHART_RUN_ID] = getChartRunId(chartProperties)
     payload[WINDOW_ID] = createUniqueId()
-    sendMessage(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
+    sendMessageToClient(project, POST_DELAY_NOTIFICATION_HANDLER, payload)
 
 def deleteDelayNotifications(chartProperties, stepProperties):
-    project = chartProperties[PROJECT];
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     payload = dict()
     payload[CHART_RUN_ID] = getChartRunId(chartProperties)
-    sendMessage(project, DELETE_DELAY_NOTIFICATIONS_HANDLER, payload)
+    sendMessageToClient(project, DELETE_DELAY_NOTIFICATIONS_HANDLER, payload)
 
 def enableDisable(chartProperties, stepProperties):
-    project = chartProperties[PROJECT];
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[INSTANCE_ID] = chartProperties[INSTANCE_ID]
-    sendMessage(project, ENABLE_DISABLE_HANDLER, payload)
+    sendMessageToClient(project, ENABLE_DISABLE_HANDLER, payload)
 
 def selectInput(chartProperties, stepProperties):
     # extract properties
-    project = chartProperties[PROJECT];
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     prompt = getStepProperty(stepProperties, PROMPT) 
     choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
     choicesKey = getStepProperty(stepProperties, CHOICES_KEY) 
@@ -210,14 +217,15 @@ def selectInput(chartProperties, stepProperties):
     payload[PROMPT] = prompt
     payload[CHOICES] = choices
     
-    messageId = sendMessage(project, SELECT_INPUT_HANDLER, payload) 
+    messageId = sendMessageToClient(project, SELECT_INPUT_HANDLER, payload) 
     
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
     s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
 
 def getLimitedInput(chartProperties, stepProperties):
-    project = chartProperties[PROJECT];
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     prompt = getStepProperty(stepProperties, PROMPT) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
@@ -230,7 +238,7 @@ def getLimitedInput(chartProperties, stepProperties):
     payload[MAXIMUM_VALUE] = maximumValue
     responseIsValid = False
     while not responseIsValid:
-        messageId = sendMessage(project, LIMITED_INPUT_HANDLER, payload)   
+        messageId = sendMessageToClient(project, LIMITED_INPUT_HANDLER, payload)   
         responseMsg = waitOnResponse(messageId, chartProperties)
         responseValue = responseMsg[RESPONSE]
         try:
@@ -243,10 +251,11 @@ def getLimitedInput(chartProperties, stepProperties):
 
 def dialogMessage(chartProperties, stepProperties):
     from ils.sfc.common.util import getChartRunId
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties,payload)
-    project = chartProperties[PROJECT];
-    sendMessage(project, DIALOG_MSG_HANDLER, payload)
+    sendMessageToClient(project, DIALOG_MSG_HANDLER, payload)
 
 def collectData(chartProperties, stepProperties):
     tagPath = getStepProperty(stepProperties, TAG_PATH)
@@ -256,7 +265,9 @@ def collectData(chartProperties, stepProperties):
     s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
     
 def getInput(chartProperties, stepProperties):
-    project = chartProperties[PROJECT];
+    from ils.sfc.common.util import getProject
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     prompt = getStepProperty(stepProperties, PROMPT) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
@@ -264,7 +275,7 @@ def getInput(chartProperties, stepProperties):
     payload = dict()
     payload[PROMPT] = prompt
     
-    messageId = sendMessage(project, INPUT_HANDLER, payload)
+    messageId = sendMessageToClient(project, INPUT_HANDLER, payload)
     
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
@@ -314,7 +325,8 @@ def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
 def saveData(chartProperties, stepProperties):
     import time
     # extract property values
-    project = chartProperties[PROJECT];
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     directory = getStepProperty(stepProperties, DIRECTORY) 
@@ -357,41 +369,59 @@ def saveData(chartProperties, stepProperties):
         payload[FILEPATH] = filepath
         payload[PRINT_FILE] = printFile
         payload[VIEW_FILE] = viewFile
-        sendMessage(project, SAVE_DATA_HANDLER, payload)
+        sendMessageToClient(project, SAVE_DATA_HANDLER, payload)
         
 def printFile(chartProperties, stepProperties):  
     from ils.sfc.common.util import readFile
-    # extract property values
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
+   # extract property values
     computer = getStepProperty(stepProperties, COMPUTER) 
     payload = dict()
     if computer == SERVER:
         fileName = getStepProperty(stepProperties, FILENAME) 
         payload[MESSAGE] = readFile(fileName)
     transferStepPropertiesToMessage(stepProperties, payload)
-    project = chartProperties[PROJECT];
-    sendMessage(project, PRINT_FILE_HANDLER, payload)
+    sendMessageToClient(project, PRINT_FILE_HANDLER, payload)
 
 def printWindow(chartProperties, stepProperties):   
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    project = chartProperties[PROJECT];
-    sendMessage(project, PRINT_WINDOW_HANDLER, payload)
+    sendMessageToClient(project, PRINT_WINDOW_HANDLER, payload)
     
 def closeWindow(chartProperties, stepProperties):   
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[INSTANCE_ID] = getChartRunId(chartProperties)
-    project = chartProperties[PROJECT];
-    sendMessage(project, CLOSE_WINDOW_HANDLER, payload)
+    sendMessageToClient(project, CLOSE_WINDOW_HANDLER, payload)
 
 def showWindow(chartProperties, stepProperties):   
     from ils.sfc.common.util import getChartRunId
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
     payload = dict()
     payload[INSTANCE_ID] = getChartRunId(chartProperties)
     transferStepPropertiesToMessage(stepProperties, payload)
-    project = chartProperties[PROJECT];
     security = payload[SECURITY]
     #TODO: implement security
 
-    sendMessage(project, SHOW_WINDOW_HANDLER, payload) 
+    sendMessageToClient(project, SHOW_WINDOW_HANDLER, payload) 
+
+def reviewData(chartProperties, stepProperties):    
+    from system.ils.sfc import getReviewDataConfig
+    from ils.sfc.common.util import getProject
+    project = getProject(chartProperties)
+    stepId = getStepId(stepProperties)
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties, payload)
+    payload[CONFIG] = getReviewDataConfig(stepId)
+    messageId = sendMessageToClient(project, REVIEW_DATA_HANDLER, payload) 
+    
+    response = waitOnResponse(messageId, chartProperties)
+    value = response[RESPONSE]
+    # TODO: response logic
 

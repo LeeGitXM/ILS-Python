@@ -51,7 +51,7 @@ def automatedDownloadHandler(tagPath, grade):
     else:
         # Send a message to open the 
         log.trace("Sending a message to every client to post a download GUI")
-        system.util.sendMessage(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
+        system.util.sendMessageToClient(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
 
 
 # Start a fully automatic lights out automatic download

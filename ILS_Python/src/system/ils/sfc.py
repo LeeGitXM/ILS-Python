@@ -35,3 +35,9 @@ def setRecipeData(scopeString, stepId, path, value, create):
 
 def getWorkingRecipeData():
     pass
+
+def getReviewDataConfig(stepId):
+    pass
+
+def activateStep(className, chartProperties, stepProperties):
+    pass

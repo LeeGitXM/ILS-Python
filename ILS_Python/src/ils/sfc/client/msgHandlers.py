@@ -5,12 +5,19 @@ import system.gui
 from system.print import createPrintJob
 
 from ils.sfc.common.constants import MESSAGE, PROMPT, INPUT, SERVER, RESPONSE, DATA, FILEPATH, WINDOW
-from ils.sfc.common.constants import COMPUTER, INSTANCE_ID, FILENAME, PRINT_FILE, VIEW_FILE, LABEL
+from ils.sfc.common.constants import COMPUTER, INSTANCE_ID, FILENAME, PRINT_FILE, VIEW_FILE, LABEL, MESSAGE_ID
 import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
 from ils.sfc.client.controlPanel import ControlPanel
 from ils.sfc.common.util import getChartRunId
 
+# if this is non-null, return the value in lieu of opening a window
+testResponse = None
+
+def sfcTestReturnResponse(payload):
+    print 'setting test response: ' + payload[RESPONSE]
+    testResponse = payload[RESPONSE]
+    
 def sfcCloseWindow(payload):
     from ils.sfc.client.controlPanel import getController
     windowPath = payload[WINDOW] 
@@ -19,11 +26,22 @@ def sfcCloseWindow(payload):
     if controlPanel != None:
         controlPanel.removeWindows(windowPath)
 
+def sendTestResponse(payload):
+    payload = dict()
+    payload[RESPONSE] = testResponse
+    sendResponse(payload[MESSAGE_ID], payload)
+    testResponse = None
+ 
 def sfcDialogMessage(payload):
     from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, DIALOG, METHOD, MESSAGE, MESSAGE_ID, ACK_REQUIRED, POSITION, SCALE
     from ils.sfc.client.util import openWindow
     from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.util import createUniqueId
+    
+    if testResponse != None:
+        sendTestResponse()
+        return
+        
    #Todo: is special dialog needed?
     chartRunId = payload[CHART_RUN_ID]
     dialog = payload[DIALOG]
@@ -44,7 +62,7 @@ def sfcDialogMessage(payload):
     #TODO: what should label be? unique?
     label = "Notification"
     if controlPanel != None:
-       controlPanel.addWindow(label, dialog, window)
+        controlPanel.addWindow(label, dialog, window)
     else:
         print 'couldnt find control panel for run ', chartRunId
 
@@ -56,14 +74,20 @@ def sfcEnableDisable(payload):
     controlPanel.setCommandMask(payload[ENABLE_PAUSE], payload[ENABLE_RESUME], payload[ENABLE_CANCEL])
 
 def sfcInput(payload):
-    prompt = payload[PROMPT]
-    response = system.gui.inputBox(prompt, INPUT)
-    sendResponse(payload, response)
+    if testResponse != None:
+        sendTestResponse()
+        return
+        
+    response = system.gui.inputBox(payload[PROMPT], INPUT)
+    sendResponse(payload[MESSAGE_ID], response)
 
 def sfcLimitedInput(payload):
-    prompt = payload[PROMPT]
-    response = system.gui.inputBox(prompt, INPUT)
-    sendResponse(payload, response)
+    if testResponse != None:
+        sendTestResponse()
+        return
+        
+    response = system.gui.inputBox(payload[PROMPT], INPUT)
+    sendResponse(payload[MESSAGE_ID], response)
 
 def sfcPrintFile(payload):
     computer = payload[COMPUTER]
@@ -87,7 +111,7 @@ def sfcPrintWindow(payload):
     showPrintDialog = payload['showPrintDialog']
     windows = system.gui.findWindow(windowName)
     for window in windows:
-        printJob = None # system.print.createPrintJob(window)
+        printJob = system.print.createPrintJob(window)
         printJob.showPrintDialog = showPrintDialog
         printJob.print()
         
@@ -115,7 +139,7 @@ def sfcShowWindow(payload):
     from ils.sfc.client.util import openWindow
     from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.util import createUniqueId
-    from ils.sfc.common.constants import POSITION, SCALE, WINDOW, INSTANCE_ID
+    from ils.sfc.common.constants import POSITION, SCALE
     windowPath = payload[WINDOW]
     label = payload[LABEL]
     position = payload[POSITION]
@@ -146,13 +170,17 @@ def sfcDeleteDelayNotification(payload):
     removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
         
 def sfcYesNo(payload):
+    if testResponse != None:
+        sendTestResponse()
+        return
+        
     prompt = payload[PROMPT]
     response = system.gui.confirm(prompt, 'Input', False)
     
     # Send the response message:
     replyPayload = dict()
     replyPayload[RESPONSE] = response
-    sendResponse(payload, replyPayload)
+    sendResponse(payload[MESSAGE_ID], replyPayload)
 
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError
@@ -166,3 +194,24 @@ def sfcUpdateControlPanel(payload):
 def sfcUpdateChartStatus(payload):
     from ils.sfc.client.controlPanel import updateChartStatus 
     updateChartStatus(payload)
+    
+def sfcReviewData(payload):
+    if testResponse != None:
+        sendTestResponse()
+        return
+        
+    from ils.sfc.common.constants import POSITION, SCALE, SCREEN_HEADER, MESSAGE_ID, CONFIG
+    from ils.sfc.client.util import openWindow
+    windowProperties = dict()
+    windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
+    window = openWindow('ReviewData', payload[POSITION], payload[SCALE], windowProperties)
+    window.title = payload[SCREEN_HEADER]
+    
+    headers = ['Data', 'Value', 'Units']
+    dataTable = window.getRootContainer().getComponent('dataTable')
+    dataset = system.dataset.toDataSet(headers, payload[CONFIG])
+    dataTable.data = dataset
+
+
+        
+
