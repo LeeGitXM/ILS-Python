@@ -11,13 +11,6 @@ from ils.sfc.client.util import sendResponse
 from ils.sfc.client.controlPanel import ControlPanel
 from ils.sfc.common.util import getChartRunId
 
-# if this is non-null, return the value in lieu of opening a window
-testResponse = None
-
-def sfcTestReturnResponse(payload):
-    print 'setting test response: ' + payload[RESPONSE]
-    testResponse = payload[RESPONSE]
-    
 def sfcCloseWindow(payload):
     from ils.sfc.client.controlPanel import getController
     windowPath = payload[WINDOW] 
@@ -27,10 +20,14 @@ def sfcCloseWindow(payload):
         controlPanel.removeWindows(windowPath)
 
 def sendTestResponse(payload):
-    payload = dict()
-    payload[RESPONSE] = testResponse
-    sendResponse(payload[MESSAGE_ID], payload)
-    testResponse = None
+    '''For testing only, short-circuit dialogs etc and send a response back to the gateway'''
+    from ils.sfc.common.constants import TEST_RESPONSE, MESSAGE_ID
+    testResponse = payload.get(TEST_RESPONSE, None)
+    if testResponse == None:
+        return False
+    print('returning test response ' + testResponse)
+    sendResponse(payload[MESSAGE_ID], testResponse)
+    return True
  
 def sfcDialogMessage(payload):
     from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, DIALOG, METHOD, MESSAGE, MESSAGE_ID, ACK_REQUIRED, POSITION, SCALE
@@ -38,8 +35,7 @@ def sfcDialogMessage(payload):
     from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.util import createUniqueId
     
-    if testResponse != None:
-        sendTestResponse()
+    if sendTestResponse(payload):
         return
         
    #Todo: is special dialog needed?
@@ -74,16 +70,14 @@ def sfcEnableDisable(payload):
     controlPanel.setCommandMask(payload[ENABLE_PAUSE], payload[ENABLE_RESUME], payload[ENABLE_CANCEL])
 
 def sfcInput(payload):
-    if testResponse != None:
-        sendTestResponse()
+    if sendTestResponse(payload):
         return
         
     response = system.gui.inputBox(payload[PROMPT], INPUT)
     sendResponse(payload[MESSAGE_ID], response)
 
 def sfcLimitedInput(payload):
-    if testResponse != None:
-        sendTestResponse()
+    if sendTestResponse(payload):
         return
         
     response = system.gui.inputBox(payload[PROMPT], INPUT)
@@ -170,8 +164,7 @@ def sfcDeleteDelayNotification(payload):
     removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
         
 def sfcYesNo(payload):
-    if testResponse != None:
-        sendTestResponse()
+    if sendTestResponse(payload):
         return
         
     prompt = payload[PROMPT]
@@ -196,8 +189,7 @@ def sfcUpdateChartStatus(payload):
     updateChartStatus(payload)
     
 def sfcReviewData(payload):
-    if testResponse != None:
-        sendTestResponse()
+    if sendTestResponse(payload):
         return
         
     from ils.sfc.common.constants import POSITION, SCALE, SCREEN_HEADER, MESSAGE_ID, CONFIG

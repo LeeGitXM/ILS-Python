@@ -32,10 +32,14 @@ def getRunningCharts(chartProperties):
     from system.ils.sfc import getRunningCharts
     return getRunningCharts()
 
-def sendMessageToClient(project, handler, payload):
+def sendMessageToClient(chartProperties, handler, payload):
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID
+    from ils.sfc.common.constants import MESSAGE_ID, TEST_RESPONSE
+    project = getProject(chartProperties)
+    testResponse = getTestResponse(chartProperties)
+    if testResponse != None:
+        payload[TEST_RESPONSE] = testResponse
     messageId = createUniqueId()
     payload[MESSAGE_ID] = messageId
     system.util.sendMessage(project, handler, payload, "C")
@@ -64,6 +68,10 @@ def getDatabase(chartProperties):
 
 def getProject(chartProperties):
     return str(getTopLevelProperties(chartProperties)[PROJECT])
+
+def getTestResponse(chartProperties):
+    from ils.sfc.common.constants import TEST_RESPONSE
+    return getTopLevelProperties(chartProperties).get(TEST_RESPONSE, None)
 
 def getDatabaseFromSystem():
     '''Get the project database'''

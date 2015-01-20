@@ -86,8 +86,7 @@ def waitOnResponse(requestId, chartScope):
     
 def sendUpdateControlPanelMsg(chartProperties):
     from ils.sfc.common.util import sendMessageToClient
-    project = chartProperties[PROJECT];
-    sendMessageToClient(project, CP_UPDATE_HANDLER, dict())
+    sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
     
 def substituteScopeReferences(chartProperties, stepProperties, sql):
     ''' Substitute for scope variable references, e.g. 'local:selected-emp.val'
@@ -145,12 +144,10 @@ def handleUnexpectedGatewayError(chartProps, msg):
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
     '''
-    from ils.sfc.common.constants import PROJECT, MESSAGE
-    project = chartProps.get(PROJECT, "??")
     getLogger().error(msg)
     payload = dict()
     payload[MESSAGE] = msg
-    sendMessageToClient(project, UNEXPECTED_ERROR_HANDLER, payload)
+    sendMessageToClient(chartProps, UNEXPECTED_ERROR_HANDLER, payload)
 
 def parseBracketedScopeReference(bracketedRef):
     '''
@@ -230,9 +227,9 @@ def getCurrentMessageQueue(chartProperties, stepProperties):
     from ils.sfc.gateway.api import s88Get 
     return s88Get(chartProperties, stepProperties, MESSAGE_ID, getDefaultMessageQueueScope())
 
-def sendChartStatus(projectName, payload):
-    from ils.sfc.common.util import sendMessageToClient
-    sendMessageToClient(projectName, UPDATE_CHART_STATUS_HANDLER, payload)
+#def sendChartStatus(projectName, payload):
+#    from ils.sfc.common.util import sendMessageToClient
+#    sendMessageToClient(chartProperties, UPDATE_CHART_STATUS_HANDLER, payload)
     
 def getRecipeScope(stepProperties):
     return getStepProperty(stepProperties,RECIPE_LOCATION)

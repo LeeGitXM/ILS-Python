@@ -105,6 +105,7 @@ STOPPED = 'Stopped'
 STRATEGY = "strategy"
 TAG_PATH = "tagPath"
 STRATEGY = "strategy"
+TEST_RESPONSE = 'testResponse'
 TIMEOUT = "timeout"
 TIMEOUT_UNIT = "timeoutUnit"
 TIMESTAMP = "timestamp"
