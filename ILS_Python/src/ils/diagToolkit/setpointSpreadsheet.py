@@ -5,7 +5,7 @@ Created on Sep 9, 2014
 '''
 
 import system, string
-#
+
 def initialize(rootContainer):
     print "In ils.diagToolkit.setpointSpreadsheet.initialize()..."
 
@@ -16,10 +16,10 @@ def initialize(rootContainer):
     pds = fetchActiveOutputsForConsole(console)
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
-    header=['type','row','selected','command','commandValue','application','output','tag','setpoint','recommendation','finalSetpoint','status','downloadStatus']
+    header=['type','row','selected','id','command','commandValue','application','output','tag','setpoint','recommendation','finalSetpoint','status','downloadStatus']
     rows=[]
     # The data types for the column is set from the first row, so I need to put floats where I want floats, even though they don't show up for the header
-    row = ['header',0,0,'Action',0,'','Outputs','',1.2,1.2,1.2,'','']
+    row = ['header',0,0,0,'Action',0,'','Outputs','',1.2,1.2,1.2,'','']
     rows.append(row)
     
     application = ""
@@ -29,15 +29,30 @@ def initialize(rootContainer):
         # If the record that we are processing is for a different application, or if this is the first row, then insert an application divider row
         if record['Application'] != application:
             application = record['Application']
-            row = ['app',i,0,'Active',0,application,'','',0,0,0,'','']
+            row = ['app',i,0,0,'Active',0,application,'','',0,0,0,'','']
             print "App row: ", row
             rows.append(row)
             i = i + 1
 
-        print "Tag:", record['TagPath']
-        qv=system.tag.read(record['TagPath'])
-        print qv.value, qv.quality
-        row = ['row',i,0,'Active',0,application,record['QuantOutput'],record['TagPath'],qv.value,record['FeedbackOutput'],0,'','']
+        outputLimited = record['OutputLimited']
+        outputLimitedStatus = record['OutputLimitedStatus']
+        if outputLimitedStatus == 'Positive Incremental Bound':
+            statusMessage='<HTML>CLAMPED<br>(+ Incr)'
+        elif outputLimitedStatus == 'Negative Incremental Bound':
+            statusMessage='<HTML>CLAMPED<br>(- Incr)'
+        elif outputLimitedStatus == 'Positive Absolute Bound':
+            statusMessage='<HTML>CLAMPED<br>(High)'
+        elif outputLimitedStatus == 'Negative Absolute Bound':
+            statusMessage='<HTML>CLAMPED<br>(Low)'
+        elif outputLimitedStatus == 'Vector':
+            statusMessage='<HTML>CLAMPED<br>(Vector)'
+        else:
+            statusMessage=''
+        
+        # Regardless of whether the quant output is incremental or absolute, the recommendation displayed on the setpoint spreadsheet is 
+        # ALWAYS incremental.  In fact, the feedbackOutput that is stored in the QuantOutput table is always incremental.
+
+        row = ['row',i,0,record['QuantOutputId'],'Active',0,application,record['QuantOutput'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
         print "Output Row: ", row
         rows.append(row)
         i = i + 1
@@ -45,6 +60,7 @@ def initialize(rootContainer):
     print rows
     ds = system.dataset.toDataSet(header, rows)
     repeater.templateParams=ds
+    repeater.selectedRow = -1
 
 def writeFileCallback(rootContainer):
     print "In writeFileCallback()..."
@@ -109,11 +125,73 @@ def writeFile(rootContainer, filepath):
                 system.file.writeFile(filepath, txt + "\n", True)
 
                 if outputLimited and feedbackOutput != 0.0:
-                    txt = "          change to %s adjusted to %f because %s" % (quantOutput, feedbackOutputConditioned, outputLimitedStatus)
+                    txt = "          change to %s returnadjusted to %f because %s" % (quantOutput, feedbackOutputConditioned, outputLimitedStatus)
 
     print "Done!"
 
 def detailsCallback(rootContainer):
+    repeater=rootContainer.getComponent("Template Repeater")
+    
+    # Check if there is a selected row (could be an app or a quant output
+    selectedRow=repeater.selectedRow
+    if selectedRow < 0:
+        system.gui.warningBox("Please select a row first")
+        return
+    
+    # Get the quant output for the row
+    ds = repeater.templateParams
+    quantOutputId=ds.getValueAt(selectedRow, 'id')
+    
+    system.nav.openWindow('DiagToolkit/Recommendation Map', {'quantOutputId' : quantOutputId})
+    system.nav.centerWindow('DiagToolkit/Recommendation Map')
+
+# This is called when the operator selects a cell in the "Status" column
+def statusCallback(event):
+    label=event.source
+    container=label.parent
+    template=container.parent
+    row=template.row
+
+    window=system.gui.getParentWindow(event)
+    rootContainer=window.rootContainer
+    
+    repeater=rootContainer.getComponent("Template Repeater")
+    
+    # Get the quant output for the row
+    ds = repeater.templateParams
+    quantOutputId=ds.getValueAt(row, 'id')
+
+    # Fetch everything about the quant output from the database
+    from ils.diagToolkit.common import fetchQuantOutput
+    pds = fetchQuantOutput(quantOutputId)
+    if len(pds) == 0:
+        system.gui.warningBox("The Quant Output was not found")
+        return
+    
+    if len(pds) > 1:
+        system.gui.warningBox("Multiple quant outputs were found where only one was expected!")
+        return
+
+    # Format the information
+#    QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
+#        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
+#        " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId "\
+#QO.MaximumNegativeIncrement, QO.MaximumPositiveIncrement, QO.MinimumIncrement, QO.Setpoint.HighLimit, QO.SetpointLowLimit
+    record=pds[0]
+    quantOutput = record['QuantOutput']   
+    outputLimited=record['OutputLimited']
+    mostNegativeIncrement=record['MostNegativeIncrement']
+    mostPositiveIncrement=record['MostPositiveIncrement']
+    minimumIncrement=record['MinimumIncrement']
+    setpointHighLimit=record['SetpointHighLimit']
+    setpointLowLimit=record['SetpointLowLimit']
+    if outputLimited:
+        txt = "It is limited!"
+    else:
+        txt = "The output (%s) is not limited!\n\nThe Output limit details are:\n  Max Positive Change: %f\n"\
+            "  Max Negative Change: %f\n  Min Change: %f\n  Max Setpoint: %f\n  Min Setpoint: %f" \
+            % (quantOutput, mostPositiveIncrement, mostNegativeIncrement, minimumIncrement, setpointHighLimit, setpointLowLimit)
+    
     title = "Output Details"
-    txt = "Foo and bar"
+
     system.gui.messageBox(txt, title)

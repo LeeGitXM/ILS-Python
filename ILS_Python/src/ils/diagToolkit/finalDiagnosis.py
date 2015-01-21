@@ -231,6 +231,7 @@ def manage(application, database=""):
     for quantOutput in quantOutputs:
         from ils.diagToolkit.recommendation import calculateFinalRecommendation
         quantOutput = calculateFinalRecommendation(quantOutput)
+        quantOutput = checkBounds(quantOutput)
         finalQuantOutputs.append(quantOutput)
 
     # Store the results in the database
@@ -240,24 +241,85 @@ def manage(application, database=""):
         
     print "Finished"
 
+# Check that recommendation against the bounds configured for the output
+def checkBounds(quantOutput):
+    from ils.common.cast import toBool
+    
+    print "\n\nChecking Bounds: ", quantOutput
+    feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
+    mostNegativeIncrement = quantOutput.get('MostNegativeIncrement', -1000.0)
+    mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
+
+    # Compare the incremental recommendation to the **incremental** limits
+    if feedbackOutput >= mostNegativeIncrement and feedbackOutput <= mostPositiveIncrement:
+        quantOutput['OutputLimited'] = False
+        quantOutput['OutputLimitedStatus'] = 'Not Bound'
+        feedbackOutputConditioned=feedbackOutput
+    elif feedbackOutput > mostPositiveIncrement:
+        quantOutput['OutputLimited'] = True
+        quantOutput['OutputLimitedStatus'] = 'Positive Incremental Bound'
+        feedbackOutputConditioned=mostPositiveIncrement
+    else:
+        quantOutput['OutputLimited'] = True
+        quantOutput['OutputLimitedStatus'] = 'Negative Incremental Bound'
+        feedbackOutputConditioned=mostNegativeIncrement
+
+    # Compare the final setpoint to the **absolute** limits
+    setpointHighLimit = quantOutput.get('SetpointHighLimit', -1000.0)
+    setpointLowLimit = quantOutput.get('SetpointLowLimit', 1000.0)
+
+    # TODO Need to update the descriptions 
+    # TODO Do I need to convert these to incremental - if so, then move the conversion from below up here
+    
+    if feedbackOutputConditioned > setpointHighLimit:
+        quantOutput['OutputLimited'] = True
+        quantOutput['OutputLimitedStatus'] = 'Positive Absolute Bound'
+        feedbackOutputConditioned=setpointHighLimit
+    elif feedbackOutputConditioned < setpointLowLimit:
+        quantOutput['OutputLimited'] = True
+        quantOutput['OutputLimitedStatus'] = 'Negative Absolute Bound'
+        feedbackOutputConditioned=setpointLowLimit    
+
+    quantOutput['FeedbackOutputConditioned'] = feedbackOutputConditioned
+      
+    return quantOutput
+        
 # Store the updated quantOutput in the database so that it will show up in the setpoint spreadsheet
 def updateQuantOutput(quantOutput, database=''):
     from ils.common.cast import toBool
     
     print "\n\nUpdating QuantOutput: ", quantOutput
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
+    feedbackOutputConditioned = quantOutput.get('FeedbackOutputConditioned', 0.0)
     quantOutputId = quantOutput.get('QuantOutputId', 0)
     outputLimitedStatus = quantOutput.get('OutputLimitedStatus', '')
     outputLimited = quantOutput.get('OutputLimited', False)
     outputLimited = toBool(outputLimited)
     outputPercent = quantOutput.get('OutputPercent', 0.0)
     
+    # Read the current setpoint
+    tagpath = quantOutput.get('TagPath','unknown')
+    print "Tag:",tagpath
+    qv=system.tag.read(tagpath)
+    print qv.value, qv.quality
+    currentSetpoint=qv.value
+
+    # The recommendation may be absolute or incremental, but we always display incremental    
+    incrementalOutput=quantOutput.get('IncrementalOutput')
+    if incrementalOutput:
+        finalSetpoint=currentSetpoint+feedbackOutputConditioned
+        displayedRecommendation=feedbackOutputConditioned
+    else:
+        finalSetpoint=feedbackOutputConditioned
+        displayedRecommendation=finalSetpoint-currentSetpoint
+
     # Active is hard-coded to True here because these are the final active quantOutputs
     SQL = "update DtQuantOutput set FeedbackOutput = %f, OutputLimitedStatus = '%s', OutputLimited = %i, "\
-        " OutputPercent = %f, FeedbackOutputManual = 0.0, FeedbackOutputConditioned = 0.0, "\
-        " ManualOverride = 0, Active = 1 "\
+        " OutputPercent = %f, FeedbackOutputManual = 0.0, FeedbackOutputConditioned = %f, "\
+        " ManualOverride = 0, Active = 1, CurrentSetpoint = %f, FinalSetpoint = %f, DisplayedRecommendation = %f "\
         " where QuantOutputId = %i "\
-        % (feedbackOutput, outputLimitedStatus, outputLimited, outputPercent, quantOutputId)
+        % (feedbackOutput, outputLimitedStatus, outputLimited, outputPercent, feedbackOutputConditioned, \
+           currentSetpoint, finalSetpoint, displayedRecommendation, quantOutputId)
 
     log.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
