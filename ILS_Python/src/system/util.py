@@ -9,3 +9,5 @@ def getProjectName():
 def invokeLater(func):
     return True
 
+def jsonDecode(str):
+    pass

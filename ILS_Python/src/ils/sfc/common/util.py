@@ -5,7 +5,7 @@ Created on Nov 3, 2014
 '''
 import system
 
-from ils.sfc.common.constants import CHART_PARENT, INSTANCE_ID, DATABASE, RECIPE_DATA
+from ils.sfc.common.constants import PARENT, INSTANCE_ID, DATABASE, RECIPE_DATA, PROJECT
 
 def readFile(filepath):
     '''
@@ -32,10 +32,14 @@ def getRunningCharts(chartProperties):
     from system.ils.sfc import getRunningCharts
     return getRunningCharts()
 
-def sendMessage(project, handler, payload):
+def sendMessageToClient(chartProperties, handler, payload):
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID
+    from ils.sfc.common.constants import MESSAGE_ID, TEST_RESPONSE
+    project = getProject(chartProperties)
+    testResponse = getTestResponse(chartProperties)
+    if testResponse != None:
+        payload[TEST_RESPONSE] = testResponse
     messageId = createUniqueId()
     payload[MESSAGE_ID] = messageId
     system.util.sendMessage(project, handler, payload, "C")
@@ -52,8 +56,8 @@ def boolToBit(bool):
         return 0
     
 def getTopLevelProperties(chartProperties):
-    while chartProperties.get(CHART_PARENT, None) != None:
-        chartProperties = chartProperties.get(CHART_PARENT)
+    while chartProperties.get(PARENT, None) != None:
+        chartProperties = chartProperties.get(PARENT)
     return chartProperties
 
 def getChartRunId(chartProperties):
@@ -61,6 +65,13 @@ def getChartRunId(chartProperties):
 
 def getDatabase(chartProperties):
     return getTopLevelProperties(chartProperties)[DATABASE]
+
+def getProject(chartProperties):
+    return str(getTopLevelProperties(chartProperties)[PROJECT])
+
+def getTestResponse(chartProperties):
+    from ils.sfc.common.constants import TEST_RESPONSE
+    return getTopLevelProperties(chartProperties).get(TEST_RESPONSE, None)
 
 def getDatabaseFromSystem():
     '''Get the project database'''

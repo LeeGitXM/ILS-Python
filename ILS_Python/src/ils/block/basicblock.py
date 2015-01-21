@@ -82,15 +82,24 @@ class BasicBlock():
     def postValue(self,port,value,quality):
         self.handler.postValue(self.parentuuid,self.uuid,port,value,quality)
     # Replace or add a property
-    # We expect the dictionary to have the proper attributes
+    # We expect the dictionary to have all the proper attributes
     def setProperty(self,name,dictionary):
+        print "BasicBlock.setProperty:",name,"=",dictionary
         self.properties[name] = dictionary
         
-
-    
     # Evaluate the block. This is called on expiration
     # of a timer. This default implementation
     # does nothing.
     def evaluate(self):
         pass
+    
+    # Convenience method to extract the package name from a module
+    # Use this for the import
+    def packageFromModule(self,modName):
+        packName = modName
+        index = modName.rfind(".")
+        if index>0:
+            print "packageFromModule: ",modName,",",index
+            packName = modName[0:index]
+        return packName
     

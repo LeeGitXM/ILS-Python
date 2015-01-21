@@ -86,11 +86,13 @@ class Unit(object):
     @staticmethod
     def getUnitTypes():
         '''Get all distinct unit types'''
+        Unit.lazyInitialize(None)
         return Unit.unitTypes
     
     @staticmethod
     def getUnitsOfType(unitType):
         '''Get all the units of a particular type'''
+        Unit.lazyInitialize(None)
         result = []
         for unit in Unit.unitsByName.values():
             if unit.type == unitType:
@@ -99,9 +101,6 @@ class Unit(object):
     
     @staticmethod
     def getUnit(name, database = None):
-        from ils.sfc.common.util import getDatabaseFromSystem
-        if database == None:
-            database = getDatabaseFromSystem();
         '''Get the unit with the given name (or alias)'''
         Unit.lazyInitialize(database)
         unit = Unit.unitsByName.get(name)
@@ -131,7 +130,10 @@ class Unit(object):
         return "'" + string.replace("'", "''") + "'"
 
     @staticmethod
-    def lazyInitialize(database):
+    def lazyInitialize(database = None):
+        from ils.sfc.common.util import getDatabaseFromSystem
+        if database == None:
+            database = getDatabaseFromSystem();
         if len(Unit.unitsByName.keys()) == 0:
             Unit.readFromDb(database)
             
@@ -161,6 +163,12 @@ class Unit(object):
             if realUnit != None:
                 newUnits[row["alias"]] = realUnit
         Unit.addUnits(newUnits)
+
+def getUnitTypes():
+    return list(Unit.getUnitTypes())
+ 
+def getUnitsOfType(unitType):
+    return Unit.getUnitsOfType(unitType)
         
 def unitsOfSameType(unitName, database = None):
     '''

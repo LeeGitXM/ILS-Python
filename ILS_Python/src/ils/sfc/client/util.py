@@ -8,11 +8,10 @@ from ils.sfc.common.constants import *
 from ils.sfc.common.sessions import updateSessionStatus
 from ils.sfc.client.controlPanel import ControlPanel
 
-def sendResponse(request, response):
+def sendResponse(messageId, response):
     ''' send a message to the Gateway in response to a previous request message''' 
     replyPayload = dict() 
     replyPayload[RESPONSE] = response
-    messageId = request[MESSAGE_ID]
     replyPayload[MESSAGE_ID] = messageId    
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
@@ -74,6 +73,7 @@ def openWindow(windowName, position, scale, windowProps):
         uly = mainWindow.getHeight() - height
     newWindow.setSize(int(width), int(height))
     newWindow.setLocation(int(ulx), int(uly))
+    return newWindow
 
 def testQuery(query, database):
     from java.lang import Exception
@@ -83,3 +83,5 @@ def testQuery(query, database):
     except Exception, e:
         cause = e.getCause()
         system.gui.messageBox("query failed: %s"%cause.getMessage())
+        
+    

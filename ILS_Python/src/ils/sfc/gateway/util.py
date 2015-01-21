@@ -29,6 +29,7 @@ CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
 SHOW_WINDOW_HANDLER = 'sfcShowWindow'
 CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
 UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
+REVIEW_DATA_HANDLER = 'sfcReviewData'
 
 def printCounter():
     global counter
@@ -42,7 +43,10 @@ def getWithPath(properties, key):
         
 def getStepId(stepProperties):
     # need to translate the UUID to a string:
-    return str(getStepProperty(stepProperties, ID))
+    if stepProperties != None:
+        return str(getStepProperty(stepProperties, ID))
+    else:
+        return None
 
 def getStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
@@ -81,9 +85,8 @@ def waitOnResponse(requestId, chartScope):
     return response
     
 def sendUpdateControlPanelMsg(chartProperties):
-    from ils.sfc.common.util import sendMessage
-    project = chartProperties[PROJECT];
-    sendMessage(project, CP_UPDATE_HANDLER, dict())
+    from ils.sfc.common.util import sendMessageToClient
+    sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
     
 def substituteScopeReferences(chartProperties, stepProperties, sql):
     ''' Substitute for scope variable references, e.g. 'local:selected-emp.val'
@@ -135,18 +138,16 @@ def getWorkingRecipeData(chartProperties):
     
 def handleUnexpectedGatewayError(chartProps, msg):
     from ils.sfc.common.util import getLogger
-    from ils.sfc.common.util import sendMessage
+    from ils.sfc.common.util import sendMessageToClient
     UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
     '''
-    from ils.sfc.common.constants import PROJECT, MESSAGE
-    project = chartProps[PROJECT]
     getLogger().error(msg)
     payload = dict()
     payload[MESSAGE] = msg
-    sendMessage(project, UNEXPECTED_ERROR_HANDLER, payload)
+    sendMessageToClient(chartProps, UNEXPECTED_ERROR_HANDLER, payload)
 
 def parseBracketedScopeReference(bracketedRef):
     '''
@@ -226,9 +227,9 @@ def getCurrentMessageQueue(chartProperties, stepProperties):
     from ils.sfc.gateway.api import s88Get 
     return s88Get(chartProperties, stepProperties, MESSAGE_ID, getDefaultMessageQueueScope())
 
-def sendChartStatus(projectName, payload):
-    from ils.sfc.common.util import sendMessage
-    sendMessage(projectName, UPDATE_CHART_STATUS_HANDLER, payload)
+#def sendChartStatus(projectName, payload):
+#    from ils.sfc.common.util import sendMessageToClient
+#    sendMessageToClient(chartProperties, UPDATE_CHART_STATUS_HANDLER, payload)
     
 def getRecipeScope(stepProperties):
     return getStepProperty(stepProperties,RECIPE_LOCATION)

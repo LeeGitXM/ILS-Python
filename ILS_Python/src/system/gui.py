@@ -41,3 +41,6 @@ def reshapeComponent(component, x, y, width, height):
 
 def warningBox(a):
     return "True"
+
+def getParentWindow(a):
+    pass
