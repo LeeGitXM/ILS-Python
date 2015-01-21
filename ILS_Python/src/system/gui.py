@@ -24,6 +24,9 @@ def getOpenedWindows():
 def getOpenedWindowNames():
     return 
 
+def getParentWindow():
+    return 
+
 def getWindow(name):
     pass
 

@@ -139,7 +139,8 @@ def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis, database=""):
 
 def fetchActiveOutputsForConsole(console, database=""):
     SQL = "select distinct A.Application, QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
-        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
+        " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId "\
         " from DtConsole C, DtConsoleSubscription CS, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
         " where C.ConsoleId = CS.ConsoleId "\
         " and CS.ApplicationId = A.ApplicationId "\
@@ -150,6 +151,18 @@ def fetchActiveOutputsForConsole(console, database=""):
         " and C.Console = '%s' "\
         " and QO.Active = 1"\
         " order by A.Application, QO.QuantOutput"  % (console)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+#
+def fetchQuantOutput(quantOutputId, database=""):
+    SQL = "select QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
+        " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId, QO.MostNegativeIncrement, "\
+        " QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, QO.SetpointLowLimit "\
+        " from DtQuantOutput QO "\
+        " where QO.QuantOutputId = %i "  % (quantOutputId)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
