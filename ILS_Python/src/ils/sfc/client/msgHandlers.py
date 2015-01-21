@@ -189,19 +189,22 @@ def sfcUpdateChartStatus(payload):
     updateChartStatus(payload)
     
 def sfcReviewData(payload):
-    if sendTestResponse(payload):
-        return
-        
     from ils.sfc.common.constants import POSITION, SCALE, SCREEN_HEADER, MESSAGE_ID, CONFIG
     from ils.sfc.client.util import openWindow
+    if sendTestResponse(payload):
+        return        
     windowProperties = dict()
     windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
+    data = payload[CONFIG]
     window = openWindow('ReviewData', payload[POSITION], payload[SCALE], windowProperties)
     window.title = payload[SCREEN_HEADER]
-    
-    headers = ['Data', 'Value', 'Units']
+    showAdvice = len(data[0]) == 3  # with advice there are 4 columns
+    if showAdvice:
+        headers = ['Data', 'Advice', 'Value', 'Units']
+    else:
+        headers = ['Data', 'Value', 'Units']
     dataTable = window.getRootContainer().getComponent('dataTable')
-    dataset = system.dataset.toDataSet(headers, payload[CONFIG])
+    dataset = system.dataset.toDataSet(headers, data)
     dataTable.data = dataset
 
 

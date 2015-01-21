@@ -399,12 +399,13 @@ def showWindow(chartProperties, stepProperties):
 def reviewData(chartProperties, stepProperties):    
     from system.ils.sfc import getReviewDataConfig
     from ils.sfc.common.util import getProject
-    project = getProject(chartProperties)
+    from ils.sfc.common.constants import REVIEW_DATA_WITH_ADVICE
     stepId = getStepId(stepProperties)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    payload[CONFIG] = getReviewDataConfig(stepId)
-    messageId = sendMessageToClient(project, REVIEW_DATA_HANDLER, payload) 
+    showAdvice = hasStepProperty(stepProperties, REVIEW_DATA_WITH_ADVICE) 
+    payload[CONFIG] = getReviewDataConfig(stepId, showAdvice)
+    messageId = sendMessageToClient(chartProperties, REVIEW_DATA_HANDLER, payload) 
     
     responseMsg = waitOnResponse(messageId, chartProperties)
     responseValue = responseMsg[RESPONSE]
@@ -412,5 +413,4 @@ def reviewData(chartProperties, stepProperties):
     recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
     s88Set(chartProperties, stepProperties, recipeKey, responseValue, recipeLocation, True or s88CreateOverride)
 
-    # TODO: response logic
 

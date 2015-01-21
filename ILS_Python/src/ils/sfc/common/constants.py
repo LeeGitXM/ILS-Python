@@ -89,6 +89,7 @@ RECIPE_DATA = "recipeData"
 RESPONSE = 'response'
 RESULTS_MODE = "resultsMode" 
 REVIEW_DATA = "reviewData" 
+REVIEW_DATA_WITH_ADVICE = "reviewDataWithAdvice" 
 RUNNING = "Running"
 SCALE = 'scale'
 SCREEN_HEADER = "screenHeader"

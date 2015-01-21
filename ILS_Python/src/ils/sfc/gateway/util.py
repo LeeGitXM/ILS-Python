@@ -55,6 +55,13 @@ def getStepProperty(stepProperties, pname):
             return stepProperties.getOrDefault(prop)
     return None
 
+def hasStepProperty(stepProperties, pname):
+    # Why isn't there a dictionary so we don't have to loop ?!
+    for prop in stepProperties.getProperties():
+        if prop.getName() == pname:
+            return True
+    return False
+
 def transferStepPropertiesToMessage(stepProperties, payload):
     for prop in stepProperties.getProperties():
         payload[prop.getName()] = stepProperties.getOrDefault(prop)
