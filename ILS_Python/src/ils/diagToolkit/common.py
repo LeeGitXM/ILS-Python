@@ -8,6 +8,25 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
+
+def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
+    print "**Updating the Bound Recommendation percent**"
+    pds=fetchRecommendationsForOutput(quantOutputId, database)
+    for record in pds:
+        autoOrManual=record["AutoOrManual"]
+        recommendationId=record["RecommendationId"]
+        if autoOrManual == "Manual":
+            log.trace("Scaling manual recommendation: %s" % (str(record["ManualRecommendation"])))
+            recommendation = record["ManualRecommendation"]
+        else:
+            log.trace("Scaling auto recommendation: %s" % (str(record["AutoRecommendation"])))
+            recommendation = record["AutoRecommendation"]
+        recommendation = recommendation * outputPercent / 100.0
+        SQL = "update DtRecommendation set Recommendation = %s where RecommendationId = %i" % (str(recommendation), recommendationId)
+        log.trace(SQL)
+        system.db.runUpdateQuery(SQL, database)
+
+
 # This gets called at the beginning of each recommendation management cycle.  It clears all of the dynamic attributes of 
 # a Quant Output.  
 def clearQuantOutputRecommendations(application, database=""):
@@ -69,7 +88,7 @@ def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
 
 # Fetch all of the active final diagnosis for an application
 def fetchActiveDiagnosis(application, database=""):
-    SQL = "select A.Application, F.Family, FD.FinalDiagnosis, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
+    SQL = "select A.Application, F.Family, F.FamilyId, FD.FinalDiagnosis, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
         " DE.RecommendationErrorText "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
@@ -80,6 +99,19 @@ def fetchActiveDiagnosis(application, database=""):
         " and not (FD.CalculationMethod != 'Constant' and (DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.Application = '%s'"\
         " order by FamilyPriority DESC, FinalDiagnosisPriority DESC"  % (application) 
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+# Fetch all of the recommendations that touch a quant output.
+def fetchRecommendationsForOutput(QuantOutputId, database=""):
+    SQL = "select R.RecommendationId, R.Recommendation, R.AutoRecommendation, R.AutoRecommendation, R.ManualRecommendation, "\
+        " R.AutoOrManual, QO.QuantOutput, QO.TagPath "\
+        " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
+        " where RD.QuantOutputId = QO.QuantOutputId "\
+        " and QO.QuantOutputId = %i "\
+        " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
+        " order by QO.QuantOutput"  % (QuantOutputId)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -141,9 +173,8 @@ def fetchActiveOutputsForConsole(console, database=""):
     SQL = "select distinct A.Application, QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
         " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId "\
-        " from DtConsole C, DtConsoleSubscription CS, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
-        " where C.ConsoleId = CS.ConsoleId "\
-        " and CS.ApplicationId = A.ApplicationId "\
+        " from DtConsole C, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
+        " where C.ConsoleId = A.ConsoleId "\
         " and A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
@@ -170,9 +201,8 @@ def fetchQuantOutput(quantOutputId, database=""):
 # Fetch applications for a console
 def fetchApplicationsForConsole(console, database=""):
     SQL = "select distinct A.Application "\
-        " from DtConsole C, DtConsoleSubscription CS, DtApplication A "\
-        " where C.ConsoleId = CS.ConsoleId "\
-        " and CS.ApplicationId = A.ApplicationId "\
+        " from DtConsole C, DtApplication A "\
+        " where C.ConsoleId = A.ConsoleId "\
         " and C.Console = '%s' "\
         " order by A.Application"  % (console)
     log.trace(SQL)

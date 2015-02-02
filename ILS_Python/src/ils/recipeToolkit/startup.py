@@ -52,8 +52,8 @@ def createTags(tagProvider):
     data.append([path, "screenBackgroundColorFail", "String", "red"])
        
     ds = system.dataset.toDataSet(headers, data)
-    from ils.recipeToolkit.tagFactory import createConfigurationTags
-    createConfigurationTags(ds)
+    from ils.common.tagFactory import createConfigurationTags
+    createConfigurationTags(ds, log)
     
     # Now make two additional tags that are used to test how long the system has been RUNNING
     # First, make the tag that records when the gateway was restarted
