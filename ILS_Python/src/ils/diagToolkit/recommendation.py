@@ -4,55 +4,67 @@ Created on Sep 9, 2014
 @author: ILS
 '''
 
-import system, string
-import ils
+import sys, system, string, traceback
+#import project, shared
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
-
-# NOTE: We need these two imports in order to get the classes generically.
-# We require the "wild" import so that we can iterate over classes
-# NOTE: __init__.py defines the modules
-import xom.vistalon.diagToolkit
-from xom.vistalon.diagToolkit import *
-
-def hello():
-    print "Hello There!"
+logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
 def notifyConsole():
     print "Waking up the console"
 
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, database=""):
-    print "Making a recommendation"
-   
     SQL = "select CalculationMethod "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
+    logSQL.trace(SQL)
     calculationMethod = system.db.runScalarQuery(SQL, database)
-    print "The calculation method is ", calculationMethod
     
-    func = eval(calculationMethod)
-    textRecommendation, rawRecommendationList = func()
-    print "The list of recommendations is: ", rawRecommendationList
-    
-    recommendationList=[]
-    for recommendation in rawRecommendationList:
-        # Validate that there is a 'QuantOutput' key and a 'Value' Key
-        quantOutput = recommendation.get('QuantOutput', None)
-        if quantOutput == None:
-            log.error("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key" % (calculationMethod))
-        val = recommendation.get('Value', None)
-        if val == None:
-            log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
+    log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s" % (finalDiagnosisId, calculationMethod))
+     
+    # If they specify shared or project scope, then we don't need to do this
+    if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
+        seperator=string.rfind(calculationMethod, ".")
+        package=calculationMethod[0:seperator]
+        log.trace("Using External Python, the package is: <%s>" % (package))
+        exec("import %s" % (package))
+        exec("from %s import *" % (package))
 
-        if quantOutput != None and val != None:
-            val = recommendation.get('Value', 0.0)
-            recommendation['AutoRecommendation']=val
-            recommendation['AutoOrManual']='Auto'
-            recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
-            recommendation['RecommendationId']=recommendationId
-            del recommendation['Value']
-            recommendationList.append(recommendation)
+    try:        
+        func = eval(calculationMethod)
+        textRecommendation, rawRecommendationList = func()
+        log.trace("  The recommendations returned from the calculation method are: %s" % (str(rawRecommendationList)))
+    
+    except:
+        errorType,value,trace = sys.exc_info()
+        errorTxt = traceback.format_exception(errorType, value, trace, 500)
+        log.error("Caught an exception calling calculation method named %s... \n%s" % (calculationMethod, errorTxt) )
+        return "", []
+   
+    else:
+        SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'REC-Made' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+        logSQL.trace(SQL)
+        system.db.runUpdateQuery(SQL, database)
+    
+        recommendationList=[]
+        for recommendation in rawRecommendationList:
+            # Validate that there is a 'QuantOutput' key and a 'Value' Key
+            quantOutput = recommendation.get('QuantOutput', None)
+            if quantOutput == None:
+                log.error("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key" % (calculationMethod))
+            val = recommendation.get('Value', None)
+            if val == None:
+                log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
+
+            if quantOutput != None and val != None:
+                val = recommendation.get('Value', 0.0)
+                recommendation['AutoRecommendation']=val
+                recommendation['AutoOrManual']='Auto'
+                recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
+                recommendation['RecommendationId']=recommendationId
+                del recommendation['Value']
+                recommendationList.append(recommendation)
 
     return textRecommendation, recommendationList
 
@@ -64,23 +76,24 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, va
         "where RD.QuantOutputID = QO.QuantOutputId "\
         " and RD.FinalDiagnosisId = %i "\
         " and QO.QuantOutput = '%s'" % (finalDiagnosisId, quantOutput)
+    logSQL.trace(SQL)
     recommendationDefinitionId = system.db.runScalarQuery(SQL, database)
     
     SQL = "insert into DtRecommendation (RecommendationDefinitionId,DiagnosisEntryId,Recommendation,AutoRecommendation,AutoOrManual) "\
         "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
-    print SQL
+    logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
     return recommendationId
 
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made.
 def calculateFinalRecommendation(quantOutput):
-    print "\nCalculating the final recommendation for ", quantOutput
+    log.trace("Calculating the final recommendation for: %s " % (quantOutput))
 
     i = 0
     finalRecommendation = 0.0
     recommendations = quantOutput.get("Recommendations", [])
     for recommendation in recommendations:
-        print "  Recommendation: ", recommendation
+        log.trace("  The raw recommendation is: %s" % (str(recommendation)))
             
         autoOrManual = string.upper(quantOutput.get("AutoOrManual", "Auto"))
         if autoOrManual == 'AUTO':
@@ -120,8 +133,9 @@ def calculateFinalRecommendation(quantOutput):
     quantOutput['FeedbackOutputConditioned'] = 0.0
     quantOutput['OutputLimited'] = False
     quantOutput['OutputLimitedStatus'] = 'Not Bound'
+    quantOutput['OutputPercent'] = 100.0
     quantOutput['FeedbackOutput'] = finalRecommendation
     quantOutput['FeedbackOutputConditioned'] = finalRecommendation
 
-    print "Returning:", quantOutput, "\n"
+    log.trace("  The final recommendation is: %s" % (str(quantOutput)))
     return quantOutput

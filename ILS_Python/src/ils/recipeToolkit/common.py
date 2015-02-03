@@ -6,6 +6,9 @@ Created on Sep 10, 2014
 
 import system
 
+def test():
+    print "Testy1"
+
 # Ignition does not behave well when "." are used in tag names.  This is unfortunate because we have the practice
 # of naming I/O using the item-ids, which always have "." in them.  We need to continue to use the "." in the item-id
 # but this script modified the recipe tag name to an Ignition compatible tag name by replacing "." with hyphens. 

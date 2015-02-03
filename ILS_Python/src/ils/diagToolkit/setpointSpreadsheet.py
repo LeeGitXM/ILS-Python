@@ -28,10 +28,15 @@ def initialize(rootContainer):
         
         # If the record that we are processing is for a different application, or if this is the first row, then insert an application divider row
         if record['Application'] != application:
+            # Remember the row number of the application because we will need to update the status if we encounter
+            # any minimum change bound outputs
+            applicationRowNumber = i
+            minChangeBoundCounter = 0
+             
             application = record['Application']
-            row = ['app',i,0,0,'Active',0,application,'','',0,0,0,'','']
-            print "App row: ", row
-            rows.append(row)
+            applicationRow = ['app',i,0,0,'Active',0,application,'','',0,0,0,'','']
+            print "App row: ", applicationRow
+            rows.append(applicationRow)
             i = i + 1
 
         outputLimited = record['OutputLimited']
@@ -46,16 +51,27 @@ def initialize(rootContainer):
             statusMessage='<HTML>CLAMPED<br>(Low)'
         elif outputLimitedStatus == 'Vector':
             statusMessage='<HTML>CLAMPED<br>(Vector)'
+        elif outputLimitedStatus == 'Minimum Change Bound':
+            statusMessage='<HTML>CLAMPED<br>(Min Change)'
+            minChangeBoundCount = minChangeBoundCounter + 1
+            if minChangeBoundCount == 1:
+                applicationRow[12]="%i output < minimum change" % (minChangeBoundCount)
+            else:
+                applicationRow[12]="%i outputs < minimum change" % (minChangeBoundCount)
+            rows[applicationRowNumber]=applicationRow
         else:
             statusMessage=''
         
-        # Regardless of whether the quant output is incremental or absolute, the recommendation displayed on the setpoint spreadsheet is 
-        # ALWAYS incremental.  In fact, the feedbackOutput that is stored in the QuantOutput table is always incremental.
-
-        row = ['row',i,0,record['QuantOutputId'],'Active',0,application,record['QuantOutput'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
-        print "Output Row: ", row
-        rows.append(row)
-        i = i + 1
+        # Regardless of whether the quant output is incremental or absolute, the recommendation displayed on 
+        # the setpoint spreadsheet is ALWAYS incremental.  In fact, the feedbackOutput that is stored in the 
+        # QuantOutput table is always incremental.
+        # If the recommended change is insignificant (< the minimum change) then don't display it, but we do 
+        # want to update the status field of the Application line
+        if outputLimitedStatus != 'Minimum Change Bound':
+            row = ['row',i,0,record['QuantOutputId'],'Active',0,application,record['QuantOutput'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
+            print "Output Row: ", row
+            rows.append(row)
+            i = i + 1
 
     print rows
     ds = system.dataset.toDataSet(header, rows)
@@ -173,24 +189,29 @@ def statusCallback(event):
         return
 
     # Format the information
-#    QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
-#        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
-#        " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId "\
-#QO.MaximumNegativeIncrement, QO.MaximumPositiveIncrement, QO.MinimumIncrement, QO.Setpoint.HighLimit, QO.SetpointLowLimit
     record=pds[0]
     quantOutput = record['QuantOutput']   
     outputLimited=record['OutputLimited']
+    outputLimitedStatus=record['OutputLimitedStatus']
     mostNegativeIncrement=record['MostNegativeIncrement']
     mostPositiveIncrement=record['MostPositiveIncrement']
     minimumIncrement=record['MinimumIncrement']
     setpointHighLimit=record['SetpointHighLimit']
     setpointLowLimit=record['SetpointLowLimit']
-    if outputLimited:
-        txt = "It is limited!"
-    else:
-        txt = "The output (%s) is not limited!\n\nThe Output limit details are:\n  Max Positive Change: %f\n"\
+    
+    limitDetails = "The Output limit details are:\n  Max Positive Change: %f\n"\
             "  Max Negative Change: %f\n  Min Change: %f\n  Max Setpoint: %f\n  Min Setpoint: %f" \
-            % (quantOutput, mostPositiveIncrement, mostNegativeIncrement, minimumIncrement, setpointHighLimit, setpointLowLimit)
+            % (mostPositiveIncrement, mostNegativeIncrement, minimumIncrement, setpointHighLimit, setpointLowLimit)
+    
+    if outputLimited:
+        if outputLimitedStatus == 'Vector':
+            txt = "The output (%s) is %s limited!\n\nIt was reduced from %.2f to %.2f because the most bound output "\
+                "could only use %.0f%% of its value" % (quantOutput, outputLimitedStatus, record['FeedbackOutput'], \
+                                                    record['FeedbackOutputConditioned'], record['OutputPercent'])
+        else:
+            txt = "The output (%s) is %s limited!\n\n%s" % (quantOutput, outputLimitedStatus, limitDetails)
+    else:
+        txt = "The output (%s) is not limited!\n\n%s" % (quantOutput, limitDetails)
     
     title = "Output Details"
 
