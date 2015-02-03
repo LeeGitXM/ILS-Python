@@ -204,7 +204,12 @@ def statusCallback(event):
             % (mostPositiveIncrement, mostNegativeIncrement, minimumIncrement, setpointHighLimit, setpointLowLimit)
     
     if outputLimited:
-        txt = "The output (%s) is %s limited!\n\n%s" % (quantOutput, outputLimitedStatus, limitDetails)
+        if outputLimitedStatus == 'Vector':
+            txt = "The output (%s) is %s limited!\n\nIt was reduced from %.2f to %.2f because the most bound output "\
+                "could only use %.0f%% of its value" % (quantOutput, outputLimitedStatus, record['FeedbackOutput'], \
+                                                    record['FeedbackOutputConditioned'], record['OutputPercent'])
+        else:
+            txt = "The output (%s) is %s limited!\n\n%s" % (quantOutput, outputLimitedStatus, limitDetails)
     else:
         txt = "The output (%s) is not limited!\n\n%s" % (quantOutput, limitDetails)
     

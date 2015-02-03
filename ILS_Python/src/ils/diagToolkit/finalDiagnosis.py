@@ -6,12 +6,14 @@ Created on Sep 12, 2014
 
 import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.diagToolkit.finalDiagnosis")
+log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
-def notifyClients(project, console):
-    print "Notifying %s       clients" % (console)
-    system.util.sendMessage(project=project, messageHandler="consoleManager", payload={'type':'setpointSpreadsheet', 'console':console}, scope="C")
+def notifyClients(project, console, notificationText):
+    print "Notifying %s clients" % (console)
+    print "Notification Text: <%s>" % (notificationText)
+    system.util.sendMessage(project=project, messageHandler="consoleManager", 
+                            payload={'type':'setpointSpreadsheet', 'console':console, 'notificationText':notificationText}, scope="C")
 
 # The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 
 # change in a FD / Recommendation.  The idea is that the gateway will send a message to all clients.  The payload of the 
@@ -23,6 +25,8 @@ def handleNotification(payload):
     print "Handling a notification", payload
     
     console=payload.get('console', '')
+    notificationText=payload.get('notificationText', '')
+    print "Notification Text: <%s>" % (notificationText)
     windows = system.gui.getOpenedWindows()
     
     # First check if the setpoint spreadsheet is already open.  This does not check which console's
@@ -34,9 +38,13 @@ def handleNotification(payload):
             print "The spreadsheet is already open!"
             rootContainer=window.rootContainer
             rootContainer.refresh=True
+            
+            if notificationText != "":
+                system.gui.messageBox(notificationText, "Vector Clamp Advice")
+                
             return
     
-    # We didn't find aan open setpoint spreadsheet, so check if this client is interested in the console
+    # We didn't find an open setpoint spreadsheet, so check if this client is interested in the console
     for window in windows:
         windowPath=window.getPath()
         pos = windowPath.find(console)
@@ -44,6 +52,10 @@ def handleNotification(payload):
             print "Found an interested window - post the setpoint spreadsheet"
             system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'console': console})
             system.nav.centerWindow('DiagToolkit/Setpoint Spreadsheet')
+            
+            if notificationText != "":
+                system.gui.messageBox(notificationText, "Vector Clamp Advice")
+                
             return
 
 # Insert a record into the diagnosis queue
@@ -73,13 +85,13 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     system.db.runUpdateQuery(SQL, database)
 
     log.info("Starting to manage diagnosis...")
-    manage(application, database)
+    notificationText=manage(application, database)
     log.info("...back from manage!")
     
     #TODO Need to look these up somehow
     project="XOM"
     console="VFU"
-    notifyClients(project, console)
+    notifyClients(project, console, notificationText)
     
 # Clear the final diagnosis (make the status = 'InActive') 
 def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
@@ -98,13 +110,13 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
     system.db.runUpdateQuery(SQL, database)
     
     print "Starting to manage as a result of a cleared Final Diagnosis..."
-    manage(application, database)
+    notificationText=manage(application, database)
     print "...back from manage!"
     
     #TODO Need to look these up somehow
     project="XOM"
     console="VFU"
-    notifyClients(project, console)
+    notifyClients(project, console, notificationText)
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
 def manage(application, database=""):
@@ -287,7 +299,7 @@ def manage(application, database=""):
     if len(records) == 0:
         log.info("Exiting the diagnosis manager because there are no active diagnosis!")
         # TODO we may need to clear something!
-        return
+        return ""
     
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
     # descending order.
@@ -304,7 +316,7 @@ def manage(application, database=""):
     
     if not(changed):
         log.trace("There has been no change in the most important diagnosis, leaving!")
-        return
+        return ""
 
     # There has been a change in what the most important diagnosis is so set the active flag
     log.info("There was a change in the highest priority active final diagnosis, updating the database...")
@@ -341,14 +353,15 @@ def manage(application, database=""):
         quantOutput = checkBounds(quantOutput, database)
         finalQuantOutputs.append(quantOutput)
 
-    finalQuantOutputs = calculateVectorClamps(finalQuantOutputs)
+    finalQuantOutputs, notificationText = calculateVectorClamps(finalQuantOutputs)
     
     # Store the results in the database
     log.trace("Done managing, the final outputs are: %s" % (str(finalQuantOutputs)))
     for quantOutput in finalQuantOutputs:
         updateQuantOutput(quantOutput, database)
         
-    log.info("Finished")
+    log.info("Finished managing recommendations")
+    return notificationText
 
 # Check that recommendation against the bounds configured for the output
 def checkBounds(quantOutput, database):
@@ -388,7 +401,7 @@ def checkBounds(quantOutput, database):
     quantOutput['FeedbackOutputConditioned'] = feedbackOutputConditioned
     
     minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
-    if feedbackOutputConditioned < minimumIncrement:
+    if abs(feedbackOutputConditioned) < minimumIncrement:
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Minimum Change Bound'
         feedbackOutputConditioned=0.0
@@ -403,16 +416,71 @@ def checkBounds(quantOutput, database):
     return quantOutput
 
 
-def calculateVectorClamps(finalQuantOutputs):
+def calculateVectorClamps(quantOutputs):
 
-    qv=system.tag.read("[XOM]Configuration/vectorClampEnabled")
+    qv=system.tag.read("[XOM]DiagnosticToolkit/vectorClampMode")
+    vectorClampMode = string.upper(qv.value)
+    
+    if vectorClampMode == "DISABLED":
+        log.trace("Vector Clamps are NOT enabled")
+        return quantOutputs, ""
+    
+    log.trace("Vector clamping is enabled")
+    
+    if len(quantOutputs) < 2:
+        log.trace("Vector clamps do not apply when there is only one output")
+        return quantOutputs, ""
 
-    if qv.value:
-        print "Vector Clamps are enabled"
-    else:
-        print "Vector clamping is NOT enabled"
+    # The first step is to find the most restrictive clamp
+    minOutputRatio=100.0
+    for quantOutput in quantOutputs:
+        if quantOutput['OutputPercent'] < minOutputRatio:
+            boundOutput=quantOutput
+            minOutputRatio = quantOutput['OutputPercent']
+    
+    if minOutputRatio == 100.0:
+        log.trace("No outputs are clamped, therefore there is not a vector clamp")
+        return quantOutputs, ""
+
+    log.trace("All outputs will be clamped at %f" % (minOutputRatio))
+
+    finalQuantOutputs = []
+    txt = "The most bound output is %s, %.0f%% of the total recommendation of %.4f, which equals %.4f, will be implemented." % \
+        (boundOutput['QuantOutput'], minOutputRatio, boundOutput['FeedbackOutput'], boundOutput['FeedbackOutputConditioned'])
+        
+    for quantOutput in quantOutputs:
+        
+        # Look for an output that isn't bound but needs to be Vector clamped
+        if quantOutput['OutputPercent'] > minOutputRatio:
+            outputPercent = minOutputRatio
+            feedbackOutputConditioned = quantOutput['FeedbackOutput'] * minOutputRatio / 100.0
+            txt = "%s\n%s should be reduced from %.4f to %.4f" % (txt, quantOutput['QuantOutput'], quantOutput['FeedbackOutput'], 
+                                                              feedbackOutputConditioned)
+
+            # Now check if the new conditioned output is less than the minimum change amount
+            minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
+            if abs(feedbackOutputConditioned) < minimumIncrement:
+                feedbackOutputConditioned = 0.0
+                outputPercent = 0.0
+                txt = "%s which is an insignificant value value and should be set to 0.0." % (txt)
+                    
+            if vectorClampMode == 'IMPLEMENT':
+                log.trace('Implementing a vector clamp on %s' % (quantOutput['QuantOutput']))
+                quantOutput['OutputPercent'] = outputPercent
+                quantOutput['FeedbackOutputConditioned'] = feedbackOutputConditioned
+                quantOutput['OutputLimitedStatus'] = 'Vector'
+                quantOutput['OutputLimited']=True
+
+        finalQuantOutputs.append(quantOutput)
             
-    return finalQuantOutputs
+    print txt
+    
+    if vectorClampMode == 'ADVISE':
+        notificationText=txt
+    else:
+        notificationText=""
+        
+    return finalQuantOutputs, notificationText
 
 # Store the updated quantOutput in the database so that it will show up in the setpoint spreadsheet
 def updateQuantOutput(quantOutput, database=''):
