@@ -24,101 +24,109 @@ from system.sfc import pauseChart
 from time import sleep
 import system.tag
 
-def invokeStep(chartProperties, stepProperties, methodName):
+def invokeStep(scopeContext, stepProperties, methodName):
     '''
     A single point to invoke all step methods, in order to do exception handling
     '''
     import sys
     func = globals()[methodName]
     try:
-        func(chartProperties, stepProperties)
+        func(scopeContext, stepProperties)
     except Exception, e:
         msg = "Unexpected error: " + type(e).__name__ + " " + str(e)
         print msg
-        handleUnexpectedGatewayError(chartProperties, msg)
+        handleUnexpectedGatewayError(scopeContext, msg)
          
-def queueInsert(chartProperties, stepProperties):
+def queueInsert(scopeContext, stepProperties):
     '''
     action for java QueueMessageStep
     queues the step's message
     '''
-    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
+    chartProperties = scopeContext.getChartScope()
+    currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
     message = getStepProperty(stepProperties, MESSAGE)  
     priority = getStepProperty(stepProperties, PRIORITY)  
     database = chartProperties[DATABASE]
     insert(currentMsgQueue, priority, message, database) 
     
-def setQueue(chartProperties, stepProperties):
+def setQueue(scopeContext, stepProperties):
     '''
     action for java SetQueueStep
     sets the chart's current message queue
     '''
+    chartProperties = scopeContext.getChartScope()
     queue = getStepProperty(stepProperties, QUEUE)
     recipeLocation = getDefaultMessageQueueScope()
-    s88Set(chartProperties, stepProperties, MESSAGE_QUEUE, queue, recipeLocation, True or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, MESSAGE_QUEUE, queue, recipeLocation, True or s88CreateOverride)
 
-def showQueue(chartProperties, stepProperties):
+def showQueue(scopeContext, stepProperties):
     '''
     action for java ShowQueueStep
     send a message to the client to show the current message queue
     '''
     from ils.sfc.common.util import getProject
-    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
+    chartProperties = scopeContext.getChartScope()
+    currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
     payload = dict()
     payload[QUEUE] = currentMsgQueue 
-    sendMessageToClient(chartProperties, SHOW_QUEUE_HANDLER, payload)
+    sendMessageToClient(scopeContext, SHOW_QUEUE_HANDLER, payload)
 
-def clearQueue(chartProperties, stepProperties):
+def clearQueue(scopeContext, stepProperties):
     '''
     action for java ClearQueueStep
     delete all messages from the current message queue
     '''
-    currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
+    chartProperties = scopeContext.getChartScope()
+    currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
     database = chartProperties[DATABASE]
     clear(currentMsgQueue, database)
 
-def yesNo(chartProperties, stepProperties):
+def yesNo(scopeContext, stepProperties):
     '''
     Action for java YesNoStep
     Get a yes/no response from the user; block until a
     response is received, put response in chart properties
     '''
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     prompt = getStepProperty(stepProperties, PROMPT) 
     recipeLocation = getRecipeScope(stepProperties) 
     key = getStepProperty(stepProperties, KEY) 
     payload = dict()
     payload[PROMPT] = prompt 
-    messageId = sendMessageToClient(chartProperties, YES_NO_HANDLER, payload)
+    messageId = sendMessageToClient(scopeContext, YES_NO_HANDLER, payload)
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, False or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, key, value, recipeLocation, False or s88CreateOverride)
 
-def cancel(chartProperties, stepProperties):
+def cancel(scopeContext, stepProperties):
     ''' Abort the chart execution'''
     from ils.sfc.gateway.api import cancelChart
+    chartProperties = scopeContext.getChartScope()
     cancelChart(chartProperties)
-    addControlPanelMessage(chartProperties, "Chart canceled", False)
+    addControlPanelMessage(scopeContext, "Chart canceled", False)
     
-def pause(chartProperties, stepProperties):
+def pause(scopeContext, stepProperties):
     ''' Pause the chart execution'''
     from ils.sfc.gateway.api import pauseChart
+    chartProperties = scopeContext.getChartScope()
     pauseChart(chartProperties)
-    addControlPanelMessage(chartProperties, "Chart paused", False)
+    addControlPanelMessage(scopeContext, "Chart paused", False)
     
-def controlPanelMessage(chartProperties, stepProperties):
+def controlPanelMessage(scopeContext, stepProperties):
     import time
     from ils.sfc.common.sessions import getAckTime
     from ils.sfc.common.sessions import timeOutControlPanelMessageAck
     from ils.common.units import Unit
     from ils.queue.message import insert
+    chartProperties = scopeContext.getChartScope()
     message = getStepProperty(stepProperties, MESSAGE)
     database = chartProperties[DATABASE]
     ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
-    msgId = addControlPanelMessage(chartProperties, message, ackRequired)
+    msgId = addControlPanelMessage(scopeContext, message, ackRequired)
     postToQueue = getStepProperty(stepProperties, POST_TO_QUEUE)
     if postToQueue:
-        currentMsgQueue = getCurrentMessageQueue(chartProperties, stepProperties)
+        currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
         priority = getStepProperty(stepProperties, PRIORITY)
         insert(currentMsgQueue, priority, message, database)
     if ackRequired:
@@ -138,9 +146,10 @@ def controlPanelMessage(chartProperties, stepProperties):
             timeOutControlPanelMessageAck(msgId, database)
         sendUpdateControlPanelMsg(chartProperties)
             
-def timedDelay(chartProperties, stepProperties):
+def timedDelay(scopeContext, stepProperties):
     from ils.sfc.common.util import createUniqueId
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     database = chartProperties[DATABASE]
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
@@ -152,12 +161,12 @@ def timedDelay(chartProperties, stepProperties):
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
     elif timeDelayStrategy == RECIPE:
-        delay = s88Get(chartProperties, stepProperties, key, recipeLocation)
+        delay = s88Get(scopeContext, stepProperties, key, recipeLocation)
     elif timeDelayStrategy == CALLBACK:
         pass # TODO: implement script callback--value can be dynamic
-        handleUnexpectedGatewayError(chartProperties, "Callback strategy not implemented: ")
+        handleUnexpectedGatewayError(scopeContext, "Callback strategy not implemented: ")
     else:
-        handleUnexpectedGatewayError(chartProperties, "unknown delay strategy: " + timeDelayStrategy)
+        handleUnexpectedGatewayError(scopeContext, "unknown delay strategy: " + timeDelayStrategy)
     delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
     if postNotification:
         payload = dict()
@@ -165,59 +174,64 @@ def timedDelay(chartProperties, stepProperties):
         payload[MESSAGE] = str(delay) + ' ' + delayUnit + " remaining."
         payload[ACK_REQUIRED] = False
         payload[WINDOW_ID] = createUniqueId()
-        sendMessageToClient(chartProperties, POST_DELAY_NOTIFICATION_HANDLER, payload)
+        sendMessageToClient(scopeContext, POST_DELAY_NOTIFICATION_HANDLER, payload)
     sleep(delaySeconds)
     if postNotification:
-        sendMessageToClient(chartProperties, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
+        sendMessageToClient(scopeContext, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
       
-def postDelayNotification(chartProperties, stepProperties):
+def postDelayNotification(scopeContext, stepProperties):
     from ils.sfc.common.util import createUniqueId
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     message = getStepProperty(stepProperties, MESSAGE) 
     payload = dict()
     payload[MESSAGE] = message
     print 'step props ', stepProperties
     payload[CHART_RUN_ID] = getChartRunId(chartProperties)
     payload[WINDOW_ID] = createUniqueId()
-    sendMessageToClient(chartProperties, POST_DELAY_NOTIFICATION_HANDLER, payload)
+    sendMessageToClient(scopeContext, POST_DELAY_NOTIFICATION_HANDLER, payload)
 
-def deleteDelayNotifications(chartProperties, stepProperties):
+def deleteDelayNotifications(scopeContext, stepProperties):
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     payload = dict()
     payload[CHART_RUN_ID] = getChartRunId(chartProperties)
-    sendMessageToClient(chartProperties, DELETE_DELAY_NOTIFICATIONS_HANDLER, payload)
+    sendMessageToClient(scopeContext, DELETE_DELAY_NOTIFICATIONS_HANDLER, payload)
 
-def enableDisable(chartProperties, stepProperties):
+def enableDisable(scopeContext, stepProperties):
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[INSTANCE_ID] = chartProperties[INSTANCE_ID]
-    sendMessageToClient(chartProperties, ENABLE_DISABLE_HANDLER, payload)
+    sendMessageToClient(scopeContext, ENABLE_DISABLE_HANDLER, payload)
 
-def selectInput(chartProperties, stepProperties):
+def selectInput(scopeContext, stepProperties):
     # extract properties
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     prompt = getStepProperty(stepProperties, PROMPT) 
     choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
     choicesKey = getStepProperty(stepProperties, CHOICES_KEY) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
 
-    choices = s88Get(chartProperties, stepProperties, choicesKey, choicesRecipeLocation)
+    choices = s88Get(scopeContext, stepProperties, choicesKey, choicesRecipeLocation)
     
     # send message
     payload = dict()
     payload[PROMPT] = prompt
     payload[CHOICES] = choices
     
-    messageId = sendMessageToClient(chartProperties, SELECT_INPUT_HANDLER, payload) 
+    messageId = sendMessageToClient(scopeContext, SELECT_INPUT_HANDLER, payload) 
     
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
 
-def getLimitedInput(chartProperties, stepProperties):
+def getLimitedInput(scopeContext, stepProperties):
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     prompt = getStepProperty(stepProperties, PROMPT) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
@@ -230,7 +244,7 @@ def getLimitedInput(chartProperties, stepProperties):
     payload[MAXIMUM_VALUE] = maximumValue
     responseIsValid = False
     while not responseIsValid:
-        messageId = sendMessageToClient(chartProperties, LIMITED_INPUT_HANDLER, payload)   
+        messageId = sendMessageToClient(scopeContext, LIMITED_INPUT_HANDLER, payload)   
         responseMsg = waitOnResponse(messageId, chartProperties)
         responseValue = responseMsg[RESPONSE]
         try:
@@ -239,25 +253,27 @@ def getLimitedInput(chartProperties, stepProperties):
         except ValueError:
             payload[PROMPT] = 'Input is not valid. ' + prompt  
     
-    s88Set(chartProperties, stepProperties, key, floatValue, recipeLocation, True or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, key, floatValue, recipeLocation, True or s88CreateOverride)
 
-def dialogMessage(chartProperties, stepProperties):
+def dialogMessage(scopeContext, stepProperties):
     from ils.sfc.common.util import getChartRunId
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties,payload)
-    sendMessageToClient(chartProperties, DIALOG_MSG_HANDLER, payload)
+    sendMessageToClient(scopeContext, DIALOG_MSG_HANDLER, payload)
 
-def collectData(chartProperties, stepProperties):
+def collectData(scopeContext, stepProperties):
     tagPath = getStepProperty(stepProperties, TAG_PATH)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     value = system.tag.read(tagPath)
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
     
-def getInput(chartProperties, stepProperties):
+def getInput(scopeContext, stepProperties):
     from ils.sfc.common.util import getProject
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     prompt = getStepProperty(stepProperties, PROMPT) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
@@ -265,38 +281,41 @@ def getInput(chartProperties, stepProperties):
     payload = dict()
     payload[PROMPT] = prompt
     
-    messageId = sendMessageToClient(chartProperties, INPUT_HANDLER, payload)
+    messageId = sendMessageToClient(scopeContext, INPUT_HANDLER, payload)
     response = waitOnResponse(messageId, chartProperties)
     value = response[RESPONSE]
-    s88Set(chartProperties, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, key, value, recipeLocation, True or s88CreateOverride)
 
-def rawQuery(chartProperties, stepProperties):
+def rawQuery(scopeContext, stepProperties):
+    chartProperties = scopeContext.getChartScope()
     database = getStepProperty(stepProperties, DATABASE) 
     sql = getStepProperty(stepProperties, SQL) 
     result = system.db.runQuery(sql, database) # returns a PyDataSet
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
-    s88Set(chartProperties, stepProperties, key, result, recipeLocation, False or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, key, result, recipeLocation, False or s88CreateOverride)
 
-def simpleQuery(chartProperties, stepProperties):
+def simpleQuery(scopeContext, stepProperties):
+    chartProperties = scopeContext.getChartScope()
     database = getStepProperty(stepProperties, DATABASE) 
     sql = getStepProperty(stepProperties, SQL) 
-    processedSql = substituteScopeReferences(chartProperties, stepProperties, sql)
+    processedSql = substituteScopeReferences(scopeContext, stepProperties, sql)
     dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 
     if dbRows.rowCount == 0:
         getLogger.error('No rows returned for query %s', processedSql)
         return
-    simpleQueryProcessRows(chartProperties, stepProperties, dbRows)
+    simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
 
-def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
+def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
     # TODO: use results mode
+    chartProperties = scopeContext.getChartScope()
     resultsMode = getStepProperty(stepProperties, RESULTS_MODE)
     fetchMode = getStepProperty(stepProperties, FETCH_MODE) 
     createFlag = fetchMode == UPDATE_OR_CREATE
     recipeLocation = getRecipeScope(stepProperties) 
     keyMode = getStepProperty(stepProperties, KEY_MODE) 
     key = getStepProperty(stepProperties, KEY) 
-    recipeData = s88Get(chartProperties, stepProperties, key, recipeLocation, createFlag)
+    recipeData = s88Get(scopeContext, stepProperties, key, recipeLocation, createFlag)
     if keyMode == STATIC: # fetchMode must be SINGLE
         if dbRows.rowCount > 1:
             getLogger().warn('More than one row returned for single query')
@@ -311,10 +330,11 @@ def simpleQueryProcessRows(chartProperties, stepProperties, dbRows):
             dkey = newObj[key]
             recipeData[dkey] = newObj
      
-def saveData(chartProperties, stepProperties):
+def saveData(scopeContext, stepProperties):
     import time
     # extract property values
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     directory = getStepProperty(stepProperties, DIRECTORY) 
@@ -337,7 +357,7 @@ def saveData(chartProperties, stepProperties):
         timestamp = ""
     
     # get the data at the given location
-    recipeData = s88Get(chartProperties, stepProperties, key, recipeLocation)
+    recipeData = s88Get(scopeContext, stepProperties, key, recipeLocation)
     if chartProperties == None:
         getLogger.error("data for location " + recipeLocation + " not found")
     
@@ -357,11 +377,12 @@ def saveData(chartProperties, stepProperties):
         payload[FILEPATH] = filepath
         payload[PRINT_FILE] = printFile
         payload[VIEW_FILE] = viewFile
-        sendMessageToClient(chartProperties, SAVE_DATA_HANDLER, payload)
+        sendMessageToClient(scopeContext, SAVE_DATA_HANDLER, payload)
         
-def printFile(chartProperties, stepProperties):  
+def printFile(scopeContext, stepProperties):  
     from ils.sfc.common.util import readFile
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     # extract property values
     computer = getStepProperty(stepProperties, COMPUTER) 
     payload = dict()
@@ -369,48 +390,52 @@ def printFile(chartProperties, stepProperties):
         fileName = getStepProperty(stepProperties, FILENAME) 
         payload[MESSAGE] = readFile(fileName)
     transferStepPropertiesToMessage(stepProperties, payload)
-    sendMessageToClient(chartProperties, PRINT_FILE_HANDLER, payload)
+    sendMessageToClient(scopeContext, PRINT_FILE_HANDLER, payload)
 
-def printWindow(chartProperties, stepProperties):   
+def printWindow(scopeContext, stepProperties):   
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     project = getProject(chartProperties)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     sendMessageToClient(project, PRINT_WINDOW_HANDLER, payload)
     
-def closeWindow(chartProperties, stepProperties):   
+def closeWindow(scopeContext, stepProperties):   
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[INSTANCE_ID] = getChartRunId(chartProperties)
-    sendMessageToClient(chartProperties, CLOSE_WINDOW_HANDLER, payload)
+    sendMessageToClient(scopeContext, CLOSE_WINDOW_HANDLER, payload)
 
-def showWindow(chartProperties, stepProperties):   
+def showWindow(scopeContext, stepProperties):   
     from ils.sfc.common.util import getChartRunId
     from ils.sfc.common.util import getProject
+    chartProperties = scopeContext.getChartScope()
     payload = dict()
     payload[INSTANCE_ID] = getChartRunId(chartProperties)
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
 
-    sendMessageToClient(chartProperties, SHOW_WINDOW_HANDLER, payload) 
+    sendMessageToClient(scopeContext, SHOW_WINDOW_HANDLER, payload) 
 
-def reviewData(chartProperties, stepProperties):    
+def reviewData(scopeContext, stepProperties):    
     from system.ils.sfc import getReviewDataConfig
     from ils.sfc.common.util import getProject
     from ils.sfc.common.constants import REVIEW_DATA_WITH_ADVICE
+    chartProperties = scopeContext.getChartScope()
     stepId = getStepId(stepProperties)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     showAdvice = hasStepProperty(stepProperties, REVIEW_DATA_WITH_ADVICE) 
     payload[CONFIG] = getReviewDataConfig(stepId, showAdvice)
-    messageId = sendMessageToClient(chartProperties, REVIEW_DATA_HANDLER, payload) 
+    messageId = sendMessageToClient(scopeContext, REVIEW_DATA_HANDLER, payload) 
     
     responseMsg = waitOnResponse(messageId, chartProperties)
     responseValue = responseMsg[RESPONSE]
     recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
     recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
-    s88Set(chartProperties, stepProperties, recipeKey, responseValue, recipeLocation, True or s88CreateOverride)
+    s88Set(scopeContext, stepProperties, recipeKey, responseValue, recipeLocation, True or s88CreateOverride)
 
 
