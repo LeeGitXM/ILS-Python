@@ -28,19 +28,19 @@ class Unit(object):
         self.m = 0.
         self.b = 0.
   
-    def toBaseUnits(self, y):
+    def toBaseUnits(self, myUnits):
         '''convert the given number of this unit to the base unit'''
         if self.isBaseUnit:
-            return y
+            return myUnits
         else:
-            return (y - self.b) /self. m;
+            return self.m * myUnits + self.b;
         
-    def fromBaseUnits(self, x):
+    def fromBaseUnits(self, baseUnits):
         '''convert the given number of base units to the this unit'''
         if self.isBaseUnit:
-            return x
+            return baseUnits
         else:
-            return self.m * x + self.b;
+            return (baseUnits - self.b) /self.m;
     
     def convertTo(self, otherUnit, value):
         '''convert a value in my units to the given (other) units'''

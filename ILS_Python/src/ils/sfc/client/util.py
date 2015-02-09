@@ -15,18 +15,7 @@ def sendResponse(messageId, response):
     replyPayload[MESSAGE_ID] = messageId    
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
-       
-def registerClient():
-    from ils.sfc.common.util import getDatabaseFromSystem
-    project = system.util.getProjectName()
-    database = getDatabaseFromSystem()
-    user = system.security.getUsername()
-    payload = dict()
-    payload[PROJECT] = project
-    payload[USER] = user
-    payload[DATABASE] = database
-    system.util.sendMessage(project, 'sfcRegisterClient', payload, "G")
-       
+              
 def runChart(chartName):
     from ils.sfc.common.util import getDatabaseFromSystem
     from ils.sfc.client.controlPanel import createControlPanel
@@ -38,10 +27,7 @@ def runChart(chartName):
     initialChartProps[CHART_NAME] = chartName
     initialChartProps[USER] = user
     initialChartProps[DATABASE] = database
-    runId = system.sfc.startChart(chartName, initialChartProps)
-    initialChartProps[INSTANCE_ID] = runId
-    createControlPanel(initialChartProps)
-    registerClient()
+    system.util.sendMessage(project, 'sfcStartChart', initialChartProps, "G")
 
 def onStop(chartProperties):
     '''this should be called from every SFC chart's onStop hook'''

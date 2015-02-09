@@ -22,3 +22,17 @@ def sfcActivateStep(payload):
     from ils.sfc.common.constants import  CLASS_NAME, CHART_PROPERTIES, STEP_PROPERTIES
     from system.ils.sfc import activateStep
     activateStep(payload[CLASS_NAME], payload[CHART_PROPERTIES], payload[STEP_PROPERTIES])
+    
+def sfcStartChart(payload):
+    import system.sfc.startChart
+    import system.util.sendMessage
+    import ils.common.units
+    from ils.sfc.common.constants import INSTANCE_ID, CHART_NAME, PROJECT, DATABASE
+    chartName = payload[CHART_NAME]
+    project = payload[PROJECT]
+    database = payload[DATABASE]
+    ils.common.units.Unit.lazyInitialize(database)
+    runId = system.sfc.startChart(chartName, payload)
+    payload[INSTANCE_ID] = runId
+    system.util.sendMessage(project, 'sfcChartStarted', payload, "C")
+

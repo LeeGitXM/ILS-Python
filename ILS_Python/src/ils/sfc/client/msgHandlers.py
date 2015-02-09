@@ -207,6 +207,8 @@ def sfcReviewData(payload):
     dataset = system.dataset.toDataSet(headers, data)
     dataTable.data = dataset
 
+def sfcChartStarted(payload):
+    from ils.sfc.client.controlPanel import createControlPanel
+    createControlPanel(payload)
 
-        
 
