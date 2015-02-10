@@ -33,15 +33,15 @@ class Unit(object):
         if self.isBaseUnit:
             return myUnits
         else:
-            return self.m * myUnits + self.b;
+            return (myUnits - self.b) /self.m;
         
     def fromBaseUnits(self, baseUnits):
         '''convert the given number of base units to the this unit'''
         if self.isBaseUnit:
             return baseUnits
         else:
-            return (baseUnits - self.b) /self.m;
-    
+            return self.m * baseUnits + self.b;
+     
     def convertTo(self, otherUnit, value):
         '''convert a value in my units to the given (other) units'''
         return otherUnit.fromBaseUnits(self.toBaseUnits(value))

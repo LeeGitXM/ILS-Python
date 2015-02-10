@@ -9,7 +9,7 @@ def showDelayNotification(chartRunId, message, ackRequired, messageId):
     from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.constants import CHART_RUN_ID, MESSAGE, MESSAGE_ID, WINDOW_ID, ACK_REQUIRED
     import system.nav
-    
+    print 'show delay notification'
     windowProps = dict()
     windowProps[ACK_REQUIRED] = ackRequired
     windowProps[MESSAGE] = message

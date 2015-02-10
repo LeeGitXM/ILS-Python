@@ -18,24 +18,6 @@ def getChartState(uuid):
 def getRunningCharts():
     pass
 
-def setSfcProjectInfo(str, str):
-    pass
-
-def getSfcProjectName():
-    pass
-
-def getSfcProjectDatabase():
-    pass
-
-def getRecipeData(scopeString, stepId, path):
-    pass
-
-def setRecipeData(scopeString, stepId, path, value, create):
-    pass
-
-def getWorkingRecipeData():
-    pass
-
 def getReviewDataConfig(stepId):
     pass
 

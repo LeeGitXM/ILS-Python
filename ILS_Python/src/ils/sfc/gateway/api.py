@@ -15,24 +15,17 @@ def s88Get(chartProperties, stepProperties, ckey, location, create = False):
     return s88GetWithUnits(chartProperties, stepProperties, ckey, location, None, create)
 
 def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitNameOrNone, create = False):
-    from ils.sfc.common.constants import DATABASE, RECIPE_DATA
-    from ils.sfc.gateway.util import getStepId
-    from system.ils.sfc import getRecipeData
-
-    from ils.sfc.gateway.util import getWorkingRecipeData
-    
-    stepId = getStepId(stepProperties);
-    workingRecipeData = getWorkingRecipeData(chartProperties)
-    value = getRecipeData(workingRecipeData, location, stepId, ckey) 
+    from ils.sfc.gateway.recipe import getRecipeScope, pathGet
+    scopeDict = getRecipeScope(chartProperties, stepProperties, location)
+    value = pathGet(scopeDict, ckey)
     existingUnitName = None
     # TODO: fix the unit access
     # Do unit conversion if necessary:
     if newUnitNameOrNone != None:
         if existingUnitName != None:
             if existingUnitName != newUnitNameOrNone:
-                database = chartProperties[DATABASE]
-                existingUnit = Unit.getUnit(existingUnitName, database)
-                newUnit = Unit.getUnit(newUnitNameOrNone, database)
+                existingUnit = Unit.getUnit(existingUnitName)
+                newUnit = Unit.getUnit(newUnitNameOrNone)
                 if existingUnit != None and newUnit != None:
                     value = existingUnit.convertTo(newUnit, value)
                 else:
@@ -50,13 +43,9 @@ def s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, unit
     Intermediate layers in a dot-separated path will be created if not present.
     If units are given, store them as well
     '''
-    from ils.sfc.gateway.util import getStepId
-    from system.ils.sfc import setRecipeData
-    from ils.sfc.gateway.util import getWorkingRecipeData
-    
-    stepId = getStepId(stepProperties);
-    workingRecipeData = getWorkingRecipeData(chartProperties)
-    setRecipeData(workingRecipeData, location, stepId, ckey, value, createIfAbsent) 
+    from ils.sfc.gateway.recipe import getRecipeScope, pathSet
+    scopeDict = getRecipeScope(chartProperties, stepProperties, location)
+    value = pathSet(scopeDict, ckey, value)
         
 def pauseChart(chartProperties):
     from system.sfc import pauseChart

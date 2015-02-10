@@ -130,12 +130,11 @@ SECOND= "SEC"
 TIME_UNIT_TYPE = "TIME"
 
 #Recipe scopes:
-LOCAL_SCOPE = 'Local'
-PREVIOUS_SCOPE = 'Previous'
-SUPERIOR_SCOPE ='Superior'
-PHASE_SCOPE ='Phase'
-OPERATION_SCOPE = 'Operation'
-UNIT_PROCEDURE_SCOPE = 'UnitProcedure'
-NAMED_SCOPE = 'Named'
+LOCAL_SCOPE = 'local'
+PREVIOUS_SCOPE = 'previous'
+SUPERIOR_SCOPE ='superior'
+PHASE_SCOPE ='phase'
+OPERATION_SCOPE = 'operation'
+
 
 
