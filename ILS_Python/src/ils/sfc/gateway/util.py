@@ -48,6 +48,9 @@ def getStepId(stepProperties):
     else:
         return None
 
+def getRecipeScope(stepProperties):
+    return getStepProperty(stepProperties, RECIPE_LOCATION)
+
 def getStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
     for prop in stepProperties.getProperties():
@@ -184,6 +187,8 @@ def getCurrentMessageQueue(chartProperties, stepProperties):
     from ils.sfc.gateway.api import s88Get 
     return s88Get(chartProperties, stepProperties, MESSAGE_ID, getDefaultMessageQueueScope())
 
+def substituteScopeReferences(scopeContext, stepProperties, sql):
+    pass
 #def sendChartStatus(projectName, payload):
 #    from ils.sfc.common.util import sendMessageToClient
 #    sendMessageToClient(chartProperties, UPDATE_CHART_STATUS_HANDLER, payload)

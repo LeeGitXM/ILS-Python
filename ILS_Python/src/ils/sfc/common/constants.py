@@ -135,6 +135,7 @@ PREVIOUS_SCOPE = 'previous'
 SUPERIOR_SCOPE ='superior'
 PHASE_SCOPE ='phase'
 OPERATION_SCOPE = 'operation'
+GLOBAL_SCOPE = 'global'
 
 
 
