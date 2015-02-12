@@ -68,7 +68,7 @@ def initialize(rootContainer):
         # If the recommended change is insignificant (< the minimum change) then don't display it, but we do 
         # want to update the status field of the Application line
         if outputLimitedStatus != 'Minimum Change Bound':
-            row = ['row',i,0,record['QuantOutputId'],'Active',0,application,record['QuantOutput'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
+            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutput'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
             print "Output Row: ", row
             rows.append(row)
             i = i + 1

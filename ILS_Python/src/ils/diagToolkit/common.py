@@ -57,7 +57,13 @@ def deleteRecommendations(application, database):
     log.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
     return
-    
+
+# Lookup the console Id given the name
+def fetchConsoleId(console, database=""):
+    SQL = "select ConsoleId from DtConsole where Console = '%s'" % (console)
+    log.trace(SQL)
+    consoleId = system.db.runScalarQuery(SQL, database)
+    return consoleId
 
 # Lookup the application Id given the name
 def fetchApplicationId(application, database=""):

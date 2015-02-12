@@ -3,22 +3,23 @@ Created on Sep 9, 2014
 
 @author: ILS
 '''
-import  system
+import  system, string
 
 
-def insert(queue, status, message, db = ''):    
+def insert(queueKey, status, message, db = ''):
     from ils.queue.commons import getQueueId
-    queueId = getQueueId(queue, db)
+    queueId = getQueueId(queueKey, db)
 
     SQL = "select id from QueueMessageStatus where MessageStatus = '%s'" % (status)
     statusId = system.db.runScalarQuery(SQL, db)
     
-    SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%i, getdate(), %i, '%s')" % (queueId, statusId, message)
+    SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%s, getdate(), %s, '%s')" % (str(queueId), str(statusId), message)
+    print SQL
     system.db.runUpdateQuery(SQL, db)
 
-def clear(queue, db = ''):    
+def clear(queueKey, db = ''):
     from ils.queue.commons import getQueueId
-    queueId = getQueueId(queue, db)
+    queueId = getQueueId(queueKey, db)
 
     SQL = "delete from QueueDetail where QueueId = %i" % (queueId)
     system.db.runUpdateQuery(SQL, db)
