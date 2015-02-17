@@ -143,28 +143,34 @@ class Unit(object):
     def readFromDb(database):
         '''read unit info from the project's default database'''
         import system.db
-        Unit.clearUnits()
-        newUnits = dict()
-        results = system.db.runQuery("select * from Units")
-        # Read the units
-        for row in results:
-            unit = Unit()
-            unit.name = row["name"]
-            unit.description = row["description"];
-            unit.type = row["type"]
-            unit.m = row["m"]
-            unit.b = row["b"]
-            unit.isBaseUnit = row["isBaseUnit"]
-            newUnits[unit.name] = unit
-        Unit.addUnits(newUnits)
-        # Read the aliases
-        newUnits = dict()
-        results = system.db.runQuery("select * from UnitAliases")
-        for row in results:
-            realUnit = Unit.getUnit(row["name"])
-            if realUnit != None:
-                newUnits[row["alias"]] = realUnit
-        Unit.addUnits(newUnits)
+        import sys
+        
+        try:
+        
+            results = system.db.runQuery("select * from Units")
+            # Read the units
+            Unit.clearUnits()
+            newUnits = dict()
+            for row in results:
+                unit = Unit()
+                unit.name = row["name"]
+                unit.description = row["description"];
+                unit.type = row["type"]
+                unit.m = row["m"]
+                unit.b = row["b"]
+                unit.isBaseUnit = row["isBaseUnit"]
+                newUnits[unit.name] = unit
+            Unit.addUnits(newUnits)
+            # Read the aliases
+            newUnits = dict()
+            results = system.db.runQuery("select * from UnitAliases")
+            for row in results:
+                realUnit = Unit.getUnit(row["name"])
+                if realUnit != None:
+                    newUnits[row["alias"]] = realUnit
+            Unit.addUnits(newUnits)
+        except:
+            print "units.py: Exception reading units database: " + str(sys.exc_info()[0])+str(sys.exc_info()[1])
 
 def getUnitTypes():
     return list(Unit.getUnitTypes())
