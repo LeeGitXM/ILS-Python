@@ -142,7 +142,7 @@ def timedDelay(scopeContext, stepProperties):
     import time;
     from ils.sfc.common.util import createUniqueId
     chartProperties = scopeContext.getChartScope()
-    database = chartProperties[DATABASE]
+    database = chartProperties.get(DATABASE,"")
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
@@ -158,7 +158,7 @@ def timedDelay(scopeContext, stepProperties):
         pass # TODO: implement script callback--value can be dynamic
         handleUnexpectedGatewayError(chartProperties, "Callback strategy not implemented: ")
     else:
-        handleUnexpectedGatewayError(chartProperties, "unknown delay strategy: " + timeDelayStrategy)
+        handleUnexpectedGatewayError(chartProperties, "unknown delay strategy: " + str(timeDelayStrategy))
     delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
     print 'postNotification', postNotification
     if postNotification:
