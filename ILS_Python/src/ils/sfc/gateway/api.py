@@ -11,6 +11,12 @@ from ils.sfc.gateway.util import handleUnexpectedGatewayError
 
 UNIT = '.unit'
 
+# This version is supplied for compatibility with direct translations
+# from the G2 equivalent call. In particular, the G2 method returns
+# multiple values.
+def S88GetData(chart,step,key,scope):
+    return ("success", s88Get(chart,step,key,scope))
+
 def s88Get(chartProperties, stepProperties, ckey, location, create = False):
     return s88GetWithUnits(chartProperties, stepProperties, ckey, location, None, create)
 
@@ -34,6 +40,11 @@ def s88GetWithUnits(chartProperties, stepProperties, ckey, location, newUnitName
             handleUnexpectedGatewayError(chartProperties, "No unit found for property %s when new unit %s was requested" % (ckey, newUnitNameOrNone))
     return value
 
+# This version is supplied for compatibility with direct translations
+# from the G2 equivalent call.  
+def S88SetData(chart,step,key,value,scope):
+    s88Set(chart,step,key,scope,True)
+    
 def s88Set(chartProperties, stepProperties, ckey, value, location, createIfAbsent = False):
     s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, None, createIfAbsent)
     

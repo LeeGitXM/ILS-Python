@@ -16,5 +16,5 @@ class Enum(object):
 # Use these constants 
 EMCConstants= Enum('critical')
 S88Command  = Enum('abort')
-S88Operation= Enum('superior')
+S88Scope    = Enum('global operational superior')
 S88State    = Enum('aborted complete error running stopped')
