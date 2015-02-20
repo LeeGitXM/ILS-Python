@@ -5,7 +5,8 @@ Created on Sep 16, 2014
 
 @author: rforbes
 '''
-    
+import system
+
 FACTOR = 'FACtor'
 ALIAS = 'ALIas'
 BASEUNIT = 'BASEUNIT'
@@ -69,32 +70,32 @@ class Unit(object):
         Unit.unitTypes.clear()
         
     @staticmethod
-    def writeSql(filename):
-        '''write a file that will insert all the unit info into a database,
-           replacing whatever is there'''
-        out = open(filename, 'w')
-        out.write("delete from Units\nGO\n");
-        out.write("delete from UnitAliases\nGO\n");
+    def insertDB(database = None):
+        '''This used to write a file that then had to somehow be inserted into 
+           the database, it's much easier to just insert it here!'''
+        tx=system.db.beginTransaction(database)
+        system.db.runUpdateQuery("delete from Units", tx=tx)
+        system.db.runUpdateQuery("delete from UnitAliases", tx=tx)
         for unit in Unit.unitsByName.values():
-            out.write(unit.getInsertStatement())
+            system.db.runUpdateQuery(unit.getInsertStatement(), tx=tx)
         for key in Unit.unitsByName.keys():
             unit = Unit.unitsByName[key]
             if not key == unit.name:
-                out.write(("insert into UnitAliases(alias, name) values(" + 
-                    Unit.quoteSqlString(key) + ", " + 
-                    Unit.quoteSqlString(unit.name)+ ")\nGO\n"))
-        out.close()
+                SQL = "insert into UnitAliases(alias, name) values('%s', '%s')" % (key, unit.name)
+                system.db.runUpdateQuery(SQL, tx=tx)
+        system.db.commitTransaction(tx)
+        system.db.closeTransaction(tx)
     
     @staticmethod
-    def getUnitTypes():
+    def getUnitTypes(database = None):
         '''Get all distinct unit types'''
-        Unit.lazyInitialize(None)
+        Unit.lazyInitialize(database)
         return Unit.unitTypes
     
     @staticmethod
-    def getUnitsOfType(unitType):
+    def getUnitsOfType(unitType, database = None):
         '''Get all the units of a particular type'''
-        Unit.lazyInitialize(None)
+        Unit.lazyInitialize(database)
         result = []
         for unit in Unit.unitsByName.values():
             if unit.type == unitType:
@@ -118,7 +119,7 @@ class Unit(object):
             Unit.quoteSqlString(self.type) + ", " +
             str(self.m) + ", " +
             str(self.b) + ", " +
-            str(Unit.getBooleanInt(self.isBaseUnit)) + ")\nGO\n");
+            str(Unit.getBooleanInt(self.isBaseUnit)) + ")");
 
     @staticmethod
     def getBooleanInt(bval):
