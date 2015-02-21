@@ -210,6 +210,13 @@ def getUnitTypes():
  
 def getUnitsOfType(unitType):
     return Unit.getUnitsOfType(unitType)
+
+def getTypeOfUnit(unitName):
+    unit = Unit.getUnit(unitName)
+    if unit != None:
+        return unit.type
+    else:
+        return None
         
 def unitsOfSameType(unitName, database = None):
     '''
