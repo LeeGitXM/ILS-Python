@@ -15,12 +15,14 @@ def sendResponse(messageId, response):
     replyPayload[MESSAGE_ID] = messageId    
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
-              
+
+# This is always called from the client
 def runChart(chartName):
     from ils.sfc.common.util import getDatabaseFromSystem
     from ils.sfc.client.controlPanel import createControlPanel
     project = system.util.getProjectName()
-    database = getDatabaseFromSystem()
+    #TODO There must be a way to get the name of the default database in client scope 
+    database = "XOM"
     user = system.security.getUsername()
     initialChartProps = dict()
     initialChartProps[PROJECT] = project

@@ -13,7 +13,7 @@ from ils.sfc.common.util import getDatabase
 from ils.sfc.common.util import handleUnexpectedClientError
 
 SESSION_TABLE = 'SfcSessions'
-MSG_TABLE = 'ControlPanelMsgs'
+MSG_TABLE = 'SfcControlPanelMsgs'
 
 def createSession(user, chartName, chartRunId, db):
     '''Record the fact that an sfc chart has been started and some associated info'''

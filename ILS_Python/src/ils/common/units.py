@@ -48,9 +48,9 @@ class Unit(object):
         return otherUnit.fromBaseUnits(self.toBaseUnits(value))
 
     @staticmethod
-    def convert(fromUnitName, toUnitName, value, database):
-        fromUnit = Unit.getUnit(fromUnitName, database)
-        toUnit = Unit.getUnit(toUnitName, database)
+    def convert(fromUnitName, toUnitName, value):
+        fromUnit = Unit.getUnit(fromUnitName)
+        toUnit = Unit.getUnit(toUnitName)
         return fromUnit.convertTo(toUnit, value)
         
     @staticmethod
@@ -68,34 +68,63 @@ class Unit(object):
         '''clear all unit information'''
         Unit.unitsByName.clear()
         Unit.unitTypes.clear()
+    
+    @staticmethod
+    def clearDBUnits(database = ""):
+        '''clear all unit information in the database'''
+        system.db.runUpdateQuery("delete from Units")
+        system.db.runUpdateQuery("delete from UnitAliases")
         
     @staticmethod
-    def insertDB(database = None):
+    def insertDB(database = ""):
         '''This used to write a file that then had to somehow be inserted into 
            the database, it's much easier to just insert it here!'''
-        tx=system.db.beginTransaction(database)
-        system.db.runUpdateQuery("delete from Units", tx=tx)
-        system.db.runUpdateQuery("delete from UnitAliases", tx=tx)
+        Unit.clearDBUnits(database)
         for unit in Unit.unitsByName.values():
-            system.db.runUpdateQuery(unit.getInsertStatement(), tx=tx)
+            SQL=unit.getInsertStatement()
+            try:
+                system.db.runUpdateQuery(SQL, database)
+            except:
+                print "Unit insert failed: %s" % (SQL)
+                
         for key in Unit.unitsByName.keys():
             unit = Unit.unitsByName[key]
             if not key == unit.name:
-                SQL = "insert into UnitAliases(alias, name) values('%s', '%s')" % (key, unit.name)
-                system.db.runUpdateQuery(SQL, tx=tx)
-        system.db.commitTransaction(tx)
-        system.db.closeTransaction(tx)
+                try:
+                    SQL = "insert into UnitAliases(alias, name) values('%s', '%s')" % (key, unit.name)
+                    system.db.runUpdateQuery(SQL, database)
+                except:
+                    print "Failed Alias insert: %s" % (SQL)
     
     @staticmethod
-    def getUnitTypes(database = None):
+    def getUnitTypes(database = ""):
         '''Get all distinct unit types'''
-        Unit.lazyInitialize(database)
+#        Unit.lazyInitialize(database)
         return Unit.unitTypes
     
     @staticmethod
-    def getUnitsOfType(unitType, database = None):
+    def getUnits():
+        '''Get all the units that are loaded in memory (in the callers scope)'''
+        header=["Name", "Type","Description","Base","Slope","Y-Intercept"]
+        vals=[]
+        for key in Unit.unitsByName.keys():
+            val=[]
+            unit = Unit.unitsByName[key]
+            print key, unit.name
+            val.append(key)
+            val.append(unit.type)
+            val.append(unit.description)
+            val.append(unit.isBaseUnit)
+            val.append(unit.m)
+            val.append(unit.b)
+            vals.append(val)
+        ds = system.dataset.toDataSet(header, vals)
+        return ds
+    
+    @staticmethod
+    def getUnitsOfType(unitType, database = ""):
         '''Get all the units of a particular type'''
-        Unit.lazyInitialize(database)
+#        Unit.lazyInitialize(database)
         result = []
         for unit in Unit.unitsByName.values():
             if unit.type == unitType:
@@ -103,9 +132,8 @@ class Unit(object):
         return result
     
     @staticmethod
-    def getUnit(name, database = None):
+    def getUnit(name):
         '''Get the unit with the given name (or alias)'''
-        Unit.lazyInitialize(database)
         unit = Unit.unitsByName.get(name)
         if unit == None:
             print 'Failed to find unit: ' + name
@@ -133,22 +161,22 @@ class Unit(object):
         return "'" + string.replace("'", "''") + "'"
 
     @staticmethod
-    def lazyInitialize(database = None):
-        from ils.sfc.common.util import getDatabaseFromSystem
-        if database == None:
-            database = getDatabaseFromSystem();
-        if len(Unit.unitsByName.keys()) == 0:
-            Unit.readFromDb(database)
+    def lazyInitialize(database = ""):
+#        from ils.sfc.common.util import getDatabaseFromSystem
+#        if database == None:
+#            database = getDatabaseFromSystem();
+#        if len(Unit.unitsByName.keys()) == 0:
+        Unit.readFromDb(database)
             
     @staticmethod
-    def readFromDb(database):
+    def readFromDb(database=""):
         '''read unit info from the project's default database'''
         import system.db
         import sys
         
         try:
-        
-            results = system.db.runQuery("select * from Units")
+            results = system.db.runQuery("select * from Units", database)
+            print "Read %i units..." % (len(results))
             # Read the units
             Unit.clearUnits()
             newUnits = dict()
@@ -164,7 +192,8 @@ class Unit(object):
             Unit.addUnits(newUnits)
             # Read the aliases
             newUnits = dict()
-            results = system.db.runQuery("select * from UnitAliases")
+            results = system.db.runQuery("select * from UnitAliases", database)
+            print "Read %i aliases..." % (len(results))
             for row in results:
                 realUnit = Unit.getUnit(row["name"])
                 if realUnit != None:
@@ -172,6 +201,9 @@ class Unit(object):
             Unit.addUnits(newUnits)
         except:
             print "units.py: Exception reading units database: " + str(sys.exc_info()[0])+str(sys.exc_info()[1])
+
+def getUnits():
+    return Unit.getUnits()
 
 def getUnitTypes():
     return list(Unit.getUnitTypes())

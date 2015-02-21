@@ -11,46 +11,50 @@ FROM_VALUE = "fromValue"
 TO_VALUE = "toValue"
 FROM_UNITS = "fromUnits"
 TO_UNITS = "toUnits"
-conversionPanel = None
 
-def internalFrameOpened(rootContainer):
-    ils.common.unitsUI.conversionPanel = rootContainer.getComponent("conversion")
-    
-def loadUnitsFromFileCallback(rootContainer):
+def getUnitsCallback():
+    ds=ils.common.units.getUnits()
+    return ds
+
+def loadUnitsFromDBCallback(container, db=""):
+    ils.common.units.Unit.readFromDb(db)
+    resetUI(container)
+
+def clearDBCallback(container, db=""):
+    ils.common.units.Unit.clearDBUnits(db)
+    resetUI(container)
+        
+def loadUnitsFromFileCallback(container):
     fileName = system.file.openFile()
     if fileName != None:
         newUnits = ils.common.units.parseUnitFile(fileName)
         ils.common.units.Unit.addUnits(newUnits)    
-        resetUnits()
+        resetUI(container)
 
 def insertIntoDatabaseCallback(rootContainer):
     ils.common.units.Unit.insertDB("")
 
 def clearMemoryCallback(rootContainer):
     ils.common.units.Unit.clearUnits()
-    resetUnits()
-
-def getComponent(name):
-    return conversionPanel.getComponent(name)
-    
-def resetUnits():
+   
+def resetUI(container):
     unitTypes = ils.common.units.Unit.getUnitTypes("")
-    typesCombo = getComponent(UNIT_TYPES)
+    typesCombo = container.getComponent(UNIT_TYPES)
     setComboValues(typesCombo, unitTypes)
-    fromUnitCombo = getComponent(FROM_UNITS)
+    fromUnitCombo = container.getComponent(FROM_UNITS)
     setComboValues(fromUnitCombo, [])
-    toUnitCombo = getComponent(TO_UNITS)
+    toUnitCombo = container.getComponent(TO_UNITS)
     setComboValues(toUnitCombo, [])
  
-def typeSelected():
-    selectedType = getComponent(UNIT_TYPES).selectedStringValue
+def typeSelected(container):
+    selectedType = container.getComponent(UNIT_TYPES).selectedStringValue
     if selectedType != None:
         unitsOfSelectedType = ils.common.units.Unit.getUnitsOfType(selectedType, "")
     else:
         unitsOfSelectedType = []
-    fromUnitCombo = getComponent(FROM_UNITS)
+    fromUnitCombo = container.getComponent(FROM_UNITS)
     setComboValues(fromUnitCombo, unitsOfSelectedType)
-    toUnitCombo = getComponent(TO_UNITS)
+    toUnitCombo = container.getComponent(TO_UNITS)
     setComboValues(toUnitCombo, unitsOfSelectedType)
     
 def setComboValues(combo, values):
@@ -66,14 +70,11 @@ def getComboSelection(combo):
     else:
         return None
         
-def doConversion():
-    
-    fromValue = getComponent(FROM_VALUE).doubleValue
-    fromUnitName = getComboSelection(getComponent(FROM_UNITS))
-    toUnitName = getComboSelection(getComponent(TO_UNITS))
+def doConversion(container):    
+    fromValue = container.getComponent(FROM_VALUE).doubleValue
+    fromUnitName = getComboSelection(container.getComponent(FROM_UNITS))
+    toUnitName = getComboSelection(container.getComponent(TO_UNITS))
     if fromUnitName == None or toUnitName == None:
-        return        
-    fromUnit = ils.common.units.Unit.getUnit(fromUnitName, "")
-    toUnit = ils.common.units.Unit.getUnit(toUnitName, "")
-    newToValue = toUnit.fromBaseUnits(fromUnit.toBaseUnits(fromValue))
-    getComponent(TO_VALUE).doubleValue = newToValue
+        return
+    newToValue = ils.common.units.Unit.convert(fromUnitName, toUnitName, fromValue)
+    container.getComponent(TO_VALUE).doubleValue = newToValue

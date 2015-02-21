@@ -4,7 +4,7 @@ Created on Oct 31, 2014
 @author: rforbes
 '''
 
-CONTROL_PANEL_NAME = 'SFCControlPanel'
+CONTROL_PANEL_NAME = 'SFC/SFCControlPanel'
 controlPanelsByChartRunId = dict()
 FLASH_INTERVAL = 3.
 import system.dataset
