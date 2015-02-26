@@ -15,7 +15,6 @@ LEFT = "left"
 TOP = 'top'
 BOTTOM = 'bottom'
 
-ABORTED = 'Aborted'
 ACK_REQUIRED = "ackRequired"
 ACK_TIME = "ackTime"
 ACK_TIMED_OUT = "ackTimedOut"
@@ -73,7 +72,6 @@ MAXIMUM_VALUE = "maximumValue"
 MULTIPLE = "multiple"
 NAME = "name"
 PARENT = 'parent'
-PAUSED = 'Paused'
 POSITION = 'position'
 POST_TO_QUEUE = "postToQueue"
 POST_NOTIFICATION = "postNotification"
@@ -90,7 +88,6 @@ RESPONSE = 'response'
 RESULTS_MODE = "resultsMode" 
 REVIEW_DATA = "reviewData" 
 REVIEW_DATA_WITH_ADVICE = "reviewDataWithAdvice" 
-RUNNING = "Running"
 SCALE = 'scale'
 SCREEN_HEADER = "screenHeader"
 SECURITY = 'security'
@@ -102,7 +99,6 @@ START_TIME = 'startTime'
 STATIC = "static"
 STATUS = "status"
 STEP_PROPERTIES = 'stepProperties'
-STOPPED = 'Stopped'
 STRATEGY = "strategy"
 TAG_PATH = "tagPath"
 STRATEGY = "strategy"
@@ -137,5 +133,9 @@ PHASE_SCOPE ='phase'
 OPERATION_SCOPE = 'operation'
 GLOBAL_SCOPE = 'global'
 
-
-
+# chart statuses corresponding to IA's ChartStateEnum in java
+RUNNING = "Running"
+PAUSED = "Paused"
+ABORTED = "Aborted"
+CANCELED = "Canceled"
+STOPPED = "Stopped"

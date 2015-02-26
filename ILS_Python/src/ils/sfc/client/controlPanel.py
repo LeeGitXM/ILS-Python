@@ -73,7 +73,7 @@ class ControlPanel:
         
     def updateStatus(self, status):
         from java.awt import Color
-        from ils.sfc.common.constants import RUNNING, PAUSED, STOPPED, ABORTED
+        from ils.sfc.common.constants import RUNNING, PAUSED, CANCELED, STOPPED, ABORTED
         statusField = self.getStatusField()
         statusField.setText(status)
         if status == RUNNING:
@@ -85,10 +85,14 @@ class ControlPanel:
         elif status == ABORTED:
             statusField.setBackground(Color.red)
             self.enableChartButtons(False, False, False)
-        elif status == STOPPED:
+        elif status == STOPPED or status == CANCELED:
             statusField.setBackground(Color.blue)
             self.enableChartButtons(False, False, False)
-
+        else:
+            #Some other transitory state
+            statusField.setBackground(Color.gray)
+            self.enableChartButtons(False, False, False)
+            
     def setCommandMask(self, pause, resume, cancel):
         self.pauseMask= pause
         self.resumeMask = resume
