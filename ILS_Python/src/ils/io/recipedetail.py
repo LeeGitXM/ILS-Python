@@ -65,7 +65,7 @@ class RecipeDetail(recipe.Recipe):
             if newHighLimitValue > oldHighLimitValue:
                 log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
                 highLimitWritten = True
-                confirmed, r = self.writeDatum(rootPath + highLimitTagName, 'WRITEDATUM', newHighLimitValue)
+                confirmed, r = self.writeDatum(rootPath + highLimitTagName, newHighLimitValue)
                 reason = reason + r
                 status = status and confirmed
 
