@@ -9,17 +9,11 @@ def getResponse(id):
 def setResponse(payload):
     pass
 
-def addSession(pyDict):
-    pass
-
-def getChartState(uuid):
-    pass
-
-def getRunningCharts():
-    pass
-
 def getReviewDataConfig(stepId):
     pass
 
 def activateStep(className, chartProperties, stepProperties):
+    pass
+
+def registerSfcProject(projectName):
     pass

@@ -211,4 +211,3 @@ def sfcChartStarted(payload):
     from ils.sfc.client.controlPanel import createControlPanel
     createControlPanel(payload)
 
-

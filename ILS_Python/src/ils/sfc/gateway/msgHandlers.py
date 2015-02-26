@@ -21,10 +21,12 @@ def sfcStartChart(payload):
     import system.sfc.startChart
     import system.util.sendMessage
     import ils.common.units
+    from system.ils.sfc import registerSfcProject
     from ils.sfc.common.constants import INSTANCE_ID, CHART_NAME, PROJECT, DATABASE
     chartName = payload[CHART_NAME]
     project = payload[PROJECT]
     database = payload[DATABASE]
+    registerSfcProject(project)
     ils.common.units.Unit.lazyInitialize(database)
     runId = system.sfc.startChart(chartName, payload)
     payload[INSTANCE_ID] = runId

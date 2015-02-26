@@ -228,9 +228,9 @@ class ControlPanel:
         self.toolbarDataset = system.dataset.deleteRows(self.toolbarDataset, rowsToRemove)
         self.getToolbar().templateParams = self.toolbarDataset
              
-def reconnect():
-    from ils.sfc.client.util import registerClient
-    registerClient()
+#def reconnect():
+#    from ils.sfc.client.util import registerClient
+#    registerClient()
 
 def createControlPanel(chartProperties):
     from ils.sfc.common.constants import INSTANCE_ID
@@ -249,17 +249,15 @@ def updateControlPanels():
         controller.update()
 
 def updateChartStatus(payload):
-    from ils.sfc.common.constants import STATUS
-    chartInfoByRunId = payload[STATUS] 
-    for chartRunId in chartInfoByRunId.keys():
-        existingPanel = controlPanelsByChartRunId.get(chartRunId, None)
-        chartInfo = chartInfoByRunId[chartRunId]
-        if existingPanel != None:
-            status = chartInfo[STATUS]
-            existingPanel.updateStatus(status)
-        else:
-            #TODO: check for matching user
-             createControlPanel(chartInfo)
+    from ils.sfc.common.constants import STATUS, INSTANCE_ID
+    chartRunId = payload[INSTANCE_ID] 
+    existingPanel = controlPanelsByChartRunId.get(chartRunId, None)
+    # since we only have control panels for top-level charts, we will
+    # frequently get status updates for lower level charts that have
+    # no panel
+    if existingPanel != None:
+        status = payload[STATUS]
+        existingPanel.updateStatus(status)
 
 def removeControlPanel(chartRunId):
     cp = controlPanelsByChartRunId.pop(chartRunId, None)

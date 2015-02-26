@@ -175,10 +175,6 @@ def printObj(obj, level, out):
         out.write( ': ')
         out.write(str(obj))
         out.write('\n')
-    
-def getChartState(uuid):
-    from system.ils.sfc import getChartState
-    return getChartState(uuid)
 
 def getDefaultMessageQueueScope():
     return OPERATION_SCOPE
@@ -189,8 +185,9 @@ def getCurrentMessageQueue(chartProperties, stepProperties):
 
 def substituteScopeReferences(scopeContext, stepProperties, sql):
     pass
-#def sendChartStatus(projectName, payload):
-#    from ils.sfc.common.util import sendMessageToClient
-#    sendMessageToClient(chartProperties, UPDATE_CHART_STATUS_HANDLER, payload)
+
+def sendChartStatus(projectName, payload):
+    import system.util
+    system.util.sendMessage(projectName, UPDATE_CHART_STATUS_HANDLER, payload, "C")
     
  
