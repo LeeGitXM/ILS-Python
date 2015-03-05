@@ -188,16 +188,16 @@ class ControlPanel:
         self.update()
         
     def doPause(self):
-        from ils.sfc.gateway.api import pauseChart
-        pauseChart(self.chartProperties)
+        from system.sfc import pauseChart
+        pauseChart(self.getChartRunId())
     
     def doResume(self):
-        from ils.sfc.gateway.api import resumeChart
-        resumeChart(self.chartProperties)
+        from system.sfc import resumeChart
+        resumeChart(self.getChartRunId())
     
     def doCancel(self):
-        from ils.sfc.gateway.api import cancelChart
-        cancelChart(self.chartProperties)
+        from system.sfc import cancelChart
+        cancelChart(self.getChartRunId())
     
     def topWindow(self, windowId):
         window = self.windowsById[windowId]
@@ -262,6 +262,15 @@ def updateChartStatus(payload):
     if existingPanel != None:
         status = payload[STATUS]
         existingPanel.updateStatus(status)
+
+def updateCurrentOperation(payload):
+    from ils.sfc.common.constants import STATUS, INSTANCE_ID
+    chartRunId = payload[INSTANCE_ID] 
+    operationName = payload[STATUS]
+    existingPanel = controlPanelsByChartRunId.get(chartRunId, None)
+
+    if existingPanel != None:
+        existingPanel.getOperationField().setText(operationName)
 
 def removeControlPanel(chartRunId):
     cp = controlPanelsByChartRunId.pop(chartRunId, None)

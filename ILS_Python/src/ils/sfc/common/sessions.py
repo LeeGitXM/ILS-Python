@@ -39,20 +39,20 @@ def getSession(chartRunId, db):
     else:
         return None
 
-def updateSessionStatus(chartProperties, status):
-    '''
-    update the status and lastChangeTime
-    where does this get called from? could manually add to project sfc hooks,
-    but an automatic method would be much better...
-    '''
-    from ils.sfc.gateway.util import sendUpdateControlPanelMsg
-    chartRunId = getChartRunId(chartProperties)
-    db = getDatabase(chartProperties)
-    sql = ("update " + SESSION_TABLE + " set status = '%s', lastChangeTime = getdate() where chartRunId = '%s'") % (status, chartRunId)
-    numUpdated = system.db.runUpdateQuery(sql, db)
-    if(numUpdated != 1):
-        handleUnexpectedClientError(chartProperties, "update of session db table failed")
-    sendUpdateControlPanelMsg(chartProperties)
+#def updateSessionStatus(chartProperties, status):
+#    '''
+#    update the status and lastChangeTime
+#    where does this get called from? could manually add to project sfc hooks,
+#    but an automatic method would be much better...
+#    '''
+#    from ils.sfc.gateway.util import sendUpdateControlPanelMsg
+#    chartRunId = getChartRunId(chartProperties)
+#    db = getDatabase(chartProperties)
+#    sql = ("update " + SESSION_TABLE + " set status = '%s', lastChangeTime = getdate() where chartRunId = '%s'") % (status, chartRunId)
+#    numUpdated = system.db.runUpdateQuery(sql, db)
+#    if(numUpdated != 1):
+#        handleUnexpectedClientError(chartProperties, "update of session db table failed")
+#    sendUpdateControlPanelMsg(chartProperties)
     
 # if we're going to implement this we need the step properties, so we can get the current step context
 #def updateSessionOperation(chartProperties, database):

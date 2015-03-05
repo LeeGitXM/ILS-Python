@@ -60,24 +60,18 @@ def s88SetWithUnits(chartProperties, stepProperties, ckey, value, location, unit
         
 def pauseChart(chartProperties):
     from system.sfc import pauseChart
-    from ils.sfc.common.constants import PAUSED, INSTANCE_ID
-    from ils.sfc.common.sessions import updateSessionStatus
+    from ils.sfc.common.constants import INSTANCE_ID
     chartRunId = str(chartProperties[INSTANCE_ID])
     pauseChart(chartRunId)
-    updateSessionStatus(chartProperties, PAUSED)
     
 def resumeChart(chartProperties):
     from system.sfc import resumeChart
-    from ils.sfc.common.constants import RUNNING, INSTANCE_ID
-    from ils.sfc.common.sessions import updateSessionStatus
+    from ils.sfc.common.constants import INSTANCE_ID
     chartRunId = str(chartProperties[INSTANCE_ID])
     resumeChart(chartRunId)
-    updateSessionStatus(chartProperties, RUNNING)
 
 def cancelChart(chartProperties):
     from system.sfc import cancelChart
-    from ils.sfc.common.constants import CANCELED, INSTANCE_ID
-    from ils.sfc.common.sessions import updateSessionStatus
+    from ils.sfc.common.constants import INSTANCE_ID
     chartRunId = str(chartProperties[INSTANCE_ID])
     cancelChart(chartRunId)
-    updateSessionStatus(chartProperties, CANCELED)

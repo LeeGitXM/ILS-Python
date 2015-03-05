@@ -29,6 +29,7 @@ CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
 SHOW_WINDOW_HANDLER = 'sfcShowWindow'
 CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
 UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
+UPDATE_CURRENT_OPERATION_HANDLER = 'sfcUpdateCurrentOperation'
 REVIEW_DATA_HANDLER = 'sfcReviewData'
 
 def printCounter():
@@ -190,4 +191,7 @@ def sendChartStatus(projectName, payload):
     import system.util
     system.util.sendMessage(projectName, UPDATE_CHART_STATUS_HANDLER, payload, "C")
     
+def sendCurrentOperation(projectName, payload):
+    import system.util
+    system.util.sendMessage(projectName, UPDATE_CURRENT_OPERATION_HANDLER, payload, "C")
  

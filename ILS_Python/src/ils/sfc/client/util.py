@@ -5,7 +5,6 @@ Created on Oct 31, 2014
 '''
 import system.util 
 from ils.sfc.common.constants import *
-from ils.sfc.common.sessions import updateSessionStatus
 from ils.sfc.client.controlPanel import ControlPanel
 
 def sendResponse(messageId, response):
@@ -30,14 +29,6 @@ def runChart(chartName):
     initialChartProps[USER] = user
     initialChartProps[DATABASE] = database
     system.util.sendMessage(project, 'sfcStartChart', initialChartProps, "G")
-
-def onStop(chartProperties):
-    '''this should be called from every SFC chart's onStop hook'''
-    updateSessionStatus(chartProperties, STOPPED)
-    
-def onAbort(chartProperties):
-    '''this should be called from every SFC chart's onPause hook'''
-    updateSessionStatus(chartProperties, ABORTED)
     
 def openWindow(windowName, position, scale, windowProps):
     '''Open the given window inside the main window with the given position and size'''

@@ -187,7 +187,11 @@ def sfcUpdateControlPanel(payload):
 def sfcUpdateChartStatus(payload):
     from ils.sfc.client.controlPanel import updateChartStatus 
     updateChartStatus(payload)
-    
+
+def sfcUpdateCurrentOperation(payload):
+    from ils.sfc.client.controlPanel import updateCurrentOperation 
+    updateCurrentOperation(payload)
+
 def sfcReviewData(payload):
     from ils.sfc.common.constants import POSITION, SCALE, SCREEN_HEADER, MESSAGE_ID, CONFIG
     from ils.sfc.client.util import openWindow
