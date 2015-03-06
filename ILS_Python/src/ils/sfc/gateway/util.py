@@ -99,11 +99,15 @@ def sendUpdateControlPanelMsg(chartProperties):
     from ils.sfc.common.util import sendMessageToClient
     sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
     
+def escapeSingleQuotes(msg):
+    return msg.replace("'", "''")
+
 def addControlPanelMessage(chartProperties, message, ackRequired):
     from ils.sfc.common.sessions import addControlPanelMessage 
+    escapedMessage = escapeSingleQuotes(message)
     chartRunId = getChartRunId(chartProperties)
     db = getDatabase(chartProperties)
-    msgId = addControlPanelMessage(message, ackRequired, chartRunId, db)
+    msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, db)
     sendUpdateControlPanelMsg(chartProperties)
     return msgId
 

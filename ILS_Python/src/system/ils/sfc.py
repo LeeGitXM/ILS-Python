@@ -17,3 +17,9 @@ def activateStep(className, chartProperties, stepProperties):
 
 def registerSfcProject(projectName):
     pass
+
+def s88BasicGet(chartProperties, stepProperties, ckey, location):
+    pass
+
+def s88BasicSet(chartProperties, stepProperties, ckey, location, value):
+    pass
