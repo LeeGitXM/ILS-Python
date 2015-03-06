@@ -9,6 +9,8 @@ Created on Oct 30, 2014
 from ils.common.units import Unit
 from ils.sfc.gateway.util import handleUnexpectedGatewayError
 from system.ils.sfc import s88BasicGet, s88BasicSet
+from ils.sfc.common.util import getDatabase
+from ils.common.units import Unit
 
 def s88Get(chartProperties, stepProperties, valuePath, location):
     return s88BasicGet(chartProperties, stepProperties, valuePath, location)
@@ -17,7 +19,7 @@ def getUnitsPath(valuePath):
     '''Get the units associated with a value; None if not found'''
     valueKeyIndex = valuePath.find(".value")
     if valueKeyIndex > 0:
-        return valuePath.substring(0, valueKeyIndex) + ".units"
+        return valuePath[0 : valueKeyIndex] + ".units"
     else:
         raise Exception("no value field to get units for in " + valuePath)
 
@@ -25,6 +27,7 @@ def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, return
     value = s88BasicGet(chartProperties, stepProperties, valuePath, location)
     unitsPath = getUnitsPath(valuePath)
     existingUnitsName = s88BasicGet(chartProperties, stepProperties, unitsPath, location)
+    Unit.lazyInitialize(getDatabase(chartProperties))
     existingUnits = Unit.getUnit(existingUnitsName)
     if(existingUnits == None):
         raise Exception("No unit found for " + existingUnitsName)
@@ -33,13 +36,11 @@ def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, return
         raise Exception("No unit found for " + returnUnitsName)
     convertedValue = existingUnits.convertTo(returnUnits, value)
     return convertedValue
-
-
     
-def s88Set(chartProperties, stepProperties, valuePath, value, location):
+def s88Set(chartProperties, stepProperties, valuePath, location, value):
     s88BasicSet(chartProperties, stepProperties, valuePath, location, value)
      
-def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, newUnitsName):
+def s88SetWithUnits(chartProperties, stepProperties, valuePath, location, value, newUnitsName):
     s88BasicSet(chartProperties, stepProperties, valuePath, location, value)
     unitsPath = getUnitsPath(valuePath)
     s88BasicSet(chartProperties, stepProperties, unitsPath, location, newUnitsName)
