@@ -98,6 +98,12 @@ def waitOnResponse(requestId, chartScope):
 def sendUpdateControlPanelMsg(chartProperties):
     from ils.sfc.common.util import sendMessageToClient
     sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
+
+def getFullChartPath(chartProperties):
+    if(chartProperties.parent != None):
+        return getFullChartPath(chartProperties.parent) + '/' + chartProperties.chartPath
+    else:
+        return chartProperties.chartPath
     
 def escapeSingleQuotes(msg):
     return msg.replace("'", "''")
