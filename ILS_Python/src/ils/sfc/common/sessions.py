@@ -8,8 +8,6 @@ Created on Nov 3, 2014
 import system
 from ils.sfc.common.constants import RUNNING, PAUSED
 from ils.sfc.common.util import boolToBit
-from ils.sfc.common.util import getChartRunId
-from ils.sfc.common.util import getDatabase
 from ils.sfc.common.util import handleUnexpectedClientError
 
 SESSION_TABLE = 'SfcSessions'

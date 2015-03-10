@@ -8,7 +8,6 @@ Created on Sep 30, 2014
 from system.ils.sfc import getResponse
 from ils.sfc.common.constants import *
 from ils.sfc.common.util import getChartRunId
-from ils.sfc.common.util import getDatabase
 
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
@@ -110,10 +109,11 @@ def escapeSingleQuotes(msg):
 
 def addControlPanelMessage(chartProperties, message, ackRequired):
     from ils.sfc.common.sessions import addControlPanelMessage 
+    from ils.sfc.common.util import getDatabaseName
     escapedMessage = escapeSingleQuotes(message)
     chartRunId = getChartRunId(chartProperties)
-    db = getDatabase(chartProperties)
-    msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, db)
+    database = getDatabaseName(chartProperties)
+    msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, database)
     sendUpdateControlPanelMsg(chartProperties)
     return msgId
 

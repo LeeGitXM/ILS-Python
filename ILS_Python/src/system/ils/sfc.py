@@ -23,3 +23,12 @@ def s88BasicGet(chartProperties, stepProperties, ckey, location):
 
 def s88BasicSet(chartProperties, stepProperties, ckey, location, value):
     pass
+
+def getDatabaseName(isolationMode):
+    pass
+
+def getProviderName(isolationMode):
+    pass
+
+def getTimeFactor(isolationMode):
+    pass

@@ -50,21 +50,18 @@ class ControlPanel:
         return self.chartProperties[USER]
     
     def getChartName(self):
-        from ils.sfc.common.constants import CHART_NAME
-        return self.chartProperties[CHART_NAME]
+        return self.chartProperties.chartPath
     
     def getChartRunId(self):
         from ils.sfc.common.constants import INSTANCE_ID
         return self.chartProperties[INSTANCE_ID]
     
-    def getDatabase(self):
-        from ils.sfc.common.constants import DATABASE
-        return self.chartProperties[DATABASE]
-    
     def update(self):
         '''something has changed; update the UI'''
         from ils.sfc.common.sessions import getControlPanelMessages
-        self.messages = getControlPanelMessages(self.getChartRunId(), self.getDatabase())
+        from ils.sfc.common.util import getDatabaseName
+        database = getDatabaseName(self.chartProperties)
+        self.messages = getControlPanelMessages(self.getChartRunId(), database)
         numMessages = len(self.messages)
         if numMessages > 0:
             if self.messageIndex == None:
@@ -181,10 +178,12 @@ class ControlPanel:
         
     def doAcknowledge(self):
         from ils.sfc.common.constants import ID
+        from ils.sfc.common.util import getDatabaseName
         from ils.sfc.common.sessions import acknowledgeControlPanelMessage
         msg = self.messages[self.messageIndex]
         msgId = msg[ID]
-        acknowledgeControlPanelMessage(msgId, self.getDatabase())
+        database = getDatabaseName(self.chartProperties)
+        acknowledgeControlPanelMessage(msgId, database)
         self.update()
         
     def doPause(self):

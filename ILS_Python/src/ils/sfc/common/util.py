@@ -5,7 +5,7 @@ Created on Nov 3, 2014
 '''
 import system
 
-from ils.sfc.common.constants import PARENT, INSTANCE_ID, DATABASE, RECIPE_DATA, PROJECT
+from ils.sfc.common.constants import PARENT, INSTANCE_ID, RECIPE_DATA, PROJECT
 
 def readFile(filepath):
     '''
@@ -22,15 +22,6 @@ def readFile(filepath):
     result = out.getvalue()
     out.close()
     return result   
-
-def getChartState(chartProperties):
-    from system.ils.sfc import getChartState
-    #note: getChartState requires a java UUID
-    return getChartState(chartProperties[INSTANCE_ID])
-
-def getRunningCharts(chartProperties):
-    from system.ils.sfc import getRunningCharts
-    return getRunningCharts()
 
 def sendMessageToClient(chartProperties, handler, payload):
     # TODO: check returned list of recipients
@@ -63,8 +54,6 @@ def getTopLevelProperties(chartProperties):
 def getChartRunId(chartProperties):
     return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
 
-def getDatabase(chartProperties):
-    return getTopLevelProperties(chartProperties)[DATABASE]
 
 def getProject(chartProperties):
     return str(getTopLevelProperties(chartProperties)[PROJECT])
@@ -73,22 +62,24 @@ def getTestResponse(chartProperties):
     from ils.sfc.common.constants import TEST_RESPONSE
     return getTopLevelProperties(chartProperties).get(TEST_RESPONSE, None)
 
-def getDatabaseFromSystem():
-    '''Get the project database'''
-    connections = system.db.getConnections()
-    numConnections = connections.rowCount
-    if numConnections == 0:
-        system.gui.errorBox("no database connection is available")
-        return None
-    else:
-        if numConnections > 1:
-            system.gui.warningBox("several database connections are available; one will be chosen randomly")        
-        db = connections.getValueAt(0, 'name')
-        return db
-    
+def getDatabaseName(chartProperties):
+    from ils.sfc.common.constants import ISOLATION_MODE
+    from system.ils.sfc import getDatabaseName
+    isolationMode = chartProperties[ISOLATION_MODE]
+    return getDatabaseName(isolationMode)
+
+def getTagProvider(chartProperties):
+    from ils.sfc.common.constants import ISOLATION_MODE
+    from system.ils.sfc import getProviderName
+    isolationMode = chartProperties[ISOLATION_MODE]
+    return getProviderName(isolationMode)
+        
 # this should really be in client.util
 def handleUnexpectedClientError(message):
     system.gui.errorBox(message, 'Unexpected Error')
+
+def isEmpty(str):
+    return str == None or str.strip() == ""
 
 def createUniqueId():
     '''

@@ -9,7 +9,6 @@ Created on Oct 30, 2014
 from ils.common.units import Unit
 from ils.sfc.gateway.util import handleUnexpectedGatewayError
 from system.ils.sfc import s88BasicGet, s88BasicSet
-from ils.sfc.common.util import getDatabase
 from ils.common.units import Unit
 
 def s88Get(chartProperties, stepProperties, valuePath, location):
@@ -24,10 +23,12 @@ def getUnitsPath(valuePath):
         raise Exception("no value field to get units for in " + valuePath)
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
+    from system.ils.sfc import getDatabaseName
     value = s88BasicGet(chartProperties, stepProperties, valuePath, location)
     unitsPath = getUnitsPath(valuePath)
     existingUnitsName = s88BasicGet(chartProperties, stepProperties, unitsPath, location)
-    Unit.lazyInitialize(getDatabase(chartProperties))
+    database = getDatabaseName(chartProperties)
+    Unit.lazyInitialize(database)
     existingUnits = Unit.getUnit(existingUnitsName)
     if(existingUnits == None):
         raise Exception("No unit found for " + existingUnitsName)

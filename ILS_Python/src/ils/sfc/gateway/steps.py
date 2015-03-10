@@ -14,6 +14,7 @@ from ils.sfc.gateway.api import s88Set, s88Get
 from ils.common.units import Unit
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
+from ils.sfc.common.util import getDatabaseName
 from ils.sfc.common.util import sendMessageToClient
 from ils.sfc.common.util import getLogger
 
@@ -43,7 +44,7 @@ def queueInsert(scopeContext, stepProperties):
     currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
     message = getStepProperty(stepProperties, MESSAGE)  
     priority = getStepProperty(stepProperties, PRIORITY)  
-    database = chartProperties[DATABASE]
+    database = getDatabaseName(chartProperties)
     insert(currentMsgQueue, priority, message, database) 
     
 def setQueue(scopeContext, stepProperties):
@@ -73,7 +74,7 @@ def clearQueue(scopeContext, stepProperties):
     '''
     chartProperties = scopeContext.getChartScope()
     currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
-    database = chartProperties[DATABASE]
+    database = getDatabaseName(chartProperties)
     clear(currentMsgQueue, database)
 
 def yesNo(scopeContext, stepProperties):
@@ -113,7 +114,7 @@ def controlPanelMessage(scopeContext, stepProperties):
     from ils.sfc.common.sessions import timeOutControlPanelMessageAck
     chartProperties = scopeContext.getChartScope()
     message = getStepProperty(stepProperties, MESSAGE)
-    database = chartProperties[DATABASE]
+    database = getDatabaseName(chartProperties)
     ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
     msgId = addControlPanelMessage(chartProperties, message, ackRequired)
     postToQueue = getStepProperty(stepProperties, POST_TO_QUEUE)
@@ -122,7 +123,6 @@ def controlPanelMessage(scopeContext, stepProperties):
         priority = getStepProperty(stepProperties, PRIORITY)
         insert(currentMsgQueue, priority, message, database)
     if ackRequired:
-        database = chartProperties[DATABASE]
         timeout = message = getStepProperty(stepProperties, TIMEOUT)
         timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
         timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout, database)
@@ -142,7 +142,7 @@ def timedDelay(scopeContext, stepProperties):
     import time;
     from ils.sfc.common.util import createUniqueId
     chartProperties = scopeContext.getChartScope()
-    database = chartProperties.get(DATABASE,"")
+    database = getDatabaseName(chartProperties)
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     callback = getStepProperty(stepProperties, CALLBACK) 
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
@@ -273,7 +273,7 @@ def getInput(scopeContext, stepProperties):
 
 def rawQuery(scopeContext, stepProperties):
     chartProperties = scopeContext.getChartScope()
-    database = getStepProperty(stepProperties, DATABASE) 
+    database = getDatabaseName(chartProperties)
     sql = getStepProperty(stepProperties, SQL) 
     result = system.db.runQuery(sql, database) # returns a PyDataSet
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
@@ -282,7 +282,7 @@ def rawQuery(scopeContext, stepProperties):
 
 def simpleQuery(scopeContext, stepProperties):
     chartProperties = scopeContext.getChartScope()
-    database = getStepProperty(stepProperties, DATABASE) 
+    database = getDatabaseName(chartProperties)
     sql = getStepProperty(stepProperties, SQL)
     processedSql = substituteScopeReferences(chartProperties, stepProperties, sql)
     dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 

@@ -16,6 +16,9 @@ def commitTransaction(tx):
 def dateFormat(timestamp, format):
     return True
 
+def getConnectionInfo(dbName):
+    pass
+
 def getConnections():
     pass
 

@@ -15,18 +15,15 @@ def testStep(stepClassName, stepProperties):
     '''Activate a single step on the gateway as if it was in a chart'''
     from ils.sfc.client.controlPanel import createControlPanel
     from ils.sfc.client.util import registerClient
-    from ils.sfc.common.constants import PROJECT, CHART_NAME, USER, DATABASE, INSTANCE_ID
+    from ils.sfc.common.constants import PROJECT, USER, INSTANCE_ID
     from ils.sfc.common.constants import CHART_PROPERTIES, STEP_PROPERTIES, CLASS_NAME
-    from ils.sfc.common.util import getDatabaseFromSystem, createUniqueId
+    from ils.sfc.common.util import createUniqueId
     import system.util.sendMessage
     project = system.util.getProjectName()
-    database = getDatabaseFromSystem()
     user = system.security.getUsername()
     chartProperties = dict()
     chartProperties[PROJECT] = project
-    chartProperties[CHART_NAME] = 'DummyChart'
     chartProperties[USER] = user
-    chartProperties[DATABASE] = database
     chartProperties[INSTANCE_ID] = createUniqueId()
     createControlPanel(chartProperties)
     registerClient()

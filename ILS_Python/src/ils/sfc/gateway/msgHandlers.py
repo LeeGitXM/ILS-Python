@@ -18,17 +18,22 @@ def sfcActivateStep(payload):
     activateStep(payload[CLASS_NAME], payload[CHART_PROPERTIES], payload[STEP_PROPERTIES])
     
 def sfcStartChart(payload):
+    '''start the chart and message the client. At this point the only reason
+       we start on the gateway side is to lazy init the units. Maybe we can
+       move that elsewhere and get rid of this method, just start chart on client'''
     import system.sfc.startChart
     import system.util.sendMessage
     import ils.common.units
     from system.ils.sfc import registerSfcProject
-    from ils.sfc.common.constants import INSTANCE_ID, CHART_NAME, PROJECT, DATABASE
+    from ils.sfc.common.util import getDatabaseName
+    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME
     chartName = payload[CHART_NAME]
     project = payload[PROJECT]
-    database = payload[DATABASE]
     registerSfcProject(project)
+    database = getDatabaseName(payload)
     ils.common.units.Unit.lazyInitialize(database)
     runId = system.sfc.startChart(chartName, payload)
+    # add the chart run id so the client can know it
     payload[INSTANCE_ID] = runId
     system.util.sendMessage(project, 'sfcChartStarted', payload, "C")
 
