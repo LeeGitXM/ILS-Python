@@ -115,7 +115,7 @@ def checkDatabaseConfig(database, messages):
         messages.append(database + " is not a defined Datasource")        
         return
 
-    tableNames = [SfcControlPanelMsgs', 'Units', 'UnitAliases', 'QueueMessageStatus', 'QueueDetail', 'QueueMaster']
+    tableNames = ['SfcControlPanelMsgs', 'Units', 'UnitAliases', 'QueueMessageStatus', 'QueueDetail', 'QueueMaster']
     for table in tableNames:
         if not tableExists(table, database):
             messages.append("Table " + table + " does not exist")
