@@ -123,6 +123,7 @@ RECIPE_LOCATION = "recipeLocation"
 # The name of the second unit is really defined in the database,
 # so this constant should agree with that. Likewise for type:
 SECOND= "SEC"
+MINUTE= "MIN"
 TIME_UNIT_TYPE = "TIME"
 
 #Recipe scopes:

@@ -65,14 +65,24 @@ def getTestResponse(chartProperties):
 def getDatabaseName(chartProperties):
     from ils.sfc.common.constants import ISOLATION_MODE
     from system.ils.sfc import getDatabaseName
-    isolationMode = chartProperties[ISOLATION_MODE]
+    topProperties = getTopLevelProperties(chartProperties)
+    isolationMode = topProperties[ISOLATION_MODE]
     return getDatabaseName(isolationMode)
 
 def getTagProvider(chartProperties):
     from ils.sfc.common.constants import ISOLATION_MODE
     from system.ils.sfc import getProviderName
-    isolationMode = chartProperties[ISOLATION_MODE]
+    topProperties = getTopLevelProperties(chartProperties)
+    isolationMode = topProperties[ISOLATION_MODE]
     return getProviderName(isolationMode)
+
+def getTimeFactor(chartProperties):
+    from ils.sfc.common.constants import ISOLATION_MODE
+    from system.ils.sfc import getTimeFactor
+    topProperties = getTopLevelProperties(chartProperties)
+    isolationMode = topProperties[ISOLATION_MODE]
+    return getTimeFactor(isolationMode)
+
         
 # this should really be in client.util
 def handleUnexpectedClientError(message):

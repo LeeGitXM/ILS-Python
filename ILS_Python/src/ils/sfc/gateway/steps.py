@@ -139,8 +139,7 @@ def controlPanelMessage(scopeContext, stepProperties):
         sendUpdateControlPanelMsg(chartProperties)
             
 def timedDelay(scopeContext, stepProperties):
-    import time;
-    from ils.sfc.common.util import createUniqueId
+    from ils.sfc.common.util import createUniqueId, getTimeFactor
     chartProperties = scopeContext.getChartScope()
     database = getDatabaseName(chartProperties)
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
@@ -160,6 +159,8 @@ def timedDelay(scopeContext, stepProperties):
     else:
         handleUnexpectedGatewayError(chartProperties, "unknown delay strategy: " + str(timeDelayStrategy))
     delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
+    timeFactor = getTimeFactor(chartProperties)
+    delaySeconds = delaySeconds * timeFactor
     print 'postNotification', postNotification
     if postNotification:
         payload = dict()

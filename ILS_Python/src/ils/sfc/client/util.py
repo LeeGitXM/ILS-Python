@@ -68,45 +68,82 @@ def checkConfig():
     messages = []
     from system.ils.sfc import getDatabaseName, getTimeFactor, getProviderName 
     from ils.sfc.common.util import isEmpty
-    isolationDatabase = getDatabaseName(True)
-    print 'isolation database', isolationDatabase
-    nonIsolationDatabase = getDatabaseName(False)
-    print 'non-isolation database', nonIsolationDatabase
-    if isEmpty(isolationDatabase):
-        messages.append('No database defined for isolation mode')
-    elif system.db.getConnectionInfo(isolationDatabase) == None:
-        messages.append('Isolation database name ' + isolationDatabase + " is not a defined Datasource")        
-    else:
-        checkSchema(isolationDatabase, 'Isolation', messages)
-    if isEmpty(nonIsolationDatabase):
-        messages.append('No database defined for non-isolation mode')
-    elif system.db.getConnectionInfo(nonIsolationDatabase) == None:
-        messages.append('Non-Isolation database name ' + nonIsolationDatabase + " is not a defined Datasource")        
-    else:
-        checkSchema(nonIsolationDatabase, 'Non-Isolation', messages)
-    if isEmpty(getProviderName(True)):
-        messages.append('No provider defined for isolation mode')
-    if isEmpty(getProviderName(False)):
-        messages.append('No provider defined for non-isolation mode')       
-        
-    if len(messages) == 0:
-        system.gui.messageBox("config OK")
-    else:
-        errorMsg = ''
-        for msg in messages:
-            errorMsg = errorMsg + msg + '\n'
-        system.gui.errorBox(errorMsg)
     
-def checkSchema(database, dbType, messages):
-    tableNames = ['Junk', 'SfcControlPanelMsgs', 'Units', 'UnitAliases', 'QueueMessageStatus', 'QueueDetail', 'QueueMaster']
+    productionDatabase = getDatabaseName(False)
+    messages.append('============Checking Production settings...=============')
+    checkDatabaseConfig(productionDatabase, messages)
+    productionTimeFactor = getTimeFactor(False)
+    if productionTimeFactor == None:
+        messages.append("No time factor is defined")
+    elif productionTimeFactor != 1.:
+        messages.append("WARNING: production time factor is not 1 (" + productionTimeFactor + ")")
+    productionProvider = getProviderName(False)
+    if isEmpty(productionProvider):
+        messages.append('No provider defined')
+    #TODO check if provider is defined in gateway
+
+    messages.append('==============Checking Isolation settings...===============')
+    isolationDatabase = getDatabaseName(True)
+    if(isolationDatabase == productionDatabase):
+        messages.append("Caution: isolation database is the same as production database")
+    else:
+        checkDatabaseConfig(isolationDatabase, messages)
+    isolationTimeFactor = getTimeFactor(True)
+    if isolationTimeFactor == None:
+        messages.append("No time factor is defined")
+    isolationProvider = getProviderName(True)
+    if isEmpty(isolationProvider):
+        messages.append('No tag provider defined')
+    #TODO check if provider is defined in gateway
+    
+    #todo: check for unit loading and time conversion
+    
+    boxMessage = ''
+    for msg in messages:
+        boxMessage = boxMessage + msg + '\n'
+    system.gui.messageBox(boxMessage)
+    
+def checkDatabaseConfig(database, messages):
+    from ils.sfc.common.util import isEmpty
+    import ils.common.units
+    from ils.sfc.common.constants import SECOND, MINUTE
+    
+    if isEmpty(database):
+        messages.append('No database defined')
+        return
+    elif system.db.getConnectionInfo(database) == None:
+        messages.append(database + " is not a defined Datasource")        
+        return
+
+    tableNames = [SfcControlPanelMsgs', 'Units', 'UnitAliases', 'QueueMessageStatus', 'QueueDetail', 'QueueMaster']
     for table in tableNames:
         if not tableExists(table, database):
-            messages.append("Table " + table + " does not exist in " + dbType + " database")
+            messages.append("Table " + table + " does not exist")
+    
+    if tableExists('Units', database):            
+        ils.common.units.Unit.lazyInitialize(database)
+        results = system.db.runQuery("select count(*) from Units", database)
+        numUnits = results[0][0]
+        if numUnits == 0:
+            messages.append("The Units table is empty")
+        elif numUnits == 3:
+            messages.append("The Units table contains only time units")
+        if numUnits >= 3:
+            secondsUnit = ils.common.units.Unit.getUnit(SECOND)
+            minutesUnit = ils.common.units.Unit.getUnit(MINUTE)
+            if secondsUnit == None:
+                messages.append("Seconds unit " + SECOND + " not in database")
+            elif minutesUnit == None:
+                messages.append("Minutes unit " + MINUTE + " not in database")
+            else:
+                secondsPerMinute = minutesUnit.convertTo(secondsUnit, 1)
+                if round(secondsPerMinute) != 60:
+                    messages.append("time unit conversions wrong: " + secondsPerMinute + " seconds per minute")
 
 def tableExists(table, database):
     query = "select count(*) from " + table
     try:
-        system.db.runQuery(query, database)
-        return True
+        results = system.db.runQuery(query, database)
+        return results != None
     except:
         return False
