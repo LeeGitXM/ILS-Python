@@ -63,27 +63,38 @@ def getTestResponse(chartProperties):
     return getTopLevelProperties(chartProperties).get(TEST_RESPONSE, None)
 
 def getDatabaseName(chartProperties):
-    from ils.sfc.common.constants import ISOLATION_MODE
     from system.ils.sfc import getDatabaseName
-    topProperties = getTopLevelProperties(chartProperties)
-    isolationMode = topProperties[ISOLATION_MODE]
+    isolationMode = getIsolationModel(chartProperties)
     return getDatabaseName(isolationMode)
 
 def getTagProvider(chartProperties):
-    from ils.sfc.common.constants import ISOLATION_MODE
     from system.ils.sfc import getProviderName
-    topProperties = getTopLevelProperties(chartProperties)
-    isolationMode = topProperties[ISOLATION_MODE]
+    isolationMode = getIsolationModel(chartProperties)
     return getProviderName(isolationMode)
 
-def getTimeFactor(chartProperties):
+def getIsolationModel(chartProperties):
     from ils.sfc.common.constants import ISOLATION_MODE
-    from system.ils.sfc import getTimeFactor
     topProperties = getTopLevelProperties(chartProperties)
-    isolationMode = topProperties[ISOLATION_MODE]
+    return topProperties[ISOLATION_MODE]
+   
+def getTimeFactor(chartProperties):
+    from system.ils.sfc import getTimeFactor
+    isolationMode = getIsolationModel(chartProperties)
     return getTimeFactor(isolationMode)
 
-        
+def substituteProvider(chartProperties, tagPath):
+    '''alter the given tag path to reflect the isolation mode provider setting'''
+    if tagPath.startsWith('[Client]') or tagPath.startsWith('[System]'):
+        return tagPath
+    else:
+        provider = getTagProvider(chartProperties)
+        rbIndex = tagPath.indexOf(']')
+        if rbIndex >= 0:
+            return provider + tagPath[rbIndex+1:len(tagPath)]
+        else:
+            # no provider was specified?! can't to anything
+            return tagPath
+    
 # this should really be in client.util
 def handleUnexpectedClientError(message):
     system.gui.errorBox(message, 'Unexpected Error')
@@ -97,3 +108,23 @@ def createUniqueId():
     '''
     import uuid
     return str(uuid.uuid4())
+
+def callMethod(methodPath):
+    '''given a fully qualified package.method name, call the method and return the result'''
+    lastDotIndex = methodPath.rfind(".")
+    packageName = methodPath[0:lastDotIndex]
+    globalDict = dict()
+    localDict = dict()
+    exec("import " + packageName + "\nresult = " + methodPath + "()\n", globalDict, localDict)
+    result = localDict['result']
+    return result
+
+def getHoursMinutesSeconds(totalSeconds):
+    '''break a floating point seconds value into hours, minutes, seconds'''
+    hours = int(round(totalSeconds/3600))
+    seconds = totalSeconds - hours * 3600
+    minutes = int(round(seconds/60))
+    seconds = seconds - minutes * 60
+    return hours, minutes, seconds
+
+    

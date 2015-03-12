@@ -14,6 +14,7 @@ from ils.sfc.gateway.api import s88Set, s88Get
 from ils.common.units import Unit
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
+
 from ils.sfc.common.util import getDatabaseName
 from ils.sfc.common.util import sendMessageToClient
 from ils.sfc.common.util import getLogger
@@ -139,29 +140,35 @@ def controlPanelMessage(scopeContext, stepProperties):
         sendUpdateControlPanelMsg(chartProperties)
             
 def timedDelay(scopeContext, stepProperties):
-    from ils.sfc.common.util import createUniqueId, getTimeFactor
+    from ils.sfc.common.util import createUniqueId, getTimeFactor, callMethod
     chartProperties = scopeContext.getChartScope()
-    database = getDatabaseName(chartProperties)
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
-    callback = getStepProperty(stepProperties, CALLBACK) 
-    postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
-    key = getStepProperty(stepProperties, KEY) 
-    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    # TODO: we need a better solution for unit initialization:
-    delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
     elif timeDelayStrategy == RECIPE:
+        recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+        key = getStepProperty(stepProperties, KEY) 
         delay = s88Get(chartProperties, stepProperties, key, recipeLocation)
     elif timeDelayStrategy == CALLBACK:
-        pass # TODO: implement script callback--value can be dynamic
-        handleUnexpectedGatewayError(chartProperties, "Callback strategy not implemented: ")
+        callback = getStepProperty(stepProperties, CALLBACK) 
+        delay = callMethod(callback)
     else:
         handleUnexpectedGatewayError(chartProperties, "unknown delay strategy: " + str(timeDelayStrategy))
-    delaySeconds = Unit.convert(delayUnit, SECOND, delay, database)
+
+    delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
+    if delayUnit == DELAY_UNIT_SECOND:
+        delaySeconds = delay
+    elif delayUnit == DELAY_UNIT_MINUTE:
+        delaySeconds = delay * 60
+    elif delayUnit == DELAY_UNIT_HOUR:
+        delaySeconds = delay * 3600
+    else:
+        handleUnexpectedGatewayError(chartProperties, "Unknown delay unit: " + delayUnit)
+
     timeFactor = getTimeFactor(chartProperties)
     delaySeconds = delaySeconds * timeFactor
-    print 'postNotification', postNotification
+
+    postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
     if postNotification:
         payload = dict()
         payload[CHART_RUN_ID] = getChartRunId(chartProperties)
@@ -169,7 +176,11 @@ def timedDelay(scopeContext, stepProperties):
         payload[ACK_REQUIRED] = False
         payload[WINDOW_ID] = createUniqueId()
         sendMessageToClient(chartProperties, POST_DELAY_NOTIFICATION_HANDLER, payload)
+    
+    #TODO: put some logic in to check for cancellation/pausing
+    #may need to do more in Java
     sleep(delaySeconds)
+    
     if postNotification:
         sendMessageToClient(chartProperties, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
       
@@ -251,8 +262,10 @@ def dialogMessage(scopeContext, stepProperties):
     sendMessageToClient(chartProperties, DIALOG_MSG_HANDLER, payload)
 
 def collectData(scopeContext, stepProperties):
+    from ils.sfc.common.util import substituteProvider
     chartProperties = scopeContext.getChartScope()
     tagPath = getStepProperty(stepProperties, TAG_PATH)
+    tagPath = substituteProvider(chartProperties, tagPath)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     value = system.tag.read(tagPath)

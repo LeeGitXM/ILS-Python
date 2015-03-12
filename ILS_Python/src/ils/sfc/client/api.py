@@ -3,7 +3,7 @@ Created on Nov 13, 2014
 
 @author: rforbes
 '''
-DELAY_NOTIFICATION_WINDOW_PATH = 'SFCNotification'
+DELAY_NOTIFICATION_WINDOW_PATH = 'SFC/SFCNotification'
 
 def showDelayNotification(chartRunId, message, ackRequired, messageId):
     from ils.sfc.client.controlPanel import getController

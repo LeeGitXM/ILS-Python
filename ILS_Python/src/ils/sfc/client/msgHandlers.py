@@ -92,7 +92,7 @@ def sfcPrintFile(payload):
         message = payload[MESSAGE]
     else:
         message = ils.sfc.common.util.readFile(filepath)
-    window = system.nav.openWindow('SaveData')
+    window = system.nav.openWindow('SFC/SaveData')
     window.title = filepath
     textArea = window.getRootContainer().getComponent("textArea")
     textArea.text = message
@@ -115,7 +115,7 @@ def sfcSaveData(payload):
     printFile = payload[PRINT_FILE]
     filepath = payload[FILEPATH]
     #ils.sfc.util.printObj(props, 0)
-    window = system.nav.openWindow('SaveData')
+    window = system.nav.openWindow('SFC/SaveData')
     window.title = filepath
     textArea = window.getRootContainer().getComponent("textArea")
     textArea.text = data
@@ -124,7 +124,7 @@ def sfcSaveData(payload):
         printJob.print()
     
 def sfcSelectInput(payload):
-    window = system.nav.openWindow('SelectInput', payload)
+    window = system.nav.openWindow('SFC/SelectInput', payload)
 
 def sfcShowQueue(payload):
     system.nav.openWindow('Queue/Message Queue')
@@ -200,7 +200,7 @@ def sfcReviewData(payload):
     windowProperties = dict()
     windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
     data = payload[CONFIG]
-    window = openWindow('ReviewData', payload[POSITION], payload[SCALE], windowProperties)
+    window = openWindow('SFC/ReviewData', payload[POSITION], payload[SCALE], windowProperties)
     window.title = payload[SCREEN_HEADER]
     showAdvice = len(data[0]) == 3  # with advice there are 4 columns
     if showAdvice:

@@ -27,6 +27,7 @@ def sfcStartChart(payload):
     from system.ils.sfc import registerSfcProject
     from ils.sfc.common.util import getDatabaseName
     from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME
+    print 'units by name', ils.common.units.Unit.unitsByName
     chartName = payload[CHART_NAME]
     project = payload[PROJECT]
     registerSfcProject(project)

@@ -126,6 +126,12 @@ SECOND= "SEC"
 MINUTE= "MIN"
 TIME_UNIT_TYPE = "TIME"
 
+# symbols for TimeDelayStep "units"
+# nothing to do with unit conversion units
+DELAY_UNIT_SECOND = "SEC";
+DELAY_UNIT_MINUTE = "MIN";
+DELAY_UNIT_HOUR = "HR";
+
 #Recipe scopes:
 LOCAL_SCOPE = 'local'
 PREVIOUS_SCOPE = 'previous'

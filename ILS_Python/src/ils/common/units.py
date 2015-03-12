@@ -99,7 +99,7 @@ class Unit(object):
     @staticmethod
     def getUnitTypes(database = ""):
         '''Get all distinct unit types'''
-#        Unit.lazyInitialize(database)
+        Unit.lazyInitialize(database)
         return Unit.unitTypes
     
     @staticmethod
@@ -124,7 +124,7 @@ class Unit(object):
     @staticmethod
     def getUnitsOfType(unitType, database = ""):
         '''Get all the units of a particular type'''
-#        Unit.lazyInitialize(database)
+        Unit.lazyInitialize(database)
         result = []
         for unit in Unit.unitsByName.values():
             if unit.type == unitType:
@@ -162,11 +162,8 @@ class Unit(object):
 
     @staticmethod
     def lazyInitialize(database = ""):
-#        from ils.sfc.common.util import getDatabaseFromSystem
-#        if database == None:
-#            database = getDatabaseFromSystem();
-#        if len(Unit.unitsByName.keys()) == 0:
-        Unit.readFromDb(database)
+        if len(Unit.unitsByName.keys()) == 0:
+            Unit.readFromDb(database)
             
     @staticmethod
     def readFromDb(database=""):

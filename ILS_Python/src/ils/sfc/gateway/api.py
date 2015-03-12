@@ -23,7 +23,7 @@ def getUnitsPath(valuePath):
         raise Exception("no value field to get units for in " + valuePath)
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
-    from system.ils.sfc import getDatabaseName
+    from ils.sfc.common.util import getDatabaseName
     value = s88BasicGet(chartProperties, stepProperties, valuePath, location)
     unitsPath = getUnitsPath(valuePath)
     existingUnitsName = s88BasicGet(chartProperties, stepProperties, unitsPath, location)

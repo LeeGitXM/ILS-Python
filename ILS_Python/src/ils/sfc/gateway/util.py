@@ -204,4 +204,5 @@ def sendChartStatus(projectName, payload):
 def sendCurrentOperation(projectName, payload):
     import system.util
     system.util.sendMessage(projectName, UPDATE_CURRENT_OPERATION_HANDLER, payload, "C")
+    
  
