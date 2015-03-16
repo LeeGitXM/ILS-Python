@@ -110,7 +110,6 @@ class Unit(object):
         for key in Unit.unitsByName.keys():
             val=[]
             unit = Unit.unitsByName[key]
-            print key, unit.name
             val.append(key)
             val.append(unit.type)
             val.append(unit.description)

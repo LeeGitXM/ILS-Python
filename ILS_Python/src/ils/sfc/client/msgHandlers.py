@@ -149,18 +149,23 @@ def sfcShowWindow(payload):
         print 'couldnt find control panel for run ', chartRunId
 
 def sfcPostDelayNotification(payload):
-    from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID
-    from ils.sfc.client.api import showDelayNotification
-    showDelayNotification(payload[CHART_RUN_ID], payload[MESSAGE], False, payload[WINDOW_ID])
+    from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, END_TIME, STEP_NAME, CHART_NAME
+    from ils.sfc.client.notification import showDelayNotification
+    endTimeOrNone = payload.get(END_TIME, None)
+    print 'sfcPostDelayNotification endTime ', endTimeOrNone
+    stepName = payload[STEP_NAME]
+    chartName = payload[CHART_NAME]
+    title = 'Time Delay ' + chartName + '--' + stepName
+    showDelayNotification(payload[CHART_RUN_ID], payload[MESSAGE], False, payload[WINDOW_ID], endTimeOrNone, title)
 
 def sfcDeleteDelayNotifications(payload):
     from ils.sfc.common.constants import CHART_RUN_ID
-    from ils.sfc.client.api import removeDelayNotifications
+    from ils.sfc.client.notification import removeDelayNotifications
     removeDelayNotifications(payload[CHART_RUN_ID])
 
 def sfcDeleteDelayNotification(payload):
     from ils.sfc.common.constants import CHART_RUN_ID, WINDOW_ID
-    from ils.sfc.client.api import removeDelayNotification
+    from ils.sfc.client.notification import removeDelayNotification
     removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
         
 def sfcYesNo(payload):

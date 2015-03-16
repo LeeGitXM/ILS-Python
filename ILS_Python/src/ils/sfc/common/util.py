@@ -119,12 +119,14 @@ def callMethod(methodPath):
     result = localDict['result']
     return result
 
-def getHoursMinutesSeconds(totalSeconds):
-    '''break a floating point seconds value into hours, minutes, seconds'''
-    hours = int(round(totalSeconds/3600))
-    seconds = totalSeconds - hours * 3600
-    minutes = int(round(seconds/60))
-    seconds = seconds - minutes * 60
-    return hours, minutes, seconds
+def getHoursMinutesSeconds(floatTotalSeconds):
+    '''break a floating point seconds value into integer hours, minutes, seconds (round to nearest second)'''
+    import math
+    intHours = int(math.floor(floatTotalSeconds/3600))
+    floatSecondsRemainder = floatTotalSeconds - intHours * 3600
+    intMinutes = int(math.floor(floatSecondsRemainder/60))
+    floatSecondsRemainder = floatSecondsRemainder - intMinutes * 60
+    intSeconds = int(round(floatSecondsRemainder))
+    return intHours, intMinutes, intSeconds
 
     

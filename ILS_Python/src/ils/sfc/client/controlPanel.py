@@ -211,7 +211,6 @@ class ControlPanel:
     def removeWindow(self, windowId):
         for i in range(self.toolbarDataset.getRowCount()):
             rowWindowId = self.toolbarDataset.getValueAt(i,2)
-            print 'comparing ', rowWindowId, windowId
             if rowWindowId == windowId:      
                 window = self.windowsById.pop(windowId)        
                 system.nav.closeWindow(window)

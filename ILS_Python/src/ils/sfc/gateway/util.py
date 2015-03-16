@@ -52,11 +52,13 @@ def getRecipeScope(stepProperties):
     return getStepProperty(stepProperties, RECIPE_LOCATION)
 
 def getStepProperty(stepProperties, pname):
-    # Why isn't there a dictionary so we don't have to loop ?!
     for prop in stepProperties.getProperties():
         if prop.getName() == pname:
             return stepProperties.getOrDefault(prop)
     return None
+
+def getStepName(stepProperties):
+    return getStepProperty(stepProperties, NAME)
 
 def hasStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
