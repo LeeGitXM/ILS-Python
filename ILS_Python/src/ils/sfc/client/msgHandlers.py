@@ -176,9 +176,7 @@ def sfcYesNo(payload):
     response = system.gui.confirm(prompt, 'Input', False)
     
     # Send the response message:
-    replyPayload = dict()
-    replyPayload[RESPONSE] = response
-    sendResponse(payload[MESSAGE_ID], replyPayload)
+    sendResponse(payload[MESSAGE_ID], response)
 
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError

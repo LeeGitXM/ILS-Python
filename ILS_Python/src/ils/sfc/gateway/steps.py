@@ -55,7 +55,7 @@ def setQueue(scopeContext, stepProperties):
     stepScope = scopeContext.getStepScope()
     queue = getStepProperty(stepProperties, QUEUE)
     recipeLocation = getDefaultMessageQueueScope()
-    s88Set(chartScope, stepScope, MESSAGE_QUEUE, queue, recipeLocation)
+    s88Set(chartScope, stepScope, MESSAGE_QUEUE, recipeLocation, queue)
 
 def showQueue(scopeContext, stepProperties):
     '''
@@ -93,7 +93,7 @@ def yesNo(scopeContext, stepProperties):
     messageId = sendMessageToClient(chartScope, YES_NO_HANDLER, payload)
     response = waitOnResponse(messageId, chartScope)
     value = response[RESPONSE]
-    s88Set(chartScope, stepScope, key, value, recipeLocation)
+    s88Set(chartScope, stepScope, key, recipeLocation, value)
 
 def cancel(scopeContext, stepProperties):
     ''' Abort the chart execution'''
@@ -236,7 +236,7 @@ def selectInput(scopeContext, stepProperties):
     
     response = waitOnResponse(messageId, chartScope)
     value = response[RESPONSE]
-    s88Set(chartScope, stepScope, key, value, recipeLocation)
+    s88Set(chartScope, stepScope, key, recipeLocation, value)
 
 def getLimitedInput(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
@@ -262,7 +262,7 @@ def getLimitedInput(scopeContext, stepProperties):
         except ValueError:
             payload[PROMPT] = 'Input is not valid. ' + prompt  
     
-    s88Set(chartScope, stepScope, key, floatValue, recipeLocation)
+    s88Set(chartScope, stepScope, key, recipeLocation, floatValue)
 
 def dialogMessage(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
@@ -279,7 +279,7 @@ def collectData(scopeContext, stepProperties):
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     value = system.tag.read(tagPath)
-    s88Set(chartScope, stepScope, key, value, recipeLocation)
+    s88Set(chartScope, stepScope, key, recipeLocation, value)
     
 def getInput(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
@@ -294,7 +294,7 @@ def getInput(scopeContext, stepProperties):
     messageId = sendMessageToClient(chartScope, INPUT_HANDLER, payload)
     response = waitOnResponse(messageId, chartScope)
     value = response[RESPONSE]
-    s88Set(chartScope, stepScope, key, value, recipeLocation)
+    s88Set(chartScope, stepScope, key, recipeLocation, value)
 
 def rawQuery(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
@@ -304,7 +304,7 @@ def rawQuery(scopeContext, stepProperties):
     result = system.db.runQuery(sql, database) # returns a PyDataSet
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
-    s88Set(chartScope, stepScope, key, result, recipeLocation)
+    s88Set(chartScope, stepScope, key, recipeLocation, result)
 
 def simpleQuery(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
@@ -443,6 +443,6 @@ def reviewData(scopeContext, stepProperties):
     responseValue = responseMsg[RESPONSE]
     recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
     recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
-    s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation)
+    s88Set(chartScope, stepScope, recipeKey, recipeLocation, responseValue)
 
 
