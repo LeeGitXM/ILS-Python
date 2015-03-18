@@ -63,3 +63,14 @@ def cancelChart(chartProperties):
     from ils.sfc.common.constants import INSTANCE_ID
     chartRunId = str(chartProperties[INSTANCE_ID])
     cancelChart(chartRunId)
+
+def addControlPanelMessage(chartProperties, message, ackRequired):
+    from ils.sfc.common.sessions import addControlPanelMessage 
+    from ils.sfc.common.util import getDatabaseName
+    from ils.sfc.gateway.util import escapeSingleQuotes, getChartRunId, sendUpdateControlPanelMsg
+    escapedMessage = escapeSingleQuotes(message)
+    chartRunId = getChartRunId(chartProperties)
+    database = getDatabaseName(chartProperties)
+    msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, database)
+    sendUpdateControlPanelMsg(chartProperties)
+    return msgId

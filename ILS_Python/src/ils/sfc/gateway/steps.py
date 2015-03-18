@@ -97,14 +97,14 @@ def yesNo(scopeContext, stepProperties):
 
 def cancel(scopeContext, stepProperties):
     ''' Abort the chart execution'''
-    from ils.sfc.gateway.api import cancelChart
+    from ils.sfc.gateway.api import cancelChart, addControlPanelMessage
     chartScope = scopeContext.getChartScope()
     cancelChart(chartScope)
     addControlPanelMessage(chartScope, "Chart canceled", False)
     
 def pause(scopeContext, stepProperties):
     ''' Pause the chart execution'''
-    from ils.sfc.gateway.api import pauseChart
+    from ils.sfc.gateway.api import pauseChart, addControlPanelMessage
     chartScope = scopeContext.getChartScope()
     pauseChart(chartScope)
     addControlPanelMessage(chartScope, "Chart paused", False)
@@ -113,6 +113,7 @@ def controlPanelMessage(scopeContext, stepProperties):
     import time
     from ils.sfc.common.sessions import getAckTime
     from ils.sfc.common.sessions import timeOutControlPanelMessageAck
+    from ils.sfc.gateway.api import addControlPanelMessage
     chartScope = scopeContext.getChartScope()
     message = getStepProperty(stepProperties, MESSAGE)
     database = getDatabaseName(chartScope)

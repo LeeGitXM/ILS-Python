@@ -109,16 +109,6 @@ def getFullChartPath(chartProperties):
 def escapeSingleQuotes(msg):
     return msg.replace("'", "''")
 
-def addControlPanelMessage(chartProperties, message, ackRequired):
-    from ils.sfc.common.sessions import addControlPanelMessage 
-    from ils.sfc.common.util import getDatabaseName
-    escapedMessage = escapeSingleQuotes(message)
-    chartRunId = getChartRunId(chartProperties)
-    database = getDatabaseName(chartProperties)
-    msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, database)
-    sendUpdateControlPanelMsg(chartProperties)
-    return msgId
-
 def handleUnexpectedGatewayError(chartProps, msg):
     from ils.sfc.common.util import getLogger
     from ils.sfc.common.util import sendMessageToClient
