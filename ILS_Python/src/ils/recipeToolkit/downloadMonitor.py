@@ -13,9 +13,9 @@ def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, dow
     
     log.trace("Starting the automated download monitor...")
     
-    localG2WriteAlias = system.tag.read("[" + provider + "]/Recipe/Constants/localG2WriteAlias").value
-    recipeMinimumDifference = system.tag.read("[" + provider + "]/Recipe/Constants/recipeMinimumDifference").value
-    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Recipe/Constants/recipeMinimumRelativeDifference").value
+    localG2WriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localG2WriteAlias").value
+    recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
+    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
        
     from ils.recipeToolkit.downloadComplete import downloadCompleteRunner
     
@@ -59,7 +59,7 @@ def runner(rootContainer):
     recipeKey = rootContainer.getPropertyValue("recipeKey")
     logId = rootContainer.logId
     
-    localG2WriteAlias = system.tag.read("/Recipe/Constants/localG2WriteAlias").value
+    localG2WriteAlias = system.tag.read("/Configuration/RecipeToolkit/localG2WriteAlias").value
     
     table = rootContainer.getComponent("Power Table")
     recipeMinimumDifference = table.getPropertyValue("recipeMinimumDifference")

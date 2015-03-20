@@ -65,9 +65,9 @@ def refresher(recipeKey, ds, downloadType, database = ""):
     from ils.recipeToolkit.update import recipeMapStatus
     recipeMapStatus(recipeKey, "Refreshing", database)
 
-    localG2WriteAlias = system.tag.read("[" + provider + "]/Recipe/Constants/localG2WriteAlias").value
-    recipeMinimumDifference = system.tag.read("[" + provider + "]/Recipe/Constants/recipeMinimumDifference").value
-    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Recipe/Constants/recipeMinimumRelativeDifference").value
+    localG2WriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localG2WriteAlias").value
+    recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
+    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
 
     print "recipeMinimumDifference: ", recipeMinimumDifference
     print "recipeMinimumRelativeDifference: ", recipeMinimumRelativeDifference

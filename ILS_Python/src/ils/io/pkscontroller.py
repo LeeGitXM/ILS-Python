@@ -188,5 +188,4 @@ class PKSController(controller.Controller):
 
         log.info("EPKS Controller <%s> done ramping!" % (self.path))
         return success, errorMessage
-    
-    
+

@@ -27,7 +27,7 @@ def createTags(tagProvider):
     print "Creating global constant memory tags...."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
-    path = tagProvider + "Recipe/Constants/"
+    path = tagProvider + "Configuration/RecipeToolkit/"
 
     data.append([path, "localG2WriteAlias", "String", "LocalG2"])
     data.append([path, "itemIdPrefix", "String", ""])

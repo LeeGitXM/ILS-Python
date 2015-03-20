@@ -4,6 +4,7 @@ Created on Feb 5, 2015
 @author: Pete
 '''
 import sys, system, string, traceback
+from ils.migration.common import lookupOPCServerAndScanClass
 
 def load(rootContainer):
     filename=rootContainer.getComponent("File Field").text
@@ -13,6 +14,10 @@ def load(rootContainer):
     
     contents = system.file.readFileAsString(filename, "US-ASCII")
     records = contents.split('\n')
+    
+    ds=parseRecords(records,"INTERFACE")
+    table=rootContainer.getComponent("Interface Container").getComponent("Power Table")
+    table.data=ds
     
     ds=parseRecords(records,"APPLICATION")
     table=rootContainer.getComponent("Application Container").getComponent("Power Table")
@@ -33,6 +38,20 @@ def load(rootContainer):
     ds=parseRecords(records,"QUANT-RECOMMENDATION-DEF")
     table=rootContainer.getComponent("Quant Recommendation Def Container").getComponent("Power Table")
     table.data=ds
+    
+    ds=parseRecords(records,"OPC-FLOAT-OUTPUT")
+    table=rootContainer.getComponent("Float Output Container").getComponent("Power Table")
+    table.data=ds
+
+    ds=parseRecords(records,"OPC-TEXT-COND-CNTRL-ACE-OUTPUT")
+    table=rootContainer.getComponent("Text Cond Cntrl ACE Output Container").getComponent("Power Table")
+    table.data=ds
+    
+    ds=parseRecords(records,"OPC-TEXT-COND-CNTRL-PKS-OUTPUT")
+    table=rootContainer.getComponent("Text Cond Cntrl PKS Output Container").getComponent("Power Table")
+    table.data=ds
+        
+    print "Done Loading!"
 
 def parseRecords(records,recordType):        
     print "Parsing %s records... " % (recordType)
@@ -42,7 +61,7 @@ def parseRecords(records,recordType):
     for line in records:
         line=line[:len(line)-1] #Strip off the last character which is some sort of CRLF
         tokens = line.split(',')
-        if tokens[0] == recordType:
+        if string.upper(tokens[0]) == recordType:
             if (i == 0):
                 line=line.rstrip(',')
                 line="id,%s" % (line)
@@ -97,7 +116,6 @@ def initializeRecommendationDefinition(container):
     
     
 def insertApplication(container):
-    rootContainer=container.parent
     table=container.getComponent("Power Table")
     ds=table.data
     try:
@@ -150,6 +168,15 @@ def getApplicationId(rootContainer, application):
         if ds.getValueAt(row, "name") == application:
             return ds.getValueAt(row, "id")
     return applicationId
+
+# We could use the database to do this, but since we have everything here in the table, I can just look it up. 
+def getApplicationName(rootContainer, oldApplicationName):
+    applicationName = ""
+    ds=rootContainer.getComponent("Application Container").getComponent("Power Table").data
+    for row in range(ds.rowCount):
+        if ds.getValueAt(row, "name") == oldApplicationName:
+            return ds.getValueAt(row, 4)
+    return applicationName
 
 #
 def insertFamily(container):
@@ -285,6 +312,140 @@ def insertQuantOutput(container):
             print "Could not find application: <%s>" % (application)
 
     table.data=ds
+
+
+
+def createFloatOutput(container):
+    rootContainer=container.parent
+    table=container.getComponent("Power Table")
+    ds=table.data
+    UDTType='Basic IO/OPC Output'
+    site = rootContainer.getComponent("Site").text
+    provider = rootContainer.getComponent("Tag Provider").text
+    itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
+
+    for row in range(ds.rowCount):
+#        oldApplicationName = ds.getValueAt(row, "application")
+        oldApplicationName = ds.getValueAt(row, 2)
+        application = getApplicationName(rootContainer, oldApplicationName)
+        outputName = ds.getValueAt(row, "name")
+        itemId = ds.getValueAt(row, "item-id")
+        itemId = itemIdPrefix + itemId
+        gsiInterface = ds.getValueAt(row, "opc-server")
+        serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
+        path = "DiagnosticToolkit/" + application
+        
+        print application, outputName, itemId, serverName
+        
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + outputName
+        tagExists = system.tag.exists(tagPath)
+    
+        if tagExists:
+#        print tagName, " already exists!"
+            pass
+        else:
+            print "Creating a %s, Name: %s, Path: %s, Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, tagPath, itemId, scanClass, serverName)
+            system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                            attributes={"UDTParentType":UDTType}, 
+                            parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass})
+
+
+def createPKSController(container):
+    rootContainer=container.parent
+    table=container.getComponent("Power Table")
+    ds=table.data
+    UDTType='Controllers/PKS Controller'
+    site = rootContainer.getComponent("Site").text
+    provider = rootContainer.getComponent("Tag Provider").text
+    itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
+
+    for row in range(ds.rowCount):
+        oldApplicationName = ds.getValueAt(row, 2)
+        application = getApplicationName(rootContainer, oldApplicationName)
+        outputName = ds.getValueAt(row, "name")
+
+        # For Vistalon diagnostic, the controllers are not configured for a PV because we are just writing, 
+        # nobody cares what the inputs are.
+        itemId=""
+        opItemId=""
+        outputDisposabilityItemId=""
+        spItemId = itemIdPrefix + ds.getValueAt(row, "item-id")
+        
+        # I'm not sure if mode is the same as outputDisposability
+        permissiveItemId = itemIdPrefix + ds.getValueAt(row, "permissive-item-id")
+        highClampItemId = itemIdPrefix + ds.getValueAt(row, "high-clamp-item-id")
+        lowClampItemId = itemIdPrefix + ds.getValueAt(row, "low-clamp-item-id")
+        windupItemId = itemIdPrefix + ds.getValueAt(row, "windup-item-id")
+        modeItemId = itemIdPrefix + ds.getValueAt(row, "mode-item-id")
+
+        gsiInterface = ds.getValueAt(row, "opc-server")
+        serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
+        path = "DiagnosticToolkit/" + application
+        
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + outputName
+        tagExists = system.tag.exists(tagPath)
+    
+        if not(tagExists):
+            print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, tagPath, spItemId, scanClass, serverName)
+            # Because this generic controller definition is being used by the Diagnostic Toolkit it does not use the PV and OP attributes.  
+            # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
+            system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
+                                        "opItemId":opItemId, "modeItemId":modeItemId, "outputDisposabilityItemId": outputDisposabilityItemId,
+                                        "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId},
+                        overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
+            
+
+def createPKSACEController(container):
+    rootContainer=container.parent
+    table=container.getComponent("Power Table")
+    ds=table.data
+    UDTType='Controllers/PKS ACE Controller'
+    site = rootContainer.getComponent("Site").text
+    provider = rootContainer.getComponent("Tag Provider").text
+    itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
+
+    for row in range(ds.rowCount):
+        oldApplicationName = ds.getValueAt(row, 2)
+        application = getApplicationName(rootContainer, oldApplicationName)
+        outputName = ds.getValueAt(row, "name")
+
+        # For Vistalon diagnostic, the controllers are not configured for a PV because we are just writing, 
+        # nobody cares what the inputs are.
+        itemId=""
+        opItemId=""
+        outputDisposabilityItemId=""
+        spItemId = itemIdPrefix + ds.getValueAt(row, "item-id")
+        
+        # I'm not sure if mode is the same as outputDisposability
+        permissiveItemId = itemIdPrefix + ds.getValueAt(row, "permissive-item-id")
+        highClampItemId = itemIdPrefix + ds.getValueAt(row, "high-clamp-item-id")
+        lowClampItemId = itemIdPrefix + ds.getValueAt(row, "low-clamp-item-id")
+        windupItemId = itemIdPrefix + ds.getValueAt(row, "windup-item-id")
+        modeItemId = itemIdPrefix + ds.getValueAt(row, "mode-item-id")
+        processingCommandItemId = itemIdPrefix + ds.getValueAt(row, "processing-cmd-item-id")
+        
+        gsiInterface = ds.getValueAt(row, "opc-server")
+        serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
+        path = "DiagnosticToolkit/" + application
+       
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + outputName
+        tagExists = system.tag.exists(tagPath)
+
+        if not(tagExists):
+            print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, tagPath, spItemId, scanClass, serverName)
+            system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
+                                        "opItemId":opItemId, "modeItemId":modeItemId, "outputDisposabilityItemId": outputDisposabilityItemId,
+                                        "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId, 
+                                        "processingCommandItemId": processingCommandItemId},
+                        overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
+
 
 # We could probably use the database for this lookup, but let's just follow the pattern
 def getQuantOutputId(rootContainer, quantOutput):

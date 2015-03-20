@@ -417,8 +417,8 @@ def checkBounds(quantOutput, database):
 
 
 def calculateVectorClamps(quantOutputs):
-
-    qv=system.tag.read("[XOM]DiagnosticToolkit/vectorClampMode")
+    #TODO XOM is hard coded
+    qv=system.tag.read("[XOM]Configuration/DiagnosticToolkit/vectorClampMode")
     vectorClampMode = string.upper(qv.value)
     
     if vectorClampMode == "DISABLED":

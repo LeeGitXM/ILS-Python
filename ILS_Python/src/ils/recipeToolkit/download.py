@@ -82,8 +82,8 @@ def fullyAutomatedDownload(post, project, database, recipeKey, grade, version):
     # Refresh the table with data from the DCS and determine what needs to be downloaded
     dsProcessed = recipeToolkit_refresh.automatedRefresh(recipeKey, dsProcessed, database)
 
-    writeEnabled = system.tag.read("[" + provider + "]/Recipe/Constants/recipeWriteEnabled")
-    downloadTimeout = system.tag.read("[" + provider + "]/Recipe/Constants/downloadTimeout").value
+    writeEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled")
+    downloadTimeout = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/downloadTimeout").value
     print "The download timeout is ", downloadTimeout, " seconds"
     
     log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s)..." % (recipeKey, str(writeEnabled)))
@@ -148,9 +148,9 @@ def download(rootContainer, recipeMap):
     provider = rootContainer.getPropertyValue("provider")
     recipeKey = rootContainer.getPropertyValue("recipeKey")
     table = rootContainer.getComponent("Power Table")
-    writeEnabled = system.tag.read("/Recipe/Constants/recipeWriteEnabled")
+    writeEnabled = system.tag.read("/Configuration/RecipeToolkit/recipeWriteEnabled")
     
-    downloadTimeout = system.tag.read("/Recipe/Constants/downloadTimeout").value
+    downloadTimeout = system.tag.read("/Configuration/RecipeToolkit/downloadTimeout").value
     rootContainer.downloadTimeout = downloadTimeout
     print "The download timeout is ", downloadTimeout, " seconds"
     
@@ -286,7 +286,7 @@ def writeImmediate(ds, provider, recipeKey, logId, writeEnabled):
     from ils.recipeToolkit.common import formatTagName
 
     log.trace("  ...writing immediate tags...")
-    localG2WriteAlias = system.tag.read("[" + provider + "]/Recipe/Constants/localG2WriteAlias").value    
+    localG2WriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localG2WriteAlias").value    
 
     pds = system.dataset.toPyDataSet(ds)
 
