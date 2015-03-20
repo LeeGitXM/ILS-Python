@@ -73,5 +73,5 @@ def getTagPath(recipeKey, tagName):
 
 # Animate the screen color based on the status of the download
 def setBackgroundColor(rootContainer, colorTagName):
-    color = system.tag.read("/Recipe/Constants/" + colorTagName)
+    color = system.tag.read("/Configuration/RecipeToolkit/" + colorTagName)
     rootContainer.setPropertyValue("backgroundColor", color.value)

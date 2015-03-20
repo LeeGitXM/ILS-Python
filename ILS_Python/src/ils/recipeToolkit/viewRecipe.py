@@ -93,34 +93,34 @@ def initialize(rootContainer):
     # don't work the very first time I open a window.  So here I will explicitly read the tags and set the properties, 
     # which is exactly what a binding is supposed to do automatically
     def initializeTableColors(table):
-        color = system.tag.read("/Recipe/Constants/backgroundColorError").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorError").value
         table.setPropertyValue("backgroundColorError", color)
         
-        color = system.tag.read("/Recipe/Constants/backgroundColorMismatch").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorMismatch").value
         table.setPropertyValue("backgroundColorMismatch", color)
         
-        color = system.tag.read("/Recipe/Constants/backgroundColorNoChange").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorNoChange").value
         table.setPropertyValue("backgroundColorNoChange", color)
         
-        color = system.tag.read("/Recipe/Constants/backgroundColorReadOnly").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorReadOnly").value
         table.setPropertyValue("backgroundColorReadOnly", color)
 
-        color = system.tag.read("/Recipe/Constants/backgroundColorReadWrite").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorReadWrite").value
         table.setPropertyValue("backgroundColorReadWrite", color)
 
-        color = system.tag.read("/Recipe/Constants/backgroundColorWriteError").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorWriteError").value
         table.setPropertyValue("backgroundColorWriteError", color)
 
-        color = system.tag.read("/Recipe/Constants/backgroundColorWritePending").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorWritePending").value
         table.setPropertyValue("backgroundColorWritePending", color)
 
-        color = system.tag.read("/Recipe/Constants/backgroundColorWriteSuccess").value
+        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorWriteSuccess").value
         table.setPropertyValue("backgroundColorWriteSuccess", color)
         
-        val = system.tag.read("/Recipe/Constants/recipeMinimumDifference").value
+        val = system.tag.read("/Configuration/RecipeToolkit/recipeMinimumDifference").value
         table.setPropertyValue("recipeMinimumDifference", val)
         
-        val = system.tag.read("/Recipe/Constants/recipeMinimumRelativeDifference").value
+        val = system.tag.read("/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
         table.setPropertyValue("recipeMinimumRelativeDifference", val)
     #=======================================================================================
         
@@ -375,9 +375,9 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     tags = []
     recipeDetailTagNames = []
     recipeDetailTagValues = []
-    specialValueNAN = system.tag.read("[" + provider + "]Recipe/Constants/Special Values/NAN").value
-    localG2WriteAlias = system.tag.read("[" + provider + "]Recipe/Constants/localG2WriteAlias").value
-    itemIdPrefix = system.tag.read("[" + provider + "]Recipe/Constants/itemIdPrefix").value
+    specialValueNAN = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/Special Values/NAN").value
+    localG2WriteAlias = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/localG2WriteAlias").value
+    itemIdPrefix = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/itemIdPrefix").value
     
     print "Special NAN Value: ", specialValueNAN
     print "Local G2 Alias: ", localG2WriteAlias

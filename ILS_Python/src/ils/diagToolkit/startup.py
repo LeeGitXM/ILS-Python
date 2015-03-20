@@ -25,10 +25,11 @@ def createTags(tagProvider):
     print "Creating global constant memory tags...."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
-    path = tagProvider + "DiagnosticToolkit/"
+    path = tagProvider + "Configuration/DiagnosticToolkit/"
 
     data.append([path, "vectorClampMode", "String", "Implement"])
-      
+    data.append([path, "itemIdPrefix", "String", ""])
+          
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
     createConfigurationTags(ds, log)
