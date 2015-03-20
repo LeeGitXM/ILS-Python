@@ -11,6 +11,9 @@ from ils.sfc.gateway.util import handleUnexpectedGatewayError
 from system.ils.sfc import s88BasicGet, s88BasicSet
 from ils.common.units import Unit
 
+def s88GetData(chartProperties, stepProperties, valuePath, location):
+    return True, s88Get(chartProperties, stepProperties, valuePath, location)
+
 def s88Get(chartProperties, stepProperties, valuePath, location):
     return s88BasicGet(chartProperties, stepProperties, valuePath, location)
 
@@ -21,6 +24,9 @@ def getUnitsPath(valuePath):
         return valuePath[0 : valueKeyIndex] + ".units"
     else:
         raise Exception("no value field to get units for in " + valuePath)
+
+def s88GetDataWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
+    return True, s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName)
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     from ils.sfc.common.util import getDatabaseName
@@ -37,11 +43,14 @@ def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, return
         raise Exception("No unit found for " + returnUnitsName)
     convertedValue = existingUnits.convertTo(returnUnits, value)
     return convertedValue
+
+def s88SetData(chartProperties, stepProperties, valuePath, value, location):
+    s88Set(chartProperties, stepProperties, valuePath, value, location)
     
-def s88Set(chartProperties, stepProperties, valuePath, location, value):
+def s88Set(chartProperties, stepProperties, valuePath, value, location):
     s88BasicSet(chartProperties, stepProperties, valuePath, location, value)
      
-def s88SetWithUnits(chartProperties, stepProperties, valuePath, location, value, newUnitsName):
+def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, newUnitsName):
     s88BasicSet(chartProperties, stepProperties, valuePath, location, value)
     unitsPath = getUnitsPath(valuePath)
     s88BasicSet(chartProperties, stepProperties, unitsPath, location, newUnitsName)
