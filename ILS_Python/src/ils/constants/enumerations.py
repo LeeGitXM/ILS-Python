@@ -2,7 +2,7 @@
 Enumerations are part of Python 3.4, but we're at 2.7.
 Current implementation is from: http://stackoverflow.com/questions/36932/how-can-i-represent-an-enum-in-python
 Created on Sep 11, 2014
-
+Returns a lower-cased string given the enumeration key.
 @author: chuckc
 '''
 class Enum(object):
