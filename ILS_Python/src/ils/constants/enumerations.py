@@ -9,7 +9,7 @@ class Enum(object):
     def __init__(self, names, separator=None):
         self.names = names.split(separator)
         for value, name in enumerate(self.names):
-            setattr(self, name.upper(), value)
+            setattr(self, name.upper(), name.lower())
     def tuples(self):
         return tuple(enumerate(self.names))
     
