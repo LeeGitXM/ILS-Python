@@ -24,7 +24,7 @@ def acceptValue(block,port,value,quality):
     #print 'ils.blt.util.acceptValue(block) ...'
     
     if block!=None:
-        print "util: ",block.__class__,"received",value,",",quality,"on",port
+        log.info( "ils.block.util: "+str(block.__class__)+" received "+str(value)+" ("+str(quality)+") on port "+str(port))
         block.acceptValue(value,quality,port)
 #  ============== Externally callable ======
 # Create an instance of a particular class.
@@ -44,7 +44,6 @@ def createBlockInstance(className,parent,uid,result):
 # Call its evaluate() method. There is no
 # shared dictionary.
 def evaluate(block):
-    print 'util.evaluate(block) ...'
 
     if block!=None:
         block.evluate()
@@ -54,10 +53,10 @@ def evaluate(block):
 # as specified in the Gateway startup script.
 # 
 def getBlockProperties(block,properties):
-    log.info('util.getBlockProperties ...' )
+    
     if block!=None:
-        print block.__class__
-        print block.getProperties()
+        log.infof("util.getBlockProperties: %s ==",str(block.__class__) )
+        log.info( str(block.getProperties()) )
         dictionary = block.getProperties()
         for key in dictionary:
             prop = dictionary[key]
