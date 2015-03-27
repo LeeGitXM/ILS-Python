@@ -133,12 +133,12 @@ def insertApplication(container):
             groupRampMethod = ds.getValueAt(row, "group-ramp-method")
             
             from ils.diagToolkit.common import fetchConsoleId
-            consoleId = fetchConsoleId(unit)
+            consoleId = fetchConsoleId(post)
     
             if consoleId >= 0:
-                SQL = "insert into DtApplication (Application, ConsoleId, Post, MessageQueue, IncludeInMainMenu, "\
-                    "GroupRampMethod) values ('%s', %i, '%s', '%s', %i, '%s')" % \
-                    (application, consoleId, post, messageQueue, includeInMainMenu, groupRampMethod)
+                SQL = "insert into DtApplication (Application, ConsoleId, MessageQueue, IncludeInMainMenu, "\
+                    "GroupRampMethod) values ('%s', %i, '%s', %i, '%s')" % \
+                    (application, consoleId, messageQueue, includeInMainMenu, groupRampMethod)
                 applicationId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
                 ds=system.dataset.setValue(ds, row, "id", applicationId) 
                 print "Insert %s and got id: %i" % (application, applicationId)                                                         
@@ -329,6 +329,7 @@ def createFloatOutput(container):
         oldApplicationName = ds.getValueAt(row, 2)
         application = getApplicationName(rootContainer, oldApplicationName)
         outputName = ds.getValueAt(row, "name")
+        names = ds.getValueAt(row, "names")
         itemId = ds.getValueAt(row, "item-id")
         itemId = itemIdPrefix + itemId
         gsiInterface = ds.getValueAt(row, "opc-server")
@@ -347,8 +348,8 @@ def createFloatOutput(container):
         else:
             print "Creating a %s, Name: %s, Path: %s, Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, tagPath, itemId, scanClass, serverName)
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
-                            attributes={"UDTParentType":UDTType}, 
-                            parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass})
+                    attributes={"UDTParentType":UDTType}, 
+                    parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "alternateNames": names})
 
 
 def createPKSController(container):
@@ -364,15 +365,14 @@ def createPKSController(container):
         oldApplicationName = ds.getValueAt(row, 2)
         application = getApplicationName(rootContainer, oldApplicationName)
         outputName = ds.getValueAt(row, "name")
+        names = ds.getValueAt(row, "names")
 
         # For Vistalon diagnostic, the controllers are not configured for a PV because we are just writing, 
         # nobody cares what the inputs are.
         itemId=""
         opItemId=""
-        outputDisposabilityItemId=""
         spItemId = itemIdPrefix + ds.getValueAt(row, "item-id")
         
-        # I'm not sure if mode is the same as outputDisposability
         permissiveItemId = itemIdPrefix + ds.getValueAt(row, "permissive-item-id")
         highClampItemId = itemIdPrefix + ds.getValueAt(row, "high-clamp-item-id")
         lowClampItemId = itemIdPrefix + ds.getValueAt(row, "low-clamp-item-id")
@@ -394,8 +394,9 @@ def createPKSController(container):
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
                         parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
-                                        "opItemId":opItemId, "modeItemId":modeItemId, "outputDisposabilityItemId": outputDisposabilityItemId,
-                                        "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId},
+                                "opItemId":opItemId, "modeItemId":modeItemId,
+                                "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId,
+                                "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
             
 
@@ -412,15 +413,14 @@ def createPKSACEController(container):
         oldApplicationName = ds.getValueAt(row, 2)
         application = getApplicationName(rootContainer, oldApplicationName)
         outputName = ds.getValueAt(row, "name")
+        names = ds.getValueAt(row, "names")
 
         # For Vistalon diagnostic, the controllers are not configured for a PV because we are just writing, 
         # nobody cares what the inputs are.
         itemId=""
         opItemId=""
-        outputDisposabilityItemId=""
         spItemId = itemIdPrefix + ds.getValueAt(row, "item-id")
         
-        # I'm not sure if mode is the same as outputDisposability
         permissiveItemId = itemIdPrefix + ds.getValueAt(row, "permissive-item-id")
         highClampItemId = itemIdPrefix + ds.getValueAt(row, "high-clamp-item-id")
         lowClampItemId = itemIdPrefix + ds.getValueAt(row, "low-clamp-item-id")
@@ -441,9 +441,9 @@ def createPKSACEController(container):
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
                         parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
-                                        "opItemId":opItemId, "modeItemId":modeItemId, "outputDisposabilityItemId": outputDisposabilityItemId,
-                                        "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId, 
-                                        "processingCommandItemId": processingCommandItemId},
+                            "opItemId":opItemId, "modeItemId":modeItemId, 
+                            "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId, 
+                            "processingCommandItemId": processingCommandItemId, "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
 
 

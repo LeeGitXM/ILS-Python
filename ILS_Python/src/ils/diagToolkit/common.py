@@ -59,8 +59,9 @@ def deleteRecommendations(application, database):
     return
 
 # Lookup the console Id given the name
-def fetchConsoleId(console, database=""):
-    SQL = "select ConsoleId from DtConsole where Console = '%s'" % (console)
+# This used to take the console name, but I think it should take the post
+def fetchConsoleId(post, database=""):
+    SQL = "select ConsoleId from DtConsole where Post = '%s'" % (post)
     log.trace(SQL)
     consoleId = system.db.runScalarQuery(SQL, database)
     return consoleId
