@@ -235,8 +235,9 @@ class ControlPanel:
 #    registerClient()
 
 def createControlPanel(chartProperties):
-    from ils.sfc.common.constants import INSTANCE_ID
+    from ils.sfc.common.constants import INSTANCE_ID, CHART_NAME
     window = system.nav.openWindowInstance(CONTROL_PANEL_NAME)
+    window.title = chartProperties[CHART_NAME]
     chartRunId = chartProperties[INSTANCE_ID]
     window.getRootContainer().chartRunId = chartRunId
     controller = ControlPanel(window, chartProperties)
