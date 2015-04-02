@@ -394,7 +394,7 @@ def createPKSController(container):
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
                         parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
-                                "opItemId":opItemId, "modeItemId":modeItemId,
+                                "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                                 "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId,
                                 "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
@@ -441,7 +441,7 @@ def createPKSACEController(container):
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
                         parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
-                            "opItemId":opItemId, "modeItemId":modeItemId, 
+                            "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                             "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId, 
                             "processingCommandItemId": processingCommandItemId, "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})

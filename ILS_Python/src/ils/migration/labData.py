@@ -69,6 +69,7 @@ def insertIntoDB(rootContainer):
     loaded = 0
     error = 0
     for labData in root.findall('lab-data'):
+        print "Processing: ", labData
         className = labData.get("class")
         if className == "LAB-PHD-SQC":
             insertLabValue(labData)
@@ -175,61 +176,146 @@ def createTags(rootContainer):
     for labData in root.findall('lab-data'):
         className = labData.get("class")
         labDataName = labData.get("name")
+        print "Processing a %s: %s " % (className, labDataName)
         
         SQL = "select instantiate from LabData where site = '%s' and name = '%s'" % (site, labDataName)
         instantiate = system.db.runScalarQuery(SQL, database="XOMMigration")
 
         if instantiate:
-            if className == "LAB-PHD-SQC":
-                print "Creating a LAB-PHD-SQC"
-                loaded=loaded+1
-            elif className == "LAB-PHD-DERIVED-SQC":
-                print "Creating a LAB-PHD-DERIVED-SQC"
-                loaded=loaded+1
-            elif className == "LAB-PHD":
+            
+            if className == "LAB-PHD":
                 createLabPhd(labData, site, provider)
                 loaded=loaded+1
+            elif className == "LAB-PHD-DERIVED":
+                createLabPhd(labData, site, provider)
+                loaded=loaded+1
+            elif className == "LAB-PHD-SQC":
+                createLabPhd(labData, site, provider)
+                createLabLimitSQC(labData, site, provider)
+                loaded=loaded+1
+            elif className == "LAB-PHD-RELEASE":
+                createLabPhd(labData, site, provider)
+                createLabLimitRelease(labData, site, provider)
+                loaded=loaded+1
+            elif className == "LAB-PHD-DERIVED-SQC":
+                createLabPhd(labData, site, provider)
+                createLabLimitSQC(labData, site, provider)
+                loaded=loaded+1
+            elif className == "LAB-PHD-SELECTOR":
+                createLabPhd(labData, site, provider)
+                loaded=loaded+1
+            elif className == "LAB-PHD-SQC-SELECTOR":
+                createLabPhd(labData, site, provider)
+                createLabLimitSQC(labData, site, provider)
+                loaded=loaded+1
+            elif className == "LAB-PHD-VALIDITY-SELECTOR":
+                createLabPhd(labData, site, provider)
+                createLabLimitValidity(labData, site, provider)
+                loaded=loaded+1
+                
+            elif className == "LAB-DCS-SQC":
+                createLabDCS(labData, site, provider)
+                createLabLimitSQC(labData, site, provider)
+                loaded=loaded+1
+                
+            elif className == "LAB-LOCAL-VALIDITY":
+                createLabLocal(labData, site, provider)
+                createLabLimitValidity(labData, site, provider)
+                loaded=loaded+1
+                
             else:
                 print "Unexpected class: ", className
                 error=error+1
         else:
             skipped=skipped+1
+            print "  Skipping because this has been marked as do not instantiate"
 
     print "Done - Successfully loaded: %i, skipped: %i, errors: %i" % (loaded, skipped, error)
 
 
 def createLabPhd(labData, site, provider):    
-    print "Creating a LAB-PHD"
-    UDTType='Lab Data/Lab PHD'
-
-    itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
-
-#        oldApplicationName = ds.getValueAt(row, "application")
-#        oldApplicationName = ds.getValueAt(row, 2)
-#        application = getApplicationName(rootContainer, oldApplicationName)
+    UDTType='Lab Data/Lab Value PHD'
     labDataName = labData.get("name")
-    itemId = "foo"
-#        itemId = ds.getValueAt(row, "item-id")
-#        itemId = itemIdPrefix + itemId
-    gsiInterface = labData.get("value-update-flag-interface")
-    serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
-    path = "LabData/"
-        
-    print labDataName, itemId, serverName
-        
+    path = "LabData/"    
     parentPath = '[' + provider + ']' + path    
     tagPath = parentPath + "/" + labDataName
     tagExists = system.tag.exists(tagPath)
-    
     if tagExists:
-#        print tagName, " already exists!"
-        pass
+        print "  ", labDataName, " already exists!"
     else:
-        print "Creating a %s, Name: %s, Path: %s, Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, labDataName, tagPath, itemId, scanClass, serverName)
+        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType}, 
-            parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass})
+            attributes={"UDTParentType":UDTType})
 
+def createLabLocal(labData, site, provider):    
+    UDTType='Lab Data/Lab Value Local'
+    labDataName = labData.get("name")
+    path = "LabData/"    
+    parentPath = '[' + provider + ']' + path    
+    tagPath = parentPath + "/" + labDataName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        print "  ", labDataName, " already exists!"
+    else:
+        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+            attributes={"UDTParentType":UDTType})
+
+def createLabDCS(labData, site, provider):
+    UDTType='Lab Data/Lab Value DCS'
+    labDataName = labData.get("name")
+    path = "LabData/"    
+    parentPath = '[' + provider + ']' + path    
+    tagPath = parentPath + "/" + labDataName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        print "  ", labDataName, " already exists!"
+    else:
+        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+            attributes={"UDTParentType":UDTType})
+
+def createLabLimitSQC(labData, site, provider):    
+    UDTType='Lab Data/Lab Limit SQC'
+    labDataName = labData.get("name") + "-SQC"
+    path = "LabData/"    
+    parentPath = '[' + provider + ']' + path    
+    tagPath = parentPath + "/" + labDataName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        print "  ", labDataName, " already exists!"
+    else:
+        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+            attributes={"UDTParentType":UDTType})
+
+def createLabLimitRelease(labData, site, provider):    
+    UDTType='Lab Data/Lab Limit Release'
+    labDataName = labData.get("name") + "-RELEASE"
+    path = "LabData/"    
+    parentPath = '[' + provider + ']' + path    
+    tagPath = parentPath + "/" + labDataName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        print "  ", labDataName, " already exists!"
+    else:
+        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+            attributes={"UDTParentType":UDTType})
+
+def createLabLimitValidity(labData, site, provider):    
+    UDTType='Lab Data/Lab Limit Validity'
+    labDataName = labData.get("name") + "-VALIDITY"
+    path = "LabData/"    
+    parentPath = '[' + provider + ']' + path    
+    tagPath = parentPath + "/" + labDataName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        print "  ", labDataName, " already exists!"
+    else:
+        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+            attributes={"UDTParentType":UDTType})
 
 def loadUnitParameters(container):
     print "In labData.loadUnitParameters()"
