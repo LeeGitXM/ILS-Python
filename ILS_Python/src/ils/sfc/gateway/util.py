@@ -197,4 +197,12 @@ def sendCurrentOperation(projectName, payload):
     import system.util
     system.util.sendMessage(projectName, UPDATE_CURRENT_OPERATION_HANDLER, payload, "C")
     
- 
+def getDelaySeconds(delay, delayUnit):
+    '''get the delay time and convert to seconds'''
+    if delayUnit == DELAY_UNIT_SECOND:
+        delaySeconds = delay
+    elif delayUnit == DELAY_UNIT_MINUTE:
+        delaySeconds = delay * 60
+    elif delayUnit == DELAY_UNIT_HOUR:
+        delaySeconds = delay * 3600
+    return delaySeconds

@@ -125,13 +125,14 @@ def controlPanelMessage(scopeContext, stepProperties):
         priority = getStepProperty(stepProperties, PRIORITY)
         insert(currentMsgQueue, priority, message, database)
     if ackRequired:
-        timeout = message = getStepProperty(stepProperties, TIMEOUT)
+        timeout = getStepProperty(stepProperties, TIMEOUT)
         timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
-        timeoutSeconds = Unit.convert(timeoutUnit, SECOND, timeout, database)
-        sleepSeconds = 15
+        timeoutSeconds = getDelaySeconds(timeout, timeoutUnit)
+        sleepSeconds = 5
         elapsedSeconds = 0
         startTime = time.time()
         ackTime = None
+        # Loop, checking if we see an ack time in the database
         while ackTime == None and (timeoutSeconds > 0 and elapsedSeconds < timeoutSeconds):
             time.sleep(sleepSeconds);
             ackTime = getAckTime(msgId, database)
@@ -142,7 +143,6 @@ def controlPanelMessage(scopeContext, stepProperties):
             
 def timedDelay(scopeContext, stepProperties):
     from ils.sfc.common.util import createUniqueId, getTimeFactor, callMethod
-    from ils.sfc.gateway.util import getStepName
     import time
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -158,17 +158,8 @@ def timedDelay(scopeContext, stepProperties):
         delay = callMethod(callback)
     else:
         handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
-
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
-    if delayUnit == DELAY_UNIT_SECOND:
-        delaySeconds = delay
-    elif delayUnit == DELAY_UNIT_MINUTE:
-        delaySeconds = delay * 60
-    elif delayUnit == DELAY_UNIT_HOUR:
-        delaySeconds = delay * 3600
-    else:
-        handleUnexpectedGatewayError(chartScope, "Unknown delay unit: " + delayUnit)
-
+    delaySeconds = getDelaySeconds(delay, delayUnit)
     timeFactor = getTimeFactor(chartScope)
     delaySeconds = delaySeconds * timeFactor
     startTimeEpochSecs = time.time()

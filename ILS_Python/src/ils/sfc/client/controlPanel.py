@@ -117,7 +117,7 @@ class ControlPanel:
         self.flashing = False
         if ackTimedOut:
             self.getMessageArea().setBackground(Color.pink)
-        elif ackRequired:
+        elif ackRequired and ackTime == None:
             self.flashing = True
             self.getMessageArea().setBackground(Color.red)
             flash(self)
