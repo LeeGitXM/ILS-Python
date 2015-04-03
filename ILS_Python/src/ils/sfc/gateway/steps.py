@@ -189,7 +189,6 @@ def postDelayNotification(scopeContext, stepProperties):
     message = getStepProperty(stepProperties, MESSAGE) 
     payload = dict()
     payload[MESSAGE] = message
-    print 'step props ', stepProperties
     payload[CHART_RUN_ID] = getChartRunId(chartScope)
     payload[WINDOW_ID] = createUniqueId()
     sendMessageToClient(chartScope, POST_DELAY_NOTIFICATION_HANDLER, payload)

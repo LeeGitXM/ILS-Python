@@ -152,9 +152,8 @@ def sfcPostDelayNotification(payload):
     from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, END_TIME, STEP_NAME, CHART_NAME
     from ils.sfc.client.notification import showDelayNotification
     endTimeOrNone = payload.get(END_TIME, None)
-    stepName = payload[STEP_NAME]
-    chartName = payload[CHART_NAME]
-    title = 'Time Delay ' + chartName + '--' + stepName
+   # chartName = payload[CHART_NAME]
+    title = 'Delay Notification'
     showDelayNotification(payload[CHART_RUN_ID], payload[MESSAGE], False, payload[WINDOW_ID], endTimeOrNone, title)
 
 def sfcDeleteDelayNotifications(payload):

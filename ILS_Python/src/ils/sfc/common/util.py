@@ -26,13 +26,14 @@ def readFile(filepath):
 def sendMessageToClient(chartProperties, handler, payload):
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID, TEST_RESPONSE
+    from ils.sfc.common.constants import MESSAGE_ID, TEST_RESPONSE, MESSAGE
     project = getProject(chartProperties)
     testResponse = getTestResponse(chartProperties)
     if testResponse != None:
         payload[TEST_RESPONSE] = testResponse
     messageId = createUniqueId()
     payload[MESSAGE_ID] = messageId
+    #print 'sending message to client', project, handler, payload.get(MESSAGE, 'None')
     system.util.sendMessage(project, handler, payload, "C")
     return messageId
 
