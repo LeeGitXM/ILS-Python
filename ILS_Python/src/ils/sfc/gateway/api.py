@@ -83,3 +83,12 @@ def addControlPanelMessage(chartProperties, message, ackRequired):
     msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, database)
     sendUpdateControlPanelMsg(chartProperties)
     return msgId
+
+def getCurrentMessageQueue(chartProperties):
+    from ils.sfc.common.constants import QUEUE, PARENT
+    if chartProperties == None:
+        return None
+    elif QUEUE in chartProperties:
+        return chartProperties[QUEUE]
+    else:
+        return getCurrentMessageQueue(chartProperties.get(PARENT, None))

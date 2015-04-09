@@ -68,7 +68,6 @@ def checkConfig():
     messages = []
     from system.ils.sfc import getDatabaseName, getTimeFactor, getProviderName 
     from ils.sfc.common.util import isEmpty
-    
     productionDatabase = getDatabaseName(False)
     messages.append('============Checking Production settings...=============')
     checkDatabaseConfig(productionDatabase, messages)
@@ -120,6 +119,9 @@ def checkDatabaseConfig(database, messages):
         if not tableExists(table, database):
             messages.append("Table " + table + " does not exist")
     
+    if(tableExists('QueueMaster', database)):
+        printMessageQueueNames(database, messages)
+        
     if tableExists('Units', database):            
         ils.common.units.Unit.lazyInitialize(database)
         results = system.db.runQuery("select count(*) from Units", database)
@@ -140,6 +142,12 @@ def checkDatabaseConfig(database, messages):
                 if round(secondsPerMinute) != 60:
                     messages.append("time unit conversions wrong: " + secondsPerMinute + " seconds per minute")
 
+def printMessageQueueNames(db, messages):
+    from ils.queue.commons import getQueueNames
+    from system.util import jsonEncode
+    queueNames = getQueueNames(db)
+    messages.append("FYI, Message Queues are: %s" % jsonEncode(queueNames))
+    
 def tableExists(table, database):
     query = "select count(*) from " + table
     try:

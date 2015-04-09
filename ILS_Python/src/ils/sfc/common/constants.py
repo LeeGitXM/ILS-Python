@@ -66,7 +66,6 @@ LABEL = 'label'
 LOCATION = 'location'
 MESSAGE = "message"
 MESSAGE_ID = 'messageId'
-MESSAGE_QUEUE = 'messageQueue'
 METHOD = "method"
 MINIMUM_VALUE = "minimumValue"
 MAXIMUM_VALUE = "maximumValue"
@@ -119,7 +118,6 @@ WINDOW_ID = 'windowId'
 WINDOW_PROPERTIES = 'windowProperties'
 
 MESSAGE_ID = 'messageId'
-MESSAGE_QUEUE = 'messageQueue'
 RECIPE_LOCATION = "recipeLocation"  
 
 # The name of the second unit is really defined in the database,
@@ -148,3 +146,8 @@ PAUSED = "Paused"
 ABORTED = "Aborted"
 CANCELED = "Canceled"
 STOPPED = "Stopped"
+
+# Message statuses
+MSG_STATUS_INFO = 'Info'
+MSG_STATUS_WARNING = 'Warning'
+MSG_STATUS_ERROR = 'Error'

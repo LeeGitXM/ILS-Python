@@ -17,3 +17,12 @@ def getQueueForConsole(console, db = ''):
     SQL = "select MessageQueueKey from DtConsole where Console = '%s'" % (console)
     queueKey = system.db.runScalarQuery(SQL, db)
     return queueKey
+
+# Get the names of all current queues
+def getQueueNames(db = ''):
+    SQL = "select QueueKey from QueueMaster"
+    results = system.db.runQuery(SQL, db)
+    names = list()
+    for row in results:
+        names.append(row[0])
+    return names

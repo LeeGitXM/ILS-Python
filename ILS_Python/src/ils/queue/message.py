@@ -14,7 +14,7 @@ def insert(queueKey, status, message, db = ''):
     statusId = system.db.runScalarQuery(SQL, db)
     
     SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%s, getdate(), %s, '%s')" % (str(queueId), str(statusId), message)
-    print SQL
+
     system.db.runUpdateQuery(SQL, db)
 
 def clear(queueKey, db = ''):

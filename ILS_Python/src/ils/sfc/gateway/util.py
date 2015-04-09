@@ -182,10 +182,6 @@ def printObj(obj, level, out):
 def getDefaultMessageQueueScope():
     return OPERATION_SCOPE
 
-def getCurrentMessageQueue(chartProperties, stepProperties):
-    from ils.sfc.gateway.api import s88Get 
-    return s88Get(chartProperties, stepProperties, MESSAGE_ID, getDefaultMessageQueueScope())
-
 def substituteScopeReferences(scopeContext, stepProperties, sql):
     pass
 
@@ -206,3 +202,4 @@ def getDelaySeconds(delay, delayUnit):
     elif delayUnit == DELAY_UNIT_HOUR:
         delaySeconds = delay * 3600
     return delaySeconds
+

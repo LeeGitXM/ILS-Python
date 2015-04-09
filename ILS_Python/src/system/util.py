@@ -11,3 +11,6 @@ def invokeLater(func):
 
 def jsonDecode(str):
     pass
+
+def jsonEncode(obj):
+    pass

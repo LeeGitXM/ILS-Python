@@ -39,8 +39,9 @@ def queueInsert(scopeContext, stepProperties):
     action for java QueueMessageStep
     queues the step's message
     '''
+    from ils.sfc.gateway.api import getCurrentMessageQueue
     chartScope = scopeContext.getChartScope()
-    currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
+    currentMsgQueue = getCurrentMessageQueue(chartScope)
     message = getStepProperty(stepProperties, MESSAGE)  
     priority = getStepProperty(stepProperties, PRIORITY)  
     database = getDatabaseName(chartScope)
@@ -52,28 +53,32 @@ def setQueue(scopeContext, stepProperties):
     sets the chart's current message queue
     '''
     chartScope = scopeContext.getChartScope()
-    stepScope = scopeContext.getStepScope()
+    #stepScope = scopeContext.getStepScope()
     queue = getStepProperty(stepProperties, QUEUE)
-    recipeLocation = getDefaultMessageQueueScope()
-    s88Set(chartScope, stepScope, MESSAGE_QUEUE, queue, recipeLocation)
+    #recipeLocation = getDefaultMessageQueueScope()
+    #s88Set(chartScope, stepScope, QUEUE, queue, recipeLocation)
+    chartScope[QUEUE] = queue
 
 def showQueue(scopeContext, stepProperties):
     '''
     action for java ShowQueueStep
     send a message to the client to show the current message queue
     '''
-    currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
+    from ils.sfc.gateway.api import getCurrentMessageQueue
+    chartScope = scopeContext.getChartScope()
+    currentMsgQueue = getCurrentMessageQueue(chartScope)
     payload = dict()
     payload[QUEUE] = currentMsgQueue 
-    sendMessageToClient(scopeContext, SHOW_QUEUE_HANDLER, payload)
+    sendMessageToClient(chartScope, SHOW_QUEUE_HANDLER, payload)
 
 def clearQueue(scopeContext, stepProperties):
     '''
     action for java ClearQueueStep
     delete all messages from the current message queue
     '''
+    from ils.sfc.gateway.api import getCurrentMessageQueue
     chartScope = scopeContext.getChartScope()
-    currentMsgQueue = getCurrentMessageQueue(scopeContext, stepProperties)
+    currentMsgQueue = getCurrentMessageQueue(chartScope)
     database = getDatabaseName(chartScope)
     clear(currentMsgQueue, database)
 
@@ -113,7 +118,7 @@ def controlPanelMessage(scopeContext, stepProperties):
     import time
     from ils.sfc.common.sessions import getAckTime
     from ils.sfc.common.sessions import timeOutControlPanelMessageAck
-    from ils.sfc.gateway.api import addControlPanelMessage
+    from ils.sfc.gateway.api import addControlPanelMessage, getCurrentMessageQueue
     chartScope = scopeContext.getChartScope()
     message = getStepProperty(stepProperties, MESSAGE)
     database = getDatabaseName(chartScope)
@@ -121,7 +126,7 @@ def controlPanelMessage(scopeContext, stepProperties):
     msgId = addControlPanelMessage(chartScope, message, ackRequired)
     postToQueue = getStepProperty(stepProperties, POST_TO_QUEUE)
     if postToQueue:
-        currentMsgQueue = getCurrentMessageQueue(chartScope, stepProperties)
+        currentMsgQueue = getCurrentMessageQueue(chartScope)
         priority = getStepProperty(stepProperties, PRIORITY)
         insert(currentMsgQueue, priority, message, database)
     if ackRequired:
