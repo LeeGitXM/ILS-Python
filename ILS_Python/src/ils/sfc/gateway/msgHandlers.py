@@ -17,6 +17,22 @@ def sfcActivateStep(payload):
     from system.ils.sfc import activateStep
     activateStep(payload[CLASS_NAME], payload[CHART_PROPERTIES], payload[STEP_PROPERTIES])
     
+def sfcRunTests(payload):
+    '''Run test charts'''
+    from ils.sfc.common.constants import CHART_NAME, TEST_CHART_PATHS, TEST_REPORT_FILE
+    import system.ils.sfc
+    testChartPaths = payload[TEST_CHART_PATHS]
+    reportFile = payload[TEST_REPORT_FILE]
+    system.ils.sfc.initializeTests(reportFile)
+    for chartPath in testChartPaths:
+        payload[CHART_NAME] = chartPath
+        system.ils.sfc.startTest(chartPath)
+        sfcStartChart(payload)
+
+def sfcReportTests(payload):
+    import system.ils.sfc
+    system.ils.sfc.reportTests()
+        
 def sfcStartChart(payload):
     '''start the chart and message the client. At this point the only reason
        we start on the gateway side is to lazy init the units. Maybe we can

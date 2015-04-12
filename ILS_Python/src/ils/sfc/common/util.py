@@ -54,8 +54,7 @@ def getTopLevelProperties(chartProperties):
 
 def getChartRunId(chartProperties):
     return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
-
-
+    
 def getProject(chartProperties):
     return str(getTopLevelProperties(chartProperties)[PROJECT])
 
@@ -65,22 +64,22 @@ def getTestResponse(chartProperties):
 
 def getDatabaseName(chartProperties):
     from system.ils.sfc import getDatabaseName
-    isolationMode = getIsolationModel(chartProperties)
+    isolationMode = getIsolationMode(chartProperties)
     return getDatabaseName(isolationMode)
 
 def getTagProvider(chartProperties):
     from system.ils.sfc import getProviderName
-    isolationMode = getIsolationModel(chartProperties)
+    isolationMode = getIsolationMode(chartProperties)
     return getProviderName(isolationMode)
 
-def getIsolationModel(chartProperties):
+def getIsolationMode(chartProperties):
     from ils.sfc.common.constants import ISOLATION_MODE
     topProperties = getTopLevelProperties(chartProperties)
     return topProperties[ISOLATION_MODE]
    
 def getTimeFactor(chartProperties):
     from system.ils.sfc import getTimeFactor
-    isolationMode = getIsolationModel(chartProperties)
+    isolationMode = getIsolationMode(chartProperties)
     return getTimeFactor(isolationMode)
 
 def substituteProvider(chartProperties, tagPath):

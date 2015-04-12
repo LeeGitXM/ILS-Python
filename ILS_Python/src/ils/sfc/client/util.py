@@ -29,6 +29,18 @@ def runChart(chartName, isolationMode):
     initialChartProps[CHART_NAME] = chartName
     system.util.sendMessage(project, 'sfcStartChart', initialChartProps, "G")
     
+def runTests(testChartPaths, isolationMode, reportFile):
+    from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, TEST_CHART_PATHS, TEST_REPORT_FILE
+    project = system.util.getProjectName()
+    user = system.security.getUsername()
+    initialChartProps = dict()
+    initialChartProps[ISOLATION_MODE] = isolationMode
+    initialChartProps[PROJECT] = project
+    initialChartProps[USER] = user
+    initialChartProps[TEST_CHART_PATHS] = testChartPaths
+    initialChartProps[TEST_REPORT_FILE] = reportFile
+    system.util.sendMessage(project, 'sfcRunTests', initialChartProps, "G")
+   
 def openWindow(windowName, position, scale, windowProps):
     '''Open the given window inside the main window with the given position and size'''
     from ils.sfc.common.constants import LEFT, CENTER, TOP

@@ -32,3 +32,12 @@ def getProviderName(isolationMode):
 
 def getTimeFactor(isolationMode):
     pass
+
+def initializeTests(reportFile):
+    pass
+
+def startTest(chartScope):
+    pass
+
+def reportTests(reportFile):
+    pass
