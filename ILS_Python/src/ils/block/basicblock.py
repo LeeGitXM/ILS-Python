@@ -39,6 +39,7 @@ class BasicBlock():
     
     def initialize(self):    
         self.className = 'xom.block.basicblock.BasicBlock'
+        self.state = "UNSET"
         
         
     # Called when a value has arrived on one of our input ports
@@ -62,9 +63,11 @@ class BasicBlock():
         return self.properties.get(name,{})
         
     # Return all properties
-    
     def getProperties(self):
         return self.properties
+    # Return all properties
+    def getState(self):
+        return self.state
     # Return a list of all input ports
     def getInputPorts(self):
         return self.inports
@@ -99,7 +102,7 @@ class BasicBlock():
         packName = modName
         index = modName.rfind(".")
         if index>0:
-            print "packageFromModule: ",modName,",",index
+            print "BasicBlock.packageFromModule: ",modName,",",index
             packName = modName[0:index]
         return packName
     

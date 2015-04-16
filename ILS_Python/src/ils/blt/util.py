@@ -47,7 +47,32 @@ def evaluate(block):
 
     if block!=None:
         block.evluate()
-        
+
+# Given an instance of an executable block,
+# write its properties to the supplied list (properties)
+# as specified in the Gateway startup script.
+# 
+def getBlockAnchors(block,anchors):
+    
+    if block!=None:
+        log.infof("util.getBlockAnchors: %s ==",str(block.__class__) )
+        log.info( str(block.getInputPorts()) )
+        log.info( str(block.getOutputPorts()) )
+        dictionary = block.getInputPorts()
+        for key in dictionary:
+            anchor = dictionary[key]
+            anchor['name'] = key
+            anchor['direction'] = "incoming"
+            anchors.append(anchor)
+        dictionary = block.getOutputPorts()
+        for key in dictionary:
+            anchor = dictionary[key]
+            anchor['name'] = key
+            anchor['direction'] = "outgoing"
+            anchors.append(anchor)
+    else:
+        print "util.getBlockAnchors: argument ",block," not defined"
+                
 # Given an instance of an executable block,
 # write its properties to the supplied list (properties)
 # as specified in the Gateway startup script.
@@ -63,7 +88,18 @@ def getBlockProperties(block,properties):
             prop['name'] = key
             properties.append(prop)
     else:
-        print "getBlockProperties: argument ",block," not defined"
+        print "util.getBlockProperties: argument ",block," not defined"
+
+# Write the value of the state as a string in the results list.
+# 
+def getBlockState(block,properties):
+    
+    if block!=None:
+        log.infof("util.getBlockState: %s ==",str(block.__class__) )
+        state = block.getState()
+        properties.append(state)
+    else:
+        print "util.getBlockState: argument ",block," not defined"
 
 
 #
@@ -83,7 +119,7 @@ def getNewBlockInstances():
             className = eval("xom.block."+name+".getClassName()")
             constructor = "xom.block."+name.lower() +"."+className+"()"
             obj = eval(constructor)
-            print "getNewBlockInstances:",name,'=',obj.__class__
+            print "util.getNewBlockInstances:",name,'=',obj.__class__
             instances.append(obj) 
     print "====================="
     return instances
@@ -91,7 +127,7 @@ def getNewBlockInstances():
 # Return a new instance of the specified class of block.
 # A fully-qualified class must be specified. Use the null constructor.
 def getNewBlockInstance(className):
-    log.debugf('getNewBlockInstance: %s',className)
+    log.debugf('util.getNewBlockInstance: %s',className)
     constructor = className+"()"
     obj = eval(constructor)
     return obj
@@ -101,10 +137,10 @@ def getNewBlockInstance(className):
 # then create a dictionary of prototype attributes from each. 
 # Communicate results in 'prototypes', a list known to the gateway. 
 def getBlockPrototypes(prototypes):
-    log.debug("getBlockPrototypes")
+    log.debug("util.getBlockPrototypes")
     instances = getNewBlockInstances()
     for obj in instances:
-        print 'getBlockPrototype:',obj.__class__
+        print 'util.getBlockPrototype:',obj.__class__
         prototypes.append(obj.getPrototype())
 #
 
