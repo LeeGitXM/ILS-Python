@@ -8,6 +8,7 @@
 # NOTE: Subclasses must be added to __init__.py.
 #
 import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+import java.lang.Double as Double
 
 
 class BasicBlock():
@@ -95,6 +96,18 @@ class BasicBlock():
     # does nothing.
     def evaluate(self):
         pass
+    
+    # Reset the block. This default implementation
+    # sends notifications on all output connections.
+    def reset(self):
+        self.state = 'UNSET'
+        for anchor in self.outports:
+            if anchor['type'].upper()=='TRUTHVALUE':
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],'UNKNOWN')
+            elif anchor['type'].upper() == 'DATA':
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],Double(Double.NaN))
+            else:
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],"")
     
     # Convenience method to extract the package name from a module
     # Use this for the import

@@ -143,7 +143,14 @@ def getBlockPrototypes(prototypes):
         print 'util.getBlockPrototype:',obj.__class__
         prototypes.append(obj.getPrototype())
 #
+#
+# Given an instance of an executable block
+# Call its reset() method. 
+def reset(block):
 
+    if block!=None:
+        block.reset()
+        
 # Given an instance of an executable block,
 # set one of its properties. The property
 # is a dictionary named "property"
