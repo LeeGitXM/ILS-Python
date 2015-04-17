@@ -66,6 +66,7 @@ LABEL = 'label'
 LOCATION = 'location'
 MESSAGE = "message"
 MESSAGE_ID = 'messageId'
+DEFAULT_MESSAGE_QUEUE = 'SFC-Message-Queue'
 MESSAGE_QUEUE = 'msgQueue'
 METHOD = "method"
 MINIMUM_VALUE = "minimumValue"

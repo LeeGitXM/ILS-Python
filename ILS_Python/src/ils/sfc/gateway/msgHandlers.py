@@ -53,3 +53,8 @@ def sfcStartChart(payload):
     payload[INSTANCE_ID] = runId
     system.util.sendMessage(project, 'sfcChartStarted', payload, "C")
 
+def sfcFailTest(payload):
+    '''this is a message handler'''
+    from system.ils.sfc import failTest
+    from ils.sfc.common.constants import CHART_NAME, MESSAGE
+    failTest(payload[CHART_NAME], payload[MESSAGE])

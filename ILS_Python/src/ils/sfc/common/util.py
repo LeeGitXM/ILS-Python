@@ -109,13 +109,13 @@ def createUniqueId():
     import uuid
     return str(uuid.uuid4())
 
-def callMethod(methodPath):
+def callMethod(methodPath, stringLiteral=""):
     '''given a fully qualified package.method name, call the method and return the result'''
     lastDotIndex = methodPath.rfind(".")
     packageName = methodPath[0:lastDotIndex]
     globalDict = dict()
     localDict = dict()
-    exec("import " + packageName + "\nresult = " + methodPath + "()\n", globalDict, localDict)
+    exec("import " + packageName + "\nresult = " + methodPath + "(" + stringLiteral + ")\n", globalDict, localDict)
     result = localDict['result']
     return result
 

@@ -14,7 +14,6 @@ def flash(obj):
     import threading
     if not obj.flashing:
         return
-    print 'flash'
     msgArea = obj.getMessageArea()
     if msgArea.getBackground() == Color.red:
         msgArea.setBackground(Color.blue)

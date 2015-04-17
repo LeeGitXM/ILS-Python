@@ -39,5 +39,8 @@ def initializeTests(reportFile):
 def startTest(chartScope):
     pass
 
+def failTest(chartScope):
+    pass
+
 def reportTests(reportFile):
     pass
