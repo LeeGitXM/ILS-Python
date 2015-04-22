@@ -52,4 +52,5 @@ def sfcStartChart(payload):
     # add the chart run id so the client can know it
     payload[INSTANCE_ID] = runId
     system.util.sendMessage(project, 'sfcChartStarted', payload, "C")
+    return runId
 
