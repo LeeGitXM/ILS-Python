@@ -169,7 +169,7 @@ def manage(application, database=""):
         highestPriority = pds[0]['FamilyPriority']
         for record in records:
             if record['FamilyPriority'] == highestPriority:
-                print record['Family'], record['FamilyPriority'], record['FinalDiagnosis'], record['FinalDiagnosisPriority']
+                print record['FamilyName'], record['FamilyPriority'], record['FinalDiagnosisName'], record['FinalDiagnosisPriority']
                 aList.append(record)
         print "The families with the highest priorities are: ", aList
         return aList
@@ -183,7 +183,7 @@ def manage(application, database=""):
         bList = []
         for record in aList:
             print record
-            family = record['Family']
+            family = record['FamilyName']
             finalDiagnosisPriority = record['FinalDiagnosisPriority']
             if family != lastFamily:
                 lastFamily = family
@@ -196,15 +196,15 @@ def manage(application, database=""):
         return bList
     
     #---------------------------------------------------------------------
-    def fetchPreviousHighestPriorityDiagnosis(application, database):
+    def fetchPreviousHighestPriorityDiagnosis(applicationName, database):
         log.trace("Fetching the previous highest priority diagnosis...")
-        SQL = "Select FinalDiagnosis, FinalDiagnosisId "\
+        SQL = "Select FinalDiagnosisName, FinalDiagnosisId "\
             " from DtApplication A, DtFamily F, DtFinalDiagnosis FD "\
-            " where A.Application = '%s' " \
+            " where A.ApplicationName = '%s' " \
             " and A.ApplicationId = F.ApplicationId "\
             " and F.FamilyId = FD.FamilyId "\
             " and FD.Active = 1"\
-            % (application)
+            % (applicationName)
         logSQL.trace(SQL)
         pds = system.db.runQuery(SQL, database)
         aList=[]
@@ -329,9 +329,9 @@ def manage(application, database=""):
     log.info("Making recommendations...")
     quantOutputs = []   # A list of quantOutput dictionaries
     for record in list2:
-        application = record['Application']
-        family = record['Family']
-        finalDiagnosis = record['FinalDiagnosis']
+        application = record['ApplicationName']
+        family = record['FamilyName']
+        finalDiagnosis = record['FinalDiagnosisName']
         log.trace("Making a recommendation for: %s - %s - %s" % (application, family, finalDiagnosis))
         
         # Fetch all of the quant outputs for the final diagnosis
@@ -341,7 +341,7 @@ def manage(application, database=""):
         
         from ils.diagToolkit.recommendation import makeRecommendation
         textRecommendation, recommendations = makeRecommendation(
-                record['Application'], record['Family'], record['FinalDiagnosis'], 
+                record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
                 record['FinalDiagnosisId'], record['DiagnosisEntryId'], database)
         quantOutputs = mergeRecommendations(quantOutputs, recommendations)
 

@@ -9,7 +9,7 @@ def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()"
     
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
-    SQL = "select post from DtConsole order by post"
+    SQL = "select post from TkPost order by post"
     pds = system.db.runQuery(SQL)
     rootContainer.posts=pds
     
@@ -36,26 +36,27 @@ def setNumberOfPages(rootContainer):
     selectedPost = rootContainer.selectedPost
     
     SQL = "Select max(DT.DisplayPage) "\
-        "from LtDisplayTable DT, DtConsole C "\
-        "where DT.ConsoleId = C.ConsoleId "\
-        " and C.Post = '%s' " % (selectedPost)
+        "from LtDisplayTable DT, TkPost P "\
+        "where DT.PostId = P.PostId "\
+        " and P.Post = '%s' " % (selectedPost)
     numPages = system.db.runScalarQuery(SQL)
     rootContainer.numberOfPages = numPages
     
-    print "The %s console has %i pages of lab data tables" % (selectedPost, numPages)
+    print "The %s post has %i pages of lab data tables" % (selectedPost, numPages)
     configureTabStrip(rootContainer, numPages)
     rootContainer.selectedPage = 1
 
-# Populate the template repeater with the table names for the selected console and page
+# Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
     print "In populateTablesForConsole"
     selectedPost = rootContainer.selectedPost
     selectedPage = rootContainer.selectedPage
     SQL = "Select DisplayTableTitle "\
-        "from LtDisplayTable DT, DtConsole C "\
-        "where DT.ConsoleId = C.ConsoleId "\
-        " and C.Post = '%s' "\
+        "from LtDisplayTable DT, TkPost P "\
+        "where DT.PostId = P.PostId "\
+        " and P.Post = '%s' "\
         " and DT.DisplayPage = %i "\
+        " and DT.DisplayFlag = 1 "\
         "Order by DisplayOrder" % (selectedPost, selectedPage)
     
     print SQL

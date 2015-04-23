@@ -69,16 +69,21 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
     return textRecommendation, recommendationList
 
 # Insert a recommendation into the database
-def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database):
+def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, database):
     
     SQL = "select RecommendationDefinitionId "\
         "from DtRecommendationDefinition RD, DtQuantOutput QO "\
         "where RD.QuantOutputID = QO.QuantOutputId "\
         " and RD.FinalDiagnosisId = %i "\
-        " and QO.QuantOutput = '%s'" % (finalDiagnosisId, quantOutput)
+        " and QO.QuantOutputName = '%s'" % (finalDiagnosisId, quantOutputName)
     logSQL.trace(SQL)
     recommendationDefinitionId = system.db.runScalarQuery(SQL, database)
     
+    if recommendationDefinitionId == None:
+        log.error("Unable to fetch a recommendation definition for output <%s> for finalDiagnosis with id: %i" % (quantOutputName, finalDiagnosisId))
+        return -1
+    
+    print "Recommendation Definition Id: ", recommendationDefinitionId
     SQL = "insert into DtRecommendation (RecommendationDefinitionId,DiagnosisEntryId,Recommendation,AutoRecommendation,AutoOrManual) "\
         "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
     logSQL.trace(SQL)
