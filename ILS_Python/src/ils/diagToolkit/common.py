@@ -6,11 +6,11 @@ Created on Sep 19, 2014
 
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.diagToolkit.SQL")
+log = LogUtil.getLogger("com.ils.SQL.diagToolkit")
 
 
 def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
-    print "**Updating the Bound Recommendation percent**"
+    print "**Updating the Bound Recommendation percent** "
     pds=fetchRecommendationsForOutput(quantOutputId, database)
     for record in pds:
         autoOrManual=record["AutoOrManual"]
@@ -45,15 +45,15 @@ def clearQuantOutputRecommendations(application, database=""):
 
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
 # and is the first step in evaluating the active FDs and calculating new recommendations.
-def deleteRecommendations(application, database):
-    log.trace("Deleting recommendations for %s" % (application))
+def deleteRecommendations(applicationName, database):
+    log.trace("Deleting recommendations for %s" % (applicationName))
     SQL = "delete from DtRecommendation " \
         " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
         " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
-        " and A.Application = '%s')" % (application)
+        " and A.ApplicationName = '%s')" % (applicationName)
     log.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
     return
@@ -75,14 +75,14 @@ def fetchApplicationId(application, database=""):
 
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
-    SQL = "select FD.FinalDiagnosisId, FD.FinalDiagnosis, FD.FamilyId, FD.FinalDiagnosisPriority, FD.CalculationMethod, "\
+    SQL = "select FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FamilyId, FD.FinalDiagnosisPriority, FD.CalculationMethod, "\
         " FD.PostTextRecommendation, FD.TextRecommendationCallback, FD.RefreshRate, FD.TextRecommendation "\
         " from DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
         " where A.ApplicationId = F.ApplicationId "\
         " and FD.FamilyId = F.FamilyId "\
-        " and A.Application = '%s'" \
-        " and F.family = '%s'" \
-        " and FD.FinalDiagnosis = '%s'" % (application, family, finalDiagnosis)
+        " and A.ApplicationName = '%s'" \
+        " and F.FamilyName = '%s'" \
+        " and FD.FinalDiagnosisName = '%s'" % (application, family, finalDiagnosis)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     from ils.common.database import toDict
@@ -94,8 +94,8 @@ def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
     return record
 
 # Fetch all of the active final diagnosis for an application
-def fetchActiveDiagnosis(application, database=""):
-    SQL = "select A.Application, F.Family, F.FamilyId, FD.FinalDiagnosis, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
+def fetchActiveDiagnosis(applicationName, database=""):
+    SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
         " DE.RecommendationErrorText "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
@@ -104,8 +104,8 @@ def fetchActiveDiagnosis(application, database=""):
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and DE.Status = 'Active' " \
         " and not (FD.CalculationMethod != 'Constant' and (DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
-        " and A.Application = '%s'"\
-        " order by FamilyPriority DESC, FinalDiagnosisPriority DESC"  % (application) 
+        " and A.ApplicationName = '%s'"\
+        " order by FamilyPriority DESC, FinalDiagnosisPriority DESC"  % (applicationName) 
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -113,12 +113,12 @@ def fetchActiveDiagnosis(application, database=""):
 # Fetch all of the recommendations that touch a quant output.
 def fetchRecommendationsForOutput(QuantOutputId, database=""):
     SQL = "select R.RecommendationId, R.Recommendation, R.AutoRecommendation, R.AutoRecommendation, R.ManualRecommendation, "\
-        " R.AutoOrManual, QO.QuantOutput, QO.TagPath "\
+        " R.AutoOrManual, QO.QuantOutputName, QO.TagPath "\
         " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
         " where RD.QuantOutputId = QO.QuantOutputId "\
         " and QO.QuantOutputId = %i "\
         " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
-        " order by QO.QuantOutput"  % (QuantOutputId)
+        " order by QO.QuantOutputName"  % (QuantOutputId)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -126,26 +126,28 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
 # Fetch the outputs for a final diagnosis and return them as a list of dictionaries
 # I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
 # that are used when calculating/managing recommendations and the output of those recommendations.
-def fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis, database=""):
-    SQL = "select QO.QuantOutput, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
-        " QO.SetpointLowLimit, QO.FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
+def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
+    SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+        " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId "\
-        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
+        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
+        " and L.LookupTypeCode = 'FeedbackMethod'"\
+        " and L.LookupId = QO.FeedbackMethodId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
-        " and A.Application = '%s' "\
-        " and F.Family = '%s' "\
-        " and FD.FinalDiagnosis = '%s' "\
-        " order by QuantOutput"  % (application, family, finalDiagnosis)
+        " and A.ApplicationName = '%s' "\
+        " and F.FamilyName = '%s' "\
+        " and FD.FinalDiagnosisName = '%s' "\
+        " order by QuantOutputName"  % (applicationName, familyName, finalDiagnosisName)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     outputList = []
     for record in pds:
         output = {}
         output['QuantOutputId'] = record['QuantOutputId']
-        output['QuantOutput'] = str(record['QuantOutput'])
+        output['QuantOutput'] = str(record['QuantOutputName'])
         output['TagPath'] = str(record['TagPath'])
         output['MostNegativeIncrement'] = record['MostNegativeIncrement']
         output['MostPositiveIncrement'] = record['MostPositiveIncrement']

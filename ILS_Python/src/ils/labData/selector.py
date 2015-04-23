@@ -45,5 +45,26 @@ def updateItemId(targetName, itemId, database=""):
         SQL = "update LtPHDValue set ItemId = '%s' where ValueId = %i " % (itemId, targetId)
         print SQL 
         system.db.runUpdateQuery(SQL, database)
+
+#
+def configureSelector(selectorName, sourceName):
+    tagPath='[XOM]LabData/' + selectorName
+
+    badValueTag='{[.]../' + sourceName + '/badValue}'
+    rawValueTag='{[.]../' + sourceName + '/rawValue}'
+    sampleTimeTag='{[.]../' + sourceName + '/sampleTime}'
+    updateFlagTag='{[.]../' + sourceName + '/updateFlag}'
+    valueTag='{[.]../' + sourceName + '/value}'
+    
+    parameters={
+        'badValueTag':badValueTag, 
+        'rawValueTag':rawValueTag, 
+        'sampleTimeTag':sampleTimeTag,
+        'updateFlagTag':updateFlagTag,
+        'valueTag':valueTag
+        }
+    
+    print tagPath, parameters
+    system.tag.editTag(tagPath, parameters=parameters)
                 
                 
