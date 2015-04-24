@@ -229,7 +229,6 @@ def selectInput(scopeContext, stepProperties):
     payload[CHOICES] = choices
     
     messageId = sendMessageToClient(chartScope, SELECT_INPUT_HANDLER, payload) 
-    
     response = waitOnResponse(messageId, chartScope)
     value = response[RESPONSE]
     s88Set(chartScope, stepScope, key, value, recipeLocation)

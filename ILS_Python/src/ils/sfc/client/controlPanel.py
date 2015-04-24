@@ -92,7 +92,7 @@ class ControlPanel:
         else:
             #Some other transitory state
             statusField.setBackground(Color.gray)
-            self.enableChartButtons(False, False, False)
+            self.setCommandCapability(False, False, False)
             
     def setCommandMask(self, pause, resume, cancel):
         self.pauseMask= pause
