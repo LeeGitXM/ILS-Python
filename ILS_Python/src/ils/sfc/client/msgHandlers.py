@@ -105,6 +105,7 @@ def sfcPrintWindow(payload):
     showPrintDialog = payload['showPrintDialog']
     windows = system.gui.findWindow(windowName)
     for window in windows:
+        print 'printing a', windowName
         printJob = system.print.createPrintJob(window)
         printJob.showPrintDialog = showPrintDialog
         printJob.print()

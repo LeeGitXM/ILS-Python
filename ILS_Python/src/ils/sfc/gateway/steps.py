@@ -401,10 +401,9 @@ def printFile(scopeContext, stepProperties):
 def printWindow(scopeContext, stepProperties):   
     from ils.sfc.common.util import getProject
     chartScope = scopeContext.getChartScope()
-    project = getProject(chartScope)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    sendMessageToClient(project, PRINT_WINDOW_HANDLER, payload)
+    sendMessageToClient(chartScope, PRINT_WINDOW_HANDLER, payload)
     
 def closeWindow(scopeContext, stepProperties):   
     chartScope = scopeContext.getChartScope()
