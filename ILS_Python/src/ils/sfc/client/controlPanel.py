@@ -31,9 +31,14 @@ class ControlPanel:
     messages = None
     timer = None
     flashing = False
+    # the masks indicate a user override of enabling Pause/Resume/Cancel
     pauseMask = True
     resumeMask = True
     cancelMask = True
+    # canXXX indicates whether the system would allow the operation
+    canPause = False
+    canResume = False
+    canCancel = False
     toolbarDataHeader = ['text', 'windowPath', 'windowId', 'chartRunId'] # these are the button properties
     toolbarDataset = system.dataset.toDataSet(toolbarDataHeader, [])
     windowsById = dict()
@@ -74,16 +79,16 @@ class ControlPanel:
         statusField.setText(status)
         if status == RUNNING:
             statusField.setBackground(Color.green)
-            self.enableChartButtons(True, False, True)
+            self.setCommandCapability(True, False, True)
         elif status == PAUSED:
             statusField.setBackground(Color.yellow)
-            self.enableChartButtons(False, True, True)
+            self.setCommandCapability(False, True, True)
         elif status == ABORTED:
             statusField.setBackground(Color.red)
-            self.enableChartButtons(False, False, False)
+            self.setCommandCapability(False, False, False)
         elif status == STOPPED or status == CANCELED:
             statusField.setBackground(Color.blue)
-            self.enableChartButtons(False, False, False)
+            self.setCommandCapability(False, False, False)
         else:
             #Some other transitory state
             statusField.setBackground(Color.gray)
@@ -93,12 +98,18 @@ class ControlPanel:
         self.pauseMask= pause
         self.resumeMask = resume
         self.cancelMask = cancel
-        self.enableChartButtons(self.getPauseButton().isEnabled(), self.getResumeButton().isEnabled(), self.getCancelButton().isEnabled())
-    
-    def enableChartButtons(self, pause, resume, cancel):
-        self.getPauseButton().setEnabled(pause and self.pauseMask)
-        self.getResumeButton().setEnabled(resume and self.resumeMask)
-        self.getCancelButton().setEnabled(cancel and self.cancelMask)
+        self.enableChartButtons()
+   
+    def enableChartButtons(self):
+        self.getPauseButton().setEnabled(self.canPause and self.pauseMask)
+        self.getResumeButton().setEnabled(self.canResume and self.resumeMask)
+        self.getCancelButton().setEnabled(self.canCancel and self.cancelMask)
+ 
+    def setCommandCapability(self, pause, resume, cancel):
+        self.canPause = pause
+        self.canCancel = cancel
+        self.canResume = resume
+        self.enableChartButtons()
 
     def setMessage(self, index):
         from java.awt import Color

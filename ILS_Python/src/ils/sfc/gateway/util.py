@@ -69,7 +69,9 @@ def hasStepProperty(stepProperties, pname):
 
 def transferStepPropertiesToMessage(stepProperties, payload):
     for prop in stepProperties.getProperties():
-        payload[prop.getName()] = stepProperties.getOrDefault(prop)
+        # omit the associated-data as the JSONObject causes a serialization error
+        if not (prop.getName() == 'associated-data'):
+            payload[prop.getName()] = stepProperties.getOrDefault(prop)
  
 def waitOnResponse(requestId, chartScope):
     '''

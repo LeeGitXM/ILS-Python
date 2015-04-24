@@ -421,7 +421,6 @@ def showWindow(scopeContext, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
-
     sendMessageToClient(chartScope, SHOW_WINDOW_HANDLER, payload) 
 
 def reviewData(scopeContext, stepProperties):    
