@@ -339,11 +339,11 @@ def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
      
 def saveData(scopeContext, stepProperties):
     import time
+    from system.ils.sfc import getRecipeDataText
     # extract property values
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    key = getStepProperty(stepProperties, KEY) 
     directory = getStepProperty(stepProperties, DIRECTORY) 
     fileName = getStepProperty(stepProperties, FILENAME) 
     extension = getStepProperty(stepProperties, EXTENSION) 
@@ -364,7 +364,7 @@ def saveData(scopeContext, stepProperties):
         timestamp = ""
     
     # get the data at the given location
-    recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
+    recipeData = getRecipeDataText(chartScope, stepScope, recipeLocation)
     if chartScope == None:
         getLogger.error("data for location " + recipeLocation + " not found")
     
