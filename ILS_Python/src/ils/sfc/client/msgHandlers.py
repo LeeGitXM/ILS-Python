@@ -105,6 +105,7 @@ def sfcPrintWindow(payload):
     showPrintDialog = payload['showPrintDialog']
     windows = system.gui.findWindow(windowName)
     for window in windows:
+        print 'printing a', windowName
         printJob = system.print.createPrintJob(window)
         printJob.showPrintDialog = showPrintDialog
         printJob.print()
@@ -127,7 +128,10 @@ def sfcSelectInput(payload):
     window = system.nav.openWindow('SFC/SelectInput', payload)
 
 def sfcShowQueue(payload):
-    system.nav.openWindow('Queue/Message Queue')
+    from ils.sfc.common.constants import QUEUE
+    initialProps = dict()
+    initialProps['key'] = payload[QUEUE]
+    system.nav.openWindow('Queue/Message Queue', initialProps)
 
 def sfcShowWindow(payload):
     from ils.sfc.client.util import openWindow

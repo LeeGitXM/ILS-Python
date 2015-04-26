@@ -24,6 +24,9 @@ def s88BasicGet(chartProperties, stepProperties, ckey, location):
 def s88BasicSet(chartProperties, stepProperties, ckey, location, value):
     pass
 
+def getRecipeDataText(chartProperties, stepProperties, location):
+    pass
+
 def getDatabaseName(isolationMode):
     pass
 
