@@ -71,7 +71,6 @@ def insertIntoDB(rootContainer):
     print "In migration.labData.insertIntoDB()"
 
     filename = rootContainer.getComponent('File Field').text
-    site = rootContainer.getComponent("Site").text
     provider = rootContainer.getComponent("Tag Provider").text
     
     if not(system.file.fileExists(filename)):
@@ -91,8 +90,15 @@ def insertIntoDB(rootContainer):
         
         if className == "LAB-PHD-SQC":
             print "   ** Created **"
-            valueId=insertPHDLabValue(labData)
+            valueId=insertLabValue(labData)
+            insertPHDLabValue(labData, valueId)
             loaded=loaded+1
+            
+        elif className == "LAB-PHD-SQC-SELECTOR":
+            print "   ** Created **"
+            valueId=insertLabValue(labData)
+            loaded=loaded+1
+            
 #        elif className == "LAB-PHD-DERIVED-SQC":
 #            print "   ...skipping..."
 #        elif className == "LAB-PHD":
@@ -118,9 +124,26 @@ def lookupHDAInterface(interfaceName):
         interfaceId=system.db.runUpdateQuery(SQL, getKey=1)
     return interfaceId
 
-def insertPHDLabValue(labData):
-    valueId=insertLabValue(labData)
-    
+
+# The display table Has been so to allow NULL so that we can insert the lab data from this export file.  The display table
+# info is contained in the display table export and will be updated later
+def insertLabValue(labData):
+    valueName = labData.get("name")
+    description = labData.get("lab-desc")
+    displayDecimals = labData.get("lab-display-decimals")
+    post = labData.get("post", "")
+    postId = getPostId(post)
+    print "Post: %s has idL %i" % (post, postId)
+
+    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, PostId) "\
+        " values ('%s', '%s', %s, %s)" % (valueName, description, str(displayDecimals), str(postId))
+    print SQL
+    valueId=system.db.runUpdateQuery(SQL, getKey=1)
+    print "Inserted %s and assigned id %i" % (valueName, valueId)
+    return valueId
+
+
+def insertPHDLabValue(labData, valueId):    
     for rawValue in labData.findall('rawValue'):
         itemId = rawValue.get("item-id")
         interfaceName=rawValue.get("interface-name")
@@ -133,25 +156,7 @@ def insertPHDLabValue(labData):
         print "  inserted a record into LtPHDValue..."
     return valueId
 
-# The display table Has been so to allow NULL so that we can insert the lab data from this export file.  The display table
-# info is contained in the display table export and will be updated later
-def insertLabValue(labData):
-    valueName = labData.get("name")
-    description = labData.get("lab-desc")
-    displayDecimals = labData.get("lab-display-decimals")
-    post = labData.get("post", "")
-    postId = getPostId(post)
-#    itemId = ds.getValueAt(row, "item-id")
-#    itemId = itemIdPrefix + itemId
-#    gsiInterface = labData.get("value-update-flag-interface")
-#    serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
 
-    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, PostId) "\
-        " values ('%s', '%s', %s, %s)" % (valueName, description, str(displayDecimals), str(postId))
-    print SQL
-    valueId=system.db.runUpdateQuery(SQL, getKey=1)
-    print "Inserted %s and assigned id %i" % (valueName, valueId)
-    return valueId
 
 def createTags(rootContainer):
     print "In labData.createTags()"
