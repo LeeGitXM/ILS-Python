@@ -163,6 +163,8 @@ def timedDelay(scopeContext, stepProperties):
         delay = callMethod(callback)
     else:
         handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
+        delay = 0
+        
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     delaySeconds = getDelaySeconds(delay, delayUnit)
     timeFactor = getTimeFactor(chartScope)
@@ -229,7 +231,6 @@ def selectInput(scopeContext, stepProperties):
     payload[CHOICES] = choices
     
     messageId = sendMessageToClient(chartScope, SELECT_INPUT_HANDLER, payload) 
-    
     response = waitOnResponse(messageId, chartScope)
     value = response[RESPONSE]
     s88Set(chartScope, stepScope, key, value, recipeLocation)
@@ -340,11 +341,11 @@ def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
      
 def saveData(scopeContext, stepProperties):
     import time
+    from system.ils.sfc import getRecipeDataText
     # extract property values
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    key = getStepProperty(stepProperties, KEY) 
     directory = getStepProperty(stepProperties, DIRECTORY) 
     fileName = getStepProperty(stepProperties, FILENAME) 
     extension = getStepProperty(stepProperties, EXTENSION) 
@@ -365,7 +366,7 @@ def saveData(scopeContext, stepProperties):
         timestamp = ""
     
     # get the data at the given location
-    recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
+    recipeData = getRecipeDataText(chartScope, stepScope, recipeLocation)
     if chartScope == None:
         getLogger.error("data for location " + recipeLocation + " not found")
     
@@ -402,10 +403,9 @@ def printFile(scopeContext, stepProperties):
 def printWindow(scopeContext, stepProperties):   
     from ils.sfc.common.util import getProject
     chartScope = scopeContext.getChartScope()
-    project = getProject(chartScope)
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    sendMessageToClient(project, PRINT_WINDOW_HANDLER, payload)
+    sendMessageToClient(chartScope, PRINT_WINDOW_HANDLER, payload)
     
 def closeWindow(scopeContext, stepProperties):   
     chartScope = scopeContext.getChartScope()
@@ -421,7 +421,6 @@ def showWindow(scopeContext, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
-
     sendMessageToClient(chartScope, SHOW_WINDOW_HANDLER, payload) 
 
 def reviewData(scopeContext, stepProperties):    

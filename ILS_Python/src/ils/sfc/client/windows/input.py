@@ -22,18 +22,13 @@ def okActionPerformed(event):
     
     # send response to the Gateway
     thisWindow = system.gui.getParentWindow(event)
-    payload = dict()
-    payload['messageId'] = event.source.parent.messageId
-    payload['response'] = response
-    sendResponse(payload, response)
+    sendResponse(event.source.parent.messageId, response)
     system.nav.closeWindow(thisWindow)
     
 def cancelActionPerformed(event):
     from ils.sfc.client.util import sendResponse
     import system.gui.getParentWindow
     thisWindow = system.gui.getParentWindow(event)
-    payload = dict()
-    payload['messageId'] = event.source.parent.messageId
     response = None
-    sendResponse(payload, response)
+    sendResponse(event.source.parent.messageId, response)
     system.nav.closeWindow(thisWindow)
