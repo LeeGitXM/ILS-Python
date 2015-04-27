@@ -20,8 +20,3 @@ def fetchValueId(valueName, database=""):
     log.trace(SQL)
     valueId = system.db.runScalarQuery(SQL, database)
     return valueId
-
-def fetchLimits(database = ""):
-    SQL = "select * from LtLimitView order by ValueName"
-    pds = system.db.runQuery(SQL, database)
-    return pds

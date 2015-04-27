@@ -35,6 +35,10 @@ def setNumberOfPages(rootContainer):
     print "In setNumberOfPages"
     selectedPost = rootContainer.selectedPost
     
+    if selectedPost == "" or selectedPost == None:
+        print "Error: Please select a post"
+        return
+    
     SQL = "Select max(DT.DisplayPage) "\
         "from LtDisplayTable DT, TkPost P "\
         "where DT.PostId = P.PostId "\
@@ -42,7 +46,7 @@ def setNumberOfPages(rootContainer):
     numPages = system.db.runScalarQuery(SQL)
     rootContainer.numberOfPages = numPages
     
-    print "The %s post has %i pages of lab data tables" % (selectedPost, numPages)
+    print "The %s post has %s pages of lab data tables" % (selectedPost, str(numPages))
     configureTabStrip(rootContainer, numPages)
     rootContainer.selectedPage = 1
 
@@ -101,6 +105,11 @@ def configureTabStrip(rootContainer, numPages):
 
     header=["NAME","DISPLAY_NAME","HOVER_COLOR","SELECTED_IMAGE_PATH","SELECTED_IMAGE_HORIZONTAL_ALIGNMENT","SELECTED_IMAGE_VERTICAL_ALIGNMENT","SELECTED_FOREGROUND_COLOR","SELECTED_BACKGROUND_COLOR","SELECTED_FONT","SELECTED_GRADIENT_START_COLOR","SELECTED_GRADIENT_END_COLOR","UNSELECTED_IMAGE_PATH","UNSELECTED_IMAGE_HORIZONTAL_ALIGNMENT","UNSELECTED_IMAGE_VERTICAL_ALIGNMENT","UNSELECTED_FOREGROUND_COLOR","UNSELECTED_BACKGROUND_COLOR","UNSELECTED_FONT","UNSELECTED_GRADIENT_START_COLOR","UNSELECTED_GRADIENT_END_COLOR","USE_SELECTED_GRADIENT","USE_UNSELECTED_GRADIENT","MOUSEOVER_TEXT"]
     data=[]
+    if numPages == 0 or numPages == None:
+        ds = system.dataset.toDataSet(header, data)
+        tabStrip.tabData=ds
+        return
+    
     for i in range(1, numPages + 1):
         pageTitle="Page %i" % (i)
         data.append([pageTitle,pageTitle,"color(250,214,138,255)","","-1","-1","color(0,0,0,255)","color(238,236,232,255)","font(Dialog,PLAIN,12)","color(238,236,232,255)","color(238,236,232,255)","","-1","-1","color(0,0,0,255)","color(238,236,232,255)","font(Dialog,PLAIN,12)","color(238,236,232,255)","color(170,170,170,255)","false","true",""])
