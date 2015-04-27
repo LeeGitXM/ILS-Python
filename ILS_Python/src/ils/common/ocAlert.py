@@ -7,34 +7,32 @@ Created on Mar 31, 2015
 import system
 
 def handleMessage(payload):
-    print "In ils.common.ocAlert.handleMessage()"
+    print "In ils.common.ocAlert.handleMessage()", payload
     
-    ds = payload.get("dataset")
-    payload=ds.getValueAt(0,0)
-    print "Dictionary: ", payload
-    
-    buttonLabel=payload.get("buttonLabel", "Acknowledge")
-    topMessage=payload.get("topMessage", "")
-    bottomMessage=payload.get("bottomMessage", "")
-    
-    win=system.nav.openWindowInstance("Common/OC Alert", {"topMessage":topMessage, "bottomMessage": bottomMessage, "buttonLabel": buttonLabel, "payload":ds})
-    
-    # For some reason this centerWindow command doesn't do anything so I had to add it to the internalFrameOpened script as well
-    system.nav.centerWindow(win)
-    print "Opened Window"
+    targetPost=payload.get("post","")
+    if targetPost != "":
+        post = system.tag.read("[Client]Post").value
+        if targetPost == post:
+            system.nav.openWindowInstance("Common/OC Alert", payload)
+        else:
+            print "Skipping this OC alert because it was destined for a different post"
+    else:
+        system.nav.openWindowInstance("Common/OC Alert", payload)
+
 
 # This is called from the button smack in the middle of the screen 
 def buttonHandler(event):
+    print "In the button handler..."
     rootContainer = event.source.parent
+    callback=rootContainer.callback
     
     # The payload is a dataset
-    ds = rootContainer.payload
+    ds = rootContainer.ds
     payload=ds.getValueAt(0,0)
     
-    print payload
+    print "Dictionary: ", payload
 
-    callback=payload.get("callback", None)
-    if callback == None:
+    if callback == "" or callback == None or callback == "None":
         system.nav.closeParentWindow(event)
         return
     
@@ -42,7 +40,3 @@ def buttonHandler(event):
     from ils.labData.validityLimitWarning import launcher
     launcher(payload)
     system.nav.closeParentWindow(event)
-    
-    
-    
-    
