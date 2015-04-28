@@ -163,6 +163,8 @@ def timedDelay(scopeContext, stepProperties):
         delay = callMethod(callback)
     else:
         handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
+        delay = 0
+        
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     delaySeconds = getDelaySeconds(delay, delayUnit)
     timeFactor = getTimeFactor(chartScope)

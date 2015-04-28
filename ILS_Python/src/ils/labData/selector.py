@@ -48,23 +48,64 @@ def updateItemId(targetName, itemId, database=""):
 
 #
 def configureSelector(selectorName, sourceName):
-    tagPath='[XOM]LabData/' + selectorName
+    parentTagPath = '[XOM]LabData/'
+    tagPath = parentTagPath + selectorName
+    print "Configuring: ", tagPath
 
-    badValueTag='{[.]../' + sourceName + '/badValue}'
-    rawValueTag='{[.]../' + sourceName + '/rawValue}'
-    sampleTimeTag='{[.]../' + sourceName + '/sampleTime}'
-    updateFlagTag='{[.]../' + sourceName + '/updateFlag}'
-    valueTag='{[.]../' + sourceName + '/value}'
+    # Determine the type of the UDT   
+    UDTType = system.tag.getAttribute(tagPath, "UDTParentType")
+    print "UDT Type: ", UDTType
+
+    if UDTType == "Lab Data/Lab Selector Value":
+        badValueTag='{[.]../' + sourceName + '/badValue}'
+        rawValueTag='{[.]../' + sourceName + '/rawValue}'
+        sampleTimeTag='{[.]../' + sourceName + '/sampleTime}'
+        updateFlagTag='{[.]../' + sourceName + '/updateFlag}'
+        valueTag='{[.]../' + sourceName + '/value}'
     
-    parameters={
-        'badValueTag':badValueTag, 
-        'rawValueTag':rawValueTag, 
-        'sampleTimeTag':sampleTimeTag,
-        'updateFlagTag':updateFlagTag,
-        'valueTag':valueTag
-        }
+        parameters={
+                    'badValueTag':badValueTag, 
+                    'rawValueTag':rawValueTag, 
+                    'sampleTimeTag':sampleTimeTag,
+                    'updateFlagTag':updateFlagTag,
+                    'valueTag':valueTag
+                    }
     
-    print tagPath, parameters
-    system.tag.editTag(tagPath, parameters=parameters)
-                
+        print tagPath, parameters
+        system.tag.editTag(tagPath, parameters=parameters)
+        
+    elif UDTType == "Lab Data/Lab Selector SQC":
+        lowerLimitTag='{[.]../' + sourceName + '/lowerLimit}'
+        lowerValidityLimitTag='{[.]../' + sourceName + '/lowerValidityLimit}'
+        standardDeviationTag='{[.]../' + sourceName + '/standardDeviation}'
+        targetTag='{[.]../' + sourceName + '/target}'
+        upperLimitTag='{[.]../' + sourceName + '/upperLimit}'
+        upperValidityLimitTag='{[.]../' + sourceName + '/upperValidityLimit}'
+    
+        parameters={
+                    'lowerLimitTag':lowerLimitTag, 
+                    'lowerValidityLimitTag':lowerValidityLimitTag, 
+                    'standardDeviationTag':standardDeviationTag,
+                    'targetTag':targetTag,
+                    'upperLimitTag':upperLimitTag,
+                    'upperValidityLimitTag':upperValidityLimitTag
+                    }
+    
+        print tagPath, parameters
+        system.tag.editTag(tagPath, parameters=parameters)
+ 
+    elif UDTType == "Lab Data/Lab Selector Validity":
+        lowerLimitTag='{[.]../' + sourceName + '/lowerLimit}'
+        upperLimitTag='{[.]../' + sourceName + '/upperLimit}'
+    
+        parameters={
+                    'lowerLimitTag':lowerLimitTag, 
+                    'upperLimitTag':upperLimitTag
+                    }
+    
+        print tagPath, parameters
+        system.tag.editTag(tagPath, parameters=parameters)
+    
+    else:
+        print "Unsupported UDT Type: ", UDTType     
                 

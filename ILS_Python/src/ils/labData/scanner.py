@@ -3,7 +3,7 @@ Created on Mar 27, 2015
 
 @author: Pete
 '''
-import system 
+import system
 
 # This should persist from one run to the next
 lastValueCache = {}
@@ -17,25 +17,26 @@ def main(database, tagProvider):
     if len(lastValueCache) == 0:
         initializeCache(database)
     
-    from ils.labData.common import fetchLimits
-    limitpds=fetchLimits(database)    
-    checkForNewPHDLabValues(database, tagProvider, limitpds)
+    from ils.labData.limits import fetchLimits
+    limits=fetchLimits(database)    
+    checkForNewPHDLabValues(database, tagProvider, limits)
     
-def checkForNewPHDLabValues(database, tagProvider, limitpds):
+def checkForNewPHDLabValues(database, tagProvider, limits):
     print "Checking for new Lab values from PHD... "
     
     # Fetch the set of lab values that we need to get from PHD
-    SQL = "select ValueId, ValueName, ItemId, InterfaceName from LtPHDValueView"
+    SQL = "select Post, ValueId, ValueName, ItemId, InterfaceName from LtPHDValueView"
     pds = system.db.runQuery(SQL, database) 
     
     for record in pds:
+        post=record["Post"]
         valueId=record["ValueId"]
         valueName=record["ValueName"]
         itemId=record["ItemId"]
         interfaceName=record["InterfaceName"]
-        checkForNewLabValue(valueId, valueName, itemId, interfaceName, database, tagProvider, limitpds)
+        checkForNewLabValue(post, valueId, valueName, itemId, interfaceName, database, tagProvider, limits)
 
-def checkForNewLabValue(valueId, valueName, itemId, interfaceName, database, tagProvider, limitpds):
+def checkForNewLabValue(post, valueId, valueName, itemId, interfaceName, database, tagProvider, limits):
     print "Checking for a new lab value for: ", valueName, itemId 
     
     # For simulation and testing purposes, I am going to read the latest tag value from a SQL*Server 
@@ -49,24 +50,59 @@ def checkForNewLabValue(valueId, valueName, itemId, interfaceName, database, tag
         rawValue=record['value']
         sampleTime=record['sampleTime']
         if lastValueCache.has_key(valueName):
-            print "There is a value in the cache"
+            print "...there is a value in the cache"
             lastValue=lastValueCache.get(valueName)
             if lastValue.get('rawValue') != rawValue or lastValue.get('sampleTime') != sampleTime:
-                print "Storing the lab value because it does not match what is in the cache..."
-                storeNewLabValue(valueId, valueName, rawValue, sampleTime, database, tagProvider, limitpds)
+                print "...found a new value because it does not match what is in the cache..."
+                handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits)
             # TODO Check if the lab value is newer than the cache
         else:
-            print "Storing the lab value because %s does not exist in the cache..." % valueName
-            storeNewLabValue(valueId, valueName, rawValue, sampleTime, database, tagProvider, limitpds)
+            print "...found a new value because %s does not exist in the cache..." % valueName
+            handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits)
 
-# Store a new lab value.  This has 3 steps:
+# Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
+# limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
+# then store the value automatically
+def handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits):
+    print "...handling a new lab value for %s..." % (valueName)
+
+    # Evaluate limits - This checks all limit types, but only the result of the validity check is returned 
+#    from ils.labData.limits import check
+    
+    
+#    def check(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits):
+    print "Checking limits for... ", valueName
+    
+    validSQC = True
+    for limit in limits:
+        if limit.get("ValueName","") == valueName:
+            print "Found a limit: ", limit
+            from ils.labData.limits import checkValidityLimit
+            validValidity,upperLimit,lowerLimit=checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+            
+            from ils.labData.limits import checkSQCLimit
+            validSQC=checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+            
+            from ils.labData.limits import checkReleaseLimit
+            validRelease=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+        
+    # If the value is valid then store it to the database and write the value and sample time to the tag (UDT)
+    if validValidity:
+        storeValue(valueId, valueName, rawValue, sampleTime, database, tagProvider, True)
+    else:
+        from ils.labData.validityLimitWarning import notify
+        notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, upperLimit, lowerLimit)
+
+
+# Store a new lab value.  This has 4 steps:
 #   1) Insert into LtHistory
 #   2) Update LtValue with the id of the latest history value
 #   3) Insert the latest value into the Cache
-#   4) Write the value and sample time to the tag (UDT) 
-def storeNewLabValue(valueId, valueName, rawValue, sampleTime, database, tagProvider, limitpds):
-    print "Storing a new lab value"
-    
+#   4) Write the value and sample time to the tag (UDT)
+# This is called by one of two callers - directly by the scanner if the value is good or if the value is outside the limits and 
+# the operator presses accept 
+def storeValue(valueId, valueName, rawValue, sampleTime, database, tagProvider, valid):
+    print "Storing..."
     # Step 1 - Insert the value into the lab history table.
     SQL = "insert into LtHistory (valueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, getdate())"
     historyId = system.db.runPrepUpdate(SQL, [valueId, rawValue, sampleTime], database, getKey=1)
@@ -79,17 +115,29 @@ def storeNewLabValue(valueId, valueName, rawValue, sampleTime, database, tagProv
     # TODO add reportTime here
     lastValueCache[valueName]={'valueId': valueId, 'rawValue': rawValue, 'sampleTime': sampleTime}
     
-    # Step 4 - write the value and sample time to the tag (UDT)
+    updateTags(tagProvider, valueName, rawValue, sampleTime, valid)
+    
+# Update the Lab Data UDT tags
+def updateTags(tagProvider, valueName, rawValue, sampleTime, valid):
     tagName="[%s]LabData/%s" % (tagProvider, valueName)
+    
+    # Always write the raw value and the sample time
     tags=[tagName + "/rawValue", tagName + "/sampleTime"]
     vals=[rawValue, sampleTime]
+    
+    if valid:
+        tags.append(tagName + "/value")
+        vals.append(rawValue)
+        tags.append(tagName + "/badValue")
+        vals.append(False)
+        
+    else:
+        tags.append(tagName + "/badValue")
+        vals.append(True)
+        
     print "Writing ", vals, " to ", tags
     system.tag.writeAll(tags, vals)
-    
-    # Step 5 - evaluate limits
-    from ils.labData.limits import check
-    check(valueId, valueName, rawValue, database, tagProvider, limitpds)
-    
+
 # This is called on startup to load the most recent measurement into the cache
 def initializeCache(database):
     print "Initializing the last Value Cache..."
