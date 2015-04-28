@@ -124,15 +124,12 @@ def handleUnexpectedGatewayError(chartProps, msg):
     payload[MESSAGE] = msg
     sendMessageToClient(chartProps, UNEXPECTED_ERROR_HANDLER, payload)
 
-def copyData(pyDataSet, rowIndex, toDict):
-    '''
-    Copy data from one row of a PyDataSet into a dictionary,
-    using the column names as the keys
-    '''
-    for colIndex in range(pyDataSet.columnCount):
-        key = pyDataSet.getColumnName(colIndex)
-        value = pyDataSet.getValueAt(rowIndex, colIndex)
-        toDict[key] = value
+def copyRowToDict(dbRows, rowNum, pdict):
+    columnCount = dbRows.getColumnCount()
+    for colNum in range(columnCount):
+        colName = dbRows.getColumnName(colNum)
+        if colName in pdict.keys():
+            pdict[colName] = dbRows.getValueAt(rowNum, colNum)
 
 def writeSpace(level, file):
     for i in range(level):
@@ -183,9 +180,6 @@ def printObj(obj, level, out):
 
 def getDefaultMessageQueueScope():
     return OPERATION_SCOPE
-
-def substituteScopeReferences(scopeContext, stepProperties, sql):
-    pass
 
 def sendChartStatus(projectName, payload):
     import system.util

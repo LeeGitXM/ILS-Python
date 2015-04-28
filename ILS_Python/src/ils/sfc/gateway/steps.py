@@ -302,6 +302,7 @@ def rawQuery(scopeContext, stepProperties):
     s88Set(chartScope, stepScope, key, result, recipeLocation)
 
 def simpleQuery(scopeContext, stepProperties):
+    from ils.sfc.gateway.recipe import substituteScopeReferences
     chartScope = scopeContext.getChartScope()
     database = getDatabaseName(chartScope)
     sql = getStepProperty(stepProperties, SQL)
@@ -310,33 +311,29 @@ def simpleQuery(scopeContext, stepProperties):
     if dbRows.rowCount == 0:
         getLogger.error('No rows returned for query %s', processedSql)
         return
-    simpleQueryProcessRows(chartScope, stepProperties, dbRows)
+    simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
 
 def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
     # TODO: use results mode
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    resultsMode = getStepProperty(stepProperties, RESULTS_MODE)
-    fetchMode = getStepProperty(stepProperties, FETCH_MODE) 
-    createFlag = fetchMode == UPDATE_OR_CREATE
+    resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
+    fetchMode = getStepProperty(stepProperties, FETCH_MODE) # SINGLE or MULTIPLE
     recipeLocation = getRecipeScope(stepProperties) 
-    keyMode = getStepProperty(stepProperties, KEY_MODE) 
+    keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
     key = getStepProperty(stepProperties, KEY) 
-    recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
     if keyMode == STATIC: # fetchMode must be SINGLE
         if dbRows.rowCount > 1:
             getLogger().warn('More than one row returned for single query')
         # TODO: what about creation?
-        newObj = dict()
-        recipeData[key] = newObj
-        copyData(dbRows, 0, newObj)
+        recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
+        copyRowToDict(dbRows, 0, recipeData)
     elif keyMode == DYNAMIC:
         for rowNum in range(dbRows.rowCount):
-            newObj = dict()
-            copyData(dbRows, rowNum, newObj)
-            dkey = newObj[key]
-            recipeData[dkey] = newObj
-     
+            dynamicKey = dbRows.getValueAt(rowNum,key)
+            recipeData = s88Get(chartScope, stepScope, dynamicKey, recipeLocation)
+            copyRowToDict(dbRows, rowNum, recipeData)
+      
 def saveData(scopeContext, stepProperties):
     import time
     from system.ils.sfc import getRecipeDataText
