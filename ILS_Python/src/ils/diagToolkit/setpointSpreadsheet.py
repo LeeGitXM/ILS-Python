@@ -9,11 +9,11 @@ import system, string
 def initialize(rootContainer):
     print "In ils.diagToolkit.setpointSpreadsheet.initialize()..."
 
-    console = rootContainer.console
+    post = rootContainer.post
     repeater = rootContainer.getComponent("Template Repeater")
     
-    from ils.diagToolkit.common import fetchActiveOutputsForConsole
-    pds = fetchActiveOutputsForConsole(console)
+    from ils.diagToolkit.common import fetchActiveOutputsForPost
+    pds = fetchActiveOutputsForPost(post)
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
     header=['type','row','selected','id','command','commandValue','application','output','tag','setpoint','recommendation','finalSetpoint','status','downloadStatus']
@@ -27,13 +27,13 @@ def initialize(rootContainer):
     for record in pds:
         
         # If the record that we are processing is for a different application, or if this is the first row, then insert an application divider row
-        if record['Application'] != application:
+        if record['ApplicationName'] != application:
             # Remember the row number of the application because we will need to update the status if we encounter
             # any minimum change bound outputs
             applicationRowNumber = i
             minChangeBoundCounter = 0
              
-            application = record['Application']
+            application = record['ApplicationName']
             applicationRow = ['app',i,0,0,'Active',0,application,'','',0,0,0,'','']
             print "App row: ", applicationRow
             rows.append(applicationRow)
@@ -68,7 +68,7 @@ def initialize(rootContainer):
         # If the recommended change is insignificant (< the minimum change) then don't display it, but we do 
         # want to update the status field of the Application line
         if outputLimitedStatus != 'Minimum Change Bound':
-            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutput'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
+            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
             print "Output Row: ", row
             rows.append(row)
             i = i + 1

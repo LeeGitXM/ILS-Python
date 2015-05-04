@@ -20,3 +20,7 @@ def fetchValueId(valueName, database=""):
     log.trace(SQL)
     valueId = system.db.runScalarQuery(SQL, database)
     return valueId
+
+def postMessage(txt, database=""):
+    from ils.queue.message import insert
+    insert("LABDATA", "Info", txt, database)   

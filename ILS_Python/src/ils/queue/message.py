@@ -3,14 +3,13 @@ Created on Sep 9, 2014
 
 @author: ILS
 '''
-import  system, string
-
+import  system
 
 def insert(queueKey, status, message, db = ''):
     from ils.queue.commons import getQueueId
     queueId = getQueueId(queueKey, db)
 
-    SQL = "select id from QueueMessageStatus where MessageStatus = '%s'" % (status)
+    SQL = "select statusId from QueueMessageStatus where MessageStatus = '%s'" % (status)
     statusId = system.db.runScalarQuery(SQL, db)
     
     SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%s, getdate(), %s, '%s')" % (str(queueId), str(statusId), message)
@@ -27,12 +26,14 @@ def clear(queueKey, db = ''):
 def initializeView(rootContainer):
     queueKey = rootContainer.getPropertyValue("key")
     
-    SQL = "select * from QueueMaster where QueueKey = '%s'" % (queueKey)
+    SQL = "select Title from QueueMaster where QueueKey = '%s'" % (queueKey)
+    print SQL
     pds = system.db.runQuery(SQL)
     
     if len(pds) == 1:
         record = pds[0]
         title = record['Title']
+        print "title: ", title
         rootContainer.setPropertyValue('title', title) 
 
     table = rootContainer.getComponent("Power Table")

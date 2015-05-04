@@ -22,7 +22,7 @@ def client():
     log.info("Initializing the Diagnostic toolkit client version %s" % (version))
 
 def createTags(tagProvider):
-    print "Creating global constant memory tags...."
+    print "Creating Diagnostic Toolkit configuration tags..."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/DiagnosticToolkit/"

@@ -29,3 +29,8 @@ def getPostId(post, database=""):
     log.trace(SQL)
     postId = system.db.runScalarQuery(SQL, database)
     return postId
+
+def lookup(lookupType, key):
+    SQL = "select LookupId from Lookup where LookupTypeCode = '%s' and LookupName = '%s'" % (lookupType, key)
+    lookupId=system.db.runScalarQuery(SQL)
+    return lookupId 

@@ -18,6 +18,9 @@ def editTag(tagPath, attributes, parameters):
 def exists(tagPath):
     return True
 
+def getAttribute(tagPath, attr):
+    return ""
+
 def read(tagPath):
     return 0.0
 

@@ -32,7 +32,7 @@ def deferredRowSelection(rootContainer):
     
     def select(rootContainer=rootContainer):
         masterTable = rootContainer.getComponent('MasterTable')
-        masterTable.selectedRow = 0
+        masterTable.selectedRow = -1
         
     system.util.invokeLater(select)
         
@@ -42,17 +42,17 @@ def refreshMaster(rootContainer):
 
     masterTable = rootContainer.getComponent('MasterTable')
 
-    SQL = "SELECT DM.Id, DM.UnitId, UR.FamilyName, DM.Grade, DM.Version, DM.Type, DM.DownloadStartTime, DM.DownloadEndTime, " \
+    SQL = "SELECT DM.MasterId, DM.RecipeFamilyId, F.RecipeFamilyName, DM.Grade, DM.Version, DM.Type, DM.DownloadStartTime, DM.DownloadEndTime, " \
         " DM.Status, DM.TotalDownloads, DM.PassedDownloads, DM.FailedDownloads" \
-        " FROM RtDownloadMaster DM, RtUnitRoot UR" \
-        " WHERE DM.UnitId = UR.UnitId" \
+        " FROM RtDownloadMaster DM, RtRecipeFamily F" \
+        " WHERE DM.RecipeFamilyId = F.RecipeFamilyId" \
         " ORDER BY DM.DownloadStartTime DESC"
     
     print SQL
     
     pds = system.db.runQuery(SQL)
     masterTable.data = pds
-    masterTable.selectedRow = 0
+    masterTable.selectedRow = -1
 
             
 # Update the detail table for the row selected in the master table
@@ -63,18 +63,18 @@ def refreshDetail(rootContainer):
     selectedRow = masterTable.selectedRow
     print "The selected row is ", selectedRow
     if selectedRow < 0:
-        downloadId = -1
+        masterId = -1
     else:
         ds = masterTable.data
-        downloadId = ds.getValueAt(selectedRow, "Id")
+        masterId = ds.getValueAt(selectedRow, "MasterId")
         
     detailTable = rootContainer.getComponent('DetailTable')
 
-    SQL = "SELECT DD.Id, DD.Timestamp, DD.Tag, DD.Success,DD.OutputValue, DD.StoreValue, DD.CompareValue, DD.RecommendedValue," \
-        "  DD.Reason, DD.Error" \
-        " FROM rtDownloadDetail DD " \
-        " WHERE DownloadId = %i" \
-        " ORDER BY DD.Id" % (downloadId)
+    SQL = "SELECT DetailId, Timestamp, Tag, Success, OutputValue, StoreValue, CompareValue, RecommendedValue," \
+        "  Reason, Error" \
+        " FROM RtDownloadDetail " \
+        " WHERE MasterId = %i" \
+        " ORDER BY DetailId" % (masterId)
     
     print SQL
     

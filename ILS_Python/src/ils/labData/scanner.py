@@ -4,6 +4,8 @@ Created on Mar 27, 2015
 @author: Pete
 '''
 import system
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.labData")
 
 # This should persist from one run to the next
 lastValueCache = {}
@@ -11,9 +13,9 @@ lastValueCache = {}
 # The purpose of this module is to scan / poll of of the lab data points for new values
 
 def main(database, tagProvider):
-    print "In labData.scanner.main()", database, tagProvider
+    log.info("Scanning for new lab data (%s, %s)" % (database, tagProvider))
 
-    print "Last Value Cache: ", lastValueCache
+    log.trace("Last Value Cache: %s" % (str(lastValueCache)))
     if len(lastValueCache) == 0:
         initializeCache(database)
     
@@ -21,12 +23,17 @@ def main(database, tagProvider):
     limits=fetchLimits(database)    
     checkForNewPHDLabValues(database, tagProvider, limits)
     
+    log.trace("The updated last Value Cache is: %s" % (str(lastValueCache)))
+
+    
 def checkForNewPHDLabValues(database, tagProvider, limits):
-    print "Checking for new Lab values from PHD... "
+    log.info("Checking for new Lab values from PHD... ")
     
     # Fetch the set of lab values that we need to get from PHD
     SQL = "select Post, ValueId, ValueName, ItemId, InterfaceName from LtPHDValueView"
     pds = system.db.runQuery(SQL, database) 
+    tags=[]
+    tagValues=[]
     
     for record in pds:
         post=record["Post"]
@@ -34,10 +41,14 @@ def checkForNewPHDLabValues(database, tagProvider, limits):
         valueName=record["ValueName"]
         itemId=record["ItemId"]
         interfaceName=record["InterfaceName"]
-        checkForNewLabValue(post, valueId, valueName, itemId, interfaceName, database, tagProvider, limits)
+        tags, tagValues = checkForNewLabValue(post, valueId, valueName, itemId, interfaceName, database, tagProvider, limits, tags, tagValues)
+        
+    log.trace("Writing %s to %s" % (str(tagValues), str(tags)))
+    system.tag.writeAll(tags, tagValues)
 
-def checkForNewLabValue(post, valueId, valueName, itemId, interfaceName, database, tagProvider, limits):
-    print "Checking for a new lab value for: ", valueName, itemId 
+
+def checkForNewLabValue(post, valueId, valueName, itemId, interfaceName, database, tagProvider, limits, tags, tagValues):
+    log.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
     
     # For simulation and testing purposes, I am going to read the latest tag value from a SQL*Server 
     # Database and hope that Colby can give me an API to do the same thing.
@@ -49,34 +60,31 @@ def checkForNewLabValue(post, valueId, valueName, itemId, interfaceName, databas
         record=pds[0]
         rawValue=record['value']
         sampleTime=record['sampleTime']
+        log.trace("...checking value %s at %s..." % (str(rawValue), str(sampleTime)))
         if lastValueCache.has_key(valueName):
-            print "...there is a value in the cache"
+            log.trace("...there is a value in the cache")
             lastValue=lastValueCache.get(valueName)
             if lastValue.get('rawValue') != rawValue or lastValue.get('sampleTime') != sampleTime:
-                print "...found a new value because it does not match what is in the cache..."
-                handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits)
+                log.trace("...found a new value because it does not match what is in the cache...")
+                tags, tagValues = handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, tags, tagValues)
             # TODO Check if the lab value is newer than the cache
         else:
-            print "...found a new value because %s does not exist in the cache..." % valueName
-            handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits)
+            log.trace("...found a new value because %s does not exist in the cache..." % (valueName))
+            tags, tagValues = handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, tags, tagValues)
+
+    return tags, tagValues
+
 
 # Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
 # limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
 # then store the value automatically
-def handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits):
-    print "...handling a new lab value for %s..." % (valueName)
-
-    # Evaluate limits - This checks all limit types, but only the result of the validity check is returned 
-#    from ils.labData.limits import check
+def handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, tags, tagValues):
+    log.trace("...handling a new lab value for %s, checking limits" % (valueName))
     
-    
-#    def check(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits):
-    print "Checking limits for... ", valueName
-    
-    validSQC = True
+    validValidity = True
     for limit in limits:
         if limit.get("ValueName","") == valueName:
-            print "Found a limit: ", limit
+            log.trace("Found a limit: %s" % (str(limit)))
             from ils.labData.limits import checkValidityLimit
             validValidity,upperLimit,lowerLimit=checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
@@ -88,55 +96,90 @@ def handleNewLabValue(post, valueId, valueName, rawValue, sampleTime, database, 
         
     # If the value is valid then store it to the database and write the value and sample time to the tag (UDT)
     if validValidity:
-        storeValue(valueId, valueName, rawValue, sampleTime, database, tagProvider, True)
+        storeValue(valueId, valueName, rawValue, sampleTime, database)
+        tags, tagValues = updateTags(tagProvider, valueName, rawValue, sampleTime, True, tags, tagValues)
+        updateCache(valueId, valueName, rawValue, sampleTime)
     else:
         from ils.labData.validityLimitWarning import notify
-        notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, upperLimit, lowerLimit)
+        notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
+        tags, tagValues = updateTags(tagProvider, valueName, rawValue, sampleTime, False, tags, tagValues)
+        updateCache(valueId, valueName, rawValue, sampleTime)
+        
+    return tags, tagValues
 
 
-# Store a new lab value.  This has 4 steps:
-#   1) Insert into LtHistory
-#   2) Update LtValue with the id of the latest history value
-#   3) Insert the latest value into the Cache
-#   4) Write the value and sample time to the tag (UDT)
+# Store a new lab value.  Insert the value into LtHistory and update LtValue with the id of the latest history value.
 # This is called by one of two callers - directly by the scanner if the value is good or if the value is outside the limits and 
 # the operator presses accept 
-def storeValue(valueId, valueName, rawValue, sampleTime, database, tagProvider, valid):
-    print "Storing..."
+def storeValue(valueId, valueName, rawValue, sampleTime, database):
+    log.trace("Storing %s..." % (valueName))
     # Step 1 - Insert the value into the lab history table.
     SQL = "insert into LtHistory (valueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, getdate())"
     historyId = system.db.runPrepUpdate(SQL, [valueId, rawValue, sampleTime], database, getKey=1)
     
     # Step 2 - Update LtValue with the id of the latest value
     SQL = "update LtValue set LastHistoryId = %i where valueId = %i" % (historyId, valueId)
-    system.db.runUpdateQuery(SQL, database) 
+    system.db.runUpdateQuery(SQL, database)
+
+# This is called by a selector tag change script.  There is a listener on the SampleTime and on the value.  They both call this handler.
+# When a measurement is received from the lab system the sampleTime tag and the value tag are updated almost atomically.  That action
+# will fire off two calls to this procedure, this procedure doesn't know or care who called it.  It will read both tags to get the 
+# current value.  Two identical insert statements will be attempted but the database will reject the second because of the unique index.
+def storeSelector(tagPath, database):
+    print "TagPath: ", tagPath
+    if tagPath.find('/value') > 0:
+        path=tagPath[:tagPath.find("/value")]
+    else:
+        path=tagPath[:tagPath.find("/sampleTime")]
+    print "Path: <%s>" % (path)
+    valueName=path[path.find('LabData/') + 8:]
+    print "Value name: <%s>" % (valueName)
+
+    # Read the value and the sample time
+    vals = system.tag.readAll([path + '/value', path + '/sampleTime'])
+    value=vals[0].value
+    sampleTime=vals[1].value
+    print "Handling %s at %s" % (str(value), str(sampleTime))
     
-    # Step 3 - update the cache
-    # TODO add reportTime here
+    # Fetch the value id using the name
+    SQL = "select ValueId from LtValue where ValueName = '%s'" % (valueName)
+    valueId=system.db.runScalarQuery(SQL)
+    
+    # If the value and the sample time tags are updated nearly simultaneously then there will be two parallel threads running.  There is 
+    # a unique index on the history table so we do not need to worry about duplicate data, but we should catch the error and swallow it
+    try:
+        storeValue(valueId, valueName, value, sampleTime, database)
+    except:
+        print "Store failed - probably due to simultaeous updates to the value and the sample time."
+
+    
+def updateCache(valueId, valueName, rawValue, sampleTime):
     lastValueCache[valueName]={'valueId': valueId, 'rawValue': rawValue, 'sampleTime': sampleTime}
+
     
-    updateTags(tagProvider, valueName, rawValue, sampleTime, valid)
-    
-# Update the Lab Data UDT tags
-def updateTags(tagProvider, valueName, rawValue, sampleTime, valid):
+# Update the Lab Data UDT tags - this is called 
+def updateTags(tagProvider, valueName, rawValue, sampleTime, valid, tags, tagValues):
+    print "Updating tags..."
     tagName="[%s]LabData/%s" % (tagProvider, valueName)
     
-    # Always write the raw value and the sample time
-    tags=[tagName + "/rawValue", tagName + "/sampleTime"]
-    vals=[rawValue, sampleTime]
+    # Always write the raw value
+    tags.append(tagName + "/rawValue")
+    tagValues.append(rawValue)
     
     if valid:
+        tags.append(tagName + "/sampleTime")
+        tagValues.append(sampleTime)
         tags.append(tagName + "/value")
-        vals.append(rawValue)
+        tagValues.append(rawValue)
         tags.append(tagName + "/badValue")
-        vals.append(False)
+        tagValues.append(False)
         
     else:
         tags.append(tagName + "/badValue")
-        vals.append(True)
+        tagValues.append(True)
         
-    print "Writing ", vals, " to ", tags
-    system.tag.writeAll(tags, vals)
+    return tags, tagValues
+
 
 # This is called on startup to load the most recent measurement into the cache
 def initializeCache(database):

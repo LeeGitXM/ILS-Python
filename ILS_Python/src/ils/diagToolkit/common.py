@@ -58,13 +58,12 @@ def deleteRecommendations(applicationName, database):
     system.db.runUpdateQuery(SQL, database)
     return
 
-# Lookup the console Id given the name
-# This used to take the console name, but I think it should take the post
-def fetchConsoleId(post, database=""):
-    SQL = "select ConsoleId from DtConsole where Post = '%s'" % (post)
+# Lookup the post id given the name
+def fetchPostId(post, database=""):
+    SQL = "select PostId from TkPost where Post = '%s'" % (post)
     log.trace(SQL)
-    consoleId = system.db.runScalarQuery(SQL, database)
-    return consoleId
+    postId = system.db.runScalarQuery(SQL, database)
+    return postId
 
 # Lookup the application Id given the name
 def fetchApplicationId(application, database=""):
@@ -178,19 +177,19 @@ def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis, database=""):
     return sqcRootCause
 
 
-def fetchActiveOutputsForConsole(console, database=""):
-    SQL = "select distinct A.Application, QO.QuantOutput, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
+def fetchActiveOutputsForPost(post, database=""):
+    SQL = "select distinct A.ApplicationName, QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
         " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId "\
-        " from DtConsole C, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
-        " where C.ConsoleId = A.ConsoleId "\
+        " from TkPost P, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
+        " where P.PostId = A.PostId "\
         " and A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
-        " and C.Console = '%s' "\
+        " and P.Post = '%s' "\
         " and QO.Active = 1"\
-        " order by A.Application, QO.QuantOutput"  % (console)
+        " order by A.ApplicationName, QO.QuantOutputName"  % (post)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds

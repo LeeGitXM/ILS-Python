@@ -8,7 +8,7 @@ import system, string
 # Fetch the queue  id given the Queue Key 
 def getQueueId(queueKey, db = ''):
     queueKey=string.upper(str(queueKey))    
-    SQL = "select id from QueueMaster where QueueKey = '%s'" % (queueKey)
+    SQL = "select QueueId from QueueMaster where QueueKey = '%s'" % (queueKey)
     queueId = system.db.runScalarQuery(SQL, db)
     return queueId
 

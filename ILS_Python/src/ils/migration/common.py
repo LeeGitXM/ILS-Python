@@ -14,4 +14,16 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
     record = pds[0]
     serverName=record["newServerName"]
     scanClass=record["newScanClass"]
-    return serverName, scanClass
+    
+    # Now lookup the id of this interface in the RtWriteLocation table
+    
+    SQL = "select WriteLocationId from RtWriteLocation where ServerName = '%s' and ScanClass = '%s'" % (serverName, scanClass)
+    pds = system.db.runQuery(SQL)
+    if len(pds) != 1:
+        print "Error up the translated derver and scan class (%s, %s) in RtWriteLocation table" % (serverName, scanClass)
+        writeLocationId = -1
+    else:
+        record = pds[0]
+        writeLocationId=record["WriteLocationId"]
+    
+    return serverName, scanClass, writeLocationId

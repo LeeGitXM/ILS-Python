@@ -524,8 +524,8 @@ def updateQuantOutput(quantOutput, database=''):
 
 # Initialize the diagnosis 
 def initializeView(rootContainer):
-    console = rootContainer.getPropertyValue("console")
-    title = console + ' Console Diagnosis Message Queue'
+    post = rootContainer.getPropertyValue("post")
+    title = post + ' Console Diagnosis Message Queue'
     rootContainer.setPropertyValue('title', title) 
-    print "Done initializing!    Yookoo"
+    print "Done initializing!"
 

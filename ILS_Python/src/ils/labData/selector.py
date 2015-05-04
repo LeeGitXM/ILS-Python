@@ -48,7 +48,9 @@ def updateItemId(targetName, itemId, database=""):
 
 #
 def configureSelector(selectorName, sourceName):
-    parentTagPath = '[XOM]LabData/'
+    from ils.common.config import getTagProvider
+    provider = getTagProvider()
+    parentTagPath = '[' + provider + ']LabData/'
     tagPath = parentTagPath + selectorName
     print "Configuring: ", tagPath
 

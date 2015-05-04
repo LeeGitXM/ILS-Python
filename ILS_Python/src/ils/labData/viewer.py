@@ -14,7 +14,7 @@ def internalFrameActivated(rootContainer):
     displayTableTitle = rootContainer.displayTableTitle
     print "The table being displayed is: ", displayTableTitle
     
-    SQL = "select V.ValueName, V.ValueId "\
+    SQL = "select V.ValueName, V.ValueId, V.Description, V.DisplayDecimals "\
         " from LtValue V, LtDisplayTable T "\
         " where V.displayTableId = T.DisplayTableId "\
         " and T.DisplayTableTitle = '%s' "\
@@ -22,7 +22,7 @@ def internalFrameActivated(rootContainer):
     print SQL
     pds = system.db.runQuery(SQL)
     for record in pds:
-        print record["ValueName"], record["ValueId"]
+        print record["ValueName"], record["ValueId"], record["Description"], record["DisplayDecimals"]
     
     repeater=rootContainer.getComponent("Template Repeater")
     repeater.templateParams=pds
@@ -30,6 +30,8 @@ def internalFrameActivated(rootContainer):
 
 def configureLabDatumTable(container):
     valueName=container.ValueName
+    valueDescription=container.Description
+    displayDecimals=container.DisplayDecimals
     print "Configuring the Lab Datum Viewer table for ", valueName
     
     # We need to update the column attribute dataset because we change the column name for every parameter and this 
@@ -37,21 +39,52 @@ def configureLabDatumTable(container):
     table=container.getComponent("Table")
     columnAttributesData=table.columnAttributesData
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
+    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "numberFormat", "#,##0.000000")
     table.columnAttributesData=columnAttributesData
     
     
     from ils.labData.common import fetchValueId
     valueId = fetchValueId(valueName)
-    SQL = "select top 10 RawValue as '%s' from LtHistory where ValueId = %i order by SampleTime desc" % (valueName, valueId)
+    SQL = "select top 10 RawValue as '%s', SampleTime from LtHistory where ValueId = %i order by SampleTime desc" % (valueName, valueId)
     pds = system.db.runQuery(SQL)
     container.data=pds 
 
+    header = [valueDescription]
+    data = []
     for record in pds:
-        print record[valueName]
+        val = record[valueName]
+        if displayDecimals == 0:
+            val = "%.0f" % (val)
+        elif displayDecimals == 1:
+            val = "%.1f" % (val)
+        elif displayDecimals == 2:
+            val = "%.2f" % (val)
+        elif displayDecimals == 3:
+            val = "%.3f" % (val)
+        elif displayDecimals == 4:
+            val = "%.4f" % (val)
+        elif displayDecimals == 5:
+            val = "%.5f" % (val)
+        else:
+            val = "%f" % (val)
+            
+        myDateString=system.db.dateFormat(record["SampleTime"], "HH:mm MM/d")
+        
+        val = "%s at %s" % (val, myDateString)
+        data.append([val])
     
-    table=container.getComponent("Table")
+    ds = system.dataset.toDataSet(header, data)
+    container.data=ds
+    
     columnAttributesData=table.columnAttributesData
-    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
+#    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
+    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
+#    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "numberFormat", "#,##0.000000")
     table.columnAttributesData=columnAttributesData
+    
+#    table=container.getComponent("Table")
+#    columnAttributesData=table.columnAttributesData
+#    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
+#    table.columnAttributesData=columnAttributesData
         
