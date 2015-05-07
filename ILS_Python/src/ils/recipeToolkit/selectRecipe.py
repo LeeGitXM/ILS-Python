@@ -9,17 +9,17 @@ import system
 def initialize(rootContainer):
     print "In recipeToolkit.selectRecipe.initialize()..."
 
-    recipeKey = rootContainer.recipeKey
-    print "Recipe Key: %s" % (recipeKey)
+    familyName = rootContainer.familyName
+    print "Recipe Family Name: %s" % (familyName)
 
-    from ils.recipeToolkit.fetch import recipeMap
-    recipeMap = recipeMap(recipeKey)
-    print "Map: ", recipeMap
+#    from ils.recipeToolkit.fetch import recipeFamily
+#    recipeFamily = recipeFamily(recipeKey)
+#    print "Family: ", recipeFamily
     
-    family = recipeMap['RecipeFamily']
+#    familyName = recipeFamily['RecipeFamilyName']
 
     from ils.recipeToolkit.fetch import ids
-    pds = ids(family)
+    pds = ids(familyName)
     print "IDs: ", pds
     
     recipeTable = rootContainer.getComponent('Power Table')
@@ -40,20 +40,20 @@ def okCallback(event):
     grade = ds.getValueAt(selectedRow, 'Grade')
     version = ds.getValueAt(selectedRow, 'Version')
     
-    # RecipeKey is synonomous with unitId
-    recipeKey = rootContainer.recipeKey
+    # The recipe family name is passed into the window, and now on to the viewer
+    familyName = rootContainer.familyName
     
-    # Save the grade and type to the recipe map table.
+    # Save the grade and type to the recipe family table.
     # grade looks like an int, but it is probably a string
-    SQL = "update RtRecipeMap set CurrentRecipeGrade = %s, CurrentRecipeVersion = %s, Status = 'Initializing', "\
-        "Timestamp = getdate() where RecipeKey = '%s'" \
-        % (str(grade), version, recipeKey)
+    SQL = "update RtRecipeFamily set CurrentGrade = %s, CurrentVersion = %s, Status = 'Initializing', "\
+        "Timestamp = getdate() where RecipeFamilyName = '%s'" \
+        % (str(grade), version, familyName)
     
     print "SQL: ", SQL
     rows = system.db.runUpdateQuery(SQL)
     print "Successfully updated %i rows" % (rows)
 
-    system.nav.openWindow('Recipe/Recipe Viewer', {'recipeKey': recipeKey, 'grade': grade, 'version': version,'downloadType':'GradeChange'})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade, 'version': version,'downloadType':'GradeChange'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
     
     system.nav.closeParentWindow(event)

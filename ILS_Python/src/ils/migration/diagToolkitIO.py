@@ -5,6 +5,9 @@ Created on Feb 5, 2015
 '''
 import sys, system, string, traceback
 from ils.migration.common import lookupOPCServerAndScanClass
+from ils.migration.common import lookupMessageQueue
+from ils.common.database import lookup
+#from xom.extensions import family
 
 def load(rootContainer):
     filename=rootContainer.getComponent("File Field").text
@@ -112,52 +115,62 @@ def initializeRecommendationDefinition(container):
     SQL="delete from DtRecommendationDefinition"
     rows=system.db.runUpdateQuery(SQL)
     print "Delete %i rows from DtRecommendationDefinition" % (rows)
-    
-    
-    
+
+
 def insertApplication(container):
     table=container.getComponent("Power Table")
     ds=table.data
-    try:
-        tx=system.db.beginTransaction()
-        for row in range(ds.rowCount):
-            application = ds.getValueAt(row, 4) #There are two columns named application so use idx here
-            unit = ds.getValueAt(row, "unit")
-            post = ds.getValueAt(row, "post")
-            messageQueue = ds.getValueAt(row, "msg-queue-name")
-            includeInMainMenu = ds.getValueAt(row, "include-in-main-menu")
-            if includeInMainMenu == "TRUE":
-                includeInMainMenu=1
-            else:
-                includeInMainMenu=0
-            groupRampMethod = ds.getValueAt(row, "group-ramp-method")
-            
-            from ils.diagToolkit.common import fetchConsoleId
-            consoleId = fetchConsoleId(post)
+
+    for row in range(ds.rowCount):
+        application = ds.getValueAt(row, 4) #There are two columns named application so use idx here
+        unit = ds.getValueAt(row, "unit")
+        post = ds.getValueAt(row, "post")
+        messageQueue = ds.getValueAt(row, "msg-queue-name")
+        includeInMainMenu = ds.getValueAt(row, "include-in-main-menu")
+        if includeInMainMenu == "TRUE":
+            includeInMainMenu=1
+        else:
+            includeInMainMenu=0
+        groupRampMethod = ds.getValueAt(row, "group-ramp-method")
+        groupRampMethod = string.capitalize(groupRampMethod)
+        groupRampMethodId = lookup("GroupRampMethod", groupRampMethod)
+        
+        from ils.common.database import getPostId
+        postId = getPostId(post)
+        
+        from ils.common.database import getUnitId
+        unitId = getUnitId(unit)
+        
+        newMessageQueue, messageQueueId = lookupMessageQueue(messageQueue)
+        
+        print 
+        print "Application   : ", application
+        print "Post          : ", post
+        print "Post Id       : ", postId
+        print "Unit          : ", unit
+        print "Unit Id       : ", unitId
+        print "Queue (old)   : ", messageQueue
+        print "Queue (new)   : ", newMessageQueue
+        print "Queue Id      : ", messageQueueId
+        print "Ramp Method   : ", groupRampMethod
+        print "Ramp Method Id: ", groupRampMethodId
     
-            if consoleId >= 0:
-                SQL = "insert into DtApplication (Application, ConsoleId, MessageQueue, IncludeInMainMenu, "\
-                    "GroupRampMethod) values ('%s', %i, '%s', %i, '%s')" % \
-                    (application, consoleId, messageQueue, includeInMainMenu, groupRampMethod)
-                applicationId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
-                ds=system.dataset.setValue(ds, row, "id", applicationId) 
-                print "Insert %s and got id: %i" % (application, applicationId)                                                         
-            else:
-                print "Could not find console: <%s>" % (unit)
+        if postId >= 0 and unitId >= 0 and messageQueueId >= 0:
+            SQL = "insert into DtApplication (ApplicationName, PostId, MessageQueueId, UnitId, IncludeInMainMenu, GroupRampMethodId) "\
+                " values ('%s', %i, %i, %i, %i, %i)" % \
+                (application, postId, messageQueueId, unitId, includeInMainMenu, groupRampMethodId)
+            applicationId=system.db.runUpdateQuery(SQL, getKey=True)
+            ds=system.dataset.setValue(ds, row, "id", applicationId) 
+            print "Insert %s and got id: %i" % (application, applicationId)                               
+        else:
+            if postId < 0:
+                print "   *** Could not find post: <%s>" % (post)
+            if unitId < 0:
+                print "   *** Could not find unit: <%s>" % (unit)
+            if messageQueueId < 0:
+                print "   *** Could not find queue: <%s>" % (messageQueue)
 
-    except:
-        print "Caught an error - rolling back transactions!"
-        system.db.rollbackTransaction(tx)
-        errorType,value,trace = sys.exc_info()
-        errorTxt = traceback.format_exception(errorType, value, trace, 500)
-        print errorTxt
-
-    else:
-        print "Committing!"
-        system.db.commitTransaction(tx)
         table.data=ds
-
-    system.db.closeTransaction(tx)
 
 # We can't use the database to do this because the export contains the G2 name, but we inserted the 
 # "application" attribute as the name of the application in the new platform
@@ -183,39 +196,34 @@ def insertFamily(container):
     rootContainer=container.parent
     table=container.getComponent("Power Table")
     ds=table.data
-    try:
-        tx=system.db.beginTransaction()
-        for row in range(ds.rowCount):
-            application = ds.getValueAt(row, "Application")
-            family = ds.getValueAt(row, "label")  # Use the label as the name
-            description = ds.getValueAt(row, "description")
-            priority = ds.getValueAt(row, "priority")
 
-            applicationId=getApplicationId(rootContainer, application)
-            if applicationId >= 0:
-                SQL = "insert into DtFamily (Family, ApplicationId, FamilyPriority, Description) "\
-                    "values ('%s', %s, %s, '%s')" % \
-                    (family, str(applicationId), str(priority), description)
-                print SQL
-                familyId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
-                ds=system.dataset.setValue(ds, row, "id", familyId) 
-                print "Insert %s and got id: %i" % (family, familyId)                                                         
-            else:
-                print "Could not find application: <%s>" % (application)
+    for row in range(ds.rowCount):
+        application = ds.getValueAt(row, "Application")
+        applicationId=getApplicationId(rootContainer, application)
+        family = ds.getValueAt(row, "label")  # Use the label as the name
+        description = ds.getValueAt(row, "description")
+        priority = ds.getValueAt(row, "priority")
 
-    except:
-        print "Caught an error - rolling back transactions!"
-        errorType,value,trace = sys.exc_info()
-        errorTxt = traceback.format_exception(errorType, value, trace, 500)
-        print errorTxt
-        system.db.rollbackTransaction(tx)
 
-    else:
-        print "Committing!"
-        system.db.commitTransaction(tx)
-        table.data=ds
+        print ""
+        print "Application   : ", application
+        print "Application Id: ", applicationId
+        print "Family        : ", family
+        print "Priority      : ", priority
+        
+        if applicationId >= 0:
+            SQL = "insert into DtFamily (FamilyName, ApplicationId, FamilyPriority, Description) "\
+                "values ('%s', %s, %s, '%s')" % \
+                (family, str(applicationId), str(priority), description)
+            print SQL
+            familyId=system.db.runUpdateQuery(SQL, getKey=True)
+            ds=system.dataset.setValue(ds, row, "id", familyId) 
+            print "Insert %s and got id: %i" % (family, familyId)                                                         
+        else:
+            print "Could not find application: <%s>" % (application)
 
-    system.db.closeTransaction(tx)
+
+    table.data=ds
 
 
 # We can't use the database to do this because the export contains the G2 name, but we inserted the 
@@ -257,7 +265,7 @@ def insertFinalDiagnosis(container):
         familyId=getFamilyId(rootContainer, family)
             
         if familyId >= 0:
-            SQL = "insert into DtFinalDiagnosis (FinalDiagnosis, FamilyId, Explanation, "\
+            SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, FamilyId, Explanation, "\
                 "FinalDiagnosisPriority, CalculationMethod, TrapInsignificantRecommendations, "\
                 "PostTextRecommendation, TextRecommendation, TextRecommendationCallback, RefreshRate) "\
                 "values ('%s', %s, '%s', %s, '%s', %s, %s, '%s', '%s', %s)" % \
@@ -293,17 +301,20 @@ def insertQuantOutput(container):
         else:
             incrementalOutput=0
         feedbackMethod = ds.getValueAt(row, "feedback-method")
+        print "Feedback Method: ", feedbackMethod
+        from ils.migration.common import lookupFeedbackMethod
+        newFeedbackMethod, feedbackMethodId = lookupFeedbackMethod(feedbackMethod)
         tagPath = ds.getValueAt(row, "connected-output-name")
     
         applicationId=getApplicationId(rootContainer, application)
         if applicationId >= 0:
-            SQL = "insert into DtQuantOutput (QuantOutput, ApplicationId, TagPath, MostNegativeIncrement, \
+            SQL = "insert into DtQuantOutput (QuantOutputName, ApplicationId, TagPath, MostNegativeIncrement, \
                 MostPositiveIncrement, MinimumIncrement, SetpointHighLimit, \
-                SetpointLowLimit, FeedbackMethod, IncrementalOutput) "\
-                "values ('%s', %s, '%s', %s, %s, %s, %s, %s, '%s', %s)" % \
+                SetpointLowLimit, FeedbackMethodId, IncrementalOutput) "\
+                "values ('%s', %s, '%s', %s, %s, %s, %s, %s, %s, %s)" % \
                 (quantOutput, str(applicationId), tagPath, str(mostNegativeIncrement), 
                 str(mostPositiveIncrement), str(minimumIncrement), str(setpointHighLimit),
-                str(setpointLowLimit), feedbackMethod, str(incrementalOutput))
+                str(setpointLowLimit), str(feedbackMethodId), str(incrementalOutput))
             print SQL
             Id=system.db.runUpdateQuery(SQL, getKey=True)
             ds=system.dataset.setValue(ds, row, "id", Id) 
@@ -333,7 +344,7 @@ def createFloatOutput(container):
         itemId = ds.getValueAt(row, "item-id")
         itemId = itemIdPrefix + itemId
         gsiInterface = ds.getValueAt(row, "opc-server")
-        serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
+        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
         path = "DiagnosticToolkit/" + application
         
         print application, outputName, itemId, serverName
@@ -380,7 +391,7 @@ def createPKSController(container):
         modeItemId = itemIdPrefix + ds.getValueAt(row, "mode-item-id")
 
         gsiInterface = ds.getValueAt(row, "opc-server")
-        serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
+        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
         path = "DiagnosticToolkit/" + application
         
         parentPath = '[' + provider + ']' + path    
@@ -429,7 +440,7 @@ def createPKSACEController(container):
         processingCommandItemId = itemIdPrefix + ds.getValueAt(row, "processing-cmd-item-id")
         
         gsiInterface = ds.getValueAt(row, "opc-server")
-        serverName, scanClass = lookupOPCServerAndScanClass(site, gsiInterface)
+        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
         path = "DiagnosticToolkit/" + application
        
         parentPath = '[' + provider + ']' + path    

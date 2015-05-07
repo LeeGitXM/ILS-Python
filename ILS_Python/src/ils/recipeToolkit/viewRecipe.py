@@ -4,6 +4,8 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 
 # This runs in the client when it receives a message that an automated download message has been received
 def automatedDownloadMessageHandler(payload):
@@ -127,17 +129,17 @@ def initialize(rootContainer):
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     rootContainer.provider = provider
-    recipeKey = rootContainer.recipeKey
+    familyName = rootContainer.familyName
     grade = rootContainer.grade
     version = rootContainer.version
 
-    # fetch the recipe map which will specify the database and table containing the recipe
-    from ils.recipeToolkit.fetch import recipeMap
-    recipeMap = recipeMap(recipeKey)
+    # fetch the recipe family
+    from ils.recipeToolkit.fetch import recipeFamily
+    recipeFamily = recipeFamily(familyName)
 
-    status = recipeMap['Status']
+    status = recipeFamily['Status']
     rootContainer.status = status
-    timestamp = recipeMap['Timestamp']
+    timestamp = recipeFamily['Timestamp']
     print "Status:", status, timestamp
     rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/yy HH:mm")
 
@@ -150,7 +152,7 @@ def initialize(rootContainer):
 
     # Fetch the recipe
     from ils.recipeToolkit.fetch import details
-    pds = details(recipeKey, grade, version)
+    pds = details(familyName, grade, version)
 
     # Initialize table colors and put the raw recipe into a dataset attribute of the table
     table = rootContainer.getComponent('Power Table')
@@ -162,14 +164,14 @@ def initialize(rootContainer):
     table.processedData = dsProcessed
     
     # Reset the recipe detail objects
-    resetRecipeDetails(provider, recipeKey)
+    resetRecipeDetails(provider, familyName)
 
     # Create any OPC tags that are required by the recipe
-    dsProcessed, tags = createOPCTags(table.processedData, provider, recipeKey)
+    dsProcessed, tags = createOPCTags(table.processedData, provider, familyName)
     table.processedData = dsProcessed
     
     # Sweep the folder of recipe tags and delete any that are not needed
-    sweepTags(provider, recipeKey, tags)
+    sweepTags(provider, familyName, tags)
 
     # Refresh the table with data from the DCS
     from ils.recipeToolkit.refresh import refresh
@@ -178,12 +180,12 @@ def initialize(rootContainer):
 
 # Reset all of the recipe detail objects.  This really isn't necessary for the detail objects that
 # were newly created, but is necessary for ones that were existing
-def resetRecipeDetails(provider, recipeKey):
+def resetRecipeDetails(provider, familyName):
     print "Resetting recipe details..."
             
     tags = []
     vals = []
-    path = "[%s]Recipe/%s/" % (provider, recipeKey)
+    path = "[%s]Recipe/%s/" % (provider, familyName)
 
     for udtType in ['Recipe Data/Recipe Details']:
         details = system.tag.browseTags(path, udtParentType=udtType)
@@ -205,8 +207,8 @@ def resetRecipeDetails(provider, recipeKey):
 # Update the table with the recipe data - this is called when we change the grade.  This does not
 # incorporate the DCS data, that is done in refresh()
 def update(rawData):
-    print "In project.recipe.viewRecipe.update()"
-    print "Updating the table with data from the recipe database"
+    log.trace("In project.recipe.viewRecipe.update()")
+    log.trace("Updating the table with data from the recipe database")
 
     headers = ['Descriptor', 'Pend', 'Stor', 'Comp', 'Recc', 'High Limit', 'Low Limit', 'Reason',\
         'Store Tag', 'Comp Tag', 'Change Level', 'Write Location', 'Step', 'Mode Attribute', \
@@ -258,6 +260,7 @@ def update(rawData):
         vals = [descriptor, pend, stor, comp, recommendedValue, highLimit, lowLimit, reason, storeTag, compareTag, changeLevel, \
             writeLocation, step, modeAttribute, modeValue, downloadType, download, dataType, planStatus, downloadStatus, valueId]
         data.append(vals)
+#        print vals
 
     dsProcessed = system.dataset.toDataSet(headers, data)
     
@@ -272,7 +275,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     #------------------------------------------------------------
     # Fetch the alias to OPC server map from the EMC database
     def fetchOPCServers(database):
-        SQL = "select * from RtWriteLocation"
+        SQL = "select * from TkWriteLocation"
         pds = system.db.runQuery(SQL, database)
         print "Fetched ", len(pds), " OPC servers..."
         return pds
@@ -376,11 +379,11 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     recipeDetailTagNames = []
     recipeDetailTagValues = []
     specialValueNAN = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/Special Values/NAN").value
-    localG2WriteAlias = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/localG2WriteAlias").value
+    localWriteAlias = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/localWriteAlias").value
     itemIdPrefix = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/itemIdPrefix").value
     
     print "Special NAN Value: ", specialValueNAN
-    print "Local G2 Alias: ", localG2WriteAlias
+    print "Local G2 Alias: ", localWriteAlias
     
     # There needs to be at least one OPC write alias or nothing will work!
     opcServers = fetchOPCServers(database)
@@ -401,7 +404,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
 #       print "\nStep: ", step, writeLocation
         downloadType = "Skip"
         dataType = ''
-        if writeLocation == localG2WriteAlias:
+        if writeLocation == localWriteAlias:
 #           print "Handling a local tag"
             downloadType = "Immediate"
 

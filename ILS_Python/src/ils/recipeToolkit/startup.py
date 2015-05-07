@@ -29,7 +29,7 @@ def createTags(tagProvider):
     data = []
     path = tagProvider + "Configuration/RecipeToolkit/"
 
-    data.append([path, "localG2WriteAlias", "String", "LocalG2"])
+    data.append([path, "localWriteAlias", "String", "LOCAL"])
     data.append([path, "itemIdPrefix", "String", ""])
     data.append([path, "recipeMinimumDifference", "Float8", "0.00001"])
     data.append([path, "recipeMinimumRelativeDifference", "Float8", "0.00001"])

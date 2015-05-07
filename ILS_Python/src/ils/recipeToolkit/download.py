@@ -51,65 +51,63 @@ def automatedDownloadHandler(tagPath, grade):
     else:
         # Send a message to open the 
         log.trace("Sending a message to every client to post a download GUI")
-        system.util.sendMessageToClient(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
+        system.util.sendMessage(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
 
 
 # Start a fully automatic lights out automatic download
-def fullyAutomatedDownload(post, project, database, recipeKey, grade, version):
-    log.info("Setting up a fully automated download\n  Post: %s, Project: %s, Database: %s, Recipe Key: %s, Grade: %s, Version: %s" % (post, project, database, recipeKey, grade, str(version)))
+def fullyAutomatedDownload(post, project, database, familyName, grade, version):
+    log.info("Setting up a fully automated download\n  Post: %s, Project: %s, Database: %s, Recipe Family: %s, Grade: %s, Version: %s" % (post, project, database, familyName, grade, str(version)))
     
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     
     # fetch the recipe map which will specify the database and table containing the recipe
-    recipeMap = recipeToolkit_fetch.recipeMap(recipeKey, database)
-    status = recipeMap['Status']
-    timestamp = recipeMap['Timestamp']
+    recipeFamily = recipeToolkit_fetch.recipeFamily(familyName, database)
+    status = recipeFamily['Status']
+    timestamp = recipeFamily['Timestamp']
     print "Status:", status, timestamp
 
     # Fetch the recipe
-    pds = recipeToolkit_fetch.details(recipeKey, grade, version, database)
+    pds = recipeToolkit_fetch.details(familyName, grade, version, database)
 
     # Create the processed data set by adding some columns to the raw recipe data. 
     dsProcessed = recipeToolkit_viewRecipe.update(pds)
 
     # Reset the recipe detail objects
-    recipeToolkit_viewRecipe.resetRecipeDetails(provider, recipeKey)
+    recipeToolkit_viewRecipe.resetRecipeDetails(provider, familyName)
 
     # Create any OPC tags that are required by the recipe
-    dsProcessed, tags = recipeToolkit_viewRecipe.createOPCTags(dsProcessed, provider, recipeKey, database)
+    dsProcessed, tags = recipeToolkit_viewRecipe.createOPCTags(dsProcessed, provider, familyName, database)
     
     # Refresh the table with data from the DCS and determine what needs to be downloaded
-    dsProcessed = recipeToolkit_refresh.automatedRefresh(recipeKey, dsProcessed, database)
+    dsProcessed = recipeToolkit_refresh.automatedRefresh(familyName, dsProcessed, database)
 
     writeEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled")
     downloadTimeout = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/downloadTimeout").value
     print "The download timeout is ", downloadTimeout, " seconds"
     
-    log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s)..." % (recipeKey, str(writeEnabled)))
+    log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s)..." % (familyName, str(writeEnabled)))
     
-    recipeToolkit_update.recipeMapStatus(recipeKey, 'Processing Download', database)
+    recipeToolkit_update.recipeFamilyStatus(familyName, 'Processing Download', database)
 
     # Save the time that the download started so that we know when to stop monitoring it.
     downloadStartTime = util.getDate(database)
 
-    resetTags(dsProcessed, provider, recipeKey)
+    resetTags(dsProcessed, provider, familyName)
 
-    unit = recipeKey
-    unitId = recipeToolkit_fetch.fetchUnitId(unit, database)
-
-    # Open a master download record for this download    
-    logId = recipeToolkit_log.logMaster(unitId, grade, version, "Automatic", database)
+    # Open a master download record for this download
+    familyId = recipeToolkit_fetch.fetchFamilyId(familyName, database)
+    logId = recipeToolkit_log.logMaster(familyId, grade, version, "Automatic", database)
 
     # Normally at this time we would log skipped tags, but since this automated, there can't be skipped tags
     
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
-    dsProcessed = writeImmediate(dsProcessed, provider, recipeKey, logId, writeEnabled)
-    dsProcessed = writeDeferred(dsProcessed, provider, recipeKey, logId, writeEnabled)
+    dsProcessed = writeImmediate(dsProcessed, provider, familyName, logId, writeEnabled)
+    dsProcessed = writeDeferred(dsProcessed, provider, familyName, logId, writeEnabled)
 
     # Start the download monitor
-    recipeToolkit_downloadMonitor.automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database)
+    recipeToolkit_downloadMonitor.automatedRunner(dsProcessed, provider, familyName, grade, version, logId, downloadStartTime, downloadTimeout, database)
     
     log.info("Completed automated download!")
 
@@ -117,36 +115,35 @@ def fullyAutomatedDownload(post, project, database, recipeKey, grade, version):
 def downloadCallback(rootContainer):
     log.info("Starting a download...")
 
-    recipeKey = rootContainer.getPropertyValue("recipeKey")
-    print recipeKey
+    familyName = rootContainer.getPropertyValue("familyName")
     
-    recipeMap = recipeToolkit_fetch.recipeMap(recipeKey)
-    if recipeMap == 'Not Found':
-        system.gui.errorBox('Error fetching the recipe map from the database for: %s' % (recipeMap))
+    recipeFamily = recipeToolkit_fetch.recipeFamily(familyName)
+    if recipeFamily == 'Not Found':
+        system.gui.errorBox('Error fetching the recipe map from the database for: %s' % (familyName))
         return
      
     from ils.common.cast import toBool
-    confirmDownload = toBool(recipeMap["ConfirmDownload"])
+    confirmDownload = toBool(recipeFamily["ConfirmDownload"])
     if confirmDownload:
         confirmation = system.gui.confirm("Really download the values in the spreadsheet to the DCS?")
         if not(confirmation): 
             return
 
     # Insert a message into the log book queue that we are starting a manual download
-    unit = rootContainer.recipeKey
+    familyName = rootContainer.familyName
     grade = rootContainer.grade
     version = rootContainer.version
-    message = "Starting MANUAL download of %s - %s for %s" % (str(grade), str(version), str(unit))
+    message = "Starting MANUAL download of %s - %s for %s" % (str(grade), str(version), str(familyName))
     from ils.queue.log import insert
     insert(message)
 
-    download(rootContainer, recipeMap)
+    download(rootContainer)
 
 
-def download(rootContainer, recipeMap):
+def download(rootContainer):
     
     provider = rootContainer.getPropertyValue("provider")
-    recipeKey = rootContainer.getPropertyValue("recipeKey")
+    familyName = rootContainer.getPropertyValue("familyName")
     table = rootContainer.getComponent("Power Table")
     writeEnabled = system.tag.read("/Configuration/RecipeToolkit/recipeWriteEnabled")
     
@@ -154,9 +151,9 @@ def download(rootContainer, recipeMap):
     rootContainer.downloadTimeout = downloadTimeout
     print "The download timeout is ", downloadTimeout, " seconds"
     
-    log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s)..." % (recipeKey, str(writeEnabled)))
+    log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s)..." % (familyName, str(writeEnabled)))
     
-    recipeToolkit_update.recipeMapStatus(recipeKey, 'Processing Download')
+    recipeToolkit_update.recipeFamilyStatus(familyName, 'Processing Download')
     rootContainer.status = 'Processing Download'
 
     # Save the time that the download started so that we know when to stop monitoring it.
@@ -166,17 +163,16 @@ def download(rootContainer, recipeMap):
 
     # Set the background color to indicate Downloading
     recipeToolkit_common.setBackgroundColor(rootContainer, "screenBackgroundColorDownloading")
-    resetTags(table.processedData, provider, recipeKey)
+    resetTags(table.processedData, provider, familyName)
 
     # Reset the recipe detail objects
-    resetRecipeDetails(provider, recipeKey)
+    resetRecipeDetails(provider, familyName)
 
-    unit = rootContainer.recipeKey
-    unitId = recipeToolkit_fetch.fetchUnitId(unit)
+    familyId = recipeToolkit_fetch.fetchFamilyId(familyName)
     grade = rootContainer.grade
     version = rootContainer.version
     
-    logId = recipeToolkit_log.logMaster(unitId, grade, version)
+    logId = recipeToolkit_log.logMaster(familyId, grade, version)
     rootContainer.logId = logId
     
     logSkippedTags(table, logId)
@@ -184,8 +180,8 @@ def download(rootContainer, recipeMap):
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
     ds = table.processedData 
-    ds = writeImmediate(ds, provider, recipeKey, logId, writeEnabled)
-    ds = writeDeferred(ds, provider, recipeKey, logId, writeEnabled)
+    ds = writeImmediate(ds, provider, familyName, logId, writeEnabled)
+    ds = writeDeferred(ds, provider, familyName, logId, writeEnabled)
     table.processedData = ds
     
     # Update the tables visible rows from the processed Data structure
@@ -196,7 +192,7 @@ def download(rootContainer, recipeMap):
 
 
 # Reset the command and message tags that are used during the download
-def resetTags(ds, provider, recipeKey):
+def resetTags(ds, provider, familyName):
     import string
         
     log.trace("Resetting tags...")    
@@ -214,7 +210,7 @@ def resetTags(ds, provider, recipeKey):
                     
             # Convert to Ignition tag name
             from ils.recipeToolkit.common import formatTagName
-            tagName = formatTagName(provider, recipeKey, tagName)
+            tagName = formatTagName(provider, familyName, tagName)
             log.trace("Resetting %s" % (tagName))
     
             tags.append(tagName + '/command')
@@ -229,18 +225,20 @@ def resetTags(ds, provider, recipeKey):
             vals.append(False)
 
     # Write them all at once
-    print "Resetting: ", tags
+    log.trace("Resetting tags: %s" % (str(tags)))
     status = system.tag.writeAll(tags, vals)
+    log.trace("Tag write status: %s" % (str(status)))
+    
     return
 
 # Reset the command tag in all of the recipe detail objects.  This really isn't necessary for the detail objects that
 # were newly created, but is necessary for ones that were existing.  
-def resetRecipeDetails(provider, recipeKey):
+def resetRecipeDetails(provider, familyName):
     print "Resetting recipe details..."
             
     tags = []
     vals = []
-    path = "[%s]Recipe/%s/" % (provider, recipeKey)
+    path = "[%s]Recipe/%s/" % (provider, familyName)
 
     for udtType in ['Recipe Data/Recipe Details']:
         details = system.tag.browseTags(path, udtParentType=udtType)
@@ -280,13 +278,13 @@ def logSkippedTags(table, logId):
 
 
 # There are two types of immediate writes: 1) writes to memory tags, and 2) writes to OPC tags that do not involve high low limits 
-def writeImmediate(ds, provider, recipeKey, logId, writeEnabled):
+def writeImmediate(ds, provider, familyName, logId, writeEnabled):
     import string
     from ils.recipeToolkit.common import formatLocalTagName
     from ils.recipeToolkit.common import formatTagName
 
     log.trace("  ...writing immediate tags...")
-    localG2WriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localG2WriteAlias").value    
+    localWriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value    
 
     pds = system.dataset.toPyDataSet(ds)
 
@@ -312,13 +310,13 @@ def writeImmediate(ds, provider, recipeKey, logId, writeEnabled):
             tagName = record["Store Tag"]
             writeLocation = record["Write Location"]
             
-            if writeLocation == localG2WriteAlias:            
+            if writeLocation == localWriteAlias:            
                 tagName = formatLocalTagName(provider, tagName)
                 localTags.append(tagName)
                 localVals.append(pendVal)
             else:
                 # Convert to Ignition tagname            
-                tagName = formatTagName(provider, recipeKey, tagName)
+                tagName = formatTagName(provider, familyName, tagName)
                 tags.append(tagName + '/writeValue')
                 vals.append(pendVal)
                 commandTags.append(tagName + '/Command')
@@ -375,7 +373,7 @@ def writeImmediate(ds, provider, recipeKey, logId, writeEnabled):
 
 # Deferred writes generally involve a setpoint and one or more limits.  We need to be careful to write things in the correct order 
 # so that the limits are not temporarily violated.
-def writeDeferred(ds, provider, recipeKey, logId, writeEnabled):
+def writeDeferred(ds, provider, familyName, logId, writeEnabled):
     import string
     from ils.recipeToolkit.common import formatTagName
 
@@ -399,8 +397,8 @@ def writeDeferred(ds, provider, recipeKey, logId, writeEnabled):
             tagName = record["Store Tag"]
             log.trace("     %s" % (tagName))
 
-            # Convert to Ignition tagname        
-            tagName = formatTagName(provider, recipeKey, tagName)
+            # Convert to Ignition tag name        
+            tagName = formatTagName(provider, familyName, tagName)
             rootTags.append(str(tagName))
             
             # Write the value to be sent to the DCS
@@ -421,6 +419,7 @@ def writeDeferred(ds, provider, recipeKey, logId, writeEnabled):
         i = i + 1
 
     status = system.tag.writeAll(tags, vals)
+    log.trace("Tag write status: %s" % (str(status)))
     
     # Write the "write" command to the recipe details which will initiate the download in the gateway
     log.trace("  ...writing the write command to the recipe details...")
@@ -428,20 +427,20 @@ def writeDeferred(ds, provider, recipeKey, logId, writeEnabled):
     
     tags = []
     vals = []
-    path = '[' + provider + ']Recipe/' + recipeKey
+    path = '[' + provider + ']Recipe/' + familyName
     for udtType in ['Recipe Data/Recipe Details']:
         details = system.tag.browseTags(path, udtParentType=udtType)
 
         for detail in details:
 #            print "Checking recipe detail named: ", detail.name
-            tagName = formatTagName(provider, recipeKey, detail.name)
+            tagName = formatTagName(provider, familyName, detail.name)
 
             highLimitTagName = system.tag.read(tagName+'/highLimitTagName').value
-            highLimitTagName = formatTagName(provider, recipeKey, highLimitTagName)
+            highLimitTagName = formatTagName(provider, familyName, highLimitTagName)
             lowLimitTagName = system.tag.read(tagName+'/lowLimitTagName').value
-            lowLimitTagName = formatTagName(provider, recipeKey, lowLimitTagName)
+            lowLimitTagName = formatTagName(provider, familyName, lowLimitTagName)
             valueTagName = system.tag.read(tagName+'/valueTagName').value
-            valueTagName = formatTagName(provider, recipeKey, valueTagName)
+            valueTagName = formatTagName(provider, familyName, valueTagName)
             
 #            print "   High: ", highLimitTagName
 #            print "    Low: ", lowLimitTagName
@@ -454,5 +453,6 @@ def writeDeferred(ds, provider, recipeKey, logId, writeEnabled):
 
     # Write all of the COMMAND values at once which will kick off the writes in the gateway
     status = system.tag.writeAll(tags, vals)
+    log.trace("Tag write status: %s" % (str(status)))
     log.trace("=====================================")
     return ds

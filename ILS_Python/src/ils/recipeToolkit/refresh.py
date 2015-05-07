@@ -5,8 +5,11 @@ Created on Sep 10, 2014
 '''
 
 import system, string
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 
 def refresh(rootContainer):
+    log.trace("In ils.recipeToolkit.refresh.refresh()")
 
     status = rootContainer.getPropertyValue("status")
     if status == 'Processing Download':
@@ -15,7 +18,7 @@ def refresh(rootContainer):
 
     # The downloadType is either GradeChange or MidRun
     downloadType = rootContainer.getPropertyValue("downloadType")
-    recipeKey = rootContainer.getPropertyValue("recipeKey")
+    familyName = rootContainer.getPropertyValue("familyName")
     rootContainer.status = "Refreshing"
 
     from ils.recipeToolkit.common import setBackgroundColor
@@ -23,7 +26,7 @@ def refresh(rootContainer):
     
     table = rootContainer.getComponent("Power Table")
     processedData = table.processedData
-    processedData = refresher(recipeKey, processedData, downloadType)
+    processedData = refresher(familyName, processedData, downloadType)
 
     table.processedData = processedData
 
@@ -35,20 +38,21 @@ def refresh(rootContainer):
     rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/yy HH:mm")
 
 
-def automatedRefresh(recipeKey, processedData, database):
-
+def automatedRefresh(familyName, processedData, database):
+    log.trace("In ils.recipeToolkit.refresh.automatedRefresh()")
     # The downloadType is either GradeChange or MidRun
     downloadType = "GradeChange"
 
-    processedData = refresher(recipeKey, processedData, downloadType, database)
+    processedData = refresher(familyName, processedData, downloadType, database)
     return processedData
 
 
 # Update the processedData to include the tag values and then make the subset of processed data that will
 # be shown and put it in table.data.  (If the user is an engineer then processed data is all data, but 
 # operators only see a subset of the data.
-def refresher(recipeKey, ds, downloadType, database = ""):
-    print "---------------\nRefreshing Recipe Table for a %s download..." % (downloadType)
+def refresher(familyName, ds, downloadType, database = ""):
+    log.trace("In ils.recipeToolkit.refresh.refresher()")
+    log.trace("---------------\nRefreshing Recipe Table for a %s download..." % (downloadType))
 
     #===============================================
     # This checks if the reason is one of the standard reasons or a custom one entered by the operator.
@@ -62,15 +66,16 @@ def refresher(recipeKey, ds, downloadType, database = ""):
     from ils.common.config import getTagProvider
     provider = getTagProvider()
 
-    from ils.recipeToolkit.update import recipeMapStatus
-    recipeMapStatus(recipeKey, "Refreshing", database)
+    from ils.recipeToolkit.update import recipeFamilyStatus
+    recipeFamilyStatus(familyName, "Refreshing", database)
 
-    localG2WriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localG2WriteAlias").value
+    localWriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value
     recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
     recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
 
-    print "recipeMinimumDifference: ", recipeMinimumDifference
-    print "recipeMinimumRelativeDifference: ", recipeMinimumRelativeDifference
+    log.trace("recipeMinimumDifference: %s" %  (str(recipeMinimumDifference)))
+    log.trace("recipeMinimumRelativeDifference: %s" % (str(recipeMinimumRelativeDifference)))
+    log.trace("localWriteAlias: %s" % (str(localWriteAlias)))
 
     pds = system.dataset.toPyDataSet(ds)
 
@@ -88,7 +93,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
 
         storTag = record['Store Tag']
         if writeLocation != "" and writeLocation != None and storTag != "":
-            if writeLocation == localG2WriteAlias:
+            if writeLocation == localWriteAlias:
                 if storTag not in localTagNames:
                     localTagNames.append(storTag)
             else:
@@ -97,35 +102,32 @@ def refresher(recipeKey, ds, downloadType, database = ""):
 
         compTag = record['Comp Tag']
         if writeLocation != "" and writeLocation != None and compTag != "":
-            if writeLocation == localG2WriteAlias:
+            if writeLocation == localWriteAlias:
                 if storTag not in localTagNames:
                     localTagNames.append(compTag)
             else:
                 if storTag not in tagNames:
                     tagNames.append(compTag)
-
-    # Now convert from MS Access tagnames to Ignition tagnames - First OPC Tags
-    print "  ...converting tag names from SQL*Server format to Ignition format..."
+    
+    # Now convert the OPC tagnames from MS Access to Ignition names
     tags = []
     for tagName in tagNames:
         from ils.recipeToolkit.common import formatTagName
-        tagName = formatTagName(provider, recipeKey, tagName)
+        tagName = formatTagName(provider, familyName, tagName)
         tags.append(tagName + '/value')
+    log.trace("OPC tag names: %s" % (str(tags)))
 
-    print "  ...reading tag values..."
-#    print tags
     values = system.tag.readAll(tags)
 #    print values
 
-    # Now the local tags
-    print "  ...converting *local* tagnames from SQL*Server format to Ignition format..."
+    # Now the local tags - convert *local* tagnames from SQL*Server format to Ignition format...
     tags = []
     for tagName in localTagNames:
         from ils.recipeToolkit.common import formatLocalTagName
         tagName = formatLocalTagName(provider, tagName)
         tags.append(tagName)
 
-    print "  ...reading *local* tag values..."
+    log.trace("Local tag names: %s" % (str(tags)))
     localValues = system.tag.readAll(tags)
 
     # We have now read all of the tags, merge the values back into the Python dataset
@@ -146,7 +148,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
 
         storTag = record['Store Tag']
         if writeLocation != "" and writeLocation != None and storTag != "":
-            if writeLocation == localG2WriteAlias:
+            if writeLocation == localWriteAlias:
                 idx = localTagNames.index(storTag)
                 storVal = localValues[idx].value
                 storQuality = str(localValues[idx].quality) 
@@ -159,7 +161,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
     
         compTag = record['Comp Tag']
         if writeLocation != "" and writeLocation != None and compTag != "":
-            if writeLocation == localG2WriteAlias:
+            if writeLocation == localWriteAlias:
                 idx = localTagNames.index(compTag)
                 compVal = localValues[idx].value
                 compQuality = str(localValues[idx].quality)
@@ -226,7 +228,7 @@ def refresher(recipeKey, ds, downloadType, database = ""):
 
         i = i + 1
     
-    recipeMapStatus(recipeKey, "Refreshed", database)
+    recipeFamilyStatus(familyName, "Refreshed", database)
     return ds
 
 
@@ -277,7 +279,7 @@ def equivalentValues(pendVal, storVal, recipeMinimumDifference, recipeMinimumRel
 # This takes the processed data, considers the role of the user, and filters out OE data
 # if the user is an operator
 def refreshVisibleData(table):
-
+    log.trace("In ils.recipeToolkit.refresh.refreshVisibleData()")
     ds = table.processedData    
     # Now create the data that will be shown
     from ils.common.user import isAE

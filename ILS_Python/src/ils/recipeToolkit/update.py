@@ -6,6 +6,7 @@ Created on Sep 10, 2014
 
 import system
 
-def recipeMapStatus(recipeKey, status, database = ""):
-    SQL = "update RtRecipeMap set status = '%s', Timestamp = getdate() where recipeKey = '%s'" % (status, recipeKey)
+def recipeFamilyStatus(familyName, status, database = ""):
+    SQL = "update RtRecipeFamily set status = '%s', Timestamp = getdate() where recipeFamilyName = '%s'" % (status, familyName)
     system.db.runUpdateQuery(SQL, database)
+    

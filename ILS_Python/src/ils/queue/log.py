@@ -13,7 +13,7 @@ def _insert(queue, message, database=""):
     from ils.queue.commons import getQueueId
     queueId = getQueueId(queue, database)
 
-    SQL = "select id from QueueMessageStatus where MessageStatus = 'Info'"
+    SQL = "select StatusId from QueueMessageStatus where MessageStatus = 'Info'"
     statusId = system.db.runScalarQuery(SQL, database)
     
     SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%i, getdate(), %i, '%s')" % (queueId, statusId, message)

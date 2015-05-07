@@ -17,7 +17,7 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
     
     # Now lookup the id of this interface in the RtWriteLocation table
     
-    SQL = "select WriteLocationId from RtWriteLocation where ServerName = '%s' and ScanClass = '%s'" % (serverName, scanClass)
+    SQL = "select WriteLocationId from TkWriteLocation where ServerName = '%s' and ScanClass = '%s'" % (serverName, scanClass)
     pds = system.db.runQuery(SQL)
     if len(pds) != 1:
         print "Error up the translated derver and scan class (%s, %s) in RtWriteLocation table" % (serverName, scanClass)
@@ -27,3 +27,53 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
         writeLocationId=record["WriteLocationId"]
     
     return serverName, scanClass, writeLocationId
+
+#
+def lookupMessageQueue(oldQueueName):
+    SQL = "select newName from QueueTranslation where oldName = '%s'" % (oldQueueName)
+    pds = system.db.runQuery(SQL, "XOMMigration")
+    if len(pds) != 1:
+        print "Error looking up Queue <%s> in the QueueTranslation table" % (oldQueueName)
+        SQL = "insert into QueueTranslation (oldName) values ('%s')" % (oldQueueName)
+        system.db.runUpdateQuery(SQL, "XOMMigration")
+        return "", -1
+    record = pds[0]
+    newQueueName=record["newName"]
+    
+    # Now lookup the id of this interface in the RtWriteLocation table
+
+    SQL = "select QueueId from QueueMaster where QueueKey = '%s' " % (newQueueName)
+    pds = system.db.runQuery(SQL)
+    if len(pds) != 1:
+        print "Error looking up the translated queue named (%s) in QueueMaster table" % (newQueueName)
+        return newQueueName, -1
+
+    record = pds[0]
+    queueId=record["QueueId"]
+    
+    return newQueueName, queueId
+
+#
+def lookupFeedbackMethod(oldName):
+    SQL = "select newName from FeedbackMethodTranslation where oldName = '%s'" % (oldName)
+    pds = system.db.runQuery(SQL, "XOMMigration")
+    if len(pds) != 1:
+        print "Error looking up old name <%s> in the FeedbackMethodTranslation table" % (oldName)
+        SQL = "insert into FeedbackMethodTranslation (oldName) values ('%s')" % (oldName)
+        system.db.runUpdateQuery(SQL, "XOMMigration")
+        return "", -1
+    record = pds[0]
+    newName=record["newName"]
+    
+    # Now lookup the id of this interface in the Lookup table
+
+    SQL = "select LookupId from Lookup where LookupTypeCode = 'FeedbackMethod' and LookupName = '%s' " % (newName)
+    pds = system.db.runQuery(SQL)
+    if len(pds) != 1:
+        print "Error looking up the translated name (%s) in FeedbackMethodTranslation table" % (newName)
+        return newName, -1
+
+    record = pds[0]
+    lookupId=record["LookupId"]
+    
+    return newName, lookupId

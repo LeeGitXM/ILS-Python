@@ -58,13 +58,6 @@ def deleteRecommendations(applicationName, database):
     system.db.runUpdateQuery(SQL, database)
     return
 
-# Lookup the post id given the name
-def fetchPostId(post, database=""):
-    SQL = "select PostId from TkPost where Post = '%s'" % (post)
-    log.trace(SQL)
-    postId = system.db.runScalarQuery(SQL, database)
-    return postId
-
 # Lookup the application Id given the name
 def fetchApplicationId(application, database=""):
     SQL = "select ApplicationId from DtApplication where Application = '%s'" % (application)

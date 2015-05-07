@@ -30,6 +30,14 @@ def getPostId(post, database=""):
     postId = system.db.runScalarQuery(SQL, database)
     return postId
 
+# Lookup the unit id given the name
+def getUnitId(unitName, database=""):
+    SQL = "select UnitId from TkUnit where UnitName = '%s'" % (unitName)
+    log.trace(SQL)
+    unitId = system.db.runScalarQuery(SQL, database)
+    return unitId
+
+
 def lookup(lookupType, key):
     SQL = "select LookupId from Lookup where LookupTypeCode = '%s' and LookupName = '%s'" % (lookupType, key)
     lookupId=system.db.runScalarQuery(SQL)

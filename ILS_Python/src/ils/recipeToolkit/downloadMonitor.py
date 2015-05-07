@@ -13,7 +13,7 @@ def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, dow
     
     log.trace("Starting the automated download monitor...")
     
-    localG2WriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localG2WriteAlias").value
+    localWriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value
     recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
     recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
        
@@ -25,7 +25,7 @@ def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, dow
     while pending > 0 and deltaTime < downloadTimeout * 1000:
         time.sleep(5)
 #        pending = monitor(rootContainer)
-        pending, dsProcessed = monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, dsProcessed, database)
+        pending, dsProcessed = monitor(provider, recipeKey, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, dsProcessed, database)
 
         # Check to see if we have timed out
         now = Date()
@@ -56,17 +56,17 @@ def runner(rootContainer):
     
     # Check the status of pending downloads
     provider = rootContainer.getPropertyValue("provider")
-    recipeKey = rootContainer.getPropertyValue("recipeKey")
+    familyName = rootContainer.getPropertyValue("familyName")
     logId = rootContainer.logId
     
-    localG2WriteAlias = system.tag.read("/Configuration/RecipeToolkit/localG2WriteAlias").value
+    localWriteAlias = system.tag.read("/Configuration/RecipeToolkit/localWriteAlias").value
     
     table = rootContainer.getComponent("Power Table")
     recipeMinimumDifference = table.getPropertyValue("recipeMinimumDifference")
     recipeMinimumRelativeDifference = table.getPropertyValue("recipeMinimumRelativeDifference")
     ds = table.processedData
     
-    pending, ds = monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds)
+    pending, ds = monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds)
 
     table.processedData = ds
     from ils.recipeToolkit.refresh import refreshVisibleData
@@ -91,7 +91,7 @@ def runner(rootContainer):
 # This is called from a timer on the window and monitors the download.  Part of monitoring is to 
 # animate the table to indicate the success or failure of a tag.
 # Monitor every row of the table that is marked to be downloaded
-def monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds, database = ""):
+def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds, database = ""):
     import string
     from ils.recipeToolkit.log import logDetail
 
@@ -115,19 +115,22 @@ def monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, rec
             downloads = downloads + 1
 
             if downloadStatus == 'PENDING':
-                log.trace("Checking step: %s" % (str(step)))
                 storTagName = record["Store Tag"]
                 compTagName = record["Comp Tag"]
                 recommendVal = record["Recc"]
+                log.trace("Checking step: %s - %s - %s" % (str(step), storTagName, str(recommendVal)))
                 reason = ""
-                
+
                 # Even though these are 'IMMEDIATE' writes, it will take a cycle for OPC tags
                 if downloadType == 'IMMEDIATE' or downloadType == 'DEFERRED VALUE' or downloadType == 'DEFERRED LOW LIMIT' or downloadType == 'DEFERRED HIGH LIMIT':
-                    writeLocation = record["Write Location"]    
+                    writeLocation = record["Write Location"]
+                    print "Download Type: ", downloadType
+                    print "Write Location: ", writeLocation
+                        
                     pendVal = record["Pend"]
                     reason = record["Reason"]
                     
-                    if writeLocation == localG2WriteAlias:
+                    if writeLocation == localWriteAlias:
                         from ils.recipeToolkit.common import formatLocalTagName
                         tagName = formatLocalTagName(provider, storTagName)
                         storVal = system.tag.read(tagName).value
@@ -151,7 +154,10 @@ def monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, rec
                         
                     else:
                         from ils.recipeToolkit.common import formatTagName
-                        writeStatus = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/writeStatus').value
+                        tagName=formatTagName(provider, familyName, storTagName) + '/writeStatus'
+                        qv = system.tag.read(tagName)
+                        print tagName, " => ", qv.value, qv.quality 
+                        writeStatus=qv.value
                         
                         if string.upper(writeStatus) == 'SUCCESS' or string.upper(writeStatus) == 'FAILURE':
                             if string.upper(writeStatus) == 'SUCCESS':
@@ -161,12 +167,12 @@ def monitor(provider, recipeKey, localG2WriteAlias, recipeMinimumDifference, rec
                             else:
                                 failures = failures + 1 
                                 status = 'Failure'
-                                errorMessage = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/writeErrorMessage').value
+                                errorMessage = system.tag.read(formatTagName(provider, familyName, storTagName) + '/writeErrorMessage').value
 
                             ds = system.dataset.setValue(ds, i, "Download Status", status)
-                            storVal = system.tag.read(formatTagName(provider, recipeKey, storTagName) + '/value').value
+                            storVal = system.tag.read(formatTagName(provider, familyName, storTagName) + '/value').value
                             ds = system.dataset.setValue(ds, i, "Stor", storVal)
-                            compVal = system.tag.read(formatTagName(provider, recipeKey, compTagName) + '/value').value
+                            compVal = system.tag.read(formatTagName(provider, familyName, compTagName) + '/value').value
                             ds = system.dataset.setValue(ds, i, "Comp", compVal)
                             log.trace("  %s -> %s - %s" % (storTagName, storVal, writeStatus))
                             logDetail(logId, record["Store Tag"], pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database) 
