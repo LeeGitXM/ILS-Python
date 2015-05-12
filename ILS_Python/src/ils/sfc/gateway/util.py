@@ -24,8 +24,6 @@ ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
 SAVE_DATA_HANDLER = 'sfcSaveData'
 PRINT_FILE_HANDLER = 'sfcPrintFile'
 PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
-CLOSE_WINDOW_HANDLER = 'sfcCloseWindow'
-SHOW_WINDOW_HANDLER = 'sfcShowWindow'
 CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
 UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
 UPDATE_CURRENT_OPERATION_HANDLER = 'sfcUpdateCurrentOperation'
@@ -124,12 +122,13 @@ def handleUnexpectedGatewayError(chartProps, msg):
     payload[MESSAGE] = msg
     sendMessageToClient(chartProps, UNEXPECTED_ERROR_HANDLER, payload)
 
-def copyRowToDict(dbRows, rowNum, pdict):
+def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()
     for colNum in range(columnCount):
         colName = dbRows.getColumnName(colNum)
-        if colName in pdict.keys():
-            pdict[colName] = dbRows.getValueAt(rowNum, colNum)
+        if colName in pdict.keys() or create:
+            value = dbRows.getValueAt(rowNum, colNum)
+            pdict[colName] = value
 
 def writeSpace(level, file):
     for i in range(level):

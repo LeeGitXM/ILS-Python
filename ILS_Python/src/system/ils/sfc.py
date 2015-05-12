@@ -9,13 +9,22 @@ def getResponse(id):
 def setResponse(payload):
     pass
 
-def getReviewDataConfig(stepId):
+def getReviewData(chartScope, stepScope, configJson, addAdvice):
     pass
 
 def activateStep(className, chartProperties, stepProperties):
     pass
 
 def registerSfcProject(projectName):
+    pass
+
+def s88DataExists(chartProperties, stepProperties, ckey, location):
+    pass
+
+def s88GetScope(chartProperties, stepProperties, location):
+    pass
+
+def s88ScopeChanged(chartProperties, stepProperties):
     pass
 
 def s88BasicGet(chartProperties, stepProperties, ckey, location):

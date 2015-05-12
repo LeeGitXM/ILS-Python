@@ -4,8 +4,6 @@ All SFC Client Message Handlers
 import system.gui
 from system.print import createPrintJob
 
-from ils.sfc.common.constants import MESSAGE, PROMPT, INPUT, SERVER, RESPONSE, DATA, FILEPATH, WINDOW
-from ils.sfc.common.constants import COMPUTER, INSTANCE_ID, FILENAME, PRINT_FILE, VIEW_FILE, LABEL, MESSAGE_ID
 import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
 from ils.sfc.client.controlPanel import ControlPanel
@@ -13,6 +11,7 @@ from ils.sfc.common.util import getChartRunId
 
 def sfcCloseWindow(payload):
     from ils.sfc.client.controlPanel import getController
+    from ils.sfc.common.constants import WINDOW, INSTANCE_ID
     windowPath = payload[WINDOW] 
     system.nav.closeWindow(windowPath)
     controlPanel = getController(payload[INSTANCE_ID])
@@ -30,37 +29,21 @@ def sendTestResponse(payload):
     return True
  
 def sfcDialogMessage(payload):
-    from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, DIALOG, METHOD, MESSAGE, MESSAGE_ID, ACK_REQUIRED, POSITION, SCALE
-    from ils.sfc.client.util import openWindow
-    from ils.sfc.client.controlPanel import getController
-    from ils.sfc.common.util import createUniqueId
-    
+    from ils.sfc.common.constants import METHOD, MESSAGE, MESSAGE_ID, ACK_REQUIRED
+    from ils.sfc.client.windowUtil import createPositionedWindow
+     
     if sendTestResponse(payload):
         return
-        
-   #Todo: is special dialog needed?
-    chartRunId = payload[CHART_RUN_ID]
-    dialog = payload[DIALOG]
+
     # ? what is method used for ?
     method = payload[METHOD]
-    # do we care about ack? I thnk it just holds up step execution if true
-    position = payload[POSITION]
-    scale = payload[SCALE]
+    
     windowProps = dict()
     windowProps[ACK_REQUIRED] = payload[ACK_REQUIRED]
     windowProps[MESSAGE_ID] = payload[MESSAGE_ID]
     windowProps[MESSAGE] = payload[MESSAGE]
-    windowProps[CHART_RUN_ID]  = chartRunId
-    windowId = createUniqueId()
-    windowProps[WINDOW_ID]  = windowId
-    window = openWindow(dialog, position, scale, windowProps, windowId)
-    controlPanel = getController(chartRunId)
-    #TODO: what should label be? unique?
-    label = "Notification"
-    if controlPanel != None:
-        controlPanel.addWindow(label, dialog, window)
-    else:
-        print 'couldnt find control panel for run ', chartRunId
+    
+    createPositionedWindow(payload, windowProps)
 
 def sfcEnableDisable(payload):
     from ils.sfc.client.controlPanel import getController
@@ -70,6 +53,7 @@ def sfcEnableDisable(payload):
     controlPanel.setCommandMask(payload[ENABLE_PAUSE], payload[ENABLE_RESUME], payload[ENABLE_CANCEL])
 
 def sfcInput(payload):
+    from ils.sfc.common.constants import PROMPT, INPUT, MESSAGE_ID
     if sendTestResponse(payload):
         return
         
@@ -77,6 +61,7 @@ def sfcInput(payload):
     sendResponse(payload[MESSAGE_ID], response)
 
 def sfcLimitedInput(payload):
+    from ils.sfc.common.constants import PROMPT, INPUT, MESSAGE_ID
     if sendTestResponse(payload):
         return
         
@@ -84,6 +69,7 @@ def sfcLimitedInput(payload):
     sendResponse(payload[MESSAGE_ID], response)
 
 def sfcPrintFile(payload):
+    from ils.sfc.common.constants import COMPUTER, FILENAME, VIEW_FILE, PRINT_FILE, SERVER, MESSAGE
     computer = payload[COMPUTER]
     filepath = payload[FILENAME]
     viewFile = payload[VIEW_FILE]
@@ -111,6 +97,7 @@ def sfcPrintWindow(payload):
         printJob.print()
         
 def sfcSaveData(payload):
+    from ils.sfc.common.constants import DATA, VIEW_FILE, PRINT_FILE, FILEPATH
     data = payload[DATA]
     viewFile = payload[VIEW_FILE]
     printFile = payload[PRINT_FILE]
@@ -125,7 +112,7 @@ def sfcSaveData(payload):
         printJob.print()
     
 def sfcSelectInput(payload):
-    window = system.nav.openWindow('SFC/SelectInput', payload)
+    system.nav.openWindow('SFC/SelectInput', payload)
 
 def sfcShowQueue(payload):
     from ils.sfc.common.constants import QUEUE
@@ -134,26 +121,11 @@ def sfcShowQueue(payload):
     system.nav.openWindow('Queue/Message Queue', initialProps)
 
 def sfcShowWindow(payload):
-    from ils.sfc.client.util import openWindow
-    from ils.sfc.client.controlPanel import getController
-    from ils.sfc.common.util import createUniqueId
-    from ils.sfc.common.constants import POSITION, SCALE
-    windowPath = payload[WINDOW]
-    label = payload[LABEL]
-    position = payload[POSITION]
-    scale = payload[SCALE]
-    windowProperties = dict()
-    window = openWindow(windowPath, position, scale, windowProperties)
-    chartRunId = payload[INSTANCE_ID]
-    controlPanel = getController(chartRunId)
-    windowId = createUniqueId()
-    if controlPanel != None:
-        controlPanel.addWindow(label, windowPath, window, windowId)
-    else:
-        print 'couldnt find control panel for run ', chartRunId
-
+    from ils.sfc.client.windowUtil import createPositionedWindow
+    createPositionedWindow(payload)
+ 
 def sfcPostDelayNotification(payload):
-    from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, END_TIME, STEP_NAME, CHART_NAME
+    from ils.sfc.common.constants import WINDOW_ID, CHART_RUN_ID, END_TIME, MESSAGE
     from ils.sfc.client.notification import showDelayNotification
     endTimeOrNone = payload.get(END_TIME, None)
    # chartName = payload[CHART_NAME]
@@ -171,6 +143,7 @@ def sfcDeleteDelayNotification(payload):
     removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
         
 def sfcYesNo(payload):
+    from ils.sfc.common.constants import PROMPT, MESSAGE_ID
     if sendTestResponse(payload):
         return
         
@@ -182,6 +155,7 @@ def sfcYesNo(payload):
 
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError
+    from ils.sfc.common.constants import MESSAGE
     message = payload[MESSAGE]
     handleUnexpectedClientError(message)
 
@@ -198,23 +172,19 @@ def sfcUpdateCurrentOperation(payload):
     updateCurrentOperation(payload)
 
 def sfcReviewData(payload):
-    from ils.sfc.common.constants import POSITION, SCALE, SCREEN_HEADER, MESSAGE_ID, CONFIG
-    from ils.sfc.client.util import openWindow
+    from ils.sfc.common.constants import MESSAGE_ID, CONFIG, POSTING_METHOD
+    from ils.sfc.client.windowUtil import createPositionedWindow
+    from ils.sfc.common.util import callMethodWithParams
     if sendTestResponse(payload):
         return        
     windowProperties = dict()
     windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
-    data = payload[CONFIG]
-    window = openWindow('SFC/ReviewData', payload[POSITION], payload[SCALE], windowProperties)
-    window.title = payload[SCREEN_HEADER]
-    showAdvice = len(data[0]) == 3  # with advice there are 4 columns
-    if showAdvice:
-        headers = ['Data', 'Advice', 'Value', 'Units']
-    else:
-        headers = ['Data', 'Value', 'Units']
-    dataTable = window.getRootContainer().getComponent('dataTable')
-    dataset = system.dataset.toDataSet(headers, data)
-    dataTable.data = dataset
+    window = createPositionedWindow(payload, windowProperties)
+    postingMethod = payload[POSTING_METHOD]
+    dataTable = payload[CONFIG]
+    keys = ['window', 'dataTable']
+    values = [window, dataTable]
+    callMethodWithParams(postingMethod, keys, values)
 
 def sfcChartStarted(payload):
     from ils.sfc.client.controlPanel import createControlPanel

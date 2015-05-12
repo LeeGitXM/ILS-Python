@@ -35,8 +35,9 @@ def sfcReportTests(payload):
         
 def sfcStartChart(payload):
     '''start the chart and message the client. At this point the only reason
-       we start on the gateway side is to lazy init the units. Maybe we can
-       move that elsewhere and get rid of this method, just start chart on client'''
+       we start on the gateway side is to 1) lazy init the units for this script mgr
+       (CAUTION--there are other gateway script mgrs) and also to save the name of
+       the invoking project, as chart status message currently needs this.'''
     import system.sfc.startChart
     import system.util.sendMessage
     import ils.common.units
