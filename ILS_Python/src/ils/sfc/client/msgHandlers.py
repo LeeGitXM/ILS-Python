@@ -172,7 +172,7 @@ def sfcUpdateCurrentOperation(payload):
     updateCurrentOperation(payload)
 
 def sfcReviewData(payload):
-    from ils.sfc.common.constants import MESSAGE_ID, CONFIG, POSTING_METHOD
+    from ils.sfc.common.constants import MESSAGE_ID, PRIMARY_CONFIG, SECONDARY_CONFIG, POSTING_METHOD
     from ils.sfc.client.windowUtil import createPositionedWindow
     from ils.sfc.common.util import callMethodWithParams
     if sendTestResponse(payload):
@@ -181,9 +181,10 @@ def sfcReviewData(payload):
     windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
     window = createPositionedWindow(payload, windowProperties)
     postingMethod = payload[POSTING_METHOD]
-    dataTable = payload[CONFIG]
-    keys = ['window', 'dataTable']
-    values = [window, dataTable]
+    primaryDataTable = payload[PRIMARY_CONFIG]
+    secondaryDataTable = payload[SECONDARY_CONFIG]
+    keys = ['window', 'primaryDataTable', 'secondaryDataTable']
+    values = [window, primaryDataTable, secondaryDataTable]
     callMethodWithParams(postingMethod, keys, values)
 
 def sfcChartStarted(payload):

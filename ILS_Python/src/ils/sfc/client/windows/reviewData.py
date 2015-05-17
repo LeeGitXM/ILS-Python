@@ -13,10 +13,12 @@ def cancelActionPerformed(event):
 def getTableData():
     '''Get the (possibly modified) data from the table and put it back into JSON'''
 
-def defaultPostingMethod(window, dataTable):
-    dataTableComponent = window.getRootContainer().getComponent('dataTable') 
-    dataTableComponent.data = dataTable
-
+def defaultPostingMethod(window, primaryDataTable, secondaryDataTable):
+    primaryDataTableComponent = window.getRootContainer().getComponent('primaryDataTable') 
+    primaryDataTableComponent.data = primaryDataTable
+    secondaryDataTableComponent = window.getRootContainer().getComponent('secondaryDataTable') 
+    secondaryDataTableComponent.data = secondaryDataTable
+    
 def windowClosed(event, response):
     from ils.sfc.client.util import sendResponse
     from ils.sfc.client.controlPanel import getController
@@ -32,3 +34,15 @@ def windowClosed(event, response):
     controller = getController(chartRunId)
     controller.removeWindow(windowId)    
     system.nav.closeWindow(window)
+
+def togglePrimary(window):
+    primaryTable = window.getRootContainer().getComponent('primaryDataTable') 
+    secondaryTable = window.getRootContainer().getComponent('secondaryDataTable') 
+    tabStrip = window.getRootContainer().getComponent('tabs') 
+    if tabStrip.selectedTab == "primary":
+        secondaryTable.visible = False
+        primaryTable.visible = True
+    else:
+        primaryTable.visible = False
+        secondaryTable.visible = True
+  

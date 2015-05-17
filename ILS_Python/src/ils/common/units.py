@@ -133,9 +133,12 @@ class Unit(object):
     
     @staticmethod
     def getUnit(name):
+        if name == None:
+            return None
         '''Get the unit with the given name (or alias)'''
         unit = Unit.unitsByName.get(name)
         if unit == None:
+            # should use a logger here
             print 'Failed to find unit: ' + name
         return unit
 

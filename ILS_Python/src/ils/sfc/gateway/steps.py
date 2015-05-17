@@ -421,11 +421,11 @@ def printWindow(scopeContext, stepProperties):
     sendMessageToClient(chartScope, PRINT_WINDOW_HANDLER, payload)
     
 def closeWindow(scopeContext, stepProperties):   
-   chartScope = scopeContext.getChartScope()
-   payload = dict()
-   transferStepPropertiesToMessage(stepProperties, payload)
-   payload[INSTANCE_ID] = getChartRunId(chartScope)
-   sendMessageToClient(chartScope, 'sfcCloseWindow', payload)
+    chartScope = scopeContext.getChartScope()
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties, payload)
+    payload[INSTANCE_ID] = getChartRunId(chartScope)
+    sendMessageToClient(chartScope, 'sfcCloseWindow', payload)
 
 def showWindow(scopeContext, stepProperties):   
     chartScope = scopeContext.getChartScope()
@@ -439,17 +439,20 @@ def showWindow(scopeContext, stepProperties):
 def reviewData(scopeContext, stepProperties):    
     from system.ils.sfc import getReviewData
     from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC
-    chartScope = scopeContext.getChartScope()
+    chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     stepId = getStepId(stepProperties)
-    showAdvice = hasStepProperty(stepProperties, REVIEW_DATA_WITH_ADVICE)
+    showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
     if showAdvice:
-        dataConfig = getStepProperty(stepProperties, REVIEW_DATA_WITH_ADVICE) 
+        primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
+        secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA_WITH_ADVICE) 
     else:
-        dataConfig = getStepProperty(stepProperties, REVIEW_DATA)        
+        primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA)        
+        secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA)        
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    payload[CONFIG] = getReviewData(chartScope, stepScope, dataConfig, showAdvice)
+    payload[PRIMARY_CONFIG] = getReviewData(chartScope, stepScope, primaryConfig, showAdvice)
+    payload[SECONDARY_CONFIG] = getReviewData(chartScope, stepScope, secondaryConfig, showAdvice)
     payload[INSTANCE_ID] = getChartRunId(chartScope)
     messageId = sendMessageToClient(chartScope, REVIEW_DATA_HANDLER, payload) 
     

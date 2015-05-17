@@ -6,7 +6,10 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
 
-
+def s88DataExists(chartProperties, stepProperties, valuePath, location):
+    from system.ils.sfc import s88DataExists
+    return s88DataExists(chartProperties, stepProperties, valuePath, location)
+  
 def s88Get(chartProperties, stepProperties, valuePath, location):
     from system.ils.sfc import s88BasicGet
     return s88BasicGet(chartProperties, stepProperties, valuePath, location)
