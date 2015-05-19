@@ -37,19 +37,16 @@ def notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, database
         "tagProvider": tagProvider
         }
     print "Packing the payload: ", payload
-    ds=system.dataset.toDataSet(["payload"], [[payload]])
     
-    # Now make the payload for the OC alert window
-    payload = {
-        "post": post,
-        "topMessage":"Sample value failed validity testing.", 
-        "bottomMessage":"Result sample is " + valueName, 
-        "buttonLabel":"Acknowledge",
-        "callback": "ils.labData.validityLimitWarning.launcher",
-        "ds":ds
-        }
-    print "Payload: ", payload
-    system.util.sendMessage(project, "ocAlert", payload, scope="C")
+    topMessage = "Sample value failed validity testing." 
+    bottomMessage = "Result sample is " + valueName
+    buttonLabel = "Acknowledge"
+    callback = "ils.labData.validityLimitWarning.launcher"
+    timeoutEnabled = True
+    timeoutSeconds = 20
+
+    from ils.common.ocAlert import sendAlert
+    sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
 
 
 # This is a callback from the Acknowledge button in the middle of the loud workspace.
@@ -57,7 +54,7 @@ def launcher(payload):
     system.nav.openWindow("Lab Data/Validity Limit Warning", payload)
 
 # This is called when the operator presses the accept button on the operator review screen or when that dialog times out.
-def acceptValue(rootContainer):
+def acceptValue(rootContainer, timeout=False):
     print "Accepting the value"
     
     valueId=rootContainer.valueId
@@ -67,7 +64,11 @@ def acceptValue(rootContainer):
     tagProvider=rootContainer.tagProvider
     database=""
     
-    postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+    if timeout:
+        postMessage("The value was accept because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+    else:
+        postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+
     accept(valueId, valueName, rawValue, sampleTime, tagProvider, database)
 
 def accept(valueId, valueName, rawValue, sampleTime, tagProvider, database):
@@ -97,4 +98,4 @@ def rejectValue(rootContainer):
 # the operator to reject the value but the presumption is that the measurement is accurate.
 def timeOutValue(rootContainer):
     print "Bad value handling timed out waiting for a decision from the operator"
-    acceptValue(rootContainer)
+    acceptValue(rootContainer, True)

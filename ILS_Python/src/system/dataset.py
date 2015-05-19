@@ -24,3 +24,6 @@ def setValue(dataset, row, columnIndexOrName, val):
 
 def toPyDataSet(dataset):
     return True
+
+def updateRow():
+    pass

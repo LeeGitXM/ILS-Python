@@ -6,11 +6,32 @@ Created on Mar 31, 2015
 
 import system
 
+def sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
+
+    if callbackPayloadDictionary == None:
+        callbackPayloadDataset = None
+    else:
+        callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
+
+    # Now make the payload for the OC alert window
+    payload = {
+        "post": post,
+        "topMessage": topMessage, 
+        "bottomMessage": bottomMessage, 
+        "buttonLabel": buttonLabel,
+        "callback": callback,
+        "callbackPayloadDataset": callbackPayloadDataset,
+        "timeoutEnabled": timeoutEnabled,
+        "timeoutSeconds": timeoutSeconds
+        }
+    print "Payload: ", payload
+    system.util.sendMessage(project, "ocAlert", payload, scope="C")
+    
 def handleMessage(payload):
     print "In ils.common.ocAlert.handleMessage()", payload
     
     targetPost=payload.get("post","")
-    if targetPost != "":
+    if targetPost != "" and targetPost != None:
         post = system.tag.read("[Client]Post").value
         if targetPost == post:
             system.nav.openWindowInstance("Common/OC Alert", payload)
@@ -27,8 +48,11 @@ def buttonHandler(event):
     callback=rootContainer.callback
     
     # The payload is a dataset
-    ds = rootContainer.ds
-    payload=ds.getValueAt(0,0)
+    ds = rootContainer.callbackPayloadDataset
+    if ds == None:
+        payload = None
+    else:
+        payload=ds.getValueAt(0,0)
     
     print "Dictionary: ", payload
 

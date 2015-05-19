@@ -80,6 +80,7 @@ POSTING_METHOD = "postingMethod"
 PRIMARY_CONFIG = 'primaryConfig'
 PRIMARY_REVIEW_DATA = "primaryReviewData" 
 PRIMARY_REVIEW_DATA_WITH_ADVICE = "primaryReviewDataWithAdvice" 
+PRIMARY_TAB_LABEL = "primaryTabLabel"; 
 PRINT_FILE = "printFile"
 PRIORITY = "priority"
 PROJECT = 'project'
@@ -94,6 +95,7 @@ SCALE = 'scale'
 SECONDARY_CONFIG = 'secondaryConfig'
 SECONDARY_REVIEW_DATA = "secondaryReviewData" 
 SECONDARY_REVIEW_DATA_WITH_ADVICE = "secondaryReviewDataWithAdvice" 
+SECONDARY_TAB_LABEL = "secondaryTabLabel"
 SECURITY = 'security'
 SEMI_AUTOMATIC = 'semiAutomatic'
 SERVER = 'server'
@@ -163,3 +165,10 @@ MSG_STATUS_ERROR = 'Error'
 
 # Default window paths
 REVIEW_DATA_WINDOW = 'reviewDataWindow'
+
+#Step scope internal status
+_STATUS = '_status'
+ACTIVATE = 'Activate'
+PAUSE = 'Pause'
+RESUME = 'Resume'
+CANCEL = 'Cancel'

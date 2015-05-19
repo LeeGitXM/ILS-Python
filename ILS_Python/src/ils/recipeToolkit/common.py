@@ -63,6 +63,8 @@ def formatLocalTagPathAndName(provider, tagName):
 def updateTagName(tagName):
     import string
     tagName = string.replace(tagName, '.', '-')
+    tagName = string.replace(tagName, ' ', '-')
+    tagName = string.replace(tagName, '/', '-')
     return tagName
 
 # I have designed a tree structure for tags used in the toolkits.  This will be assumed throughout and cannot be changed.

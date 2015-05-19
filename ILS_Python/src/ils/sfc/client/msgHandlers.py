@@ -7,7 +7,7 @@ from system.print import createPrintJob
 import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
 from ils.sfc.client.controlPanel import ControlPanel
-from ils.sfc.common.util import getChartRunId
+from ils.sfc.common.util import getTopChartRunId
 
 def sfcCloseWindow(payload):
     from ils.sfc.client.controlPanel import getController
@@ -48,7 +48,7 @@ def sfcDialogMessage(payload):
 def sfcEnableDisable(payload):
     from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL
-    chartRunId = getChartRunId(payload)
+    chartRunId = getTopChartRunId(payload)
     controlPanel = getController(chartRunId)
     controlPanel.setCommandMask(payload[ENABLE_PAUSE], payload[ENABLE_RESUME], payload[ENABLE_CANCEL])
 
@@ -172,7 +172,7 @@ def sfcUpdateCurrentOperation(payload):
     updateCurrentOperation(payload)
 
 def sfcReviewData(payload):
-    from ils.sfc.common.constants import MESSAGE_ID, PRIMARY_CONFIG, SECONDARY_CONFIG, POSTING_METHOD
+    from ils.sfc.common.constants import MESSAGE_ID, PRIMARY_CONFIG, SECONDARY_CONFIG, POSTING_METHOD, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
     from ils.sfc.client.windowUtil import createPositionedWindow
     from ils.sfc.common.util import callMethodWithParams
     if sendTestResponse(payload):
@@ -182,9 +182,11 @@ def sfcReviewData(payload):
     window = createPositionedWindow(payload, windowProperties)
     postingMethod = payload[POSTING_METHOD]
     primaryDataTable = payload[PRIMARY_CONFIG]
+    primaryTabLabel = payload[PRIMARY_TAB_LABEL]
+    secondaryTabLabel = payload[SECONDARY_TAB_LABEL]
     secondaryDataTable = payload[SECONDARY_CONFIG]
-    keys = ['window', 'primaryDataTable', 'secondaryDataTable']
-    values = [window, primaryDataTable, secondaryDataTable]
+    keys = ['window', 'primaryDataTable', 'primaryTabLabel', 'secondaryDataTable',  'secondaryTabLabel']
+    values = [window, primaryDataTable, primaryTabLabel, secondaryDataTable, secondaryTabLabel]
     callMethodWithParams(postingMethod, keys, values)
 
 def sfcChartStarted(payload):

@@ -6,7 +6,7 @@ Created on Mar 31, 2015
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.labData")
-sqlLog = LogUtil.getLogger("com.ils.labDataSQL")
+sqlLog = LogUtil.getLogger("com.ils.SQL.labData")
 
 def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
     log.trace("Checking Validity limits for %s..." % (valueName))
@@ -80,46 +80,140 @@ def updateSQCLimitsFromRecipe(grade, database=""):
         upperLimit=record["UpperLimit"]
         lowerLimit=record["LowerLimit"]
         log.trace("Loaded limit for %s: %s -> %s" % (parameterName, str(lowerLimit), str(upperLimit)))
-        SQL = "select limitId from LtLimit where RecipeParameterName = '%s'" % (parameterName)
+        SQL = "select V.ValueName, L.limitId, U.UnitName, LU.LookupName LimitType "\
+            "from LtValue V, LtLimit L, TkUnit U, Lookup LU "\
+            "where L.RecipeParameterName = '%s'"\
+            " and V.ValueId = L.ValueId "\
+            " and L.LimitTypeId = LU.LookupId"\
+            " and V.UnitId = U.UnitId" % (parameterName)
         sqlLog.trace(SQL)
         
         ldpds=system.db.runQuery(SQL, database)
         for labDataRecord in ldpds:
+            valueName=labDataRecord['ValueName']
             limitId=labDataRecord['limitId']
-            log.trace("   ... found a matching lab data limit with id: %i" % (limitId))
-            updateSQCLimits(limitId, upperLimit, lowerLimit, database)
+            unitName=labDataRecord['UnitName']
+            limitType=labDataRecord['LimitType']
+            log.trace("   ... found a matching lab data named %s (%s) with limit id: %i (unit=%s)" % (valueName, limitType, limitId, unitName))
+            updateSQCLimits(valueName, unitName, limitType, limitId, upperLimit, lowerLimit, database)
              
 
 # This calculates the target, standard deviation, and validity limits from the SQC limits.  
 # The SQC limits can come from anywhere, recipe, the DCS, or manually entered.
-def updateSQCLimits(limitId, upperLimit, lowerLimit, database):
+def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowerSQCLimit, database):
     
     # The default number of standard deviations from the target to the limits is 3
     # The old system would look at the SQC limit blocks that use this lab data and find the max standard deviation,
     # I'm not real sure how I am going to do this. 
+    #TODO
     maxStandardDeviations = 3.0
+    standardDeviationsToValidityLimits = system.tag.read("Configuration/LabData/standardDeviationsToValidityLimits").value
     
-    #TODO This needs to come from a configuration tag
-    standardDeviationsToValidityLimits = 4.5
+    if limitType == "Release":
+        if upperSQCLimit == None:
+            SQL = "Update LtLimit set upperReleaseLimit = NULL where limitId = %s" % (str(limitId))
+            upperSQCLimit=float("NaN")
+        else:
+            SQL = "Update LtLimit set upperReleaseLimit = %s where limitId = %s" % (str(upperSQCLimit), str(limitId))
+
+        sqlLog.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        sqlLog.trace("   ...updated %i rows" % (rows))
+        
+        if lowerSQCLimit == None:
+            SQL = "Update LtLimit set lowerReleaseLimit = NULL where limitId = %s" % (str(limitId))
+            lowerSQCLimit=float("NaN")
+        else:
+            SQL = "Update LtLimit set lowerReleaseLimit = %s where limitId = %s" % (str(lowerSQCLimit), str(limitId))
+
+        sqlLog.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        sqlLog.trace("   ...updated %i rows" % (rows))
+        
+        # Now write the fetched limits to the Lab Data UDT tags
+        path = '[XOM]LabData/' + unitName + '/' + valueName + '-RELEASE'
+        tags = [path+'/lowerReleaseLimit', path+'/upperReleaseLimit']
+        vals = [lowerSQCLimit, upperSQCLimit]
     
-    if upperLimit == None or lowerLimit == None:
-        log.error("Can't calculate target or standard deviation for limit id: %i, because one of the limits is NULL" % (limitId))
-        return
+    elif limitType == "Validity":
+        if upperSQCLimit == None:
+            SQL = "Update LtLimit set upperValidityLimit = NULL where limitId = %s" % (str(limitId))
+            upperSQCLimit=float("NaN")
+        else:
+            SQL = "Update LtLimit set upperValidityLimit = %s where limitId = %s" % (str(upperSQCLimit), str(limitId))
+
+        sqlLog.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        sqlLog.trace("   ...updated %i rows" % (rows))
+        
+        if lowerSQCLimit == None:
+            SQL = "Update LtLimit set lowerValidityLimit = NULL where limitId = %s" % (str(limitId))
+            lowerSQCLimit=float("NaN")
+        else:
+            SQL = "Update LtLimit set lowerValidityLimit = %s where limitId = %s" % (str(lowerSQCLimit), str(limitId))
+
+        sqlLog.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        sqlLog.trace("   ...updated %i rows" % (rows))
+        
+        # Now write the fetched limits to the Lab Data UDT tags
+        path = '[XOM]LabData/' + unitName + '/' + valueName + '-VALIDITY'
+        tags = [path+'/lowerValidityLimit', path+'/upperValidityLimit']
+        vals = [lowerSQCLimit, upperSQCLimit]
     
-    target = (upperLimit + lowerLimit) / 2.0
-    standardDeviation = (upperLimit - lowerLimit) / (2.0 * maxStandardDeviations)
-    upperValidityLimit = target + (standardDeviationsToValidityLimits * standardDeviation)
-    lowerValidityLimit = target - (standardDeviationsToValidityLimits * standardDeviation)
+    else:
+        # It must be an SQC limit - SQC limits must be two-sided
+        #TODO SHould NULL values clear out any previous values?
+        if upperSQCLimit == None or lowerSQCLimit == None:
+            log.error("Can't calculate target or standard deviation for %s, because one of the limits is NULL" % (valueName))
+            lowerSQCLimit=float("NaN")
+            upperSQCLimit=float("NaN")
+            target=float("NaN")
+            standardDeviation=float("NaN")
+            lowerValidityLimit=float("NaN")
+            upperValidityLimit=float("NaN")
+            SQL = "Update LtLimit set " \
+                " UpperSQCLimit = NULL, "\
+                " LowerSQCLimit = NULL, "\
+                " UpperValidityLimit = NULL, "\
+                " LowerValidityLimit = NULL, "\
+                " Target = NULL, "\
+                " StandardDeviation = NULL "\
+                " where limitId = %s" % (str(limitId))
+        else: 
+            log.trace("Loading new limits for %s: %f to %f" % (valueName, lowerSQCLimit, upperSQCLimit))
+            target = (upperSQCLimit + lowerSQCLimit) / 2.0
+            standardDeviation = (upperSQCLimit - lowerSQCLimit) / (2.0 * maxStandardDeviations)
+            upperValidityLimit = target + (standardDeviationsToValidityLimits * standardDeviation)
+            lowerValidityLimit = target - (standardDeviationsToValidityLimits * standardDeviation)
     
-    SQL = "Update LtLimit set " \
-        " UpperSQCLimit = %s, "\
-        " LowerSQCLimit = %s, "\
-        " UpperValidityLimit = %s, "\
-        " LowerValidityLimit = %s, "\
-        " Target = %s, "\
-        " StandardDeviation = %s "\
-        " where limitId = %s" % (str(upperLimit), str(lowerLimit), str(upperValidityLimit), str(lowerValidityLimit), \
+            SQL = "Update LtLimit set " \
+                " UpperSQCLimit = %s, "\
+                " LowerSQCLimit = %s, "\
+                " UpperValidityLimit = %s, "\
+                " LowerValidityLimit = %s, "\
+                " Target = %s, "\
+                " StandardDeviation = %s "\
+                " where limitId = %s" % (str(upperSQCLimit), str(lowerSQCLimit), str(upperValidityLimit), str(lowerValidityLimit), \
                                str(target), str(standardDeviation), str(limitId))
-    sqlLog.trace(SQL)
-    rows=system.db.runUpdateQuery(SQL, database)
-    log.trace("   ...updated %i rows" % (rows))
+        sqlLog.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        sqlLog.trace("   ...updated %i rows" % (rows))
+    
+        # Now write the fetched and calculated limits to the Lab Data UDT tags
+    
+        path = '[XOM]LabData/' + unitName + '/' + valueName + '-SQC'
+    
+        tags = [path+'/lowerSQCLimit', path+'/lowerValidityLimit', path+'/standardDeviation', path+'/target', path+'/upperSQCLimit', path+'/upperValidityLimit']
+        vals = [lowerSQCLimit, lowerValidityLimit, standardDeviation, target, upperSQCLimit, upperValidityLimit]
+    
+    # Now perform the write and feedback any errors
+    status = system.tag.writeAll(tags, vals)
+    
+    i = 0
+    for stat in status:
+        if stat == 1:
+            log.trace("   successfully wrote %s to %s" % (str(vals[i]), tags[i]))
+        else:
+            log.error("Error writing %s to %s (Status=%i)" % (str(vals[i]), tags[i], stat))
+        i = i + 1
