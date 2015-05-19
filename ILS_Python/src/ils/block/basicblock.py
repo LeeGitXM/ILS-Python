@@ -9,6 +9,7 @@
 #
 import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
 import java.lang.Double as Double
+import java.lang.String as String
 
 
 class BasicBlock():
@@ -106,7 +107,7 @@ class BasicBlock():
             if anchor['type'].upper()=='TRUTHVALUE':
                 self.handler.sendConnectionNotification(self.uuid,anchor["name"],'UNKNOWN')
             elif anchor['type'].upper() == 'DATA':
-                self.handler.sendConnectionNotification(self.uuid,anchor["name"],Double(Double.NaN))
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],String.valueOf(Double.NaN))
             else:
                 self.handler.sendConnectionNotification(self.uuid,anchor["name"],"")
     
