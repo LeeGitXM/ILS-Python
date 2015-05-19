@@ -35,7 +35,7 @@ def select(selectorName, database = ""):
                 log.trace("Successfully processed PHD Lab Value selector: %s - %s - %i - %s" % (valueName, selectorTypeName, targetId, targetTextValue))
                 
         
-def updateItemId(targetName, itemId, database=""):
+def updateItemIdCRAP(targetName, itemId, database=""):
     from ils.labData.common import fetchValueId
     targetId = fetchValueId(targetName, database)
 
@@ -46,11 +46,25 @@ def updateItemId(targetName, itemId, database=""):
         print SQL 
         system.db.runUpdateQuery(SQL, database)
 
-#
-def configureSelector(selectorName, sourceName):
+
+def valueChanged(tagPath):
+    log.trace("Detected a value change in: %s" % (tagPath))
+    database = "XOM"
+    
+    tagRoot=tagPath.rstrip('/value')    
+    enabled=system.tag.read(tagRoot + '/processingEnabled').value
+
+    from ils.labData.scanner import storeSelector
+    if enabled:
+        storeSelector(tagPath, database)
+    else:
+        log.trace("Skipping the value change because processing is not enabled")
+        
+
+def configureSelector(unitName, selectorName, sourceName):
     from ils.common.config import getTagProvider
     provider = getTagProvider()
-    parentTagPath = '[' + provider + ']LabData/'
+    parentTagPath = '[' + provider + ']LabData/' + unitName + '/'
     tagPath = parentTagPath + selectorName
     print "Configuring: ", tagPath
 
@@ -76,33 +90,45 @@ def configureSelector(selectorName, sourceName):
         print tagPath, parameters
         system.tag.editTag(tagPath, parameters=parameters)
         
-    elif UDTType == "Lab Data/Lab Selector SQC":
-        lowerLimitTag='{[.]../' + sourceName + '/lowerLimit}'
+    elif UDTType == "Lab Data/Lab Selector Limit SQC":
+        lowerSQCLimitTag='{[.]../' + sourceName + '/lowerSQCLimit}'
         lowerValidityLimitTag='{[.]../' + sourceName + '/lowerValidityLimit}'
         standardDeviationTag='{[.]../' + sourceName + '/standardDeviation}'
         targetTag='{[.]../' + sourceName + '/target}'
-        upperLimitTag='{[.]../' + sourceName + '/upperLimit}'
+        upperSQCLimitTag='{[.]../' + sourceName + '/upperSQCLimit}'
         upperValidityLimitTag='{[.]../' + sourceName + '/upperValidityLimit}'
     
         parameters={
-                    'lowerLimitTag':lowerLimitTag, 
+                    'lowerSQCLimitTag':lowerSQCLimitTag, 
                     'lowerValidityLimitTag':lowerValidityLimitTag, 
                     'standardDeviationTag':standardDeviationTag,
                     'targetTag':targetTag,
-                    'upperLimitTag':upperLimitTag,
+                    'upperSQCLimitTag':upperSQCLimitTag,
                     'upperValidityLimitTag':upperValidityLimitTag
                     }
     
         print tagPath, parameters
         system.tag.editTag(tagPath, parameters=parameters)
  
-    elif UDTType == "Lab Data/Lab Selector Validity":
-        lowerLimitTag='{[.]../' + sourceName + '/lowerLimit}'
-        upperLimitTag='{[.]../' + sourceName + '/upperLimit}'
+    elif UDTType == "Lab Data/Lab Selector Limit Validity":
+        lowerValidityLimitTag='{[.]../' + sourceName + '/lowerValidityLimit}'
+        upperValidityLimitTag='{[.]../' + sourceName + '/upperValidityLimit}'
     
         parameters={
-                    'lowerLimitTag':lowerLimitTag, 
-                    'upperLimitTag':upperLimitTag
+                    'lowerValidityLimitTag':lowerValidityLimitTag, 
+                    'upperValidityLimitTag':upperValidityLimitTag
+                    }
+    
+        print tagPath, parameters
+        system.tag.editTag(tagPath, parameters=parameters)
+        
+    elif UDTType == "Lab Data/Lab Selector Limit Release":
+        lowerReleaseLimitTag='{[.]../' + sourceName + '/lowerReleaseLimit}'
+        upperReleaseLimitTag='{[.]../' + sourceName + '/upperReleaseLimit}'
+    
+        parameters={
+                    'lowerReleaseLimitTag':lowerReleaseLimitTag, 
+                    'upperReleaseLimitTag':upperReleaseLimitTag
                     }
     
         print tagPath, parameters

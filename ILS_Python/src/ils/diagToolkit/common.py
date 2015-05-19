@@ -65,6 +65,13 @@ def fetchApplicationId(application, database=""):
     applicationId = system.db.runScalarQuery(SQL, database)
     return applicationId
 
+# Update the application priority
+def updateFamilyPriority(familyName, familyPriority, database=""):
+    SQL = "update DtFamily set FamilyPriority = %i where FamilyName = '%s'" % (familyPriority, familyName)
+    log.trace(SQL)
+    rows = system.db.runUpdateQuery(SQL, database)
+    print "Updated %i rows" % (rows)
+
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
     SQL = "select FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FamilyId, FD.FinalDiagnosisPriority, FD.CalculationMethod, "\

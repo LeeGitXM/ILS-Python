@@ -6,7 +6,7 @@ Created on Apr 30, 2015
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.labData")
-sqlLog = LogUtil.getLogger("com.ils.labDataSQL")
+sqlLog = LogUtil.getLogger("com.ils.SQL.labData")
 
 # This is called from the "Manual Entry" button on the "Lab Data Table Chooser" screen
 def launchChooser(rootContainer):

@@ -7,6 +7,7 @@ Created on Mar 10, 2015
 import xml.etree.ElementTree as ET
 import sys, system, string, traceback
 from ils.migration.common import lookupOPCServerAndScanClass
+from ils.common.database import getUnitId
 from ils.common.database import getPostId
 from ils.common.database import lookup
 
@@ -101,11 +102,12 @@ def insertIntoDB(container):
     
         if not(alreadyLoaded(name)):
             className = labData.get("class")
-            print "Processing %s, a %s" % (name, className)
+            unitName = labData.get("unit-name")
+            print "Processing %s, a %s (unit: %s)" % (name, className, unitName)
         
             if className == "LAB-PHD-SQC":
                 print "   Creating..."
-                valueId=insertLabValue(labData)
+                valueId=insertLabValue(labData, unitName)
                 insertPHDLabValue(labData, valueId)
                 insertSQCLimit(labData,valueId)
                 loaded=loaded+1
@@ -113,7 +115,7 @@ def insertIntoDB(container):
             
             elif className == "LAB-DCS-SQC":
                 print "   Creating..."
-                valueId=insertLabValue(labData)
+                valueId=insertLabValue(labData, unitName)
                 insertDCSLabValue(labData, valueId, site)
                 insertSQCLimit(labData,valueId)
                 loaded=loaded+1
@@ -121,7 +123,7 @@ def insertIntoDB(container):
             
             elif className == "LAB-PHD-RELEASE":
                 print "   Creating..."
-                valueId=insertLabValue(labData)
+                valueId=insertLabValue(labData, unitName)
                 insertPHDLabValue(labData, valueId)
                 insertReleaseLimit(labData,valueId)
                 loaded=loaded+1
@@ -129,7 +131,13 @@ def insertIntoDB(container):
                 
             elif className == "LAB-PHD-SQC-SELECTOR":
                 print "   Creating..."
-                valueId=insertLabValue(labData)
+                valueId=insertLabValue(labData, unitName)
+                loaded=loaded+1
+                print "   ...done!"
+
+            elif className == "LAB-PHD-RELEASE-SELECTOR":
+                print "   Creating..."
+                valueId=insertLabValue(labData, unitName)
                 loaded=loaded+1
                 print "   ...done!"
             
@@ -137,15 +145,23 @@ def insertIntoDB(container):
 #            print "   ...skipping..."
             elif className == "LAB-PHD-SELECTOR":
                 print "   Creating..."
-                valueId=insertLabValue(labData)
+                valueId=insertLabValue(labData, unitName)
                 loaded=loaded+1
                 print "   ...done!"
             
             elif className == "LAB-PHD":
                 print "   Creating..."
-                valueId=insertLabValue(labData)
+                valueId=insertLabValue(labData, unitName)
                 loaded=loaded+1
                 print "   ...done!"
+            
+            elif className == "LAB-LOCAL-VALIDITY":
+                print "   Creating..."
+                valueId=insertLabValue(labData, unitName)
+                insertValidityLimit(labData,valueId)
+                loaded=loaded+1
+                print "   ...done!"
+                
             else:
                 skipped=skipped+1
                 print "   <<< Unexpected class >>> "
@@ -171,17 +187,15 @@ def lookupHDAInterface(interfaceName):
 
 # The display table Has been so to allow NULL so that we can insert the lab data from this export file.  The display table
 # info is contained in the display table export and will be updated later
-def insertLabValue(labData):
+def insertLabValue(labData, unitName):
     print "      Inserting into LtValue..."
     valueName = labData.get("name")
     description = labData.get("lab-desc")
     displayDecimals = labData.get("lab-display-decimals")
-    post = labData.get("post", "")
-    postId = getPostId(post)
-    print "         Post: %s has idL %i" % (post, postId)
+    unitId = getUnitId(unitName)
 
-    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, PostId) "\
-        " values ('%s', '%s', %s, %s)" % (valueName, description, str(displayDecimals), str(postId))
+    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId) "\
+        " values ('%s', '%s', %s, %s)" % (valueName, description, str(displayDecimals), str(unitId))
     valueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...inserted %s and assigned id %i" % (valueName, valueId)
     return valueId
@@ -290,50 +304,109 @@ def insertReleaseLimit(labData, valueId):
     for lowerLimit in labData.findall('lowerValidityLimit'):
         lowerValidityLimit = lowerLimit.get("value")
     
-        # The upper and lower limits may either come from recipe (ODBC) or from the DCS (OPC).  If it comes from recipe, then the upper and 
-        # lower limits are both in the same recipe record so only a single parameter name is need, therefore the lower limit isn't even 
-        # processed.  If the limit comes from the DCS, the the upper and lower limit have unique item ids.  So look at the upper limit, 
-        # determine if it is ODBC or OPC.  If it is OPC then process the lower limit.  
+    # The upper and lower limits may either come from recipe (ODBC) or from the DCS (OPC).  If it comes from recipe, then the upper and 
+    # lower limits are both in the same recipe record so only a single parameter name is need, therefore the lower limit isn't even 
+    # processed.  If the limit comes from the DCS, the the upper and lower limit have unique item ids.  So look at the upper limit, 
+    # determine if it is ODBC or OPC.  If it is OPC then process the lower limit.  
 
-        limitClass = lowerLimit.get("class")
-        if limitClass == "ODBC-LIMIT-FOR-SQC":
-            recipeParameterName = lowerLimit.get("column-qualifier")   
+    typeId = lookup("RtLimitType", "Release")
+    limitClass = lowerLimit.get("class")
+    if limitClass == "ODBC-LIMIT-FOR-SQC":
+        recipeParameterName = lowerLimit.get("column-qualifier")   
 
-            print "         The recipe parameter name is: ", recipeParameterName
-            recipeParameterName=string.upper(recipeParameterName[:recipeParameterName.find('_llimit')])
-            print "         ...has been shortened to: ", recipeParameterName
+        print "         The recipe parameter name is: ", recipeParameterName
+        recipeParameterName=string.upper(recipeParameterName[:recipeParameterName.find('_llimit')])
+        print "         ...has been shortened to: ", recipeParameterName
     
-            # The Release limits are not stored in the XML export, they will get loaded from recipe at run time, so just use some absurd constants
-            upperLimit=1000.0
-            lowerLimit=-1000.0
-    
-            typeId = lookup("RtLimitType", "Release")
-            sourceId = lookup("RtLimitSource", "Recipe")
-            SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperReleaseLimit, LowerReleaseLimit, RecipeParameterName) "\
-                " values (%s, %s, %s, %s, %s, '%s')" \
-                % (str(valueId), str(typeId), str(sourceId), str(upperLimit), str(lowerLimit), recipeParameterName)
-            system.db.runUpdateQuery(SQL)
-            print "      ...inserted a record into LtLimit..."
-        elif limitClass == "OPC-FLOAT-BAD-FLAG":
-            upperItemId = upperLimit.get("item-id")
-            lowerItemId = lowerLimit.get("item-id")   
+        # The Release limits are not stored in the XML export, they will get loaded from recipe at run time, so just use some absurd constants
+        upperLimit=1000.0
+        lowerLimit=-1000.0
 
-            print "         The Item-Ids are: %s and %s" % (upperItemId, lowerItemId)
-    
-            # The SQC limits are not stored in the XML export, they will get loaded from recipe at run time, so for now just use
-            # the validity limits in for the SQC
-            upperLimit=upperValidityLimit
-            lowerLimit=lowerValidityLimit
-    
-            typeId = lookup("RtLimitType", "Release")
-            sourceId = lookup("RtLimitSource", "DCS")
-            SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, OPCUpperItemId, OPCLowerItemId) "\
-                " values (%s, %s, %s, '%s', '%s')" \
+        sourceId = lookup("RtLimitSource", "Recipe")
+        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperReleaseLimit, LowerReleaseLimit, RecipeParameterName) "\
+             " values (%s, %s, %s, %s, %s, '%s')" \
+             % (str(valueId), str(typeId), str(sourceId), str(upperLimit), str(lowerLimit), recipeParameterName)
+        system.db.runUpdateQuery(SQL)
+        print "      ...inserted a record into LtLimit..."
+    elif limitClass == "OPC-FLOAT-BAD-FLAG":
+        upperItemId = upperLimit.get("item-id")
+        lowerItemId = lowerLimit.get("item-id")   
+
+        print "         The Item-Ids are: %s and %s" % (upperItemId, lowerItemId)
+            
+        sourceId = lookup("RtLimitSource", "DCS")
+        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, OPCUpperItemId, OPCLowerItemId) "\
+               " values (%s, %s, %s, '%s', '%s')" \
                 % (str(valueId), str(typeId), str(sourceId), upperItemId, lowerItemId)
-            system.db.runUpdateQuery(SQL)
-            print "      ...inserted a record into LtLimit..."
-        else:
-            print "**** Unexpected SQC limit class: <%s> ****" % (limitClass)
+        system.db.runUpdateQuery(SQL)
+        print "      ...inserted a record into LtLimit..."
+    else:
+        print "**** Unexpected SQC limit class: <%s> ****" % (limitClass)
+
+#
+def insertValidityLimit(labData, valueId):
+    print "      Inserting a validity limit..."
+
+    # Each of these for loops should find exactly 1 match.
+    # The main thing we need to extract is the parameter name - the structure of the recipe database has changed so the upper and lower limit
+    # use the same name, so I only need to extract one.  I need to extract the real name from the name in the export by stripping off the
+    # _upper and _lower.
+    # For the actual limits, these will be overwritten as soon as the first grade change occurs, so they are not terribly important.  
+    # The upper and lower limit values are not in the export, so just use the validity limits as the SQC limits for starters.
+    for upperLimit in labData.findall('upperValidityLimit'):
+        upperValidityLimit = upperLimit.get("value")
+    for lowerLimit in labData.findall('lowerValidityLimit'):
+        lowerValidityLimit = lowerLimit.get("value")
+    
+    # The upper and lower limits may either come from recipe (ODBC), the DCS (OPC), or a constant.  If it comes from recipe, then the upper and 
+    # lower limits are both in the same recipe record so only a single parameter name is need, therefore the lower limit isn't even 
+    # processed.  If the limit comes from the DCS, the the upper and lower limit have unique item ids.  So look at the upper limit, 
+    # determine if it is ODBC or OPC.  If it is OPC then process the lower limit.  
+
+    typeId = lookup("RtLimitType", "Validity")
+    limitClass = lowerLimit.get("class")
+    if limitClass == "ODBC-LIMIT-FOR-SQC":
+        recipeParameterName = lowerLimit.get("column-qualifier")   
+
+        print "         The recipe parameter name is: ", recipeParameterName
+        recipeParameterName=string.upper(recipeParameterName[:recipeParameterName.find('_llimit')])
+        print "         ...has been shortened to: ", recipeParameterName
+    
+        # The limit values are not stored in the XML export, they will get loaded from recipe at run time, so just use some absurd constants
+        upperLimit=1000.0
+        lowerLimit=-1000.0
+    
+        sourceId = lookup("RtLimitSource", "Recipe")
+        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperValidityLimit, LowerValidityLimit, RecipeParameterName) "\
+            " values (%s, %s, %s, %s, %s, '%s')" \
+            % (str(valueId), str(typeId), str(sourceId), str(upperLimit), str(lowerLimit), recipeParameterName)
+        system.db.runUpdateQuery(SQL)
+        print "      ...inserted a record into LtLimit..."
+    elif limitClass == "OPC-FLOAT-BAD-FLAG":
+        upperItemId = upperLimit.get("item-id")
+        lowerItemId = lowerLimit.get("item-id")   
+
+        print "         The Item-Ids are: %s and %s" % (upperItemId, lowerItemId)
+    
+        typeId = lookup("RtLimitType", "Release")
+        sourceId = lookup("RtLimitSource", "DCS")
+        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, OPCUpperItemId, OPCLowerItemId) "\
+            " values (%s, %s, %s, '%s', '%s')" \
+            % (str(valueId), str(typeId), str(sourceId), upperItemId, lowerItemId)
+        system.db.runUpdateQuery(SQL)
+        print "      ...inserted a record into LtLimit..."
+    elif limitClass == "FLOAT-PARAMETER":
+        upperValue = upperLimit.get("value")
+        lowerValue = lowerLimit.get("value")
+        sourceId = lookup("RtLimitSource", "Constant")
+        SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperValidityLimit, LowerValidityLimit) "\
+            " values (%s, %s, %s, %s, %s)" \
+            % (str(valueId), str(typeId), str(sourceId), str(upperValue), str(lowerValue))
+        system.db.runUpdateQuery(SQL)
+        print "      ...inserted a record into LtLimit..."
+        
+    else:
+        print "**** Unexpected SQC limit class: <%s> ****" % (limitClass)
 
 def createTags(rootContainer):
     print "In labData.createTags()"
@@ -353,46 +426,51 @@ def createTags(rootContainer):
     for labData in root.findall('lab-data'):
         className = labData.get("class")
         labDataName = labData.get("name")
+        unitName = labData.get("unit-name")
         print "Processing a %s: %s " % (className, labDataName)
                    
         if className == "LAB-PHD":
-            createLabPhd(labData, provider)
+            createLabValue(labData, provider, unitName)
             loaded=loaded+1
         elif className == "LAB-PHD-DERIVED":
-            createLabPhd(labData, provider)
+            createLabValue(labData, provider, unitName)
             loaded=loaded+1
         elif className == "LAB-PHD-SQC":
-            createLabPhd(labData, provider)
-            createLabLimitSQC(labData, provider)
+            createLabValue(labData, provider, unitName)
+            createLabLimitSQC(labData, provider, unitName)
             loaded=loaded+1
         elif className == "LAB-PHD-RELEASE":
-            createLabPhd(labData, provider)
-            createLabLimitRelease(labData, provider)
+            createLabValue(labData, provider, unitName)
+            createLabLimitRelease(labData, provider, unitName)
             loaded=loaded+1
         elif className == "LAB-PHD-DERIVED-SQC":
-            createLabPhd(labData, provider)
-            createLabLimitSQC(labData, provider)
+            createLabValue(labData, provider, unitName)
+            createLabLimitSQC(labData, provider, unitName)
             loaded=loaded+1
             
         elif className == "LAB-PHD-SELECTOR":
-            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider)
+            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
             loaded=loaded+1
         elif className == "LAB-PHD-SQC-SELECTOR":
-            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider)
-            createSelector(labData, 'Lab Data/Lab Selector SQC', labDataName + '-SQC', provider)
+            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
+            createSelector(labData, 'Lab Data/Lab Selector Limit SQC', labDataName + '-SQC', provider, unitName)
             loaded=loaded+1
         elif className == "LAB-PHD-VALIDITY-SELECTOR":
-            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider)
-            createSelector(labData, 'Lab Data/Lab Selector Validity', labDataName + '-VALIDITY', provider)
+            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
+            createSelector(labData, 'Lab Data/Lab Selector Limit Validity', labDataName + '-VALIDITY', provider, unitName)
+            loaded=loaded+1
+        elif className == "LAB-PHD-RELEASE-SELECTOR":
+            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
+            createSelector(labData, 'Lab Data/Lab Selector Limit Release', labDataName + '-RELEASE', provider, unitName)
             loaded=loaded+1
             
         elif className == "LAB-DCS-SQC":
-            createLabDCS(labData, provider)
-            createLabLimitSQC(labData, provider)
+            createLabValue(labData, provider, unitName)
+            createLabLimitSQC(labData, provider, unitName)
             loaded=loaded+1
         elif className == "LAB-LOCAL-VALIDITY":
-            createLabLocal(labData, provider)
-            createLabLimitValidity(labData, provider)
+            createLabValue(labData, provider, unitName)
+            createLabLimitValidity(labData, labDataName, provider, unitName)
             loaded=loaded+1
         else:
             print "Unexpected class: ", className
@@ -401,8 +479,8 @@ def createTags(rootContainer):
     print "Done - Successfully created: %i, errors: %i" % (loaded, error)
 
 
-def createSelector(labData, UDTType, labDataName, provider):    
-    path = "LabData/"    
+def createSelector(labData, UDTType, labDataName, provider, unitName):
+    path = "LabData/" + unitName + "/"
     parentPath = '[' + provider + ']' + path    
     tagPath = parentPath + "/" + labDataName
     tagExists = system.tag.exists(tagPath)
@@ -413,10 +491,10 @@ def createSelector(labData, UDTType, labDataName, provider):
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
 
-def createLabPhd(labData, provider):    
-    UDTType='Lab Data/Lab Value PHD'
+def createLabValue(labData, provider, unitName):    
+    UDTType='Lab Data/Lab Value'
     labDataName = labData.get("name")
-    path = "LabData/"    
+    path = "LabData/" + unitName + "/"
     parentPath = '[' + provider + ']' + path    
     tagPath = parentPath + "/" + labDataName
     tagExists = system.tag.exists(tagPath)
@@ -427,38 +505,10 @@ def createLabPhd(labData, provider):
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
 
-def createLabLocal(labData, site, provider):    
-    UDTType='Lab Data/Lab Value Local'
-    labDataName = labData.get("name")
-    path = "LabData/"    
-    parentPath = '[' + provider + ']' + path    
-    tagPath = parentPath + "/" + labDataName
-    tagExists = system.tag.exists(tagPath)
-    if tagExists:
-        print "  ", labDataName, " already exists!"
-    else:
-        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
-        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType})
-
-def createLabDCS(labData, provider):
-    UDTType='Lab Data/Lab Value DCS'
-    labDataName = labData.get("name")
-    path = "LabData/"    
-    parentPath = '[' + provider + ']' + path    
-    tagPath = parentPath + "/" + labDataName
-    tagExists = system.tag.exists(tagPath)
-    if tagExists:
-        print "  ", labDataName, " already exists!"
-    else:
-        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
-        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType})
-
-def createLabLimitSQC(labData, provider):    
+def createLabLimitSQC(labData, provider, unitName):    
     UDTType='Lab Data/Lab Limit SQC'
     labDataName = labData.get("name") + "-SQC"
-    path = "LabData/"    
+    path = "LabData/" + unitName + '/'
     parentPath = '[' + provider + ']' + path    
     tagPath = parentPath + "/" + labDataName
     tagExists = system.tag.exists(tagPath)
@@ -469,10 +519,10 @@ def createLabLimitSQC(labData, provider):
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
 
-def createLabLimitRelease(labData, provider):    
+def createLabLimitRelease(labData, provider, unitName):    
     UDTType='Lab Data/Lab Limit Release'
     labDataName = labData.get("name") + "-RELEASE"
-    path = "LabData/"    
+    path = "LabData/" + unitName + '/'
     parentPath = '[' + provider + ']' + path    
     tagPath = parentPath + "/" + labDataName
     tagExists = system.tag.exists(tagPath)
@@ -483,10 +533,10 @@ def createLabLimitRelease(labData, provider):
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
 
-def createLabLimitValidity(labData, provider):    
+def createLabLimitValidity(labData, labDataName, provider, unitName):    
     UDTType='Lab Data/Lab Limit Validity'
-    labDataName = labData.get("name") + "-VALIDITY"
-    path = "LabData/"    
+    labDataName = labDataName + "-VALIDITY"
+    path = "LabData/" + unitName + '/'
     parentPath = '[' + provider + ']' + path    
     tagPath = parentPath + "/" + labDataName
     tagExists = system.tag.exists(tagPath)
@@ -505,11 +555,16 @@ def loadUnitParameters(container):
         
         UDTType='Lab Data/Unit Parameter'
         parameterName = unitParameter.get("name")
-        
+        parent = unitParameter.get("parent")
+        if parent == "None":
+            path = "UnitParameter/"
+        else:
+            path = "UnitParameter/%s/" % (parent)
+            
         print "Creating a Unit Parameter: %s" % (parameterName)
         
         numberOfPoints  = unitParameter.get("numberOfPoints")
-        path = "UnitParameter/"
+        
         provider = "XOM"
         scanClass = "Default"
         

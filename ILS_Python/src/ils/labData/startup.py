@@ -5,7 +5,7 @@ Created on Apr 28, 2015
 '''
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.labDataToolkit")
+log = LogUtil.getLogger("com.ils.labData")
 
 def gateway():
     from ils.labData.version import version
@@ -27,6 +27,7 @@ def createTags(tagProvider):
     path = tagProvider + "Configuration/LabData/"
 
     data.append([path, "pollingEnabled", "Boolean", "True"])
+    data.append([path, "standardDeviationsToValidityLimits", "Float8", "4.5"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
