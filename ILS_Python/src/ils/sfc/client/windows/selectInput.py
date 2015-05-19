@@ -37,5 +37,5 @@ def cancelActionPerformed(event):
     from ils.sfc.client.util import sendResponse
     import system.gui.getParentWindow
     thisWindow = system.gui.getParentWindow(event)
-    sendResponse(event.source.parent.messageId, response)
+    sendResponse(event.source.parent.messageId, None)
     system.nav.closeWindow(thisWindow)

@@ -316,7 +316,6 @@ def simpleQuery(scopeContext, stepProperties):
     simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
 
 def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
-    # TODO: use results mode
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
@@ -324,17 +323,34 @@ def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
     recipeLocation = getRecipeScope(stepProperties) 
     keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
     key = getStepProperty(stepProperties, KEY) 
-    if keyMode == STATIC: # fetchMode must be SINGLE
-        if dbRows.rowCount > 1:
-            getLogger().warn('More than one row returned for single query')
-        # TODO: what about creation?
-        recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
-        copyRowToDict(dbRows, 0, recipeData)
+    create = (resultsMode == UPDATE_OR_CREATE)
+    if keyMode == STATIC: # TODO: fetchMode must be SINGLE
+        for rowNum in range(dbRows.rowCount):
+            transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, rowNum, create)
     elif keyMode == DYNAMIC:
         for rowNum in range(dbRows.rowCount):
             dynamicKey = dbRows.getValueAt(rowNum,key)
-            recipeData = s88Get(chartScope, stepScope, dynamicKey, recipeLocation)
-            copyRowToDict(dbRows, rowNum, recipeData)
+            transferSimpleQueryData(chartScope, stepScope, dynamicKey, recipeLocation, dbRows, rowNum, create)
+
+def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, rowNum, create ):
+    from system.ils.sfc import s88GetScope, s88ScopeChanged
+    from system.util import jsonEncode
+    if create:
+        recipeScope = s88GetScope(chartScope, stepScope, recipeLocation)
+        # create a structure like a deserialized Structure recipe data object
+        structData = dict()
+        recipeScope[key] = structData
+        structData['class'] = 'Structure'
+        structData['key'] = key
+        valueData = dict()
+        copyRowToDict(dbRows, rowNum, valueData, create)
+        jsonValue = jsonEncode(valueData)
+        print 'key', key, 'jsonValue', jsonValue
+        structData['value'] = jsonValue
+        s88ScopeChanged(chartScope, recipeScope)     
+    else:
+        recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
+        copyRowToDict(dbRows, rowNum, recipeData, create)
       
 def saveData(scopeContext, stepProperties):
     import time
@@ -409,7 +425,7 @@ def closeWindow(scopeContext, stepProperties):
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[INSTANCE_ID] = getChartRunId(chartScope)
-    sendMessageToClient(chartScope, CLOSE_WINDOW_HANDLER, payload)
+    sendMessageToClient(chartScope, 'sfcCloseWindow', payload)
 
 def showWindow(scopeContext, stepProperties):   
     chartScope = scopeContext.getChartScope()
@@ -418,17 +434,26 @@ def showWindow(scopeContext, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
-    sendMessageToClient(chartScope, SHOW_WINDOW_HANDLER, payload) 
+    sendMessageToClient(chartScope, 'sfcOpenWindow', payload) 
 
 def reviewData(scopeContext, stepProperties):    
-    from system.ils.sfc import getReviewDataConfig
-    chartScope = scopeContext.getChartScope()
+    from system.ils.sfc import getReviewData
+    from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC
+    chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     stepId = getStepId(stepProperties)
+    showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
+    if showAdvice:
+        primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
+        secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA_WITH_ADVICE) 
+    else:
+        primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA)        
+        secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA)        
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    showAdvice = hasStepProperty(stepProperties, REVIEW_DATA_WITH_ADVICE) 
-    payload[CONFIG] = getReviewDataConfig(stepId, showAdvice)
+    payload[PRIMARY_CONFIG] = getReviewData(chartScope, stepScope, primaryConfig, showAdvice)
+    payload[SECONDARY_CONFIG] = getReviewData(chartScope, stepScope, secondaryConfig, showAdvice)
+    payload[INSTANCE_ID] = getChartRunId(chartScope)
     messageId = sendMessageToClient(chartScope, REVIEW_DATA_HANDLER, payload) 
     
     responseMsg = waitOnResponse(messageId, chartScope)

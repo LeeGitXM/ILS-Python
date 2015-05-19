@@ -40,31 +40,7 @@ def runTests(testChartPaths, isolationMode, reportFile):
     initialChartProps[TEST_CHART_PATHS] = testChartPaths
     initialChartProps[TEST_REPORT_FILE] = reportFile
     system.util.sendMessage(project, 'sfcRunTests', initialChartProps, "G")
-   
-def openWindow(windowName, position, scale, windowProps):
-    '''Open the given window inside the main window with the given position and size'''
-    from ils.sfc.common.constants import LEFT, CENTER, TOP
-    newWindow = system.nav.openWindowInstance(windowName, windowProps)
-    mainWindow = newWindow.parent
-    position = position.lower()
-    width = mainWindow.getWidth() * scale
-    height = mainWindow.getHeight() * scale
-    if position.endswith(LEFT):
-        ulx = 0
-    elif position.endswith(CENTER):
-        ulx = .5 * mainWindow.getWidth() - .5 * width
-    else:
-        ulx = mainWindow.getWidth() - width
-
-    if position.startswith(TOP):
-        uly = 0
-    elif position.startswith(CENTER):
-        uly = .5 * mainWindow.getHeight() - .5 * height
-    else:
-        uly = mainWindow.getHeight() - height
-    newWindow.setSize(int(width), int(height))
-    newWindow.setLocation(int(ulx), int(uly))
-    return newWindow
+    
 
 def testQuery(query, isolationMode):
     from java.lang import Exception

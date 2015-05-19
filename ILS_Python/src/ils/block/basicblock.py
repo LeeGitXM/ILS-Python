@@ -15,6 +15,8 @@ class BasicBlock():
     
     
     def __init__(self):
+        # Each block has a state, whether it is meaningful or not
+        self.state = "UNSET"
         # Properties are a dictionary of attributes keyed by name
         # Properties attributes: name, value, editable, type(STRING,DOUBLE,INTEGER,BOOLEAN,OBJECT)
         #            The name attribute is set automatically to the key
@@ -40,7 +42,6 @@ class BasicBlock():
     
     def initialize(self):    
         self.className = 'xom.block.basicblock.BasicBlock'
-        self.state = "UNSET"
         
         
     # Called when a value has arrived on one of our input ports

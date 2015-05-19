@@ -212,9 +212,12 @@ class ControlPanel:
         window = self.windowsById[windowId]
         window.toFront()
         
-    def addWindow(self, label, windowPath, window, windowId):
+    def addWindow(self, toolbarButtonLabel, window):
+        from ils.sfc.client.windowUtil import getWindowId, getWindowPath
+        '''Register a window with this control panel. Create a toolbar button for it.'''
+        windowId = getWindowId(window)
         self.windowsById[windowId] = window
-        newRow = [label, windowPath, windowId, self.getChartRunId()]
+        newRow = [toolbarButtonLabel, getWindowPath(window), windowId, self.getChartRunId()]
         self.toolbarDataset = system.dataset.addRow(self.toolbarDataset, newRow)
         self.getToolbar().templateParams = self.toolbarDataset
 

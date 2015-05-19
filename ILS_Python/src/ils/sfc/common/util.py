@@ -119,6 +119,27 @@ def callMethod(methodPath, stringLiteral=""):
     result = localDict['result']
     return result
 
+def callMethodWithParams(methodPath, keys, values):
+    '''given a fully qualified package.method name, call the method and return the result'''
+    lastDotIndex = methodPath.rfind(".")
+    packageName = methodPath[0:lastDotIndex]
+    paramCount = 0
+    paramLiterals = ""
+    globalDict = dict()
+    for i in range(len(keys)):
+        key = keys[i]
+        value = values[i]
+        globalDict[key] = value
+        if paramCount > 0:
+            paramLiterals = paramLiterals + ", " 
+        paramLiterals = paramLiterals + key
+        paramCount = paramCount + 1
+    localDict = dict()
+    execString = "import " + packageName + "\nresult = " + methodPath + "(" + paramLiterals + ")\n"
+    exec(execString, globalDict, localDict)
+    result = localDict['result']
+    return result
+
 def getHoursMinutesSeconds(floatTotalSeconds):
     '''break a floating point seconds value into integer hours, minutes, seconds (round to nearest second)'''
     import math
