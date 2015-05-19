@@ -52,7 +52,8 @@ def getTopLevelProperties(chartProperties):
         chartProperties = chartProperties.get(PARENT)
     return chartProperties
 
-def getChartRunId(chartProperties):
+def getTopChartRunId(chartProperties):
+    '''Get the run id of the chart at the TOP enclosing level'''
     return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
     
 def getProject(chartProperties):

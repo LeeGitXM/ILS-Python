@@ -54,29 +54,35 @@ def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location,
     s88BasicSet(chartProperties, stepProperties, unitsPath, location, newUnitsName)
         
 def pauseChart(chartProperties):
+    '''pause the entire chart hierarchy--we pause the top level chart and expect
+       the eclosed charts to pause as well'''
     from system.sfc import pauseChart
-    from ils.sfc.common.constants import INSTANCE_ID
-    chartRunId = str(chartProperties[INSTANCE_ID])
+    from ils.sfc.common.util import getTopChartRunId
+    chartRunId = getTopChartRunId(chartProperties)
     pauseChart(chartRunId)
     
 def resumeChart(chartProperties):
+    '''resume the entire chart hierarchy--we pause the top level chart and expect
+       the eclosed charts to pause as well'''
     from system.sfc import resumeChart
-    from ils.sfc.common.constants import INSTANCE_ID
-    chartRunId = str(chartProperties[INSTANCE_ID])
+    from ils.sfc.common.util import getTopChartRunId
+    chartRunId = getTopChartRunId(chartProperties)
     resumeChart(chartRunId)
 
 def cancelChart(chartProperties):
+    '''cancel the entire chart hierarchy--we pause the top level chart and expect
+       the eclosed charts to pause as well'''
     from system.sfc import cancelChart
-    from ils.sfc.common.constants import INSTANCE_ID
-    chartRunId = str(chartProperties[INSTANCE_ID])
+    from ils.sfc.common.util import getTopChartRunId
+    chartRunId = getTopChartRunId(chartProperties)
     cancelChart(chartRunId)
 
 def addControlPanelMessage(chartProperties, message, ackRequired):
     from ils.sfc.common.sessions import addControlPanelMessage 
     from ils.sfc.common.util import getDatabaseName
-    from ils.sfc.gateway.util import escapeSingleQuotes, getChartRunId, sendUpdateControlPanelMsg
+    from ils.sfc.gateway.util import escapeSingleQuotes, getTopChartRunId, sendUpdateControlPanelMsg
     escapedMessage = escapeSingleQuotes(message)
-    chartRunId = getChartRunId(chartProperties)
+    chartRunId = getTopChartRunId(chartProperties)
     database = getDatabaseName(chartProperties)
     msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, database)
     sendUpdateControlPanelMsg(chartProperties)

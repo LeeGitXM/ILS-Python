@@ -176,16 +176,21 @@ def timedDelay(scopeContext, stepProperties):
         payload = dict()
         payload[CHART_NAME] = chartScope.chartPath
         payload[STEP_NAME] = getStepName(stepProperties)
-        payload[CHART_RUN_ID] = getChartRunId(chartScope)
+        payload[CHART_RUN_ID] = getTopChartRunId(chartScope)
         payload[MESSAGE] = str(delay) + ' ' + delayUnit + " remaining."
         payload[ACK_REQUIRED] = False
         payload[WINDOW_ID] = createUniqueId()
         payload[END_TIME] = endTimeEpochSecs
         sendMessageToClient(chartScope, POST_DELAY_NOTIFICATION_HANDLER, payload)
     
-    #TODO: put some logic in to check for cancellation/pausing
-    #may need to do more in Java
-    sleep(delaySeconds)
+    #TODO: checking the real clock time is probably more accurate
+    sleepIncrement = 5
+    while delaySeconds > 0:
+        from ils.sfc.common.constants import _STATUS, ACTIVATE, PAUSE, RESUME, CANCEL
+        status = stepScope[_STATUS]
+        print '_status', status
+        sleep(sleepIncrement)
+        delaySeconds = delaySeconds - sleepIncrement
     
     if postNotification:
         sendMessageToClient(chartScope, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
@@ -196,14 +201,14 @@ def postDelayNotification(scopeContext, stepProperties):
     message = getStepProperty(stepProperties, MESSAGE) 
     payload = dict()
     payload[MESSAGE] = message
-    payload[CHART_RUN_ID] = getChartRunId(chartScope)
+    payload[CHART_RUN_ID] = getTopChartRunId(chartScope)
     payload[WINDOW_ID] = createUniqueId()
     sendMessageToClient(chartScope, POST_DELAY_NOTIFICATION_HANDLER, payload)
 
 def deleteDelayNotifications(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     payload = dict()
-    payload[CHART_RUN_ID] = getChartRunId(chartScope)
+    payload[CHART_RUN_ID] = getTopChartRunId(chartScope)
     sendMessageToClient(chartScope, DELETE_DELAY_NOTIFICATIONS_HANDLER, payload)
 
 def enableDisable(scopeContext, stepProperties):
@@ -424,13 +429,13 @@ def closeWindow(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    payload[INSTANCE_ID] = getChartRunId(chartScope)
+    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     sendMessageToClient(chartScope, 'sfcCloseWindow', payload)
 
 def showWindow(scopeContext, stepProperties):   
     chartScope = scopeContext.getChartScope()
     payload = dict()
-    payload[INSTANCE_ID] = getChartRunId(chartScope)
+    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
@@ -453,7 +458,7 @@ def reviewData(scopeContext, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[PRIMARY_CONFIG] = getReviewData(chartScope, stepScope, primaryConfig, showAdvice)
     payload[SECONDARY_CONFIG] = getReviewData(chartScope, stepScope, secondaryConfig, showAdvice)
-    payload[INSTANCE_ID] = getChartRunId(chartScope)
+    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     messageId = sendMessageToClient(chartScope, REVIEW_DATA_HANDLER, payload) 
     
     responseMsg = waitOnResponse(messageId, chartScope)

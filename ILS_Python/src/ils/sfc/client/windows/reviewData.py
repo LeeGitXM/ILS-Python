@@ -13,16 +13,20 @@ def cancelActionPerformed(event):
 def getTableData():
     '''Get the (possibly modified) data from the table and put it back into JSON'''
 
-def defaultPostingMethod(window, primaryDataTable, secondaryDataTable):
+def defaultPostingMethod(window, primaryDataTable, primaryTabLabel, secondaryDataTable, secondaryTabLabel):
+    import system.dataset
     primaryDataTableComponent = window.getRootContainer().getComponent('primaryDataTable') 
     primaryDataTableComponent.data = primaryDataTable
-    secondaryDataTableComponent = window.getRootContainer().getComponent('secondaryDataTable') 
+    secondaryDataTableComponent = window.getRootContainer().getComponent('secondaryDataTable')
     secondaryDataTableComponent.data = secondaryDataTable
+    tabsComponent = window.getRootContainer().getComponent('tabs') 
+    tabsComponent.tabData = system.dataset.updateRow(tabsComponent.tabData, 0, {'DISPLAY_NAME' : primaryTabLabel})
+    tabsComponent.tabData = system.dataset.updateRow(tabsComponent.tabData, 1, {'DISPLAY_NAME' : secondaryTabLabel})
     
 def windowClosed(event, response):
     from ils.sfc.client.util import sendResponse
     from ils.sfc.client.controlPanel import getController
-    from ils.sfc.client.windowUtil import getWindowId, getMessageId, getChartRunId
+    from ils.sfc.client.windowUtil import getWindowId, getMessageId, getChartRunId 
     import system.gui.getParentWindow
     window = system.gui.getParentWindow(event)
         

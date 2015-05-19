@@ -7,7 +7,7 @@ Created on Sep 30, 2014
 '''
 from system.ils.sfc import getResponse
 from ils.sfc.common.constants import *
-from ils.sfc.common.util import getChartRunId
+from ils.sfc.common.util import getTopChartRunId
 
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
