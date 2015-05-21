@@ -54,7 +54,7 @@ def setQueue(scopeContext, stepProperties):
     '''
     from ils.sfc.gateway.api import setCurrentMessageQueue
     chartScope = scopeContext.getChartScope()
-    queue = getStepProperty(stepProperties, QUEUE)
+    queue = getStepProperty(stepProperties, MESSAGE_QUEUE)
     setCurrentMessageQueue(chartScope, queue)
 
 def showQueue(scopeContext, stepProperties):
@@ -66,7 +66,7 @@ def showQueue(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     currentMsgQueue = getCurrentMessageQueue(chartScope)
     payload = dict()
-    payload[QUEUE] = currentMsgQueue 
+    payload[MESSAGE_QUEUE] = currentMsgQueue 
     sendMessageToClient(chartScope, SHOW_QUEUE_HANDLER, payload)
 
 def clearQueue(scopeContext, stepProperties):

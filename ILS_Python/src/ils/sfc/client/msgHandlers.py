@@ -115,9 +115,9 @@ def sfcSelectInput(payload):
     system.nav.openWindow('SFC/SelectInput', payload)
 
 def sfcShowQueue(payload):
-    from ils.sfc.common.constants import QUEUE
+    from ils.sfc.common.constants import MESSAGE_QUEUE
     initialProps = dict()
-    initialProps['key'] = payload[QUEUE]
+    initialProps['key'] = payload[MESSAGE_QUEUE]
     system.nav.openWindow('Queue/Message Queue', initialProps)
 
 def sfcShowWindow(payload):

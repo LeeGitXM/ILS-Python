@@ -85,7 +85,6 @@ PRINT_FILE = "printFile"
 PRIORITY = "priority"
 PROJECT = 'project'
 PROMPT = "prompt"
-QUEUE = "queue"
 RECIPE = "recipe"
 RECIPE_LOCATION = "recipeLocation" 
 RECIPE_DATA = "recipeData"
