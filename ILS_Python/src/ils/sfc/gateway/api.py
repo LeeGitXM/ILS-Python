@@ -93,3 +93,10 @@ def getCurrentMessageQueue(chartProperties):
     from ils.sfc.common.util import getTopLevelProperties
     topScope = getTopLevelProperties(chartProperties)
     return topScope[MESSAGE_QUEUE]
+
+def setCurrentMessageQueue(chartProperties, queue):
+    from ils.sfc.common.constants import MESSAGE_QUEUE
+    from ils.sfc.common.util import getTopLevelProperties
+    topScope = getTopLevelProperties(chartProperties)
+    topScope[MESSAGE_QUEUE] = queue
+

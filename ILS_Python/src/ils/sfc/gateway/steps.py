@@ -52,12 +52,10 @@ def setQueue(scopeContext, stepProperties):
     action for java SetQueueStep
     sets the chart's current message queue
     '''
+    from ils.sfc.gateway.api import setCurrentMessageQueue
     chartScope = scopeContext.getChartScope()
-    #stepScope = scopeContext.getStepScope()
     queue = getStepProperty(stepProperties, QUEUE)
-    #recipeLocation = getDefaultMessageQueueScope()
-    #s88Set(chartScope, stepScope, QUEUE, queue, recipeLocation)
-    chartScope[QUEUE] = queue
+    setCurrentMessageQueue(chartScope, queue)
 
 def showQueue(scopeContext, stepProperties):
     '''
@@ -188,7 +186,6 @@ def timedDelay(scopeContext, stepProperties):
     while delaySeconds > 0:
         from ils.sfc.common.constants import _STATUS, ACTIVATE, PAUSE, RESUME, CANCEL
         status = stepScope[_STATUS]
-        print '_status', status
         sleep(sleepIncrement)
         delaySeconds = delaySeconds - sleepIncrement
     
