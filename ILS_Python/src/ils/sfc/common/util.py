@@ -85,13 +85,13 @@ def getTimeFactor(chartProperties):
 
 def substituteProvider(chartProperties, tagPath):
     '''alter the given tag path to reflect the isolation mode provider setting'''
-    if tagPath.startsWith('[Client]') or tagPath.startsWith('[System]'):
+    if tagPath.startswith('[Client]') or tagPath.startswith('[System]'):
         return tagPath
     else:
         provider = getTagProvider(chartProperties)
-        rbIndex = tagPath.indexOf(']')
+        rbIndex = tagPath.index(']')
         if rbIndex >= 0:
-            return provider + tagPath[rbIndex+1:len(tagPath)]
+            return '[' + provider + ']' + tagPath[rbIndex+1:len(tagPath)]
         else:
             # no provider was specified?! can't to anything
             return tagPath
