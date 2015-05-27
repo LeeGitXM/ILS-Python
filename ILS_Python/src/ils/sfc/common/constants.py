@@ -30,12 +30,13 @@ CANCELED = 'canceled'
 CHART_NAME = 'chartName'
 CHART_PROPERTIES = 'chartProperties'
 CHART_RUN_ID = 'chartRunId'
-CLASS_NAME = 'className'
-COMMAND = "callback"
 CHOICES= "choices"
 CHOICES_KEY = "choicesKey"
 CHOICES_RECIPE_LOCATION = "choicesRecipeLocation"
+CLASS_NAME = 'className'
+COMMAND = "callback"
 COMPUTER = 'computer'
+CONFIG = 'config'
 CREATE_TIME = 'createTime'
 CREATE = 'createTime'
 DATA = "data"
@@ -148,6 +149,7 @@ SUPERIOR_SCOPE ='superior'
 PHASE_SCOPE ='phase'
 OPERATION_SCOPE = 'operation'
 GLOBAL_SCOPE = 'global'
+TAG_SCOPE = 'tag'
 # TAG is also acceptable as a scope
 
 # chart statuses corresponding to IA's ChartStateEnum in java

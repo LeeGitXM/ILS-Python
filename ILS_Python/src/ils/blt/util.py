@@ -46,7 +46,7 @@ def createBlockInstance(className,parent,uid,result):
 def evaluate(block):
 
     if block!=None:
-        block.evluate()
+        block.evaluate()
 
 # Given an instance of an executable block,
 # write its properties to the supplied list (properties)

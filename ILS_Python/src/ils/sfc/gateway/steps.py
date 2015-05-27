@@ -271,15 +271,23 @@ def dialogMessage(scopeContext, stepProperties):
 
 def collectData(scopeContext, stepProperties):
     from ils.sfc.common.util import substituteProvider
+    from ils.sfc.common.constants import CONFIG
+    from system.util import jsonDecode
+
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    tagPath = getStepProperty(stepProperties, TAG_PATH)
-    tagPath = substituteProvider(chartScope, tagPath)
-    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    key = getStepProperty(stepProperties, KEY) 
-    value = system.tag.read(tagPath)
-    s88Set(chartScope, stepScope, key, value, recipeLocation )
-    
+    configJson = getStepProperty(stepProperties, CONFIG)
+    config = jsonDecode(configJson)
+    # config.errorHandling
+    for row in config['rows']:
+        tagPath = substituteProvider(chartScope, row['tagPath'])
+        tagValue = system.tag.read(tagPath)
+        # TODO: row.defaultValue row.valueType row.pastWindow 
+        if tagValue.quality.isGood():
+            s88Set(chartScope, stepScope, row['recipeKey'], tagValue.value, row['location'] )
+        else:
+            pass
+        
 def getInput(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
