@@ -33,7 +33,8 @@ def removeTags(paths):
 def write(tagPath,command):
     pass
 
-
-
 def writeAll(tags, vals):
     return True
+
+def queryTagHistory():
+    pass

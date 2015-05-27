@@ -80,6 +80,9 @@ def clearQueue(scopeContext, stepProperties):
     database = getDatabaseName(chartScope)
     clear(currentMsgQueue, database)
 
+def saveQueue(scopeContext, stepProperties):
+    pass
+
 def yesNo(scopeContext, stepProperties):
     '''
     Action for java YesNoStep
@@ -270,10 +273,9 @@ def dialogMessage(scopeContext, stepProperties):
     sendMessageToClient(chartScope, DIALOG_MSG_HANDLER, payload)
 
 def collectData(scopeContext, stepProperties):
-    from ils.sfc.common.util import substituteProvider
-    from ils.sfc.common.constants import CONFIG
+    from ils.sfc.common.util import substituteProvider, getTopLevelProperties
     from system.util import jsonDecode
-
+    
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     configJson = getStepProperty(stepProperties, CONFIG)
@@ -281,13 +283,37 @@ def collectData(scopeContext, stepProperties):
     # config.errorHandling
     for row in config['rows']:
         tagPath = substituteProvider(chartScope, row['tagPath'])
-        tagValue = system.tag.read(tagPath)
-        # TODO: row.defaultValue row.valueType row.pastWindow 
-        if tagValue.quality.isGood():
+        if row.valueType == 'current':
+            tagValue = system.tag.read(tagPath)
+        else:
+            tagPaths = [tagPath]
+            if row.valueType == 'stdDeviation':
+                 tagValues = system.tag.queryTagHistory(tagPaths, intervalHours=row['pastWindow'], ignoreBadQuality=True)
+                 # how to get std dev??
+            else:
+                if row.valueType == 'average':
+                    mode = 'Average'
+                elif row.valueType == 'minimum':
+                    mode = 'Minimum'
+                elif row.valueType == 'maximum':
+                    mode = 'Maximum'
+                tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, intervalHours=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
+                tagValue = tagValues.getValueAt(0,0)
+        # ?? how do we tell if there was an error??
+        readOk = True
+        if readOk:
             s88Set(chartScope, stepScope, row['recipeKey'], tagValue.value, row['location'] )
         else:
-            pass
-        
+            errorHandling = config['errorHandling']
+            if errorHandling == 'abort':
+                topRunId = getTopChartRunId(chartScope)
+                system.sfc.cancelChart(topRunId)
+            elif errorHandling == 'timeout':
+                topScope = getTopLevelProperties(chartScope)
+                topScope['timeout'] = True
+            elif errorHandling == 'defaultValue':
+                s88Set(chartScope, stepScope, row['recipeKey'], row['defaultValue'], row['location'] )
+                
 def getInput(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
