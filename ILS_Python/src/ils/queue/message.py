@@ -37,7 +37,7 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
             " order by Timestamp DESC" % (queueKey)
      
     print SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, db)
     
     header = "Created,Severity,Message\n"
     system.file.writeFile(filepath, header, False)

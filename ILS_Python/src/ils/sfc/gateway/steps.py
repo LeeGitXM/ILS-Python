@@ -81,7 +81,14 @@ def clearQueue(scopeContext, stepProperties):
     clear(currentMsgQueue, database)
 
 def saveQueue(scopeContext, stepProperties):
-    pass
+    from ils.sfc.gateway.api import getCurrentMessageQueue
+    from ils.queue.message import save
+    chartScope = scopeContext.getChartScope()
+    currentMsgQueue = getCurrentMessageQueue(chartScope)
+    database = getDatabaseName(chartScope)
+    print 'database name', database
+    filepath = createFilepath(chartScope, stepProperties)
+    save(currentMsgQueue, True, filepath, database)
 
 def yesNo(scopeContext, stepProperties):
     '''
@@ -388,39 +395,23 @@ def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, 
         recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
         copyRowToDict(dbRows, rowNum, recipeData, create)
       
+    
 def saveData(scopeContext, stepProperties):
-    import time
     from system.ils.sfc import getRecipeDataText
     # extract property values
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    directory = getStepProperty(stepProperties, DIRECTORY) 
-    fileName = getStepProperty(stepProperties, FILENAME) 
-    extension = getStepProperty(stepProperties, EXTENSION) 
-    doTimestamp = getStepProperty(stepProperties, TIMESTAMP) 
     printFile = getStepProperty(stepProperties, PRINT_FILE) 
     viewFile = getStepProperty(stepProperties, VIEW_FILE) 
-    
-    # lookup the directory if it is a variab,e
-    if directory.startswith('['):
-        directory = chartScope.get(directory, None)
-        if directory == None:
-            getLogger().error("directory key " + directory + " not found")
-            
-    # create timestamp if requested
-    if doTimestamp: 
-        timestamp = "-" + time.strftime("%Y%m%d%H%M")
-    else:
-        timestamp = ""
-    
+        
     # get the data at the given location
     recipeData = getRecipeDataText(chartScope, stepScope, recipeLocation)
     if chartScope == None:
         getLogger.error("data for location " + recipeLocation + " not found")
     
     # write the file
-    filepath = directory + '/' + fileName + timestamp + extension
+    filepath = createFilepath(chartScope, stepProperties)
     fp = open(filepath, 'w')
     writeObj(recipeData, 0, fp)
     fp.close()

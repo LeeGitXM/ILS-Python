@@ -150,5 +150,3 @@ def getHoursMinutesSeconds(floatTotalSeconds):
     floatSecondsRemainder = floatSecondsRemainder - intMinutes * 60
     intSeconds = int(round(floatSecondsRemainder))
     return intHours, intMinutes, intSeconds
-
-    
