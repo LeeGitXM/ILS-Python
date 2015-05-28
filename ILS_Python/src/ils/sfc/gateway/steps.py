@@ -281,36 +281,56 @@ def dialogMessage(scopeContext, stepProperties):
 
 def collectData(scopeContext, stepProperties):
     from ils.sfc.common.util import substituteProvider, getTopLevelProperties
+    from ils.sfc.gateway.util import getChartLogger
     from system.util import jsonDecode
-    
+
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    logger = getChartLogger(chartScope, stepScope)
     configJson = getStepProperty(stepProperties, CONFIG)
     config = jsonDecode(configJson)
     # config.errorHandling
     for row in config['rows']:
         tagPath = substituteProvider(chartScope, row['tagPath'])
-        if row.valueType == 'current':
-            tagValue = system.tag.read(tagPath)
+        valueType = row['valueType']
+        if valueType == 'current':
+            try:
+                tagReadResult = system.tag.read(tagPath)
+                tagValue = tagReadResult.value
+                readOk = tagReadResult.quality.isGood()
+            except:
+                readOk = False
         else:
             tagPaths = [tagPath]
-            if row.valueType == 'stdDeviation':
-                 tagValues = system.tag.queryTagHistory(tagPaths, intervalHours=row['pastWindow'], ignoreBadQuality=True)
+            if valueType == 'stdDeviation':
+                pass
+                 # tagValues = system.tag.queryTagHistory(tagPaths, intervalHours=row['pastWindow'], ignoreBadQuality=True)
                  # how to get std dev??
             else:
-                if row.valueType == 'average':
+                if valueType == 'average':
                     mode = 'Average'
-                elif row.valueType == 'minimum':
+                elif valueType == 'minimum':
                     mode = 'Minimum'
-                elif row.valueType == 'maximum':
+                elif valueType == 'maximum':
                     mode = 'Maximum'
-                tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, intervalHours=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
-                tagValue = tagValues.getValueAt(0,0)
-        # ?? how do we tell if there was an error??
-        readOk = True
+                else:
+                    logger.error("Unknown value type" + valueType)
+                    mode = 'Average'
+                try:
+                    tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, intervalHours=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
+                    # ?? how do we tell if there was an error??
+                    if tagValues.rowCount == 1:
+                        tagValue = tagValues.getValueAt(0,1)
+                        readOk = True
+                    else:
+                        readOk = False
+                except:
+                    readOk = False
+        print 'readOk', readOk
         if readOk:
-            s88Set(chartScope, stepScope, row['recipeKey'], tagValue.value, row['location'] )
+            s88Set(chartScope, stepScope, row['recipeKey'], tagValue, row['location'])
         else:
+            # ?? should we write a None value to recipe data for abort/timeout cases ??
             errorHandling = config['errorHandling']
             if errorHandling == 'abort':
                 topRunId = getTopChartRunId(chartScope)
