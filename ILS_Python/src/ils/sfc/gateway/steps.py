@@ -194,7 +194,7 @@ def timedDelay(scopeContext, stepProperties):
     #TODO: checking the real clock time is probably more accurate
     sleepIncrement = 5
     while delaySeconds > 0:
-        from ils.sfc.common.constants import _STATUS, ACTIVATE, PAUSE, RESUME, CANCEL
+        from ils.sfc.common.constants import _STATUS
         status = stepScope[_STATUS]
         sleep(sleepIncrement)
         delaySeconds = delaySeconds - sleepIncrement
@@ -281,7 +281,7 @@ def dialogMessage(scopeContext, stepProperties):
 
 def collectData(scopeContext, stepProperties):
     from ils.sfc.common.util import substituteProvider, getTopLevelProperties
-    from ils.sfc.gateway.util import getChartLogger
+    # from ils.sfc.gateway.util import getChartLogger
     from system.util import jsonDecode
 
     chartScope = scopeContext.getChartScope()
@@ -304,8 +304,8 @@ def collectData(scopeContext, stepProperties):
             tagPaths = [tagPath]
             if valueType == 'stdDeviation':
                 pass
-                 # tagValues = system.tag.queryTagHistory(tagPaths, intervalHours=row['pastWindow'], ignoreBadQuality=True)
-                 # how to get std dev??
+                # tagValues = system.tag.queryTagHistory(tagPaths, intervalHours=row['pastWindow'], ignoreBadQuality=True)
+                # how to get std dev??
             else:
                 if valueType == 'average':
                     mode = 'Average'
@@ -461,7 +461,6 @@ def printFile(scopeContext, stepProperties):
     sendMessageToClient(chartScope, PRINT_FILE_HANDLER, payload)
 
 def printWindow(scopeContext, stepProperties):   
-    from ils.sfc.common.util import getProject
     chartScope = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
@@ -488,7 +487,6 @@ def reviewData(scopeContext, stepProperties):
     from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
-    stepId = getStepId(stepProperties)
     showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
     if showAdvice:
         primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
@@ -508,5 +506,18 @@ def reviewData(scopeContext, stepProperties):
     recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
     recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
     s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
+
+def confirmControllers(scopeContext, stepProperties): 
+    pass   
+
+def writeOutput(scopeContext, stepProperties): 
+    pass   
+
+def monitorPV(scopeContext, stepProperties): 
+    pass   
+
+def monitorDownload(scopeContext, stepProperties): 
+    pass   
+
 
 
