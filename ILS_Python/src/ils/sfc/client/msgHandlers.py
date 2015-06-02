@@ -198,3 +198,6 @@ def sfcTestAddAction(payload):
     from ils.sfc.common.constants import CHART_NAME, COMMAND, INSTANCE_ID
     from ils.sfc.client.test import addAction
     addAction(payload[COMMAND], payload[CHART_NAME], payload[INSTANCE_ID])
+    
+def sfcMonitorDownloads(payload):
+    pass

@@ -49,4 +49,3 @@ def togglePrimary(window):
     else:
         primaryTable.visible = False
         secondaryTable.visible = True
-  

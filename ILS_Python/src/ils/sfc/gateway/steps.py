@@ -283,6 +283,7 @@ def collectData(scopeContext, stepProperties):
     from ils.sfc.common.util import substituteProvider, getTopLevelProperties
     # from ils.sfc.gateway.util import getChartLogger
     from system.util import jsonDecode
+    from ils.sfc.gateway.util import standardDeviation
 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -303,9 +304,9 @@ def collectData(scopeContext, stepProperties):
         else:
             tagPaths = [tagPath]
             if valueType == 'stdDeviation':
-                pass
-                # tagValues = system.tag.queryTagHistory(tagPaths, intervalHours=row['pastWindow'], ignoreBadQuality=True)
-                # how to get std dev??
+                tagValues = system.tag.queryTagHistory(tagPaths, rangeHours=row['pastWindow'], ignoreBadQuality=True)
+                tagValue = standardDeviation(tagValues, 1)
+                readOk = True
             else:
                 if valueType == 'average':
                     mode = 'Average'
@@ -317,7 +318,7 @@ def collectData(scopeContext, stepProperties):
                     logger.error("Unknown value type" + valueType)
                     mode = 'Average'
                 try:
-                    tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, intervalHours=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
+                    tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, rangeHours=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
                     # ?? how do we tell if there was an error??
                     if tagValues.rowCount == 1:
                         tagValue = tagValues.getValueAt(0,1)
@@ -326,7 +327,6 @@ def collectData(scopeContext, stepProperties):
                         readOk = False
                 except:
                     readOk = False
-        print 'readOk', readOk
         if readOk:
             s88Set(chartScope, stepScope, row['recipeKey'], tagValue, row['location'])
         else:

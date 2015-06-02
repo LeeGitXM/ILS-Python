@@ -225,3 +225,17 @@ def getChartLogger(chartScope, stepProperties):
     # TODO: use step name to make logger
     import logging
     return logging.getLogger('ilssfc')
+
+def standardDeviation(dataset, column):
+    '''calculate the standard deviation of the given column of the dataset'''
+    import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation as StandardDeviation
+    import jarray
+    stdDev = StandardDeviation()
+    pvalues = []
+    for i in range(dataset.rowCount):
+        value = dataset.getValueAt(i, column)
+        pvalues.append(value)
+    jvalues = jarray.array(pvalues, 'd')
+    return stdDev.evaluate(jvalues)
+    
+    
