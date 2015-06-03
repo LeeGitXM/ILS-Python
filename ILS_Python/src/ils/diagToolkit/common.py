@@ -181,8 +181,9 @@ def fetchActiveOutputsForPost(post, database=""):
     SQL = "select distinct A.ApplicationName, QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
         " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId "\
-        " from TkPost P, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
-        " where P.PostId = A.PostId "\
+        " from TkPost P, TkUnit U, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
+        " where P.PostId = U.PostId "\
+        " and U.UnitId = A.UnitId "\
         " and A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
@@ -207,12 +208,13 @@ def fetchQuantOutput(quantOutputId, database=""):
     return pds
 
 # Fetch applications for a console
-def fetchApplicationsForConsole(console, database=""):
-    SQL = "select distinct A.Application "\
-        " from DtConsole C, DtApplication A "\
-        " where C.ConsoleId = A.ConsoleId "\
-        " and C.Console = '%s' "\
-        " order by A.Application"  % (console)
+def fetchApplicationsForPost(post, database=""):
+    SQL = "select distinct A.ApplicationName "\
+        " from TkPost P, TkUnit U, DtApplication A "\
+        " where P.PostId = U.PostId "\
+        " and U.UnitId = A.UnitId "\
+        " and P.Post = '%s' "\
+        " order by A.ApplicationName"  % (post)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds

@@ -14,7 +14,9 @@ def launchChooser(rootContainer):
     post = rootContainer.selectedPost
     window=system.nav.openWindow("Lab Data/Manual Entry Value Chooser",{"post": post})
     system.nav.centerWindow(window)
-    
+
+
+  
 def chooserInitialization(rootContainer):
     print "In ils.labData.manualEntry.chooserInitialization()..."
     post = rootContainer.post

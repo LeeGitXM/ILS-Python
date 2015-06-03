@@ -3,7 +3,7 @@ Created on Sep 9, 2014
 
 @author: ILS
 '''
-import  system
+import  system, string
 
 def insert(queueKey, status, message, db = ''):
     from ils.queue.commons import getQueueId
@@ -16,28 +16,51 @@ def insert(queueKey, status, message, db = ''):
 
     system.db.runUpdateQuery(SQL, db)
 
-# Write the contents of the queu to a file
-
-def save(queueKey, useCheckpoint, filepath, db = ''):
-
-    if useCheckpoint:
+def queueSQL(queueKey, useCheckpoint, order):
+    
+    SQL = "select checkpointTimestamp from QueueMaster where QueueKey = '%s'" % (queueKey)
+    checkPointTimestamp = system.db.runScalarQuery(SQL)
+    
+    if useCheckpoint and checkPointTimestamp != None:
         SQL = "select Timestamp, MessageStatus as Status, Message "\
             " from QueueDetail D, QueueMaster M, QueueMessageStatus QMS " \
             " where M.QueueKey = '%s' "\
             " and M.QueueId = D.QueueId "\
             " and D.StatusId = QMS.StatusId " \
             " and D.Timestamp > M.CheckpointTimestamp "\
-            " order by Timestamp DESC" % (queueKey)
+            " order by Timestamp %s" % (queueKey, order)
     else:
         SQL = "select top 1000 Timestamp, MessageStatus as Status, Message "\
             " from QueueDetail D, QueueMaster M, QueueMessageStatus QMS " \
             " where M.QueueKey = '%s' "\
             " and M.QueueId = D.QueueId "\
             " and D.StatusId = QMS.StatusId " \
-            " order by Timestamp DESC" % (queueKey)
-     
+            " order by Timestamp %s" % (queueKey, order)
+    
     print SQL
+    return SQL 
+            
+# Write the contents of the queue to a file
+def save(queueKey, useCheckpoint, filepath, db = ''):
+
+    if filepath.find('*') > -1:
+        # Get the timestamp formatted for including in a filename
+        from ils.common.util import getDate
+        theDate = getDate()
+    
+        from ils.common.util import formatDateTime
+        theDate = formatDateTime(theDate, 'yyyy-MM-dd-hh-mm-ss')
+        print "The timestamp is: ", theDate
+
+        filepath = string.replace(filepath, '*', theDate)
+        print "The new filename is: ", filepath
+
+
+
+    SQL = queueSQL(queueKey, useCheckpoint, "ASC")
     pds = system.db.runQuery(SQL)
+    
+    # Note: Noetpad does not recognize \n as a carriage return but worpad does.
     
     header = "Created,Severity,Message\n"
     system.file.writeFile(filepath, header, False)
@@ -54,6 +77,25 @@ def clear(queueKey, db = ''):
     SQL = "update QueueMaster set CheckpointTimestamp = getdate() where QueueId = %i" % (queueId)
 
     system.db.runUpdateQuery(SQL, db)
+
+
+def view(queueKey, useCheckpoint=False):
+    windowName = 'Queue/Message Queue'
+    
+    # First check if this queue is already displayed
+    windows = system.gui.findWindow(windowName)
+    for window in windows:
+        qk = window.rootContainer.key
+        print "found a window with key: ", qk
+        if qk == queueKey:
+            system.nav.centerWindow(window)
+            system.gui.messageBox("The queue is already open!")
+            return
+
+    print "Opening a queue window..."
+    window=system.nav.openWindowInstance(windowName, {'key': queueKey, 'useCheckpoint': useCheckpoint})
+    system.nav.centerWindow(window)
+    
 
 def initializeView(rootContainer):
     queueKey = rootContainer.getPropertyValue("key")
@@ -87,23 +129,7 @@ def updateView(rootContainer):
     queueKey = rootContainer.key
     useCheckpoint = rootContainer.useCheckpoint
     
-    if useCheckpoint:
-        SQL = "select Timestamp, MessageStatus as Status, '<HTML>' + Message as Message "\
-            " from QueueDetail D, QueueMaster M, QueueMessageStatus QMS " \
-            " where M.QueueKey = '%s' "\
-            " and M.QueueId = D.QueueId "\
-            " and D.StatusId = QMS.StatusId " \
-            " and D.Timestamp > M.CheckpointTimestamp "\
-            " order by Timestamp DESC" % (queueKey)
-    else:
-        SQL = "select top 1000 Timestamp, MessageStatus as Status, '<HTML>' + Message as Message "\
-            " from QueueDetail D, QueueMaster M, QueueMessageStatus QMS " \
-            " where M.QueueKey = '%s' "\
-            " and M.QueueId = D.QueueId "\
-            " and D.StatusId = QMS.StatusId " \
-            " order by Timestamp DESC" % (queueKey)
-
+    SQL = queueSQL(queueKey, useCheckpoint, "DESC")
     pds = system.db.runQuery(SQL)
     table.data = pds
     
-     
