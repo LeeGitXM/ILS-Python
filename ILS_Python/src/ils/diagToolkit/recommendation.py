@@ -31,9 +31,10 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         exec("import %s" % (package))
         exec("from %s import *" % (package))
 
-    try:        
-        func = eval(calculationMethod)
-        textRecommendation, rawRecommendationList = func()
+    try:
+        method=calculationMethod+"(application,finalDiagnosis)"        
+        func = eval(method)
+        textRecommendation, rawRecommendationList = func(application,finalDiagnosis)
         log.trace("  The recommendations returned from the calculation method are: %s" % (str(rawRecommendationList)))
     
     except:

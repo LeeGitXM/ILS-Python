@@ -80,6 +80,16 @@ def clearQueue(scopeContext, stepProperties):
     database = getDatabaseName(chartScope)
     clear(currentMsgQueue, database)
 
+def saveQueue(scopeContext, stepProperties):
+    from ils.sfc.gateway.api import getCurrentMessageQueue
+    from ils.queue.message import save
+    chartScope = scopeContext.getChartScope()
+    currentMsgQueue = getCurrentMessageQueue(chartScope)
+    database = getDatabaseName(chartScope)
+    print 'database name', database
+    filepath = createFilepath(chartScope, stepProperties)
+    save(currentMsgQueue, True, filepath, database)
+
 def yesNo(scopeContext, stepProperties):
     '''
     Action for java YesNoStep
@@ -184,7 +194,7 @@ def timedDelay(scopeContext, stepProperties):
     #TODO: checking the real clock time is probably more accurate
     sleepIncrement = 5
     while delaySeconds > 0:
-        from ils.sfc.common.constants import _STATUS, ACTIVATE, PAUSE, RESUME, CANCEL
+        from ils.sfc.common.constants import _STATUS
         status = stepScope[_STATUS]
         sleep(sleepIncrement)
         delaySeconds = delaySeconds - sleepIncrement
@@ -270,24 +280,67 @@ def dialogMessage(scopeContext, stepProperties):
     sendMessageToClient(chartScope, DIALOG_MSG_HANDLER, payload)
 
 def collectData(scopeContext, stepProperties):
-    from ils.sfc.common.util import substituteProvider
-    from ils.sfc.common.constants import CONFIG
+    from ils.sfc.common.util import substituteProvider, getTopLevelProperties
+    # from ils.sfc.gateway.util import getChartLogger
     from system.util import jsonDecode
+    from ils.sfc.gateway.util import standardDeviation
 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    logger = getChartLogger(chartScope, stepScope)
     configJson = getStepProperty(stepProperties, CONFIG)
     config = jsonDecode(configJson)
     # config.errorHandling
     for row in config['rows']:
         tagPath = substituteProvider(chartScope, row['tagPath'])
-        tagValue = system.tag.read(tagPath)
-        # TODO: row.defaultValue row.valueType row.pastWindow 
-        if tagValue.quality.isGood():
-            s88Set(chartScope, stepScope, row['recipeKey'], tagValue.value, row['location'] )
+        valueType = row['valueType']
+        if valueType == 'current':
+            try:
+                tagReadResult = system.tag.read(tagPath)
+                tagValue = tagReadResult.value
+                readOk = tagReadResult.quality.isGood()
+            except:
+                readOk = False
         else:
-            pass
-        
+            tagPaths = [tagPath]
+            if valueType == 'stdDeviation':
+                tagValues = system.tag.queryTagHistory(tagPaths, rangeHours=row['pastWindow'], ignoreBadQuality=True)
+                tagValue = standardDeviation(tagValues, 1)
+                readOk = True
+            else:
+                if valueType == 'average':
+                    mode = 'Average'
+                elif valueType == 'minimum':
+                    mode = 'Minimum'
+                elif valueType == 'maximum':
+                    mode = 'Maximum'
+                else:
+                    logger.error("Unknown value type" + valueType)
+                    mode = 'Average'
+                try:
+                    tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, rangeHours=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
+                    # ?? how do we tell if there was an error??
+                    if tagValues.rowCount == 1:
+                        tagValue = tagValues.getValueAt(0,1)
+                        readOk = True
+                    else:
+                        readOk = False
+                except:
+                    readOk = False
+        if readOk:
+            s88Set(chartScope, stepScope, row['recipeKey'], tagValue, row['location'])
+        else:
+            # ?? should we write a None value to recipe data for abort/timeout cases ??
+            errorHandling = config['errorHandling']
+            if errorHandling == 'abort':
+                topRunId = getTopChartRunId(chartScope)
+                system.sfc.cancelChart(topRunId)
+            elif errorHandling == 'timeout':
+                topScope = getTopLevelProperties(chartScope)
+                topScope['timeout'] = True
+            elif errorHandling == 'defaultValue':
+                s88Set(chartScope, stepScope, row['recipeKey'], row['defaultValue'], row['location'] )
+                
 def getInput(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -362,39 +415,23 @@ def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, 
         recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
         copyRowToDict(dbRows, rowNum, recipeData, create)
       
+    
 def saveData(scopeContext, stepProperties):
-    import time
     from system.ils.sfc import getRecipeDataText
     # extract property values
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    directory = getStepProperty(stepProperties, DIRECTORY) 
-    fileName = getStepProperty(stepProperties, FILENAME) 
-    extension = getStepProperty(stepProperties, EXTENSION) 
-    doTimestamp = getStepProperty(stepProperties, TIMESTAMP) 
     printFile = getStepProperty(stepProperties, PRINT_FILE) 
     viewFile = getStepProperty(stepProperties, VIEW_FILE) 
-    
-    # lookup the directory if it is a variab,e
-    if directory.startswith('['):
-        directory = chartScope.get(directory, None)
-        if directory == None:
-            getLogger().error("directory key " + directory + " not found")
-            
-    # create timestamp if requested
-    if doTimestamp: 
-        timestamp = "-" + time.strftime("%Y%m%d%H%M")
-    else:
-        timestamp = ""
-    
+        
     # get the data at the given location
     recipeData = getRecipeDataText(chartScope, stepScope, recipeLocation)
     if chartScope == None:
         getLogger.error("data for location " + recipeLocation + " not found")
     
     # write the file
-    filepath = directory + '/' + fileName + timestamp + extension
+    filepath = createFilepath(chartScope, stepProperties)
     fp = open(filepath, 'w')
     writeObj(recipeData, 0, fp)
     fp.close()
@@ -424,7 +461,6 @@ def printFile(scopeContext, stepProperties):
     sendMessageToClient(chartScope, PRINT_FILE_HANDLER, payload)
 
 def printWindow(scopeContext, stepProperties):   
-    from ils.sfc.common.util import getProject
     chartScope = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
@@ -451,7 +487,6 @@ def reviewData(scopeContext, stepProperties):
     from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
-    stepId = getStepId(stepProperties)
     showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
     if showAdvice:
         primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
@@ -471,5 +506,18 @@ def reviewData(scopeContext, stepProperties):
     recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
     recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
     s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
+
+def confirmControllers(scopeContext, stepProperties): 
+    pass   
+
+def writeOutput(scopeContext, stepProperties): 
+    pass   
+
+def monitorPV(scopeContext, stepProperties): 
+    pass   
+
+def monitorDownload(scopeContext, stepProperties): 
+    pass   
+
 
 

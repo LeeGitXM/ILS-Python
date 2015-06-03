@@ -198,3 +198,44 @@ def getDelaySeconds(delay, delayUnit):
         delaySeconds = delay * 3600
     return delaySeconds
 
+def createFilepath(chartScope, stepProperties):
+    '''Create a filepath from dir/file/suffix in step properties'''
+    import time
+    logger = getChartLogger(chartScope, stepProperties)
+    directory = getStepProperty(stepProperties, DIRECTORY) 
+    fileName = getStepProperty(stepProperties, FILENAME) 
+    extension = getStepProperty(stepProperties, EXTENSION) 
+    # lookup the directory if it is a variab,e
+    if directory.startswith('['):
+        directory = chartScope.get(directory, None)
+        if directory == None:
+            logger.error("directory key " + directory + " not found")
+    doTimestamp = getStepProperty(stepProperties, TIMESTAMP) 
+    if doTimestamp == None:
+        doTimestamp = False
+    # create timestamp if requested
+    if doTimestamp: 
+        timestamp = "-" + time.strftime("%Y%m%d%H%M")
+    else:
+        timestamp = ""
+    filepath = directory + '/' + fileName + timestamp + extension
+    return filepath
+
+def getChartLogger(chartScope, stepProperties):
+    # TODO: use step name to make logger
+    import logging
+    return logging.getLogger('ilssfc')
+
+def standardDeviation(dataset, column):
+    '''calculate the standard deviation of the given column of the dataset'''
+    import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation as StandardDeviation
+    import jarray
+    stdDev = StandardDeviation()
+    pvalues = []
+    for i in range(dataset.rowCount):
+        value = dataset.getValueAt(i, column)
+        pvalues.append(value)
+    jvalues = jarray.array(pvalues, 'd')
+    return stdDev.evaluate(jvalues)
+    
+    

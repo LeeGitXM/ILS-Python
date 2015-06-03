@@ -118,7 +118,8 @@ def sfcShowQueue(payload):
     from ils.sfc.common.constants import MESSAGE_QUEUE
     initialProps = dict()
     initialProps['key'] = payload[MESSAGE_QUEUE]
-    system.nav.openWindow('Queue/Message Queue', initialProps)
+    initialProps['useCheckpoint'] = True
+    system.nav.openWindowInstance('Queue/Message Queue', initialProps)
 
 def sfcShowWindow(payload):
     from ils.sfc.client.windowUtil import createPositionedWindow
@@ -197,3 +198,6 @@ def sfcTestAddAction(payload):
     from ils.sfc.common.constants import CHART_NAME, COMMAND, INSTANCE_ID
     from ils.sfc.client.test import addAction
     addAction(payload[COMMAND], payload[CHART_NAME], payload[INSTANCE_ID])
+    
+def sfcMonitorDownloads(payload):
+    pass

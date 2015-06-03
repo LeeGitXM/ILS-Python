@@ -58,7 +58,7 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
 
 
     SQL = queueSQL(queueKey, useCheckpoint, "ASC")
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, db)
     
     # Note: Noetpad does not recognize \n as a carriage return but worpad does.
     
