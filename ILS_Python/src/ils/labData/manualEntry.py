@@ -20,13 +20,27 @@ def chooserInitialization(rootContainer):
     print "In ils.labData.manualEntry.chooserInitialization()..."
     post = rootContainer.post
     
-    SQL = "select V.ValueName, V.ValueId "\
-        " from LtLocalValue LV, LtValue V, TkUnit U, TkPost P "\
-        " where LV.ValueId = V.ValueId "\
-        " and V.UnitId = U.UnitId "\
-        " and U.PostId = P.PostId "\
-        " and P.Post = '%s' "\
-        " order by ValueName" % (post) 
+    communicationHealthy = system.tag.read("Configuration/LabData/communicationHealthy").value
+    manualEntryPermitted = system.tag.read("Configuration/LabData/manualEntryPermitted").value
+    from ils.common.user import isAE
+    isAE = isAE()
+    
+    if not(communicationHealthy) or manualEntryPermitted or isAE:
+        SQL = "select V.ValueName, V.ValueId "\
+            " from LtValue V, TkUnit U, TkPost P "\
+            " where V.UnitId = U.UnitId "\
+            " and U.PostId = P.PostId "\
+            " and P.Post = '%s' "\
+            " order by ValueName" % (post) 
+    else: 
+        SQL = "select V.ValueName, V.ValueId "\
+            " from LtLocalValue LV, LtValue V, TkUnit U, TkPost P "\
+            " where LV.ValueId = V.ValueId "\
+            " and V.UnitId = U.UnitId "\
+            " and U.PostId = P.PostId "\
+            " and P.Post = '%s' "\
+            " order by ValueName" % (post) 
+    
     pds = system.db.runQuery(SQL)
     
     chooseList = rootContainer.getComponent("List")
@@ -121,6 +135,7 @@ def entryFormEnterData(rootContainer, db = ""):
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     
+    # Store the value locally 
     from ils.labData.scanner import storeValue 
     storeValue(valueId, valueName, sampleValue, sampleTime, db)
     
@@ -129,6 +144,19 @@ def entryFormEnterData(rootContainer, db = ""):
     
     from ils.labData.scanner import updateTags
     tags, tagValues = updateTags(provider, valueName, sampleValue, sampleTime, True, [], [])
+    
+    # If the lab datum is "local" then write the value to the historian
+    SQL = "select LV.ItemId, WL.ServerName "\
+        " from LtLocalValue LV, LtValue V, TkWriteLocation WL "\
+        " where LV.ValueId = V.ValueId "\
+        " and V.ValueId = %s "\
+        " and LV.WriteLocationId = WL.WriteLocationId" % (str(valueId))
+ 
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) != 0:
+        print "Need to write the value to the PHD "
+    else:
+        print "Must not be local (or the interface isn't set up)"
     
     # There is a cache of last values but we can't update it from here because the cache is in the gateway...
     
