@@ -318,7 +318,7 @@ def collectData(scopeContext, stepProperties):
                     logger.error("Unknown value type" + valueType)
                     mode = 'Average'
                 try:
-                    tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, rangeHours=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
+                    tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, rangeMinutes=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
                     # ?? how do we tell if there was an error??
                     if tagValues.rowCount == 1:
                         tagValue = tagValues.getValueAt(0,1)
