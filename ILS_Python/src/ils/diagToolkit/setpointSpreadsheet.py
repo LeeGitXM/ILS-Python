@@ -216,3 +216,33 @@ def statusCallback(event):
     title = "Output Details"
 
     system.gui.messageBox(txt, title)
+
+# This is called from the recalc button on the setpoint spreadsheet
+def recalcCallback(event):
+    rootContainer=event.source.parent
+    post=rootContainer.post
+
+    from ils.diagToolkit.common import fetchApplicationsForPost
+    pds=fetchApplicationsForPost(post)
+
+    from ils.diagToolkit.finalDiagnosis import manage
+    for record in pds:
+        applicationName=record["ApplicationName"]
+        manage(applicationName)
+
+    # Now update the UI
+    initialize(rootContainer)
+
+# This is called from the WAIT button on the setpoint spreadsheet
+def waitCallback(event):
+    rootContainer=event.source.parent
+    
+    system.gui.messageBox("The WAIT functionality has not been implemented!")
+
+
+# This is called from the NO DOWNLOAD button on the setpoint spreadsheet
+def noDownloadCallback(event):
+    rootContainer=event.source.parent
+    
+    system.gui.messageBox("The NO DOWNLOAD functionality has not been implemented!")
+    

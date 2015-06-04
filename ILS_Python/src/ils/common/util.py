@@ -46,7 +46,7 @@ def formatDate(theDate, format = 'MM/dd/yy'):
     return theDate
 
     
-def formatDateTime(theDate, format = 'MM/dd/yy hh:ss'):
+def formatDateTime(theDate, format = 'MM/dd/yy hh:mm'):
     theDate = system.db.dateFormat(theDate, format)
     return theDate
 

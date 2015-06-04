@@ -28,6 +28,8 @@ def createTags(tagProvider):
 
     data.append([path, "pollingEnabled", "Boolean", "True"])
     data.append([path, "standardDeviationsToValidityLimits", "Float8", "4.5"])
+    data.append([path, "manualEntryPermitted", "Boolean", "False"])
+    data.append([path, "communicationHealthy", "Boolean", "True"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
