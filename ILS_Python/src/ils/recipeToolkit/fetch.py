@@ -71,34 +71,13 @@ def details(familyName, grade, version, database = ""):
     print "Fetching the recipe for: %s - %s - %i" % (familyName, str(grade), version)
     
     familyId = fetchFamilyId(familyName, database)
-    
-    # Here is the original SQL that did not include blank rows...
-    SQL = "select VD.PresentationOrder, VD.Description, VD.ChangeLevel, VD.ModeAttribute, VD.ModeValue, WL.Alias as WriteLocation, "\
-        " GD.RecommendedValue, GD.HighLimit, GD.LowLimit, VD.StoreTag, VD.CompareTag, VD.ValueId "\
-        " from RtGradeDetail GD, RtValueDefinition VD, TkWriteLocation WL"\
-        " where GD.ValueId = VD.ValueId "\
-        " and VD.WriteLocationId = WL.WriteLocationId"\
-        " and GD.RecipeFamilyId = %s "\
-        " and GD.Grade = %s" \
-        " and GD.Version = %s" \
-        " order by PresentationOrder" % (str(familyId), grade, str(version))
-    
-#    SELECT     dbo.RtValueDefinition.RecipeFamilyId, dbo.RtGradeDetail.Grade, dbo.RtGradeDetail.Version, dbo.RtValueDefinition.PresentationOrder, 
-#                      dbo.RtValueDefinition.Description, dbo.RtValueDefinition.StoreTag, dbo.RtValueDefinition.WriteLocationId, dbo.RtValueDefinition.ChangeLevel, 
-#                      dbo.TkWriteLocation.Alias, dbo.RtGradeDetail.RecommendedValue
-#FROM         dbo.RtValueDefinition INNER JOIN
-#                      dbo.RtGradeDetail ON dbo.RtValueDefinition.RecipeFamilyId = dbo.RtGradeDetail.RecipeFamilyId AND 
-#                      dbo.RtValueDefinition.ValueId = dbo.RtGradeDetail.ValueId LEFT OUTER JOIN
-#                      dbo.TkWriteLocation ON dbo.RtValueDefinition.WriteLocationId = dbo.TkWriteLocation.WriteLocationId
-#WHERE     (dbo.RtValueDefinition.RecipeFamilyId = 134) AND (dbo.RtGradeDetail.Grade = '1696') AND (dbo.RtGradeDetail.Version = 0)
-
-    
+       
     SQL = "select VD.PresentationOrder, VD.Description, VD.ChangeLevel, VD.ModeAttribute, VD.ModeValue, WL.Alias as WriteLocation, "\
         " GD.RecommendedValue, GD.HighLimit, GD.LowLimit, VD.StoreTag, VD.CompareTag, VD.ValueId "\
         " from  RtValueDefinition VD INNER JOIN RtGradeDetail GD ON VD.RecipeFamilyId = GD.RecipeFamilyId "\
         " AND VD.ValueId = GD.ValueId LEFT OUTER JOIN TkWriteLocation  WL ON VD.WriteLocationId = WL.WriteLocationId "\
         " where GD.RecipeFamilyId = %s "\
-        " and GD.Grade = %s" \
+        " and GD.Grade = '%s'" \
         " and GD.Version = %s" \
         " order by PresentationOrder" % (str(familyId), grade, str(version))
     

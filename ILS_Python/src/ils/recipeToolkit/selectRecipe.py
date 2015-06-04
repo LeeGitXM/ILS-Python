@@ -45,7 +45,7 @@ def okCallback(event):
     
     # Save the grade and type to the recipe family table.
     # grade looks like an int, but it is probably a string
-    SQL = "update RtRecipeFamily set CurrentGrade = %s, CurrentVersion = %s, Status = 'Initializing', "\
+    SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
         "Timestamp = getdate() where RecipeFamilyName = '%s'" \
         % (str(grade), version, familyName)
     

@@ -15,13 +15,18 @@ def launchChooser(rootContainer):
     window=system.nav.openWindow("Lab Data/Manual Entry Value Chooser",{"post": post})
     system.nav.centerWindow(window)
 
-
   
 def chooserInitialization(rootContainer):
     print "In ils.labData.manualEntry.chooserInitialization()..."
     post = rootContainer.post
     
-    SQL = "select ValueName, ValueId from LtValue V, TkPost P where V.PostId = P.PostId and P.Post = '%s' order by ValueName" % (post) 
+    SQL = "select V.ValueName, V.ValueId "\
+        " from LtLocalValue LV, LtValue V, TkUnit U, TkPost P "\
+        " where LV.ValueId = V.ValueId "\
+        " and V.UnitId = U.UnitId "\
+        " and U.PostId = P.PostId "\
+        " and P.Post = '%s' "\
+        " order by ValueName" % (post) 
     pds = system.db.runQuery(SQL)
     
     chooseList = rootContainer.getComponent("List")
@@ -107,7 +112,7 @@ def entryFormInitialization(rootContainer):
         rootContainer.lowerReleaseLimitEnabled=False
 
 # This is called when the operator presses the 'Enter' button on the Manual Entry screen
-def entryFormEnterData(rootContainer):
+def entryFormEnterData(rootContainer, db = ""):
     print "In ils.labData.limits.manualEntry.entryFormEnterData()"
     
     sampleTime = rootContainer.getComponent("Sample Time").date
@@ -117,7 +122,7 @@ def entryFormEnterData(rootContainer):
     valueName = rootContainer.valueName
     
     from ils.labData.scanner import storeValue 
-    storeValue(valueId, valueName, sampleValue, sampleTime)
+    storeValue(valueId, valueName, sampleValue, sampleTime, db)
     
     from ils.common.config import getTagProvider
     provider = '[' + getTagProvider() + ']'
