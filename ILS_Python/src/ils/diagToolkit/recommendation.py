@@ -20,23 +20,23 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
     logSQL.trace(SQL)
     calculationMethod = system.db.runScalarQuery(SQL, database)
-    
     log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s" % (finalDiagnosisId, calculationMethod))
      
     # If they specify shared or project scope, then we don't need to do this
     if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
-        seperator=string.rfind(calculationMethod, ".")
-        package=calculationMethod[0:seperator]
-        log.trace("Using External Python, the package is: <%s>" % (package))
+        # The method contains a full python path, including the method name
+        separator=string.rfind(calculationMethod, ".")
+        packagemodule=calculationMethod[0:separator]
+        separator=string.rfind(packagemodule, ".")
+        package = packagemodule[0:separator]
+        module  = packagemodule[separator+1:]
+        log.debug("Using External Python, the package is: <%s>.<%s>" % (package,module))
         exec("import %s" % (package))
-        exec("from %s import *" % (package))
+        exec("from %s import %s" % (package,module))
 
     try:
-        method=calculationMethod+"(application,finalDiagnosis)"        
-        func = eval(method)
-        textRecommendation, rawRecommendationList = func(application,finalDiagnosis)
+        textRecommendation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosis)
         log.trace("  The recommendations returned from the calculation method are: %s" % (str(rawRecommendationList)))
-    
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
@@ -145,3 +145,13 @@ def calculateFinalRecommendation(quantOutput):
 
     log.trace("  The final recommendation is: %s" % (str(quantOutput)))
     return quantOutput
+
+# Used within FinalDiagnosis calculation methods. This method creates a
+# new a dictionary corresponding to a quant output.
+# The dictionary contains QuantOutput, Value
+# The dictionary is local to the method. It is ultimately returned
+# my the method and incorporated into the object.
+def defineQuantOutput(fdname,name):
+    qo = {}
+    qo["QuantOutput"] = str(name)
+    return qo
