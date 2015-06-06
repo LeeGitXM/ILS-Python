@@ -6,6 +6,10 @@ Created on Sep 12, 2014
 
 import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+
+handler = ControllerRequestHandler.getInstance()
+
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
@@ -117,6 +121,33 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
     project="XOM"
     console="VFU"
     notifyClients(project, console, notificationText)
+
+# Return the name of the application tuat is the parent of this block
+# This belongs in a more general environment
+def getApplication(blockId):
+    ans = None
+    diagram = handler.getDiagramForBlock(blockId)
+    if diagram != None:
+        ans = handler.getApplicationName(diagram.getId())
+    return ans
+    
+# This replaces em-get-trget
+# Search upstream for a SQC block. 
+# Return the value on the target inout.
+def getUpstreamSQCTargetValue(finalDiagnosisId):
+    status = "failure"
+    value = -1
+    diagram = handler.getDiagramForBlock(finalDiagnosisId)
+    # Blocks SerializableBlockStateDescriptor
+    blocks = handler.listBlocksUpstreamOf(diagram.getId(), finalDiagnosisId)
+    for block in blocks:
+        attributes = block.getAttributes()
+        if attributes.get("class") == "com.ils.block.SQC":
+            value = float(attributes.get("target","0.0"))
+            status = "success"
+            break
+            
+    return status, value
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
 def manage(application, database=""):
