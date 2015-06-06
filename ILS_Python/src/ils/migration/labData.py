@@ -158,6 +158,7 @@ def insertIntoDB(container):
             elif className == "LAB-LOCAL-VALIDITY":
                 print "   Creating..."
                 valueId=insertLabValue(labData, unitName)
+                localValueId=insertLocalLabValue(valueId)
                 insertValidityLimit(labData,valueId)
                 loaded=loaded+1
                 print "   ...done!"
@@ -185,8 +186,7 @@ def lookupHDAInterface(interfaceName):
     return interfaceId
 
 
-# The display table Has been so to allow NULL so that we can insert the lab data from this export file.  The display table
-# info is contained in the display table export and will be updated later
+# Insert a record into the main lad data catalog
 def insertLabValue(labData, unitName):
     print "      Inserting into LtValue..."
     valueName = labData.get("name")
@@ -199,6 +199,19 @@ def insertLabValue(labData, unitName):
     valueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...inserted %s and assigned id %i" % (valueName, valueId)
     return valueId
+
+#
+# Insert a record into the main lad data catalog
+def insertLocalLabValue(valueId):
+    print "      Inserting into LtLocalValue..."
+    itemId = labData.get("phd-result-flag-item-id")
+    valueName = labData.get("name")
+    
+    SQL = "insert into LtLocalValue (ValueId) "\
+        " values (%s)" % (str(valueId))
+    localValueId=system.db.runUpdateQuery(SQL, getKey=1)
+    print "      ...assigned id %i" % (localValueId)
+    return localValueId
 
 
 def insertPHDLabValue(labData, valueId):

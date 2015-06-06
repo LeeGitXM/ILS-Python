@@ -15,13 +15,32 @@ def launchChooser(rootContainer):
     window=system.nav.openWindow("Lab Data/Manual Entry Value Chooser",{"post": post})
     system.nav.centerWindow(window)
 
-
   
 def chooserInitialization(rootContainer):
     print "In ils.labData.manualEntry.chooserInitialization()..."
     post = rootContainer.post
     
-    SQL = "select ValueName, ValueId from LtValue V, TkPost P where V.PostId = P.PostId and P.Post = '%s' order by ValueName" % (post) 
+    communicationHealthy = system.tag.read("Configuration/LabData/communicationHealthy").value
+    manualEntryPermitted = system.tag.read("Configuration/LabData/manualEntryPermitted").value
+    from ils.common.user import isAE
+    isAE = isAE()
+    
+    if not(communicationHealthy) or manualEntryPermitted or isAE:
+        SQL = "select V.ValueName, V.ValueId "\
+            " from LtValue V, TkUnit U, TkPost P "\
+            " where V.UnitId = U.UnitId "\
+            " and U.PostId = P.PostId "\
+            " and P.Post = '%s' "\
+            " order by ValueName" % (post) 
+    else: 
+        SQL = "select V.ValueName, V.ValueId "\
+            " from LtLocalValue LV, LtValue V, TkUnit U, TkPost P "\
+            " where LV.ValueId = V.ValueId "\
+            " and V.UnitId = U.UnitId "\
+            " and U.PostId = P.PostId "\
+            " and P.Post = '%s' "\
+            " order by ValueName" % (post) 
+    
     pds = system.db.runQuery(SQL)
     
     chooseList = rootContainer.getComponent("List")
@@ -107,7 +126,7 @@ def entryFormInitialization(rootContainer):
         rootContainer.lowerReleaseLimitEnabled=False
 
 # This is called when the operator presses the 'Enter' button on the Manual Entry screen
-def entryFormEnterData(rootContainer):
+def entryFormEnterData(rootContainer, db = ""):
     print "In ils.labData.limits.manualEntry.entryFormEnterData()"
     
     sampleTime = rootContainer.getComponent("Sample Time").date
@@ -116,14 +135,28 @@ def entryFormEnterData(rootContainer):
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     
+    # Store the value locally 
     from ils.labData.scanner import storeValue 
-    storeValue(valueId, valueName, sampleValue, sampleTime)
+    storeValue(valueId, valueName, sampleValue, sampleTime, db)
     
     from ils.common.config import getTagProvider
     provider = '[' + getTagProvider() + ']'
     
     from ils.labData.scanner import updateTags
     tags, tagValues = updateTags(provider, valueName, sampleValue, sampleTime, True, [], [])
+    
+    # If the lab datum is "local" then write the value to the historian
+    SQL = "select LV.ItemId, WL.ServerName "\
+        " from LtLocalValue LV, LtValue V, TkWriteLocation WL "\
+        " where LV.ValueId = V.ValueId "\
+        " and V.ValueId = %s "\
+        " and LV.WriteLocationId = WL.WriteLocationId" % (str(valueId))
+ 
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) != 0:
+        print "Need to write the value to the PHD "
+    else:
+        print "Must not be local (or the interface isn't set up)"
     
     # There is a cache of last values but we can't update it from here because the cache is in the gateway...
     
