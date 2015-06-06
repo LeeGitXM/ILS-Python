@@ -529,3 +529,4 @@ def initializeView(rootContainer):
     rootContainer.setPropertyValue('title', title) 
     print "Done initializing!"
 
+

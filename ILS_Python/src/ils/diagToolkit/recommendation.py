@@ -35,7 +35,7 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         exec("from %s import %s" % (package,module))
 
     try:
-        textRecommendation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosis)
+        textRecommendation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisId)
         log.trace("  The recommendations returned from the calculation method are: %s" % (str(rawRecommendationList)))
     except:
         errorType,value,trace = sys.exc_info()
