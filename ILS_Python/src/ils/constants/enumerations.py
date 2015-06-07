@@ -14,7 +14,7 @@ class Enum(object):
         return tuple(enumerate(self.names))
     
 # Use these constants 
-EMCConstants= Enum('critical')
+EMCConstants= Enum('critical warning information')
 S88Command  = Enum('abort')
 S88Scope    = Enum('global operation superior previous')
 S88State    = Enum('aborted complete error running stopped')
