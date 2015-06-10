@@ -511,13 +511,115 @@ def confirmControllers(scopeContext, stepProperties):
     pass   
 
 def writeOutput(scopeContext, stepProperties): 
-    pass   
-
+    from system.ils.sfc.common.Constants import RECIPE_LOCATION, TIMER_LOCATION, TIMER_KEY, TIMER_SET, WRITE_OUTPUT_CONFIG
+    from system.ils.sfc.common.Constants import TIMING, KEY, ROWS, DOWNLOAD, VERBOSE
+    from system.util import jsonDecode
+    import time
+    chartScope = scopeContext.getChartScope() 
+    stepScope = scopeContext.getStepScope()
+ 
+    verbose = getStepProperty(stepProperties, VERBOSE)
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
+    timerKey = getStepProperty(stepProperties, TIMER_KEY)
+    timerSet = getStepProperty(stepProperties, TIMER_SET)
+    if timerSet:
+        s88Set(chartScope, stepScope, timerKey, time.time(), timerLocation)
+        
+    configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
+    config = jsonDecode(configJson)
+    
+    # separate rows into timed rows and those that are written after timed rows:
+    immediateRows = []
+    timedRows = []
+    finalRows = []
+    
+    for row in config[ROWS]:
+        outputDataKey = row[KEY] + '.'
+        timingMinutes = s88Get(chartScope, stepScope, outputDataKey + TIMING, recipeLocation)
+        download = s88Get(chartScope, stepScope, outputDataKey + DOWNLOAD, recipeLocation)
+        row['processed'] = False
+        if not download:
+            continue # this download has been disabled
+        if timingMinutes == 0.:
+            immediateRows.append(row)
+        elif timingMinutes == 1000.:
+            finalRows.append(row)
+        else:
+            timedRows.append(row)
+        
+    for row in immediateRows:
+        writeRow(chartScope, stepScope, recipeLocation, row, verbose)
+        
+    sleepIncrement = 10 # sec
+    writesPending = True 
+    while writesPending:
+        writesPending = False 
+        # we check the timer start inside this loop because it may not have been
+        # set yet, so if that is the case we need to re-check periodically
+        timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
+        if timerStart == None:
+            continue
+        for row in timedRows:
+            outputDataKey = row[KEY] + '.'
+            timingMinutes = s88Get(chartScope, stepScope, outputDataKey + TIMING, recipeLocation)
+            # maxTiming = s88Get(chartScope, stepScope, outputDataKey + '.' + MAX_TIMING, recipeLocation)
+            elapsedMinutes = (time.time() - timerStart) / 60.
+            rowProcessed = row['processed']
+            if not rowProcessed:
+                if elapsedMinutes >= timingMinutes:
+                    writeRow(chartScope, stepScope, recipeLocation, row, verbose)
+                    row['processed'] = True
+                else:
+                    writesPending = True
+        if writesPending:
+            time.sleep(sleepIncrement)
+        
+    for row in finalRows:
+        writeRow(chartScope, stepScope, recipeLocation, row, verbose)
+  
+ 
+def writeRow(chartScope, stepScope, recipeLocation, row, verbose):
+    from system.ils.sfc.common.Constants import VALUE, TAG_PATH, KEY, CONFIRM_WRITE
+    from ils.sfc.gateway.util import queueMessage
+    confirmWrite = row[CONFIRM_WRITE]
+    # we assume the key points to an Output type recipe data
+    outputDataKey = row[KEY] + '.'
+    value = s88Get(chartScope, stepScope, outputDataKey + VALUE, recipeLocation)
+    tagPath = s88Get(chartScope, stepScope, outputDataKey + TAG_PATH, recipeLocation)
+    try:
+        system.tag.writeSynchronous(tagPath, value)
+        resultMsg = 'succeeded'
+        status = MSG_STATUS_INFO
+    except:
+        resultMsg = 'failed'
+        status = MSG_STATUS_ERROR
+    if verbose:
+        queueMessage(chartScope, 'tag ' + tagPath + " write " + resultMsg + "; value: " + str(value), status)
+    
 def monitorPV(scopeContext, stepProperties): 
     pass   
 
 def monitorDownload(scopeContext, stepProperties): 
-    pass   
+    chartScope = scopeContext.getChartScope()
+    payload = dict()
+    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
+    transferStepPropertiesToMessage(stepProperties, payload)
+    sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload) 
+    
+    # send a dummy update for testing:
+    # Column names must agree EXACTLY to those defined in the Designer
+    import time;    
+    import ils.sfc.common.util
+    ftime = ils.sfc.common.util.formatTime(time.time())
+    header = ['Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'pvColor']
+    row = [0.0, 'T-100', 25.0, 'Zone 1 Temp', ftime, 29.0, 'orange', 'green']
+    rows = [row]
+    dataset = system.dataset.toDataSet(header, rows)
+    payload2 = dict()
+    payload2[DATA] = dataset
+    payload2[POSTING_METHOD] = payload[POSTING_METHOD]
+    sendMessageToClient(chartScope, 'sfcUpdateDownloads', payload2) 
 
 
 

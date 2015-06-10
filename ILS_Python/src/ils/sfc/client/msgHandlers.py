@@ -200,4 +200,16 @@ def sfcTestAddAction(payload):
     addAction(payload[COMMAND], payload[CHART_NAME], payload[INSTANCE_ID])
     
 def sfcMonitorDownloads(payload):
-    pass
+    from ils.sfc.client.windowUtil import createPositionedWindow
+    windowProperties = dict()
+    createPositionedWindow(payload, windowProperties)
+
+def sfcUpdateDownloads(payload):
+    #find the window
+    from ils.sfc.common.util import callMethodWithParams
+    from ils.sfc.common.constants import POSTING_METHOD
+    postingMethod = payload[POSTING_METHOD]
+    window = system.gui.getWindow('SFC/MonitorDownload')
+    keys = ['window', 'properties']
+    values = [window, payload]
+    callMethodWithParams(postingMethod, keys, values)
