@@ -238,4 +238,13 @@ def standardDeviation(dataset, column):
     jvalues = jarray.array(pvalues, 'd')
     return stdDev.evaluate(jvalues)
     
+def queueMessage(chartScope, msg, priority):
+    '''insert a message in the current message queue'''
+    from ils.sfc.gateway.api import getCurrentMessageQueue
+    from ils.sfc.common.util import getDatabaseName
+    from ils.queue.message import insert
+    currentMsgQueue = getCurrentMessageQueue(chartScope)
+    database = getDatabaseName(chartScope)
+    insert(currentMsgQueue, priority, msg, database) 
+
     

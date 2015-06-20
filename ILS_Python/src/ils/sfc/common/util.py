@@ -150,3 +150,8 @@ def getHoursMinutesSeconds(floatTotalSeconds):
     floatSecondsRemainder = floatSecondsRemainder - intMinutes * 60
     intSeconds = int(round(floatSecondsRemainder))
     return intHours, intMinutes, intSeconds
+
+def formatTime(epochSecs):
+    '''given an epoch time, return a formatted time in the local time zone'''
+    import time
+    return time.strftime("%d %b %Y %I:%M:%S %p", time.localtime(epochSecs))

@@ -33,6 +33,9 @@ def removeTags(paths):
 def write(tagPath,command):
     pass
 
+def writeSynchronous(tagPath, value):
+    pass
+
 def writeAll(tags, vals):
     return True
 
