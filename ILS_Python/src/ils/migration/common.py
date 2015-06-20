@@ -10,7 +10,7 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
     pds = system.db.runQuery(SQL, "XOMMigration")
     if len(pds) != 1:
         print "Error looking up GSI interface <%s> in the InterfaceTranslation table" % (gsiInterface)
-        return -1, -1
+        return -1, -1, -1
     record = pds[0]
     serverName=record["newServerName"]
     scanClass=record["newScanClass"]
@@ -20,13 +20,34 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
     SQL = "select WriteLocationId from TkWriteLocation where ServerName = '%s' and ScanClass = '%s'" % (serverName, scanClass)
     pds = system.db.runQuery(SQL)
     if len(pds) != 1:
-        print "Error up the translated derver and scan class (%s, %s) in RtWriteLocation table" % (serverName, scanClass)
+        print "Error looking up the translated server and scan class (%s, %s) in RtWriteLocation table" % (serverName, scanClass)
         writeLocationId = -1
     else:
         record = pds[0]
         writeLocationId=record["WriteLocationId"]
     
     return serverName, scanClass, writeLocationId
+
+def lookupHDAServer(site, gsiInterface):
+    SQL = "select newServerName from HDAInterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
+    pds = system.db.runQuery(SQL, "XOMMigration")
+    if len(pds) != 1:
+        print "Error looking up GSI interface <%s> in the InterfaceTranslation table" % (gsiInterface)
+        return -1, -1, -1
+    record = pds[0]
+    serverName=record["newServerName"]
+    
+    # Now lookup the id of this interface in the LtHDAInterface table
+    SQL = "select InterfaceId from LtHDAInterface where InterfaceName = '%s'" % (serverName)
+    pds = system.db.runQuery(SQL)
+    if len(pds) != 1:
+        print "Error looking up the translated server (%s) in LtHDAInterface table" % (serverName)
+        interfaceId = -1
+    else:
+        record = pds[0]
+        interfaceId=record["InterfaceId"]
+    
+    return serverName, interfaceId
 
 #
 def lookupMessageQueue(oldQueueName):
