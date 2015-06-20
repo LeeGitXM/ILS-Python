@@ -5,8 +5,8 @@ Created on Mar 31, 2015
 '''
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.labData")
-sqlLog = LogUtil.getLogger("com.ils.SQL.labData")
+log = LogUtil.getLogger("com.ils.labData.limits")
+sqlLog = LogUtil.getLogger("com.ils.SQL.labData.limits")
 
 def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
     log.trace("Checking Validity limits for %s..." % (valueName))

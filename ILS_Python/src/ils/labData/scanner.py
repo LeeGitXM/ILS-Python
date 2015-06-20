@@ -23,13 +23,47 @@ def main(database, tagProvider):
     
     from ils.labData.limits import fetchLimits
     limits=fetchLimits(database)    
-    checkForNewLabValues(database, tagProvider, limits)
+    checkForNewPHDLabValues(database, tagProvider, limits)
+    checkForNewDCSLabValues(database, limits)
     
     log.trace("The updated last Value Cache is: %s" % (str(lastValueCache)))
 
+def checkForNewDCSLabValues(database, limits):
+    log.trace("Checking for new DCS Lab values ... ")
+    
+    SQL = "select distinct ServerName "\
+        "FROM TkWriteLocation WL, LtDCSValue DV "\
+        "WHERE DV.WriteLocationId = WL.WriteLocationId "
+    pds = system.db.runQuery(SQL, database)
+    for record in pds:
+        serverName = record["ServerName"]
+        readDCSLabValues(serverName, database)
 
-def checkForNewLabValues(database, tagProvider, limits):
-    log.info("Checking for new Lab values ... ")
+def readDCSLabValues(serverName, database):
+    log.trace("Reading DCS lab values from %s" % (serverName))
+    
+    SQL = "select ValueId, ItemId "\
+        "FROM TkWriteLocation WL, LtDCSValue DV "\
+        "WHERE DV.WriteLocationId = WL.WriteLocationId "\
+        " AND WL.ServerName = '%s'" % (serverName)
+    pds = system.db.runQuery(SQL, database)
+    
+    valueIds=[]
+    itemIds=[]
+    for record in pds:
+        valueId = record["ValueId"]
+        itemId = record["ItemId"]
+        
+        itemIds.append(itemId)
+        valueIds.append(valueId)
+
+    log.trace("Reading: %s" % (str(itemIds)))
+    qvs = system.opc.readValues(serverName, itemIds)
+    log.trace("Returned: %s" % str(qvs))
+    
+    
+def checkForNewPHDLabValues(database, tagProvider, limits):
+    log.trace("Checking for new PHD Lab values ... ")
     
     endDate = util.getDate()
     from java.util import Calendar
@@ -44,8 +78,8 @@ def checkForNewLabValues(database, tagProvider, limits):
     interfacePDS = system.db.runQuery(SQL, database)
     for interfaceRecord in interfacePDS:
         hdaInterface = interfaceRecord["InterfaceName"]
-        print "...reading lab data values from HDA server: %s..." % (hdaInterface)
-        
+        log.trace("...reading lab data values from HDA server: %s..." % (hdaInterface))
+
         # Now select the itemIds that use that interface
         SQL = "select Post, ValueId, ValueName, ItemId from LtPHDValueView where InterfaceName = '%s'" % (hdaInterface)
         tagInfoPds = system.db.runQuery(SQL, database) 
@@ -56,11 +90,11 @@ def checkForNewLabValues(database, tagProvider, limits):
         maxValues=0
         boundingValues=0
         retVals=system.opchda.readRaw(hdaInterface, itemIds, startDate, endDate, maxValues, boundingValues)
-        print "...back from HDA read!"
-        print "retVals: ", retVals
+        log.trace("...back from HDA read, read %i values!" % (len(retVals)))
+#        log.trace("retVals: %s" % (str(retVals)))
         
         if len(tagInfoPds) != len(retVals):
-            print "The number of elements in the tag info dataset does not match the number of values returned!"
+            log.error("The number of elements in the tag info dataset does not match the number of values returned!")
             return
     
         writeTags=[]
@@ -81,16 +115,18 @@ def checkForNewLabValues(database, tagProvider, limits):
         log.trace("Writing %s to %s" % (str(writeTagValues), str(writeTags)))
         system.tag.writeAll(writeTags, writeTagValues)
 
+    log.trace("Done reading PHD lab values")
+
 
 def checkForNewLabValue(post, valueId, valueName, itemId, database, tagProvider, limits, tagInfo, valueList, writeTags, writeTagValues):
     log.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
     
     if str(valueList.serviceResult) != 'Good':
-        print "   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult)
+        log.warn("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
         return writeTags, writeTagValues
     
     if valueList.size()==0:
-        print "   -- no data found for %s --" % (itemId)
+        log.trace("   -- no data found for %s --" % (itemId))
         return writeTags, writeTagValues
     
     # Get the last value out of the list of values - I couldn't find a way to get this directlt, but there must be a way

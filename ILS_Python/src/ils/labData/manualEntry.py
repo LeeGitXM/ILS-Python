@@ -4,9 +4,9 @@ Created on Apr 30, 2015
 @author: Pete
 '''
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.labData")
-sqlLog = LogUtil.getLogger("com.ils.SQL.labData")
+
+# Everything in this module runs in the client, so the use of loggers isn't too important since nothing will go 
+# to the wrapper log anyway.
 
 # This is called from the "Manual Entry" button on the "Lab Data Table Chooser" screen
 def launchChooser(rootContainer):
@@ -71,7 +71,7 @@ def entryFormInitialization(rootContainer):
     valueName = rootContainer.valueName
     
     SQL = "select * from LtLimit where ValueId = %s" % (str(valueId))
-    sqlLog.trace(SQL)
+    print SQL
     pds = system.db.runQuery(SQL)
 
     if len(pds) == 1:
@@ -135,28 +135,38 @@ def entryFormEnterData(rootContainer, db = ""):
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     
-    # Store the value locally 
+    # Store the value locally in the X O M database
     from ils.labData.scanner import storeValue 
     storeValue(valueId, valueName, sampleValue, sampleTime, db)
     
+    # Store the value in the Lab Data UDT memory tags, which are local to Ignition
     from ils.common.config import getTagProvider
     provider = '[' + getTagProvider() + ']'
     
     from ils.labData.scanner import updateTags
     tags, tagValues = updateTags(provider, valueName, sampleValue, sampleTime, True, [], [])
     
-    # If the lab datum is "local" then write the value to the historian
+    # If the lab datum is "local" then write the value to PHD (use a regular OPC write, so we won't 
+    # capture the sample time)
     SQL = "select LV.ItemId, WL.ServerName "\
-        " from LtLocalValue LV, LtValue V, TkWriteLocation WL "\
-        " where LV.ValueId = V.ValueId "\
-        " and V.ValueId = %s "\
+        " from LtLocalValue LV, TkWriteLocation WL "\
+        " where LV.ValueId = %s "\
         " and LV.WriteLocationId = WL.WriteLocationId" % (str(valueId))
  
     pds = system.db.runQuery(SQL, db)
     if len(pds) != 0:
-        print "Need to write the value to the PHD "
+        record = pds[0]
+        itemId = record["ItemId"]
+        serverName = record["ServerName"]
+        returnQuality = system.opc.writeValue(serverName, itemId, sampleValue)
+        if returnQuality.isGood():
+            print "Write <%s> to %s-%s for %s local lab data was successful" % (str(sampleValue), serverName, itemId, valueName)
+        else:
+            print "ERROR: Write <%s> to %s-%s for %s local lab data failed" % (str(sampleValue), serverName, itemId, valueName)
     else:
-        print "Must not be local (or the interface isn't set up)"
+        print "Skipping write of manual lab data because it is not LOCAL (%s %s %s %s)" % (str(sampleValue), serverName, itemId, valueName)
     
     # There is a cache of last values but we can't update it from here because the cache is in the gateway...
+    
+    system.gui.messageBox("Lab value of %s has been stored for %s!" % (str(sampleValue), valueName))
     
