@@ -134,7 +134,7 @@ def getApplication(blockId):
 # This replaces em-get-trget
 # Search upstream for a SQC block. 
 # Return the value on the target inout.
-def getUpstreamSQCTargetValue(finalDiagnosisId):
+def     getUpstreamSQCTargetValue(finalDiagnosisId):
     status = "failure"
     value = -1
     diagram = handler.getDiagramForBlock(finalDiagnosisId)
