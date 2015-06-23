@@ -86,9 +86,11 @@ class ControlPanel:
         elif status == ABORTED:
             statusField.setBackground(Color.red)
             self.setCommandCapability(False, False, False)
+            self.window.closable = True
         elif status == STOPPED or status == CANCELED:
             statusField.setBackground(Color.blue)
             self.setCommandCapability(False, False, False)
+            self.window.closable = True
         else:
             #Some other transitory state
             statusField.setBackground(Color.gray)

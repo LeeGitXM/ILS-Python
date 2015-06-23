@@ -4,6 +4,26 @@ Created on Feb 10, 2015
 @author: rforbes
 '''
 
+from ils.sfc.gateway.api import s88Set, s88Get
+class RecipeData:
+    '''A convenient proxy to access a particular recipe data object via the s88Get/Set api'''
+    chartScope = None
+    stepScope = None
+    location = None
+    key = None
+    
+    def  __init__(self, _chartScope, _stepScope, _location, _key):
+        self.chartScope = _chartScope
+        self.stepScope = _stepScope
+        self.location = _location
+        self.key = _key
+        
+    def set(self, attribute, value):
+        s88Set(self.chartScope, self.stepScope, self.key + '.' + attribute, value, self.location)
+        
+    def get(self, attribute):
+        return s88Get(self.chartScope, self.stepScope, self.key + '.' + attribute, self.location)
+
 def parseBracketedScopeReference(bracketedRef):
     '''
     Break a bracked reference into location and key--e.g. {local:selected-emp.val} gets

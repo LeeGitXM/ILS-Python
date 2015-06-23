@@ -18,3 +18,6 @@ def jsonDecode(str):
 
 def jsonEncode(obj):
     pass
+
+def getLogger(path):
+    pass
