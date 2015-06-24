@@ -29,6 +29,7 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
     return serverName, scanClass, writeLocationId
 
 def lookupHDAServer(site, gsiInterface):
+    # Translate from the G2 interface name to the Ignition Interface name
     SQL = "select newServerName from HDAInterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
     pds = system.db.runQuery(SQL, "XOMMigration")
     if len(pds) != 1:

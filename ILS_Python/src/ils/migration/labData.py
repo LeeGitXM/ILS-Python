@@ -86,7 +86,6 @@ def insertIntoDB(container):
     
     filename = container.getComponent('File Field').text
     provider = container.getComponent("Tag Provider").text
-    derivedCallbackRoot = container.getComponent("Derived Callback Root").text
     site = container.parent.getComponent("Site").text
     
     if not(system.file.fileExists(filename)):
@@ -99,94 +98,108 @@ def insertIntoDB(container):
     loaded = 0
     skipped = 0
     alreadyExists = 0
-    for labData in root.findall('lab-data'):
-        name=labData.get("name")
+    for phase in [1,2]:
+        print ""
+        print "*** Pass %i ***" % (phase)
+        print ""
+        for labData in root.findall('lab-data'):
+            name=labData.get("name")
     
-        if not(alreadyLoaded(name)):
-            className = labData.get("class")
-            unitName = labData.get("unit-name")
-            print "Processing %s, a %s (unit: %s)" % (name, className, unitName)
-        
-            if className == "LAB-PHD-SQC":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                insertPHDLabValue(labData, valueId)
-                insertSQCLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
+            if not(alreadyLoaded(name)):
+                className = labData.get("class")
+                unitName = labData.get("unit-name")
+                print "Processing %s, a %s (unit: %s)" % (name, className, unitName)
             
-            elif className == "LAB-DCS-SQC":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                insertDCSLabValue(labData, valueId, site)
-                insertSQCLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-PHD-RELEASE":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                insertPHDLabValue(labData, valueId)
-                insertReleaseLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
+                if className == "LAB-PHD-SQC":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertPHDLabValue(labData, valueId, site)
+                        insertSQCLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
                 
-            elif className == "LAB-PHD-SQC-SELECTOR":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-
-            elif className == "LAB-PHD-RELEASE-SELECTOR":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-PHD-VALIDITY-SELECTOR":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-
-            elif className == "LAB-PHD-DERIVED":
-                valueId=insertLabValue(labData, unitName)
-                insertPHDLabValue(labData, valueId)
-                insertDerivedLabValue(labData, valueId, derivedCallbackRoot)
-                loaded=loaded+1
-                print "   ...done!"
+                elif className == "LAB-DCS-SQC":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertDCSLabValue(labData, valueId, site)
+                        insertSQCLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
                 
-            elif className == "LAB-PHD-DERIVED-SQC":
-                valueId=insertLabValue(labData, unitName)
-                insertPHDLabValue(labData, valueId)
-                insertDerivedLabValue(labData, valueId, derivedCallbackRoot)
-                insertSQCLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-PHD-SELECTOR":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-PHD":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-LOCAL-VALIDITY":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                localValueId=insertLocalLabValue(labData, valueId, site)
-                insertValidityLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
+                elif className == "LAB-PHD-RELEASE":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertPHDLabValue(labData, valueId, site)
+                        insertReleaseLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
+                    
+                elif className == "LAB-PHD-SQC-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
+    
+                elif className == "LAB-PHD-RELEASE-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
                 
-            else:
-                skipped=skipped+1
-                print "   <<< Unexpected class >>> "
+                elif className == "LAB-PHD-VALIDITY-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
+    
+                elif className == "LAB-PHD-DERIVED":
+                    if phase == 2:
+                        valueId=insertLabValue(labData, unitName)
+                        insertDerivedPHDLabValue(labData, valueId, site)
+                        loaded=loaded+1
+                        print "   ...done!"
+                    
+                elif className == "LAB-PHD-DERIVED-SQC":
+                    if phase == 2:
+                        valueId=insertLabValue(labData, unitName)
+                        insertDerivedPHDLabValue(labData, valueId, site)
+                        insertSQCLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-PHD-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-PHD":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertPHDLabValue(labData, valueId, site)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-LOCAL-VALIDITY":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        localValueId=insertLocalLabValue(labData, valueId, site)
+                        insertValidityLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
+                    
+                else:
+                    skipped=skipped+1
+                    print "   <<< Unexpected class >>> "
 
 #        success = load(model, userId, interfaceId, interfaceName, tx, log, statusField)
 #        if success:
@@ -198,11 +211,18 @@ def insertIntoDB(container):
             
     print "Done - Successfully loaded %i lab data objects, %i were skipped, %i already exist." % (loaded, skipped, alreadyExists)
 
-def lookupHDAInterface(interfaceName):
-    SQL = "select InterfaceId from LtHDAInterface where InterfaceName = '%s'" % (interfaceName)
+def lookupHDAInterfaceCRAP(site, interfaceName):
+    print "Old interface: ", interfaceName
+    # Translate from the old G2 interface name to the Ignition Interface name
+    serverName,  = lookupHDAServer(site, interfaceName)
+    print "New interface: ", serverName
+    
+    SQL = "select InterfaceId from LtHDAInterface where InterfaceName = '%s'" % (serverName)
+    print SQL
     interfaceId = system.db.runScalarQuery(SQL)
     if interfaceId == None:
-        SQL = "insert into LtHDAInterface (InterfaceName) values ('%s')" % (interfaceName)
+        SQL = "insert into LtHDAInterface (InterfaceName) values ('%s')" % (serverName)
+        print SQL
         interfaceId=system.db.runUpdateQuery(SQL, getKey=1)
     return interfaceId
 
@@ -246,12 +266,12 @@ def insertLocalLabValue(labData, valueId, site):
     return localValueId
 
 
-def insertPHDLabValue(labData, valueId):
+def insertPHDLabValue(labData, valueId, site):
     print "      Inserting into LtPHDValue..." 
     for rawValue in labData.findall('rawValue'):
         itemId = rawValue.get("item-id")
         interfaceName=rawValue.get("interface-name")
-        interfaceId=lookupHDAInterface(interfaceName)
+        serverName, interfaceId=lookupHDAServer(site, interfaceName)
 
         SQL = "insert into LtPHDValue (ValueId, ItemId, InterfaceId) "\
             " values (%s, '%s', %s)" % (str(valueId), itemId, str(interfaceId))
@@ -280,17 +300,56 @@ def insertDCSLabValue(labData, valueId, site):
         print "      ...inserted a record into LtPHDValue..."
     return valueId
 
-# Insert a record into the table for derived data.  I suppose data can be derived from a DCS or Local value but the normal source is PHD 
-def insertDerivedLabValue(labData, valueId, derivedCallbackRoot):
-    print "      Inserting into LtDerivedValue..."
-    derivedValueCallback = labData.get("raw-value-procedure")
-    derivedValueCallback = derivedCallbackRoot + '.' + derivedValueCallback + '.' + derivedValueCallback
-    
-    SQL = "insert into LtDerivedValue (ValueId, DerivedValueCallback) "\
-        " values (%s, '%s')" % (str(valueId), derivedValueCallback)
+def translateCallback(callback):
+    SQL = "select NewName from DerivedValueCallbackTranslation where oldName = '%s'" % (callback)
+    pds = system.db.runQuery(SQL, "XOMMigration")
+    if len(pds) == 0:
+        print "Discovered a new callback that needs translation: ", callback
+        SQL = "insert into DerivedValueCallbackTranslation (oldName, newName) values ('%s', '%s') " % (callback, callback)
+        system.db.runUpdateQuery(SQL, "XOMMigration")
+    else:
+        record = pds[0]
+        callback = record["NewName"]
+    return callback
 
+# Insert a record into the table for derived data.  I suppose data can be derived from a DCS or Local value but the normal source is PHD 
+def insertDerivedPHDLabValue(labData, valueId, site):
+    print "      Inserting into LtDerivedValue..."
+    callback = labData.get("raw-value-procedure")
+    callback = translateCallback(callback)
+    relatedData = labData.get("related-data")
+    
+    for trigger in labData.findall('trigger'):
+        triggerItemId = trigger.get("item-id")
+        interfaceName=trigger.get("interface-name")
+        serverName, triggerInterfaceId=lookupHDAServer(site, interfaceName)
+    
+    for result in labData.findall('phdResultTag'):
+        resultItemId = result.get("item-id")
+        interfaceName=result.get("interface-name")
+        serverName, scanClass, resultWriteLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+
+    SQL = "insert into LtPHDValue (ValueId, ItemId, InterfaceId) "\
+        " values (%s, '%s', %s)" % (str(valueId), triggerItemId, str(triggerInterfaceId))
+    system.db.runUpdateQuery(SQL)
+    print "      ...inserted a record into LtPHDValue..."
+
+    SQL = "insert into LtDerivedValue (ValueId, callback, ResultItemId, ResultWriteLocationId, SampleTimeTolerance, NewSampleWaitTime) "\
+        " values (%s, '%s', '%s', %s, 5, 45)" % (str(valueId), callback, resultItemId, str(resultWriteLocationId))
     derivedValueId=system.db.runUpdateQuery(SQL, getKey=1)
-    print "      ...assigned id %i to the derived lab value" % (derivedValueId)
+    print "      ...inserted a record into LtDerivedValue and assigned id %i to the derived lab value" % (derivedValueId)
+    
+    
+    # Now insert each related item into the LtRelatedData table
+    for relatedValueName in relatedData.split(','):
+        print "      ...inserted related item named: %s" % relatedValueName
+        relatedValueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (relatedValueName))
+        if relatedValueId >= 0:
+            SQL = "insert into LtRelatedData (DerivedValueId, RelatedValueId) values (%s, %s)" % (str(derivedValueId), str(relatedValueId))
+            system.db.runUpdateQuery(SQL)
+        else:
+            print "Can't find the related item named: ", relatedValueName
+
     return derivedValueId
 
 
