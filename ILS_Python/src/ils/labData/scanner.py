@@ -4,6 +4,10 @@ Created on Mar 27, 2015
 
 @author: Pete
 '''
+
+# This import will show an error, but it is required to handle calculation methods that are in project scope.
+import project 
+
 import sys, system, string, traceback
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from java.util import Calendar
@@ -178,7 +182,11 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
     log.trace("...handling a new lab value for %s, checking limits" % (valueName))
     print "Derived value callback: ", derivedValueCallback
     if derivedValueCallback != None and derivedValueCallback != "":
-        derivedLog.trace("Adding %s-%s to the derived value list" % (valueName, str(valueId)))
+        
+        # TODO Should check if the tag is alreaady in the list from a previous observation that is still waiting for its
+        #      related data.
+        
+        derivedLog.trace("Adding %s %s to the derived value list" % (valueName, str(valueId)))
         rawValue = rawValue
         
         # Add the value to the cache so that we don't keep seeing it as a new value
@@ -367,7 +375,8 @@ def checkDerivedCalculations(database, writeTags, writeTagValues):
         dataDictionary={}
         dataDictionary[valueName]={'valueName': valueName, 
                                    'valueId': valueId, 
-                                   'rawValue': rawValue}
+                                   'rawValue': rawValue,
+                                   'trigger': True}
                             
         relatedDataList=d.get("relatedData", [])
         for relatedData in relatedDataList:
@@ -388,7 +397,8 @@ def checkDerivedCalculations(database, writeTags, writeTagValues):
                     
                     dataDictionary[relatedValueName]={'valueName': relatedValueName, 
                                             'valueId':relatedValueId, 
-                                            'rawValue': rv}
+                                            'rawValue': rv,
+                                            'trigger': False}
                     
                 else:
                     print "The related data's sample time is NOT within the sample time window!"
@@ -431,7 +441,7 @@ def checkDerivedCalculations(database, writeTags, writeTagValues):
             
             if now > newSampleWaitEnd:
                 print "The  related sample has still not arrived and probably never will, time to give up!"
-                #TODO Need to remove this entry from the list
+                del derivedCalculationCache[valueName]
 
     derivedLog.trace(" ...done processing the derived values for this cycle... ")
 
