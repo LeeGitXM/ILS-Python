@@ -70,6 +70,18 @@ def entryFormInitialization(rootContainer):
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     
+    # Fetch the unit for this value
+    SQL = "select UnitName from TkUnit U, LtValue V "\
+        " where V.UnitId = U.UnitId and V.ValueId = %s" % (str(valueId))
+    pds = system.db.runQuery(SQL)
+    if len(pds) != 1:
+        system.gui.errorBox("Error fetching the unit for this lab data!")
+        return
+    record=pds[0]
+    unitName = record["UnitName"]
+    rootContainer.unitName = unitName
+    
+    # Fetch the limits for this value
     SQL = "select * from LtLimit where ValueId = %s" % (str(valueId))
     print SQL
     pds = system.db.runQuery(SQL)
@@ -134,17 +146,44 @@ def entryFormEnterData(rootContainer, db = ""):
     
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
+    unitName = rootContainer.unitName
     
+    upperValidityLimit = rootContainer.upperValidityLimit
+    lowerValidityLimit = rootContainer.lowerValidityLimit
+
+    print "The validity limits are from ", lowerValidityLimit, " to ", upperValidityLimit
+    
+    if lowerValidityLimit != None and lowerValidityLimit != "":
+        if sampleValue < lowerValidityLimit:
+            system.gui.errorBox("The value you entered, %s, must be greater than the lower validity limit, %s, please correct and press 'Enter'" % (str(sampleValue), str(lowerValidityLimit)))
+            return
+    
+    if upperValidityLimit != None and upperValidityLimit != "":
+        if sampleValue > upperValidityLimit:
+            system.gui.errorBox("The value you entered, %s, must be less than the upper validity limit, %s, please correct and press 'Enter'" % (str(sampleValue), str(upperValidityLimit)))
+            return
+
+    # Check for an exact duplicate with the same value and time
+    SQL = "select count(*) from LtHistory where ValueId = ? and SampleTime = ? and rawValue = ?" 
+    print SQL
+    pds = system.db.runPrepQuery(SQL, [valueId, sampleTime, sampleValue])
+    count = pds[0][0]
+    if count > 0:
+        system.gui.warningBox("This result has already been entered!")
+        return
+
     # Store the value locally in the X O M database
     from ils.labData.scanner import storeValue 
     storeValue(valueId, valueName, sampleValue, sampleTime, db)
     
     # Store the value in the Lab Data UDT memory tags, which are local to Ignition
     from ils.common.config import getTagProvider
-    provider = '[' + getTagProvider() + ']'
+    provider = getTagProvider()
     
     from ils.labData.scanner import updateTags
-    tags, tagValues = updateTags(provider, valueName, sampleValue, sampleTime, True, [], [])
+    tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, [], [])
+    print "Writing ", tagValues, " to ", tags
+    system.tag.writeAll(tags, tagValues)
     
     # If the lab datum is "local" then write the value to PHD (use a regular OPC write, so we won't 
     # capture the sample time)
