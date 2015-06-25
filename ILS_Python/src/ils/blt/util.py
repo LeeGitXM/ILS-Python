@@ -99,8 +99,7 @@ def getBlockState(block,properties):
         state = block.getState()
         properties.append(state)
     else:
-        print "util.getBlockState: argument ",block," not defined"
-
+        print "util.getBlockState: argument ",block," not defined" 
 
 #
 # Return a new instance of each class of block.
