@@ -97,8 +97,8 @@ def substituteProvider(chartProperties, tagPath):
             return tagPath
     
 # this should really be in client.util
-def handleUnexpectedClientError(message):
-    system.gui.errorBox(message, 'Unexpected Error')
+def handleUnexpectedClientError(msg):
+    system.gui.errorBox(msg, 'Unexpected Error')
 
 def isEmpty(str):
     return str == None or str.strip() == ""
@@ -155,3 +155,15 @@ def formatTime(epochSecs):
     '''given an epoch time, return a formatted time in the local time zone'''
     import time
     return time.strftime("%d %b %Y %I:%M:%S %p", time.localtime(epochSecs))
+
+def getMinutesSince(epochSecs):
+    '''get the elapsed time in minutes since the given epoch time'''
+    import time
+    return (time.time() - epochSecs) / 60.
+
+def printDataset(dataset):
+    for row in range(dataset.rowCount):
+        print ''
+        for col in range(dataset.columnCount):
+            value = dataset.getValueAt(row, col)
+            print value

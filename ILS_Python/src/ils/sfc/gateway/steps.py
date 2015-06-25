@@ -1,10 +1,11 @@
+
 '''
 Methods that are associated with particular SFC step types, matching
 one-to-one with step calls in the Java class JythonCall
 
 Created on Sep 30, 2014
 
-@author: rforbes`
+@author: rforbes
 '''
 
 #from com.ils.sfc.common import IlsSfcNames
@@ -12,6 +13,7 @@ from ils.sfc.gateway.api import s88Set, s88Get
 from ils.common.units import Unit
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
+from ils.sfc.common.constants import _STATUS
 
 from ils.sfc.common.util import getDatabaseName
 from ils.sfc.common.util import sendMessageToClient
@@ -32,7 +34,7 @@ def invokeStep(scopeContext, stepProperties, methodName):
     except Exception, e:
         msg = "Unexpected error: " + type(e).__name__ + " " + str(e)
         print msg
-        handleUnexpectedGatewayError(scopeContext, msg)
+        handleUnexpectedGatewayError(scopeContext.getChartScope(), msg)
          
 def queueInsert(scopeContext, stepProperties):
     '''
@@ -194,10 +196,17 @@ def timedDelay(scopeContext, stepProperties):
     #TODO: checking the real clock time is probably more accurate
     sleepIncrement = 5
     while delaySeconds > 0:
-        from ils.sfc.common.constants import _STATUS
+        
+        # Handle Cancel/Pause
         status = stepScope[_STATUS]
-        sleep(sleepIncrement)
+        if status == CANCEL:
+            return
+        elif status == PAUSE:
+            sleep(sleepIncrement)
+            continue
+        
         delaySeconds = delaySeconds - sleepIncrement
+        sleep(sleepIncrement)
     
     if postNotification:
         sendMessageToClient(chartScope, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
@@ -511,115 +520,268 @@ def confirmControllers(scopeContext, stepProperties):
     pass   
 
 def writeOutput(scopeContext, stepProperties): 
-    from system.ils.sfc.common.Constants import RECIPE_LOCATION, TIMER_LOCATION, TIMER_KEY, TIMER_SET, WRITE_OUTPUT_CONFIG
-    from system.ils.sfc.common.Constants import TIMING, KEY, ROWS, DOWNLOAD, VERBOSE
-    from system.util import jsonDecode
+    from system.ils.sfc.common.Constants import WRITE_OUTPUT_CONFIG, WRITE_CONFIRMED, \
+    DOWNLOAD_STATUS, STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VERBOSE, VALUE_TYPE, \
+    SETPOINT, VALUE
+    import ils.sfc.gateway.abstractSfcIO
+    from ils.sfc.common.constants import SLEEP_INCREMENT
     import time
+    from ils.sfc.common.util import getMinutesSince, formatTime, getIsolationMode
+    from ils.sfc.gateway.util import getChartLogger, checkForCancelOrPause
+    from system.ils.sfc import getWriteOutputConfig
+    from ils.sfc.gateway.downloads import handleTimer, writeOutput, waitForTimerStart
+    from ils.sfc.gateway.recipe import RecipeData
+    from ils.sfc.gateway.abstractSfcIO import getIO
+    
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
- 
+    logger = getChartLogger(chartScope, stepScope)
     verbose = getStepProperty(stepProperties, VERBOSE)
-    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
-    timerKey = getStepProperty(stepProperties, TIMER_KEY)
-    timerSet = getStepProperty(stepProperties, TIMER_SET)
-    if timerSet:
-        s88Set(chartScope, stepScope, timerKey, time.time(), timerLocation)
-        
+    handleTimer(chartScope, stepScope, stepProperties)
+ 
     configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
-    config = jsonDecode(configJson)
-    
+    config = getWriteOutputConfig(configJson)
+    outputRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+
+    # wait until the timer starts
+    timerStart = waitForTimerStart(chartScope, stepScope, stepProperties, logger)
+    if timerStart == None:
+        # the chart has been canceled
+        return
+            
     # separate rows into timed rows and those that are written after timed rows:
     immediateRows = []
     timedRows = []
     finalRows = []
+    downloadRows = []
+
+    payload = dict()
+    #payload[DATA] = config
+    sendMessageToClient(chartScope, 'sfcTestHandler', payload) 
     
-    for row in config[ROWS]:
-        outputDataKey = row[KEY] + '.'
-        timingMinutes = s88Get(chartScope, stepScope, outputDataKey + TIMING, recipeLocation)
-        download = s88Get(chartScope, stepScope, outputDataKey + DOWNLOAD, recipeLocation)
-        row['processed'] = False
-        if not download:
-            continue # this download has been disabled
-        if timingMinutes == 0.:
+    # filter out disabled rows:
+    for row in config.rows:
+        row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
+        download = row.outputRD.get(DOWNLOAD)
+        if download:
+            downloadRows.append(row) # this download has been disabled
+        
+    # initialize row data and separate into immediate/timed/final:
+    for row in downloadRows:
+        row.written = False
+         
+        # clear out the dynamic values in recipe data:
+        row.outputRD.set(DOWNLOAD_STATUS, None)
+        row.outputRD.set(STEP_TIMESTAMP, None) 
+        row.outputRD.set(STEP_TIME, None)
+        row.outputRD.set(WRITE_CONFIRMED, None)
+       
+        # cache some frequently used values from recipe data:
+        row.timingMinutes = row.outputRD.get(TIMING)
+        row.value = row.outputRD.get(VALUE)
+        row.tagPath = row.outputRD.get(TAG_PATH)
+        # description = row.outputRD.get(DESCRIPTION)  do we use this ??
+
+        # convert the value type enumeration (used in step properties)
+        # to the generic controller attribute used by the IO package
+        valueType = row.outputRD.get(VALUE_TYPE)
+        if valueType == VALUE:
+            row.ioAttribute = ils.sfc.gateway.abstractSfcIO.VALUE
+        elif valueType == SETPOINT:
+            row.ioAttribute = ils.sfc.gateway.abstractSfcIO.SETPOINT
+        else:
+            logger.error('Unknown value type ' + valueType)
+            
+        # write the absolute step timing back to recipe data
+        absTiming = timerStart / 60. + row.timingMinutes
+        row.outputRD.set(STEP_TIMESTAMP, formatTime(absTiming))
+        row.outputRD.set(STEP_TIME, absTiming)
+
+        isolationMode = getIsolationMode(chartScope)
+        row.io = getIO(row.tagPath, isolationMode)
+        
+        # classify the rows
+        if row.timingMinutes == 0.:
             immediateRows.append(row)
-        elif timingMinutes == 1000.:
+        elif row.timingMinutes >= 1000.:
             finalRows.append(row)
         else:
             timedRows.append(row)
-        
+  
+    logger.debug("Starting immediate writes")
     for row in immediateRows:
-        writeRow(chartScope, stepScope, recipeLocation, row, verbose)
-        
-    sleepIncrement = 10 # sec
-    writesPending = True 
+        writeOutput(chartScope, row, verbose, logger)
+                     
+    logger.debug("Starting timed writes")
+    writesPending = True       
     while writesPending:
         writesPending = False 
-        # we check the timer start inside this loop because it may not have been
-        # set yet, so if that is the case we need to re-check periodically
-        timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
-        if timerStart == None:
-            continue
+        
+        elapsedMinutes = getMinutesSince(timerStart)
         for row in timedRows:
-            outputDataKey = row[KEY] + '.'
-            timingMinutes = s88Get(chartScope, stepScope, outputDataKey + TIMING, recipeLocation)
-            # maxTiming = s88Get(chartScope, stepScope, outputDataKey + '.' + MAX_TIMING, recipeLocation)
-            elapsedMinutes = (time.time() - timerStart) / 60.
-            rowProcessed = row['processed']
-            if not rowProcessed:
-                if elapsedMinutes >= timingMinutes:
-                    writeRow(chartScope, stepScope, recipeLocation, row, verbose)
-                    row['processed'] = True
+            if not row.written:
+                logger.debug("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
+                if elapsedMinutes >= row.timingMinutes:
+                    writeOutput(chartScope, row, verbose, logger)
                 else:
                     writesPending = True
+         
         if writesPending:
-            time.sleep(sleepIncrement)
-        
-    for row in finalRows:
-        writeRow(chartScope, stepScope, recipeLocation, row, verbose)
-  
+            time.sleep(SLEEP_INCREMENT)
  
-def writeRow(chartScope, stepScope, recipeLocation, row, verbose):
-    from system.ils.sfc.common.Constants import VALUE, TAG_PATH, KEY, CONFIRM_WRITE
-    from ils.sfc.gateway.util import queueMessage
-    confirmWrite = row[CONFIRM_WRITE]
-    # we assume the key points to an Output type recipe data
-    outputDataKey = row[KEY] + '.'
-    value = s88Get(chartScope, stepScope, outputDataKey + VALUE, recipeLocation)
-    tagPath = s88Get(chartScope, stepScope, outputDataKey + TAG_PATH, recipeLocation)
-    try:
-        system.tag.writeSynchronous(tagPath, value)
-        resultMsg = 'succeeded'
-        status = MSG_STATUS_INFO
-    except:
-        resultMsg = 'failed'
-        status = MSG_STATUS_ERROR
-    if verbose:
-        queueMessage(chartScope, 'tag ' + tagPath + " write " + resultMsg + "; value: " + str(value), status)
-    
-def monitorPV(scopeContext, stepProperties): 
-    pass   
+        if checkForCancelOrPause(stepScope, logger):
+            return
+       
+    logger.debug("Starting final writes")
+    for row in finalRows:
+        writeOutput(chartScope, row, verbose, logger)    
 
-def monitorDownload(scopeContext, stepProperties): 
+    #Note: write confirmations are on a separate thread and will write the result
+    # directly to recipe data
+        
+def monitorPV(scopeContext, stepProperties):
+    from system.ils.sfc.common.Constants import PV_MONITOR_CONFIG, SETPOINT, MONITOR, \
+    NUMBER_OF_TIMEOUTS, IMMEDIATE, ABS, PCT, MONITORING, WARNING, ERROR, OK, HIGH, LOW, \
+    HIGH_LOW, TIMER_LOCATION
+    from ils.sfc.common.constants import SLEEP_INCREMENT
+    import time
+    from ils.sfc.common.util import getMinutesSince
+    from system.ils.sfc import getPVMonitorConfig
+    from ils.sfc.gateway.downloads import handleTimer
+    from ils.sfc.gateway.monitoring import getMonitoringMgr
+
+    # general initialization:
     chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    logger = getChartLogger(chartScope, stepScope)
+    stepScope[NUMBER_OF_TIMEOUTS] = 0
+    handleTimer(chartScope, stepScope, stepProperties)
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
+    monitoringMgr = getMonitoringMgr(chartScope, stepScope, timerLocation)
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+    recipeKey = getStepProperty(stepProperties, KEY)
+    value = getStepProperty(stepProperties, VALUE)    
+    timeLimitStrategy = getStepProperty(stepProperties, STRATEGY)
+    if timeLimitStrategy == STATIC:
+        timeLimitMin = value
+    else:
+        timeLimitMin = s88Get(chartScope, stepScope, recipeKey, recipeLocation)
+    configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
+    config = getPVMonitorConfig(configJson)
+
+    # initialize each input:
+    for pvInput in config.rows:
+        pvInput.status = MONITORING
+        pvInput.isDownloaded = False
+        pvInput.success = False
+        # we assume the target value won't change, so we get it once:
+        if pvInput.targetType == SETPOINT:
+            pvInput.targetValue = s88Get(chartScope, stepScope, pvInput.targetNameIdOrValue + '.value', recipeLocation)
+        elif pvInput.targetType == VALUE:
+            pvInput.targetValue = pvInput.targetNameIdOrValue
+        elif pvInput.targetType == TAG:
+            qualVal = system.tag.read(pvInput.targetNameIdOrValue)
+            pvInput.targetValue = qualVal.value
+        elif pvInput.targetType == RECIPE:
+            pvInput.targetValue = s88Get(chartScope, stepScope, pvInput.targetNameIdOrValue, recipeLocation)           
+
+        if pvInput.toleranceType == ABS:
+            tolerance = pvInput.tolerance
+        elif pvInput.toleranceType == PCT:
+            tolerance = pvInput.presentValue * pvInput.tolerance               
+
+        if pvInput.limits == LOW:
+            pvInput.lowLimit = pvInput.targetValue - tolerance
+            pvInput.highLimit = pvInput.targetValue
+        elif pvInput.limits == HIGH:
+            pvInput.lowLimit = pvInput.targetValue
+            pvInput.highLimit = pvInput.targetValue + tolerance
+        elif pvInput.limits == HIGH_LOW:
+            pvInput.lowLimit = pvInput.targetValue - tolerance
+            pvInput.highLimit = pvInput.targetValue + tolerance
+         
+    # Monitor for the specified period:
+    startTime = time.time()
+    elapsedMinutes = 0    
+    while elapsedMinutes < timeLimitMin:
+        
+        if checkForCancelOrPause(stepScope, logger):
+            return
+
+        for pvInput in config.rows:
+            
+            if not pvInput.enabled:
+                continue;
+             
+            if pvInput.targetType == SETPOINT and not pvInput.isDownloaded:
+                # TODO: read IO to see if setpoint is downloaded,
+                # if so set isDownloaded and downloadTime 
+                if not pvInput.isDownloaded:
+                    continue
+             
+            # DEBUG: until we get IO reads working, treat IO read as a tag
+            pvInput.presentValue = system.tag.read(pvInput.pvKey).value
+           
+            # if we're just reading for display purposes, we're done with this pvInput:
+            if pvInput.strategy != MONITOR:
+                continue
+            
+            # todo: check limits
+            inToleranceNow = pvInput.presentValue >= pvInput.lowLimit and pvInput.presentValue <= pvInput.highLimit
+                  
+            if pvInput.status == MONITORING or pvInput.status == WARNING:
+                if inToleranceNow:
+                    pvInput.status = OK
+                    pvInput.inToleranceTime = time.time()
+                else: # out of tolerance:
+                    if pvInput.download == IMMEDIATE:
+                        referenceTime = startTime
+                    else:
+                        referenceTime = pvInput.downloadTime
+                    if getMinutesSince(referenceTime) > pvInput.deadTime:
+                        pvInput.status = ERROR
+                    else:
+                        pvInput.status = WARNING
+            elif pvInput.status == OK and not pvInput.success:
+                if inToleranceNow:
+                        # persistence: The amount of time that the PV must be in range for the monitoring to be a success
+                        if getMinutesSince(pvInput.inToleranceTime) > pvInput.persistence:
+                            pvInput.success = True
+                else: # out of tolerance now
+                    if pvInput.inTolerance:
+                        # just fell out of tolerance; start the consistency clock
+                        pvInput.outToleranceTime = time.time()
+                    else:
+                        # consistency: The minimum amount of time that the PV is not within its limits before the PV is identified as out of range.
+                        if getMinutesSince(pvInput.outToleranceTime) >= pvInput.consistency:
+                            pvInput.status = TIMEOUT    
+                            stepScope[NUMBER_OF_TIMEOUTS] += 1                        
+            pvInput.inTolerance = inToleranceNow        
+        
+        if monitoringMgr != None:
+            monitoringMgr.updatePVStatus(pvInput.pv, pvInput.key, pvInput.status)
+         
+        time.sleep(SLEEP_INCREMENT)
+        elapsedMinutes =  getMinutesSince(startTime)
+        
+        for pvInput in config.rows:
+            if not pvInput.success:
+                pvInput.status = TIMEOUT
+     
+def monitorDownload(scopeContext, stepProperties): 
+    from system.ils.sfc.common.Constants import MONITOR_DOWNLOADS_CONFIG, TIMER_LOCATION
+    from system.ils.sfc import getMonitorDownloadsConfig
+    from ils.sfc.gateway.downloads import handleTimer
+    from ils.sfc.gateway.monitoring import createMonitoringMgr
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    handleTimer(chartScope, stepScope, stepProperties)
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
+    configJson = getStepProperty(stepProperties, MONITOR_DOWNLOADS_CONFIG)
+    monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)
+    createMonitoringMgr(chartScope, stepScope, timerLocation, monitorDownloadsConfig)
     payload = dict()
     payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     transferStepPropertiesToMessage(stepProperties, payload)
     sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload) 
     
-    # send a dummy update for testing:
-    # Column names must agree EXACTLY to those defined in the Designer
-    import time;    
-    import ils.sfc.common.util
-    ftime = ils.sfc.common.util.formatTime(time.time())
-    header = ['Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'pvColor']
-    row = [0.0, 'T-100', 25.0, 'Zone 1 Temp', ftime, 29.0, 'orange', 'green']
-    rows = [row]
-    dataset = system.dataset.toDataSet(header, rows)
-    payload2 = dict()
-    payload2[DATA] = dataset
-    payload2[POSTING_METHOD] = payload[POSTING_METHOD]
-    sendMessageToClient(chartScope, 'sfcUpdateDownloads', payload2) 
-
-
-

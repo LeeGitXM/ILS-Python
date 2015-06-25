@@ -7,6 +7,7 @@ Created on Mar 10, 2015
 import xml.etree.ElementTree as ET
 import sys, system, string, traceback
 from ils.migration.common import lookupOPCServerAndScanClass
+from ils.migration.common import lookupHDAServer
 from ils.common.database import getUnitId
 from ils.common.database import getPostId
 from ils.common.database import lookup
@@ -97,75 +98,108 @@ def insertIntoDB(container):
     loaded = 0
     skipped = 0
     alreadyExists = 0
-    for labData in root.findall('lab-data'):
-        name=labData.get("name")
+    for phase in [1,2]:
+        print ""
+        print "*** Pass %i ***" % (phase)
+        print ""
+        for labData in root.findall('lab-data'):
+            name=labData.get("name")
     
-        if not(alreadyLoaded(name)):
-            className = labData.get("class")
-            unitName = labData.get("unit-name")
-            print "Processing %s, a %s (unit: %s)" % (name, className, unitName)
-        
-            if className == "LAB-PHD-SQC":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                insertPHDLabValue(labData, valueId)
-                insertSQCLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
+            if not(alreadyLoaded(name)):
+                className = labData.get("class")
+                unitName = labData.get("unit-name")
+                print "Processing %s, a %s (unit: %s)" % (name, className, unitName)
             
-            elif className == "LAB-DCS-SQC":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                insertDCSLabValue(labData, valueId, site)
-                insertSQCLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-PHD-RELEASE":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                insertPHDLabValue(labData, valueId)
-                insertReleaseLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
+                if className == "LAB-PHD-SQC":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertPHDLabValue(labData, valueId, site)
+                        insertSQCLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
                 
-            elif className == "LAB-PHD-SQC-SELECTOR":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-
-            elif className == "LAB-PHD-RELEASE-SELECTOR":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-            
-#        elif className == "LAB-PHD-DERIVED-SQC":
-#            print "   ...skipping..."
-            elif className == "LAB-PHD-SELECTOR":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-PHD":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                loaded=loaded+1
-                print "   ...done!"
-            
-            elif className == "LAB-LOCAL-VALIDITY":
-                print "   Creating..."
-                valueId=insertLabValue(labData, unitName)
-                localValueId=insertLocalLabValue(valueId)
-                insertValidityLimit(labData,valueId)
-                loaded=loaded+1
-                print "   ...done!"
+                elif className == "LAB-DCS-SQC":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertDCSLabValue(labData, valueId, site)
+                        insertSQCLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
                 
-            else:
-                skipped=skipped+1
-                print "   <<< Unexpected class >>> "
+                elif className == "LAB-PHD-RELEASE":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertPHDLabValue(labData, valueId, site)
+                        insertReleaseLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
+                    
+                elif className == "LAB-PHD-SQC-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
+    
+                elif className == "LAB-PHD-RELEASE-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-PHD-VALIDITY-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
+    
+                elif className == "LAB-PHD-DERIVED":
+                    if phase == 2:
+                        valueId=insertLabValue(labData, unitName)
+                        insertDerivedPHDLabValue(labData, valueId, site)
+                        loaded=loaded+1
+                        print "   ...done!"
+                    
+                elif className == "LAB-PHD-DERIVED-SQC":
+                    if phase == 2:
+                        valueId=insertLabValue(labData, unitName)
+                        insertDerivedPHDLabValue(labData, valueId, site)
+                        insertSQCLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-PHD-SELECTOR":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-PHD":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertPHDLabValue(labData, valueId, site)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-LOCAL-VALIDITY":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        localValueId=insertLocalLabValue(labData, valueId, site)
+                        insertValidityLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
+                    
+                else:
+                    skipped=skipped+1
+                    print "   <<< Unexpected class >>> "
 
 #        success = load(model, userId, interfaceId, interfaceName, tx, log, statusField)
 #        if success:
@@ -177,11 +211,18 @@ def insertIntoDB(container):
             
     print "Done - Successfully loaded %i lab data objects, %i were skipped, %i already exist." % (loaded, skipped, alreadyExists)
 
-def lookupHDAInterface(interfaceName):
-    SQL = "select InterfaceId from LtHDAInterface where InterfaceName = '%s'" % (interfaceName)
+def lookupHDAInterfaceCRAP(site, interfaceName):
+    print "Old interface: ", interfaceName
+    # Translate from the old G2 interface name to the Ignition Interface name
+    serverName,  = lookupHDAServer(site, interfaceName)
+    print "New interface: ", serverName
+    
+    SQL = "select InterfaceId from LtHDAInterface where InterfaceName = '%s'" % (serverName)
+    print SQL
     interfaceId = system.db.runScalarQuery(SQL)
     if interfaceId == None:
-        SQL = "insert into LtHDAInterface (InterfaceName) values ('%s')" % (interfaceName)
+        SQL = "insert into LtHDAInterface (InterfaceName) values ('%s')" % (serverName)
+        print SQL
         interfaceId=system.db.runUpdateQuery(SQL, getKey=1)
     return interfaceId
 
@@ -202,24 +243,35 @@ def insertLabValue(labData, unitName):
 
 #
 # Insert a record into the main lad data catalog
-def insertLocalLabValue(valueId):
+def insertLocalLabValue(labData, valueId, site):
     print "      Inserting into LtLocalValue..."
     itemId = labData.get("phd-result-flag-item-id")
-    valueName = labData.get("name")
+    interfaceName = labData.get("phd-result-flag-interface-name")
     
-    SQL = "insert into LtLocalValue (ValueId) "\
-        " values (%s)" % (str(valueId))
+    if interfaceName == None:
+        SQL = "insert into LtLocalValue (ValueId) values (%s)" % (str(valueId))
+    else:
+        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+    
+        if writeLocationId < 0:
+            print "Unable to find interface: %s for site: %s in the InterfaceTransalation table!" % (interfaceName, site)
+            SQL = "insert into LtLocalValue (ValueId) values (%s)" % (str(valueId))
+        else:
+            SQL = "insert into LtLocalValue (ValueId, ItemId, WriteLocationId) "\
+                " values (%s, '%s', %s)" % (str(valueId), itemId, str(writeLocationId))
+
+    print SQL
     localValueId=system.db.runUpdateQuery(SQL, getKey=1)
-    print "      ...assigned id %i" % (localValueId)
+    print "      ...assigned id %i to the local lab value" % (localValueId)
     return localValueId
 
 
-def insertPHDLabValue(labData, valueId):
+def insertPHDLabValue(labData, valueId, site):
     print "      Inserting into LtPHDValue..." 
     for rawValue in labData.findall('rawValue'):
         itemId = rawValue.get("item-id")
         interfaceName=rawValue.get("interface-name")
-        interfaceId=lookupHDAInterface(interfaceName)
+        serverName, interfaceId=lookupHDAServer(site, interfaceName)
 
         SQL = "insert into LtPHDValue (ValueId, ItemId, InterfaceId) "\
             " values (%s, '%s', %s)" % (str(valueId), itemId, str(interfaceId))
@@ -227,18 +279,79 @@ def insertPHDLabValue(labData, valueId):
         print "      ...inserted a record into LtPHDValue..."
     return valueId
 
+# I'm going to assume that it s legal to have a local lab value that soes not get written out to PHD, but if the 
+# old system had an item id and interface, then the new one should too
 def insertDCSLabValue(labData, valueId, site):
     print "      Inserting into LtPHDValue..." 
     for rawValue in labData.findall('rawValue'):
         itemId = rawValue.get("item-id")
         interfaceName = rawValue.get("interface-name")
-        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
-
-        SQL = "insert into LtDCSValue (ValueId, ItemId, WriteLocationId) "\
-            " values (%s, '%s', %s)" % (str(valueId), itemId, str(writeLocationId))
+        if interfaceName == None:
+            SQL = "insert into LtDCSValue (ValueId) values (%s)" % (str(valueId))
+        else:
+            serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+            if writeLocationId < 0:
+                print "Unable to find interface: %s for site: %s in the InterfaceTransalation table!" % (interfaceName, site)
+                SQL = "insert into LtDCSValue (ValueId) values (%s)" % (str(valueId))
+            else:
+                SQL = "insert into LtDCSValue (ValueId, ItemId, WriteLocationId) "\
+                    " values (%s, '%s', %s)" % (str(valueId), itemId, str(writeLocationId))
         system.db.runUpdateQuery(SQL)
         print "      ...inserted a record into LtPHDValue..."
     return valueId
+
+def translateCallback(callback):
+    SQL = "select NewName from DerivedValueCallbackTranslation where oldName = '%s'" % (callback)
+    pds = system.db.runQuery(SQL, "XOMMigration")
+    if len(pds) == 0:
+        print "Discovered a new callback that needs translation: ", callback
+        SQL = "insert into DerivedValueCallbackTranslation (oldName, newName) values ('%s', '%s') " % (callback, callback)
+        system.db.runUpdateQuery(SQL, "XOMMigration")
+    else:
+        record = pds[0]
+        callback = record["NewName"]
+    return callback
+
+# Insert a record into the table for derived data.  I suppose data can be derived from a DCS or Local value but the normal source is PHD 
+def insertDerivedPHDLabValue(labData, valueId, site):
+    print "      Inserting into LtDerivedValue..."
+    callback = labData.get("raw-value-procedure")
+    callback = translateCallback(callback)
+    relatedData = labData.get("related-data")
+    
+    for trigger in labData.findall('trigger'):
+        triggerItemId = trigger.get("item-id")
+        interfaceName=trigger.get("interface-name")
+        serverName, triggerInterfaceId=lookupHDAServer(site, interfaceName)
+    
+    for result in labData.findall('phdResultTag'):
+        resultItemId = result.get("item-id")
+        interfaceName=result.get("interface-name")
+        serverName, scanClass, resultWriteLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+
+    SQL = "insert into LtPHDValue (ValueId, ItemId, InterfaceId) "\
+        " values (%s, '%s', %s)" % (str(valueId), triggerItemId, str(triggerInterfaceId))
+    system.db.runUpdateQuery(SQL)
+    print "      ...inserted a record into LtPHDValue..."
+
+    SQL = "insert into LtDerivedValue (ValueId, callback, ResultItemId, ResultWriteLocationId, SampleTimeTolerance, NewSampleWaitTime) "\
+        " values (%s, '%s', '%s', %s, 5, 45)" % (str(valueId), callback, resultItemId, str(resultWriteLocationId))
+    derivedValueId=system.db.runUpdateQuery(SQL, getKey=1)
+    print "      ...inserted a record into LtDerivedValue and assigned id %i to the derived lab value" % (derivedValueId)
+    
+    
+    # Now insert each related item into the LtRelatedData table
+    for relatedValueName in relatedData.split(','):
+        print "      ...inserted related item named: %s" % relatedValueName
+        relatedValueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (relatedValueName))
+        if relatedValueId >= 0:
+            SQL = "insert into LtRelatedData (DerivedValueId, RelatedValueId) values (%s, %s)" % (str(derivedValueId), str(relatedValueId))
+            system.db.runUpdateQuery(SQL)
+        else:
+            print "Can't find the related item named: ", relatedValueName
+
+    return derivedValueId
+
 
 def insertSQCLimit(labData, valueId):
     print "      Inserting a SQC limit..."
@@ -424,6 +537,15 @@ def insertValidityLimit(labData, valueId):
 def createTags(rootContainer):
     print "In labData.createTags()"
 
+    #----------------------------------------------------------------------------
+    def countAction(action, loaded, alreadyLoaded):
+        if action == 'loaded':
+            loaded = loaded + 1
+        else:
+            alreadyLoaded = alreadyLoaded + 1
+        return loaded, alreadyLoaded 
+    #---------------------------------------------------------------------------
+    
     filename = rootContainer.getComponent('File Field').text
     provider = rootContainer.getComponent("Tag Provider").text
     
@@ -434,6 +556,7 @@ def createTags(rootContainer):
     tree = ET.parse(filename)
     root = tree.getroot()
 
+    alreadyLoaded = 0
     loaded = 0
     error = 0
     for labData in root.findall('lab-data'):
@@ -443,53 +566,51 @@ def createTags(rootContainer):
         print "Processing a %s: %s " % (className, labDataName)
                    
         if className == "LAB-PHD":
-            createLabValue(labData, provider, unitName)
-            loaded=loaded+1
+            action = createLabValue(labData, provider, unitName)
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-DERIVED":
-            createLabValue(labData, provider, unitName)
-            loaded=loaded+1
+            action = createLabValue(labData, provider, unitName)
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-SQC":
-            createLabValue(labData, provider, unitName)
+            action = createLabValue(labData, provider, unitName)
             createLabLimitSQC(labData, provider, unitName)
-            loaded=loaded+1
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-RELEASE":
-            createLabValue(labData, provider, unitName)
+            action = createLabValue(labData, provider, unitName)
             createLabLimitRelease(labData, provider, unitName)
-            loaded=loaded+1
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-DERIVED-SQC":
-            createLabValue(labData, provider, unitName)
+            action = createLabValue(labData, provider, unitName)
             createLabLimitSQC(labData, provider, unitName)
-            loaded=loaded+1
-            
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-SELECTOR":
-            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
-            loaded=loaded+1
+            action = createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-SQC-SELECTOR":
-            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
+            action = createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
             createSelector(labData, 'Lab Data/Lab Selector Limit SQC', labDataName + '-SQC', provider, unitName)
-            loaded=loaded+1
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-VALIDITY-SELECTOR":
-            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
+            action = createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
             createSelector(labData, 'Lab Data/Lab Selector Limit Validity', labDataName + '-VALIDITY', provider, unitName)
-            loaded=loaded+1
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-PHD-RELEASE-SELECTOR":
-            createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
+            action = createSelector(labData, 'Lab Data/Lab Selector Value', labDataName, provider, unitName)
             createSelector(labData, 'Lab Data/Lab Selector Limit Release', labDataName + '-RELEASE', provider, unitName)
-            loaded=loaded+1
-            
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-DCS-SQC":
-            createLabValue(labData, provider, unitName)
+            action = createLabValue(labData, provider, unitName)
             createLabLimitSQC(labData, provider, unitName)
-            loaded=loaded+1
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-LOCAL-VALIDITY":
-            createLabValue(labData, provider, unitName)
+            action = createLabValue(labData, provider, unitName)
             createLabLimitValidity(labData, labDataName, provider, unitName)
-            loaded=loaded+1
+            loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         else:
             print "Unexpected class: ", className
             error=error+1
 
-    print "Done - Successfully created: %i, errors: %i" % (loaded, error)
+    print "Done - Successfully created: %i, already loaded: %i, errors: %i" % (loaded, alreadyLoaded, error)
 
 
 def createSelector(labData, UDTType, labDataName, provider, unitName):
@@ -499,10 +620,13 @@ def createSelector(labData, UDTType, labDataName, provider, unitName):
     tagExists = system.tag.exists(tagPath)
     if tagExists:
         print "  ", labDataName, " already exists!"
+        action = 'Already Exists'
     else:
         print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
+        action = 'Loaded'
+    return action
 
 def createLabValue(labData, provider, unitName):    
     UDTType='Lab Data/Lab Value'
@@ -513,10 +637,13 @@ def createLabValue(labData, provider, unitName):
     tagExists = system.tag.exists(tagPath)
     if tagExists:
         print "  ", labDataName, " already exists!"
+        action = "Already Exists"
     else:
         print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
+        action = "Loaded"
+    return action
 
 def createLabLimitSQC(labData, provider, unitName):    
     UDTType='Lab Data/Lab Limit SQC'
@@ -527,10 +654,13 @@ def createLabLimitSQC(labData, provider, unitName):
     tagExists = system.tag.exists(tagPath)
     if tagExists:
         print "  ", labDataName, " already exists!"
+        action = "Already Exists"
     else:
         print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
+        action = "Loaded"
+    return action
 
 def createLabLimitRelease(labData, provider, unitName):    
     UDTType='Lab Data/Lab Limit Release'
@@ -541,10 +671,13 @@ def createLabLimitRelease(labData, provider, unitName):
     tagExists = system.tag.exists(tagPath)
     if tagExists:
         print "  ", labDataName, " already exists!"
+        action = "Already Exists"
     else:
         print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
+        action = "Loaded"
+    return action
 
 def createLabLimitValidity(labData, labDataName, provider, unitName):    
     UDTType='Lab Data/Lab Limit Validity'
@@ -555,47 +688,88 @@ def createLabLimitValidity(labData, labDataName, provider, unitName):
     tagExists = system.tag.exists(tagPath)
     if tagExists:
         print "  ", labDataName, " already exists!"
+        action = "Already Exists"
     else:
         print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
             attributes={"UDTParentType":UDTType})
+        action = "Loaded"
+    return action
+
+def initializeUnitParameters(container):
+    print "In labData.initializeUnitParameters()"
+
+    #-------------------------------------------------
+    def delete(unitParameter):    
+        UDTType='Lab Data/Unit Parameter'
+        parameterName = unitParameter.get("name")
+        SQL = "delete from TkUnitParameter where UnitParameterName = '%s'" % (parameterName)
+        rows = system.db.runUpdateQuery(SQL)
+        if rows != 1:
+            print "Unable to delete %s" % (parameterName)
+        else:
+            print "   deleted ", parameterName
+            
+            
+    #-------------------------------------------------
+             
+    filename = container.getComponent('File Field').text
+    
+    if not(system.file.fileExists(filename)):
+        system.gui.errorBox("The import file (" + filename + ") does not exist. Please specify a valid filename.")  
+        return
+
+    tree = ET.parse(filename)
+    root = tree.getroot()
+
+    for unitParam in root.findall('unitParameter'):
+        delete(unitParam)
 
 def loadUnitParameters(container):
     print "In labData.loadUnitParameters()"
 
     #-------------------------------------------------
     def create(unitParameter):    
-        
         UDTType='Lab Data/Unit Parameter'
-        parameterName = unitParameter.get("name")
-        parent = unitParameter.get("parent")
-        if parent == "None":
-            path = "UnitParameter/"
-        else:
-            path = "UnitParameter/%s/" % (parent)
-            
-        print "Creating a Unit Parameter: %s" % (parameterName)
-        
-        numberOfPoints  = unitParameter.get("numberOfPoints")
-        
         provider = "XOM"
         scanClass = "Default"
         
-        parentPath = '[' + provider + ']' + path    
-        tagPath = parentPath + parameterName
-        tagExists = system.tag.exists(tagPath)
+        parameterName = unitParameter.get("name")    
+        print "Creating a Unit Parameter: %s" % (parameterName)
+        
+        numberOfPoints  = unitParameter.get("numberOfPoints")
 
         connections=0        
         for connection in unitParameter.findall('connectedTo'):
             sourceTag=connection.get("name")
+            
+            unit=connection.get("unit","")
+            if unit == "":
+                sourceTag="{[.]../%s/value}" % (sourceTag)
+            else:
+                sourceTag="{[.]../%s/%s/value}" % (unit, sourceTag)        
             connections = connections + 1
 
+        # At Vistalon, the only things that were ever connected to a unit parameter was lab data,
+        # therefore, if there was a connection, then put this new instance in the Lad Data folder. 
         if connections == 0:
             sourceType="Custom"
             sourceTag="Unknown"
         else:
             sourceType="Lab Data"
-            
+
+        parent = unitParameter.get("parent")
+        if parent == "None":
+            path = "Site/"
+        elif sourceType == "Lab Data":
+            path = "LabData/%s/" % (parent)
+        else:
+            path = "Site/%s/" % (parent)
+                        
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + parameterName
+        tagExists = system.tag.exists(tagPath)
+        
         if tagExists:
             print parameterName, " already exists!"
             pass
@@ -618,10 +792,92 @@ def loadUnitParameters(container):
     root = tree.getroot()
 
     loaded = 0
-    error = 0
     for unitParam in root.findall('unitParameter'):
         loaded = loaded + 1
         create(unitParam)
 
-    print "Done - Successfully loaded %i SLED models, %i were not loaded due to errors." % (loaded, error)
+    print "Done - Successfully processed %i unit parameters." % (loaded)
+
+#
+def insertUnitParameters(container):
+    print "In labData.insertUnitParameters()"
+
+    #-------------------------------------------------
+    def insert(unitParameter):    
+        
+        unitParameterName = unitParameter.get("name")    
+        numberOfPoints = unitParameter.get("numberOfPoints")
+        numberOfPoints = int(numberOfPoints)
+
+        connections=0        
+        for connection in unitParameter.findall('connectedTo'):
+            sourceTag=connection.get("name")
+            
+            unit=connection.get("unit","")
+            if unit == "":
+                sourceTag="{[.]../%s/value}" % (sourceTag)
+            else:
+                sourceTag="{[.]../%s/%s/value}" % (unit, sourceTag)        
+            connections = connections + 1
+
+        # At Vistalon, the only things that were ever connected to a unit parameter was lab data,
+        # therefore, if there was a connection, then put this new instance in the Lad Data folder. 
+        if connections == 0:
+            sourceType="Custom"
+            sourceTag="Unknown"
+        else:
+            sourceType="Tag"
+
+        # Lookup the id of the source
+        SQL = "select lookupId from Lookup "\
+            " where LookupTypeCode = 'UnitParamSrc' "\
+            " and LookupName = '%s'" % (sourceType)
+        print SQL
+        sourceTypeId = system.db.runScalarQuery(SQL)
+        print "SourceTypeId: ", sourceTypeId
+        
+        SQL = "insert into TkUnitParameter(UnitParameterName, BufferSize, BufferIndex, SourceTypeId, TagName) " \
+            "values ('%s', %s, 1, %s, '%s')" % (unitParameterName, str(numberOfPoints), str(sourceTypeId), sourceTag)
+        print SQL
+        unitParameterId = system.db.runUpdateQuery(SQL,getKey=1) 
+
+        for bufferIndex in range(0,numberOfPoints):
+            SQL = "insert into TkUnitParameterBuffer(UnitParameterId, BufferIndex ) "\
+                "values(%i, %i)" % (unitParameterId, bufferIndex)
+            print SQL
+            system.db.runUpdateQuery(SQL)
+    #-------------------------------------------------------------
+    #----------------------------------------------------
+    def alreadyLoaded(unitParameterName):    
+        SQL = "select count(*) from TkUnitParameter where UnitParameterName = '%s'" % (unitParameterName)
+        rows = system.db.runScalarQuery(SQL)
+        if rows > 0:
+            alreadyLoaded = True
+        else:
+            alreadyLoaded = False
+        return alreadyLoaded
+    #----------------------------------------------------
+
+    filename = container.getComponent('File Field').text
+    
+    if not(system.file.fileExists(filename)):
+        system.gui.errorBox("The import file (" + filename + ") does not exist. Please specify a valid filename.")  
+        return
+    
+    tree = ET.parse(filename)
+    root = tree.getroot()
+
+    skipped = 0
+    loaded = 0
+    for unitParameter in root.findall('unitParameter'):
+        unitParameterName = unitParameter.get("name")
+        if not(alreadyLoaded(unitParameterName)):
+            print "   inserting Unit Parameter: %s" % (unitParameterName)
+            insert(unitParameter)
+            loaded = loaded + 1
+        else:
+            skipped = skipped + 1
+            
+    print "Done - Successfully inserted %i unit parameters, %i were skipped." % (loaded, skipped)
+
     

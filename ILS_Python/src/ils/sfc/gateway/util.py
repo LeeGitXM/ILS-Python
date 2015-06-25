@@ -8,6 +8,9 @@ Created on Sep 30, 2014
 from system.ils.sfc import getResponse
 from ils.sfc.common.constants import *
 from ils.sfc.common.util import getTopChartRunId
+from ils.sfc.gateway.api import cancelChart
+
+
 
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
@@ -80,12 +83,11 @@ def waitOnResponse(requestId, chartScope):
     '''
     import time
     response = None
-    #TODO: have some configurable timeout logic here
-    sleepTime = 5 # seconds
-    maxCycles = 5 * 60 / sleepTime
+    #TODO: configurable timeout??
+    maxCycles = 5 * 60 / SLEEP_INCREMENT
     cycle = 0
     while response == None and cycle < maxCycles:
-        time.sleep(sleepTime);
+        time.sleep(SLEEP_INCREMENT);
         cycle = cycle + 1
         # chartState = chartScope[CHART_STATE]
         # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
@@ -109,18 +111,21 @@ def getFullChartPath(chartProperties):
 def escapeSingleQuotes(msg):
     return msg.replace("'", "''")
 
-def handleUnexpectedGatewayError(chartProps, msg):
-    from ils.sfc.common.util import getLogger
+def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.util import sendMessageToClient
     UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
     '''
-    getLogger().error(msg)
+    if logger != None:
+        logger.error(msg)
+        print 'canceling chart'
+    cancelChart(chartScope)
     payload = dict()
     payload[MESSAGE] = msg
-    sendMessageToClient(chartProps, UNEXPECTED_ERROR_HANDLER, payload)
+    print 'sending msg to client'
+    sendMessageToClient(chartScope, UNEXPECTED_ERROR_HANDLER, payload)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()
@@ -221,10 +226,10 @@ def createFilepath(chartScope, stepProperties):
     filepath = directory + '/' + fileName + timestamp + extension
     return filepath
 
-def getChartLogger(chartScope, stepProperties):
-    # TODO: use step name to make logger
-    import logging
-    return logging.getLogger('ilssfc')
+def getChartLogger(chartScope, stepScope):
+    from system.ils.sfc import getFullStepName
+    from system.util import getLogger
+    return getLogger(getFullStepName(chartScope, stepScope))
 
 def standardDeviation(dataset, column):
     '''calculate the standard deviation of the given column of the dataset'''
@@ -247,4 +252,20 @@ def queueMessage(chartScope, msg, priority):
     database = getDatabaseName(chartScope)
     insert(currentMsgQueue, priority, msg, database) 
 
-    
+def createRecipeKey(prefix, suffix):
+    return prefix + '.' + suffix
+
+def checkForCancelOrPause(stepScope, logger):
+    '''some commonly-used code to check for chart cancellation or pause in the midst
+       of long-running loops. A True return should cause a return from the step method'''
+    from ils.sfc.common.constants import _STATUS, CANCEL, PAUSE, SLEEP_INCREMENT
+    import time
+    status = stepScope[_STATUS]
+    if status == CANCEL:
+        logger.debug("chart cancelled; exiting step code")
+        return True
+    while status == PAUSE:
+        logger.debug("chart paused; holding in do-nothing loop")
+        time.sleep(SLEEP_INCREMENT)
+        status = stepScope[_STATUS]
+    return False

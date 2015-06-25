@@ -173,3 +173,14 @@ ACTIVATE = 'Activate'
 PAUSE = 'Pause'
 RESUME = 'Resume'
 CANCEL = 'Cancel'
+
+#colors
+WHITE = 'white'
+YELLOW = 'yellow'
+ORANGE = 'orange'
+RED = 'red'
+LIGHT_GREEN = 'light green'
+GREEN = 'green'
+
+# the default sleep increment for loops, in seconds
+SLEEP_INCREMENT = 5

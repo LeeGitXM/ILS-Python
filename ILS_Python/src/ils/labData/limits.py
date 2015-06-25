@@ -5,8 +5,8 @@ Created on Mar 31, 2015
 '''
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.labData")
-sqlLog = LogUtil.getLogger("com.ils.SQL.labData")
+log = LogUtil.getLogger("com.ils.labData.limits")
+sqlLog = LogUtil.getLogger("com.ils.SQL.labData.limits")
 
 def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
     log.trace("Checking Validity limits for %s..." % (valueName))
@@ -26,11 +26,11 @@ def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database,
     return True, upperLimit, lowerLimit
 
 def checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
-    print "Checking SQC limits: ", limit
+    log.trace("Checking SQC limits...")
     return True
 
 def checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
-    print "Checking Release limits", limit
+    log.trace("Checking Release limits...")
     return True
 
 # This fetches the currently active limits that are the Lab Data Toolkit tables regardless of where the
@@ -39,7 +39,7 @@ def fetchLimits(database = ""):
     limits=[]
 
     log.trace("Fetching Limits...")
-    SQL = "select * from LtLimitView order by ValueName"
+    SQL = "select * from LtLimitView"
     sqlLog.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     log.trace("  ...fetched %i limits!" % (len(pds)))
@@ -58,7 +58,7 @@ def fetchLimits(database = ""):
         }
         limits.append(d)
 
-    log.trace("Limits: %s" % (str(limits)))
+#    print "Limits: ", limits
     return limits
 
 # This is called in response to a grade change (and also maybe on restart).  It fetches the grade specific SQC limits from recipe and 

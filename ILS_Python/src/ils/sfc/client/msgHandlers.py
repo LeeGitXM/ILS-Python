@@ -156,9 +156,9 @@ def sfcYesNo(payload):
 
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError
-    from ils.sfc.common.constants import MESSAGE
-    message = payload[MESSAGE]
-    handleUnexpectedClientError(message)
+    from ils.sfc.common.constants import MESSAGE, DATA
+    msg = payload[MESSAGE]
+    handleUnexpectedClientError(msg)
 
 def sfcUpdateControlPanel(payload):
     from ils.sfc.client.controlPanel import updateControlPanels 
@@ -204,12 +204,28 @@ def sfcMonitorDownloads(payload):
     windowProperties = dict()
     createPositionedWindow(payload, windowProperties)
 
-def sfcUpdateDownloads(payload):
-    #find the window
+def sfcWriteOutputs(payload):
+    '''Initial info about outputs'''
+    from ils.sfc.client.windows.monitorDownload import getMonitorDownloadWindow
     from ils.sfc.common.util import callMethodWithParams
-    from ils.sfc.common.constants import POSTING_METHOD
-    postingMethod = payload[POSTING_METHOD]
-    window = system.gui.getWindow('SFC/MonitorDownload')
-    keys = ['window', 'properties']
-    values = [window, payload]
-    callMethodWithParams(postingMethod, keys, values)
+    from ils.sfc.common.constants import DATA
+    from ils.sfc.client.windows.monitorDownload import initializeTable
+    window = getMonitorDownloadWindow()
+    initializeTable(window, payload[DATA], payload['timerStart'])
+
+def sfcUpdateTimeStepStatus(payload):
+    from ils.sfc.client.windows.monitorDownload import updateStepTimeStatus, getMonitorDownloadWindow
+    from ils.sfc.common.constants import KEY, DATA
+    window = getMonitorDownloadWindow()
+    key = payload[KEY]
+    data = payload[DATA]
+    updateStepTimeStatus(window, key, data)
+
+def sfcUpdatePVStatus(payload):
+    from ils.sfc.client.windows.monitorDownload import updatePVStatus, getMonitorDownloadWindow
+    from ils.sfc.common.constants import KEY, DATA
+    window = getMonitorDownloadWindow()
+    key = payload[KEY]
+    data = payload[DATA]
+    updatePVStatus(window, key, data)
+

@@ -56,3 +56,15 @@ def failTest(chartScope):
 
 def reportTests(reportFile):
     pass
+
+def getPVMonitorConfig(json):
+    pass
+
+def getWriteOutputConfig(json):
+    pass
+
+def getMonitorDownloadsConfig(json):
+    pass
+
+def getFullStepName(chartScope, stepScope):
+    pass
