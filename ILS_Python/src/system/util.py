@@ -21,3 +21,6 @@ def jsonEncode(obj):
 
 def getLogger(path):
     pass
+
+def invokeAsynchronous(fn):
+    pass

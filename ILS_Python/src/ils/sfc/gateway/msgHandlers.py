@@ -60,3 +60,13 @@ def sfcFailTest(payload):
     from system.ils.sfc import failTest
     from ils.sfc.common.constants import CHART_NAME, MESSAGE
     failTest(payload[CHART_NAME], payload[MESSAGE])
+    
+def sfcUpdateDownloads(payload):
+    from ils.sfc.common.constants import ID, INSTANCE_ID
+    from ils.sfc.gateway.monitoring import getMonitoringMgr
+    timerId = payload[ID]
+    chartRunId = payload[INSTANCE_ID]
+    monitoringMgr = getMonitoringMgr(chartRunId, timerId)
+    if monitoringMgr != None:
+        monitoringMgr.sendClientUpdate()
+    # else chart probably ended

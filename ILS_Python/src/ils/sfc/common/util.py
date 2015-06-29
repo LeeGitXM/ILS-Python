@@ -33,7 +33,7 @@ def sendMessageToClient(chartProperties, handler, payload):
         payload[TEST_RESPONSE] = testResponse
     messageId = createUniqueId()
     payload[MESSAGE_ID] = messageId
-    #print 'sending message to client', project, handler, payload.get(MESSAGE, 'None')
+    # print 'sending message to client', project, handler, payload
     system.util.sendMessage(project, handler, payload, "C")
     return messageId
 
@@ -51,6 +51,12 @@ def getTopLevelProperties(chartProperties):
     while chartProperties.get(PARENT, None) != None:
         chartProperties = chartProperties.get(PARENT)
     return chartProperties
+
+def getTopChartStartTime(chartProperties):
+    '''Get the epoch time the chart was started in seconds (float value)'''
+    topProps = getTopLevelProperties(chartProperties)
+    javaDate = topProps['startTime']
+    return javaDate.getTime() * .001
 
 def getTopChartRunId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''
