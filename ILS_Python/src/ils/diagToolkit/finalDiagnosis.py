@@ -62,6 +62,20 @@ def handleNotification(payload):
                 
             return
 
+# Unpack the payload into arguments and call the method that posts a diagnosis entry.  
+# This only runs in the gateway
+def postDiagnosisEntryMessageHandler(payload):
+    print "The payload is: ", payload
+
+    application=payload["application"]
+    family=payload["family"]
+    finalDiagnosis=payload["finalDiagnosis"]
+    UUID=payload["UUID"]
+    diagramUUID=payload["diagramUUID"]
+    database=payload["database"]
+    
+    postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database)
+
 # Insert a record into the diagnosis queue
 def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
     log.trace("Post a diagnosis entry for application: %s, family: %s, final diagnosis: %s" % (application, family, finalDiagnosis))
