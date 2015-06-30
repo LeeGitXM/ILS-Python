@@ -26,11 +26,13 @@ def chooserInitialization(rootContainer):
     isAE = isAE()
     
     if not(communicationHealthy) or manualEntryPermitted or isAE:
+        # Select every lab data value EXCEPT derived date
         SQL = "select V.ValueName, V.ValueId "\
             " from LtValue V, TkUnit U, TkPost P "\
             " where V.UnitId = U.UnitId "\
             " and U.PostId = P.PostId "\
             " and P.Post = '%s' "\
+            " and V.ValueId not in (select ValueId from LtDerivedValue) "\
             " order by ValueName" % (post) 
     else: 
         SQL = "select V.ValueName, V.ValueId "\
