@@ -624,7 +624,7 @@ def writeOutput(scopeContext, stepProperties):
             if not row.written:
                 logger.debug("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
                 if elapsedMinutes >= row.timingMinutes:
-                     writeOutput(chartScope, row, verbose, logger)
+                    writeOutput(chartScope, row, verbose, logger)
                 else:
                     writesPending = True
          
