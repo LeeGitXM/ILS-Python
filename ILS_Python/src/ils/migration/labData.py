@@ -161,14 +161,14 @@ def insertIntoDB(container):
                 elif className == "LAB-PHD-DERIVED":
                     if phase == 2:
                         valueId=insertLabValue(labData, unitName)
-                        insertDerivedPHDLabValue(labData, valueId, site)
+                        insertDerivedLabValue(labData, valueId, site)
                         loaded=loaded+1
                         print "   ...done!"
                     
                 elif className == "LAB-PHD-DERIVED-SQC":
                     if phase == 2:
                         valueId=insertLabValue(labData, unitName)
-                        insertDerivedPHDLabValue(labData, valueId, site)
+                        insertDerivedLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
                         loaded=loaded+1
                         print "   ...done!"
@@ -313,29 +313,29 @@ def translateCallback(callback):
     return callback
 
 # Insert a record into the table for derived data.  I suppose data can be derived from a DCS or Local value but the normal source is PHD 
-def insertDerivedPHDLabValue(labData, valueId, site):
+def insertDerivedLabValue(labData, valueId, site):
     print "      Inserting into LtDerivedValue..."
     callback = labData.get("raw-value-procedure")
     callback = translateCallback(callback)
     relatedData = labData.get("related-data")
     
+    # The trigger is the only part of this that makes it PHD specific, if the trigger had a valueName rather than itemId we'd be all set.
+    # For migration, the hope is that the trigger has already been set up as a lab data item.
     for trigger in labData.findall('trigger'):
         triggerItemId = trigger.get("item-id")
-        interfaceName=trigger.get("interface-name")
-        serverName, triggerInterfaceId=lookupHDAServer(site, interfaceName)
-    
+        SQL = "select valueId from LtPHDValue where ItemId = '%s'" % (triggerItemId)
+        triggerValueId=system.db.runScalarQuery(SQL)
+        if triggerValueId == None:
+            print "**** ERROR **** The trigger does not already exist!"
+            return -1
+       
     for result in labData.findall('phdResultTag'):
         resultItemId = result.get("item-id")
         interfaceName=result.get("interface-name")
         serverName, scanClass, resultWriteLocationId = lookupOPCServerAndScanClass(site, interfaceName)
 
-    SQL = "insert into LtPHDValue (ValueId, ItemId, InterfaceId) "\
-        " values (%s, '%s', %s)" % (str(valueId), triggerItemId, str(triggerInterfaceId))
-    system.db.runUpdateQuery(SQL)
-    print "      ...inserted a record into LtPHDValue..."
-
-    SQL = "insert into LtDerivedValue (ValueId, callback, ResultItemId, ResultWriteLocationId, SampleTimeTolerance, NewSampleWaitTime) "\
-        " values (%s, '%s', '%s', %s, 5, 45)" % (str(valueId), callback, resultItemId, str(resultWriteLocationId))
+    SQL = "insert into LtDerivedValue (ValueId, TriggerValueId, callback, ResultItemId, ResultWriteLocationId, SampleTimeTolerance, NewSampleWaitTime) "\
+        " values (%s, %s, '%s', '%s', %s, 5, 45)" % (str(valueId), str(triggerValueId), callback, resultItemId, str(resultWriteLocationId))
     derivedValueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...inserted a record into LtDerivedValue and assigned id %i to the derived lab value" % (derivedValueId)
     

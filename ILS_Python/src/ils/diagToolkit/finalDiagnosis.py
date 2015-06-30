@@ -552,12 +552,3 @@ def updateQuantOutput(quantOutput, database=''):
     logSQL.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
     
-
-# Initialize the diagnosis 
-def initializeView(rootContainer):
-    post = rootContainer.getPropertyValue("post")
-    title = post + ' Console Diagnosis Message Queue'
-    rootContainer.setPropertyValue('title', title) 
-    print "Done initializing!"
-
-
