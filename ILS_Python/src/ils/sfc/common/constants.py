@@ -179,8 +179,7 @@ WHITE = 'white'
 YELLOW = 'yellow'
 ORANGE = 'orange'
 RED = 'red'
-LIGHT_GREEN = 'light green'
-GREEN = 'green'
+GREEN = '0,128,0'
 
 # the default sleep increment for loops, in seconds
 SLEEP_INCREMENT = 5

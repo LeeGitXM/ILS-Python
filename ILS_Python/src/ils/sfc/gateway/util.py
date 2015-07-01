@@ -120,11 +120,9 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     '''
     if logger != None:
         logger.error(msg)
-        print 'canceling chart'
     cancelChart(chartScope)
     payload = dict()
     payload[MESSAGE] = msg
-    print 'sending msg to client'
     sendMessageToClient(chartScope, UNEXPECTED_ERROR_HANDLER, payload)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
@@ -269,3 +267,19 @@ def checkForCancelOrPause(stepScope, logger):
         time.sleep(SLEEP_INCREMENT)
         status = stepScope[_STATUS]
     return False
+
+def writeTestRamp(tagPath, startValue, endValue, durationSeconds):
+    '''Write a value ramp to the given tag. This is for testing only,
+    as the timing logic is crude.'''
+    import time
+    import system.tag
+    numSteps = 10
+    sleepSeconds = durationSeconds / (numSteps - 1)
+    valueIncrement = (endValue - startValue) / (numSteps - 1)
+    currentValue = startValue
+    for i in range(numSteps):
+        system.tag.write(tagPath, currentValue)
+        currentValue += valueIncrement
+        time.sleep(sleepSeconds)
+        
+        

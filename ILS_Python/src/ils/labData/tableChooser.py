@@ -55,18 +55,18 @@ def populateRepeater(rootContainer):
     print "In populateTablesForConsole"
     selectedPost = rootContainer.selectedPost
     selectedPage = rootContainer.selectedPage
-    SQL = "Select DisplayTableTitle "\
+    SQL = "Select DisplayTableTitle, (select MIN(datediff(\"MI\", V.LastSampleTime, CURRENT_TIMESTAMP)) from LtValue V where V.DisplayTableId = DT.DisplayTableId) as MinutesSinceLastSample "\
         "from LtDisplayTable DT, TkPost P "\
         "where DT.PostId = P.PostId "\
         " and P.Post = '%s' "\
         " and DT.DisplayPage = %i "\
         " and DT.DisplayFlag = 1 "\
-        "Order by DisplayOrder" % (selectedPost, selectedPage)
+        "Order by DisplayOrder" % (selectedPost, selectedPage)        
     
     print SQL
     pds = system.db.runQuery(SQL)
     for record in pds:
-        print record['DisplayTableTitle']
+        print record['DisplayTableTitle'], "  -  ", record['MinutesSinceLastSample']
 
     repeater=rootContainer.getComponent("Template Repeater")
     rootContainer.displayTableTitles = pds

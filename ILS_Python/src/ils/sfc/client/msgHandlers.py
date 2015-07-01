@@ -70,6 +70,7 @@ def sfcLimitedInput(payload):
 
 def sfcPrintFile(payload):
     from ils.sfc.common.constants import COMPUTER, FILENAME, VIEW_FILE, PRINT_FILE, SERVER, MESSAGE
+    from system.ils.sfc.common.Constants import SFC_SAVE_DATA_WINDOW
     computer = payload[COMPUTER]
     filepath = payload[FILENAME]
     viewFile = payload[VIEW_FILE]
@@ -78,7 +79,7 @@ def sfcPrintFile(payload):
         message = payload[MESSAGE]
     else:
         message = ils.sfc.common.util.readFile(filepath)
-    window = system.nav.openWindow('SFC/SaveData')
+    window = system.nav.openWindow(SFC_SAVE_DATA_WINDOW)
     window.title = filepath
     textArea = window.getRootContainer().getComponent("textArea")
     textArea.text = message
@@ -91,19 +92,19 @@ def sfcPrintWindow(payload):
     showPrintDialog = payload['showPrintDialog']
     windows = system.gui.findWindow(windowName)
     for window in windows:
-        print 'printing a', windowName
         printJob = system.print.createPrintJob(window)
         printJob.showPrintDialog = showPrintDialog
         printJob.print()
         
 def sfcSaveData(payload):
     from ils.sfc.common.constants import DATA, VIEW_FILE, PRINT_FILE, FILEPATH
+    from system.ils.sfc.common.Constants import SFC_SAVE_DATA_WINDOW
     data = payload[DATA]
     viewFile = payload[VIEW_FILE]
     printFile = payload[PRINT_FILE]
     filepath = payload[FILEPATH]
     #ils.sfc.util.printObj(props, 0)
-    window = system.nav.openWindow('SFC/SaveData')
+    window = system.nav.openWindow(SFC_SAVE_DATA_WINDOW)
     window.title = filepath
     textArea = window.getRootContainer().getComponent("textArea")
     textArea.text = data
@@ -112,14 +113,16 @@ def sfcSaveData(payload):
         printJob.print()
     
 def sfcSelectInput(payload):
-    system.nav.openWindow('SFC/SelectInput', payload)
+    from system.ils.sfc.common.Constants import SFC_SELECT_INPUT_WINDOW
+    system.nav.openWindow(SFC_SELECT_INPUT_WINDOW, payload)
 
 def sfcShowQueue(payload):
     from ils.sfc.common.constants import MESSAGE_QUEUE
+    from system.ils.sfc.common.Constants import MESSAGE_QUEUE_WINDOW
     initialProps = dict()
     initialProps['key'] = payload[MESSAGE_QUEUE]
     initialProps['useCheckpoint'] = True
-    system.nav.openWindowInstance('Queue/Message Queue', initialProps)
+    system.nav.openWindowInstance(MESSAGE_QUEUE_WINDOW, initialProps)
 
 def sfcShowWindow(payload):
     from ils.sfc.client.windowUtil import createPositionedWindow
@@ -200,32 +203,21 @@ def sfcTestAddAction(payload):
     addAction(payload[COMMAND], payload[CHART_NAME], payload[INSTANCE_ID])
     
 def sfcMonitorDownloads(payload):
+    from system.ils.sfc.common.Constants import DATA_ID
     from ils.sfc.client.windowUtil import createPositionedWindow
     windowProperties = dict()
+    windowProperties['timerId'] = payload[DATA_ID]
     createPositionedWindow(payload, windowProperties)
 
-def sfcWriteOutputs(payload):
-    '''Initial info about outputs'''
-    from ils.sfc.client.windows.monitorDownload import getMonitorDownloadWindow
-    from ils.sfc.common.util import callMethodWithParams
-    from ils.sfc.common.constants import DATA
-    from ils.sfc.client.windows.monitorDownload import initializeTable
-    window = getMonitorDownloadWindow()
-    initializeTable(window, payload[DATA], payload['timerStart'])
+def sfcUpdateDownloads(payload):
+    from system.ils.sfc.common.Constants import DATA_ID, DATA, TIME, INSTANCE_ID
+    from ils.sfc.client.windows import monitorDownloads
+    chartRunId = payload[INSTANCE_ID]
+    timerId = payload[DATA_ID]
+    rows = payload[DATA]
+    timerStart = payload[TIME]
+    downloadsWindow = monitorDownloads.getMonitorDownloadWindow(chartRunId, timerId)
+    monitorDownloads.updateTable(downloadsWindow, rows, timerStart)
+    
 
-def sfcUpdateTimeStepStatus(payload):
-    from ils.sfc.client.windows.monitorDownload import updateStepTimeStatus, getMonitorDownloadWindow
-    from ils.sfc.common.constants import KEY, DATA
-    window = getMonitorDownloadWindow()
-    key = payload[KEY]
-    data = payload[DATA]
-    updateStepTimeStatus(window, key, data)
-
-def sfcUpdatePVStatus(payload):
-    from ils.sfc.client.windows.monitorDownload import updatePVStatus, getMonitorDownloadWindow
-    from ils.sfc.common.constants import KEY, DATA
-    window = getMonitorDownloadWindow()
-    key = payload[KEY]
-    data = payload[DATA]
-    updatePVStatus(window, key, data)
 

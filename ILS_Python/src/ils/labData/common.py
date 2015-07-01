@@ -21,6 +21,6 @@ def fetchValueId(valueName, database=""):
     valueId = system.db.runScalarQuery(SQL, database)
     return valueId
 
-def postMessage(txt, database=""):
+def postMessage(txt, status="Info", database=""):
     from ils.queue.message import insert
-    insert("LABDATA", "Info", txt, database)   
+    insert("LABDATA", status, txt, database)  

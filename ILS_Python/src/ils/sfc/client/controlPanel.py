@@ -4,7 +4,6 @@ Created on Oct 31, 2014
 @author: rforbes
 '''
 
-CONTROL_PANEL_NAME = 'SFC/SFCControlPanel'
 controlPanelsByChartRunId = dict()
 FLASH_INTERVAL = 3.
 import system.dataset
@@ -24,30 +23,44 @@ def flash(obj):
 
 class ControlPanel:
     """Controller for an SFCControlPanel Vision window"""
-    window = None
-    rootContainer = None
-    chartProperties = None
-    messageIndex = None
-    messages = None
-    timer = None
-    flashing = False
-    # the masks indicate a user override of enabling Pause/Resume/Cancel
-    pauseMask = True
-    resumeMask = True
-    cancelMask = True
-    # canXXX indicates whether the system would allow the operation
-    canPause = False
-    canResume = False
-    canCancel = False
     toolbarDataHeader = ['text', 'windowPath', 'windowId', 'chartRunId'] # these are the button properties
-    toolbarDataset = system.dataset.toDataSet(toolbarDataHeader, [])
-    windowsById = dict()
+    #window = None
+    #rootContainer = None
+    #chartProperties = None
+    #messageIndex = None
+    #messages = None
+    #timer = None
+    #flashing = False
+    # the masks indicate a user override of enabling Pause/Resume/Cancel
+    #pauseMask = True
+    #resumeMask = True
+    #cancelMask = True
+    # canXXX indicates whether the system would allow the operation
+    #canPause = False
+    #canResume = False
+    #canCancel = False
+    #toolbarDataset = system.dataset.toDataSet(toolbarDataHeader, [])
+    #windowsById = dict()
     
     def  __init__(self, _window, _chartProperties):
         self.window = _window
         self.rootContainer = self.window.rootContainer
         self.chartProperties = _chartProperties
         self.update()
+        self.messageIndex = None
+        self.messages = None
+        self.timer = None
+        self.flashing = False
+    # the masks indicate a user override of enabling Pause/Resume/Cancel
+        self.pauseMask = True
+        self.resumeMask = True
+        self.cancelMask = True
+    # canXXX indicates whether the system would allow the operation
+        self.canPause = False
+        self.canResume = False
+        self.canCancel = False
+        self.toolbarDataset = system.dataset.toDataSet(ControlPanel.toolbarDataHeader, [])
+        self.windowsById = dict()
  
     def getUser(self):
         from ils.sfc.common.constants import USER
@@ -87,10 +100,12 @@ class ControlPanel:
             statusField.setBackground(Color.red)
             self.setCommandCapability(False, False, False)
             self.window.closable = True
+            self.setChartStopped()
         elif status == STOPPED or status == CANCELED:
             statusField.setBackground(Color.blue)
             self.setCommandCapability(False, False, False)
             self.window.closable = True
+            self.setChartStopped()
         else:
             #Some other transitory state
             statusField.setBackground(Color.gray)
@@ -244,14 +259,25 @@ class ControlPanel:
                 rowsToRemove.append(i)
         self.toolbarDataset = system.dataset.deleteRows(self.toolbarDataset, rowsToRemove)
         self.getToolbar().templateParams = self.toolbarDataset
-             
+
+    def setChartStopped(self):
+        '''set the chartStopped flag in any windows still open'''
+        for window in self.windowsById.values():
+            window.getRootContainer().chartStopped = True
+
+    def closeAll(self):
+        '''close all the windows associated with this CP'''
+        for window in self.windowsById.values():
+            system.nav.closeWindow(window)
+            
 #def reconnect():
 #    from ils.sfc.client.util import registerClient
 #    registerClient()
 
 def createControlPanel(chartProperties):
     from ils.sfc.common.constants import INSTANCE_ID, CHART_NAME
-    window = system.nav.openWindowInstance(CONTROL_PANEL_NAME)
+    from system.ils.sfc.common.Constants import SFC_CONTROL_PANEL_WINDOW
+    window = system.nav.openWindowInstance(SFC_CONTROL_PANEL_WINDOW)
     window.title = chartProperties[CHART_NAME]
     chartRunId = chartProperties[INSTANCE_ID]
     window.getRootContainer().chartRunId = chartRunId

@@ -16,6 +16,14 @@ def insert(queueKey, status, message, db = ''):
 
     system.db.runUpdateQuery(SQL, db)
 
+#
+# This version of the insert stems from translation of "build-msg-on-wksp"
+def insertFromWorkspace(message,color,x,y,wksp):
+    status   = 'Info'
+    queueKey = 'default'
+    insert(queueKey,status,message)
+    return 200,10  # Width, height - not used
+
 def queueSQL(queueKey, useCheckpoint, order):
     
     SQL = "select checkpointTimestamp from QueueMaster where QueueKey = '%s'" % (queueKey)
@@ -36,8 +44,8 @@ def queueSQL(queueKey, useCheckpoint, order):
             " and M.QueueId = D.QueueId "\
             " and D.StatusId = QMS.StatusId " \
             " order by Timestamp %s" % (queueKey, order)
-    
-    print SQL
+    # This fills up the console by printing every few seconds!!
+    # print SQL
     return SQL 
             
 # Write the contents of the queue to a file

@@ -7,11 +7,7 @@ Created on Feb 10, 2015
 from ils.sfc.gateway.api import s88Set, s88Get
 class RecipeData:
     '''A convenient proxy to access a particular recipe data object via the s88Get/Set api'''
-    chartScope = None
-    stepScope = None
-    location = None
-    key = None
-    
+   
     def  __init__(self, _chartScope, _stepScope, _location, _key):
         self.chartScope = _chartScope
         self.stepScope = _stepScope
@@ -22,6 +18,8 @@ class RecipeData:
         s88Set(self.chartScope, self.stepScope, self.key + '.' + attribute, value, self.location)
         
     def get(self, attribute):
+        from ils.sfc.common.util import getTopChartRunId
+        # print 'RecipeData.get', attribute, getTopChartRunId(self.chartScope)
         return s88Get(self.chartScope, self.stepScope, self.key + '.' + attribute, self.location)
 
 def parseBracketedScopeReference(bracketedRef):
@@ -61,4 +59,16 @@ def substituteScopeReferences(chartProperties, stepProperties, sql):
         else:
             break
     return sql
+
+def getSiblingKey(key, attribute):
+    '''given a full key, e.g. foo.value, return a key for a sibling attribute; e.g. for attribute
+    id, foo.id would be returned'''
+    lastDotIndex = key.rfind(".")
+    return key[0:lastDotIndex+1] + attribute
+
+def splitKey(key):
+    '''given a key, split it into the prefix and the final value attribute'''
+    lastDotIndex = key.rfind(".")
+    return key[0:lastDotIndex], key[lastDotIndex + 1:len(key)]
+    
 
