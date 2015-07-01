@@ -88,7 +88,6 @@ def saveQueue(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     currentMsgQueue = getCurrentMessageQueue(chartScope)
     database = getDatabaseName(chartScope)
-    print 'database name', database
     filepath = createFilepath(chartScope, stepProperties)
     save(currentMsgQueue, True, filepath, database)
 
@@ -522,7 +521,7 @@ def confirmControllers(scopeContext, stepProperties):
 def writeOutput(scopeContext, stepProperties): 
     from system.ils.sfc.common.Constants import WRITE_OUTPUT_CONFIG, WRITE_CONFIRMED, \
     DOWNLOAD_STATUS, STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VERBOSE, VALUE_TYPE, \
-    SETPOINT, VALUE
+    SETPOINT, SUCCESS, PENDING
     import ils.sfc.gateway.abstractSfcIO
     from ils.sfc.common.constants import SLEEP_INCREMENT
     import time
@@ -531,7 +530,7 @@ def writeOutput(scopeContext, stepProperties):
     from system.ils.sfc import getWriteOutputConfig
     from ils.sfc.gateway.downloads import handleTimer, writeOutput, waitForTimerStart
     from ils.sfc.gateway.recipe import RecipeData
-    from ils.sfc.gateway.abstractSfcIO import getIO
+    import ils.sfc.gateway.abstractSfcIO as abstractSfcIO
     
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
@@ -554,11 +553,7 @@ def writeOutput(scopeContext, stepProperties):
     timedRows = []
     finalRows = []
     downloadRows = []
-
-    payload = dict()
-    #payload[DATA] = config
-    sendMessageToClient(chartScope, 'sfcTestHandler', payload) 
-    
+     
     # filter out disabled rows:
     for row in config.rows:
         row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
@@ -572,42 +567,49 @@ def writeOutput(scopeContext, stepProperties):
          
         # clear out the dynamic values in recipe data:
         row.outputRD.set(DOWNLOAD_STATUS, None)
-        row.outputRD.set(STEP_TIMESTAMP, None) 
-        row.outputRD.set(STEP_TIME, None)
+        # STEP_TIMESTAMP and STEP_TIME will be set below
         row.outputRD.set(WRITE_CONFIRMED, None)
        
         # cache some frequently used values from recipe data:
         row.timingMinutes = row.outputRD.get(TIMING)
         row.value = row.outputRD.get(VALUE)
         row.tagPath = row.outputRD.get(TAG_PATH)
-        # description = row.outputRD.get(DESCRIPTION)  do we use this ??
 
         # convert the value type enumeration (used in step properties)
         # to the generic controller attribute used by the IO package
         valueType = row.outputRD.get(VALUE_TYPE)
         if valueType == VALUE:
-            row.ioAttribute = ils.sfc.gateway.abstractSfcIO.VALUE
+            row.ioAttribute = abstractSfcIO.VALUE
         elif valueType == SETPOINT:
-            row.ioAttribute = ils.sfc.gateway.abstractSfcIO.SETPOINT
+            row.ioAttribute = abstractSfcIO.SETPOINT
         else:
             logger.error('Unknown value type ' + valueType)
             
-        # write the absolute step timing back to recipe data
-        absTiming = timerStart / 60. + row.timingMinutes
-        row.outputRD.set(STEP_TIMESTAMP, formatTime(absTiming))
-        row.outputRD.set(STEP_TIME, absTiming)
-
-        isolationMode = getIsolationMode(chartScope)
-        row.io = getIO(row.tagPath, isolationMode)
-        
         # classify the rows
+        timingIsEventDriven = False
         if row.timingMinutes == 0.:
             immediateRows.append(row)
         elif row.timingMinutes >= 1000.:
             finalRows.append(row)
+            timingIsEventDriven = True
         else:
             timedRows.append(row)
   
+        # write the absolute step timing back to recipe data
+        if timingIsEventDriven:
+            row.outputRD.set(STEP_TIMESTAMP, '')
+            # I don't want to propagate the magic 1000 value, so we use None
+            # to signal an event-driven step
+            row.outputRD.set(STEP_TIME, None)
+        else:
+            absTiming = timerStart + row.timingMinutes * 60.
+            timestamp = formatTime(absTiming)
+            row.outputRD.set(STEP_TIMESTAMP, timestamp)
+            row.outputRD.set(STEP_TIME, absTiming)
+
+        isolationMode = getIsolationMode(chartScope)
+        row.io = abstractSfcIO.getIO(row.tagPath, isolationMode)
+        
     logger.debug("Starting immediate writes")
     for row in immediateRows:
         writeOutput(chartScope, row, verbose, logger)
@@ -634,6 +636,10 @@ def writeOutput(scopeContext, stepProperties):
        
     logger.debug("Starting final writes")
     for row in finalRows:
+        absTiming = time.time()
+        timestamp = formatTime(absTiming)
+        row.outputRD.set(STEP_TIMESTAMP, timestamp)
+        row.outputRD.set(STEP_TIME, absTiming)
         writeOutput(chartScope, row, verbose, logger)    
 
     #Note: write confirmations are on a separate thread and will write the result
@@ -655,7 +661,7 @@ def monitorPV(scopeContext, stepProperties):
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope, stepScope)
     stepScope[NUMBER_OF_TIMEOUTS] = 0
-    handleTimer(chartScope, stepScope, stepProperties)
+    timerId = handleTimer(chartScope, stepScope, stepProperties)
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
     monitoringMgr = getMonitoringMgr(chartScope, stepScope, timerLocation)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
@@ -769,19 +775,21 @@ def monitorPV(scopeContext, stepProperties):
                 pvInput.status = TIMEOUT
      
 def monitorDownload(scopeContext, stepProperties): 
-    from system.ils.sfc.common.Constants import MONITOR_DOWNLOADS_CONFIG, TIMER_LOCATION
+    from system.ils.sfc.common.Constants import MONITOR_DOWNLOADS_CONFIG, DATA_ID
     from system.ils.sfc import getMonitorDownloadsConfig
     from ils.sfc.gateway.downloads import handleTimer
     from ils.sfc.gateway.monitoring import createMonitoringMgr
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    handleTimer(chartScope, stepScope, stepProperties)
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
+    logger = getChartLogger(chartScope, stepScope)
+    timer, timerAttribute = handleTimer(chartScope, stepScope, stepProperties)
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     configJson = getStepProperty(stepProperties, MONITOR_DOWNLOADS_CONFIG)
     monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)
-    createMonitoringMgr(chartScope, stepScope, timerLocation, monitorDownloadsConfig)
+    mgr = createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger)
     payload = dict()
     payload[INSTANCE_ID] = getTopChartRunId(chartScope)
+    payload[DATA_ID] = mgr.getTimerId()
     transferStepPropertiesToMessage(stepProperties, payload)
-    sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload) 
-    
+    sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload)             
+        

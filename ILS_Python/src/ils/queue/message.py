@@ -44,8 +44,8 @@ def queueSQL(queueKey, useCheckpoint, order):
             " and M.QueueId = D.QueueId "\
             " and D.StatusId = QMS.StatusId " \
             " order by Timestamp %s" % (queueKey, order)
-    
-    print SQL
+    # This fills up the console by printing every few seconds!!
+    # print SQL
     return SQL 
             
 # Write the contents of the queue to a file
