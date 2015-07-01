@@ -190,7 +190,7 @@ def statusCallback(event):
 
     # Format the information
     record=pds[0]
-    quantOutput = record['QuantOutput']   
+    quantOutputName = record['QuantOutputName']   
     outputLimited=record['OutputLimited']
     outputLimitedStatus=record['OutputLimitedStatus']
     mostNegativeIncrement=record['MostNegativeIncrement']
@@ -206,12 +206,12 @@ def statusCallback(event):
     if outputLimited:
         if outputLimitedStatus == 'Vector':
             txt = "The output (%s) is %s limited!\n\nIt was reduced from %.2f to %.2f because the most bound output "\
-                "could only use %.0f%% of its value" % (quantOutput, outputLimitedStatus, record['FeedbackOutput'], \
+                "could only use %.0f%% of its value" % (quantOutputName, outputLimitedStatus, record['FeedbackOutput'], \
                                                     record['FeedbackOutputConditioned'], record['OutputPercent'])
         else:
-            txt = "The output (%s) is %s limited!\n\n%s" % (quantOutput, outputLimitedStatus, limitDetails)
+            txt = "The output (%s) is %s limited!\n\n%s" % (quantOutputName, outputLimitedStatus, limitDetails)
     else:
-        txt = "The output (%s) is not limited!\n\n%s" % (quantOutput, limitDetails)
+        txt = "The output (%s) is not limited!\n\n%s" % (quantOutputName, limitDetails)
     
     title = "Output Details"
 

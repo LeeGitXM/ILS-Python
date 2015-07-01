@@ -414,11 +414,18 @@ def checkBounds(quantOutput, database):
     
     # Calculate the percent of the original recommendation that we are using if the output is limited 
     if quantOutput['OutputLimited'] == True:
-        outputPercent = feedbackOutputConditioned / feedbackOutput * 100.0
+        # I'm not sure hout the feedback output can be 0.0 AND be output limited, unless something is misconfigured
+        # on the quant output, but just be extra careful to avoid a divide by zero error.
+        if feedbackOutput == 0.0:
+            outputPercent = 0.0
+        else:
+            outputPercent = feedbackOutputConditioned / feedbackOutput * 100.0
+            
         quantOutput['OutputPercent'] = outputPercent
         from ils.diagToolkit.common import updateBoundRecommendationPercent
         updateBoundRecommendationPercent(quantOutput['QuantOutputId'], outputPercent, database)
     
+    log.trace("Output after bounds checking: %s" % (str(quantOutput)))
     return quantOutput
 
 

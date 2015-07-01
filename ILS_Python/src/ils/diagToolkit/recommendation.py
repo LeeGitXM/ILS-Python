@@ -98,6 +98,11 @@ def calculateFinalRecommendation(quantOutput):
     i = 0
     finalRecommendation = 0.0
     recommendations = quantOutput.get("Recommendations", [])
+    
+    # It certainly isn't normal to get to this point and NOT have any recommendations.
+    if len(recommendations) == 0:
+        log.error("No recommendations were found for quant output: %s" % (quantOutput.get("QuantOutput", "Unknown")))
+        
     for recommendation in recommendations:
         log.trace("  The raw recommendation is: %s" % (str(recommendation)))
             
