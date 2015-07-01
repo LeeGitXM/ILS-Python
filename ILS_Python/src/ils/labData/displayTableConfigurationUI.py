@@ -39,13 +39,20 @@ def internalFrameOpened(rootContainer):
     txID = system.db.beginTransaction(timeout=300000)
     rootContainer.txID = txID
     update(rootContainer)
+    
+#refresh when window is activated
+def internalFrameActivated(rootContainer):
+    update(rootContainer)
 
 #update the window
 def update(rootContainer):
     txID = rootContainer.txID
     table = rootContainer.getComponent("Power Table")
+    valueTable = rootContainer.getComponent("ValueTable")
     dropDown= rootContainer.getComponent("Dropdown")
     postId = dropDown.selectedValue
+    
+    #update display table
     SQL = "SELECT * FROM LtDisplayTable "\
         " WHERE PostId = %i "\
         " ORDER BY DisplayPage, DisplayOrder " % (postId)
@@ -54,6 +61,14 @@ def update(rootContainer):
     table.updateInProgress = True
     table.data = pds
     table.updateInProgress = False
+    
+    #update value table
+    displayTableId = rootContainer.DisplayTableId
+    sql = "SELECT ValueName, Description, DisplayTableId "\
+        "FROM LtValue "\
+        "WHERE DisplayTableId = %i " % (displayTableId)
+    pds = system.db.runQuery(sql, tx=txID)
+    valueTable.data = pds
     
 #move selected row down
 def moveDown(event):
@@ -128,15 +143,49 @@ def insertRow(event):
         order = 0
     
     newName = system.gui.inputBox("Insert New Table Name:", "")
-    DisplayPage = 1 #default DisplayPage = 1
-    DisplayOrder = order + 10
-    DisplayFlag = 0 #default DisplayFlag = 0, false
-    PostId = rootContainer.getComponent("Dropdown").selectedValue 
+    if newName != None:
+        DisplayPage = 1 #default DisplayPage = 1
+        DisplayOrder = order + 10
+        DisplayFlag = 0 #default DisplayFlag = 0, false
+        PostId = rootContainer.getComponent("Dropdown").selectedValue 
+        
+        #insert the user's data as a new row
+        SQL = "INSERT INTO LtDisplayTable (DisplayTableTitle, DisplayPage, DisplayOrder, DisplayFlag, PostId)"\
+            "VALUES ('%s', %i, %d, %i, %i)" %(newName, DisplayPage, DisplayOrder, DisplayFlag, PostId)
+        system.db.runUpdateQuery(SQL, tx=txID)
+        
+        #refresh table
+        update(rootContainer)
+    
+#add a row of values
+def insertValueRow(event):
+    rootContainer = event.source.parent
+    txID = rootContainer.txID
+    
+    displayTableId = rootContainer.DisplayTableId
+    newName = rootContainer.getComponent("Dropdown").selectedStringValue
     
     #insert the user's data as a new row
-    SQL = "INSERT INTO LtDisplayTable (DisplayTableTitle, DisplayPage, DisplayOrder, DisplayFlag, PostId)"\
-        "VALUES ('%s', %i, %d, %i, %i)" %(newName, DisplayPage, DisplayOrder, DisplayFlag, PostId)
+    SQL = "UPDATE LtValue SET DisplayTableId = %i "\
+        "WHERE ValueName = '%s' " %(displayTableId, newName)
+    print SQL
     system.db.runUpdateQuery(SQL, tx=txID)
+    
+#remove the selected row
+def removeValueRow(event):
+    rootContainer = event.source.parent
+    txID = rootContainer.txID
+    valueTable = rootContainer.getComponent("ValueTable")
+    row = valueTable.selectedRow
+    ds = valueTable.data
+    valueName = ds.getValueAt(row, "ValueName")
         
+    #remove the selected row
+    SQL = "UPDATE LtValue "\
+        " SET DisplayTableId = NULL "\
+        "WHERE ValueName = '%s' " % (valueName)
+    system.db.runUpdateQuery(SQL, tx=txID)
+    
     #refresh table
     update(rootContainer)
+    
