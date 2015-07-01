@@ -33,6 +33,34 @@ def moveUp(event):
     
     #refresh table
     update(rootContainer)
+    
+#move selected row down
+def moveDown(event):
+    rootContainer = event.source.parent
+    txID = rootContainer.txID
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data
+
+    row = table.selectedRow
+    belowRow = row + 1
+
+    #get the TableIds and Orders to swap
+    displayTableId = ds.getValueAt(row, "DisplayTableId")
+    displayBelowTableId = ds.getValueAt(belowRow, "DisplayTableId")
+    displayOrderValue = ds.getValueAt(row, "DisplayOrder")
+    displayBelowOrderValue = ds.getValueAt(belowRow, "DisplayOrder")
+
+    #update selected row so that highlighting changes with the move
+    table.selectedRow = row + 1
+    
+    #update database swapping orders
+    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayBelowOrderValue, displayTableId)
+    system.db.runUpdateQuery(sql, tx = txID)
+    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayOrderValue, displayBelowTableId)
+    system.db.runUpdateQuery(sql, tx = txID)
+
+    #refresh table
+    update(rootContainer)
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -67,36 +95,33 @@ def update(rootContainer):
     sql = "SELECT ValueName, Description, DisplayTableId "\
         "FROM LtValue "\
         "WHERE DisplayTableId = %i " % (displayTableId)
+    print sql
     pds = system.db.runQuery(sql, tx=txID)
     valueTable.data = pds
-    
-#move selected row down
-def moveDown(event):
-    rootContainer = event.source.parent
+   
+#update the database when user directly changes table 
+def updateDatabase(table, rowIndex, colName, newValue):
+    rootContainer = table.parent
     txID = rootContainer.txID
-    table = rootContainer.getComponent("Power Table")
     ds = table.data
-
-    row = table.selectedRow
-    belowRow = row + 1
-
-    #get the TableIds and Orders to swap
-    displayTableId = ds.getValueAt(row, "DisplayTableId")
-    displayBelowTableId = ds.getValueAt(belowRow, "DisplayTableId")
-    displayOrderValue = ds.getValueAt(row, "DisplayOrder")
-    displayBelowOrderValue = ds.getValueAt(belowRow, "DisplayOrder")
-
-    #update selected row so that highlighting changes with the move
-    table.selectedRow = row + 1
+    displayTableId =  ds.getValueAt(rowIndex, "DisplayTableId")
     
-    #update database swapping orders
-    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayBelowOrderValue, displayTableId)
-    system.db.runUpdateQuery(sql, tx = txID)
-    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayOrderValue, displayBelowTableId)
-    system.db.runUpdateQuery(sql, tx = txID)
-
-    #refresh table
-    update(rootContainer)
+    if colName == "DisplayTableTitle":
+        SQL = "UPDATE LtDisplayTable SET DisplayTableTitle = '%s' "\
+            "WHERE DisplayTableId = %i " % (newValue, displayTableId)
+    elif colName == "DisplayPage":
+        SQL = "UPDATE LtDisplayTable SET DisplayPage = %i "\
+            "WHERE DisplayTableId = %i " % (newValue, displayTableId)
+    else:
+        if newValue == False:
+            val = 0
+        else:
+            val = 1
+        SQL = "UPDATE LtDisplayTable SET DisplayFlag = %i "\
+            "WHERE DisplayTableId = %i " % (val, displayTableId)
+            
+    print SQL
+    system.db.runUpdateQuery(SQL, tx=txID)
     
 #remove the selected row
 def removeRow(event):
