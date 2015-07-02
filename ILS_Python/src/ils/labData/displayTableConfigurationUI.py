@@ -5,7 +5,25 @@ Created on Jun 15, 2015
 '''
 import system
 
-#
+#open transaction when window is opened
+def internalFrameOpened(rootContainer):
+    txID = system.db.beginTransaction(timeout=300000)
+    rootContainer.txID = txID
+    update(rootContainer)
+    
+#refresh when window is activated
+def internalFrameActivated(rootContainer):
+    update(rootContainer)
+
+#open transaction when window is opened
+def internalFrameClosing(rootContainer):
+    try:
+        txId=rootContainer.txID
+        system.db.rollbackTransaction(txId)
+        system.db.closeTransaction(txId)
+    except:
+        print "Caught an error trying to close the transaction"
+
 #move selected row up
 def moveUp(event):
     rootContainer = event.source.parent
@@ -62,15 +80,7 @@ def moveDown(event):
     #refresh table
     update(rootContainer)
 
-#open transaction when window is opened
-def internalFrameOpened(rootContainer):
-    txID = system.db.beginTransaction(timeout=300000)
-    rootContainer.txID = txID
-    update(rootContainer)
-    
-#refresh when window is activated
-def internalFrameActivated(rootContainer):
-    update(rootContainer)
+
 
 #update the window
 def update(rootContainer):
