@@ -29,6 +29,8 @@ def internalFrameActivated(rootContainer):
 
 
 def configureLabDatumTable(container):
+    username = system.security.getUsername()
+    print "Checking for lab data viewed by ", username
     valueName=container.ValueName
     valueDescription=container.Description
     displayDecimals=container.DisplayDecimals
@@ -36,24 +38,31 @@ def configureLabDatumTable(container):
     
     # We need to update the column attribute dataset because we change the column name for every parameter and this 
     # freaks out the table widget (same is true for the power table).
-    table=container.getComponent("Table")
+    table=container.getComponent("Power Table")
     columnAttributesData=table.columnAttributesData
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "numberFormat", "#,##0.000000")
     table.columnAttributesData=columnAttributesData
     
-    
     from ils.labData.common import fetchValueId
     valueId = fetchValueId(valueName)
-    SQL = "select top 10 RawValue as '%s', SampleTime from LtHistory where ValueId = %i order by SampleTime desc" % (valueName, valueId)
+        
+    SQL = "select top 10 H.RawValue as '%s', H.SampleTime, VV.Username "\
+        " from LtHistory  H LEFT OUTER JOIN "\
+        " LtValueViewed VV ON H.HistoryId = VV.HistoryId "\
+        " where ValueId = %i "\
+        " and (VV.username = '%s' or VV.username is NULL)"\
+        " order by SampleTime desc" % (valueName, valueId, username)
+    print SQL
     pds = system.db.runQuery(SQL)
     container.data=pds 
 
-    header = [valueDescription]
+    header = [valueDescription, 'seen']
     data = []
     for record in pds:
         val = record[valueName]
+        username = record['Username']
         if displayDecimals == 0:
             val = "%.0f" % (val)
         elif displayDecimals == 1:
@@ -70,9 +79,14 @@ def configureLabDatumTable(container):
             val = "%f" % (val)
             
         myDateString=system.db.dateFormat(record["SampleTime"], "HH:mm MM/d")
-        
         val = "%s at %s" % (val, myDateString)
-        data.append([val])
+        
+        if username == None:
+            seen = 0
+        else:
+            seen = 1
+            
+        data.append([val,seen])
     
     ds = system.dataset.toDataSet(header, data)
     container.data=ds
@@ -82,9 +96,36 @@ def configureLabDatumTable(container):
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
 #    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "numberFormat", "#,##0.000000")
     table.columnAttributesData=columnAttributesData
+
+# This should get called when the window is closed.  As long as the window is open then we want the rows highlighted.
+# They may want to add a button that says that also cals this to make the red go away, but for now just when the window closes.
+def setSeen(rootContainer):
+    username = system.security.getUsername()
     
-#    table=container.getComponent("Table")
-#    columnAttributesData=table.columnAttributesData
-#    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
-#    table.columnAttributesData=columnAttributesData
+    repeater=rootContainer.getComponent("Template Repeater")
+                
+    ds = repeater.templateParams
+    repeater_pds = system.dataset.toPyDataSet(ds)
+    for record in repeater_pds:
+        valueId=record['ValueId']
+        valueName=record['ValueName']
+        print "Updating %s as seen by %s..." % (valueName, username)
+
+        SQL = "select top 10 H.HistoryId, VV.Username "\
+            " from LtHistory  H LEFT OUTER JOIN "\
+            " LtValueViewed VV ON H.HistoryId = VV.HistoryId "\
+            " where ValueId = %i "\
+            " and (VV.username = '%s' or VV.username is NULL)"\
+            " order by SampleTime desc" % (valueId, username)
+
+        pds = system.db.runQuery(SQL)
+        for record in pds:
+            theUsername = record["Username"]
+            if theUsername == None:
+                historyId = record['HistoryId']
+                SQL = "insert into LtValueViewed (HistoryId, UserName) values (%s, '%s')" % (str(historyId), username)
+                system.db.runUpdateQuery(SQL)
+            else:
+                print "This has already been seen"
+        
         

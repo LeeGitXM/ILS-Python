@@ -1,5 +1,5 @@
 '''
-Created on Jun 15, 2015
+Created on Jul 1, 2015
 
 @author: Pete
 '''
@@ -191,7 +191,7 @@ def insertRow(event):
         
         #refresh table
         update(rootContainer)
-
+    
 #add a row of values
 def insertValueRow(event):
     rootContainer = event.source.parent
@@ -223,4 +223,3 @@ def removeValueRow(event):
     
     #refresh table
     update(rootContainer)
-    

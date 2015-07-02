@@ -17,8 +17,10 @@ def internalFrameOpened(rootContainer):
     rootContainer.selectedPageName = 'Page 1'
     
     setNumberOfPages(rootContainer)
-    
-    # Now update the list of display tables that are appropriate for the selected console
+
+# update the list of display tables that are appropriate for the selected console
+def internalFrameActivated(rootContainer):
+    print "In internalFrameActivated()"
     populateRepeater(rootContainer)
 
 def newPostSelected(rootContainer):
@@ -55,7 +57,7 @@ def populateRepeater(rootContainer):
     print "In populateTablesForConsole"
     selectedPost = rootContainer.selectedPost
     selectedPage = rootContainer.selectedPage
-    SQL = "Select DisplayTableTitle, (select MIN(datediff(\"MI\", V.LastSampleTime, CURRENT_TIMESTAMP)) from LtValue V where V.DisplayTableId = DT.DisplayTableId) as MinutesSinceLastSample "\
+    SQL = "Select DisplayTableTitle "\
         "from LtDisplayTable DT, TkPost P "\
         "where DT.PostId = P.PostId "\
         " and P.Post = '%s' "\
@@ -65,16 +67,68 @@ def populateRepeater(rootContainer):
     
     print SQL
     pds = system.db.runQuery(SQL)
-    for record in pds:
-        print record['DisplayTableTitle'], "  -  ", record['MinutesSinceLastSample']
-
-    repeater=rootContainer.getComponent("Template Repeater")
-    rootContainer.displayTableTitles = pds
     
+    header = ['DisplayTableTitle', 'NewData']
+    data = []
+    for record in pds:
+        displayTableTitle = record['DisplayTableTitle']
+        print "Checking if %s has new data..." % (displayTableTitle)
+        newData = checkForNewData(displayTableTitle)            
+        data.append([displayTableTitle,newData])
+    
+    ds = system.dataset.toDataSet(header, data)
+    repeater=rootContainer.getComponent("Template Repeater")
+    rootContainer.displayTableTitles = ds
+
+def checkForNewData(displayTableTitle):
+    print "Checking ", displayTableTitle
+    newData = False
+    username = system.security.getUsername()
+    SQL = "select V.ValueId "\
+        " from LtValue V, LtDisplayTable T "\
+        " where V.displayTableId = T.DisplayTableId "\
+        " and T.DisplayTableTitle = '%s' "\
+        " order by ValueName" % (displayTableTitle)
+    pds = system.db.runQuery(SQL)
+    
+    for record in pds:
+        valueId = record["ValueId"]
+        SQL = "select H.SampleTime, VV.Username "\
+            " from LtHistory  H LEFT OUTER JOIN "\
+            " LtValueViewed VV ON H.HistoryId = VV.HistoryId "\
+            " where ValueId = %i "\
+            " and (VV.username = '%s' or VV.username is NULL)"\
+            " order by SampleTime desc" % (valueId, username)
+
+        vpds = system.db.runQuery(SQL)
+        for vrecord in vpds:
+            if vrecord["Username"] == None:
+                print "There IS new data..."
+                newData = True
+
+    return newData
+
+def configureTabStrip(rootContainer, numPages):
+    tabStrip=rootContainer.getComponent("Tab Strip")
+
+    header=["NAME","DISPLAY_NAME","HOVER_COLOR","SELECTED_IMAGE_PATH","SELECTED_IMAGE_HORIZONTAL_ALIGNMENT","SELECTED_IMAGE_VERTICAL_ALIGNMENT","SELECTED_FOREGROUND_COLOR","SELECTED_BACKGROUND_COLOR","SELECTED_FONT","SELECTED_GRADIENT_START_COLOR","SELECTED_GRADIENT_END_COLOR","UNSELECTED_IMAGE_PATH","UNSELECTED_IMAGE_HORIZONTAL_ALIGNMENT","UNSELECTED_IMAGE_VERTICAL_ALIGNMENT","UNSELECTED_FOREGROUND_COLOR","UNSELECTED_BACKGROUND_COLOR","UNSELECTED_FONT","UNSELECTED_GRADIENT_START_COLOR","UNSELECTED_GRADIENT_END_COLOR","USE_SELECTED_GRADIENT","USE_UNSELECTED_GRADIENT","MOUSEOVER_TEXT"]
+    data=[]
+    if numPages == 0 or numPages == None:
+        ds = system.dataset.toDataSet(header, data)
+        tabStrip.tabData=ds
+        return
+    
+    for i in range(1, numPages + 1):
+        pageTitle="Page %i" % (i)
+        data.append([pageTitle,pageTitle,"color(250,214,138,255)","","-1","-1","color(0,0,0,255)","color(238,236,232,255)","font(Dialog,PLAIN,12)","color(238,236,232,255)","color(238,236,232,255)","","-1","-1","color(0,0,0,255)","color(238,236,232,255)","font(Dialog,PLAIN,12)","color(238,236,232,255)","color(170,170,170,255)","false","true",""])
+    
+    ds = system.dataset.toDataSet(header, data)
+    tabStrip.tabData=ds
+
 
 # This is called from the arrow button on the Lab Table selector screen.
 # It selects the next post in the circular list of posts
-def nextPost(rootContainer):
+def nextPostOBSOLETE(rootContainer):
     selectedPost = rootContainer.selectedPost
     posts = rootContainer.posts
     
@@ -99,21 +153,3 @@ def nextPost(rootContainer):
             # Now update the list of display tables that are appropriate for the newly selected console
             populateRepeater(rootContainer)
             return
-
-def configureTabStrip(rootContainer, numPages):
-    tabStrip=rootContainer.getComponent("Tab Strip")
-
-    header=["NAME","DISPLAY_NAME","HOVER_COLOR","SELECTED_IMAGE_PATH","SELECTED_IMAGE_HORIZONTAL_ALIGNMENT","SELECTED_IMAGE_VERTICAL_ALIGNMENT","SELECTED_FOREGROUND_COLOR","SELECTED_BACKGROUND_COLOR","SELECTED_FONT","SELECTED_GRADIENT_START_COLOR","SELECTED_GRADIENT_END_COLOR","UNSELECTED_IMAGE_PATH","UNSELECTED_IMAGE_HORIZONTAL_ALIGNMENT","UNSELECTED_IMAGE_VERTICAL_ALIGNMENT","UNSELECTED_FOREGROUND_COLOR","UNSELECTED_BACKGROUND_COLOR","UNSELECTED_FONT","UNSELECTED_GRADIENT_START_COLOR","UNSELECTED_GRADIENT_END_COLOR","USE_SELECTED_GRADIENT","USE_UNSELECTED_GRADIENT","MOUSEOVER_TEXT"]
-    data=[]
-    if numPages == 0 or numPages == None:
-        ds = system.dataset.toDataSet(header, data)
-        tabStrip.tabData=ds
-        return
-    
-    for i in range(1, numPages + 1):
-        pageTitle="Page %i" % (i)
-        data.append([pageTitle,pageTitle,"color(250,214,138,255)","","-1","-1","color(0,0,0,255)","color(238,236,232,255)","font(Dialog,PLAIN,12)","color(238,236,232,255)","color(238,236,232,255)","","-1","-1","color(0,0,0,255)","color(238,236,232,255)","font(Dialog,PLAIN,12)","color(238,236,232,255)","color(170,170,170,255)","false","true",""])
-    
-    ds = system.dataset.toDataSet(header, data)
-    tabStrip.tabData=ds
-    
