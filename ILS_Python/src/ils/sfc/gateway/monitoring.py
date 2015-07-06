@@ -12,13 +12,13 @@ Created on Jun 17, 2015
 class MonitoringInfo:
     '''Info to monitor one input or output object'''    
     def  __init__(self, _chartScope, _stepScope, _location, _configRow, isolationMode):
-        from ils.sfc.gateway.abstractSfcIO import getIO
+        from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
         from ils.sfc.gateway.recipe import RecipeData
         from system.ils.sfc.common.Constants import TAG_PATH
         self.configRow = _configRow
         self.inout = RecipeData(_chartScope, _stepScope, _location, _configRow.key)
         tagPath = self.inout.get(TAG_PATH)
-        self.io = getIO(tagPath, isolationMode)
+        self.io = AbstractSfcIO.getIO(tagPath, isolationMode)
 
 
 class MonitoringMgr:
@@ -51,11 +51,11 @@ class MonitoringMgr:
         '''The dataset-building code should really be on the client'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
         DOWNLOAD_STATUS, STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, SUCCESS, \
-        WRITE_CONFIRMED, FAILURE, PENDING
+        WRITE_CONFIRMED, FAILURE, PENDING, VALUE
 
-        import ils.sfc.gateway.abstractSfcIO as abstractSfcIO
+        from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
         from ils.sfc.common.util import sendMessageToClient, formatTime, getTopChartRunId
-        from ils.sfc.common.constants import INSTANCE_ID
+        from ils.sfc.common.constants import INSTANCE_ID, UNITS
         from java.awt import Color
         import time
         # the meaning of the columns:
@@ -65,7 +65,12 @@ class MonitoringMgr:
         rows = []
         rows.append(['', '', '', '', formattedStart, '', Color.white, Color.white, Color.white])
         for info in self.monitoringInfos:
+            # Note: the data can be an Input or an Output, which are both subclasses of IO
+            # oddly enough, Inputs do not have any additional attributes vs IO
             dataType = info.inout.get(CLASS)
+            # get common attributes:
+            value = info.inout.get(VALUE)
+            units = info.inout.get(UNITS)
             if dataType == 'Output':
                 downloadStatus = info.inout.get(DOWNLOAD_STATUS)
                 writeConfirmed = info.inout.get(WRITE_CONFIRMED)
@@ -79,8 +84,12 @@ class MonitoringMgr:
                 stepTime = info.inout.get(STEP_TIME) 
                 stepTimestamp = info.inout.get(STEP_TIMESTAMP) # empty string for event-driven steps
                 description = info.inout.get(DESCRIPTION)
-                setpoint = info.io.get(abstractSfcIO.SETPOINT)
+                # note: we want to reflect the setpoint that WILL be written, even if
+                # the current actual setpoint is different
+                setpoint = info.inout.get(VALUE)
                 formattedSetpoint = "%.2f" % setpoint
+                pv = info.io.getCurrentValue()
+                formattedPV = "%.2f" % pv
                 name = info.io.get(info.configRow.labelAttribute)
                 #TODO: convert to units if GUI units specified
                 
@@ -100,11 +109,10 @@ class MonitoringMgr:
                         stepTimeColor = Color.green
                     elif downloadStatus == FAILURE:
                         stepTimeColor = Color.red
-                setpointColor = Color.white # don't know anything about target               
+                setpointColor = Color.white # don't know anything about target              
                 pvColor = Color.white # don't know anything about target    
-                rows.append([formattedTiming, name, formattedSetpoint, description, stepTimestamp, '', setpointColor, stepTimeColor, pvColor])
-            else: # input
-                pass
+                rows.append([formattedTiming, name, formattedSetpoint, description, stepTimestamp, formattedPV, setpointColor, stepTimeColor, pvColor])
+
         # TODO: sort by timing
          
         payload = dict()

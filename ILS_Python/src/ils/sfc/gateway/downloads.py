@@ -73,11 +73,14 @@ def writeOutput(chartScope, config, verbose, logger):
     '''write an output value'''
     from ils.sfc.gateway.util import queueMessage
     from ils.sfc.common.constants import MSG_STATUS_INFO
-    import system.util
-    from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY, DOWNLOAD_STATUS, PENDING, SUCCESS
+    from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT
 
     logger.debug("writing %s.%s" % (config.tagPath, config.ioAttribute))
-    config.io.set(config.ioAttribute, config.value)
+    valueType = config.outputRD.get(VALUE_TYPE)
+    if valueType == SETPOINT:
+        config.io.setSetpoint(config.value)
+    else:
+        config.io.setCurrentValue(config.value)
     config.written = True
     if config.confirmWrite:
         config.outputRD.set(DOWNLOAD_STATUS, PENDING)

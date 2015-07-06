@@ -267,19 +267,27 @@ def checkForCancelOrPause(stepScope, logger):
         time.sleep(SLEEP_INCREMENT)
         status = stepScope[_STATUS]
     return False
-
-def writeTestRamp(tagPath, startValue, endValue, durationSeconds):
-    '''Write a value ramp to the given tag. This is for testing only,
-    as the timing logic is crude.'''
+    
+def writeTestRamp(controllers, durationSecs, increment):
+    '''bring the current value up to the setpoint in increments over the given time .'''
+    from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
     import time
-    import system.tag
-    numSteps = 10
-    sleepSeconds = durationSeconds / (numSteps - 1)
-    valueIncrement = (endValue - startValue) / (numSteps - 1)
-    currentValue = startValue
-    for i in range(numSteps):
-        system.tag.write(tagPath, currentValue)
-        currentValue += valueIncrement
-        time.sleep(sleepSeconds)
-        
-        
+
+    startTime = time.time()
+    endTime = startTime + durationSecs
+    while time.time() < endTime:
+        for i in range(len(controllers)):
+            controller = controllers[i]
+            currentValue = controller.getCurrentValue()
+            setpoint = controller.getSetpoint()
+            if currentValue < setpoint:
+                sign = 1
+            elif currentValue > setpoint:
+                sign = -1
+            else:
+                sign = 0
+            absDiff = abs(currentValue - setpoint) 
+            adjustment = sign * min(increment, absDiff)
+            controller.setCurrentValue(currentValue + adjustment)
+        time.sleep(5)
+          

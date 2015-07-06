@@ -8,8 +8,6 @@ from tagIO import TagIO
 
 # These are "universal" attribute names that can be given to setValue and getValue. These
 # will be internally translated into the actual names for a given controller
-SETPOINT = 'setpoint'
-VALUE = 'value'
 
 class AbstractSfcIO:    
     '''An abstract superclass that encapsulates basic IO access for all controller types
@@ -18,6 +16,9 @@ class AbstractSfcIO:
     def  __init__(self, _ioId, isolationMode):
         pass
             
+    def getName(self):
+        pass
+    
     def set(self, attribute, value):
         '''Set an attribute. The attribute name may be controller-specific.'''
         pass
@@ -25,14 +26,32 @@ class AbstractSfcIO:
     def get(self, attribute):
         '''Get an attribute. The attribute name may be controller-specific.'''
         pass
-    
-def getIO(ioId, isolationMode):
-    '''Get an IO instance of the proper type for the given id'''
-    # TODO: support other controller types
-    return TagIO(ioId, isolationMode)
 
-def getProviderName(isolationMode):
-    '''Get the name of the IO provider depending on whether we are in isolation mode'''
-    from system.ils.sfc import getProviderName
-    return getProviderName(isolationMode)
+    def getSetpoint(self):
+        pass
+    
+    def setSetpoint(self, value):
+        pass
+    
+    def isSetpointDownloaded(self):
+        pass
+
+    def getCurrentValue(self):
+        pass
+    
+    def setCurrentValue(self, value):
+        '''This may not be supported in the real world--it is at least handy for testing'''
+        pass
+   
+    @staticmethod    
+    def getIO(ioId, isolationMode):
+        '''Get an IO instance of the proper type for the given id'''
+        # TODO: support other controller types
+        return TagIO(ioId, isolationMode)
+    
+    @staticmethod
+    def getProviderName(isolationMode):
+        '''Get the name of the IO provider depending on whether we are in isolation mode'''
+        from system.ils.sfc import getProviderName
+        return getProviderName(isolationMode)
 
