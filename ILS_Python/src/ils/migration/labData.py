@@ -233,10 +233,16 @@ def insertLabValue(labData, unitName):
     valueName = labData.get("name")
     description = labData.get("lab-desc")
     displayDecimals = labData.get("lab-display-decimals")
+    validationProcedure = labData.get("validation-procedure")
+    if validationProcedure == 'NOT-SPECIFIED':
+        validationProcedure = 'NULL'
+    else:
+        validationProcedure = "'%s'" % (validationProcedure)
     unitId = getUnitId(unitName)
 
-    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId) "\
-        " values ('%s', '%s', %s, %s)" % (valueName, description, str(displayDecimals), str(unitId))
+    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId, ValidationProcedure) "\
+        " values ('%s', '%s', %s, %s, %s)" % (valueName, description, str(displayDecimals), str(unitId), validationProcedure)
+    print SQL
     valueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...inserted %s and assigned id %i" % (valueName, valueId)
     return valueId
