@@ -113,7 +113,7 @@ def insertIntoDB(container):
                 if className == "LAB-PHD-SQC":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, False)
                         insertPHDLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
                         loaded=loaded+1
@@ -122,7 +122,7 @@ def insertIntoDB(container):
                 elif className == "LAB-DCS-SQC":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, False)
                         insertDCSLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
                         loaded=loaded+1
@@ -131,7 +131,7 @@ def insertIntoDB(container):
                 elif className == "LAB-PHD-RELEASE":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, False)
                         insertPHDLabValue(labData, valueId, site)
                         insertReleaseLimit(labData,valueId)
                         loaded=loaded+1
@@ -140,34 +140,34 @@ def insertIntoDB(container):
                 elif className == "LAB-PHD-SQC-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, True)
                         loaded=loaded+1
                         print "   ...done!"
     
                 elif className == "LAB-PHD-RELEASE-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, True)
                         loaded=loaded+1
                         print "   ...done!"
                 
                 elif className == "LAB-PHD-VALIDITY-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, True)
                         loaded=loaded+1
                         print "   ...done!"
     
                 elif className == "LAB-PHD-DERIVED":
                     if phase == 2:
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, False)
                         insertDerivedLabValue(labData, valueId, site)
                         loaded=loaded+1
                         print "   ...done!"
                     
                 elif className == "LAB-PHD-DERIVED-SQC":
                     if phase == 2:
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, False)
                         insertDerivedLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
                         loaded=loaded+1
@@ -176,14 +176,14 @@ def insertIntoDB(container):
                 elif className == "LAB-PHD-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, True)
                         loaded=loaded+1
                         print "   ...done!"
                 
                 elif className == "LAB-PHD":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, False)
                         insertPHDLabValue(labData, valueId, site)
                         loaded=loaded+1
                         print "   ...done!"
@@ -191,7 +191,7 @@ def insertIntoDB(container):
                 elif className == "LAB-LOCAL-VALIDITY":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName)
+                        valueId=insertLabValue(labData, unitName, False)
                         localValueId=insertLocalLabValue(labData, valueId, site)
                         insertValidityLimit(labData,valueId)
                         loaded=loaded+1
@@ -227,8 +227,8 @@ def lookupHDAInterfaceCRAP(site, interfaceName):
     return interfaceId
 
 
-# Insert a record into the main lad data catalog
-def insertLabValue(labData, unitName):
+# Insert a record into the main lab data catalog
+def insertLabValue(labData, unitName, isSelector):
     print "      Inserting into LtValue..."
     valueName = labData.get("name")
     description = labData.get("lab-desc")
@@ -239,9 +239,11 @@ def insertLabValue(labData, unitName):
     else:
         validationProcedure = "'%s'" % (validationProcedure)
     unitId = getUnitId(unitName)
+    from ils.common.cast import toBit
+    isSelector = toBit(isSelector)
 
-    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId, ValidationProcedure) "\
-        " values ('%s', '%s', %s, %s, %s)" % (valueName, description, str(displayDecimals), str(unitId), validationProcedure)
+    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId, ValidationProcedure, IsSelector) "\
+        " values ('%s', '%s', %s, %s, %s, %i)" % (valueName, description, str(displayDecimals), str(unitId), validationProcedure, isSelector)
     print SQL
     valueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...inserted %s and assigned id %i" % (valueName, valueId)
@@ -543,17 +545,137 @@ def insertValidityLimit(labData, valueId):
 def createTags(rootContainer):
     print "In labData.createTags()"
 
-    #----------------------------------------------------------------------------
+    # Keep score of how many tags were created / skipped / etc
     def countAction(action, loaded, alreadyLoaded):
         if action == 'loaded':
             loaded = loaded + 1
         else:
             alreadyLoaded = alreadyLoaded + 1
         return loaded, alreadyLoaded 
-    #---------------------------------------------------------------------------
+
+    # Create the Lab Value UDT that is used regardless of where the lab value comes from
+    def createLabValue(labData, provider, unitName):    
+        UDTType='Lab Data/Lab Value'
+        labDataName = labData.get("name")
+        path = "LabData/" + unitName + "/"
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + labDataName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            print "  ", labDataName, " already exists!"
+            action = "Already Exists"
+        else:
+            print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+            system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+                attributes={"UDTParentType":UDTType})
+            action = "Loaded"
+        return action
     
+    # Create the raw OPC that read the lab value from the DCS 
+    def createRawDCSTag(labData, site, provider, unitName, itemIdPrefix):
+
+        labDataName = labData.get("name")
+        for rawValue in labData.findall('rawValue'):
+            itemId = rawValue.get("item-id")
+            itemId = itemIdPrefix + itemId
+            interfaceName = rawValue.get("interface-name")
+        
+        if interfaceName == None:
+            serverName = "UNKNOWN"
+            scanClass = "UNKNOWN"
+        else:
+            serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+        
+        path = "LabData/" + unitName + "/DCS-Lab-Values"
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + labDataName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            print "   DCS tag ", labDataName, " already exists!"
+            action = "Already Exists"
+        else:
+            print "  creating raw DCS value tag: %s, Path: %s" % (labDataName, tagPath)
+            system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="OPC", dataType="Float8",
+                              attributes={"OPCServer":serverName, "OPCItemPath":itemId})
+            action = "Loaded"
+
+        return action
+
+    # Create a selector UDT instance
+    def createSelector(labData, UDTType, labDataName, provider, unitName):
+        path = "LabData/" + unitName + "/"
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + labDataName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            print "  ", labDataName, " already exists!"
+            action = 'Already Exists'
+        else:
+            print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+            system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+                attributes={"UDTParentType":UDTType})
+            action = 'Loaded'
+        return action
+
+    # Create a SQC limit UDT
+    def createLabLimitSQC(labData, provider, unitName):    
+        UDTType='Lab Data/Lab Limit SQC'
+        labDataName = labData.get("name") + "-SQC"
+        path = "LabData/" + unitName + '/'
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + labDataName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            print "  ", labDataName, " already exists!"
+            action = "Already Exists"
+        else:
+            print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+            system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+                attributes={"UDTParentType":UDTType})
+            action = "Loaded"
+        return action
+    
+    # Create a release limit SQC object
+    def createLabLimitRelease(labData, provider, unitName):    
+        UDTType='Lab Data/Lab Limit Release'
+        labDataName = labData.get("name") + "-RELEASE"
+        path = "LabData/" + unitName + '/'
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + labDataName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            print "  ", labDataName, " already exists!"
+            action = "Already Exists"
+        else:
+            print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+            system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+                attributes={"UDTParentType":UDTType})
+            action = "Loaded"
+        return action
+    
+    # Create a validity limit UDT object
+    def createLabLimitValidity(labData, labDataName, provider, unitName):    
+        UDTType='Lab Data/Lab Limit Validity'
+        labDataName = labDataName + "-VALIDITY"
+        path = "LabData/" + unitName + '/'
+        parentPath = '[' + provider + ']' + path    
+        tagPath = parentPath + "/" + labDataName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            print "  ", labDataName, " already exists!"
+            action = "Already Exists"
+        else:
+            print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
+            system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
+                attributes={"UDTParentType":UDTType})
+            action = "Loaded"
+        return action
+
+    #---------------------------------------------------------------------------    
     filename = rootContainer.getComponent('File Field').text
     provider = rootContainer.getComponent("Tag Provider").text
+    site = rootContainer.parent.getComponent("Site").text
+    itemIdPrefix = rootContainer.getComponent("Item Id Prefix").text
     
     if not(system.file.fileExists(filename)):
         system.gui.errorBox("The import file (" + filename + ") does not exist. Please specify a valid filename.")  
@@ -606,6 +728,7 @@ def createTags(rootContainer):
             loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-DCS-SQC":
             action = createLabValue(labData, provider, unitName)
+            createRawDCSTag(labData, site, provider, unitName, itemIdPrefix)
             createLabLimitSQC(labData, provider, unitName)
             loaded, alreadyLoaded = countAction(action, loaded, alreadyLoaded)
         elif className == "LAB-LOCAL-VALIDITY":
@@ -619,88 +742,7 @@ def createTags(rootContainer):
     print "Done - Successfully created: %i, already loaded: %i, errors: %i" % (loaded, alreadyLoaded, error)
 
 
-def createSelector(labData, UDTType, labDataName, provider, unitName):
-    path = "LabData/" + unitName + "/"
-    parentPath = '[' + provider + ']' + path    
-    tagPath = parentPath + "/" + labDataName
-    tagExists = system.tag.exists(tagPath)
-    if tagExists:
-        print "  ", labDataName, " already exists!"
-        action = 'Already Exists'
-    else:
-        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
-        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType})
-        action = 'Loaded'
-    return action
 
-def createLabValue(labData, provider, unitName):    
-    UDTType='Lab Data/Lab Value'
-    labDataName = labData.get("name")
-    path = "LabData/" + unitName + "/"
-    parentPath = '[' + provider + ']' + path    
-    tagPath = parentPath + "/" + labDataName
-    tagExists = system.tag.exists(tagPath)
-    if tagExists:
-        print "  ", labDataName, " already exists!"
-        action = "Already Exists"
-    else:
-        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
-        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType})
-        action = "Loaded"
-    return action
-
-def createLabLimitSQC(labData, provider, unitName):    
-    UDTType='Lab Data/Lab Limit SQC'
-    labDataName = labData.get("name") + "-SQC"
-    path = "LabData/" + unitName + '/'
-    parentPath = '[' + provider + ']' + path    
-    tagPath = parentPath + "/" + labDataName
-    tagExists = system.tag.exists(tagPath)
-    if tagExists:
-        print "  ", labDataName, " already exists!"
-        action = "Already Exists"
-    else:
-        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
-        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType})
-        action = "Loaded"
-    return action
-
-def createLabLimitRelease(labData, provider, unitName):    
-    UDTType='Lab Data/Lab Limit Release'
-    labDataName = labData.get("name") + "-RELEASE"
-    path = "LabData/" + unitName + '/'
-    parentPath = '[' + provider + ']' + path    
-    tagPath = parentPath + "/" + labDataName
-    tagExists = system.tag.exists(tagPath)
-    if tagExists:
-        print "  ", labDataName, " already exists!"
-        action = "Already Exists"
-    else:
-        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
-        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType})
-        action = "Loaded"
-    return action
-
-def createLabLimitValidity(labData, labDataName, provider, unitName):    
-    UDTType='Lab Data/Lab Limit Validity'
-    labDataName = labDataName + "-VALIDITY"
-    path = "LabData/" + unitName + '/'
-    parentPath = '[' + provider + ']' + path    
-    tagPath = parentPath + "/" + labDataName
-    tagExists = system.tag.exists(tagPath)
-    if tagExists:
-        print "  ", labDataName, " already exists!"
-        action = "Already Exists"
-    else:
-        print "  creating a %s, Name: %s, Path: %s" % (UDTType, labDataName, tagPath)
-        system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
-            attributes={"UDTParentType":UDTType})
-        action = "Loaded"
-    return action
 
 def initializeUnitParameters(container):
     print "In labData.initializeUnitParameters()"
