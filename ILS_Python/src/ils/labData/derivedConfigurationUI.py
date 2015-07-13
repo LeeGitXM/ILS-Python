@@ -76,10 +76,11 @@ def updateDatabase(rootContainer):
     sampleTimeTolerance = ds.getValueAt(0, "SampleTimeTolerance")
     newSampleWaitTime = ds.getValueAt(0, "NewSampleWaitTime")
     unitId = rootContainer.getComponent("Dropdown").selectedValue
+    isSelector = ds.getValueAt(0, "IsSelector")
     
-    if name != "" and description != "" and decimals >= 0 and trigValue >= 0 and callBack != "":
-        SQL = "INSERT INTO LtValue (ValueName, Description, DisplayDecimals, UnitId) "\
-            " VALUES ('%s', '%s', %i, %i)" % (name, description, decimals, unitId)
+    if name != "" and description != "" and decimals >= 0 and trigValue >= 0 and callBack != "" and isSelector != "":
+        SQL = "INSERT INTO LtValue (ValueName, Description, DisplayDecimals, UnitId, IsSelector) "\
+            " VALUES ('%s', '%s', %i, %i, %i)" % (name, description, decimals, unitId, isSelector)
         print SQL
         valueId = system.db.runUpdateQuery(SQL, tx=txID, getKey=1)
         sql = "INSERT INTO LtDerivedValue (ValueId, TriggerValueId, Callback, ResultItemId, SampleTimeTolerance, NewSampleWaitTime) "\

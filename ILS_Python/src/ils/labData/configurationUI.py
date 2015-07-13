@@ -86,16 +86,21 @@ def insertDataRow(event):
     newName = rootContainer.getComponent("name").text
     description = rootContainer.getComponent("description").text
     decimals = rootContainer.getComponent("Spinner").intValue
-    itemId = rootContainer.getComponent("itemId").text
     unitId = rootContainer.unitId
+    isSelector = 0
+    
+    if labDataType == "Selector":
+        isSelector = 1
         
     #insert the user's data as a new row
-    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
-        "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
+    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, IsSelector)"\
+        "VALUES ('%s', '%s', %i, %i, %i)" %(newName, description, unitId, decimals, isSelector)
+    print SQL
     valueId = system.db.runUpdateQuery(SQL, tx=txID, getKey = True)
     
     if labDataType == "PHD":
         interfaceId = rootContainer.getComponent("Dropdown").selectedValue
+        itemId = rootContainer.getComponent("itemId").intValue
         
         sql = "INSERT INTO LtPHDValue (ValueId, ItemId, InterfaceId)"\
             "VALUES (%s, %s, %s)" %(str(valueId), str(itemId), str(interfaceId))
@@ -103,11 +108,13 @@ def insertDataRow(event):
         system.db.runUpdateQuery(sql, tx = txID)
     elif labDataType == "DCS":
         writeLocationId = rootContainer.getComponent("Dropdown").selectedStringValue
+        itemId = rootContainer.getComponent("Item ID").text
         sql = "INSERT INTO LtDCSValue (ValueId, WriteLocationId, ItemId)"\
             "VALUES (%s, %s, %s)" %(str(valueId), str(writeLocationId), str(itemId))
         system.db.runUpdateQuery(sql, tx = txID)
-    else:
+    elif labDataType == "Local":
         writeLocationId = rootContainer.getComponent("Dropdown").selectedStringValue
+        itemId = rootContainer.getComponent("Item ID").text
         sql = "INSERT INTO LtLocalValue (ValueId, WriteLocationId, ItemId)"\
             "VALUES (%s, %s, %s)" %(str(valueId), str(writeLocationId), str(itemId))
         system.db.runUpdateQuery(sql, tx = txID)
@@ -116,14 +123,16 @@ def insertDataRow(event):
 def insertLimitRow(event):
     rootContainer = event.source.parent
     txID = rootContainer.txID
-    table = rootContainer.getComponent("Power Table")
-                
-    newUpperValidityLimit = system.gui.inputBox("Insert New Upper Validity Limit:", "")
-    newLowerValidityLimit = system.gui.inputBox("Insert New Lower Validity Limit:", "")
-            
+    valueId = rootContainer.valueId
+           
+    limitTypeId = rootContainer.getComponent("limitTypeId").selectedValue
+    limitSourceId = rootContainer.getComponent("limitSourceId").selectedValue     
+    newUpperValidityLimit = rootContainer.getComponent("upperLimit").intValue
+    newLowerValidityLimit = rootContainer.getComponent("lowerLimit").intValue
+        
     #insert the user's data as a new row
-    SQL = "INSERT INTO LtLimit (UpperValidityLimit, LowerValidityLimit)"\
-        "VALUES (%i, %i)" %(newUpperValidityLimit, newLowerValidityLimit)
+    SQL = "INSERT INTO LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperValidityLimit, LowerValidityLimit)"\
+        "VALUES (%i, %i, %i, %i, %i) " % (valueId, limitTypeId, limitSourceId, newUpperValidityLimit, newLowerValidityLimit)
     system.db.runUpdateQuery(SQL, tx=txID)
                 
     #refresh table
@@ -169,6 +178,15 @@ def update(rootContainer):
             "ORDER BY ValueName" % (unitId)
         pds = system.db.runQuery(SQL, tx=txID)
         table = rootContainer.getComponent("DCS").getComponent("DCS_Value")
+        table.data = pds
+    elif rootContainer.dataType == "Selectors":
+        SQL = "SELECT ValueId, ValueName, Description, DisplayDecimals, UnitId "\
+            "FROM LtValue "\
+            "WHERE UnitId = %i "\
+            "AND IsSelector = 1 "\
+            "ORDER BY ValueName" % (unitId)
+        pds = system.db.runQuery(SQL, tx=txID)
+        table = rootContainer.getComponent("Selectors").getComponent("Selectors")
         table.data = pds
     else:
         SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, L.ItemId "\
