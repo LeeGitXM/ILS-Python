@@ -55,6 +55,7 @@ def fetchLimits(database = ""):
            "LowerReleaseLimit":record["LowerReleaseLimit"],
            "Target":record["Target"],
            "StandardDeviation":record["StandardDeviation"],
+           "ValidationProcedure":record["ValidationProcedure"]
         }
         limits.append(d)
 

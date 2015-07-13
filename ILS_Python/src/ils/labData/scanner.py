@@ -1,18 +1,16 @@
 '''
 Created on Mar 27, 2015
 
-
 @author: Pete
 '''
 
-# This import will show an error, but it is required to handle calculation methods that are in project scope.
-import project 
-
 import sys, system, string, traceback
+from ils.labData.common import postMessage
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from java.util import Calendar
 log = LogUtil.getLogger("com.ils.labData")
 derivedLog = LogUtil.getLogger("com.ils.labData.derivedValues")
+customValidationLog = LogUtil.getLogger("com.ils.labData.customValidation")
 import ils.common.util as util
 
 # This should persist from one run to the next
@@ -34,13 +32,16 @@ def main(database, tagProvider):
     limits=fetchLimits(database)
     writeTags=[]
     writeTagValues=[] 
-    writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
-    writeTags, writeTagValues = checkForNewDCSLabValues(database, limits, writeTags, writeTagValues)
-    checkForDerivedValueTriggers(database)
-    writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues)
+#    writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
+    writeTags, writeTagValues = checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues)
+#    checkForDerivedValueTriggers(database)
+#    writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues)
     
     log.trace("Writing %i new lab values to local lab data tags" % (len(writeTags)))
-    system.tag.writeAll(writeTags, writeTagValues)
+    log.debug("Yello")
+    print "Writing ", writeTags, writeTagValues
+    results=system.tag.writeAll(writeTags, writeTagValues)
+    print "Results: ", results
 
 #-------------
 # Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
@@ -260,44 +261,97 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
 
     return writeTags, writeTagValues
 
-#-------------
-def checkForNewDCSLabValues(database, limits, writeTags, writeTagValues):
-    log.trace("Checking for new DCS Lab values ... ")
+
+#
+#----------------------------------------------------------------------
+def checkIfValueIsNew(valueName, rawValue, sampleTime):
+    log.trace("Checking if lab value is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
+        
+    if lastValueCache.has_key(valueName):
+        lastValue=lastValueCache.get(valueName)
+        log.trace("...there is a value in the cache")
+        if lastValue.get('rawValue') != rawValue or lastValue.get('sampleTime') != sampleTime:
+            log.trace("...found a new value because it does not match what is in the cache (%s - %s)..." % 
+                      (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime'))))
+            new = True
+        else:
+            new = False
+            log.trace("...this value is already in the cache so it will be ignored...")
+    else:
+        log.trace("...found a new value because %s does not exist in the cache..." % (valueName))
+        new = True
     
-    SQL = "select distinct ServerName "\
-        "FROM TkWriteLocation WL, LtDCSValue DV "\
-        "WHERE DV.WriteLocationId = WL.WriteLocationId "
+    return new
+
+
+#-------------
+def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues):
+    log.trace("Checking for new DCS Lab values ... ")    
+    
+    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, WL.ServerName, U.UnitName, P.Post "\
+        "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, TkWriteLocation WL "\
+        "WHERE V.ValueId = DV.ValueId "\
+        " and V.UnitId = U.UnitId "\
+        " and U.PostId = P.PostId " \
+        " and DV.WriteLocationId = WL.WriteLocationId"
+        
     pds = system.db.runQuery(SQL, database)
+
     for record in pds:
+        unitName = record["UnitName"]
+        valueName = record["ValueName"]
+        valueId = record["ValueId"]
         serverName = record["ServerName"]
-        readDCSLabValues(serverName, database)
+        itemId = record["ItemId"]
+        post = record["Post"]
+        validationProcedure = record["ValidationProcedure"]
+        tagName = "LabData/%s/DCS-Lab-Values/%s" % (unitName, valueName)
+        log.trace("Reading: %s " % (tagName))    
+        qv = system.tag.read(tagName)
+
+        log.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
+        
+        if str(qv.quality) == 'Good':
+            new = checkIfValueIsNew(valueName, qv.value, qv.timestamp)
+            if new:
+                writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, qv.value, qv.timestamp, \
+                     database, tagProvider, limits, validationProcedure, writeTags, writeTagValues)
+        else:
+            # I don't want to post this to the queue because this is called every minute, and if the same tag is bad for a day 
+            # we'll fill the queue with errors, yet log.error isn't seen by anyone...
+            log.error("Skipping %s because its quality is %s" % (valueName, qv.quality))
 
     return writeTags, writeTagValues
-
-def readDCSLabValues(serverName, database):
-    log.trace("Reading DCS lab values from %s" % (serverName))
-    
-    SQL = "select ValueId, ItemId "\
-        "FROM TkWriteLocation WL, LtDCSValue DV "\
-        "WHERE DV.WriteLocationId = WL.WriteLocationId "\
-        " AND WL.ServerName = '%s'" % (serverName)
-    pds = system.db.runQuery(SQL, database)
-    
-    valueIds=[]
-    itemIds=[]
-    for record in pds:
-        valueId = record["ValueId"]
-        itemId = record["ItemId"]
-        
-        itemIds.append(itemId)
-        valueIds.append(valueId)
-
-    log.trace("Reading: %s" % (str(itemIds)))
-    qvs = system.opc.readValues(serverName, itemIds)
-    log.trace("Returned: %s" % str(qvs))
     
     
 def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues):
+    
+    #----------------------------------------------------------------
+    def checkForANewPHDLabValue(valueName, itemId, valueList):
+        log.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
+        
+        if str(valueList.serviceResult) != 'Good':
+            log.warn("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
+            return False, -1, -1
+        
+        if valueList.size()==0:
+            log.trace("   -- no data found for %s --" % (itemId))
+            return False, -1, -1
+        
+        # Get the last value out of the list of values - I couldn't find a way to get this directlt, but there must be a way
+    #    lastQV=valueList[valueList.size()-1]
+        for lastQV in valueList:
+            pass
+            
+        rawValue=lastQV.value
+        sampleTime=lastQV.timestamp
+        quality=lastQV.quality
+        
+        log.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
+        new = checkIfValueIsNew(valueName, rawValue, sampleTime)
+        return new, rawValue, sampleTime
+    #----------------------------------------------------------------
+    
     log.trace("Checking for new PHD Lab values ... ")
     
     endDate = util.getDate()
@@ -347,59 +401,30 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
                 valueName=tagInfo["ValueName"]
                 itemId=tagInfo["ItemId"]
 
-                writeTags, writeTagValues = checkForANewPHDLabValue(post, unitName, valueId, valueName, itemId, \
-                    database, tagProvider, limits, tagInfo, valueList, writeTags, writeTagValues)
+                new, rawValue, sampleTime = checkForANewPHDLabValue(valueName, itemId, valueList)
+                if new:
+                    writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, \
+                        database, tagProvider, limits, writeTags, writeTagValues)
         
     log.trace("Writing %s to %s" % (str(writeTagValues), str(writeTags)))
 
     log.trace("Done reading PHD lab values")
     return writeTags, writeTagValues
-
-def checkForANewPHDLabValue(post, unitName, valueId, valueName, itemId, database, tagProvider, limits, tagInfo, valueList, writeTags, writeTagValues):
-    log.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
     
-    if str(valueList.serviceResult) != 'Good':
-        log.warn("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
-        return writeTags, writeTagValues
     
-    if valueList.size()==0:
-        log.trace("   -- no data found for %s --" % (itemId))
-        return writeTags, writeTagValues
-    
-    # Get the last value out of the list of values - I couldn't find a way to get this directlt, but there must be a way
-#    lastQV=valueList[valueList.size()-1]
-    for lastQV in valueList:
-        pass
-        
-    rawValue=lastQV.value
-    sampleTime=lastQV.timestamp
-    quality=lastQV.quality
-    
-    log.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
-    if lastValueCache.has_key(valueName):
-        lastValue=lastValueCache.get(valueName)
-        log.trace("...there is a value in the cache")
-        if lastValue.get('rawValue') != rawValue or lastValue.get('sampleTime') != sampleTime:
-            log.trace("...found a new value because it does not match what is in the cache (%s - %s)..." % (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime'))))
-            writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, \
-                    database, tagProvider, limits, writeTags, writeTagValues)
-            # TODO Check if the lab value is newer than the cache
-        else:
-            log.trace("...this value is already in the cache so it will be ignored...")
-    else:
-        log.trace("...found a new value because %s does not exist in the cache..." % (valueName))
-        writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, \
-                 database, tagProvider, limits, writeTags, writeTagValues)
-
-    return writeTags, writeTagValues
-
-
 # Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
 # limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
 # then store the value automatically
-def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, writeTags, writeTagValues):
+def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, validationProcedure, writeTags, writeTagValues):
     log.trace("...handling a new lab value for %s, checking limits" % (valueName))
     
+    if validationProcedure != None and validationProcedure != "":
+        isValid = customValidate(valueName, rawValue, validationProcedure)
+        # If it fails custom validation then abort everything - including further validation and do not store the value!
+        if not(isValid):
+            log.trace("%s failed custom validation procedure <%s> " % (valueName, validationProcedure))
+            return writeTags, writeTagValues
+        
     validValidity = True
     for limit in limits:
         if limit.get("ValueName","") == valueName:
@@ -481,7 +506,7 @@ def updateCache(valueId, valueName, rawValue, sampleTime):
     
 # Update the Lab Data UDT tags - this is called 
 def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, tags, tagValues):
-    print "Updating tags..."
+    print "Updating lab data tags..."
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     
     # Always write the raw value
