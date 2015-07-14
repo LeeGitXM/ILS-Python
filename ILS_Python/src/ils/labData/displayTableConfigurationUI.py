@@ -7,19 +7,23 @@ import system
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
-    txID = system.db.beginTransaction(timeout=300000)
-    rootContainer.txID = txID
-    update(rootContainer)
+    # Open the transaction for one hour
+    print "Reserving a transaction id..."
+    txId = system.db.beginTransaction(timeout=3600000)
+    rootContainer.txId = txId
+    rootContainer.getComponent("Dropdown").selectedValue = -1
     
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
+    print "In internalFrameActivated, calling update..."
     update(rootContainer)
 
 #open transaction when window is opened
 def internalFrameClosing(rootContainer):
     try:
-        txId=rootContainer.txID
+        txId=rootContainer.txId
         system.db.rollbackTransaction(txId)
+        print "Closing the transaction..."
         system.db.closeTransaction(txId)
     except:
         print "Caught an error trying to close the transaction"
@@ -27,7 +31,7 @@ def internalFrameClosing(rootContainer):
 #move selected row up
 def moveUp(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     ds = table.data
     
@@ -45,17 +49,18 @@ def moveUp(event):
     
     #update database swapping orders
     sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayAboveOrderValue, displayTableId)
-    system.db.runUpdateQuery(sql, tx = txID)
+    system.db.runUpdateQuery(sql, tx = txId)
     sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayOrderValue, displayAboveTableId)
-    system.db.runUpdateQuery(sql, tx = txID)
+    system.db.runUpdateQuery(sql, tx = txId)
     
     #refresh table
+    print "Calling update() from moveDown()..."
     update(rootContainer)
     
 #move selected row down
 def moveDown(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     ds = table.data
 
@@ -73,20 +78,21 @@ def moveDown(event):
     
     #update database swapping orders
     sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayBelowOrderValue, displayTableId)
-    system.db.runUpdateQuery(sql, tx = txID)
+    system.db.runUpdateQuery(sql, tx = txId)
     sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayOrderValue, displayBelowTableId)
-    system.db.runUpdateQuery(sql, tx = txID)
+    system.db.runUpdateQuery(sql, tx = txId)
 
     #refresh table
+    print "Calling update() from moveDown()..."
     update(rootContainer)
-
 
 
 #update the window
 def update(rootContainer):
-    txID = rootContainer.txID
+    print "...updating..."
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
-    valueTable = rootContainer.getComponent("ValueTable")
+    
     dropDown= rootContainer.getComponent("Dropdown")
     postId = dropDown.selectedValue
     
@@ -95,24 +101,29 @@ def update(rootContainer):
         " WHERE PostId = %i "\
         " ORDER BY DisplayPage, DisplayOrder " % (postId)
     print SQL
-    pds = system.db.runQuery(SQL, tx=txID)
+    pds = system.db.runQuery(SQL, tx=txId)
     table.updateInProgress = True
     table.data = pds
+    updateValues(rootContainer)
     table.updateInProgress = False
+
+def updateValues(rootContainer):
+    txId = rootContainer.txId
+    valueTable = rootContainer.getComponent("ValueTable")
     
     #update value table
-    displayTableId = rootContainer.DisplayTableId
+    displayTableId = rootContainer.displayTableId
     sql = "SELECT ValueName, Description, DisplayTableId "\
         "FROM LtValue "\
         "WHERE DisplayTableId = %i " % (displayTableId)
     print sql
-    pds = system.db.runQuery(sql, tx=txID)
+    pds = system.db.runQuery(sql, tx=txId)
     valueTable.data = pds
    
 #update the database when user directly changes table 
 def updateDatabase(table, rowIndex, colName, newValue):
     rootContainer = table.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     ds = table.data
     displayTableId =  ds.getValueAt(rowIndex, "DisplayTableId")
     
@@ -131,12 +142,12 @@ def updateDatabase(table, rowIndex, colName, newValue):
             "WHERE DisplayTableId = %i " % (val, displayTableId)
             
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txID)
+    system.db.runUpdateQuery(SQL, tx=txId)
     
 #remove the selected row
 def removeRow(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     ds = table.data
     
@@ -145,29 +156,30 @@ def removeRow(event):
     
     #check for references
     sql = "SELECT count(*) FROM LtValue WHERE DisplayTableId = %i" %(displayTableId)
-    rows = system.db.runScalarQuery(sql, tx=txID)
-    
+    rows = system.db.runScalarQuery(sql, tx=txId)
+
     if rows > 0:
         ans = system.gui.confirm("This table is in use. Do you want to remove this table?", "Confirm")
         if ans == False:
             return
         else:
             sql = "update LtValue SET DisplayTableId = NULL WHERE DisplayTableId = %i" %(displayTableId)
-            system.db.runUpdateQuery(sql, tx=txID)
-            
+            system.db.runUpdateQuery(sql, tx=txId)
+
     #remove the selected row
     SQL = "DELETE FROM LtDisplayTable "\
         " WHERE DisplayTableId = %i "\
         % (displayTableId)
-    system.db.runUpdateQuery(SQL, tx=txID)
+    system.db.runUpdateQuery(SQL, tx=txId)
     
     #refresh table
+    print "Calling update() from removeRow()..."
     update(rootContainer)
     
 #add a row
 def insertRow(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     ds = table.data
     
@@ -187,29 +199,56 @@ def insertRow(event):
         #insert the user's data as a new row
         SQL = "INSERT INTO LtDisplayTable (DisplayTableTitle, DisplayPage, DisplayOrder, DisplayFlag, PostId)"\
             "VALUES ('%s', %i, %d, %i, %i)" %(newName, DisplayPage, DisplayOrder, DisplayFlag, PostId)
-        system.db.runUpdateQuery(SQL, tx=txID)
+        system.db.runUpdateQuery(SQL, tx=txId)
         
         #refresh table
+        print "Calling update() from insertRow()..."
         update(rootContainer)
+
+def addValueRowCallback(event):
+    rootContainer = event.source.parent
+    txId = rootContainer.txId
+    displayTableId = rootContainer.displayTableId
+    postId = rootContainer.getComponent("Dropdown").selectedValue
+    
+    SQL = "select ValueName "\
+        " from LtValue V, TkUnit U "\
+        " where V.UnitId = U.UnitId "\
+        " and U.PostId = %s "\
+        " and (V.DisplayTableId is null or V.DisplayTableId <> %s) "\
+        " order by ValueName" % (str(postId), str(displayTableId))
+
+    print SQL
+    pds = system.db.runQuery(SQL, tx=txId)
+    print "Selected %i lab values" % (len(pds))
+    
+    payload = {"txId": txId, "displayTableId": displayTableId, "postId": postId, "data":pds}
+    window = system.nav.openWindow("Lab Data/New Lab Data Display Table Row", payload)
+    system.nav.centerWindow(window)
+    
+#
+# When we "add" or "delete" from the bottom table we are not inserting or deleting rows, instead we are updating the reference 
+# in the LtValue table 
+#
 
 #add a row of values
 def insertValueRow(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     
-    displayTableId = rootContainer.DisplayTableId
+    displayTableId = rootContainer.displayTableId
     newName = rootContainer.getComponent("Dropdown").selectedStringValue
     
     #insert the user's data as a new row
     SQL = "UPDATE LtValue SET DisplayTableId = %i "\
         "WHERE ValueName = '%s' " %(displayTableId, newName)
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txID)
+    system.db.runUpdateQuery(SQL, tx=txId)
     
 #remove the selected row
 def removeValueRow(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     valueTable = rootContainer.getComponent("ValueTable")
     row = valueTable.selectedRow
     ds = valueTable.data
@@ -219,8 +258,9 @@ def removeValueRow(event):
     SQL = "UPDATE LtValue "\
         " SET DisplayTableId = NULL "\
         "WHERE ValueName = '%s' " % (valueName)
-    system.db.runUpdateQuery(SQL, tx=txID)
+    system.db.runUpdateQuery(SQL, tx=txId)
     
     #refresh table
+    print "Calling update() from removeValueRow()..."
     update(rootContainer)
     
