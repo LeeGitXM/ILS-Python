@@ -8,19 +8,26 @@ from ils.sfc.common.constants import SQL
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
-    txID = system.db.beginTransaction(timeout=300000)
-    rootContainer.txID = txID
-    update(rootContainer)
+    # Keep the transaction open for one hour...
+    txId = system.db.beginTransaction(timeout=3600000)
+    rootContainer.txId = txId
+    print "Calling updateRelatedTable() from internalFrameOpened()..."
+    updateRelatedTable(rootContainer)
     
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
+    print "Calling update() from internalFrameActivated()..."
     update(rootContainer)
+    print "Calling updateRelatedTable() from internalFrameActivated()..."
+    updateRelatedTable(rootContainer)
+    
 
-#open transaction when window is opened
+#close transaction when window is closed
 def internalFrameClosing(rootContainer):
     try:
-        txId=rootContainer.txID
+        txId=rootContainer.txId
         system.db.rollbackTransaction(txId)
+        print "Closing the transaction..."
         system.db.closeTransaction(txId)
     except:
         print "Caught an error trying to close the transaction"
@@ -28,42 +35,62 @@ def internalFrameClosing(rootContainer):
 
 #update the window
 def update(rootContainer):
-    txID = rootContainer.txID
+    print "...updating display table..."
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     dropDown= rootContainer.getComponent("Dropdown")
     unitId = dropDown.selectedValue
-    relatedTable = rootContainer.getComponent("relatedLabDataTable")
     ds = table.data
     
-    
     #update display table
-    SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, D.DerivedValueId, D.TriggerValueId, D.Callback, "\
+    SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.IsSelector, D.DerivedValueId, D.TriggerValueId, D.Callback, "\
         " D.SampleTimeTolerance, D.NewSampleWaitTime, W.ServerName, D.ResultItemId "\
         " FROM LtValue V, LtDerivedValue D, TkWriteLocation W"\
         " WHERE V.ValueId = D.ValueId AND V.UnitId = %i AND W.WriteLocationId = D.ResultWriteLocationId "\
         " ORDER BY V.ValueName " % (unitId)
+        
+    SQL = "SELECT LtValue.ValueId, LtValue.ValueName, LtValue_1.ValueName AS TriggerValueName, LtValue.Description, LtValue.DisplayDecimals, "\
+        " LtValue.IsSelector, LtDerivedValue.DerivedValueId, LtDerivedValue.TriggerValueId, "\
+        " LtDerivedValue.Callback, LtDerivedValue.SampleTimeTolerance, LtDerivedValue.NewSampleWaitTime, "\
+        " TkWriteLocation.ServerName, LtDerivedValue.ResultItemId "\
+        " FROM LtValue INNER JOIN LtDerivedValue ON LtValue.ValueId = LtDerivedValue.ValueId INNER JOIN "\
+        " LtValue AS LtValue_1 ON LtDerivedValue.TriggerValueId = LtValue_1.ValueId LEFT OUTER JOIN TkWriteLocation ON LtDerivedValue.ResultWriteLocationId = TkWriteLocation.WriteLocationId "\
+        " WHERE LtValue.UnitId = %i ORDER BY LtValue.ValueName " % (unitId)
+        
     print SQL
-    pds = system.db.runQuery(SQL, tx=txID)
+    pds = system.db.runQuery(SQL, tx=txId)
     table.updateInProgress = True
     table.data = pds
     table.updateInProgress = False
-    
+    if table.selectedRow >= 0:
+        valueId = ds.getValueAt(table.selectedRow, "ValueId")
+        print "ValueId on next line:"
+        print valueId
+        
+def updateRelatedTable(rootContainer):
+    print "...updating related table..."
+    txId = rootContainer.txId
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data  
+    relatedTable = rootContainer.getComponent("relatedLabDataTable")
     #update related table
     if table.selectedRow >= 0:
         row = table.selectedRow
         derivedValueId = ds.getValueAt(row, "DerivedValueId")
+        print "derivedValueId on next line:"
         print derivedValueId
         sql = "SELECT V.ValueId, V.ValueName, V.Description "\
             " FROM LtValue V, LtRelatedData R "\
             " WHERE R.DerivedValueId = %i AND R.RelatedValueId = V.ValueId"\
             " ORDER BY V.ValueName" % (derivedValueId) 
         print sql
-        pds = system.db.runQuery(sql, tx=txID)
+        pds = system.db.runQuery(sql, tx=txId)
         relatedTable.data = pds
    
 #update the database when user completes the newly added row 
 def updateDatabase(rootContainer):
-    txID = rootContainer.txID
+    print "Updating the database..."
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     ds = table.data
     
@@ -82,21 +109,23 @@ def updateDatabase(rootContainer):
         SQL = "INSERT INTO LtValue (ValueName, Description, DisplayDecimals, UnitId, IsSelector) "\
             " VALUES ('%s', '%s', %i, %i, %i)" % (name, description, decimals, unitId, isSelector)
         print SQL
-        valueId = system.db.runUpdateQuery(SQL, tx=txID, getKey=1)
+        valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey=1)
         sql = "INSERT INTO LtDerivedValue (ValueId, TriggerValueId, Callback, ResultItemId, SampleTimeTolerance, NewSampleWaitTime) "\
             " VALUES (%i, %i, '%s', '%s', %i, %i)" % (valueId, trigValue, callBack, resultItemId, sampleTimeTolerance, newSampleWaitTime)
         print sql
-        system.db.runUpdateQuery(sql, tx=txID)
+        system.db.runUpdateQuery(sql, tx=txId)
         
         print "Hello"
+    else:
+        print "Insufficient data to update the database..."
                
 #update the database when user directly changes table 
 def cellEdited(table, rowIndex, colName, newValue):
+    print "A cell has been edited so update the database..."
     rootContainer = table.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     ds = table.data
     valueId =  ds.getValueAt(rowIndex, "ValueId")
-    
     
     if colName == "ValueName":
         SQL = "UPDATE LtValue SET ValueName = '%s' "\
@@ -106,6 +135,9 @@ def cellEdited(table, rowIndex, colName, newValue):
             "WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "DisplayDecimals":
         SQL = "UPDATE LtValue SET DisplayDecimals = %i "\
+            "WHERE ValueId = %i " % (newValue, valueId)
+    elif colName == "IsSelector":
+        SQL = "UPDATE LtValue SET IsSelector = %i "\
             "WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "TiggerValueId":
         SQL = "UPDATE LtDerivedValue SET TriggerValueId = %i "\
@@ -122,47 +154,37 @@ def cellEdited(table, rowIndex, colName, newValue):
     elif colName == "ResultItemId":
         SQL = "UPDATE LtDerivedValue SET ResultItemId = '%s' "\
             "WHERE ValueId = %i " % (newValue, valueId)
+    elif colName == "TriggerValueName":
+        SQL = "UPDATE LtDerivedValue SET TriggerValueName = '%s' "\
+            "WHERE ValueId = %i " % (newValue, valueId)
             
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txID)
-    
-    #update(rootContainer)
+    system.db.runUpdateQuery(SQL, tx=txId)
        
 #remove the selected row
 def removeRow(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     ds = table.data
     
     row = table.selectedRow
     valueId = ds.getValueAt(row, "ValueId")
     
-    #check for references
-    #sql = "SELECT count(*) FROM LtValue WHERE ValueId = %i" %(valueId)
-    #rows = system.db.runScalarQuery(sql, tx=txID)
-    
-    #if rows > 0:
-     #   ans = system.gui.confirm("This table is in use. Do you want to remove this table?", "Confirm")
-      #  if ans == False:
-       #     return
-       # else:
-        #    sql = "update LtDerivedValue SET ValueId = NULL WHERE ValueId = %i" %(valueId)
-         #   system.db.runUpdateQuery(sql, tx=txID)
-    
     #remove row from LtRelatedData first
     derivedValueId = ds.getValueAt(row, "DerivedValueId")
     sql = "DELETE FROM LtRelatedData "\
         " WHERE DerivedValueId = %i " % (derivedValueId)
-    system.db.runUpdateQuery(sql, tx=txID)
+    system.db.runUpdateQuery(sql, tx=txId)
     
     #remove the selected row
     SQL = "DELETE FROM LtDerivedValue "\
         " WHERE ValueId = %i "\
         % (valueId)
-    system.db.runUpdateQuery(SQL, tx=txID)
+    system.db.runUpdateQuery(SQL, tx=txId)
     
     #refresh table
+    print "Calling update() from removeRow()..." 
     update(rootContainer)
     
 #add a row
@@ -170,14 +192,14 @@ def insertRow(event):
     rootContainer = event.source.parent
     table = rootContainer.getComponent("Power Table")
     ds = table.data
-    newRow = [-1, "", "", -1, -1, "", 10, 30, "", ""]
+    newRow = [-1, "", "", "", -1, 0, -1, -1, "", 10, 30, "", ""]
     ds = system.dataset.addRow(ds, 0, newRow)
     table.data = ds
     
 #add a row of related lab data
 def insertRelatedDataRow(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     
     relatedValueId = rootContainer.getComponent("Dropdown").selectedValue
     derivedValueId = rootContainer.derivedValueId
@@ -186,12 +208,12 @@ def insertRelatedDataRow(event):
     SQL = "INSERT INTO LtRelatedData (DerivedValueId, RelatedValueId) "\
         " VALUES (%i, %i) " %(derivedValueId, relatedValueId)
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txID)
+    system.db.runUpdateQuery(SQL, tx=txId)
     
 #remove the selected row
 def removeRelatedDataRow(event):
     rootContainer = event.source.parent
-    txID = rootContainer.txID
+    txId = rootContainer.txId
     relatedTable = rootContainer.getComponent("relatedLabDataTable")
     row = relatedTable.selectedRow
     ds = relatedTable.data
@@ -200,7 +222,10 @@ def removeRelatedDataRow(event):
     #remove the selected row
     SQL = "DELETE FROM LtRelatedData "\
         "WHERE RelatedValueId = %i " % (valueId)
-    system.db.runUpdateQuery(SQL, tx=txID)
+    system.db.runUpdateQuery(SQL, tx=txId)
     
     #refresh table
-    update(rootContainer)
+    print "Calling updateRelatedTable() from removeRelatedDataRow()..." 
+    updateRelatedTable(rootContainer)
+    
+    
