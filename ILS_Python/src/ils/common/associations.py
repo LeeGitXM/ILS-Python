@@ -8,7 +8,7 @@ import system
     
 # Fetch all of the labBalerService Data associated with the lab data item
 def fetchSinks(source, associationType, db=''):
-
+ 
     SQL = "Select A.sink from TkAssociation A, TkAssociationType AT "\
         " where A.source = '%s' "\
         " and A.AssociationTypeId = AT.AssociationTypeId "\
@@ -19,3 +19,7 @@ def fetchSinks(source, associationType, db=''):
     for record in pds:
         sinks.append(record["sink"])
     return sinks
+
+def lookupAssociationType(associationType):
+    associationTypeId = system.db.runScalarQuery("select associationTypeId from TkAssociationType where AssociationType ='%s' " % (associationType)) 
+    return associationTypeId

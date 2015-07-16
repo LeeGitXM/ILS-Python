@@ -5,6 +5,7 @@ Created on Sep 9, 2014
 '''
 import  system, string
 
+# Expected status are Info, Warning, or Error
 def insert(queueKey, status, message, db = ''):
     from ils.queue.commons import getQueueId
     queueId = getQueueId(queueKey, db)

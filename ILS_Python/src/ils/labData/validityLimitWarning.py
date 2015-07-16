@@ -72,7 +72,7 @@ def acceptValue(rootContainer, timeout=False):
     accept(valueId, valueName, rawValue, sampleTime, tagProvider, database)
 
 def accept(valueId, valueName, rawValue, sampleTime, tagProvider, database):
-    print "valueId: %i, valueName: %s, rawValue: %f, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, rawValue, sampleTime, database, tagProvider)
+    print "valueId: %i, valueName: %s, rawValue: %s, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, str(rawValue), sampleTime, database, tagProvider)
     
     from ils.labData.scanner import storeValue
     storeValue(valueId, valueName, rawValue, sampleTime, database)
