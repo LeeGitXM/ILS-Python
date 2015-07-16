@@ -28,6 +28,7 @@ def handleTimer(chartScope, stepScope, stepProperties):
         
     setTimer = getStepProperty(stepProperties, TIMER_SET)
     if setTimer:
+        print 'starting timer'
         startTime = time.time()
         timer.set(timerAttribute, startTime)
 
@@ -42,7 +43,7 @@ def getTimerStart(chartScope, stepScope, stepProperties):
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
     timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
-    
+    print 'getting timer start'
     # do a sanity check on the timer start:
     topChartStartTime = getTopChartStartTime(chartScope)
     if timerStart != None and timerStart < topChartStartTime:
@@ -57,7 +58,7 @@ def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
     import time
     timerStart = getTimerStart(chartScope, stepScope, stepProperties)
     while timerStart == None:
-        
+        print 'waiting for timer start'
         # Handle Cancel/Pause, as this loop has sleeps
         chartStatus = checkForCancelOrPause(stepScope, logger)
         if chartStatus == CANCEL:
@@ -75,7 +76,7 @@ def writeOutput(chartScope, config, verbose, logger):
     from ils.sfc.common.constants import MSG_STATUS_INFO
     from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT
 
-    logger.debug("writing %s.%s" % (config.tagPath, config.ioAttribute))
+    logger.debug("writing setpoint %s" % (config.tagPath))
     valueType = config.outputRD.get(VALUE_TYPE)
     if valueType == SETPOINT:
         config.io.setSetpoint(config.value)
@@ -101,7 +102,7 @@ def confirmWrite(chartScope, config, logger):
         from ils.sfc.gateway.util import handleUnexpectedGatewayError
         import sys
         try:
-            actualValue = config.io.get(config.ioAttribute)
+            actualValue = config.io.getSetpoint()
             writeConfirmed = (actualValue == config.value)
             config.outputRD.set(WRITE_CONFIRMED, writeConfirmed)
             config.outputRD.set(DOWNLOAD_STATUS, SUCCESS)

@@ -295,7 +295,7 @@ def collectData(scopeContext, stepProperties):
 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    logger = getChartLogger(chartScope, stepScope)
+    logger = getChartLogger(chartScope)
     configJson = getStepProperty(stepProperties, CONFIG)
     config = jsonDecode(configJson)
     # config.errorHandling
@@ -533,7 +533,7 @@ def writeOutput(scopeContext, stepProperties):
     
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
-    logger = getChartLogger(chartScope, stepScope)
+    logger = getChartLogger(chartScope)
     verbose = getStepProperty(stepProperties, VERBOSE)
     handleTimer(chartScope, stepScope, stepProperties)
  
@@ -566,6 +566,7 @@ def writeOutput(scopeContext, stepProperties):
          
         # clear out the dynamic values in recipe data:
         row.outputRD.set(DOWNLOAD_STATUS, None)
+        print 'setting output download status to NONE'
         # STEP_TIMESTAMP and STEP_TIME will be set below
         row.outputRD.set(WRITE_CONFIRMED, None)
         
@@ -635,9 +636,12 @@ def writeOutput(scopeContext, stepProperties):
     # directly to recipe data
         
 def monitorPV(scopeContext, stepProperties):
+    '''see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and 
+    S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
     from system.ils.sfc.common.Constants import PV_MONITOR_CONFIG, SETPOINT, MONITOR, \
-    NUMBER_OF_TIMEOUTS, IMMEDIATE, ABS, PCT, MONITORING, WARNING, ERROR, OK, HIGH, LOW, \
-    HIGH_LOW, TIMER_LOCATION, DATA_LOCATION, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, PV_VALUE
+    NUMBER_OF_TIMEOUTS, IMMEDIATE, ABS, PCT, LOW, HIGH, CLASS, DOWNLOAD_STATUS, STEP_TIME, \
+    HIGH_LOW, TIMER_LOCATION, DATA_LOCATION, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, PV_VALUE, \
+    SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, WAIT
     from ils.sfc.common.constants import SLEEP_INCREMENT
     import time
     from ils.sfc.common.util import getMinutesSince, getIsolationMode
@@ -650,7 +654,7 @@ def monitorPV(scopeContext, stepProperties):
     # general initialization:
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    logger = getChartLogger(chartScope, stepScope)
+    logger = getChartLogger(chartScope)
     stepScope[NUMBER_OF_TIMEOUTS] = 0
     handleTimer(chartScope, stepScope, stepProperties)
     dataLocation = getStepProperty(stepProperties, DATA_LOCATION)
@@ -666,18 +670,26 @@ def monitorPV(scopeContext, stepProperties):
     configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
     config = getPVMonitorConfig(configJson)
 
+    maxPersistence = 0
     # initialize each input:
     for configRow in config.rows:
         configRow.status = MONITORING
-        configRow.inputRD = RecipeData(chartScope, stepScope, dataLocation, configRow.pvKey)
-        configRow.inputRD.set(PV_MONITOR_STATUS, None)
-        configRow.inputRD.set(PV_MONITOR_ACTIVE, True)
-        configRow.inputRD.set(PV_VALUE, None)
+        configRow.ioRD = RecipeData(chartScope, stepScope, dataLocation, configRow.pvKey)
+        configRow.ioRD.set(PV_MONITOR_STATUS, MONITORING)
+        configRow.ioRD.set(PV_MONITOR_ACTIVE, True)
+        configRow.ioRD.set(PV_VALUE, None)
+        dataType = configRow.ioRD.get(CLASS)
+        configRow.isOutput = (dataType == 'Output')
         configRow.isDownloaded = False
         configRow.persistenceOK = False
+        configRow.inToleranceTime = 0
+        configRow.outToleranceTime = 0
+        if configRow.persistence > maxPersistence:
+            maxPersistence = configRow.persistence
+            
         # we assume the target value won't change, so we get it once:
         if configRow.targetType == SETPOINT:
-            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '.value', dataLocation)
+            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/value', dataLocation)
         elif configRow.targetType == VALUE:
             configRow.targetValue = configRow.targetNameIdOrValue
         elif configRow.targetType == TAG:
@@ -689,7 +701,7 @@ def monitorPV(scopeContext, stepProperties):
         if configRow.toleranceType == ABS:
             tolerance = configRow.tolerance
         elif configRow.toleranceType == PCT:
-            tolerance = configRow.targetValue * configRow.tolerance               
+            tolerance = configRow.targetValue * .01 * configRow.tolerance               
 
         if configRow.limits == LOW:
             configRow.lowLimit = configRow.targetValue - tolerance
@@ -701,77 +713,109 @@ def monitorPV(scopeContext, stepProperties):
             configRow.lowLimit = configRow.targetValue - tolerance
             configRow.highLimit = configRow.targetValue + tolerance
         
-        tagPath = configRow.inputRD.get(TAG_PATH)
+        tagPath = configRow.ioRD.get(TAG_PATH)
         configRow.io = AbstractSfcIO.getIO(tagPath, getIsolationMode(chartScope))
         
-    # Monitor for the specified period:
+    # Monitor for the specified period, possibly extended by persistence time
     startTime = time.time()
     elapsedMinutes = 0    
-    while elapsedMinutes < timeLimitMin:
+    extendedDuration = timeLimitMin + maxPersistence # extra time allowed for persistence checks
+    persistencePending = False
+    while (elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration):
         
         if checkForCancelOrPause(stepScope, logger):
             return
 
+        persistencePending = False
         for configRow in config.rows:
+            print ''
+            print 'PV monitor', configRow.pvKey  
             
             if not configRow.enabled:
                 continue;
+            
+            #TODO: how are we supposed to know about a download unless we have an Output??
+            if configRow.isOutput and not configRow.isDownloaded:
+                downloadStatus = configRow.ioRD.get(DOWNLOAD_STATUS)
+                configRow.isDownloaded = (downloadStatus == SUCCESS)
+                if configRow.isDownloaded:
+                    configRow.downloadTime = configRow.ioRD.get(STEP_TIME)
+            print 'configRow.download', configRow.download,  'configRow.isDownloaded', configRow.isDownloaded   
+            if configRow.download == WAIT and not configRow.isDownloaded:
+                print '   skipping; not downloaded'
+                continue
              
-            if configRow.targetType == SETPOINT and not configRow.isDownloaded:
-                configRow.isDownloaded =  configRow.io.isSetpointDownloaded()
-                if not configRow.isDownloaded:
-                    continue
-             
-            configRow.presentValue = configRow.io.getCurrentValue()
+            presentValue = configRow.io.getCurrentValue()
             # ? Not sure why we are writing this to Recipe Data--the monitoring
             # logic has full access to the controller, doesn't it?
-            configRow.inputRD.set(PV_VALUE, configRow.presentValue)
+            configRow.ioRD.set(PV_VALUE, presentValue)
            
             # if we're just reading for display purposes, we're done with this pvInput:
             if configRow.strategy != MONITOR:
                 continue
             
-            # todo: check limits
-            inToleranceNow = configRow.presentValue >= configRow.lowLimit and configRow.presentValue <= configRow.highLimit
-                  
-            if configRow.status == MONITORING or configRow.status == WARNING:
-                if inToleranceNow:
-                    configRow.status = OK
-                    configRow.inToleranceTime = time.time()
-                else: # out of tolerance:
-                    if configRow.download == IMMEDIATE:
-                        referenceTime = startTime
-                    else:
-                        referenceTime = configRow.downloadTime
-                    if getMinutesSince(referenceTime) > configRow.deadTime:
-                        configRow.status = ERROR
-                    else:
-                        configRow.status = WARNING
-                        
-            elif configRow.status == OK and not configRow.persistenceOK:
-                if inToleranceNow:
-                        # persistence: The amount of time that the PV must be in range for the monitoring to be a success
-                        if getMinutesSince(configRow.inToleranceTime) > configRow.persistence:
-                            configRow.persistenceOK = True
-                else: # out of tolerance now
-                    if configRow.inTolerance:
-                        # just fell out of tolerance; start the consistency clock
-                        configRow.outToleranceTime = time.time()
-                    else:
-                        # consistency: The minimum amount of time that the PV is not within its limits before the PV is identified as out of range.
-                        if getMinutesSince(configRow.outToleranceTime) >= configRow.consistency:
-                            configRow.status = TIMEOUT    
-                            stepScope[NUMBER_OF_TIMEOUTS] += 1                        
-            configRow.inTolerance = inToleranceNow        
-            configRow.inputRD.set(PV_MONITOR_STATUS, configRow.status)
+            # ERROR is a terminal state
+            # ?? should SUCCESS be terminal as well?
+            if configRow.status == ERROR:
+                continue
             
+            # check persistence:
+            inToleranceNow = presentValue >= configRow.lowLimit and presentValue <= configRow.highLimit
+            if inToleranceNow:
+                configRow.outToleranceTime = 0
+                isConsistentlyOutOfTolerance = False
+                if configRow.inToleranceTime != 0:
+                    isPersistent = getMinutesSince(configRow.inToleranceTime) > configRow.persistence                    
+                else:
+                    isPersistent = False
+                    configRow.inToleranceTime = time.time()   
+            else:
+                configRow.inToleranceTime = 0
+                isPersistent = False
+                if configRow.outToleranceTime != 0:
+                    isConsistentlyOutOfTolerance = getMinutesSince(configRow.outToleranceTime) > configRow.consistency
+                else:
+                    isConsistentlyOutOfTolerance = False
+                    configRow.outToleranceTime = time.time()  
+                    
+            # check dead time                 
+            if configRow.download == IMMEDIATE:
+                referenceTime = startTime
+            else:
+                referenceTime = configRow.downloadTime
+            print 'minutes since reference', getMinutesSince(referenceTime)
+            deadTimeExceeded = getMinutesSince(referenceTime) > configRow.deadTime 
+            print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
+            print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
+            # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
+            if inToleranceNow:
+                if isPersistent:
+                    configRow.status = SUCCESS
+                else:
+                    configRow.status = NOT_PERSISTENT
+                    persistencePending = True
+            else: # out of tolerance
+                if deadTimeExceeded:
+                    print '   setting error status'
+                    configRow.status = ERROR
+                elif isConsistentlyOutOfTolerance:
+                    configRow.status = WARNING
+                else:
+                    configRow.status = NOT_CONSISTENT
+                        
+            configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
+            print '   status ', configRow.status    
         time.sleep(SLEEP_INCREMENT)
         elapsedMinutes =  getMinutesSince(startTime)
         
-        for configRow in config.rows:
-            configRow.inputRD.set(PV_MONITOR_ACTIVE, False)
-            if not configRow.persistenceOK:
-                configRow.inputRD.set(PV_MONITOR_STATUS, TIMEOUT)
+    numTimeouts = 0
+    for configRow in config.rows:
+        if configRow.status == ERROR:
+            ++numTimeouts
+            configRow.status = TIMEOUT
+            configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
+        configRow.ioRD.set(PV_MONITOR_ACTIVE, False)
+    stepScope[NUMBER_OF_TIMEOUTS] = numTimeouts
       
 def monitorDownload(scopeContext, stepProperties): 
     from system.ils.sfc.common.Constants import MONITOR_DOWNLOADS_CONFIG, DATA_ID
@@ -780,7 +824,7 @@ def monitorDownload(scopeContext, stepProperties):
     from ils.sfc.gateway.monitoring import createMonitoringMgr
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    logger = getChartLogger(chartScope, stepScope)
+    logger = getChartLogger(chartScope)
     timer, timerAttribute = handleTimer(chartScope, stepScope, stepProperties)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     configJson = getStepProperty(stepProperties, MONITOR_DOWNLOADS_CONFIG)

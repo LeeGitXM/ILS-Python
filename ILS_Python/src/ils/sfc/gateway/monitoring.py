@@ -5,6 +5,8 @@ If the Monitor Downloads step executes, a MonitoringMgr is created. It lives
 for the lifetime of the top-level chart execution, and supports client
 requests for monitoring status
 
+see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt
+
 Created on Jun 17, 2015
 @author: rforbes
 '''
@@ -50,8 +52,9 @@ class MonitoringMgr:
         '''Send the current monitoring information to clients'''
         '''The dataset-building code should really be on the client'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
-        DOWNLOAD_STATUS, STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, SUCCESS, \
-        WRITE_CONFIRMED, FAILURE, PENDING, VALUE
+        DOWNLOAD_STATUS, STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
+        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, \
+        SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, TIMEOUT
 
         from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
         from ils.sfc.common.util import sendMessageToClient, formatTime, getTopChartRunId
@@ -67,13 +70,23 @@ class MonitoringMgr:
         for info in self.monitoringInfos:
             # Note: the data can be an Input or an Output, which are both subclasses of IO
             # oddly enough, Inputs do not have any additional attributes vs IO
-            dataType = info.inout.get(CLASS)
-            # get common attributes:
-            value = info.inout.get(VALUE)
+            # get common IO attributes and set some defaults:
+            description = info.inout.get(DESCRIPTION)
+            pv = info.io.getCurrentValue()
+            monitorActive = info.inout.get(PV_MONITOR_ACTIVE)
+            if monitorActive == True:
+                formattedPV = "%.2f" % pv
+            else:
+                formattedPV = "%.2f*" % pv
+            name = info.io.get(info.configRow.labelAttribute)
             units = info.inout.get(UNITS)
+            #TODO: convert to units if GUI units specified
+            setpointColor = Color.white
+            stepTimeColor = Color.white
+            pvColor = Color.white
+            dataType = info.inout.get(CLASS)
             if dataType == 'Output':
                 downloadStatus = info.inout.get(DOWNLOAD_STATUS)
-                writeConfirmed = info.inout.get(WRITE_CONFIRMED)
                 timing = info.inout.get(TIMING)
                 if timing < 1000.:
                     formattedTiming = "%.2f" % timing
@@ -83,16 +96,11 @@ class MonitoringMgr:
                 # WriteOutput step that reflect the offset from the actual timer start time
                 stepTime = info.inout.get(STEP_TIME) 
                 stepTimestamp = info.inout.get(STEP_TIMESTAMP) # empty string for event-driven steps
-                description = info.inout.get(DESCRIPTION)
                 # note: we want to reflect the setpoint that WILL be written, even if
                 # the current actual setpoint is different
+                # ?? not using the WRITE_CONFIRMED value in recipe data
                 setpoint = info.inout.get(VALUE)
                 formattedSetpoint = "%.2f" % setpoint
-                pv = info.io.getCurrentValue()
-                formattedPV = "%.2f" % pv
-                name = info.io.get(info.configRow.labelAttribute)
-                #TODO: convert to units if GUI units specified
-                
                 timeNow = time.time()
                 if stepTime != None and timeNow < stepTime:
                     pendingTime = stepTime - 30
@@ -109,9 +117,36 @@ class MonitoringMgr:
                         stepTimeColor = Color.green
                     elif downloadStatus == FAILURE:
                         stepTimeColor = Color.red
-                setpointColor = Color.white # don't know anything about target              
-                pvColor = Color.white # don't know anything about target    
-                rows.append([formattedTiming, name, formattedSetpoint, description, stepTimestamp, formattedPV, setpointColor, stepTimeColor, pvColor])
+            else:
+                formattedTiming = ''
+                stepTimestamp = ''
+                # an Input knows nothing about step timing, so step timing fields are blank
+                # we know nothing about pending setpoints, but can at least reflect the current one:
+                setpoint = info.io.getSetpoint()
+                formattedSetpoint = "%.2f" % setpoint
+                
+            monitorStatus = info.inout.get(PV_MONITOR_STATUS)
+            # reference S88-PV-MONITOR-STATUS-COLOR-DECODER.txt
+            # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
+            if monitorStatus == MONITORING or  monitorStatus == None:
+                pvColor = Color.white
+            elif monitorStatus == WARNING:    
+                pvColor = Color.yellow
+            elif monitorStatus == NOT_PERSISTENT:    
+                pvColor = Color(154,205,50)
+            elif monitorStatus == SUCCESS:    
+                pvColor = Color.green
+            elif monitorStatus == NOT_CONSISTENT:    
+                pvColor = Color.orange
+            elif monitorStatus == ERROR or monitorStatus == TIMEOUT: 
+                print 'monitoring: status is', monitorStatus   
+                pvColor = Color.red
+            if pvColor == Color.red or stepTimeColor == Color.red:
+                setpointColor = Color.yellow
+            else:
+                setpointColor = Color.white
+            rows.append([formattedTiming, name, formattedSetpoint, description, stepTimestamp, formattedPV, setpointColor, stepTimeColor, pvColor])
+               
 
         # TODO: sort by timing
          

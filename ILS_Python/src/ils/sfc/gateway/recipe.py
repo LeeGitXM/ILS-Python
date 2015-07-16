@@ -15,12 +15,12 @@ class RecipeData:
         self.key = _key
         
     def set(self, attribute, value):
-        s88Set(self.chartScope, self.stepScope, self.key + '.' + attribute, value, self.location)
+        s88Set(self.chartScope, self.stepScope, self.key + '/' + attribute, value, self.location)
         
     def get(self, attribute):
         from ils.sfc.common.util import getTopChartRunId
         # print 'RecipeData.get', attribute, getTopChartRunId(self.chartScope)
-        return s88Get(self.chartScope, self.stepScope, self.key + '.' + attribute, self.location)
+        return s88Get(self.chartScope, self.stepScope, self.key + '/' + attribute, self.location)
 
 def parseBracketedScopeReference(bracketedRef):
     '''
@@ -70,5 +70,4 @@ def splitKey(key):
     '''given a key, split it into the prefix and the final value attribute'''
     lastDotIndex = key.rfind(".")
     return key[0:lastDotIndex], key[lastDotIndex + 1:len(key)]
-    
 

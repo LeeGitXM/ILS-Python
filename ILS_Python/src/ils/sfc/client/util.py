@@ -143,3 +143,5 @@ def tableExists(table, database):
         return results != None
     except:
         return False
+
+    

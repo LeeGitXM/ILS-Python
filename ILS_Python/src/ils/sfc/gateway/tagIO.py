@@ -19,7 +19,8 @@ class TagIO:
     name = ''
     
     def  __init__(self, _tagPath, isolationMode):
-        providerName = abstractSfcIO.AbstractSfcIO.getProviderName(isolationMode)
+        from system.ils.sfc import getProviderName
+        providerName = getProviderName(isolationMode)
         self.name = _tagPath
         self.tagPath = '[' + providerName + ']' + _tagPath
     
@@ -27,7 +28,7 @@ class TagIO:
         return self.name
     
     def set(self, attribute, value):
-        system.tag.writeSynchronous(self.getPath(self.translate(attribute)), value)
+        system.tag.writeSynchronous(self.getPath(attribute), value)
 
     def getSetpoint(self):
         return self.get('setpoint')

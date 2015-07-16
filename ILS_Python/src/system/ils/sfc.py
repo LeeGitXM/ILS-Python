@@ -21,9 +21,11 @@ def registerSfcProject(projectName):
 def s88DataExists(chartProperties, stepProperties, ckey, location):
     pass
 
+#TODO: delete this
 def s88GetScope(chartProperties, stepProperties, location):
     pass
 
+#TODO: delete this
 def s88ScopeChanged(chartProperties, stepProperties):
     pass
 
@@ -40,6 +42,9 @@ def getDatabaseName(isolationMode):
     pass
 
 def getProviderName(isolationMode):
+    pass
+
+def getIsolationMode(chartScope):
     pass
 
 def getTimeFactor(isolationMode):
@@ -73,4 +78,7 @@ def dropboxPut():
     pass
 
 def dropboxGet():
+    pass
+
+def getRecipeDataTagPath(chartScope, stepScope, scopeId):
     pass

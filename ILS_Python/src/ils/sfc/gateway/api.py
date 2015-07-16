@@ -6,14 +6,33 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
 
+def getProviderName(chartProperties):
+    from system.ils.sfc import getProviderName, getIsolationMode
+    return getProviderName(getIsolationMode(chartProperties))
+
 def s88DataExists(chartProperties, stepProperties, valuePath, location):
-    from system.ils.sfc import s88DataExists
-    return s88DataExists(chartProperties, stepProperties, valuePath, location)
+    from system.ils.sfc import getRecipeDataTagPath
+    from ils.sfc.common.recipe import recipeDataTagExists
+    provider = getProviderName(chartProperties)
+    tagPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+    return recipeDataTagExists(provider, tagPath);
   
 def s88Get(chartProperties, stepProperties, valuePath, location):
-    from system.ils.sfc import s88BasicGet
-    return s88BasicGet(chartProperties, stepProperties, valuePath, location)
+    from system.ils.sfc import getRecipeDataTagPath
+    from ils.sfc.common.recipe import getRecipeData
+    provider = getProviderName(chartProperties)
+    stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+    fullPath = stepPath + "/" + valuePath
+    return getRecipeData(provider, fullPath);
 
+def s88Set(chartProperties, stepProperties, valuePath, value, location):
+    from system.ils.sfc import getRecipeDataTagPath
+    from ils.sfc.common.recipe import setRecipeData
+    provider = getProviderName(chartProperties)
+    stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+    fullPath = stepPath + "/" + valuePath
+    setRecipeData(provider, fullPath, value, True);
+     
 def getUnitsPath(valuePath):
     '''Get the units associated with a value; None if not found'''
     valueKeyIndex = valuePath.find(".value")
@@ -43,10 +62,6 @@ def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, return
 def s88SetData(chartProperties, stepProperties, valuePath, value, location):
     s88Set(chartProperties, stepProperties, valuePath, value, location)
     
-def s88Set(chartProperties, stepProperties, valuePath, value, location):
-    from system.ils.sfc import s88BasicSet
-    s88BasicSet(chartProperties, stepProperties, valuePath, location, value)
-     
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, newUnitsName):
     from system.ils.sfc import s88BasicSet
     s88BasicSet(chartProperties, stepProperties, valuePath, location, value)

@@ -173,3 +173,7 @@ def printDataset(dataset):
         for col in range(dataset.columnCount):
             value = dataset.getValueAt(row, col)
             print value
+
+def doNothing():
+    '''a minimal function useful for timing tests on java-to-python calls'''
+    return 1

@@ -41,3 +41,6 @@ def writeAll(tags, vals):
 
 def queryTagHistory():
     pass
+
+def removeTag(path):
+    pass

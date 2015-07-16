@@ -10,8 +10,6 @@ from ils.sfc.common.constants import *
 from ils.sfc.common.util import getTopChartRunId
 from ils.sfc.gateway.api import cancelChart
 
-
-
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
 YES_NO_HANDLER = 'sfcYesNo'
@@ -204,7 +202,7 @@ def getDelaySeconds(delay, delayUnit):
 def createFilepath(chartScope, stepProperties):
     '''Create a filepath from dir/file/suffix in step properties'''
     import time
-    logger = getChartLogger(chartScope, stepProperties)
+    logger = getChartLogger(chartScope)
     directory = getStepProperty(stepProperties, DIRECTORY) 
     fileName = getStepProperty(stepProperties, FILENAME) 
     extension = getStepProperty(stepProperties, EXTENSION) 
@@ -224,10 +222,9 @@ def createFilepath(chartScope, stepProperties):
     filepath = directory + '/' + fileName + timestamp + extension
     return filepath
 
-def getChartLogger(chartScope, stepScope):
-    from system.ils.sfc import getFullStepName
+def getChartLogger(chartScope):
     from system.util import getLogger
-    return getLogger(getFullStepName(chartScope, stepScope))
+    return getLogger(getFullChartPath(chartScope))
 
 def standardDeviation(dataset, column):
     '''calculate the standard deviation of the given column of the dataset'''
@@ -249,9 +246,6 @@ def queueMessage(chartScope, msg, priority):
     currentMsgQueue = getCurrentMessageQueue(chartScope)
     database = getDatabaseName(chartScope)
     insert(currentMsgQueue, priority, msg, database) 
-
-def createRecipeKey(prefix, suffix):
-    return prefix + '.' + suffix
 
 def checkForCancelOrPause(stepScope, logger):
     '''some commonly-used code to check for chart cancellation or pause in the midst

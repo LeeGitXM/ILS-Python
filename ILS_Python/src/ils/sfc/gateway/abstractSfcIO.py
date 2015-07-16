@@ -49,9 +49,4 @@ class AbstractSfcIO:
         # TODO: support other controller types
         return TagIO(ioId, isolationMode)
     
-    @staticmethod
-    def getProviderName(isolationMode):
-        '''Get the name of the IO provider depending on whether we are in isolation mode'''
-        from system.ils.sfc import getProviderName
-        return getProviderName(isolationMode)
 
