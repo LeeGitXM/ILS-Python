@@ -20,3 +20,12 @@ def getName(application):
 # We believe that the argument is simply a String.   
 def getBlockName(block):
     return str(block)
+
+# Assuming the name of the item is a tog, see if it exists.
+# To do this attempt a read
+def namedItemExists(path):
+    try:
+        system.tag.read(path)
+        return True
+    except:
+        return False
