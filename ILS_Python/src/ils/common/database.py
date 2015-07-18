@@ -37,6 +37,13 @@ def getUnitId(unitName, database=""):
     unitId = system.db.runScalarQuery(SQL, database)
     return unitId
 
+# Lookup the unit name given the id
+def getUnitName(unitId, database=""):
+    SQL = "select UnitName from TkUnit where UnitId = %s" % ( str(unitId) )
+    log.trace(SQL)
+    unitName = system.db.runScalarQuery(SQL, database)
+    return unitName
+
 
 def lookup(lookupType, key):
     SQL = "select LookupId from Lookup where LookupTypeCode = '%s' and LookupName = '%s'" % (lookupType, key)

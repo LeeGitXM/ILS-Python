@@ -37,6 +37,16 @@ def internalFrameActivated(rootContainer):
     updateRelatedTable(rootContainer)
     
 
+def commitChanges(rootContainer):
+    txId=rootContainer.txId
+    system.db.commitTransaction(txId)
+    
+    provider = "[XOM]"
+    unitName = rootContainer.getComponent("UnitName").selectedStringValue
+    from ils.labData.synchronize import synchronize
+    synchronize(provider, unitName, txId)
+
+
 #close transaction when window is closed
 def internalFrameClosing(rootContainer):
     try:
@@ -53,17 +63,18 @@ def update(rootContainer):
     print "...updating display table..."
     txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
-    dropDown= rootContainer.getComponent("Dropdown")
+    dropDown= rootContainer.getComponent("UnitName")
     unitId = dropDown.selectedValue
     ds = table.data
     
     #update display table
-    SQL = "SELECT LtValue.ValueId, LtValue.ValueName, LtValue_1.ValueName AS TriggerValueName, LtValue.Description, LtValue.DisplayDecimals, "\
-        " LtDerivedValue.DerivedValueId, LtDerivedValue.TriggerValueId, "\
+    SQL = "SELECT LtValue.ValueId, LtValue.ValueName, LtValue.Description, LtValue_1.ValueName AS TriggerValueName,  "\
+        " LtValue.DisplayDecimals, LtDerivedValue.DerivedValueId, LtDerivedValue.TriggerValueId, "\
         " LtDerivedValue.Callback, LtDerivedValue.SampleTimeTolerance, LtDerivedValue.NewSampleWaitTime, "\
         " TkWriteLocation.ServerName, LtDerivedValue.ResultItemId "\
         " FROM LtValue INNER JOIN LtDerivedValue ON LtValue.ValueId = LtDerivedValue.ValueId INNER JOIN "\
-        " LtValue AS LtValue_1 ON LtDerivedValue.TriggerValueId = LtValue_1.ValueId LEFT OUTER JOIN TkWriteLocation ON LtDerivedValue.ResultWriteLocationId = TkWriteLocation.WriteLocationId "\
+        " LtValue AS LtValue_1 ON LtDerivedValue.TriggerValueId = LtValue_1.ValueId LEFT OUTER JOIN "\
+        " TkWriteLocation ON LtDerivedValue.ResultWriteLocationId = TkWriteLocation.WriteLocationId "\
         " WHERE LtValue.UnitId = %i ORDER BY LtValue.ValueName " % (unitId)
         
     print SQL
@@ -114,29 +125,30 @@ def updateDatabase(rootContainer):
     txId = rootContainer.txId
     table = rootContainer.getComponent("Power Table")
     ds = table.data
+    row = table.selectedRow
     
-    name = ds.getValueAt(0, "ValueName")
-    description = ds.getValueAt(0, "Description")
-    decimals = ds.getValueAt(0, "DisplayDecimals")
-    trigValue = ds.getValueAt(0, "TriggerValueId")
-    callBack = ds.getValueAt(0, "Callback")
-    resultItemId = ds.getValueAt(0, "ResultItemId")
-    sampleTimeTolerance = ds.getValueAt(0, "SampleTimeTolerance")
-    newSampleWaitTime = ds.getValueAt(0, "NewSampleWaitTime")
-    unitId = rootContainer.getComponent("Dropdown").selectedValue
-    isSelector = 0
+    name = ds.getValueAt(row, "ValueName")
+    description = ds.getValueAt(row, "Description")
+    decimals = ds.getValueAt(row, "DisplayDecimals")
+    triggerValueName = ds.getValueAt(row, "TriggerValueName")
+    callback = ds.getValueAt(row, "Callback")
+    resultItemId = ds.getValueAt(row, "ResultItemId")
+    sampleTimeTolerance = ds.getValueAt(row, "SampleTimeTolerance")
+    newSampleWaitTime = ds.getValueAt(row, "NewSampleWaitTime")
+    unitId = rootContainer.getComponent("UnitName").selectedValue
     
-    if name != "" and description != "" and decimals >= 0 and trigValue >= 0 and callBack != "" and isSelector != "":
-        SQL = "INSERT INTO LtValue (ValueName, Description, DisplayDecimals, UnitId, IsSelector) "\
-            " VALUES ('%s', '%s', %i, %i, %i)" % (name, description, decimals, unitId, isSelector)
+    print "%s - %s - %s - %s" % (name, str(decimals), triggerValueName, callback)
+    if name != "" and decimals >= 0 and triggerValueName != "" and callback != "":
+        triggerValueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (triggerValueName), tx=txId)
+        SQL = "INSERT INTO LtValue (ValueName, Description, DisplayDecimals, UnitId) "\
+            " VALUES ('%s', '%s', %i, %i)" % (name, description, decimals, unitId)
         print SQL
         valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey=1)
+        print "Inserted a new lab value with id: ", valueId
         sql = "INSERT INTO LtDerivedValue (ValueId, TriggerValueId, Callback, ResultItemId, SampleTimeTolerance, NewSampleWaitTime) "\
-            " VALUES (%i, %i, '%s', '%s', %i, %i)" % (valueId, trigValue, callBack, resultItemId, sampleTimeTolerance, newSampleWaitTime)
+            " VALUES (%i, %i, '%s', '%s', %i, %i)" % (valueId, triggerValueId, callback, resultItemId, sampleTimeTolerance, newSampleWaitTime)
         print sql
         system.db.runUpdateQuery(sql, tx=txId)
-        
-        print "Hello"
     else:
         print "Insufficient data to update the database..."
                
@@ -238,7 +250,7 @@ def insertRow(event):
     rootContainer = event.source.parent
     table = rootContainer.getComponent("Power Table")
     ds = table.data
-    newRow = [-1, "", "", "", -1, -1, -1, "", 10, 30, "", ""]
+    newRow = [-1, "", "", "", 2, -1, -1, "", 10, 30, "", ""]
     ds = system.dataset.addRow(ds, 0, newRow)
     table.data = ds
     

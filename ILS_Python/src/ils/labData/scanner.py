@@ -209,6 +209,9 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 derivedLog.error("Unable to find any value for the related data named %s for trigger value %s" % (relatedValueName, valueName))
         
         if relatedDataIsConsistent:
+            from ils.labData.callbackDispatcher import derivedValueCallback
+            newVal = derivedValueCallback(callback)
+            
             # If they specify shared or project scope, then we don't need to do this
             if not(string.find(callback, "project") == 0 or string.find(callback, "shared") == 0):
                 # The method contains a full python path, including the method name

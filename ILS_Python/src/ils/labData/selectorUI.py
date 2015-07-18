@@ -1,9 +1,10 @@
 '''
-Created on Jun 15, 2015
+Created on Jul 14, 2015
 
 @author: Pete
 '''
-import system, string
+
+import system
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -45,17 +46,7 @@ def internalFrameActivated(rootContainer):
     
     print "Calling updateLimit() from internalFrameActivated()"
     updateLimit(rootContainer)
-
-def commitChanges(rootContainer):
-    txId=rootContainer.txId
-    system.db.commitTransaction(txId)
     
-    provider = "[XOM]"
-    unitName = rootContainer.getComponent("UnitName").selectedStringValue
-    from ils.labData.synchronize import synchronize
-    synchronize(provider, unitName, txId)
-
-  
 #close transaction when window is closed
 def internalFrameClosing(rootContainer):
     try:
@@ -163,35 +154,40 @@ def insertDataRow(event):
     description = rootContainer.getComponent("description").text
     decimals = rootContainer.getComponent("Spinner").intValue
     unitId = rootContainer.unitId
+    isSelector = 0
+    
+    if labDataType == "Selector":
+        isSelector = 1
         
     #insert the user's data as a new row
-    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, EditAction, TxId)"\
-        "VALUES ('%s', '%s', %i, %i, 'Insert', '%s')" %(newName, description, unitId, decimals, txId)
+    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, IsSelector)"\
+        "VALUES ('%s', '%s', %i, %i, %i)" %(newName, description, unitId, decimals, isSelector)
     print SQL
     valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey = True)
     
     if labDataType == "PHD":
         interfaceId = rootContainer.getComponent("Dropdown").selectedValue
         itemId = rootContainer.getComponent("itemId").text
+        
         sql = "INSERT INTO LtPHDValue (ValueId, ItemId, InterfaceId)"\
             "VALUES (%s, '%s', %s)" %(str(valueId), str(itemId), str(interfaceId))
         print sql
         system.db.runUpdateQuery(sql, tx = txId)
     elif labDataType == "DCS":
         writeLocationId = rootContainer.getComponent("Dropdown").selectedValue
-        itemId = rootContainer.getComponent("itemId").text
+        itemId = rootContainer.getComponent("itemId").intValue
         sql = "INSERT INTO LtDCSValue (ValueId, WriteLocationId, ItemId)"\
-            "VALUES (%s, %s, '%s')" %(str(valueId), str(writeLocationId), str(itemId))
+            "VALUES (%s, %s, %s)" %(str(valueId), str(writeLocationId), str(itemId))
         system.db.runUpdateQuery(sql, tx = txId)
     elif labDataType == "Local":
-        writeLocationId = rootContainer.getComponent("Dropdown").selectedValue
-        itemId = rootContainer.getComponent("itemId").text
+        writeLocationId = rootContainer.getComponent("Dropdown").selectedStringValue
+        itemId = rootContainer.getComponent("itemId").intValue
         sql = "INSERT INTO LtLocalValue (ValueId, WriteLocationId, ItemId)"\
-            "VALUES (%s, %s, '%s')" %(str(valueId), str(writeLocationId), str(itemId))
+            "VALUES (%s, %s, %s)" %(str(valueId), str(writeLocationId), str(itemId))
         system.db.runUpdateQuery(sql, tx = txId)
 
     
-# Refresh the main table
+#update the window
 def update(rootContainer):
     txId = rootContainer.txId
     unitId = rootContainer.getComponent("UnitName").selectedValue
@@ -222,22 +218,29 @@ def update(rootContainer):
         table.updateInProgress = True
         table.data = pds
         table.updateInProgress = False
-    elif rootContainer.dataType == "Local":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, LV.ItemId "\
-            " FROM LtValue V, LtLocalValue LV, TkWriteLocation WL "\
-            " WHERE V.ValueId = LV.ValueId "\
-            " AND V.UnitId = %i "\
-            " and WL.WriteLocationId = LV.WriteLocationId "\
-            " ORDER BY ValueName" % (unitId)
+    elif rootContainer.dataType == "Selector":
+        SQL = "SELECT ValueId, ValueName, Description, DisplayDecimals, UnitId "\
+            "FROM LtValue "\
+            "WHERE UnitId = %i "\
+            "AND IsSelector = 1 "\
+            "ORDER BY ValueName" % (unitId)
+        pds = system.db.runQuery(SQL, tx=txId)
+        table = rootContainer.getComponent("Selector").getComponent("Selector_Value")
+        table.updateInProgress = True
+        table.data = pds
+        table.updateInProgress = False
+    else:
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, L.ItemId "\
+            "FROM LtValue V, LtLocalValue L "\
+            "WHERE V.ValueId = L.ValueId "\
+            "AND V.UnitId = %i "\
+            "ORDER BY ValueName" % (unitId)
         pds = system.db.runQuery(SQL, tx=txId)
         table = rootContainer.getComponent("Local").getComponent("Local_Value")
         table.updateInProgress = True
         table.data = pds
         table.updateInProgress = False
-    else:
-        print "Unexpected tab: %s" % (rootContainer.dataType)
-
-# Refresh the limit table    
+    
 def updateLimit(rootContainer):
     txId = rootContainer.txId
     selectedValueId = rootContainer.selectedValueId
@@ -302,8 +305,7 @@ def insertLimitRow(event):
     
     # Insert a mostly empty row into the database, the reason to do this is to get a legit limitId into the database so now as they
     # edit each cell we can just do real simple updates...
-    SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, EditAction, TxId) "\
-        "values (%s, %s, %s, 'Insert', '%s')" % (str(valueId), str(limitTypeId), str(limitSourceId), str(txId))
+    SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
     limitId = system.db.runUpdateQuery(SQL, tx=txId, getKey=1)
     
     #insert blank row into the table

@@ -5,63 +5,115 @@ Created on Jun 15, 2015
 '''
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from com.sun.xml.internal.bind.v2.runtime.unmarshaller import TagName
 log = LogUtil.getLogger("com.ils.labData.unitParameters")
 
-def valueChanged(tagPath, currentValue, initialChange):
-    # We could/should check the quality here and only process good values.
-    log.trace("In valueChanged with <%s> and value: %f " % (tagPath, currentValue.value))
-    database="XOM"
-    
-    # The first step is to get the tag name out of the tagpath.  This should end in either rawValue or manualRawValue
+def parseTagPath(tagPath):
+    end = tagPath.rfind('/')
+    tagPathRoot = tagPath[:end]
+    end = tagPath.rfind('/')
+    tagName = tagPath[end + 1:]
+    return tagPathRoot, tagName
+
+def foo(tagPath):
     end = tagPath.rfind('/')
     tagPath = tagPath[:end]
     end = tagPath.rfind('/')
     tagPathRoot = tagPath[:end]
     tagName = tagPath[end + 1:]
     
-    # Check if the buffer has ever been initialized
-    SQL = "select UnitParameterId, BufferSize, BufferIndex from TkUnitParameter where UnitParameterName = '%s'" % (tagName)
-    log.trace(SQL)
-    pds = system.db.runQuery(SQL, database)
-    if len(pds) == 0:
-        log.error("Error: The unit parameter <%s> was not found in the TkUnitParameter table!" % (tagName))
+    return tagPathRoot, tagName
+
+# The size of the buffer has changed.  We only need to worry about correcting from a large buffer to a small buffer
+def bufferSizeChanged(tagPath, currentValue, initialChange):
+    log.info("The buffer size has changed for <%s> to <%s>" % (tagPath, str(currentValue)))
+    
+    #TODO - Un-hardcode this
+    database="XOM"
+    
+    tagPathRoot, tagName = parseTagPath(tagPath)
+    log.trace("In bufferSizeChanged with <%s>, new size = %i (root: %s)" % (tagPath, currentValue.value, tagPathRoot))
+    SQL = "select unitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
+    unitParameterId = system.db.runScalarQuery(SQL, database)
+    if unitParameterId == None:
+        log.trace("No rows found for %s" % (tagPath))
+        return 
+    SQL = "Delete from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex >= %i" % (unitParameterId, currentValue.value)
+    rows = system.db.runUpdateQuery(SQL, database)
+    log.trace("...deleted %i rows" % rows)
+    
+def valueChanged(tagPath, currentValue, initialChange):
+    
+    #TODO - Un-hardcode this
+    database="XOM"
+    
+    # Check the quality here and only process good values.
+    if not(currentValue.quality.isGood()):
+        log.warn("%s quality is %s - value will not be propagated!" % (tagPath, currentValue.quality))
         return
     
-    record = pds[0]
-    unitParameterId = record['UnitParameterId']
-    bufferSize = record['BufferSize']
-    bufferIndex = record['BufferIndex']
+    # We can only process numeric values
+    try:
+        tagVal = float(currentValue.value)
+    except:
+        log.warn("Warning the new value <%s> for <%s> is not numeric and cannot be processed" % (str(currentValue.value), tagPath))
+        return
     
-    log.trace("Unit Parameter Id: %i - Buffer Size: %i - Buffer Index: %i" % (unitParameterId, bufferSize, bufferIndex))
+    # The first step is to get the tag name out of the full tag name.  This should end in either rawValue or manualRawValue    
+    tagPathRoot, tagName = parseTagPath(tagPath)
+    log.trace("In valueChanged with <%s> and value: %f (root: %s)" % (tagPath, tagVal, tagPathRoot))
+    
+    # Check if the buffer has ever been initialized
+    SQL = "select UnitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
+    log.trace(SQL)
+    unitParameterId = system.db.runScalarQuery(SQL, database)
+    if unitParameterId == None:
+        SQL = "insert into TkUnitParameter (UnitParameterTagName) values ('%s')" % (tagPathRoot)
+        log.trace(SQL)
+        unitParameterId = system.db.runUpdateQuery(SQL, database, getKey=1)
+        log.info("Inserted a new unit parameter <%s> with id <%i> into the TkUnitParameter" % (tagPathRoot, unitParameterId))
+    
+    # Read the buffer size and bufferindex from the tags
+    
+    tags = [tagPathRoot + '/numberOfPoints', tagPathRoot + '/bufferIndex']
+    vals=system.tag.readAll(tags)
+    numberOfPoints = vals[0].value
+    bufferIndex = vals[1].value
+
+    log.trace("Unit Parameter Id: %i - Number of points: %i - Buffer Index: %i" % (unitParameterId, numberOfPoints, bufferIndex))
     
     # Now put the new value into the buffer
     SQL = "update TkUnitParameterBuffer set RawValue = %f "\
-        " where UnitParameterId = UnitParameterId and BufferIndex = %i" % (currentValue.value, bufferIndex)
+        " where UnitParameterId = %i and BufferIndex = %i" % (tagVal, unitParameterId, bufferIndex)
     log.trace(SQL)
-    system.db.runUpdateQuery(SQL, database)
+    rows=system.db.runUpdateQuery(SQL, database)
     
-    # Query the buffer for the Mean
+    # If no rows were updated then it probably means that the buffer has not been filled yet, so insert a row
+    if rows == 0:
+        SQL = "insert into TkUnitParameterBuffer (UnitParameterId, BufferIndex, RawValue) values (%i, %i, %f)" % (unitParameterId, bufferIndex, tagVal)
+        log.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        if rows != 1:
+            log.error("Unable to add value <%f> to the history buffer for tag <%s>" % (tagVal, tagName))
+        
+    #  Query the buffer for the Mean
     SQL = "select avg(RawValue) from TkUnitParameterBuffer where UnitParameterId = %s" % (str(unitParameterId))
     log.trace(SQL)
     filteredValue = system.db.runScalarQuery(SQL, database)
     log.trace("The filtered value is: %f" % (filteredValue))
     
-    # Increment the buffer index so it s ready for the next value
-    if bufferIndex >= bufferSize - 1:
+    # Increment the buffer index so it is ready for the next value
+    if bufferIndex >= numberOfPoints - 1:
         bufferIndex = 0
     else:
         bufferIndex = bufferIndex + 1
-        
-    SQL = "update TkUnitParameter set BufferIndex = %s where UnitParameterId = %s" % (str(bufferIndex), str(unitParameterId))
-    log.trace(SQL)
-    system.db.runUpdateQuery(SQL, database)
     
     # Store the mean into the UnitParameter Final Value
-    tagPath = tagPathRoot + '/' + tagName + '/filteredValue'
-    retVal = system.tag.write(tagPath, filteredValue)
-    if retVal == 1:
+    try:
+        # These are writing to memory tags so they should be very fast
+        system.tag.writeSynchronous(tagPathRoot + '/filteredValue', filteredValue, 1)
+        system.tag.writeSynchronous(tagPathRoot + '/bufferIndex', bufferIndex, 1)
         log.trace("Successfully wrote the filtered value <%f> to <%s>" % (filteredValue, tagPath))
-    elif retVal == 0:
+    except:
         log.error("Error writing filtered value <%f> to <%s>" % (filteredValue, tagPath))
-    else:
-        log.warn("Error writing filtered value <%f> to <%s>" % (filteredValue, tagPath))
+

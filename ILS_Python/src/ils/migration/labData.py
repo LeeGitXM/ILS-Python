@@ -113,7 +113,7 @@ def insertIntoDB(container):
                 if className == "LAB-PHD-SQC":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, False)
+                        valueId=insertLabValue(labData, unitName)
                         insertPHDLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
                         loaded=loaded+1
@@ -122,7 +122,7 @@ def insertIntoDB(container):
                 elif className == "LAB-DCS-SQC":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, False)
+                        valueId=insertLabValue(labData, unitName)
                         insertDCSLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
                         loaded=loaded+1
@@ -131,7 +131,7 @@ def insertIntoDB(container):
                 elif className == "LAB-PHD-RELEASE":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, False)
+                        valueId=insertLabValue(labData, unitName)
                         insertPHDLabValue(labData, valueId, site)
                         insertReleaseLimit(labData,valueId)
                         loaded=loaded+1
@@ -140,34 +140,34 @@ def insertIntoDB(container):
                 elif className == "LAB-PHD-SQC-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, True)
+                        valueId=insertLabValue(labData, unitName)
                         loaded=loaded+1
                         print "   ...done!"
     
                 elif className == "LAB-PHD-RELEASE-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, True)
+                        valueId=insertLabValue(labData, unitName)
                         loaded=loaded+1
                         print "   ...done!"
                 
                 elif className == "LAB-PHD-VALIDITY-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, True)
+                        valueId=insertLabValue(labData, unitName)
                         loaded=loaded+1
                         print "   ...done!"
     
                 elif className == "LAB-PHD-DERIVED":
                     if phase == 2:
-                        valueId=insertLabValue(labData, unitName, False)
+                        valueId=insertLabValue(labData, unitName)
                         insertDerivedLabValue(labData, valueId, site)
                         loaded=loaded+1
                         print "   ...done!"
                     
                 elif className == "LAB-PHD-DERIVED-SQC":
                     if phase == 2:
-                        valueId=insertLabValue(labData, unitName, False)
+                        valueId=insertLabValue(labData, unitName)
                         insertDerivedLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
                         loaded=loaded+1
@@ -176,14 +176,14 @@ def insertIntoDB(container):
                 elif className == "LAB-PHD-SELECTOR":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, True)
+                        valueId=insertLabValue(labData, unitName)
                         loaded=loaded+1
                         print "   ...done!"
                 
                 elif className == "LAB-PHD":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, False)
+                        valueId=insertLabValue(labData, unitName)
                         insertPHDLabValue(labData, valueId, site)
                         loaded=loaded+1
                         print "   ...done!"
@@ -191,7 +191,7 @@ def insertIntoDB(container):
                 elif className == "LAB-LOCAL-VALIDITY":
                     if phase == 1:
                         print "   Creating..."
-                        valueId=insertLabValue(labData, unitName, False)
+                        valueId=insertLabValue(labData, unitName)
                         localValueId=insertLocalLabValue(labData, valueId, site)
                         insertValidityLimit(labData,valueId)
                         loaded=loaded+1
@@ -228,7 +228,7 @@ def lookupHDAInterfaceCRAP(site, interfaceName):
 
 
 # Insert a record into the main lab data catalog
-def insertLabValue(labData, unitName, isSelector):
+def insertLabValue(labData, unitName):
     print "      Inserting into LtValue..."
     valueName = labData.get("name")
     description = labData.get("lab-desc")
@@ -239,11 +239,9 @@ def insertLabValue(labData, unitName, isSelector):
     else:
         validationProcedure = "'%s'" % (validationProcedure)
     unitId = getUnitId(unitName)
-    from ils.common.cast import toBit
-    isSelector = toBit(isSelector)
 
-    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId, ValidationProcedure, IsSelector) "\
-        " values ('%s', '%s', %s, %s, %s, %i)" % (valueName, description, str(displayDecimals), str(unitId), validationProcedure, isSelector)
+    SQL = "insert into LtValue (ValueName, Description, DisplayDecimals, UnitId, ValidationProcedure) "\
+        " values ('%s', '%s', %s, %s, %s)" % (valueName, description, str(displayDecimals), str(unitId), validationProcedure)
     print SQL
     valueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...inserted %s and assigned id %i" % (valueName, valueId)
@@ -783,7 +781,7 @@ def loadUnitParameters(container):
         scanClass = "Default"
         
         parameterName = unitParameter.get("name")    
-        print "Creating a Unit Parameter: %s" % (parameterName)
+        print "Processing Unit Parameter: %s" % (parameterName)
         
         numberOfPoints  = unitParameter.get("numberOfPoints")
 
@@ -799,7 +797,7 @@ def loadUnitParameters(container):
             connections = connections + 1
 
         # At Vistalon, the only things that were ever connected to a unit parameter was lab data,
-        # therefore, if there was a connection, then put this new instance in the Lad Data folder. 
+        # therefore, if there was a connection, then put this new instance in the Lab Data folder. 
         if connections == 0:
             sourceType="Custom"
             sourceTag="Unknown"
@@ -819,14 +817,20 @@ def loadUnitParameters(container):
         tagExists = system.tag.exists(tagPath)
         
         if tagExists:
-            print parameterName, " already exists!"
+            print parameterName, " ...already exists!"
             pass
         else:
-            print "Creating a %s\n  Name: %s\n  Path: %s\n  Scan Class: %s\n  Source Type: %s\n  Source Tag: %s\n" % \
+            print " ...creating a %s\n  Name: %s\n  Path: %s\n  Scan Class: %s\n  Source Type: %s\n  Source Tag: %s\n" % \
                 (UDTType, parameterName, tagPath, scanClass, sourceType, sourceTag)
-            system.tag.addTag(parentPath=parentPath, name=parameterName, tagType="UDT_INST", 
-                    attributes={"UDTParentType":UDTType}, 
-                    parameters={"numberOfPoints":numberOfPoints, "sourceType":sourceType, "sourceTag":sourceTag})
+            if sourceTag == "Unknown":
+                system.tag.addTag(parentPath=parentPath, name=parameterName, tagType="UDT_INST", 
+                                  attributes={"UDTParentType":UDTType})
+            else:
+                system.tag.addTag(parentPath=parentPath, name=parameterName, tagType="UDT_INST", 
+                                  attributes={"UDTParentType":UDTType}, 
+                                  overrides={"rawValue":{"Expression":sourceTag}})
+
+            system.tag.write(tagPath + "/numberOfPoints", numberOfPoints)
     #-------------------------------------------------------------
 
     filename = container.getComponent('File Field').text
@@ -834,7 +838,6 @@ def loadUnitParameters(container):
     if not(system.file.fileExists(filename)):
         system.gui.errorBox("The import file (" + filename + ") does not exist. Please specify a valid filename.")  
         return
-
     
     tree = ET.parse(filename)
     root = tree.getroot()
@@ -845,87 +848,5 @@ def loadUnitParameters(container):
         create(unitParam)
 
     print "Done - Successfully processed %i unit parameters." % (loaded)
-
-#
-def insertUnitParameters(container):
-    print "In labData.insertUnitParameters()"
-
-    #-------------------------------------------------
-    def insert(unitParameter):    
-        
-        unitParameterName = unitParameter.get("name")    
-        numberOfPoints = unitParameter.get("numberOfPoints")
-        numberOfPoints = int(numberOfPoints)
-
-        connections=0        
-        for connection in unitParameter.findall('connectedTo'):
-            sourceTag=connection.get("name")
-            
-            unit=connection.get("unit","")
-            if unit == "":
-                sourceTag="{[.]../%s/value}" % (sourceTag)
-            else:
-                sourceTag="{[.]../%s/%s/value}" % (unit, sourceTag)        
-            connections = connections + 1
-
-        # At Vistalon, the only things that were ever connected to a unit parameter was lab data,
-        # therefore, if there was a connection, then put this new instance in the Lad Data folder. 
-        if connections == 0:
-            sourceType="Custom"
-            sourceTag="Unknown"
-        else:
-            sourceType="Tag"
-
-        # Lookup the id of the source
-        SQL = "select lookupId from Lookup "\
-            " where LookupTypeCode = 'UnitParamSrc' "\
-            " and LookupName = '%s'" % (sourceType)
-        print SQL
-        sourceTypeId = system.db.runScalarQuery(SQL)
-        print "SourceTypeId: ", sourceTypeId
-        
-        SQL = "insert into TkUnitParameter(UnitParameterName, BufferSize, BufferIndex, SourceTypeId, TagName) " \
-            "values ('%s', %s, 1, %s, '%s')" % (unitParameterName, str(numberOfPoints), str(sourceTypeId), sourceTag)
-        print SQL
-        unitParameterId = system.db.runUpdateQuery(SQL,getKey=1) 
-
-        for bufferIndex in range(0,numberOfPoints):
-            SQL = "insert into TkUnitParameterBuffer(UnitParameterId, BufferIndex ) "\
-                "values(%i, %i)" % (unitParameterId, bufferIndex)
-            print SQL
-            system.db.runUpdateQuery(SQL)
-    #-------------------------------------------------------------
-    #----------------------------------------------------
-    def alreadyLoaded(unitParameterName):    
-        SQL = "select count(*) from TkUnitParameter where UnitParameterName = '%s'" % (unitParameterName)
-        rows = system.db.runScalarQuery(SQL)
-        if rows > 0:
-            alreadyLoaded = True
-        else:
-            alreadyLoaded = False
-        return alreadyLoaded
-    #----------------------------------------------------
-
-    filename = container.getComponent('File Field').text
-    
-    if not(system.file.fileExists(filename)):
-        system.gui.errorBox("The import file (" + filename + ") does not exist. Please specify a valid filename.")  
-        return
-    
-    tree = ET.parse(filename)
-    root = tree.getroot()
-
-    skipped = 0
-    loaded = 0
-    for unitParameter in root.findall('unitParameter'):
-        unitParameterName = unitParameter.get("name")
-        if not(alreadyLoaded(unitParameterName)):
-            print "   inserting Unit Parameter: %s" % (unitParameterName)
-            insert(unitParameter)
-            loaded = loaded + 1
-        else:
-            skipped = skipped + 1
-            
-    print "Done - Successfully inserted %i unit parameters, %i were skipped." % (loaded, skipped)
 
     
