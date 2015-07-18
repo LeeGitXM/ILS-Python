@@ -29,12 +29,6 @@ def s88GetScope(chartProperties, stepProperties, location):
 def s88ScopeChanged(chartProperties, stepProperties):
     pass
 
-def s88BasicGet(chartProperties, stepProperties, ckey, location):
-    pass
-
-def s88BasicSet(chartProperties, stepProperties, ckey, location, value):
-    pass
-
 def getRecipeDataText(chartProperties, stepProperties, location):
     pass
 

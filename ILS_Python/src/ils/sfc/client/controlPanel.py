@@ -46,7 +46,6 @@ class ControlPanel:
         self.window = _window
         self.rootContainer = self.window.rootContainer
         self.chartProperties = _chartProperties
-        self.update()
         self.messageIndex = None
         self.messages = None
         self.timer = None
@@ -61,6 +60,7 @@ class ControlPanel:
         self.canCancel = False
         self.toolbarDataset = system.dataset.toDataSet(ControlPanel.toolbarDataHeader, [])
         self.windowsById = dict()
+        self.update()
  
     def getUser(self):
         from ils.sfc.common.constants import USER

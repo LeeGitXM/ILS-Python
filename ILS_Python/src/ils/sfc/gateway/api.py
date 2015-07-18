@@ -21,6 +21,7 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import getRecipeData
     provider = getProviderName(chartProperties)
+    print 's88Get', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     fullPath = stepPath + "/" + valuePath
     return getRecipeData(provider, fullPath);
@@ -29,10 +30,11 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import setRecipeData
     provider = getProviderName(chartProperties)
+    print 's88Set', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     fullPath = stepPath + "/" + valuePath
     setRecipeData(provider, fullPath, value, True);
-     
+    
 def getUnitsPath(valuePath):
     '''Get the units associated with a value; None if not found'''
     valueKeyIndex = valuePath.find(".value")
@@ -43,11 +45,10 @@ def getUnitsPath(valuePath):
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     from ils.common.units import Unit
-    from system.ils.sfc import s88BasicGet
     from ils.sfc.common.util import getDatabaseName
-    value = s88BasicGet(chartProperties, stepProperties, valuePath, location)
+    value = s88Get(chartProperties, stepProperties, valuePath, location)
     unitsPath = getUnitsPath(valuePath)
-    existingUnitsName = s88BasicGet(chartProperties, stepProperties, unitsPath, location)
+    existingUnitsName = s88Get(chartProperties, stepProperties, unitsPath, location)
     database = getDatabaseName(chartProperties)
     Unit.lazyInitialize(database)
     existingUnits = Unit.getUnit(existingUnitsName)
@@ -63,10 +64,10 @@ def s88SetData(chartProperties, stepProperties, valuePath, value, location):
     s88Set(chartProperties, stepProperties, valuePath, value, location)
     
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, newUnitsName):
-    from system.ils.sfc import s88BasicSet
-    s88BasicSet(chartProperties, stepProperties, valuePath, location, value)
-    unitsPath = getUnitsPath(valuePath)
-    s88BasicSet(chartProperties, stepProperties, unitsPath, location, newUnitsName)
+    s88Set(chartProperties, stepProperties, valuePath, value, location)
+    #TODO: fix the unit conversion
+    #unitsPath = getUnitsPath(valuePath)
+    #s88Set(chartProperties, stepProperties, unitsPath, location, newUnitsName)
         
 def pauseChart(chartProperties):
     '''pause the entire chart hierarchy--we pause the top level chart and expect
