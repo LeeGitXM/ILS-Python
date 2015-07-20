@@ -11,6 +11,7 @@ from ils.migration.common import lookupHDAServer
 from ils.common.database import getUnitId
 from ils.common.database import getPostId
 from ils.common.database import lookup
+from ils.common.cast import toBit
 
 def insertLabTableIntoDB(container):
     print "In migration.labData.insertLabTableIntoDB()"
@@ -141,6 +142,7 @@ def insertIntoDB(container):
                     if phase == 1:
                         print "   Creating..."
                         valueId=insertLabValue(labData, unitName)
+                        insertSelector(labData, valueId, True, True, False)
                         loaded=loaded+1
                         print "   ...done!"
     
@@ -148,6 +150,7 @@ def insertIntoDB(container):
                     if phase == 1:
                         print "   Creating..."
                         valueId=insertLabValue(labData, unitName)
+                        insertSelector(labData, valueId, False, False, True)
                         loaded=loaded+1
                         print "   ...done!"
                 
@@ -155,6 +158,7 @@ def insertIntoDB(container):
                     if phase == 1:
                         print "   Creating..."
                         valueId=insertLabValue(labData, unitName)
+                        insertSelector(labData, valueId, True, False, False)
                         loaded=loaded+1
                         print "   ...done!"
     
@@ -177,6 +181,7 @@ def insertIntoDB(container):
                     if phase == 1:
                         print "   Creating..."
                         valueId=insertLabValue(labData, unitName)
+                        insertSelector(labData, valueId, False, False, False)
                         loaded=loaded+1
                         print "   ...done!"
                 
@@ -247,7 +252,23 @@ def insertLabValue(labData, unitName):
     print "      ...inserted %s and assigned id %i" % (valueName, valueId)
     return valueId
 
-#
+
+# Insert a record into the LtSelector table
+def insertSelector(labData, valueId, hasValidityLimit, hasSQCLimit, hasReleaseLimit):
+    print "      Inserting into LtSelector..."
+
+    hasValidityLimit = toBit(hasValidityLimit)
+    hasSQCLimit = toBit(hasSQCLimit)
+    hasReleaseLimit = toBit(hasReleaseLimit)
+
+    SQL = "insert into LtSelector (ValueId, hasValidityLimit, hasSQCLimit, hasReleaseLimit) "\
+        "values (%s, %i, %i, %i)" % (str(valueId), hasValidityLimit, hasSQCLimit, hasReleaseLimit)
+
+    selectorId=system.db.runUpdateQuery(SQL, getKey=1)
+    print "      ...assigned id %i to the selector" % (selectorId)
+    return selectorId
+
+
 # Insert a record into the main lad data catalog
 def insertLocalLabValue(labData, valueId, site):
     print "      Inserting into LtLocalValue..."

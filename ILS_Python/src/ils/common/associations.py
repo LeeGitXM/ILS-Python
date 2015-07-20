@@ -5,14 +5,27 @@ Created on Jul 3, 2015
 '''
 
 import system
+
+# Fetch all of the sources associated with this sink
+def fetchSources(sink, associationType='%', db=''):
+    SQL = "Select A.source from TkAssociation A, TkAssociationType AT "\
+        " where A.sink = '%s' "\
+        " and A.AssociationTypeId = AT.AssociationTypeId "\
+        " and AT.AssociationType = '%s'" % (sink, associationType)
     
-# Fetch all of the labBalerService Data associated with the lab data item
-def fetchSinks(source, associationType, db=''):
+    pds = system.db.runQuery(SQL, db)
+    sources=[]
+    for record in pds:
+        sources.append(record["source"])
+    return sources
+
+# Fetch all of the sinks associated with this source
+def fetchSinks(source, associationType='%', db=''):
  
     SQL = "Select A.sink from TkAssociation A, TkAssociationType AT "\
         " where A.source = '%s' "\
         " and A.AssociationTypeId = AT.AssociationTypeId "\
-        " and AT.AssocationType = '%s'" % (source, associationType)
+        " and AT.AssociationType = '%s'" % (source, associationType)
     
     pds = system.db.runQuery(SQL, db)
     sinks=[]

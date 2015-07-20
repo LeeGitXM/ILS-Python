@@ -6,48 +6,21 @@ Created on Jul 14, 2015
 
 import system
 
-#open transaction when window is opened
+# Open transaction when window is opened
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened(), reserving a cursor..."
     txId = system.db.beginTransaction(timeout=3600000)
     rootContainer.txId = txId
-    
-    # Reset the tab that is selected
-    rootContainer.getComponent("Tab Strip").selectedTab = "PHD"
-    
-    # Configure the static datasets that drive some combo boxes
-    SQL = "select InterfaceName from LtHDAInterface order by InterfaceId"
-    pds = system.db.runQuery(SQL)
-    rootContainer.hdaInterfaceDataset = pds
-    
-    SQL = "select ServerName from TkWriteLocation order by ServerName"
-    pds = system.db.runQuery(SQL)
-    rootContainer.opcInterfaceDataset = pds
 
-
-#refresh when window is activated
+# Refresh when window is activated
 def internalFrameActivated(rootContainer):
     print "In internaFrameActived()..."
     rootContainer.selectedValueId = 0
     
-    # Update the datasets used by the combo boxes in the power tables
-    SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitType' order by LookupName"
-    pds = system.db.runQuery(SQL)
-    print "Fetched %i SQC Limit Type values..." % (len(pds))
-    rootContainer.getComponent("Lab Limit Table").limitTypeDataset = pds
-    
-    SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitSource' order by LookupName"
-    pds = system.db.runQuery(SQL)
-    print "Fetched %i SQC Limit Source values..." % (len(pds))
-    rootContainer.getComponent("Lab Limit Table").limitSourceDataset = pds
-    
     print "Calling update() from internalFrameActivated()"
     update(rootContainer)
-    
-    print "Calling updateLimit() from internalFrameActivated()"
-    updateLimit(rootContainer)
-    
-#close transaction when window is closed
+ 
+# Close transaction when window is closed
 def internalFrameClosing(rootContainer):
     try:
         txId=rootContainer.txId
@@ -61,18 +34,17 @@ def internalFrameClosing(rootContainer):
 def removeDataRow(event):
     rootContainer = event.source.parent
     txId = rootContainer.txId
-    tab = rootContainer.getComponent("Tab Strip").selectedTab
-        
-    #get valueId of the data to be deleted
+
+    # Get valueId of the data to be deleted
     valueId = rootContainer.selectedValueId
-        
+
     #check for derived lab data references
-    sql = "SELECT count(*) FROM LtDerivedValue WHERE TriggerValueId = %i" %(valueId)
-    triggerRows = system.db.runScalarQuery(sql, tx=txId)
-    sql = "SELECT count(*) FROM LtRelatedData WHERE RelatedValueId = %i" %(valueId)
-    relatedRows = system.db.runScalarQuery(sql, tx=txId)
-    
-    
+    # Not sure if a selector can be referenced by derived data, I guess why not?
+    SQL = "SELECT count(*) FROM LtDerivedValue WHERE TriggerValueId = %i" %(valueId)
+    triggerRows = system.db.runScalarQuery(SQL, tx=txId)
+    SQL = "SELECT count(*) FROM LtRelatedData WHERE RelatedValueId = %i" %(valueId)
+    relatedRows = system.db.runScalarQuery(SQL, tx=txId)
+        
     # If there is derived lab data based on this lab data, then inform the operator and make sure they want to delete  the
     # derived data along with this data
     if triggerRows > 0 or relatedRows > 0:
@@ -107,154 +79,66 @@ def removeDataRow(event):
                 print SQL
                 rows = system.db.runUpdateQuery(SQL, tx=txId)
                 print "Deleted %i rows from LtValue" % (rows)
+
+    # remove the selected row from either PHD, DCS, or Local
+    SQL = "DELETE FROM LtSelector WHERE ValueId = '%s'" % (valueId)
+    system.db.runUpdateQuery(SQL, tx=txId)
                 
-    else:          
-        #remove the selected row from either PHD, DCS, or Local
-        if tab == "PHD":
-            sql = "DELETE FROM LtPHDValue "\
-                " WHERE ValueId = '%s' "\
-                %(valueId)
-            system.db.runUpdateQuery(sql, tx=txId)
-        elif tab == "DCS":
-            sql = "DELETE FROM LtDCSValue "\
-                " WHERE ValueId = '%s' "\
-                %(valueId)
-            system.db.runUpdateQuery(sql, tx=txId)
-        else:
-            sql = "DELETE FROM LtLocalValue "\
-                " WHERE ValueId = '%s' "\
-                %(valueId)
-            system.db.runUpdateQuery(sql, tx=txId)
-            
-        #delete from LtHistory
-        SQL = "DELETE FROM LtHistory "\
-            " WHERE ValueId = '%s' "\
-            % (valueId)
-        system.db.runUpdateQuery(SQL, tx=txId)
+    # delete from LtHistory
+    SQL = "DELETE FROM LtHistory WHERE ValueId = '%s'" % (valueId)
+    system.db.runUpdateQuery(SQL, tx=txId)
         
-        #delete from LtLimit
-        sql = "DELETE FROM LtLimit "\
-                " WHERE ValueId = '%s' "\
-                %(valueId)
-        system.db.runUpdateQuery(sql, tx=txId)
+    # delete from LtLimit (I don't think a selector has a record in the limit table, but won't hurt to try)
+    SQL = "DELETE FROM LtLimit WHERE ValueId = '%s'" % (valueId)
+    system.db.runUpdateQuery(SQL, tx=txId)
         
-        #delete from LtValue
-        sql = "DELETE FROM LtValue "\
-                " WHERE ValueId = '%s' "\
-                %(valueId)
-        system.db.runUpdateQuery(sql, tx=txId)
+    # delete from LtValue
+    SQL = "DELETE FROM LtValue WHERE ValueId = '%s'" % (valueId)
+    system.db.runUpdateQuery(SQL, tx=txId)
         
 #add a row to the data table
 def insertDataRow(event):
     rootContainer = event.source.parent
     txId = rootContainer.txId
-    labDataType = rootContainer.labDataType
-            
+
     newName = rootContainer.getComponent("name").text
     description = rootContainer.getComponent("description").text
     decimals = rootContainer.getComponent("Spinner").intValue
     unitId = rootContainer.unitId
-    isSelector = 0
-    
-    if labDataType == "Selector":
-        isSelector = 1
         
     #insert the user's data as a new row
-    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, IsSelector)"\
-        "VALUES ('%s', '%s', %i, %i, %i)" %(newName, description, unitId, decimals, isSelector)
+    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
+        "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
     print SQL
     valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey = True)
     
-    if labDataType == "PHD":
-        interfaceId = rootContainer.getComponent("Dropdown").selectedValue
-        itemId = rootContainer.getComponent("itemId").text
-        
-        sql = "INSERT INTO LtPHDValue (ValueId, ItemId, InterfaceId)"\
-            "VALUES (%s, '%s', %s)" %(str(valueId), str(itemId), str(interfaceId))
-        print sql
-        system.db.runUpdateQuery(sql, tx = txId)
-    elif labDataType == "DCS":
-        writeLocationId = rootContainer.getComponent("Dropdown").selectedValue
-        itemId = rootContainer.getComponent("itemId").intValue
-        sql = "INSERT INTO LtDCSValue (ValueId, WriteLocationId, ItemId)"\
-            "VALUES (%s, %s, %s)" %(str(valueId), str(writeLocationId), str(itemId))
-        system.db.runUpdateQuery(sql, tx = txId)
-    elif labDataType == "Local":
-        writeLocationId = rootContainer.getComponent("Dropdown").selectedStringValue
-        itemId = rootContainer.getComponent("itemId").intValue
-        sql = "INSERT INTO LtLocalValue (ValueId, WriteLocationId, ItemId)"\
-            "VALUES (%s, %s, %s)" %(str(valueId), str(writeLocationId), str(itemId))
-        system.db.runUpdateQuery(sql, tx = txId)
-
+    from ils.common.cast import toBit
+    hasValidityLimit=toBit(rootContainer.getComponent("ValidityLimitCheckBox").selected)
+    hasSQCLimit=toBit(rootContainer.getComponent("SQCLimitCheckBox").selected)
+    hasReleaseLimit=toBit(rootContainer.getComponent("ReleaseLimitCheckBox").selected)
+    
+    SQL = "INSERT INTO LtSelector (ValueId, HasValidityLimit, HasSQCLimit, HasReleaseLimit)"\
+            "VALUES (%s, %i, %i, %i)" %(str(valueId), hasValidityLimit, hasSQCLimit, hasReleaseLimit)
+    print SQL
+    system.db.runUpdateQuery(SQL, tx=txId)
     
 #update the window
 def update(rootContainer):
     txId = rootContainer.txId
     unitId = rootContainer.getComponent("UnitName").selectedValue
     
-    if rootContainer.dataType == "PHD":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, I.InterfaceName, PV.ItemId "\
-            "FROM LtValue V, LtPHDValue PV,  LtHDAInterface I "\
-            "WHERE V.ValueId = PV.ValueId "\
-            "AND PV.InterfaceID = I.InterfaceId "\
-            "AND V.UnitId = %i "\
-            "ORDER BY ValueName" % (unitId)
-        print SQL
-        pds = system.db.runQuery(SQL, tx=txId)
-        table = rootContainer.getComponent("PHD").getComponent("PHD_Value")
-        table.updateInProgress = True
-        table.data = pds
-        table.updateInProgress = False
-    elif rootContainer.dataType == "DCS":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, DS.ItemId "\
-            " FROM LtValue V, LtDCSValue DS, TkWriteLocation WL "\
-            " WHERE V.ValueId = DS.ValueId "\
-            " AND V.UnitId = %i "\
-            " and WL.WriteLocationId = DS.WriteLocationId "\
-            " ORDER BY ValueName" % (unitId)
-        print SQL
-        pds = system.db.runQuery(SQL, tx=txId)
-        table = rootContainer.getComponent("DCS").getComponent("DCS_Value")
-        table.updateInProgress = True
-        table.data = pds
-        table.updateInProgress = False
-    elif rootContainer.dataType == "Selector":
-        SQL = "SELECT ValueId, ValueName, Description, DisplayDecimals, UnitId "\
-            "FROM LtValue "\
+    SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, "\
+            " S.hasValidityLimit, S.hasSQCLimit, S.HasReleaseLimit "\
+            "FROM LtValue V, LtSelector S "\
             "WHERE UnitId = %i "\
-            "AND IsSelector = 1 "\
+            "AND V.ValueId = S.ValueId "\
             "ORDER BY ValueName" % (unitId)
-        pds = system.db.runQuery(SQL, tx=txId)
-        table = rootContainer.getComponent("Selector").getComponent("Selector_Value")
-        table.updateInProgress = True
-        table.data = pds
-        table.updateInProgress = False
-    else:
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, L.ItemId "\
-            "FROM LtValue V, LtLocalValue L "\
-            "WHERE V.ValueId = L.ValueId "\
-            "AND V.UnitId = %i "\
-            "ORDER BY ValueName" % (unitId)
-        pds = system.db.runQuery(SQL, tx=txId)
-        table = rootContainer.getComponent("Local").getComponent("Local_Value")
-        table.updateInProgress = True
-        table.data = pds
-        table.updateInProgress = False
+    pds = system.db.runQuery(SQL, tx=txId)
+    table = rootContainer.getComponent("Selector_Value")
+    table.updateInProgress = True
+    table.data = pds
+    table.updateInProgress = False
     
-def updateLimit(rootContainer):
-    txId = rootContainer.txId
-    selectedValueId = rootContainer.selectedValueId
-    sql = "SELECT LimitId, ValueId, LimitType, LimitSource, "\
-        " UpperReleaseLimit, LowerReleaseLimit, "\
-        " UpperValidityLimit, LowerValidityLimit, "\
-        " UpperSQCLimit, LowerSQCLimit, Target, StandardDeviation, "\
-        " RecipeParameterName, WriteLocation, OPCUpperItemId, OPCLowerItemId"\
-        " FROM LtLimitView "\
-        " WHERE ValueId = %i " % (selectedValueId)
-    pds = system.db.runQuery(sql, tx=txId)
-    
-    limitTable = rootContainer.getComponent("Lab Limit Table")
-    limitTable.data = pds
     
 #update the database when user directly changes table 
 def dataCellEdited(table, rowIndex, colName, newValue):
@@ -263,104 +147,25 @@ def dataCellEdited(table, rowIndex, colName, newValue):
     txId = rootContainer.txId
     ds = table.data
     valueId =  ds.getValueAt(rowIndex, "ValueId")
-    dataType = rootContainer.dataType
     
     if colName == "ValueName":
         SQL = "UPDATE LtValue SET ValueName = '%s' "\
-            "WHERE ValueId = %i " % (newValue, valueId)
+            "WHERE ValueId = %i" % (newValue, valueId)
     elif colName == "Description":
         SQL = "UPDATE LtValue SET Description = '%s' "\
-            "WHERE ValueId = %i " % (newValue, valueId)
+            "WHERE ValueId = %i" % (newValue, valueId)
     elif colName == "DisplayDecimals":
         SQL = "UPDATE LtValue SET DisplayDecimals = %i "\
-            "WHERE ValueId = %i " % (newValue, valueId)
-    elif colName == "ItemId":
-        if dataType == "PHD":
-            SQL = "UPDATE LtPHDValue SET ItemId = %i "\
-                "WHERE ValueId = %i " % (newValue, valueId)
-        elif dataType == "DCS":
-            SQL = "UPDATE LtDCSValue SET ItemId = %i "\
-                "WHERE ValueId = %i " % (newValue, valueId)
-        elif dataType == "Local":
-            SQL = "UPDATE LtLocalValue SET ItemId = %i "\
-                "WHERE ValueId = %i " % (newValue, valueId)
-    elif colName == "InterfaceName":
-        SQL = "UPDATE LtHDAInterface SET InterfaceName = %i "\
-            "WHERE LtHDAInterface.InterfaceId = LtPHDValue.InterfaceId " % (newValue)
+            "WHERE ValueId = %i" % (newValue, valueId)
+    elif colName == "hasValidityLimit":
+        SQL = "UPDATE LtSelector SET hasValidityLimit = %i "\
+            "WHERE ValueId = %i" % (newValue, valueId)
+    elif colName == "hasSQCLimit":
+        SQL = "UPDATE LtSelector SET hasSQCLimit = %i "\
+            "WHERE ValueId = %i" % (newValue, valueId)
+    elif colName == "hasReleaseLimit":
+        SQL = "UPDATE LtSelector SET hasReleaseLimit = %i "\
+            "WHERE ValueId = %i" % (newValue, valueId)
             
     print SQL
     system.db.runUpdateQuery(SQL, tx=txId)
-
-# Add a row to the limit table
-def insertLimitRow(event):
-    rootContainer = event.source.parent
-    txId = rootContainer.txId
-    valueId = rootContainer.selectedValueId
-
-    from ils.common.database import lookup
-    limitType = "SQC"    
-    limitTypeId = lookup("RtLimitType", limitType)
-    limitSource = "Recipe"
-    limitSourceId = lookup("RtLimitSource", limitSource)
-    
-    # Insert a mostly empty row into the database, the reason to do this is to get a legit limitId into the database so now as they
-    # edit each cell we can just do real simple updates...
-    SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
-    limitId = system.db.runUpdateQuery(SQL, tx=txId, getKey=1)
-    
-    #insert blank row into the table
-    limitTable = rootContainer.getComponent("Lab Limit Table")
-    ds = limitTable.data
-    newRow = [limitId, valueId, limitType, limitSource, None, None, None, None, None, None, None, None, None, None, None, None]
-    ds = system.dataset.addRow(ds, 0, newRow)
-    limitTable.data = ds
-
-
-# Delete the selected row in the limit table
-def removeLimitRow(event):
-    rootContainer = event.source.parent
-    txId = rootContainer.txId
-    table = rootContainer.getComponent("Lab Limit Table")
-    ds = table.data
-                
-    row = table.selectedRow
-    limitId = ds.getValueAt(row, "LimitId")
-    print "Deleting limit id %i ..." % (limitId)
-                        
-    # Remove the selected row
-    SQL = "DELETE FROM LtLimit WHERE LimitId = %i " % (limitId)
-    rows=system.db.runUpdateQuery(SQL, tx=txId)
-    print "   ...deleted %i limits" % rows
-        
-   
-def saveLimitRow(table, row, colName, oldValue, newValue):
-    #--------------------------------------------------
-    def updateRow(table, row, colName, limitId, newValue, txId):
-        from ils.common.database import lookup
-        if colName == "LimitType":
-            colName = "LimitTypeId"
-            print "Translating: ", newValue
-            newValue = lookup("RtLimitType", newValue)
-            print "  ... to ", newValue 
-        elif colName == "LimitSource":
-            colName = "LimitSourceId"
-            print "Translating: ", newValue
-            newValue = lookup("RtLimitSource", newValue) 
-            print " ... to ", newValue
-        
-        SQL = "UPDATE LtLimit set %s = ? where LimitId = ?" % (colName)
-        print SQL, newValue, limitId
-        rows = system.db.runPrepUpdate(SQL, [newValue, limitId], tx=txId)
-        print "Updated %i rows" % (rows)
-    #--------------------------------------------------
-
-    print "Saving the limit row..."
-    rootContainer = table.parent
-    txId = rootContainer.txId
-    ds = table.data
-    limitId = ds.getValueAt(row,"LimitId")
-    
-    if limitId == -1:
-        system.gui.errorBox("Error updating the limit! The limit Id is -1 which indicates that the row was not successfully inserted when you pressed '+'")
-    else:
-        updateRow(table, row, colName, limitId, newValue, txId)

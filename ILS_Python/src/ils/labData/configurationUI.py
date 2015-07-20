@@ -165,8 +165,8 @@ def insertDataRow(event):
     unitId = rootContainer.unitId
         
     #insert the user's data as a new row
-    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, EditAction, TxId)"\
-        "VALUES ('%s', '%s', %i, %i, 'Insert', '%s')" %(newName, description, unitId, decimals, txId)
+    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
+        "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
     print SQL
     valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey = True)
     
@@ -302,8 +302,8 @@ def insertLimitRow(event):
     
     # Insert a mostly empty row into the database, the reason to do this is to get a legit limitId into the database so now as they
     # edit each cell we can just do real simple updates...
-    SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, EditAction, TxId) "\
-        "values (%s, %s, %s, 'Insert', '%s')" % (str(valueId), str(limitTypeId), str(limitSourceId), str(txId))
+    SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) "\
+        "values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
     limitId = system.db.runUpdateQuery(SQL, tx=txId, getKey=1)
     
     #insert blank row into the table

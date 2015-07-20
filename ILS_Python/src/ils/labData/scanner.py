@@ -6,11 +6,10 @@ Created on Mar 27, 2015
 
 import sys, system, string, traceback
 from ils.labData.common import postMessage
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from java.util import Calendar
-log = LogUtil.getLogger("com.ils.labData")
-derivedLog = LogUtil.getLogger("com.ils.labData.derivedValues")
-customValidationLog = LogUtil.getLogger("com.ils.labData.customValidation")
+log = system.util.getLogger("com.ils.labData")
+derivedLog = system.util.getLogger("com.ils.labData.derivedValues")
+customValidationLog = system.util.getLogger("com.ils.labData.customValidation")
 import ils.common.util as util
 
 # This should persist from one run to the next
@@ -32,16 +31,16 @@ def main(database, tagProvider):
     limits=fetchLimits(database)
     writeTags=[]
     writeTagValues=[] 
-#    writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
+    writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
     writeTags, writeTagValues = checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues)
-#    checkForDerivedValueTriggers(database)
-#    writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues)
+    checkForDerivedValueTriggers(database)
+    writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues)
     
-    log.trace("Writing %i new lab values to local lab data tags" % (len(writeTags)))
-    log.debug("Yello")
-    print "Writing ", writeTags, writeTagValues
+    log.debug("Writing %i new lab values to local lab data tags" % (len(writeTags)))
+
+    log.trace("Writing %s :: %s" % (str(writeTags), str(writeTagValues)))
     results=system.tag.writeAll(writeTags, writeTagValues)
-    print "Results: ", results
+    log.trace("Write Results: %s" % (str(results)))
 
 #-------------
 # Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
@@ -210,23 +209,9 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
         
         if relatedDataIsConsistent:
             from ils.labData.callbackDispatcher import derivedValueCallback
-            newVal = derivedValueCallback(callback)
-            
-            # If they specify shared or project scope, then we don't need to do this
-            if not(string.find(callback, "project") == 0 or string.find(callback, "shared") == 0):
-                # The method contains a full python path, including the method name
-                separator=string.rfind(callback, ".")
-                packagemodule=callback[0:separator]
-                separator=string.rfind(packagemodule, ".")
-                package = packagemodule[0:separator]
-                module  = packagemodule[separator+1:]
-                derivedLog.trace("Using External Python, the package is: <%s>.<%s>" % (package,module))
-                exec("import %s" % (package))
-                exec("from %s import %s" % (package,module))
-        
             try:
                 derivedLog.trace("Calling %s and passing %s" % (callback, str(dataDictionary)))
-                newVal = eval(callback)(dataDictionary)
+                newVal = derivedValueCallback(callback, dataDictionary)
                 derivedLog.trace("The value returned from the calculation method is: %s" % (str(newVal)))
                 
                 # Use the sample time of the triggerValue and store the value in the database and in the UDT tags
@@ -264,8 +249,6 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
 
     return writeTags, writeTagValues
 
-
-#
 #----------------------------------------------------------------------
 def checkIfValueIsNew(valueName, rawValue, sampleTime):
     log.trace("Checking if lab value is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
@@ -422,6 +405,8 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
     log.trace("...handling a new lab value for %s, checking limits" % (valueName))
     
     if validationProcedure != None and validationProcedure != "":
+        
+        from ils.labData.callbackDispatcher import customValidate
         isValid = customValidate(valueName, rawValue, validationProcedure)
         # If it fails custom validation then abort everything - including further validation and do not store the value!
         if not(isValid):
