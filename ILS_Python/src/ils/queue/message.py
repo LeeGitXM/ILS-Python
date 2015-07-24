@@ -5,13 +5,17 @@ Created on Sep 9, 2014
 '''
 import  system, string
 
+# Insert / post a message to a queue from an SFC.
+# If the queueKey if left blank then the current default queue for the unit procedure is used.
 # Expected status are Info, Warning, or Error
-def insertFromSFC(chartScope, status, message):
-    from ils.queue.commons import getQueueId
+def post(chartScope, status, message, queueKey=""):
     from ils.sfc.gateway.api import getCurrentMessageQueue
     from ils.sfc.common.util import getDatabaseName
-     
-    queueKey=getCurrentMessageQueue(chartScope)
+    
+    # If the queue was not specified then use the current default queue
+    if queueKey == "":
+        queueKey=getCurrentMessageQueue(chartScope)
+
     db=getDatabaseName(chartScope)
     insert(queueKey, status, message, db)
 
