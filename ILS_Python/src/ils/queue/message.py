@@ -6,6 +6,16 @@ Created on Sep 9, 2014
 import  system, string
 
 # Expected status are Info, Warning, or Error
+def insertFromSFC(chartScope, status, message):
+    from ils.queue.commons import getQueueId
+    from ils.sfc.gateway.api import getCurrentMessageQueue
+    from ils.sfc.common.util import getDatabaseName
+     
+    queueKey=getCurrentMessageQueue(chartScope)
+    db=getDatabaseName(chartScope)
+    insert(queueKey, status, message, db)
+
+# Expected status are Info, Warning, or Error
 def insert(queueKey, status, message, db = ''):
     from ils.queue.commons import getQueueId
     queueId = getQueueId(queueKey, db)
@@ -17,7 +27,6 @@ def insert(queueKey, status, message, db = ''):
 
     system.db.runUpdateQuery(SQL, db)
 
-#
 # This version of the insert stems from translation of "build-msg-on-wksp"
 def insertFromWorkspace(message,color,x,y,wksp):
     status   = 'Info'
@@ -36,7 +45,7 @@ def queueSQL(queueKey, useCheckpoint, order):
             " where M.QueueKey = '%s' "\
             " and M.QueueId = D.QueueId "\
             " and D.StatusId = QMS.StatusId " \
-            " and D.Timestamp > M.CheckpointTimestamp "\
+            " and D.Timestamp >= M.CheckpointTimestamp "\
             " order by Timestamp %s" % (queueKey, order)
     else:
         SQL = "select top 1000 Timestamp, MessageStatus as Status, Message "\
