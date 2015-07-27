@@ -4,6 +4,7 @@ Created on Jun 15, 2015
 @author: Pete
 '''
 import system, string
+from formatter import NullFormatter
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -52,8 +53,8 @@ def commitChanges(rootContainer):
     
     provider = "[XOM]"
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
-    from ils.labData.synchronize import synchronize
-    synchronize(provider, unitName, txId)
+    #from ils.labData.synchronize import synchronize
+    #synchronize(provider, unitName, txId)
 
   
 #close transaction when window is closed
@@ -163,10 +164,15 @@ def insertDataRow(event):
     description = rootContainer.getComponent("description").text
     decimals = rootContainer.getComponent("Spinner").intValue
     unitId = rootContainer.unitId
-        
+    validationProcedure = rootContainer.getComponent("validationProcedure").text
+    
     #insert the user's data as a new row
-    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
-        "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
+    if validationProcedure == "":
+        SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
+            "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
+    else:   
+        SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, ValidationProcedure)"\
+            "VALUES ('%s', '%s', %i, %i, '%s')" %(newName, description, unitId, decimals, validationProcedure)
     print SQL
     valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey = True)
     
@@ -186,8 +192,14 @@ def insertDataRow(event):
     elif labDataType == "Local":
         writeLocationId = rootContainer.getComponent("Dropdown").selectedValue
         itemId = rootContainer.getComponent("itemId").text
-        sql = "INSERT INTO LtLocalValue (ValueId, WriteLocationId, ItemId)"\
-            "VALUES (%s, %s, '%s')" %(str(valueId), str(writeLocationId), str(itemId))
+        
+        if writeLocationId == -1 or itemId == "": 
+            sql = "INSERT INTO LtLocalValue (ValueId)"\
+                "VALUES (%s)" %(str(valueId))    
+        else:
+            sql = "INSERT INTO LtLocalValue (ValueId, WriteLocationId, ItemId)"\
+                "VALUES (%s, %s, '%s')" %(str(valueId), str(writeLocationId), str(itemId))
+        print sql
         system.db.runUpdateQuery(sql, tx = txId)
 
     
@@ -197,7 +209,7 @@ def update(rootContainer):
     unitId = rootContainer.getComponent("UnitName").selectedValue
     
     if rootContainer.dataType == "PHD":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, I.InterfaceName, PV.ItemId "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, I.InterfaceName, PV.ItemId, V.ValidationProcedure "\
             "FROM LtValue V, LtPHDValue PV,  LtHDAInterface I "\
             "WHERE V.ValueId = PV.ValueId "\
             "AND PV.InterfaceID = I.InterfaceId "\
@@ -210,7 +222,7 @@ def update(rootContainer):
         table.data = pds
         table.updateInProgress = False
     elif rootContainer.dataType == "DCS":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, DS.ItemId "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, DS.ItemId, V.ValidationProcedure "\
             " FROM LtValue V, LtDCSValue DS, TkWriteLocation WL "\
             " WHERE V.ValueId = DS.ValueId "\
             " AND V.UnitId = %i "\
@@ -223,12 +235,18 @@ def update(rootContainer):
         table.data = pds
         table.updateInProgress = False
     elif rootContainer.dataType == "Local":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, LV.ItemId "\
-            " FROM LtValue V, LtLocalValue LV, TkWriteLocation WL "\
-            " WHERE V.ValueId = LV.ValueId "\
-            " AND V.UnitId = %i "\
-            " and WL.WriteLocationId = LV.WriteLocationId "\
-            " ORDER BY ValueName" % (unitId)
+        #SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, LV.ItemId, V.ValidationProcedure "\
+        #    " FROM LtValue V, LtLocalValue LV, TkWriteLocation WL "\
+        #    " WHERE V.ValueId = LV.ValueId "\
+        #    " AND V.UnitId = %i "\
+        #    " AND WL.WriteLocationId = LV.WriteLocationId "\
+        #    " ORDER BY ValueName" % (unitId)
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, LV.ItemId, V.ValidationProcedure "\
+            " FROM LtValue V INNER JOIN LtLocalValue LV ON V.ValueId = LV.ValueId LEFT OUTER JOIN "\
+            " TkWriteLocation WL ON LV.WriteLocationId = WL.WriteLocationId "\
+            " WHERE V.UnitId = %i "\
+            " ORDER BY ValueName" %(unitId)
+        print SQL
         pds = system.db.runQuery(SQL, tx=txId)
         table = rootContainer.getComponent("Local").getComponent("Local_Value")
         table.updateInProgress = True
@@ -284,6 +302,13 @@ def dataCellEdited(table, rowIndex, colName, newValue):
     elif colName == "InterfaceName":
         SQL = "UPDATE LtHDAInterface SET InterfaceName = %i "\
             "WHERE LtHDAInterface.InterfaceId = LtPHDValue.InterfaceId " % (newValue)
+    elif colName == "ValidationProcedure":
+        if newValue == "":
+            SQL = "UPDATE LtValue SET ValidationProcedure = NULL "\
+                "WHERE ValueId = %i " % (valueId)
+        else:
+            SQL = "UPDATE LtValue SET ValidationProcedure = '%s' "\
+                "WHERE ValueId = %i " % (newValue, valueId)
             
     print SQL
     system.db.runUpdateQuery(SQL, tx=txId)
