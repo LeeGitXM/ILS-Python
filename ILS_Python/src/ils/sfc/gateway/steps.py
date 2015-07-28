@@ -835,4 +835,6 @@ def monitorDownload(scopeContext, stepProperties):
     payload[DATA_ID] = mgr.getTimerId()
     transferStepPropertiesToMessage(stepProperties, payload)
     sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload)             
-        
+
+def manualDataEntry(scopeContext, stepProperties):    
+    pass     

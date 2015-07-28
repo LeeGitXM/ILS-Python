@@ -223,5 +223,6 @@ def sfcUpdateDownloads(payload):
     downloadsWindow = monitorDownloads.getMonitorDownloadWindow(chartRunId, timerId)
     monitorDownloads.updateTable(downloadsWindow, rows, timerStart)
     
-
+def sfcManualDataEntry(payload):
+    pass
 
