@@ -148,14 +148,18 @@ def sfcDeleteDelayNotification(payload):
         
 def sfcYesNo(payload):
     from ils.sfc.common.constants import PROMPT, MESSAGE_ID
+    from system.ils.sfc.common.Constants import YES, NO
     if sendTestResponse(payload):
         return
         
     prompt = payload[PROMPT]
-    response = system.gui.confirm(prompt, 'Input', False)
-    
+    booleanResponse = system.gui.confirm(prompt, 'Input', False)
+    if booleanResponse:
+        textResponse = YES
+    else:
+        textResponse = NO
     # Send the response message:
-    sendResponse(payload[MESSAGE_ID], response)
+    sendResponse(payload[MESSAGE_ID], textResponse)
 
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError
