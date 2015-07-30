@@ -42,9 +42,13 @@ def queueInsert(scopeContext, stepProperties):
     queues the step's message
     '''
     from ils.sfc.gateway.api import getCurrentMessageQueue
+    from ils.sfc.gateway.recipe import substituteScopeReferences
+
     chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
     currentMsgQueue = getCurrentMessageQueue(chartScope)
     message = getStepProperty(stepProperties, MESSAGE)  
+    message = substituteScopeReferences(chartScope, stepScope, message)
     priority = getStepProperty(stepProperties, PRIORITY)  
     database = getDatabaseName(chartScope)
     insert(currentMsgQueue, priority, message, database) 
