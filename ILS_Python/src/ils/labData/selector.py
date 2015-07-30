@@ -4,8 +4,7 @@ Created on Mar 29, 2015
 @author: Pete
 '''
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.labData.selector")
+log = system.util.getLogger("com.ils.labData.selector")
 
 def select(selectorName, database = ""):
     print "Configuring lab data for %s..." % (selectorName)
@@ -61,33 +60,31 @@ def valueChanged(tagPath):
         log.trace("Skipping the value change because processing is not enabled")
         
 
-def configureSelector(unitName, selectorName, sourceName):
+def configureSelector(selectorName, sourceName):
     from ils.common.config import getTagProvider
     provider = getTagProvider()
-    parentTagPath = '[' + provider + ']LabData/' + unitName + '/'
+    parentTagPath = '[' + provider + ']LabData/'
     tagPath = parentTagPath + selectorName
-    print "Configuring: ", tagPath
+    log.trace("Configuring: %s" % (tagPath))
 
     # Determine the type of the UDT   
     UDTType = system.tag.getAttribute(tagPath, "UDTParentType")
-    print "UDT Type: ", UDTType
+    log.trace("UDT Type: %s" % (UDTType))
 
     if UDTType == "Lab Data/Lab Selector Value":
         badValueTag='{[.]../' + sourceName + '/badValue}'
         rawValueTag='{[.]../' + sourceName + '/rawValue}'
         sampleTimeTag='{[.]../' + sourceName + '/sampleTime}'
-        updateFlagTag='{[.]../' + sourceName + '/updateFlag}'
         valueTag='{[.]../' + sourceName + '/value}'
     
         parameters={
                     'badValueTag':badValueTag, 
                     'rawValueTag':rawValueTag, 
                     'sampleTimeTag':sampleTimeTag,
-                    'updateFlagTag':updateFlagTag,
                     'valueTag':valueTag
                     }
     
-        print tagPath, parameters
+        log.trace("%s - %s" % (tagPath, str(parameters)))
         system.tag.editTag(tagPath, parameters=parameters)
         
     elif UDTType == "Lab Data/Lab Selector Limit SQC":
@@ -107,7 +104,7 @@ def configureSelector(unitName, selectorName, sourceName):
                     'upperValidityLimitTag':upperValidityLimitTag
                     }
     
-        print tagPath, parameters
+        log.trace("%s - %s" % (tagPath, str(parameters)))
         system.tag.editTag(tagPath, parameters=parameters)
  
     elif UDTType == "Lab Data/Lab Selector Limit Validity":
@@ -119,7 +116,7 @@ def configureSelector(unitName, selectorName, sourceName):
                     'upperValidityLimitTag':upperValidityLimitTag
                     }
     
-        print tagPath, parameters
+        log.trace("%s - %s" % (tagPath, str(parameters)))
         system.tag.editTag(tagPath, parameters=parameters)
         
     elif UDTType == "Lab Data/Lab Selector Limit Release":
@@ -131,9 +128,9 @@ def configureSelector(unitName, selectorName, sourceName):
                     'upperReleaseLimitTag':upperReleaseLimitTag
                     }
     
-        print tagPath, parameters
+        log.trace("%s - %s" % (tagPath, str(parameters)))
         system.tag.editTag(tagPath, parameters=parameters)
     
     else:
-        print "Unsupported UDT Type: ", UDTType     
+        log.error("Unsupported UDT Type: %s" % (UDTType))     
                 

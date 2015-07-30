@@ -31,8 +31,7 @@ def internalFrameClosing(rootContainer):
         print "Caught an error trying to close the transaction"
             
 #remove the selected row
-def removeDataRow(event):
-    rootContainer = event.source.parent
+def removeDataRow(rootContainer):
     txId = rootContainer.txId
 
     # Get valueId of the data to be deleted
@@ -97,8 +96,7 @@ def removeDataRow(event):
     system.db.runUpdateQuery(SQL, tx=txId)
         
 #add a row to the data table
-def insertDataRow(event):
-    rootContainer = event.source.parent
+def insertDataRow(rootContainer):
     txId = rootContainer.txId
 
     newName = rootContainer.getComponent("name").text

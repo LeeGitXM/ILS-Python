@@ -7,18 +7,19 @@ Created on Mar 27, 2015
 import sys, system, string, traceback
 from ils.labData.common import postMessage
 from java.util import Calendar
-log = system.util.getLogger("com.ils.labData")
+log = system.util.getLogger("com.ils.labData.reader")
+dcsLog = system.util.getLogger("com.ils.labData.reader.dcs")
+phdLog = system.util.getLogger("com.ils.labData.reader.phd")
 derivedLog = system.util.getLogger("com.ils.labData.derivedValues")
 customValidationLog = system.util.getLogger("com.ils.labData.customValidation")
 import ils.common.util as util
 
-# This should persist from one run to the next
+# This should persist from one run to the next 
 lastValueCache = {}
 triggerCache = {}
 derivedCalculationCache = {}
 
 # The purpose of this module is to scan / poll of of the lab data points for new values
-
 
 def main(database, tagProvider):
     log.info("Scanning for lab data (%s, %s)..." % (database, tagProvider))
@@ -146,6 +147,9 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
     derivedLog.info("Checking the derived calculations...")
     
     cal = Calendar.getInstance()
+    labDataWriteEnabled=system.tag.read("[" + tagProvider + "]" + "Configuration/LabData/labDataWriteEnabled").value
+    globalWriteEnabled=system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
+    writeEnabled = labDataWriteEnabled and globalWriteEnabled
     
     for d in derivedCalculationCache.values():
         valueName=d.get("valueName", "")
@@ -221,8 +225,12 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, newVal, sampleTime, True, writeTags, writeTagValues)
                 
                 # Derived lab data also has a target OPC tag that it needs to update - do this immediately
-                system.opc.writeValue(resultServerName, resultItemId, newVal)
-                
+                if writeEnabled:
+                    system.opc.writeValue(resultServerName, resultItemId, newVal)
+                    log.trace("Writing derived value %f for %s to %s" % (newVal, valueName, resultItemId))
+                else:
+                    log.info("*** Skipping *** Write of derived value %f for %s to %s" % (newVal, valueName, resultItemId))
+                    
                 # Remove this derived variable from the open calculation cache
                 del derivedCalculationCache[valueName]
                 
@@ -250,7 +258,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
     return writeTags, writeTagValues
 
 #----------------------------------------------------------------------
-def checkIfValueIsNew(valueName, rawValue, sampleTime):
+def checkIfValueIsNew(valueName, rawValue, sampleTime, log):
     log.trace("Checking if lab value is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
         
     if lastValueCache.has_key(valueName):
@@ -272,7 +280,7 @@ def checkIfValueIsNew(valueName, rawValue, sampleTime):
 
 #-------------
 def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues):
-    log.trace("Checking for new DCS Lab values ... ")    
+    dcsLog.trace("Checking for new DCS Lab values ... ")    
     
     SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, WL.ServerName, U.UnitName, P.Post "\
         "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, TkWriteLocation WL "\
@@ -295,34 +303,34 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         log.trace("Reading: %s " % (tagName))    
         qv = system.tag.read(tagName)
 
-        log.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
+        dcsLog.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
         
         if str(qv.quality) == 'Good':
-            new = checkIfValueIsNew(valueName, qv.value, qv.timestamp)
+            new = checkIfValueIsNew(valueName, qv.value, qv.timestamp, dcsLog)
             if new:
                 writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, qv.value, qv.timestamp, \
-                     database, tagProvider, limits, validationProcedure, writeTags, writeTagValues)
+                     database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, dcsLog)
         else:
             # I don't want to post this to the queue because this is called every minute, and if the same tag is bad for a day 
             # we'll fill the queue with errors, yet log.error isn't seen by anyone...
-            log.error("Skipping %s because its quality is %s" % (valueName, qv.quality))
+            dcsLog.error("Skipping %s because its quality is %s" % (valueName, qv.quality))
 
     return writeTags, writeTagValues
-    
+
     
 def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues):
     
     #----------------------------------------------------------------
     def checkForANewPHDLabValue(valueName, itemId, valueList):
-        log.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
+        phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
         
         if str(valueList.serviceResult) != 'Good':
-            log.warn("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
-            return False, -1, -1
+            phdLog.error("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
+            return False, -1, -1, valueList.serviceResult
         
         if valueList.size()==0:
-            log.trace("   -- no data found for %s --" % (itemId))
-            return False, -1, -1
+            phdLog.trace("   -- no data found for %s --" % (itemId))
+            return False, -1, -1, "NoDataFound"
         
         # Get the last value out of the list of values - I couldn't find a way to get this directlt, but there must be a way
     #    lastQV=valueList[valueList.size()-1]
@@ -333,12 +341,12 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         sampleTime=lastQV.timestamp
         quality=lastQV.quality
         
-        log.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
-        new = checkIfValueIsNew(valueName, rawValue, sampleTime)
-        return new, rawValue, sampleTime
+        phdLog.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
+        new = checkIfValueIsNew(valueName, rawValue, sampleTime, phdLog)
+        return new, rawValue, sampleTime, ""
     #----------------------------------------------------------------
     
-    log.trace("Checking for new PHD Lab values ... ")
+    phdLog.trace("Checking for new PHD Lab values ... ")
     
     endDate = util.getDate()
     from java.util import Calendar
@@ -355,12 +363,12 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         hdaInterface = interfaceRecord["InterfaceName"]
         serverIsAvailable=system.opchda.isServerAvailable(hdaInterface)
         if not(serverIsAvailable):
-            log.error("HDA interface %s is not available!" % (hdaInterface))
+            phdLog.error("HDA interface %s is not available!" % (hdaInterface))
         else:
-            log.trace("...reading lab data values from HDA server: %s..." % (hdaInterface))
+            phdLog.trace("...reading lab data values from HDA server: %s..." % (hdaInterface))
 
             # Now select the itemIds that use that interface
-            SQL = "select Post, UnitName, ValueId, ValueName, ItemId "\
+            SQL = "select Post, UnitName, ValueId, ValueName, ItemId, ValidationProcedure "\
                 " from LtPHDValueView where InterfaceName = '%s'" % (hdaInterface)
             tagInfoPds = system.db.runQuery(SQL, database) 
             itemIds=[]
@@ -370,11 +378,11 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
             maxValues=0
             boundingValues=0
             retVals=system.opchda.readRaw(hdaInterface, itemIds, startDate, endDate, maxValues, boundingValues)
-            log.trace("...back from HDA read, read %i values!" % (len(retVals)))
+            phdLog.trace("...back from HDA read, read %i values!" % (len(retVals)))
 #        log.trace("retVals: %s" % (str(retVals)))
         
             if len(tagInfoPds) != len(retVals):
-                log.error("The number of elements in the tag info dataset does not match the number of values returned!")
+                phdLog.error("The number of elements in the tag info dataset does not match the number of values returned!")
                 return writeTags, writeTagValues
     
             for i in range(len(tagInfoPds)):
@@ -386,31 +394,37 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
                 valueId=tagInfo["ValueId"]
                 valueName=tagInfo["ValueName"]
                 itemId=tagInfo["ItemId"]
+                validationProcedure=tagInfo["ValidationProcedure"]
 
-                new, rawValue, sampleTime = checkForANewPHDLabValue(valueName, itemId, valueList)
+                new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList)
                 if new:
                     writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, \
-                        database, tagProvider, limits, writeTags, writeTagValues)
+                        database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, phdLog)
+                elif status != "":
+                    writeTags, writeTagValues = handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, writeTagValues)
         
-    log.trace("Writing %s to %s" % (str(writeTagValues), str(writeTags)))
+    phdLog.trace("Writing %s to %s" % (str(writeTagValues), str(writeTags)))
 
-    log.trace("Done reading PHD lab values")
+    phdLog.trace("Done reading PHD lab values")
     return writeTags, writeTagValues
     
     
 # Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
 # limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
 # then store the value automatically
-def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, validationProcedure, writeTags, writeTagValues):
+def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
+                      validationProcedure, writeTags, writeTagValues, log):
     log.trace("...handling a new lab value for %s, checking limits" % (valueName))
     
     if validationProcedure != None and validationProcedure != "":
         
         from ils.labData.callbackDispatcher import customValidate
         isValid = customValidate(valueName, rawValue, validationProcedure)
-        # If it fails custom validation then abort everything - including further validation and do not store the value!
+        # If it fails custom validation then don't bother with any further checks!
         if not(isValid):
             log.trace("%s failed custom validation procedure <%s> " % (valueName, validationProcedure))
+            writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, writeTags, writeTagValues)
+            updateCache(valueId, valueName, rawValue, sampleTime)
             return writeTags, writeTagValues
         
     validValidity = True
@@ -428,14 +442,30 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         
     # If the value is valid then store it to the database and write the value and sample time to the tag (UDT)
     if validValidity:
+        log.trace("%s passed validity checks" % (valueName))
         storeValue(valueId, valueName, rawValue, sampleTime, database)
-        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, writeTags, writeTagValues)
-        updateCache(valueId, valueName, rawValue, sampleTime)
+        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues)
     else:
+        log.trace("%s *failed* validity checks" % (valueName) )
+        
         from ils.labData.validityLimitWarning import notify
-        notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
-        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, writeTags, writeTagValues)
-        updateCache(valueId, valueName, rawValue, sampleTime)
+        foundConsole=notify(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
+        # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
+        # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
+        # different values - not sure if that causes a problem)
+        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues)    
+        
+    # regardless of whether we passed or failed validation, add the value to the cache so we don't process it again
+    updateCache(valueId, valueName, rawValue, sampleTime)
+    
+    return writeTags, writeTagValues
+
+# Handle a bad value.  Write the status to the status tag of the UDT
+def handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, writeTagValues):
+    tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
+    
+    writeTags.append(tagName + "/status")
+    writeTagValues.append(status)
         
     return writeTags, writeTagValues
 
@@ -492,8 +522,9 @@ def updateCache(valueId, valueName, rawValue, sampleTime):
     lastValueCache[valueName]={'valueId': valueId, 'rawValue': rawValue, 'sampleTime': sampleTime}
 
     
-# Update the Lab Data UDT tags - this is called 
-def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, tags, tagValues):
+# Update the Lab Data UDT tags
+# FoundConsole is only relevant if the tag failed validation
+def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues):
     print "Updating lab data tags..."
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     
@@ -508,8 +539,11 @@ def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, ta
         tagValues.append(rawValue)
         tags.append(tagName + "/badValue")
         tagValues.append(False)
+        tags.append(tagName + "/status")
+        tagValues.append("Good")
         
-    else:
+    elif foundConsole:
+        print "Setting the bad value flag to TRUE"
         tags.append(tagName + "/badValue")
         tagValues.append(True)
         

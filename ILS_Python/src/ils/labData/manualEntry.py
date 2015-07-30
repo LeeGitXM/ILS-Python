@@ -183,7 +183,7 @@ def entryFormEnterData(rootContainer, db = ""):
     provider = getTagProvider()
     
     from ils.labData.scanner import updateTags
-    tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, [], [])
+    tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, True, [], [])
     print "Writing ", tagValues, " to ", tags
     system.tag.writeAll(tags, tagValues)
     
@@ -199,11 +199,21 @@ def entryFormEnterData(rootContainer, db = ""):
         record = pds[0]
         itemId = record["ItemId"]
         serverName = record["ServerName"]
-        returnQuality = system.opc.writeValue(serverName, itemId, sampleValue)
-        if returnQuality.isGood():
-            print "Write <%s> to %s-%s for %s local lab data was successful" % (str(sampleValue), serverName, itemId, valueName)
+        
+        # Check if writing is enabled
+        labDataWriteEnabled=system.tag.read("[]Configuration/LabData/labDataWriteEnabled").value
+        globalWriteEnabled=True
+        writeEnabled = labDataWriteEnabled and globalWriteEnabled
+        
+        if writeEnabled:
+            print "Writing local value %s for %s to %s" % (str(sampleValue), valueName, itemId)
+            returnQuality = system.opc.writeValue(serverName, itemId, sampleValue)
+            if returnQuality.isGood():
+                print "Write <%s> to %s-%s for %s local lab data was successful" % (str(sampleValue), serverName, itemId, valueName)
+            else:
+                print "ERROR: Write <%s> to %s-%s for %s local lab data failed" % (str(sampleValue), serverName, itemId, valueName)
         else:
-            print "ERROR: Write <%s> to %s-%s for %s local lab data failed" % (str(sampleValue), serverName, itemId, valueName)
+            print "*** Skipping *** Write of local value %s for %s to %s" % (str(sampleValue), valueName, itemId)
     else:
         print "Skipping write of manual lab data because it is not LOCAL (%s %s %s %s)" % (str(sampleValue), serverName, itemId, valueName)
     

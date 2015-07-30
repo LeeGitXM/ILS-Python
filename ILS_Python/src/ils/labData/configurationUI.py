@@ -69,7 +69,7 @@ def internalFrameClosing(rootContainer):
             
 #remove the selected row
 def removeDataRow(event):
-    rootContainer = event.source.parent
+    rootContainer = event.source.parent.parent
     txId = rootContainer.txId
     tab = rootContainer.getComponent("Tab Strip").selectedTab
         
@@ -155,8 +155,7 @@ def removeDataRow(event):
         system.db.runUpdateQuery(sql, tx=txId)
         
 #add a row to the data table
-def insertDataRow(event):
-    rootContainer = event.source.parent
+def insertDataRow(rootContainer):
     txId = rootContainer.txId
     labDataType = rootContainer.labDataType
             
@@ -315,7 +314,7 @@ def dataCellEdited(table, rowIndex, colName, newValue):
 
 # Add a row to the limit table
 def insertLimitRow(event):
-    rootContainer = event.source.parent
+    rootContainer = event.source.parent.parent
     txId = rootContainer.txId
     valueId = rootContainer.selectedValueId
 
@@ -341,7 +340,7 @@ def insertLimitRow(event):
 
 # Delete the selected row in the limit table
 def removeLimitRow(event):
-    rootContainer = event.source.parent
+    rootContainer = event.source.parent.parent
     txId = rootContainer.txId
     table = rootContainer.getComponent("Lab Limit Table")
     ds = table.data

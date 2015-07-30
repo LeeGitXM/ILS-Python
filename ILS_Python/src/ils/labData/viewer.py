@@ -14,7 +14,7 @@ def internalFrameActivated(rootContainer):
     displayTableTitle = rootContainer.displayTableTitle
     print "The table being displayed is: ", displayTableTitle
     
-    SQL = "select V.ValueName, V.ValueId, V.Description, V.DisplayDecimals "\
+    SQL = "select V.ValueName LabValueName, V.ValueId, V.Description, V.DisplayDecimals "\
         " from LtValue V, LtDisplayTable T "\
         " where V.displayTableId = T.DisplayTableId "\
         " and T.DisplayTableTitle = '%s' "\
@@ -22,7 +22,7 @@ def internalFrameActivated(rootContainer):
     print SQL
     pds = system.db.runQuery(SQL)
     for record in pds:
-        print record["ValueName"], record["ValueId"], record["Description"], record["DisplayDecimals"]
+        print record["LabValueName"], record["ValueId"], record["Description"], record["DisplayDecimals"]
     
     repeater=rootContainer.getComponent("Template Repeater")
     repeater.templateParams=pds
@@ -31,7 +31,7 @@ def internalFrameActivated(rootContainer):
 def configureLabDatumTable(container):
     username = system.security.getUsername()
     print "Checking for lab data viewed by ", username
-    valueName=container.ValueName
+    valueName=container.LabValueName
     valueDescription=container.Description
     displayDecimals=container.DisplayDecimals
     print "Configuring the Lab Datum Viewer table for ", valueName
@@ -42,7 +42,6 @@ def configureLabDatumTable(container):
     columnAttributesData=table.columnAttributesData
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
     columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
-    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "numberFormat", "#,##0.000000")
     table.columnAttributesData=columnAttributesData
     
     from ils.labData.common import fetchValueId
@@ -59,6 +58,7 @@ def configureLabDatumTable(container):
     container.data=pds 
 
     header = [valueDescription, 'seen']
+    print "Fetched ", len(pds), " rows, the header is ", header
     data = []
     for record in pds:
         val = record[valueName]
@@ -90,14 +90,9 @@ def configureLabDatumTable(container):
     
     ds = system.dataset.toDataSet(header, data)
     container.data=ds
-    
-    columnAttributesData=table.columnAttributesData
-#    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
-    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
-#    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "numberFormat", "#,##0.000000")
-    table.columnAttributesData=columnAttributesData
 
-# This should get called when the window is closed.  As long as the window is open then we want the rows highlighted.
+
+# This should get called when the window is closed.  As long as the window is open then we want the rows highlighted. 
 # They may want to add a button that says that also cals this to make the red go away, but for now just when the window closes.
 def setSeen(rootContainer):
     username = system.security.getUsername()
@@ -108,7 +103,7 @@ def setSeen(rootContainer):
     repeater_pds = system.dataset.toPyDataSet(ds)
     for record in repeater_pds:
         valueId=record['ValueId']
-        valueName=record['ValueName']
+        valueName=record['LabValueName']
         print "Updating %s as seen by %s..." % (valueName, username)
 
         SQL = "select top 10 H.HistoryId, VV.Username "\

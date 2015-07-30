@@ -5,23 +5,27 @@ Created on Mar 31, 2015
 '''
 import system
 from ils.labData.common import postMessage
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.labData.limits")
 
 # This is called by the limit checking module.  It sends a message to all of the clients to specify a lab limit
 # validity error.
-def notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit):
+def notify(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit):
     
     # Look for a connected operator - if one doesn't exist then automatically accept the value
-    found=False
+    foundConsole=False
     pds=system.util.getSessionInfo()
     for record in pds:
         username=record["username"]
         if username==post:
-            found=True
+            foundConsole=True
     
-    if not(found):
-        postMessage("The %s - %s - %s lab datum, which failed validity limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post))
-        accept(valueId, valueName, rawValue, sampleTime, tagProvider, database)
-        return
+    if not(foundConsole):
+        txt="The %s - %s - %s lab datum, which failed validity limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
+        log.trace(txt)
+        postMessage(txt)
+        accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Auto Accept", tagProvider, database)
+        return foundConsole
     
     # The console is connected, so post the alert window.
     project = system.util.getProjectName()
@@ -34,7 +38,8 @@ def notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, database
         "sampleTime": sampleTime,
         "upperLimit": upperLimit,
         "lowerLimit": lowerLimit,
-        "tagProvider": tagProvider
+        "tagProvider": tagProvider,
+        "unitName": unitName
         }
     print "Packing the payload: ", payload
     
@@ -47,7 +52,7 @@ def notify(post, valueName, valueId, rawValue, sampleTime, tagProvider, database
 
     from ils.common.ocAlert import sendAlert
     sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
-
+    return foundConsole
 
 # This is a callback from the Acknowledge button in the middle of the loud workspace.
 def launcher(payload):    
@@ -62,6 +67,7 @@ def acceptValue(rootContainer, timeout=False):
     rawValue=rootContainer.rawValue
     sampleTime=rootContainer.sampleTime
     tagProvider=rootContainer.tagProvider
+    unitName=rootContainer.unitName
     database=""
     
     if timeout:
@@ -69,20 +75,21 @@ def acceptValue(rootContainer, timeout=False):
     else:
         postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
 
-    accept(valueId, valueName, rawValue, sampleTime, tagProvider, database)
+    accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Operator Accept", tagProvider, database)
 
-def accept(valueId, valueName, rawValue, sampleTime, tagProvider, database):
-    print "valueId: %i, valueName: %s, rawValue: %s, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, str(rawValue), sampleTime, database, tagProvider)
+def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvider, database):
+    print "Accepting a value which failed validity checks :: valueId: %i, valueName: %s, rawValue: %s, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, str(rawValue), sampleTime, database, tagProvider)
     
     from ils.labData.scanner import storeValue
     storeValue(valueId, valueName, rawValue, sampleTime, database)
     
     # Update the Lab Data UDT tags 
-    tagName="[%s]LabData/%s" % (tagProvider, valueName)
+    tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     
+    print "Writing to tag <%s>" % (tagName)
     # The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
-    tags=[tagName + "/value", tagName + "/sampleTime"]
-    tagValues=[rawValue, sampleTime]
+    tags=[tagName + "/value", tagName + "/sampleTime", tagName + "/badValue", tagName + "/status"]
+    tagValues=[rawValue, sampleTime, False, status]
     system.tag.writeAll(tags, tagValues)
 
 # There is nothing that needs to be done if the operator determines that the value is not valid, by doing nothing we ignore 

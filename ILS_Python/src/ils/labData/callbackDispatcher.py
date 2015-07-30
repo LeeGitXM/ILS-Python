@@ -9,7 +9,7 @@ Created on Jul 10, 2015
 # which runs in the gateway  is attached to a project.
 
 # This import will show an error, but it is required to handle calculation methods that are in project scope.
-import system, sys, string, traceback
+import shared, system, sys, string, traceback
 log = system.util.getLogger("com.ils.labData")
 derivedLog = system.util.getLogger("com.ils.labData.derivedValues")
 customValidationLog = system.util.getLogger("com.ils.labData.customValidation")
