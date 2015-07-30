@@ -43,8 +43,8 @@ def commitChanges(rootContainer):
     
     provider = "[XOM]"
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
-    from ils.labData.synchronize import synchronize
-    synchronize(provider, unitName, txId)
+    #from ils.labData.synchronize import synchronize
+    #synchronize(provider, unitName, txId)
 
 
 #close transaction when window is closed
@@ -99,8 +99,7 @@ def updateRelatedTable(rootContainer):
         row = table.selectedRow
         derivedValueId = ds.getValueAt(row, "DerivedValueId")
         relatedTable.derivedValueId = derivedValueId
-        print "derivedValueId on next line:"
-        print derivedValueId
+        print "derivedValueId = ",derivedValueId
         sql = "SELECT V.ValueId, V.ValueName, V.Description "\
             " FROM LtValue V, LtRelatedData R "\
             " WHERE R.DerivedValueId = %i AND R.RelatedValueId = V.ValueId"\
