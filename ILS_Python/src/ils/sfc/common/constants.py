@@ -144,7 +144,7 @@ DELAY_UNIT_HOUR = "HR";
 
 #Recipe scopes:
 LOCAL_SCOPE = 'local'
-PREVIOUS_SCOPE = 'previous'
+PRIOR_SCOPE = 'prior'
 SUPERIOR_SCOPE ='superior'
 PHASE_SCOPE ='phase'
 OPERATION_SCOPE = 'operation'

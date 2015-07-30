@@ -21,7 +21,7 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import getRecipeData
     provider = getProviderName(chartProperties)
-    print 's88Get', valuePath, location
+    #print 's88Get', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     print "Step Path: ", stepPath
     fullPath = stepPath + "/" + valuePath
@@ -31,7 +31,7 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import setRecipeData
     provider = getProviderName(chartProperties)
-    print 's88Set', valuePath, location
+    #print 's88Set', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     fullPath = stepPath + "/" + valuePath
     setRecipeData(provider, fullPath, value, True);
@@ -109,6 +109,7 @@ def getCurrentMessageQueue(chartProperties):
     from ils.sfc.common.constants import MESSAGE_QUEUE
     from ils.sfc.common.util import getTopLevelProperties
     topScope = getTopLevelProperties(chartProperties)
+    print 'current queue', topScope[MESSAGE_QUEUE]
     return topScope[MESSAGE_QUEUE]
 
 def setCurrentMessageQueue(chartProperties, queue):

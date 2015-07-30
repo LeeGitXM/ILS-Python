@@ -39,12 +39,35 @@ def getRecipeData(provider, path):
 
 def setRecipeData(provider, path, value, synchronous):
     fullPath = getRecipeDataTagPath(provider, path)
+    changeType(fullPath, value)
     #print 'set', fullPath, value
     if synchronous:
         system.tag.writeSynchronous(fullPath, value)
     else:
         system.tag.write(fullPath, value)
-        
+
+
+def changeType(tagFieldPath, value):
+    '''For the value tag only, change the tag type to
+    agree with the value type'''
+    valueSuffix = '/value'
+    if not tagFieldPath.endswith(valueSuffix):
+        return
+    # strip off the /value
+    tagPath = tagFieldPath[0:len(tagFieldPath) - len(valueSuffix)]
+    if type(value) == type(''):
+        newType = 'String'
+    elif type(value) == type(1):
+        newType = 'Int8'
+    elif type(value) == type(1.):
+        newType = 'Float8'
+    elif type(value) == type(False):
+        newType = 'Boolean'
+    else:
+        newType = 'String'    
+    print 'tagPath', tagPath, 'newType', newType
+    system.tag.editTag(tagPath, overrides={"value": {"DataType":newType}})
+    
 def recipeDataTagExists(provider, path):
     fullPath = getRecipeDataTagPath(provider, path)
     return system.tag.exists(fullPath)
