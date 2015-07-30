@@ -23,6 +23,7 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     provider = getProviderName(chartProperties)
     print 's88Get', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+    print "Step Path: ", stepPath
     fullPath = stepPath + "/" + valuePath
     return getRecipeData(provider, fullPath);
 
