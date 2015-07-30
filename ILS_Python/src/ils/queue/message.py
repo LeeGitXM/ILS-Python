@@ -43,6 +43,7 @@ def queueSQL(queueKey, useCheckpoint, order):
     SQL = "select checkpointTimestamp from QueueMaster where QueueKey = '%s'" % (queueKey)
     checkPointTimestamp = system.db.runScalarQuery(SQL)
     
+    # Power tables handle wrap text without doing anything special, so no need to add <HTML>
     if useCheckpoint and checkPointTimestamp != None:
         SQL = "select Timestamp, MessageStatus as Status, Message "\
             " from QueueDetail D, QueueMaster M, QueueMessageStatus QMS " \
@@ -144,6 +145,9 @@ def initializeView(rootContainer):
         elif messageStatus == 'Error':
             table.setPropertyValue('errorColor', color)
     
+#    ds = table.columnAttributesData
+#    ds=system.dataset.setValue(ds, 0, "", 20)
+#    table.columnAttributesData = ds
     print "Done initializing"
 
 def updateView(rootContainer):
