@@ -82,7 +82,10 @@ def fullyAutomatedDownload(post, project, database, familyName, grade, version):
     # Refresh the table with data from the DCS and determine what needs to be downloaded
     dsProcessed = recipeToolkit_refresh.automatedRefresh(familyName, dsProcessed, database)
 
-    writeEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled")
+    recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+    writeEnabled = recipeWriteEnabled and globalWriteEnabled
+    
     downloadTimeout = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/downloadTimeout").value
     print "The download timeout is ", downloadTimeout, " seconds"
     
@@ -145,7 +148,10 @@ def download(rootContainer):
     provider = rootContainer.getPropertyValue("provider")
     familyName = rootContainer.getPropertyValue("familyName")
     table = rootContainer.getComponent("Power Table")
-    writeEnabled = system.tag.read("/Configuration/RecipeToolkit/recipeWriteEnabled")
+    
+    recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+    writeEnabled = recipeWriteEnabled and globalWriteEnabled
     
     downloadTimeout = system.tag.read("/Configuration/RecipeToolkit/downloadTimeout").value
     rootContainer.downloadTimeout = downloadTimeout
