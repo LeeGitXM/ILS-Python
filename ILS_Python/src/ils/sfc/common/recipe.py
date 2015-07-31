@@ -20,12 +20,14 @@ def getRecipeDataTagPath(provider, path):
         path = path.replace(".", "/")
     return getRecipeDataTagPrefix(provider) + path
 
-def createRecipeDataTag(provider, folder, rdName, rdType):    
+def createRecipeDataTag(provider, folder, rdName, rdType, valueType):    
     fullFolder = getRecipeDataTagPath(provider, folder)
     #print 'creating', rdType, rdName, 'in', fullFolder
     typePath = RECIPE_DATA_FOLDER + "/" + rdType
     system.tag.addTag(parentPath=fullFolder, name=rdName, tagType='UDT_INST', attributes={"UDTParentType":typePath})
-
+    if rdType == 'Value' and valueType != None:
+        changeType(fullFolder, rdName, valueType)
+        
 def deleteRecipeDataTag(provider, tagPath):    
     fullPath = getRecipeDataTagPath(provider, tagPath)
     #print 'delete', fullPath
@@ -39,34 +41,30 @@ def getRecipeData(provider, path):
 
 def setRecipeData(provider, path, value, synchronous):
     fullPath = getRecipeDataTagPath(provider, path)
-    changeType(fullPath, value)
     #print 'set', fullPath, value
     if synchronous:
         system.tag.writeSynchronous(fullPath, value)
     else:
         system.tag.write(fullPath, value)
 
-
-def changeType(tagFieldPath, value):
+def changeType(folderPath, tagName, valueType):
     '''For the value tag only, change the tag type to
     agree with the value type'''
-    valueSuffix = '/value'
-    if not tagFieldPath.endswith(valueSuffix):
-        return
-    # strip off the /value
-    tagPath = tagFieldPath[0:len(tagFieldPath) - len(valueSuffix)]
-    if type(value) == type(''):
-        newType = 'String'
-    elif type(value) == type(1):
+    from system.ils.sfc.common.Constants import INT, FLOAT, BOOLEAN, STRING
+
+    if valueType == INT:
         newType = 'Int8'
-    elif type(value) == type(1.):
+    elif valueType == FLOAT:
         newType = 'Float8'
-    elif type(value) == type(False):
+    elif valueType == BOOLEAN:
         newType = 'Boolean'
-    else:
-        newType = 'String'    
-    print 'tagPath', tagPath, 'newType', newType
-    system.tag.editTag(tagPath, overrides={"value": {"DataType":newType}})
+    elif valueType == STRING:
+        newType = 'String' 
+    else:   
+        newType = 'String' 
+    valuePath = folderPath + "/" + tagName
+    print 'setting', valuePath, " to ", newType
+    system.tag.editTag(valuePath, overrides={"value": {"DataType":newType}})
     
 def recipeDataTagExists(provider, path):
     fullPath = getRecipeDataTagPath(provider, path)
