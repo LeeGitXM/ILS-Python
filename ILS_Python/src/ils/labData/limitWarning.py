@@ -1,5 +1,5 @@
 '''
-Created on Mar 31, 2015
+Created on Aug 1, 2015
 
 @author: Pete
 '''
@@ -8,9 +8,13 @@ from ils.labData.common import postMessage
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.labData.limits")
 
+#------------------------------
+# Validity Limits
+#------------------------------
+
 # This is called by the limit checking module.  It sends a message to all of the clients to specify a lab limit
 # validity error.
-def notify(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit):
+def notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit):
     
     # Look for a connected operator - if one doesn't exist then automatically accept the value
     foundConsole=False
@@ -21,10 +25,10 @@ def notify(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider
             foundConsole=True
     
     if not(foundConsole):
-        txt="The %s - %s - %s lab datum, which failed validity limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
+        txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
         log.trace(txt)
         postMessage(txt)
-        accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Auto Accept", tagProvider, database)
+        accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Release Limit Auto Accept", tagProvider, database)
         return foundConsole
     
     # The console is connected, so post the alert window.
@@ -54,9 +58,66 @@ def notify(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider
     sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
     return foundConsole
 
+
+
 # This is a callback from the Acknowledge button in the middle of the loud workspace.
-def launcher(payload):    
+def launcher(event, payload):
+    system.nav.closeParentWindow(event)    
     system.nav.openWindow("Lab Data/Validity Limit Warning", payload)
+
+#------------------
+# Release Limits
+#------------------
+
+# This is called by the limit checking module.  It sends a message to all of the clients to specify a lab limit
+# validity error.
+def notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit):
+    
+    # Look for a connected operator - if one doesn't exist then automatically accept the value
+    foundConsole=False
+    pds=system.util.getSessionInfo()
+    for record in pds:
+        username=record["username"]
+        if username==post:
+            foundConsole=True
+    
+    if not(foundConsole):
+        txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
+        log.trace(txt)
+        postMessage(txt)
+        accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Release Limit Auto Accept", tagProvider, database)
+        return foundConsole
+    
+    # The console is connected, so post the alert window.
+    project = system.util.getProjectName()
+    
+    # This is the payload that will get passed through to the validity limit window
+    payload = {
+        "valueId": valueId,
+        "valueName": valueName,
+        "rawValue": rawValue,
+        "sampleTime": sampleTime,
+        "upperLimit": upperLimit,
+        "lowerLimit": lowerLimit,
+        "tagProvider": tagProvider,
+        "unitName": unitName
+        }
+    print "Packing the payload: ", payload
+    
+    topMessage = "Sample value failed validity testing." 
+    bottomMessage = "Result sample is " + valueName
+    buttonLabel = "Acknowledge"
+    callback = "ils.labData.validityLimitWarning.launcher"
+    timeoutEnabled = True
+    timeoutSeconds = 20
+
+    from ils.common.ocAlert import sendAlert
+    sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
+    return foundConsole
+
+#-----------------
+# Common for both validity limits and release limits
+#-----------------
 
 # This is called when the operator presses the accept button on the operator review screen or when that dialog times out.
 def acceptValue(rootContainer, timeout=False):

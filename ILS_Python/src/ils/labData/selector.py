@@ -76,12 +76,14 @@ def configureSelector(selectorName, sourceName):
         rawValueTag='{[.]../' + sourceName + '/rawValue}'
         sampleTimeTag='{[.]../' + sourceName + '/sampleTime}'
         valueTag='{[.]../' + sourceName + '/value}'
+        statusTag='{[.]../' + sourceName + '/status}'
     
         parameters={
                     'badValueTag':badValueTag, 
                     'rawValueTag':rawValueTag, 
                     'sampleTimeTag':sampleTimeTag,
-                    'valueTag':valueTag
+                    'valueTag':valueTag,
+                    'statusTag':statusTag
                     }
     
         log.trace("%s - %s" % (tagPath, str(parameters)))

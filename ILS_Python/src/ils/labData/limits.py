@@ -29,9 +29,28 @@ def checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagP
     log.trace("Checking SQC limits...")
     return True
 
+# Release limit checking is exactly like validity limit checking, the difference is what happens if they fail.  It appears that
+# the main difference is that the notification screen gives the operator the chance to start a UIR.
+# One concern is that the G2 code for release limits absolutely uses the limits in the validity limit slot - it was unclear if 
+# they just put the release limits into the validity limits so they could use some common processing logic or what - but I am going 
+# to use the limits in the release limits 
 def checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
-    log.trace("Checking Release limits...")
-    return True
+    log.trace("Checking Release limits for %s..." % (valueName))
+    
+    upperLimit=limit.get("UpperReleaseLimit",None)
+    lowerLimit=limit.get("LowerReleaseLimit",None)
+    log.trace("   ...the release limits are %s < %s < %s" % (str(lowerLimit), str(rawValue), str(upperLimit)))
+    
+    if upperLimit != None and rawValue > upperLimit:
+        log.trace("%s **Failed** the release upper limit check..." % (valueName))        
+        return False, upperLimit, lowerLimit
+    elif lowerLimit != None and rawValue < lowerLimit:
+        log.trace("%s **Failed** the release lower limit check..." % (valueName))
+        return False, upperLimit, lowerLimit
+    else:
+        log.trace("%s passed the release limit check..." % (valueName))
+    return True, upperLimit, lowerLimit
+    
 
 # This fetches the currently active limits that are the Lab Data Toolkit tables regardless of where the
 # values came from.

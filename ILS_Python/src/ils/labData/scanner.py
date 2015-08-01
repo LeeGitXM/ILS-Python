@@ -222,7 +222,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 storeValue(valueId, valueName, newVal, sampleTime, database)
                 
                 # This updates the Lab Data UDT tags
-                writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, newVal, sampleTime, True, writeTags, writeTagValues)
+                writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, newVal, sampleTime, True, writeTags, writeTagValues, log)
                 
                 # Derived lab data also has a target OPC tag that it needs to update - do this immediately
                 if writeEnabled:
@@ -300,7 +300,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         post = record["Post"]
         validationProcedure = record["ValidationProcedure"]
         tagName = "LabData/%s/DCS-Lab-Values/%s" % (unitName, valueName)
-        log.trace("Reading: %s " % (tagName))    
+        dcsLog.trace("Reading: %s " % (tagName))    
         qv = system.tag.read(tagName)
 
         dcsLog.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
@@ -423,7 +423,7 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         # If it fails custom validation then don't bother with any further checks!
         if not(isValid):
             log.trace("%s failed custom validation procedure <%s> " % (valueName, validationProcedure))
-            writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, writeTags, writeTagValues)
+            writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, writeTags, writeTagValues, log)
             updateCache(valueId, valueName, rawValue, sampleTime)
             return writeTags, writeTagValues
         
@@ -444,7 +444,7 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
     if validValidity:
         log.trace("%s passed validity checks" % (valueName))
         storeValue(valueId, valueName, rawValue, sampleTime, database)
-        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues)
+        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues, log)
     else:
         log.trace("%s *failed* validity checks" % (valueName) )
         
@@ -453,7 +453,7 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
         # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
         # different values - not sure if that causes a problem)
-        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues)    
+        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)    
         
     # regardless of whether we passed or failed validation, add the value to the cache so we don't process it again
     updateCache(valueId, valueName, rawValue, sampleTime)
@@ -524,8 +524,8 @@ def updateCache(valueId, valueName, rawValue, sampleTime):
     
 # Update the Lab Data UDT tags
 # FoundConsole is only relevant if the tag failed validation
-def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues):
-    print "Updating lab data tags..."
+def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues, log):
+    log.trace("Updating lab data tags...")
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     
     # Always write the raw value
@@ -543,7 +543,7 @@ def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, fo
         tagValues.append("Good")
         
     elif foundConsole:
-        print "Setting the bad value flag to TRUE"
+        log.trace("Setting the bad value flag to TRUE")
         tags.append(tagName + "/badValue")
         tagValues.append(True)
         

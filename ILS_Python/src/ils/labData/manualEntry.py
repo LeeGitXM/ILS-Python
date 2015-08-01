@@ -4,6 +4,7 @@ Created on Apr 30, 2015
 @author: Pete
 '''
 import system
+log = system.util.getLogger("com.ils.labData")
 
 # Everything in this module runs in the client, so the use of loggers isn't too important since nothing will go 
 # to the wrapper log anyway.
@@ -183,7 +184,7 @@ def entryFormEnterData(rootContainer, db = ""):
     provider = getTagProvider()
     
     from ils.labData.scanner import updateTags
-    tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, True, [], [])
+    tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, True, [], [], log)
     print "Writing ", tagValues, " to ", tags
     system.tag.writeAll(tags, tagValues)
     

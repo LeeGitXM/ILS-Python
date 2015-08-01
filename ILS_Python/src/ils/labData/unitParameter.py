@@ -15,15 +15,6 @@ def parseTagPath(tagPath):
     tagName = tagPath[end + 1:]
     return tagPathRoot, tagName
 
-def foo(tagPath):
-    end = tagPath.rfind('/')
-    tagPath = tagPath[:end]
-    end = tagPath.rfind('/')
-    tagPathRoot = tagPath[:end]
-    tagName = tagPath[end + 1:]
-    
-    return tagPathRoot, tagName
-
 # The size of the buffer has changed.  We only need to worry about correcting from a large buffer to a small buffer
 def bufferSizeChanged(tagPath, currentValue, initialChange):
     log.info("The buffer size has changed for <%s> to <%s>" % (tagPath, str(currentValue)))
@@ -56,7 +47,7 @@ def valueChanged(tagPath, currentValue, initialChange):
     try:
         tagVal = float(currentValue.value)
     except:
-        log.warn("Warning the new value <%s> for <%s> is not numeric and cannot be processed" % (str(currentValue.value), tagPath))
+        log.warn("The new value <%s> for <%s> is not numeric and cannot be processed" % (str(currentValue.value), tagPath))
         return
     
     # The first step is to get the tag name out of the full tag name.  This should end in either rawValue or manualRawValue    
