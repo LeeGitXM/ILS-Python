@@ -10,15 +10,15 @@ log = LogUtil.getLogger("com.ils.diagToolkit")
 
 def gateway():
     from ils.diagToolkit.version import version
-    version = version()
-    log.info("Starting Diagnostic Toolkit gateway version %s" % (version))
+    version, revisionDate = version()
+    log.info("Starting Diagnostic Toolkit gateway version %s - %s" % (version, revisionDate))
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     createTags("[" + provider + "]")
 
 def client():
     from ils.diagToolkit.version import version
-    version = version()
+    version, releaseDate = version()
     log.info("Initializing the Diagnostic toolkit client version %s" % (version))
 
 def createTags(tagProvider):

@@ -11,8 +11,8 @@ log = LogUtil.getLogger("com.ils.recipeToolkit")
 
 def gateway():
     from ils.recipeToolkit.version import version
-    version = version()
-    log.info("Starting Recipe Toolkit version %s" % (version))
+    version, revisionDate = version()
+    log.info("Starting Recipe Toolkit version %s - %s" % (version, revisionDate))
 
     from ils.common.config import getTagProvider
     provider = getTagProvider()

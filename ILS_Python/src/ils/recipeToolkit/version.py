@@ -5,7 +5,4 @@ Created on Oct 5, 2014
 '''
 
 def version():
-    return "1.0 rc4"
-
-def releaseDate():
-    return "May 4, 2015"
+    return "1.0 rc4", "May 4, 2015"

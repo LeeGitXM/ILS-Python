@@ -15,11 +15,12 @@ def client():
 
 
 def gateway():
-    print "In ils.common.startup.gateway()"
-    
     # Create gateway loggers
-    log = system.util.getLogger("com.ils.io")
-    log.info("Initializing...")
+    log = system.util.getLogger("com.ils.common")
+    
+    from ils.common.version import version
+    version, revisionDate = version()
+    log.info("Starting common modules version %s - %s" % (version, revisionDate))
     
     from ils.common.config import getTagProvider
     provider = getTagProvider()

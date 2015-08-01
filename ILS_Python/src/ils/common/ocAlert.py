@@ -4,7 +4,7 @@ Created on Mar 31, 2015
 @author: Pete
 '''
 
-import system
+import system, string, sys, traceback
 
 def sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
 
@@ -42,6 +42,7 @@ def handleMessage(payload):
 
 
 # This is called from the button smack in the middle of the screen 
+# This runs in the client, so don't bother with loggers, just print debug messages...
 def buttonHandler(event):
     print "In the button handler..."
     rootContainer = event.source.parent
@@ -60,7 +61,24 @@ def buttonHandler(event):
         system.nav.closeParentWindow(event)
         return
     
-    print "Need to call: ", callback
-    from ils.labData.validityLimitWarning import launcher
-    launcher(payload)
-    system.nav.closeParentWindow(event)
+    # If they specify shared or project scope, then we don't need to do this
+    if not(string.find(callback, "project") == 0 or string.find(callback, "shared") == 0):
+        # The method contains a full python path, including the package, module, and function name
+        separator=string.rfind(callback, ".")
+        packagemodule=callback[0:separator]
+        separator=string.rfind(packagemodule, ".")
+        package = packagemodule[0:separator]
+        module  = packagemodule[separator+1:]
+        print "Using External Python, the package is: <%s>.<%s>" % (package,module)
+        exec("import %s" % (package))
+        exec("from %s import %s" % (package,module))
+        
+    try:
+        print "Calling validation procedure %s..." % (callback)
+        eval(callback)(event, payload)
+        print "   ...back from the callback!"
+                
+    except:
+        errorType,value,trace = sys.exc_info()
+        errorTxt = traceback.format_exception(errorType, value, trace, 1000)
+        print"Caught an exception calling callback... \n%s" % (errorTxt)
