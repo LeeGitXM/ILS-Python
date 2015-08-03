@@ -122,9 +122,10 @@ def insertApplication(container):
     ds=table.data
 
     for row in range(ds.rowCount):
-        application = ds.getValueAt(row, 4) #There are two columns named application so use idx here
+        #There are two columns named application so use idx here
+        #I used to use column 4 (mixed case), but Chuck was using column 2 (ugly G2 name, all caps with "-GDA")
+        application = ds.getValueAt(row, 2) 
         unit = ds.getValueAt(row, "unit")
-        post = ds.getValueAt(row, "post")
         messageQueue = ds.getValueAt(row, "msg-queue-name")
         includeInMainMenu = ds.getValueAt(row, "include-in-main-menu")
         if includeInMainMenu == "TRUE":
@@ -135,9 +136,6 @@ def insertApplication(container):
         groupRampMethod = string.capitalize(groupRampMethod)
         groupRampMethodId = lookup("GroupRampMethod", groupRampMethod)
         
-        from ils.common.database import getPostId
-        postId = getPostId(post)
-        
         from ils.common.database import getUnitId
         unitId = getUnitId(unit)
         
@@ -145,8 +143,6 @@ def insertApplication(container):
         
         print 
         print "Application   : ", application
-        print "Post          : ", post
-        print "Post Id       : ", postId
         print "Unit          : ", unit
         print "Unit Id       : ", unitId
         print "Queue (old)   : ", messageQueue
@@ -155,16 +151,14 @@ def insertApplication(container):
         print "Ramp Method   : ", groupRampMethod
         print "Ramp Method Id: ", groupRampMethodId
     
-        if postId >= 0 and unitId >= 0 and messageQueueId >= 0:
-            SQL = "insert into DtApplication (ApplicationName, PostId, MessageQueueId, UnitId, IncludeInMainMenu, GroupRampMethodId) "\
-                " values ('%s', %i, %i, %i, %i, %i)" % \
-                (application, postId, messageQueueId, unitId, includeInMainMenu, groupRampMethodId)
+        if unitId >= 0 and messageQueueId >= 0:
+            SQL = "insert into DtApplication (ApplicationName, MessageQueueId, UnitId, IncludeInMainMenu, GroupRampMethodId) "\
+                " values ('%s', %i, %i, %i, %i)" % \
+                (application, messageQueueId, unitId, includeInMainMenu, groupRampMethodId)
             applicationId=system.db.runUpdateQuery(SQL, getKey=True)
             ds=system.dataset.setValue(ds, row, "id", applicationId) 
             print "Insert %s and got id: %i" % (application, applicationId)                               
         else:
-            if postId < 0:
-                print "   *** Could not find post: <%s>" % (post)
             if unitId < 0:
                 print "   *** Could not find unit: <%s>" % (unit)
             if messageQueueId < 0:
@@ -200,10 +194,9 @@ def insertFamily(container):
     for row in range(ds.rowCount):
         application = ds.getValueAt(row, "Application")
         applicationId=getApplicationId(rootContainer, application)
-        family = ds.getValueAt(row, "label")  # Use the label as the name
+        family = ds.getValueAt(row, "name")  # I used to use the label as the name, but Chuck is using the name
         description = ds.getValueAt(row, "description")
         priority = ds.getValueAt(row, "priority")
-
 
         print ""
         print "Application   : ", application
@@ -244,7 +237,7 @@ def insertFinalDiagnosis(container):
 
     for row in range(ds.rowCount):
         family=ds.getValueAt(row, "family")
-        finalDiagnosis=ds.getValueAt(row, "label")    # Use the label as the new name
+        finalDiagnosis=ds.getValueAt(row, 4)    # I used to use the label, but Chuck is using the name, so use the name
         explanation=ds.getValueAt(row, "explanation")
         priority=ds.getValueAt(row, "priority")
         calculationMethod=ds.getValueAt(row, "recommendation-calculation-method")
@@ -472,7 +465,7 @@ def getFinalDiagnosisId(rootContainer, finalDiagnosis):
     Id = -1
     ds=rootContainer.getComponent("Final Diagnosis Container").getComponent("Power Table").data
     for row in range(ds.rowCount):
-        if ds.getValueAt(row, 4) == finalDiagnosis:
+        if str(ds.getValueAt(row, 4)) == finalDiagnosis:
             return ds.getValueAt(row, "id")
     return Id
 

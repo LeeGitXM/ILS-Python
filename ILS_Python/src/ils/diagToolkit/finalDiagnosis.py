@@ -37,9 +37,6 @@ def postDiagnosisEntryMessageHandler(payload):
 # Insert a record into the diagnosis queue
 def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
     log.trace("Post a diagnosis entry for application: %s, family: %s, final diagnosis: %s" % (application, family, finalDiagnosis))
-
-    # TODO - need to look this up somehow
-    grade = 28
     
     # Lookup the application Id
     from ils.diagToolkit.common import fetchFinalDiagnosis
@@ -48,7 +45,15 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     if finalDiagnosisId == None:
         log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
         return
-       
+    
+    unit=record.get('UnitName',None)
+    if unit == None:
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (application, family, finalDiagnosis))
+        return
+    
+    provider="[XOM]"
+    grade=system.tag.read("%sSite/%s/Grade/Grade" % (provider,unit)).value
+    print "The grade is: ", grade
     textRecommendation = record.get('TextRecommendation', 'Unknown Text')
     
     # Insert an entry into the diagnosis queue

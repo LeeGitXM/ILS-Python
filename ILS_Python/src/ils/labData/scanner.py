@@ -42,6 +42,7 @@ def main(database, tagProvider):
     log.trace("Writing %s :: %s" % (str(writeTags), str(writeTagValues)))
     results=system.tag.writeAll(writeTags, writeTagValues)
     log.trace("Write Results: %s" % (str(results)))
+    log.info("...finished lab data scanning!")
 
 #-------------
 # Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
@@ -414,7 +415,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
 # then store the value automatically
 def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
                       validationProcedure, writeTags, writeTagValues, log):
-    log.trace("...handling a new lab value for %s, checking limits" % (valueName))
+    log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limits)))
     
     if validationProcedure != None and validationProcedure != "":
         
@@ -428,6 +429,7 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
             return writeTags, writeTagValues
         
     validValidity = True
+    validRelease = True
     for limit in limits:
         if limit.get("ValueName","") == valueName:
             log.trace("Found a limit: %s" % (str(limit)))
@@ -438,23 +440,37 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
             validSQC=checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
             from ils.labData.limits import checkReleaseLimit
-            validRelease=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+            validRelease,upperLimit,lowerLimit=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
         
     # If the value is valid then store it to the database and write the value and sample time to the tag (UDT)
-    if validValidity:
-        log.trace("%s passed validity checks" % (valueName))
-        storeValue(valueId, valueName, rawValue, sampleTime, database)
-        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues, log)
-    else:
+    print ""
+    print "validValidity: ", validValidity
+    print "validRelease:  ", validRelease
+    print ""
+    if not(validValidity):
         log.trace("%s *failed* validity checks" % (valueName) )
         
-        from ils.labData.validityLimitWarning import notify
-        foundConsole=notify(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
+        from ils.labData.limitWarning import notifyValidityLimitViolation
+        foundConsole=notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
         # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
         # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
         # different values - not sure if that causes a problem)
         writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)    
+    elif not(validRelease):
+        log.trace("%s *failed* release limit checks" % (valueName) )
         
+        from ils.labData.limitWarning import notifyReleaseLimitViolation
+        foundConsole=notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
+        # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
+        # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
+        # different values - not sure if that causes a problem)
+        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)    
+      
+    else:
+        log.trace("%s passed all limit checks" % (valueName))
+        storeValue(valueId, valueName, rawValue, sampleTime, database)
+        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues, log)
+            
     # regardless of whether we passed or failed validation, add the value to the cache so we don't process it again
     updateCache(valueId, valueName, rawValue, sampleTime)
     
@@ -525,8 +541,8 @@ def updateCache(valueId, valueName, rawValue, sampleTime):
 # Update the Lab Data UDT tags
 # FoundConsole is only relevant if the tag failed validation
 def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues, log):
-    log.trace("Updating lab data tags...")
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
+    log.trace("Updating lab data tags %s..." % (tagName))
     
     # Always write the raw value
     tags.append(tagName + "/rawValue")
@@ -542,10 +558,17 @@ def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, fo
         tags.append(tagName + "/status")
         tagValues.append("Good")
         
-    elif foundConsole:
-        log.trace("Setting the bad value flag to TRUE")
-        tags.append(tagName + "/badValue")
-        tagValues.append(True)
+    else:
+        if foundConsole:
+            log.trace("Value is bad and there is a console - Setting the bad value flag to TRUE")
+            tags.append(tagName + "/badValue")
+            tagValues.append(True)
+            tags.append(tagName + "/status")
+            tagValues.append("bad - waiting for operator review")
+        else:
+            # Don't write to any tags here - the notify function will immediatly call the accept logic if there is not a console
+            # and that logic writes to the tags
+            pass
         
     return tags, tagValues
 

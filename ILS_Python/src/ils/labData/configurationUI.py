@@ -53,8 +53,9 @@ def commitChanges(rootContainer):
     
     provider = "[XOM]"
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
-    #from ils.labData.synchronize import synchronize
-    #synchronize(provider, unitName, txId)
+    
+    from ils.labData.synchronize import synchronize
+    synchronize(provider, unitName, txId)
 
   
 #close transaction when window is closed
@@ -69,7 +70,7 @@ def internalFrameClosing(rootContainer):
             
 #remove the selected row
 def removeDataRow(event):
-    rootContainer = event.source.parent.parent
+    rootContainer = event.source.parent.parent.parent
     txId = rootContainer.txId
     tab = rootContainer.getComponent("Tab Strip").selectedTab
         
