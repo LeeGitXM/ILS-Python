@@ -118,11 +118,22 @@ def setCurrentMessageQueue(chartProperties, queue):
     topScope = getTopLevelProperties(chartProperties)
     topScope[MESSAGE_QUEUE] = queue
 
-
 def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
-    
-    # Need to find a way to get this
+    #TODO Need to find a way to get this using the isolation/production API
     project="XOM"
-    
     from ils.common.ocAlert import sendAlert
     sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds)
+
+# Insert / post a message to a queue from an SFC.
+# If the queueKey if left blank then the current default queue for the unit procedure is used.
+# Expected status are Info, Warning, or Error
+def postToQueue(chartScope, status, message, queueKey=""):
+    from ils.sfc.common.util import getDatabaseName
+    
+    # If the queue was not specified then use the current default queue
+    if queueKey == "":
+        queueKey=getCurrentMessageQueue(chartScope)
+
+    db=getDatabaseName(chartScope)
+    from ils.queue.message import insert
+    insert(queueKey, status, message, db)
