@@ -6,9 +6,15 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
 
+#returns without square brackets
 def getProviderName(chartProperties):
     from system.ils.sfc import getProviderName, getIsolationMode
     return getProviderName(getIsolationMode(chartProperties))
+
+#returns with square brackets
+def getProvider(chartProperties):
+    provider = getProviderName(chartProperties)
+    return "[" + provider + "]"
 
 def s88DataExists(chartProperties, stepProperties, valuePath, location):
     from system.ils.sfc import getRecipeDataTagPath
