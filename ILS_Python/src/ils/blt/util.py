@@ -20,12 +20,13 @@ log = LogUtil.getLogger("com.ils.block")
 #  port  - the input port name
 #  value - the new value, a truth-value
 #  quality - the quality of the new value
-def acceptValue(block,port,value,quality):
+#  time    - the timestamp of the incoming value
+def acceptValue(block,port,value,quality,time):
     #print 'ils.blt.util.acceptValue(block) ...'
     
     if block!=None:
         log.info( "ils.block.util: "+str(block.__class__)+" received "+str(value)+" ("+str(quality)+") on port "+str(port))
-        block.acceptValue(value,quality,port)
+        block.acceptValue(port,value,quality,time)
 #  ============== Externally callable ======
 # Create an instance of a particular class.
 # The arglist contains:

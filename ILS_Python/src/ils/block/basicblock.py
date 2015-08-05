@@ -47,7 +47,7 @@ class BasicBlock():
         
     # Called when a value has arrived on one of our input ports
     # By default, we do nothing
-    def acceptValue(self,value,quality,port):
+    def acceptValue(self,port,value,quality,time):
         self.value = value
         self.quality = quality
         
@@ -85,8 +85,8 @@ class BasicBlock():
         self.parentuuid = uid
         
     # Report to the engine that a new value has appeared at an output port
-    def postValue(self,port,value,quality):
-        self.handler.postValue(self.parentuuid,self.uuid,port,value,quality)
+    def postValue(self,port,value,quality,time):
+        self.handler.postValue(self.parentuuid,self.uuid,port,value,quality,time)
     # Replace or add a property
     # We expect the dictionary to have all the proper attributes
     def setProperty(self,name,dictionary):
