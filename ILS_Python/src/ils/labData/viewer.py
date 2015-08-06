@@ -28,6 +28,7 @@ def internalFrameActivated(rootContainer):
     repeater.templateParams=pds
 
 
+# This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
 def configureLabDatumTable(container):
     username = system.security.getUsername()
     print "Checking for lab data viewed by ", username
@@ -47,22 +48,29 @@ def configureLabDatumTable(container):
     from ils.labData.common import fetchValueId
     valueId = fetchValueId(valueName)
         
-    SQL = "select top 10 H.RawValue as '%s', H.SampleTime, VV.Username "\
-        " from LtHistory  H LEFT OUTER JOIN "\
-        " LtValueViewed VV ON H.HistoryId = VV.HistoryId "\
+    SQL = "select top 10 RawValue as '%s', SampleTime, HistoryId "\
+        " from LtHistory "\
         " where ValueId = %i "\
-        " and (VV.username = '%s' or VV.username is NULL)"\
-        " order by SampleTime desc" % (valueName, valueId, username)
+        " order by SampleTime desc" % (valueName, valueId)
     print SQL
     pds = system.db.runQuery(SQL)
-    container.data=pds 
+#    container.data=pds
+    
+    SQL = "Select HistoryId from LtValueViewed where ValueId = %i and Username = '%s'" % (valueId, username)
+    lastHistoryIdViewed = system.db.runScalarQuery(SQL)
 
     header = [valueDescription, 'seen']
     print "Fetched ", len(pds), " rows, the header is ", header
     data = []
+    newestHistoryId=-1
     for record in pds:
+        historyId = record['HistoryId']
+        
+        if newestHistoryId == -1:
+            container.NewestHistoryId=historyId
+        
         val = record[valueName]
-        username = record['Username']
+        
         if displayDecimals == 0:
             val = "%.0f" % (val)
         elif displayDecimals == 1:
@@ -81,7 +89,7 @@ def configureLabDatumTable(container):
         myDateString=system.db.dateFormat(record["SampleTime"], "HH:mm MM/d")
         val = "%s at %s" % (val, myDateString)
         
-        if username == None:
+        if historyId > lastHistoryIdViewed:
             seen = 0
         else:
             seen = 1
@@ -92,8 +100,8 @@ def configureLabDatumTable(container):
     container.data=ds
 
 
-# This should get called when the window is closed.  As long as the window is open then we want the rows highlighted. 
-# They may want to add a button that says that also cals this to make the red go away, but for now just when the window closes.
+# This is called when the lab data table window is closed.  As long as the window is open, then we want the rows highlighted. 
+# They may want to add a button that calls this to make the red go away, but for now just call it when the window closes.
 def setSeen(rootContainer):
     username = system.security.getUsername()
     
@@ -104,23 +112,21 @@ def setSeen(rootContainer):
     for record in repeater_pds:
         valueId=record['ValueId']
         valueName=record['LabValueName']
+
         print "Updating %s as seen by %s..." % (valueName, username)
 
-        SQL = "select top 10 H.HistoryId, VV.Username "\
-            " from LtHistory  H LEFT OUTER JOIN "\
-            " LtValueViewed VV ON H.HistoryId = VV.HistoryId "\
-            " where ValueId = %i "\
-            " and (VV.username = '%s' or VV.username is NULL)"\
-            " order by SampleTime desc" % (valueId, username)
+        SQL = "select LastHistoryId from LtValue where ValueId = %i " % (valueId)
+        lastHistoryId = system.db.runScalarQuery(SQL)
+        
+        if lastHistoryId != None and lastHistoryId != -1:
+            SQL = "update LtValueViewed set HistoryId = %i where ValueId = %i and username = '%s'" % (lastHistoryId, valueId, username)
+            rows = system.db.runUpdateQuery(SQL)
+            if rows == 0:
+                print "inserting a row since none existed..."
+                SQL = "insert into LtValueViewed (HistoryId, ValueId, Username) values(%i, %i, '%s')" % (lastHistoryId, valueId, username)
+                rows = system.db.runUpdateQuery(SQL)
+        else:
+            print "Skipping %s, probably because it does not have any data..." % (valueName)
 
-        pds = system.db.runQuery(SQL)
-        for record in pds:
-            theUsername = record["Username"]
-            if theUsername == None:
-                historyId = record['HistoryId']
-                SQL = "insert into LtValueViewed (HistoryId, UserName) values (%s, '%s')" % (str(historyId), username)
-                system.db.runUpdateQuery(SQL)
-            else:
-                print "This has already been seen"
         
         

@@ -415,7 +415,9 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
 # then store the value automatically
 def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
                       validationProcedure, writeTags, writeTagValues, log):
-    log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limits)))
+    
+    limit=limits.get(valueId,None)
+    log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limit)))
     
     if validationProcedure != None and validationProcedure != "":
         
@@ -430,23 +432,18 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         
     validValidity = True
     validRelease = True
-    for limit in limits:
-        if limit.get("ValueName","") == valueName:
-            log.trace("Found a limit: %s" % (str(limit)))
-            from ils.labData.limits import checkValidityLimit
-            validValidity,upperLimit,lowerLimit=checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+    if limit != None:
+        log.trace("Evaluating limits for this value: %s" % (str(limit)))
+        from ils.labData.limits import checkValidityLimit
+        validValidity,upperLimit,lowerLimit=checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
-            from ils.labData.limits import checkSQCLimit
-            validSQC=checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+        from ils.labData.limits import checkSQCLimit
+        validSQC=checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
-            from ils.labData.limits import checkReleaseLimit
-            validRelease,upperLimit,lowerLimit=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+        from ils.labData.limits import checkReleaseLimit
+        validRelease,upperLimit,lowerLimit=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
         
     # If the value is valid then store it to the database and write the value and sample time to the tag (UDT)
-    print ""
-    print "validValidity: ", validValidity
-    print "validRelease:  ", validRelease
-    print ""
     if not(validValidity):
         log.trace("%s *failed* validity checks" % (valueName) )
         

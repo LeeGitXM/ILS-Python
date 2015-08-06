@@ -801,8 +801,12 @@ def loadUnitParameters(container):
         provider = "XOM"
         scanClass = "Default"
         
-        parameterName = unitParameter.get("name")    
-        print "Processing Unit Parameter: %s" % (parameterName)
+        parameterName = unitParameter.get("name")
+        
+        # Replace underscores with hyphens
+        parameterName = string.replace(parameterName, "_", "-")
+        
+        print "Processing  Unit Parameter: %s" % (parameterName)
         
         numberOfPoints  = unitParameter.get("numberOfPoints")
 
