@@ -5,8 +5,15 @@ Created on Mar 31, 2015
 '''
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from cookielib import vals_sorted_by_key
 log = LogUtil.getLogger("com.ils.labData.limits")
 sqlLog = LogUtil.getLogger("com.ils.SQL.labData.limits")
+
+# This is a memory resident dictionary of limit dictionaries that survives from scan to scan.  
+# The key is the valueId. It gets updated each cycle.  The main purpose of this cache is so that we can determine
+# 
+limits={}
+
 
 def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
     log.trace("Checking Validity limits for %s..." % (valueName))
@@ -52,35 +59,185 @@ def checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagPro
     return True, upperLimit, lowerLimit
     
 
+
+
 # This fetches the currently active limits that are the Lab Data Toolkit tables regardless of where the
 # values came from.
 def fetchLimits(database = ""):
-    limits=[]
+    #-------------------------------------
+    # When SQC limits are loaded from recipe, the target, standard deviation and validity limits are calculated and then 
+    # stored in the XOM database so no further calculations are necessary.
+    def getSQCLimits(record):
+        limitSource=record["LimitSource"]
+        if limitSource=="DCS":
+            upperSQCLimit, lowerSQCLimit=readSQCLimitsFromDCS(record)
+            upperValidityLimit=-1
+            lowerValidityLimit=-1
+            target=-1
+            standardDeviation=-1
+        else:
+            upperValidityLimit=record["UpperValidityLimit"]
+            lowerValidityLimit=record["LowerValidityLimit"]
+            upperSQCLimit=record["UpperSQCLimit"]
+            lowerSQCLimit=record["LowerSQCLimit"]
+            target=record["LowerSQCLimit"]
+            standardDeviation=record["StandardDeviation"]
+        return upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation
+    #----
+    def getValidityLimits(record):
+        limitSource=record["LimitSource"]
+        if limitSource=="DCS":
+            upperValidityLimit, lowerValidityLimit=readSQCLimitsFromDCS(record)
+        else:
+            upperValidityLimit=record["UpperValidityLimit"]
+            lowerValidityLimit=record["LowerValidityLimit"]
+        return upperValidityLimit, lowerValidityLimit
+    #----
+    def getReleaseLimits(record):
+        limitSource=record["LimitSource"]
+        if limitSource=="DCS":
+            upperReleaseLimit, lowerReleaseLimit=readSQCLimitsFromDCS(record)
+        else:
+            upperReleaseLimit=record["UpperReleaseLimit"]
+            lowerReleaseLimit=record["LowerReleaseLimit"]
+        return upperReleaseLimit, lowerReleaseLimit
+    #-------------------------------------
+    def packLimit(record):
+        valueName=record["ValueName"]
+        limitType=record["LimitType"]
+        
+        d={
+           "ValueName":record["ValueName"],
+           "LimitType":record["LimitType"],
+           "UnitName":record["UnitName"],
+           "Post":record["Post"],
+           "ValidationProcedure":record["ValidationProcedure"]
+           }
 
-    log.trace("Fetching Limits...")
+        if limitType == "SQC":
+            upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation = getSQCLimits(record)
+            d["UpperValidityLimit"]=upperValidityLimit
+            d["LowerValidityLimit"]=lowerValidityLimit
+            d["UpperSQCLimit"]=upperSQCLimit
+            d["LowerSQCLimit"]=lowerSQCLimit
+            d["Target"]=target
+            d["StandardDeviation"]=standardDeviation
+        elif limitType == "Release":
+            d["UpperReleaseLimit"]=record["UpperReleaseLimit"]
+            d["LowerReleaseLimit"]=record["LowerReleaseLimit"]
+        elif limitType == "Validity":
+            upperValidityLimit, lowerValidityLimit = getValidityLimits(record)
+            d["UpperValidityLimit"]=upperValidityLimit
+            d["LowerValidityLimit"]=lowerValidityLimit
+        else:
+            log.error("Unexpected limit type: <%s> for %s" % (limitType, valueName))
+
+        print "Packed a dictionary for %s - %s: " % (valueName, str(d))
+        return d
+    #-----------------------------------------------------
+    # Update the limit UDT (tags) with the new limits 
+    def updateLimitTags(limit):   
+        #-------------
+        def writeLimit(providerName, unitName, valueName, limitType, limitValue):
+            if limitValue != None:
+                tagName="[%s]LabData/%s/%s/%s" % (providerName, unitName, valueName, limitType)
+                print "Writing <%s> to %s" % (limitValue, tagName)
+                result=system.tag.write(tagName, limitValue)
+                if result == 0:
+                    log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
+        #-------------
+        providerName="XOM"
+        unitName=limit.get("UnitName","")
+        valueName=limit.get("ValueName", None)
+        limitType=limit.get("LimitType", None)
+        if limitType == "SQC":
+            writeLimit(providerName, unitName, valueName + '-SQC', "upperValidityLimit", limit.get("UpperValidityLimit", None))
+            writeLimit(providerName, unitName, valueName + '-SQC', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
+            writeLimit(providerName, unitName, valueName + '-SQC', "upperSQCLimit", limit.get("UpperSQCLimit", None))
+            writeLimit(providerName, unitName, valueName + '-SQC', "lowerSQCLimit", limit.get("LowerSQCLimit", None))
+            writeLimit(providerName, unitName, valueName + '-SQC', "target", limit.get("Target", None))
+            writeLimit(providerName, unitName, valueName + '-SQC', "standardDeviation", limit.get("StandardDeviation", None))
+        elif limitType == "Release":
+            writeLimit(providerName, unitName, valueName + '-RELEASE', "upperReleaseLimit", limit.get("UpperReleaseLimit", None))
+            writeLimit(providerName, unitName, valueName + '-RELEASE', "lowerReleaseLimit", limit.get("LowerReleaseLimit", None))
+        elif limitType == "Validity":
+            writeLimit(providerName, unitName, valueName + '-VALIDITY', "upperValidityLimit", limit.get("UpperValidityLimit", None))
+            writeLimit(providerName, unitName, valueName + '-VALIDITY', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
+        else:
+            log.error("Unexpected limit type: <%s> for %s" % (limitType, valueName))
+    #-----------------------------------------------------------
+    def readSQCLimitsFromDCS(record):
+        valueName=record["ValueName"]
+        serverName=record["WriteLocation"]
+        upperItemId=record["OPCUpperItemId"]
+        lowerItemId=record["OPCLowerItemId"]
+        log.trace("Fetching DCS limits for %s from %s (upper: %s, lower: %s)" % (valueName, serverName, upperItemId, lowerItemId))
+        vals=system.opc.readValues(serverName, [upperItemId, lowerItemId] )
+        print "Read values: ", vals
+                
+        qv=vals[0]
+        if qv.quality.isGood():
+            upperSQCLimit=qv.value
+        else:
+            upperSQCLimit=None
+                
+        qv=vals[1]
+        if qv.quality.isGood():
+            lowerSQCLimit=qv.value
+        else:
+            lowerSQCLimit=None
+        
+        return upperSQCLimit, lowerSQCLimit
+    #------------------------------------------
+        
+    print "The old limits are:", limits
+    log.trace("Fetching new Limits...")
     SQL = "select * from LtLimitView"
     sqlLog.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     log.trace("  ...fetched %i limits!" % (len(pds)))
     for record in pds:
-        d={
-           "ValueName":record["ValueName"],
-           "Post":record["Post"],
-           "UpperValidityLimit":record["UpperValidityLimit"],
-           "LowerValidityLimit":record["LowerValidityLimit"],
-           "UpperSQCLimit":record["UpperSQCLimit"],
-           "LowerSQCLimit":record["LowerSQCLimit"],
-           "UpperReleaseLimit":record["UpperReleaseLimit"],
-           "LowerReleaseLimit":record["LowerReleaseLimit"],
-           "Target":record["Target"],
-           "StandardDeviation":record["StandardDeviation"],
-           "ValidationProcedure":record["ValidationProcedure"]
-        }
-        limits.append(d)
+        valueId=record["ValueId"]
+        unitName=record["UnitName"]
+        if valueId in limits:
+            limitType=record["LimitType"]
+            
+            oldLimit=limits[valueId]
+            if limitType == "SQC":
+                upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation=getSQCLimits(record)
 
-#    print "Limits: ", limits
+                if oldLimit["UpperValidityLimit"] != upperValidityLimit or \
+                    oldLimit["LowerValidityLimit"] != lowerValidityLimit or \
+                    oldLimit["UpperSQCLimit"] != upperSQCLimit or \
+                    oldLimit["LowerSQCLimit"] != lowerSQCLimit:
+                    print "An existing SQC limit has changed"
+                    print "Old:", oldLimit
+                    oldLimit["UpperValidityLimit"]=upperValidityLimit
+                    oldLimit["LowerValidityLimit"]=lowerValidityLimit
+                    oldLimit["UpperSQCLimit"]=upperSQCLimit
+                    oldLimit["LowerSQCLimit"]=lowerSQCLimit
+                    oldLimit["Target"]=target
+                    oldLimit["StandardDeviation"]=standardDeviation
+                    updateLimitTags(oldLimit)
+                    limits[valueId]=oldLimit
+                else:
+                    print "No change to an existing SQC limit"
+        else:
+            print "Adding a new limit to the limit data structure"
+            d=packLimit(record)
+            updateLimitTags(d)
+
+            # Now add the dictionary to the big permanent dictionary
+            limits[valueId]=d
+
+    print "The new Limit dictionary is: ", limits
     return limits
 
+
+
+
+
+    
 # This is called in response to a grade change (and also maybe on restart).  It fetches the grade specific SQC limits from recipe and 
 # updates the lab data database tables.
 def updateSQCLimitsFromRecipe(grade, database=""):

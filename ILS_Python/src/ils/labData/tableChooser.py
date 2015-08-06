@@ -81,31 +81,42 @@ def populateRepeater(rootContainer):
     rootContainer.displayTableTitles = ds
 
 def checkForNewData(displayTableTitle):
-    print "Checking ", displayTableTitle
+    print " ---- Checking ---- ", displayTableTitle
     newData = False
+
     username = system.security.getUsername()
-    SQL = "select V.ValueId "\
+    
+    # Select the tables
+    SQL = "select V.ValueId, V.ValueName "\
         " from LtValue V, LtDisplayTable T "\
         " where V.displayTableId = T.DisplayTableId "\
         " and T.DisplayTableTitle = '%s' "\
         " order by ValueName" % (displayTableTitle)
     pds = system.db.runQuery(SQL)
     
+    # Now try to figure out it there is new data  
     for record in pds:
         valueId = record["ValueId"]
-        SQL = "select H.SampleTime, VV.Username "\
-            " from LtHistory  H LEFT OUTER JOIN "\
-            " LtValueViewed VV ON H.HistoryId = VV.HistoryId "\
-            " where ValueId = %i "\
-            " and (VV.username = '%s' or VV.username is NULL)"\
-            " order by SampleTime desc" % (valueId, username)
-
-        vpds = system.db.runQuery(SQL)
-        for vrecord in vpds:
-            if vrecord["Username"] == None:
-                print "There IS new data..."
+        valueName = record["ValueName"]
+        SQL = "select LastHistoryId "\
+            " from LtValue "\
+            " where ValueId = %i " % (valueId)
+        print SQL
+        lastHistoryId = system.db.runScalarQuery(SQL)
+        print "The last history id for %s is %s" % (valueName, str(lastHistoryId))  
+        
+        if lastHistoryId != None and lastHistoryId != -1:
+            SQL = "select HistoryId "\
+                " from LtValueViewed "\
+                " where ValueId = %i "\
+                " and username = '%s' " % (valueId, username)
+            print SQL
+            lastViewedHistoryId = system.db.runScalarQuery(SQL)
+            print "   ...and the lastViewedId is: %s" % (str(lastViewedHistoryId))
+            if lastHistoryId > lastViewedHistoryId:
                 newData = True
-
+                print "There IS new data..."
+        
     return newData
 
 def configureTabStrip(rootContainer, numPages):

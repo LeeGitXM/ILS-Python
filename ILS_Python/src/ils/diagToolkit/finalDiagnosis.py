@@ -97,8 +97,13 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
     
     # This runs in the gateway, but it should work 
     projectName = system.util.getProjectName()
-    #TODO Need to look these up somehow
-    console="VFU"
+    SQL = "select post "\
+        "from TkPost P, TkUnit U, DtApplication A "\
+        "where A.UnitId = U.UnitId "\
+        "and U.PostId = P.postId "\
+        "and A.ApplicationName = '%s'" % (application)
+    console = system.db.runScalarQuery(SQL)
+    print "The console is: ", console
     notifyClients(projectName, console, notificationText)
 
 
@@ -504,7 +509,7 @@ def calculateVectorClamps(quantOutputs):
 def updateQuantOutput(quantOutput, database=''):
     from ils.common.cast import toBool
     
-    log.trace("Updating the database with the recommondations made to QuantOutput: %s" % (str(quantOutput)))
+    log.trace("Updating the database with the recommendations made to QuantOutput: %s" % (str(quantOutput)))
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
     feedbackOutputConditioned = quantOutput.get('FeedbackOutputConditioned', 0.0)
     quantOutputId = quantOutput.get('QuantOutputId', 0)
@@ -517,6 +522,15 @@ def updateQuantOutput(quantOutput, database=''):
     tagpath = quantOutput.get('TagPath','unknown')
     log.trace("Reading Tag: %s" % (tagpath))
     qv=system.tag.read(tagpath)
+    if not(qv.quality.isGood()):
+        log.error("Error reading the current setpoint from (%s), tag quality is: (%s)" % (tagpath, str(qv.quality)))
+ 
+        # Make this quant-output inactive since we can't make an intelligent recommendation without the current setpoint
+        SQL = "update DtQuantOutput set Active = 0 where QuantOutputId = %i " % (quantOutputId)
+        logSQL.trace(SQL)
+        system.db.runUpdateQuery(SQL, database)
+        return
+
     log.trace("  read tag values: %s - %s" % (str(qv.value), str(qv.quality)))
     currentSetpoint=qv.value
 

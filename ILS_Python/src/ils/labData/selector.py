@@ -60,6 +60,8 @@ def valueChanged(tagPath):
         log.trace("Skipping the value change because processing is not enabled")
         
 
+# Update the expression in the selector tag to get its values from a new source
+# This operates entirely on tags and has no database transactions
 def configureSelector(selectorName, sourceName):
     from ils.common.config import getTagProvider
     provider = getTagProvider()
@@ -135,4 +137,14 @@ def configureSelector(selectorName, sourceName):
     
     else:
         log.error("Unsupported UDT Type: %s" % (UDTType))     
-                
+
+# When a selector has a new source, the tags are configured above, but we also need to update the 
+# description of the selector, which shows up in the display table.  For example, they don't want to see
+# Mooney lab data (which doesn't tell them where it came from), they want to see Rx1-ML or Rx2-ML
+def updateSelectorDisplayTableDescription(selectorName, sourceName):
+    
+    SQL = "update LtValue set Description = (select description from LtValue where ValueName = '%s') "\
+        " where ValueName = '%s'" % (sourceName, selectorName)
+    print SQL
+    rows = system.db.runUpdateQuery(SQL)
+    print "Updated %i rows" % (rows)
