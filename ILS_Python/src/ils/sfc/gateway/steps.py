@@ -542,10 +542,18 @@ def writeOutput(scopeContext, stepProperties):
     configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
     config = getWriteOutputConfig(configJson)
     outputRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+
+    # filter out disabled rows:
+    downloadRows = []
+    for row in config.rows:
+        row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
+        download = row.outputRD.get(DOWNLOAD)
+        if download:
+            downloadRows.append(row) # this download has been disabled
     
     # do the timer logic, if there are rows that need timing
     timerNeeded = False
-    for row in config.rows:
+    for row in downloadRows:
         row.timingMinutes = row.outputRD.get(TIMING)
         if row.timingMinutes > 0.:
             timerNeeded = True
@@ -561,15 +569,7 @@ def writeOutput(scopeContext, stepProperties):
     immediateRows = []
     timedRows = []
     finalRows = []
-    downloadRows = []
-     
-    # filter out disabled rows:
-    for row in config.rows:
-        row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
-        download = row.outputRD.get(DOWNLOAD)
-        if download:
-            downloadRows.append(row) # this download has been disabled
-        
+             
     # initialize row data and separate into immediate/timed/final:
     for row in downloadRows:
         row.written = False
