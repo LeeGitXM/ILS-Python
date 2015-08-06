@@ -16,7 +16,7 @@ class MonitoringInfo:
     def  __init__(self, _chartScope, _stepScope, _location, _configRow, isolationMode):
         from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
         from ils.sfc.gateway.recipe import RecipeData
-        from system.ils.sfc.common.Constants import TAG_PATH
+        from system.ils.sfc.common.Constants import TAG_PATH 
         self.configRow = _configRow
         self.inout = RecipeData(_chartScope, _stepScope, _location, _configRow.key)
         tagPath = self.inout.get(TAG_PATH)
@@ -27,7 +27,7 @@ class MonitoringMgr:
     """Manager supporting clients associated with the same MonitorDownloads step"""
             
     def  __init__(self, _chartScope, _stepScope, _recipeLocation, _config, _timer, _timerAttribute, _logger):
-        from ils.sfc.common.util import getIsolationMode
+        from ils.sfc.gateway.api import getIsolationMode
         self.chartScope = _chartScope
         self.config = _config
         self.timer = _timer
@@ -57,7 +57,9 @@ class MonitoringMgr:
         SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, TIMEOUT
 
         from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
-        from ils.sfc.common.util import sendMessageToClient, formatTime, getTopChartRunId
+        from ils.sfc.gateway.util import getTopChartRunId
+        from ils.sfc.common.util import formatTime
+        from ils.sfc.gateway.api import  sendMessageToClient
         from ils.sfc.common.constants import INSTANCE_ID, UNITS
         from java.awt import Color
         import time
@@ -161,7 +163,7 @@ def createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttri
     '''Create the manager and store it in the dropbox. When the top-level chart 
     finishes, the dropbox will automatically delete the manager'''
     from system.ils.sfc import dropboxPut
-    from ils.sfc.common.util import getTopChartRunId
+    from ils.sfc.gateway.util import getTopChartRunId
 
     mgr = MonitoringMgr(chartScope, stepScope, recipeLocation, monitorDownloadsConfig, timer, timerAttribute, logger)
     topChartRunId = getTopChartRunId(chartScope)

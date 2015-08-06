@@ -10,7 +10,7 @@ import system.dataset
 
 def flash(obj):
     from java.awt import Color
-    import threading
+    import threading 
     if not obj.flashing:
         return
     msgArea = obj.getMessageArea()
@@ -76,7 +76,7 @@ class ControlPanel:
     def update(self):
         '''something has changed; update the UI'''
         from ils.sfc.common.sessions import getControlPanelMessages
-        from ils.sfc.common.util import getDatabaseName
+        from ils.sfc.client.util import getDatabaseName 
         database = getDatabaseName(self.chartProperties)
         self.messages = getControlPanelMessages(self.getChartRunId(), database)
         numMessages = len(self.messages)
@@ -205,7 +205,7 @@ class ControlPanel:
         
     def doAcknowledge(self):
         from ils.sfc.common.constants import ID
-        from ils.sfc.common.util import getDatabaseName
+        from ils.sfc.client.util import getDatabaseName
         from ils.sfc.common.sessions import acknowledgeControlPanelMessage
         msg = self.messages[self.messageIndex]
         msgId = msg[ID]

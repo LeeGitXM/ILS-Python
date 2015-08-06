@@ -19,7 +19,7 @@ def sfcActivateStep(payload):
     
 def sfcRunTests(payload):
     '''Run test charts'''
-    from ils.sfc.common.constants import CHART_NAME, TEST_CHART_PATHS, TEST_REPORT_FILE
+    from ils.sfc.common.constants import CHART_NAME, TEST_CHART_PATHS, TEST_REPORT_FILE 
     import system.ils.sfc
     testChartPaths = payload[TEST_CHART_PATHS]
     reportFile = payload[TEST_REPORT_FILE]
@@ -42,7 +42,7 @@ def sfcStartChart(payload):
     import system.util.sendMessage
     import ils.common.units
     from system.ils.sfc import registerSfcProject
-    from ils.sfc.common.util import getDatabaseName
+    from ils.sfc.gateway.api import getDatabaseName
     from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME
     chartName = payload[CHART_NAME]
     project = payload[PROJECT]

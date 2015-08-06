@@ -8,7 +8,7 @@ def getMonitorDownloadWindow(chartRunId, timerId):
     ''' get the monitor download window. If it is not yet open, 
     will wait for a short period of time to try to get it.'''
     import time
-    import system.gui
+    import system.gui 
     from system.ils.sfc.common.Constants import SFC_MONITOR_DOWNLOADS_WINDOW
     for i in range(5):
         windows = system.gui.findWindow(SFC_MONITOR_DOWNLOADS_WINDOW)

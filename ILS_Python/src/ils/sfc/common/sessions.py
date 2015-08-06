@@ -18,7 +18,7 @@ def createSession(user, chartName, chartRunId, db):
     sql = ("insert into " + SESSION_TABLE + \
         " (userName, chartName, chartRunId, status, startTime, lastChangeTime) values ('%s','%s','%s','%s',getdate(),getdate())") \
          % (user, chartName, chartRunId, RUNNING)
-    numUpdated = system.db.runUpdateQuery(sql, db)
+    numUpdated = system.db.runUpdateQuery(sql, db) 
     if(numUpdated != 1):
         handleUnexpectedClientError("insert into session db table failed")
         

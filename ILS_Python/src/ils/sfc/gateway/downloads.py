@@ -16,7 +16,7 @@ def handleTimer(chartScope, stepScope, stepProperties):
     import time
     from ils.sfc.gateway.recipe import RecipeData, splitKey
     
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
     timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
     timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
@@ -39,7 +39,7 @@ def getTimerStart(chartScope, stepScope, stepProperties):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import s88Get
     from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY
-    from ils.sfc.common.util import getTopChartStartTime
+    from ils.sfc.gateway.api import getTopChartStartTime
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
     timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)

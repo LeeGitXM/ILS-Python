@@ -15,7 +15,7 @@ def showDelayNotification(chartRunId, message, ackRequired, messageId, endTimeOr
     windowProps[MESSAGE_ID] = messageId
     windowProps[CHART_RUN_ID]  = chartRunId
     windowProps[WINDOW_ID]  = messageId
-    windowProps[END_TIME]  = endTimeOrNone
+    windowProps[END_TIME]  = endTimeOrNone 
     # ACK_REQUIRED is not used in this case
     window = system.nav.openWindowInstance(DELAY_NOTIFICATION_WINDOW_PATH, windowProps)
     window.closable = False # only close under programmatic control

@@ -23,73 +23,14 @@ def readFile(filepath):
     out.close()
     return result   
 
-def sendMessageToClient(chartProperties, handler, payload):
-    # TODO: check returned list of recipients
-    # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID, TEST_RESPONSE, MESSAGE
-    project = getProject(chartProperties)
-    testResponse = getTestResponse(chartProperties)
-    if testResponse != None:
-        payload[TEST_RESPONSE] = testResponse
-    messageId = createUniqueId()
-    payload[MESSAGE_ID] = messageId
-    # print 'sending message to client', project, handler, payload
-    system.util.sendMessage(project, handler, payload, "C")
-    return messageId
-
-def getLogger():
-    import logging
-    return logging.getLogger('ilssfc')
-
 def boolToBit(bool):
     if bool:
         return 1
     else:
         return 0
-    
-def getTopLevelProperties(chartProperties):
-    while chartProperties.get(PARENT, None) != None:
-        chartProperties = chartProperties.get(PARENT)
-    return chartProperties
-
-def getTopChartStartTime(chartProperties):
-    '''Get the epoch time the chart was started in seconds (float value)'''
-    topProps = getTopLevelProperties(chartProperties)
-    javaDate = topProps['startTime']
-    return javaDate.getTime() * .001
-
-def getTopChartRunId(chartProperties):
-    '''Get the run id of the chart at the TOP enclosing level'''
-    return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
-    
-def getProject(chartProperties):
-    return str(getTopLevelProperties(chartProperties)[PROJECT])
-
-def getTestResponse(chartProperties):
-    from ils.sfc.common.constants import TEST_RESPONSE
-    return getTopLevelProperties(chartProperties).get(TEST_RESPONSE, None)
-
-def getDatabaseName(chartProperties):
-    from system.ils.sfc import getDatabaseName
-    isolationMode = getIsolationMode(chartProperties)
-    return getDatabaseName(isolationMode)
-
-def getTagProvider(chartProperties):
-    from system.ils.sfc import getProviderName
-    isolationMode = getIsolationMode(chartProperties)
-    return getProviderName(isolationMode)
-
-def getIsolationMode(chartProperties):
-    from ils.sfc.common.constants import ISOLATION_MODE
-    topProperties = getTopLevelProperties(chartProperties)
-    return topProperties[ISOLATION_MODE]
-   
-def getTimeFactor(chartProperties):
-    from system.ils.sfc import getTimeFactor
-    isolationMode = getIsolationMode(chartProperties)
-    return getTimeFactor(isolationMode)
 
 def substituteProvider(chartProperties, tagPath):
+    from ils.sfc.gateway.api import getTagProvider
     '''alter the given tag path to reflect the isolation mode provider setting'''
     if tagPath.startswith('[Client]') or tagPath.startswith('[System]'):
         return tagPath
@@ -104,7 +45,8 @@ def substituteProvider(chartProperties, tagPath):
     
 # this should really be in client.util
 def handleUnexpectedClientError(msg):
-    system.gui.errorBox(msg, 'Unexpected Error')
+    system.gui.errorBox(msg, 'Unexpected Error') 
+
 
 def isEmpty(str):
     return str == None or str.strip() == ""

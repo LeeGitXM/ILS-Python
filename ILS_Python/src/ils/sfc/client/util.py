@@ -17,7 +17,7 @@ def sendResponse(messageId, response):
 # This is always called from the client
 def runChart(chartName, isolationMode):
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME
-    project = system.util.getProjectName()
+    project = system.util.getProjectName() 
     user = system.security.getUsername()
     initialChartProps = dict()
     initialChartProps[ISOLATION_MODE] = isolationMode
@@ -144,4 +144,32 @@ def tableExists(table, database):
     except:
         return False
 
+# Unfortunately, these are duplicates of the methods in gateway util and api
+# trying to reference the gateway module from the client--though Python is perfectly
+# happy to do it--causes some problems because modules get dragged in that reference
+# Gateway java methods that are mapped to Python , and those are missing in the client
+# TODO: we shouldn't really be sending chart properties collections to the client;
+# we should extract the necessary info on the gateway side and include it in the message
+# instead
+def getTopChartRunId(chartProperties):
+    from ils.sfc.common.constants import INSTANCE_ID
+    '''Get the run id of the chart at the TOP enclosing level'''
+    return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
     
+def getTopLevelProperties(chartProperties):
+    from ils.sfc.common.constants import INSTANCE_ID, PARENT
+    while chartProperties.get(PARENT, None) != None:
+        chartProperties = chartProperties.get(PARENT)
+    return chartProperties
+
+def getIsolationMode(chartProperties):
+    '''Returns true if the chart is running in isolation mode'''
+    from ils.sfc.common.constants import ISOLATION_MODE
+    topProperties = getTopLevelProperties(chartProperties)
+    return topProperties[ISOLATION_MODE]
+
+def getDatabaseName(chartProperties):
+    '''Get the name of the database this chart is using, taking isolation mode into account'''
+    from system.ils.sfc import getDatabaseName
+    isolationMode = getIsolationMode(chartProperties)
+    return getDatabaseName(isolationMode)

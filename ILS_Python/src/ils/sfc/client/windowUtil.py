@@ -15,7 +15,7 @@ def createPositionedWindow(payload, windowProps = dict()):
     controlPanel = getController(payload[INSTANCE_ID])
     buttonLabel = payload.get(BUTTON_LABEL, None)
     if controlPanel != None:
-        controlPanel.addWindow(buttonLabel, window)
+        controlPanel.addWindow(buttonLabel, window) 
     else:
         print 'couldnt find control panel for run ', payload[INSTANCE_ID]
     return window

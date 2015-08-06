@@ -7,34 +7,21 @@ from system.print import createPrintJob
 import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
 from ils.sfc.client.controlPanel import ControlPanel
-from ils.sfc.common.util import getTopChartRunId
+from ils.sfc.client.util import getTopChartRunId 
 
 def sfcCloseWindow(payload):
     from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.constants import WINDOW, INSTANCE_ID
-    windowPath = payload[WINDOW] 
+    windowPath = payload[WINDOW]  
     system.nav.closeWindow(windowPath)
     controlPanel = getController(payload[INSTANCE_ID])
     if controlPanel != None:
         controlPanel.removeWindows(windowPath)
-
-def sendTestResponse(payload):
-    '''For testing only, short-circuit dialogs etc and send a response back to the gateway'''
-    from ils.sfc.common.constants import TEST_RESPONSE, MESSAGE_ID
-    testResponse = payload.get(TEST_RESPONSE, None)
-    if testResponse == None:
-        return False
-    print('returning test response ' + testResponse)
-    sendResponse(payload[MESSAGE_ID], testResponse)
-    return True
  
 def sfcDialogMessage(payload):
     from ils.sfc.common.constants import METHOD, MESSAGE, MESSAGE_ID, ACK_REQUIRED
     from ils.sfc.client.windowUtil import createPositionedWindow
      
-    if sendTestResponse(payload):
-        return
-
     # ? what is method used for ?
     method = payload[METHOD]
     
@@ -54,16 +41,12 @@ def sfcEnableDisable(payload):
 
 def sfcInput(payload):
     from ils.sfc.common.constants import PROMPT, INPUT, MESSAGE_ID
-    if sendTestResponse(payload):
-        return
         
     response = system.gui.inputBox(payload[PROMPT], INPUT)
     sendResponse(payload[MESSAGE_ID], response)
 
 def sfcLimitedInput(payload):
     from ils.sfc.common.constants import PROMPT, INPUT, MESSAGE_ID
-    if sendTestResponse(payload):
-        return
         
     response = system.gui.inputBox(payload[PROMPT], INPUT)
     sendResponse(payload[MESSAGE_ID], response)
@@ -149,8 +132,6 @@ def sfcDeleteDelayNotification(payload):
 def sfcYesNo(payload):
     from ils.sfc.common.constants import PROMPT, MESSAGE_ID
     from system.ils.sfc.common.Constants import YES, NO
-    if sendTestResponse(payload):
-        return
         
     prompt = payload[PROMPT]
     booleanResponse = system.gui.confirm(prompt, 'Input', False)
@@ -183,8 +164,6 @@ def sfcReviewData(payload):
     from ils.sfc.common.constants import MESSAGE_ID, PRIMARY_CONFIG, SECONDARY_CONFIG, POSTING_METHOD, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
     from ils.sfc.client.windowUtil import createPositionedWindow
     from ils.sfc.common.util import callMethodWithParams
-    if sendTestResponse(payload):
-        return        
     windowProperties = dict()
     windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
     window = createPositionedWindow(payload, windowProperties)

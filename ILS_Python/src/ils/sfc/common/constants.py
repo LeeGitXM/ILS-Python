@@ -110,7 +110,6 @@ STRATEGY = "strategy"
 TAG_PATH = "tagPath"
 TAG = 'tag'
 STRATEGY = "strategy"
-TEST_RESPONSE = 'testResponse'
 TEST_CHART_PATHS = 'testChartPaths'
 TEST_REPORT_FILE = 'testReportFile'
 TIMEOUT = "timeout"

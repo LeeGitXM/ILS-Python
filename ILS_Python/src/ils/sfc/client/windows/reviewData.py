@@ -8,7 +8,7 @@ def okActionPerformed(event):
     windowClosed(event, True)
   
 def cancelActionPerformed(event):
-    windowClosed(event, False)
+    windowClosed(event, False) 
 
 def getTableData():
     '''Get the (possibly modified) data from the table and put it back into JSON'''

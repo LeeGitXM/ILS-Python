@@ -5,4 +5,4 @@ Created on Jan 15, 2015
 '''
 def visionWindowOpened(event):
     rootContainer = event.source.getRootContainer()
-    rootContainer.getComponent('textField').text = rootContainer.message
+    rootContainer.getComponent('textField').text = rootContainer.message 

@@ -14,7 +14,7 @@ def controlPanelAcknowledge(testName, chartRunId):
     if controlPanel == None or controlPanel.messageIndex == None:
         return False
     else:
-        controlPanel.doAcknowledge()
+        controlPanel.doAcknowledge() 
         return True
     
     

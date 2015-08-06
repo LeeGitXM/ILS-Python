@@ -17,7 +17,7 @@ class AbstractSfcIO:
         pass
             
     def getName(self):
-        pass
+        pass 
     
     def set(self, attribute, value):
         '''Set an attribute. The attribute name may be controller-specific.'''

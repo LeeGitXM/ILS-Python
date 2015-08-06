@@ -20,7 +20,7 @@ class TagIO:
     
     def  __init__(self, _tagPath, isolationMode):
         from system.ils.sfc import getProviderName
-        providerName = getProviderName(isolationMode)
+        providerName = getProviderName(isolationMode) 
         self.name = _tagPath
         self.tagPath = '[' + providerName + ']' + _tagPath
     

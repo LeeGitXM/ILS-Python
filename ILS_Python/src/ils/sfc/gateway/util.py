@@ -7,7 +7,6 @@ Created on Sep 30, 2014
 '''
 from system.ils.sfc import getResponse
 from ils.sfc.common.constants import *
-from ils.sfc.common.util import getTopChartRunId
 from ils.sfc.gateway.api import cancelChart
 
 # client message handlers
@@ -47,8 +46,17 @@ def getStepId(stepProperties):
     else:
         return None
 
+def getTopChartRunId(chartProperties):
+    '''Get the run id of the chart at the TOP enclosing level'''
+    return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
+    
+def getTopLevelProperties(chartProperties):
+    while chartProperties.get(PARENT, None) != None:
+        chartProperties = chartProperties.get(PARENT)
+    return chartProperties
+
 def getRecipeScope(stepProperties):
-    return getStepProperty(stepProperties, RECIPE_LOCATION)
+    return getStepProperty(stepProperties, RECIPE_LOCATION) 
 
 def getStepProperty(stepProperties, pname):
     for prop in stepProperties.getProperties():
@@ -97,7 +105,7 @@ def waitOnResponse(requestId, chartScope):
     return response
     
 def sendUpdateControlPanelMsg(chartProperties):
-    from ils.sfc.common.util import sendMessageToClient
+    from ils.sfc.gateway.api import sendMessageToClient
     sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
 
 def getFullChartPath(chartProperties):
@@ -110,7 +118,7 @@ def escapeSingleQuotes(msg):
     return msg.replace("'", "''")
 
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
-    from ils.sfc.common.util import sendMessageToClient
+    from  ils.sfc.gateway.api import sendMessageToClient
     UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
     '''
     Report an unexpected error so that it is visible to the operator--
@@ -240,8 +248,7 @@ def standardDeviation(dataset, column):
     
 def queueMessage(chartScope, msg, priority):
     '''insert a message in the current message queue'''
-    from ils.sfc.gateway.api import getCurrentMessageQueue
-    from ils.sfc.common.util import getDatabaseName
+    from ils.sfc.gateway.api import getCurrentMessageQueue, getDatabaseName
     from ils.queue.message import insert
     currentMsgQueue = getCurrentMessageQueue(chartScope)
     database = getDatabaseName(chartScope)

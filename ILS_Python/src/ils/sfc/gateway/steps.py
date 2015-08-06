@@ -15,9 +15,7 @@ from ils.sfc.gateway.util import *
 from ils.sfc.common.constants import *
 from ils.sfc.common.constants import _STATUS
 
-from ils.sfc.common.util import getDatabaseName
-from ils.sfc.common.util import sendMessageToClient
-from ils.sfc.common.util import getLogger
+from ils.sfc.gateway.api import getDatabaseName, sendMessageToClient, getChartLogger
 
 from ils.queue.message import insert
 from ils.queue.message import clear
@@ -160,7 +158,8 @@ def controlPanelMessage(scopeContext, stepProperties):
         sendUpdateControlPanelMsg(chartScope)
             
 def timedDelay(scopeContext, stepProperties):
-    from ils.sfc.common.util import createUniqueId, getTimeFactor, callMethod
+    from ils.sfc.common.util import createUniqueId, callMethod
+    from ils.sfc.gateway.api import getTimeFactor
     import time
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -292,7 +291,8 @@ def dialogMessage(scopeContext, stepProperties):
     sendMessageToClient(chartScope, DIALOG_MSG_HANDLER, payload)
 
 def collectData(scopeContext, stepProperties):
-    from ils.sfc.common.util import substituteProvider, getTopLevelProperties
+    from ils.sfc.common.util import substituteProvider
+    from ils.sfc.gateway.util import getTopLevelProperties
     # from ils.sfc.gateway.util import getChartLogger
     from system.util import jsonDecode
     from ils.sfc.gateway.util import standardDeviation
@@ -381,12 +381,13 @@ def rawQuery(scopeContext, stepProperties):
 def simpleQuery(scopeContext, stepProperties):
     from ils.sfc.gateway.recipe import substituteScopeReferences
     chartScope = scopeContext.getChartScope()
+    logger = getChartLogger(chartScope)
     database = getDatabaseName(chartScope)
     sql = getStepProperty(stepProperties, SQL)
     processedSql = substituteScopeReferences(chartScope, stepProperties, sql)
     dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 
     if dbRows.rowCount == 0:
-        getLogger.error('No rows returned for query %s', processedSql)
+        logger.error('No rows returned for query %s', processedSql)
         return
     simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
 
@@ -432,6 +433,7 @@ def saveData(scopeContext, stepProperties):
     from system.ils.sfc import getRecipeDataText
     # extract property values
     chartScope = scopeContext.getChartScope()
+    logger = getChartLogger(chartScope)
     stepScope = scopeContext.getStepScope()
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     printFile = getStepProperty(stepProperties, PRINT_FILE) 
@@ -440,7 +442,7 @@ def saveData(scopeContext, stepProperties):
     # get the data at the given location
     recipeData = getRecipeDataText(chartScope, stepScope, recipeLocation)
     if chartScope == None:
-        getLogger.error("data for location " + recipeLocation + " not found")
+        logger.error("data for location " + recipeLocation + " not found")
     
     # write the file
     filepath = createFilepath(chartScope, stepProperties)
@@ -528,7 +530,8 @@ def writeOutput(scopeContext, stepProperties):
     SETPOINT, SUCCESS, PENDING, TARGET_VALUE
     from ils.sfc.common.constants import SLEEP_INCREMENT
     import time
-    from ils.sfc.common.util import getMinutesSince, formatTime, getIsolationMode
+    from ils.sfc.common.util import getMinutesSince, formatTime
+    from ils.sfc.gateway.api import getIsolationMode
     from ils.sfc.gateway.util import getChartLogger, checkForCancelOrPause
     from system.ils.sfc import getWriteOutputConfig
     from ils.sfc.gateway.downloads import handleTimer, writeOutput, waitForTimerStart
@@ -546,6 +549,7 @@ def writeOutput(scopeContext, stepProperties):
     # filter out disabled rows:
     downloadRows = []
     for row in config.rows:
+        row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
         download = row.outputRD.get(DOWNLOAD)
         if download:
             downloadRows.append(row)
@@ -553,7 +557,6 @@ def writeOutput(scopeContext, stepProperties):
     # do the timer logic, if there are rows that need timing
     timerNeeded = False
     for row in downloadRows:
-        row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
         row.timingMinutes = row.outputRD.get(TIMING)
         if row.timingMinutes > 0.:
             timerNeeded = True
@@ -653,7 +656,8 @@ def monitorPV(scopeContext, stepProperties):
     SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, WAIT
     from ils.sfc.common.constants import SLEEP_INCREMENT
     import time
-    from ils.sfc.common.util import getMinutesSince, getIsolationMode
+    from ils.sfc.common.util import getMinutesSince
+    from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getPVMonitorConfig
     from ils.sfc.gateway.downloads import handleTimer
     from ils.sfc.gateway.monitoring import getMonitoringMgr
@@ -857,5 +861,4 @@ def manualDataEntry(scopeContext, stepProperties):
     
     if autoMode == AUTOMATIC:
         for row in config.rows:
-            print 'key', row.key, 'destination', row.destination, 'defaultValue', row.defaultValue
             s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)

@@ -18,7 +18,7 @@ def getRecipeDataTagPath(provider, path):
     # treat dot separators like slash:
     if path.find('.') != -1:
         path = path.replace(".", "/")
-    return getRecipeDataTagPrefix(provider) + path
+    return getRecipeDataTagPrefix(provider) + path 
 
 def createRecipeDataTag(provider, folder, rdName, rdType, valueType):    
     fullFolder = getRecipeDataTagPath(provider, folder)

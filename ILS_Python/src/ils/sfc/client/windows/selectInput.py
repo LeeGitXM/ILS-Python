@@ -9,7 +9,7 @@ def visionWindowOpened(event):
     label = rootContainer.getComponent("label")
     label.text = rootContainer.prompt
     choices = system.util.jsonDecode(rootContainer.choices)
-    headers = [""]
+    headers = [""] 
     choiceRows = []
     for choice in choices:
         choiceRows.append([choice])
