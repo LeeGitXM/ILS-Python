@@ -546,14 +546,14 @@ def writeOutput(scopeContext, stepProperties):
     # filter out disabled rows:
     downloadRows = []
     for row in config.rows:
-        row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
         download = row.outputRD.get(DOWNLOAD)
         if download:
-            downloadRows.append(row) # this download has been disabled
+            downloadRows.append(row)
     
     # do the timer logic, if there are rows that need timing
     timerNeeded = False
     for row in downloadRows:
+        row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
         row.timingMinutes = row.outputRD.get(TIMING)
         if row.timingMinutes > 0.:
             timerNeeded = True
