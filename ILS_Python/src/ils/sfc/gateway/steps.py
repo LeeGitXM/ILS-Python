@@ -539,17 +539,23 @@ def writeOutput(scopeContext, stepProperties):
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     verbose = getStepProperty(stepProperties, VERBOSE)
-    handleTimer(chartScope, stepScope, stepProperties)
- 
     configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
     config = getWriteOutputConfig(configJson)
     outputRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-
-    # wait until the timer starts
-    timerStart = waitForTimerStart(chartScope, stepScope, stepProperties, logger)
-    if timerStart == None:
-        # the chart has been canceled
-        return
+    
+    # do the timer logic, if there are rows that need timing
+    timerNeeded = False
+    for row in config.rows:
+        row.timingMinutes = row.outputRD.get(TIMING)
+        if row.timingMinutes > 0.:
+            timerNeeded = True
+    if timerNeeded:
+        handleTimer(chartScope, stepScope, stepProperties)
+        # wait until the timer starts
+        timerStart = waitForTimerStart(chartScope, stepScope, stepProperties, logger)
+        if timerStart == None:
+            # the chart has been canceled
+            return
             
     # separate rows into timed rows and those that are written after timed rows:
     immediateRows = []
@@ -575,7 +581,6 @@ def writeOutput(scopeContext, stepProperties):
         row.outputRD.set(WRITE_CONFIRMED, None)
         
         # cache some frequently used values from recipe data:
-        row.timingMinutes = row.outputRD.get(TIMING)
         row.value = row.outputRD.get(VALUE)
         row.tagPath = row.outputRD.get(TAG_PATH)
             
