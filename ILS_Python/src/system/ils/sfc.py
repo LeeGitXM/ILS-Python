@@ -65,6 +65,9 @@ def getWriteOutputConfig(json):
 def getMonitorDownloadsConfig(json):
     pass
 
+def getManualDataEntryConfig(json):
+    pass
+
 def getFullStepName(chartScope, stepScope):
     pass
 

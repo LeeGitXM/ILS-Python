@@ -846,4 +846,16 @@ def monitorDownload(scopeContext, stepProperties):
     sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload)             
 
 def manualDataEntry(scopeContext, stepProperties):    
-    pass     
+    from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOMATIC
+    from system.ils.sfc import getManualDataEntryConfig
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    #logger = getChartLogger(chartScope)
+    autoMode = getStepProperty(stepProperties, AUTO_MODE)
+    configJson = getStepProperty(stepProperties, MANUAL_DATA_CONFIG)
+    config = getManualDataEntryConfig(configJson)
+    
+    if autoMode == AUTOMATIC:
+        for row in config.rows:
+            print 'key', row.key, 'destination', row.destination, 'defaultValue', row.defaultValue
+            s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
