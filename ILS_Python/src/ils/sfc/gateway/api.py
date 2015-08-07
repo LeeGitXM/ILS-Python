@@ -11,6 +11,7 @@ def s88DataExists(chartProperties, stepProperties, valuePath, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import recipeDataTagExists
     provider = getProviderName(chartProperties)
+    location = location.lower()
     tagPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     return recipeDataTagExists(provider, tagPath);
   
@@ -19,6 +20,7 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import getRecipeData
     provider = getProviderName(chartProperties)
+    location = location.lower()
     #print 's88Get', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     print "Step Path: ", stepPath
@@ -30,6 +32,7 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import setRecipeData
     provider = getProviderName(chartProperties)
+    location = location.lower()
     #print 's88Set', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     fullPath = stepPath + "/" + valuePath
@@ -116,9 +119,8 @@ def setCurrentMessageQueue(chartProperties, queue):
 
 def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
     '''Send an OC alert'''
-    #TODO Need to find a way to get this using the isolation/production API
-    project="XOM"
     from ils.common.ocAlert import sendAlert
+    project=getProject(chartProperties)
     sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds)
 
 def postToQueue(chartScope, status, message, queueKey=None):
@@ -146,12 +148,6 @@ def getIsolationMode(chartProperties):
     topProperties = getTopLevelProperties(chartProperties)
     return topProperties[ISOLATION_MODE]
 
-#returns without square brackets
-def getProviderName(chartProperties):
-    '''Get the name of the tag provider for this chart'''
-    from system.ils.sfc import getProviderName, getIsolationMode
-    return getProviderName(getIsolationMode(chartProperties))
-
 def getTopChartStartTime(chartProperties):
     '''Get the epoch time the chart was started in seconds (float value)'''
     from ils.sfc.gateway.util import getTopLevelProperties
@@ -165,20 +161,19 @@ def getDatabaseName(chartProperties):
     isolationMode = getIsolationMode(chartProperties)
     return getDatabaseName(isolationMode)
 
-def getTagProvider(chartProperties):
-    '''Get the tag provider, taking isolation mode into account'''
-    from system.ils.sfc import getProviderName
-    isolationMode = getIsolationMode(chartProperties)
-    return getProviderName(isolationMode)
+def getProviderName(chartProperties):
+    '''Get the name of the tag provider for this chart, taking isolation mode into account'''
+    from system.ils.sfc import getProviderName, getIsolationMode
+    return getProviderName(getIsolationMode(chartProperties))
 
 #returns with square brackets
-def getProviderBracketed(chartProperties):
-    '''Like getTagProvider(), but puts brackets around the provider name'''
+def getProvider(chartProperties):
+    '''Like getProviderName(), but puts brackets around the provider name'''
     provider = getProviderName(chartProperties)
     return "[" + provider + "]"
    
 def getTimeFactor(chartProperties):
-    '''Get the factor by which all times should be adjusted (typically used to speed up tests)'''
+    '''Get the factor by which all times should be multiplied (typically used to speed up tests)'''
     from system.ils.sfc import getTimeFactor
     isolationMode = getIsolationMode(chartProperties)
     return getTimeFactor(isolationMode)

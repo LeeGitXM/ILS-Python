@@ -30,12 +30,12 @@ def boolToBit(bool):
         return 0
 
 def substituteProvider(chartProperties, tagPath):
-    from ils.sfc.gateway.api import getTagProvider
+    from ils.sfc.gateway.api import getProviderName
     '''alter the given tag path to reflect the isolation mode provider setting'''
     if tagPath.startswith('[Client]') or tagPath.startswith('[System]'):
         return tagPath
     else:
-        provider = getTagProvider(chartProperties)
+        provider = getProviderName(chartProperties)
         rbIndex = tagPath.index(']')
         if rbIndex >= 0:
             return '[' + provider + ']' + tagPath[rbIndex+1:len(tagPath)]
