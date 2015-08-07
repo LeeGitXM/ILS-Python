@@ -79,3 +79,6 @@ def dropboxGet():
 
 def getRecipeDataTagPath(chartScope, stepScope, scopeId):
     pass
+
+def parseValue(str):
+    pass

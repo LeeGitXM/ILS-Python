@@ -102,7 +102,9 @@ def waitOnResponse(requestId, chartScope):
         response = getResponse(requestId)
     if response == None:
         handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
-    return response
+        return None
+    else:
+        return response[RESPONSE]
     
 def sendUpdateControlPanelMsg(chartProperties):
     from ils.sfc.gateway.api import sendMessageToClient

@@ -182,11 +182,13 @@ def sendMessageToClient(chartProperties, handler, payload):
     '''Send a message to the client(s) of this chart'''
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE
+    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE, INSTANCE_ID
     from ils.sfc.common.util import createUniqueId
+    from ils.sfc.gateway.util import getTopChartRunId
     from system.util import sendMessage
     project = getProject(chartProperties)
     messageId = createUniqueId()
+    payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
     payload[MESSAGE_ID] = messageId 
     # print 'sending message to client', project, handler, payload
     sendMessage(project, handler, payload, "C")

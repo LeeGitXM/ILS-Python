@@ -203,5 +203,20 @@ def sfcUpdateDownloads(payload):
     monitorDownloads.updateTable(downloadsWindow, rows, timerStart)
     
 def sfcManualDataEntry(payload):
-    pass
+    from ils.sfc.common.constants import MESSAGE_ID, POSTING_METHOD, DATA, START_TIME, TIMEOUT
+    from ils.sfc.client.windowUtil import createPositionedWindow
+    from ils.sfc.common.util import callMethodWithParams
+    import time
+    windowProperties = dict()
+    windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
+    windowProperties[START_TIME] = time.time()
+    windowProperties[TIMEOUT] = payload[TIMEOUT]
+    window = createPositionedWindow(payload, windowProperties)
+    postingMethod = payload[POSTING_METHOD]
+    dataset = payload[DATA]
+    keys = ['window', 'dataset']
+    values = [window, dataset]
+    callMethodWithParams(postingMethod, keys, values)
+
+
 
