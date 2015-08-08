@@ -65,7 +65,6 @@ def convertUnits(chartProperties, value, fromUnitName, toUnitName):
     if(toUnit == None):
         raise Exception("No unit found for " + toUnitName)
     convertedValue = fromUnit.convertTo(toUnit, value)
-    print 'convertedValue', convertedValue
     return convertedValue
     
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
