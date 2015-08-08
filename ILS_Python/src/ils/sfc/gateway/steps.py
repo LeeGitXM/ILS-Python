@@ -416,7 +416,7 @@ def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, 
         valueData = dict()
         copyRowToDict(dbRows, rowNum, valueData, create)
         jsonValue = jsonEncode(valueData)
-        print 'key', key, 'jsonValue', jsonValue
+        # print 'key', key, 'jsonValue', jsonValue
         structData['value'] = jsonValue
         s88ScopeChanged(chartScope, recipeScope)     
     else:
@@ -570,7 +570,7 @@ def writeOutput(scopeContext, stepProperties):
          
         # clear out the dynamic values in recipe data:
         row.outputRD.set(DOWNLOAD_STATUS, None)
-        print 'setting output download status to NONE'
+        # print 'setting output download status to NONE'
         # STEP_TIMESTAMP and STEP_TIME will be set below
         row.outputRD.set(WRITE_CONFIRMED, None)
         
@@ -732,8 +732,8 @@ def monitorPV(scopeContext, stepProperties):
 
         persistencePending = False
         for configRow in config.rows:
-            print ''
-            print 'PV monitor', configRow.pvKey  
+            # print ''
+            # print 'PV monitor', configRow.pvKey  
             
             if not configRow.enabled:
                 continue;
@@ -744,9 +744,9 @@ def monitorPV(scopeContext, stepProperties):
                 configRow.isDownloaded = (downloadStatus == SUCCESS)
                 if configRow.isDownloaded:
                     configRow.downloadTime = configRow.ioRD.get(STEP_TIME)
-            print 'configRow.download', configRow.download,  'configRow.isDownloaded', configRow.isDownloaded   
+            # print 'configRow.download', configRow.download,  'configRow.isDownloaded', configRow.isDownloaded   
             if configRow.download == WAIT and not configRow.isDownloaded:
-                print '   skipping; not downloaded'
+                # print '   skipping; not downloaded'
                 continue
              
             presentValue = configRow.io.getCurrentValue()
@@ -787,10 +787,10 @@ def monitorPV(scopeContext, stepProperties):
                 referenceTime = startTime
             else:
                 referenceTime = configRow.downloadTime
-            print 'minutes since reference', getMinutesSince(referenceTime)
+            # print 'minutes since reference', getMinutesSince(referenceTime)
             deadTimeExceeded = getMinutesSince(referenceTime) > configRow.deadTime 
-            print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
-            print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
+            # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
+            # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
             # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
             if inToleranceNow:
                 if isPersistent:
@@ -800,7 +800,7 @@ def monitorPV(scopeContext, stepProperties):
                     persistencePending = True
             else: # out of tolerance
                 if deadTimeExceeded:
-                    print '   setting error status'
+                    # print '   setting error status'
                     configRow.status = ERROR
                 elif isConsistentlyOutOfTolerance:
                     configRow.status = WARNING
@@ -808,7 +808,7 @@ def monitorPV(scopeContext, stepProperties):
                     configRow.status = NOT_CONSISTENT
                         
             configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
-            print '   status ', configRow.status    
+            # print '   status ', configRow.status    
         time.sleep(SLEEP_INCREMENT)
         elapsedMinutes =  getMinutesSince(startTime)
         
@@ -866,13 +866,11 @@ def manualDataEntry(scopeContext, stepProperties):
         response = waitOnResponse(messageId, chartScope)
         returnDataset = response[DATA]
         for row in range(returnDataset.rowCount):
-            strValue = returnDataset.getValueAt(row, 1)
+            value = returnDataset.getValueAt(row, 1)
             units = returnDataset.getValueAt(row, 2)
             key = returnDataset.getValueAt(row, 5)
             destination = returnDataset.getValueAt(row, 6)
-            value = parseValue(strValue)
             if units == None:
-                print 'setting', key, 'to', value
                 s88Set(chartScope, stepScope, key, value, destination)
             else:
                 s88SetWithUnits(chartScope, stepScope, key, value, destination, units)

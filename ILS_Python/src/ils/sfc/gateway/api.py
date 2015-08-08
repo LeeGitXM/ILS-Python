@@ -23,7 +23,6 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     location = location.lower()
     #print 's88Get', valuePath, location
     stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-    print "Step Path: ", stepPath
     fullPath = stepPath + "/" + valuePath
     return getRecipeData(provider, fullPath);
 
@@ -48,27 +47,33 @@ def getUnitsPath(valuePath):
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     '''Like s88Get, but adds a conversion to the given units'''
-    from ils.common.units import Unit
     value = s88Get(chartProperties, stepProperties, valuePath, location)
-    unitsPath = getUnitsPath(valuePath)
-    existingUnitsName = s88Get(chartProperties, stepProperties, unitsPath, location)
+    existingUnitsKey = getUnitsPath(valuePath)
+    existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
+    convertedValue = convertUnits(value, existingUnitsName, returnUnitsName)
+    return convertedValue
+
+def convertUnits(chartProperties, value, fromUnitName, toUnitName):    
+    '''Convert a value from one unit to another'''
+    from ils.common.units import Unit
     database = getDatabaseName(chartProperties)
     Unit.lazyInitialize(database)
-    existingUnits = Unit.getUnit(existingUnitsName)
-    if(existingUnits == None):
-        raise Exception("No unit found for " + existingUnitsName)
-    returnUnits = Unit.getUnit(returnUnitsName)
-    if(returnUnits == None):
-        raise Exception("No unit found for " + returnUnitsName)
-    convertedValue = existingUnits.convertTo(returnUnits, value)
+    fromUnit = Unit.getUnit(fromUnitName)
+    if(fromUnit == None):
+        raise Exception("No unit found for " + fromUnitName)
+    toUnit = Unit.getUnit(toUnitName)
+    if(toUnit == None):
+        raise Exception("No unit found for " + toUnitName)
+    convertedValue = fromUnit.convertTo(toUnit, value)
+    print 'convertedValue', convertedValue
     return convertedValue
     
-def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, newUnitsName):
+def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
     '''Like s88Set, but adds a conversion from the given units'''
-    s88Set(chartProperties, stepProperties, valuePath, value, location)
-    #TODO: fix the unit conversion
-    #unitsPath = getUnitsPath(valuePath)
-    #s88Set(chartProperties, stepProperties, unitsPath, location, newUnitsName)
+    existingUnitsKey = getUnitsPath(valuePath)
+    existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
+    convertedValue = convertUnits(chartProperties, value, valueUnitsName, existingUnitsName)
+    s88Set(chartProperties, stepProperties, valuePath, convertedValue, location)
         
 def pauseChart(chartProperties):
     '''pause the entire chart hierarchy'''

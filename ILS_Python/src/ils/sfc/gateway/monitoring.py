@@ -141,7 +141,7 @@ class MonitoringMgr:
             elif monitorStatus == NOT_CONSISTENT:    
                 pvColor = Color.orange
             elif monitorStatus == ERROR or monitorStatus == TIMEOUT: 
-                print 'monitoring: status is', monitorStatus   
+                # print 'monitoring: status is', monitorStatus   
                 pvColor = Color.red
             if pvColor == Color.red or stepTimeColor == Color.red:
                 setpointColor = Color.yellow
