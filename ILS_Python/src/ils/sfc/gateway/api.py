@@ -194,8 +194,9 @@ def sendMessageToClient(chartProperties, handler, payload):
     messageId = createUniqueId()
     payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
     payload[MESSAGE_ID] = messageId 
+    payload[MESSAGE] = handler
     # print 'sending message to client', project, handler, payload
-    sendMessage(project, handler, payload, "C")
+    sendMessage(project, 'sfcMessage', payload, "C")
     return messageId
 
 def getChartLogger(chartScope):
