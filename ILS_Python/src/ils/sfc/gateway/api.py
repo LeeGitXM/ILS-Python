@@ -19,12 +19,16 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import getRecipeData
+    from system.ils.sfc.common.Constants import NAMED
     provider = getProviderName(chartProperties)
     location = location.lower()
     #print 's88Get', valuePath, location
-    stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-    fullPath = stepPath + "/" + valuePath
-    return getRecipeData(provider, fullPath);
+    if location == NAMED:
+        return getRecipeData(provider, valuePath);
+    else:
+        stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+        fullPath = stepPath + "/" + valuePath
+        return getRecipeData(provider, fullPath);
 
 def s88Set(chartProperties, stepProperties, valuePath, value, location):
     '''Set the given recipe data's value'''
@@ -33,9 +37,13 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
     provider = getProviderName(chartProperties)
     location = location.lower()
     #print 's88Set', valuePath, location
-    stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-    fullPath = stepPath + "/" + valuePath
-    setRecipeData(provider, fullPath, value, True);
+    from system.ils.sfc.common.Constants import NAMED
+    if location == NAMED:
+        setRecipeData(provider, valuePath, value, True);
+    else:
+        stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+        fullPath = stepPath + "/" + valuePath
+        setRecipeData(provider, fullPath, value, True);
     
 def getUnitsPath(valuePath):
     '''Get the key for the units associated with a recipe data value; None if not found'''
