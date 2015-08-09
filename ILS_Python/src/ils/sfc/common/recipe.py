@@ -11,6 +11,8 @@ from system.ils.sfc.common.Constants import RECIPE_DATA_FOLDER
 
 def getRecipeDataTagPrefix(provider):
     '''Return the root folder for recipe data'''
+    if provider == None:
+        provider = ""
     return "[" + provider + "]" + RECIPE_DATA_FOLDER + "/"
 
 def getRecipeDataTagPath(provider, path):
