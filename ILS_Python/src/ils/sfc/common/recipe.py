@@ -9,6 +9,20 @@ self-explanatory
 import system.tag
 from system.ils.sfc.common.Constants import RECIPE_DATA_FOLDER
 
+
+def getBasicTagPath(chartProperties, stepProperties, valuePath, location):
+    '''Get "basic" path to the recipe data tag, which does not include the provider or top folder'''
+    from system.ils.sfc import getRecipeDataTagPath
+    from system.ils.sfc.common.Constants import NAMED
+    location = location.lower()
+    if location == NAMED:
+        tagPath = valuePath
+    else:
+        # Confusing!! this is not the getRecipeDataTagPath that is in this module!
+        stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+        tagPath = stepPath + "/" + valuePath
+    return tagPath
+
 def getRecipeDataTagPrefix(provider):
     '''Return the root folder for recipe data'''
     if provider == None:
@@ -29,25 +43,7 @@ def createRecipeDataTag(provider, folder, rdName, rdType, valueType):
     system.tag.addTag(parentPath=fullFolder, name=rdName, tagType='UDT_INST', attributes={"UDTParentType":typePath})
     if rdType == 'Value' and valueType != None:
         changeType(fullFolder, rdName, valueType)
-        
-def deleteRecipeDataTag(provider, tagPath):    
-    fullPath = getRecipeDataTagPath(provider, tagPath)
-    #print 'delete', fullPath
-    system.tag.removeTag(fullPath)
-    
-def getRecipeData(provider, path): 
-    fullPath = getRecipeDataTagPath(provider, path)
-    qv = system.tag.read(fullPath)
-    #print 'get', fullPath, qv.value, 'quality', qv.quality
-    return qv.value
 
-def setRecipeData(provider, path, value, synchronous):
-    fullPath = getRecipeDataTagPath(provider, path)
-    #print 'set', fullPath, value
-    if synchronous:
-        system.tag.writeSynchronous(fullPath, value)
-    else:
-        system.tag.write(fullPath, value)
 
 def changeType(folderPath, tagName, valueType):
     '''For the value tag only, change the tag type to
@@ -68,6 +64,29 @@ def changeType(folderPath, tagName, valueType):
     print 'setting', valuePath, " to ", newType
     system.tag.editTag(valuePath, overrides={"value": {"DataType":newType}})
     
+# TODO: the methods below are called form Java. Should consolidate with s88 methods
+# in api            
+def deleteRecipeDataTag(provider, tagPath):    
+    fullPath = getRecipeDataTagPath(provider, tagPath)
+    #print 'delete', fullPath
+    system.tag.removeTag(fullPath)
+
+def getRecipeData(provider, path): 
+    fullPath = getRecipeDataTagPath(provider, path)
+    qv = system.tag.read(fullPath)
+    #print 'get', fullPath, qv.value, 'quality', qv.quality
+    return qv.value
+    
+def setRecipeData(provider, path, value, synchronous):
+    fullPath = getRecipeDataTagPath(provider, path)
+    #print 'set', fullPath, value
+    if synchronous:
+        system.tag.writeSynchronous(fullPath, value)
+    else:
+        system.tag.write(fullPath, value)
+        
 def recipeDataTagExists(provider, path):
     fullPath = getRecipeDataTagPath(provider, path)
     return system.tag.exists(fullPath)
+
+

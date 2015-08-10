@@ -193,12 +193,12 @@ def getDefaultMessageQueueScope():
 
 def sendChartStatus(projectName, payload):
     from system.util import sendMessage
-    payload[MESSAGE] = UPDATE_CHART_STATUS_HANDLER
+    payload[CLIENT_MSG_HANDLER] = UPDATE_CHART_STATUS_HANDLER
     sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def sendCurrentOperation(projectName, payload):
     from system.util import sendMessage
-    payload[MESSAGE] = UPDATE_CURRENT_OPERATION_HANDLER
+    payload[CLIENT_MSG_HANDLER] = UPDATE_CURRENT_OPERATION_HANDLER
     sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def getDelaySeconds(delay, delayUnit):

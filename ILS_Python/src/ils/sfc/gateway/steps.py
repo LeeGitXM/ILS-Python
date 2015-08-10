@@ -841,8 +841,10 @@ def monitorDownload(scopeContext, stepProperties):
 
 def manualDataEntry(scopeContext, stepProperties):    
     from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOMATIC
-    from system.ils.sfc import getManualDataEntryConfig, parseValue
+    from system.ils.sfc import getManualDataEntryConfig 
     from system.dataset import toDataSet
+    from ils.sfc.common.util import isEmpty
+    from ils.sfc.gateway.api import s88GetType, parseValue
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     #logger = getChartLogger(chartScope)
@@ -854,10 +856,14 @@ def manualDataEntry(scopeContext, stepProperties):
         for row in config.rows:
             s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
     else:
-        header = ['Description', 'Value', 'Units', 'Low Limit', 'High Limit', 'Key', 'Destination']    
+        header = ['Description', 'Value', 'Units', 'Low Limit', 'High Limit', 'Key', 'Destination', 'Type']    
         rows = []
+        # Note: apparently the IA toDataSet method tries to coerce all column values to
+        # the same type and throws an error if that is not possible. Since we potentially
+        # have a mixture of float and string values, we convert them all to strings:
         for row in config.rows:
-            rows.append([row.prompt, row.defaultValue, row.units, row.lowLimit, row.highLimit, row.key, row.destination])
+            tagType = s88GetType(chartScope, stepScope, row.key, row.destination)
+            rows.append([row.prompt, str(row.defaultValue), row.units, row.lowLimit, row.highLimit, row.key, row.destination, tagType])
         dataset = toDataSet(header, rows)
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
@@ -865,12 +871,17 @@ def manualDataEntry(scopeContext, stepProperties):
         messageId = sendMessageToClient(chartScope, 'sfcManualDataEntry', payload)             
         response = waitOnResponse(messageId, chartScope)
         returnDataset = response[DATA]
+        # Note: all values are returned as strings; we depend on s88Set to make the conversion
         for row in range(returnDataset.rowCount):
-            value = returnDataset.getValueAt(row, 1)
+            strValue = returnDataset.getValueAt(row, 1)
             units = returnDataset.getValueAt(row, 2)
             key = returnDataset.getValueAt(row, 5)
             destination = returnDataset.getValueAt(row, 6)
-            if units == None:
+            valueType = returnDataset.getValueAt(row, 7)
+            print 'key', key, 'valueType', valueType, 'units', units, 'isEmpty', isEmpty(units)
+            value = parseValue(strValue, valueType)
+            if isEmpty(units):
                 s88Set(chartScope, stepScope, key, value, destination)
             else:
+                print 'units', units, ''
                 s88SetWithUnits(chartScope, stepScope, key, value, destination, units)

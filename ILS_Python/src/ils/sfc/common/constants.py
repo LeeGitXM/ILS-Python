@@ -57,6 +57,7 @@ FETCH_MODE = "fetchMode"
 FILEPATH = "filepath"
 FILENAME = "filename"
 GLOBAL = "global"
+CLIENT_MSG_HANDLER = "clientMsgHandler"
 ID = 'id'
 INPUT = 'input'
 INSTANCE_ID = 'instanceId'
@@ -182,3 +183,10 @@ GREEN = '0,128,0'
 
 # the default sleep increment for loops, in seconds
 SLEEP_INCREMENT = 5
+
+# tag value types 
+STRING = 'string'
+INT = 'int'
+FLOAT = 'float'
+BOOLEAN = 'boolean'
+# DATE = 'date'

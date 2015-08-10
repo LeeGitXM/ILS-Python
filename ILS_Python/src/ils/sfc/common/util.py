@@ -118,3 +118,18 @@ def printDataset(dataset):
 def doNothing():
     '''a minimal function useful for timing tests on java-to-python calls'''
     return 1
+
+
+def splitPath(path):
+    '''split the path at the last slash'''
+    slashIndex = path.rfind('/')
+    if slashIndex == -1:
+        return path, ''
+    else:
+        prefix = path[0 : slashIndex]
+        suffix = path[slashIndex + 1 : len(path)]
+        return prefix, suffix
+    
+def isString(value):
+    '''check if the given value is a string'''
+    return isinstance(value, str)

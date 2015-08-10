@@ -68,9 +68,6 @@ def getMonitorDownloadsConfig(json):
 def getManualDataEntryConfig(json):
     pass
 
-def getFullStepName(chartScope, stepScope):
-    pass
-
 def dropboxPut():
     pass
 
