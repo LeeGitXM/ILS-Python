@@ -28,7 +28,7 @@ def handleTimer(chartScope, stepScope, stepProperties):
         
     setTimer = getStepProperty(stepProperties, TIMER_SET)
     if setTimer:
-        print 'starting timer'
+        # print 'starting timer'
         startTime = time.time()
         timer.set(timerAttribute, startTime)
 
@@ -43,7 +43,7 @@ def getTimerStart(chartScope, stepScope, stepProperties):
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
     timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
-    print 'getting timer start'
+    # print 'getting timer start'
     # do a sanity check on the timer start:
     topChartStartTime = getTopChartStartTime(chartScope)
     if timerStart != None and timerStart < topChartStartTime:
@@ -58,7 +58,7 @@ def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
     import time
     timerStart = getTimerStart(chartScope, stepScope, stepProperties)
     while timerStart == None:
-        print 'waiting for timer start'
+        # print 'waiting for timer start'
         # Handle Cancel/Pause, as this loop has sleeps
         chartStatus = checkForCancelOrPause(stepScope, logger)
         if chartStatus == CANCEL:

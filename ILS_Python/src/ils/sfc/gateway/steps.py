@@ -9,7 +9,7 @@ Created on Sep 30, 2014
 '''
 
 #from com.ils.sfc.common import IlsSfcNames
-from ils.sfc.gateway.api import s88Set, s88Get
+from ils.sfc.gateway.api import s88Set, s88Get, s88SetWithUnits
 from ils.common.units import Unit
 from ils.sfc.gateway.util import * 
 from ils.sfc.common.constants import *
@@ -107,8 +107,7 @@ def yesNo(scopeContext, stepProperties):
     payload = dict()
     payload[PROMPT] = prompt 
     messageId = sendMessageToClient(chartScope, YES_NO_HANDLER, payload)
-    response = waitOnResponse(messageId, chartScope)
-    value = response[RESPONSE]
+    value = waitOnResponse(messageId, chartScope)
     s88Set(chartScope, stepScope, key, value, recipeLocation)
 
 def cancel(scopeContext, stepProperties):
@@ -233,7 +232,6 @@ def enableDisable(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    payload[INSTANCE_ID] = chartScope[INSTANCE_ID]
     sendMessageToClient(chartScope, ENABLE_DISABLE_HANDLER, payload)
 
 def selectInput(scopeContext, stepProperties):
@@ -254,8 +252,7 @@ def selectInput(scopeContext, stepProperties):
     payload[CHOICES] = choices
     
     messageId = sendMessageToClient(chartScope, SELECT_INPUT_HANDLER, payload) 
-    response = waitOnResponse(messageId, chartScope)
-    value = response[RESPONSE]
+    value = waitOnResponse(messageId, chartScope)
     s88Set(chartScope, stepScope, key, value, recipeLocation)
 
 def getLimitedInput(scopeContext, stepProperties):
@@ -274,8 +271,7 @@ def getLimitedInput(scopeContext, stepProperties):
     responseIsValid = False
     while not responseIsValid:
         messageId = sendMessageToClient(chartScope, LIMITED_INPUT_HANDLER, payload)   
-        responseMsg = waitOnResponse(messageId, chartScope)
-        responseValue = responseMsg[RESPONSE]
+        responseValue = waitOnResponse(messageId, chartScope)
         try:
             floatValue = float(responseValue)
             responseIsValid = floatValue >= minimumValue and floatValue <= maximumValue
@@ -364,8 +360,7 @@ def getInput(scopeContext, stepProperties):
     payload[PROMPT] = prompt
     
     messageId = sendMessageToClient(chartScope, INPUT_HANDLER, payload)
-    response = waitOnResponse(messageId, chartScope)
-    value = response[RESPONSE]
+    value = waitOnResponse(messageId, chartScope)
     s88Set(chartScope, stepScope, key, value, recipeLocation )
 
 def rawQuery(scopeContext, stepProperties):
@@ -421,7 +416,7 @@ def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, 
         valueData = dict()
         copyRowToDict(dbRows, rowNum, valueData, create)
         jsonValue = jsonEncode(valueData)
-        print 'key', key, 'jsonValue', jsonValue
+        # print 'key', key, 'jsonValue', jsonValue
         structData['value'] = jsonValue
         s88ScopeChanged(chartScope, recipeScope)     
     else:
@@ -484,13 +479,11 @@ def closeWindow(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     sendMessageToClient(chartScope, 'sfcCloseWindow', payload)
 
 def showWindow(scopeContext, stepProperties):   
     chartScope = scopeContext.getChartScope()
     payload = dict()
-    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
@@ -512,11 +505,9 @@ def reviewData(scopeContext, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[PRIMARY_CONFIG] = getReviewData(chartScope, stepScope, primaryConfig, showAdvice)
     payload[SECONDARY_CONFIG] = getReviewData(chartScope, stepScope, secondaryConfig, showAdvice)
-    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     messageId = sendMessageToClient(chartScope, REVIEW_DATA_HANDLER, payload) 
     
-    responseMsg = waitOnResponse(messageId, chartScope)
-    responseValue = responseMsg[RESPONSE]
+    responseValue = waitOnResponse(messageId, chartScope)
     recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
     recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
     s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
@@ -579,7 +570,7 @@ def writeOutput(scopeContext, stepProperties):
          
         # clear out the dynamic values in recipe data:
         row.outputRD.set(DOWNLOAD_STATUS, None)
-        print 'setting output download status to NONE'
+        # print 'setting output download status to NONE'
         # STEP_TIMESTAMP and STEP_TIME will be set below
         row.outputRD.set(WRITE_CONFIRMED, None)
         
@@ -741,8 +732,8 @@ def monitorPV(scopeContext, stepProperties):
 
         persistencePending = False
         for configRow in config.rows:
-            print ''
-            print 'PV monitor', configRow.pvKey  
+            # print ''
+            # print 'PV monitor', configRow.pvKey  
             
             if not configRow.enabled:
                 continue;
@@ -753,9 +744,9 @@ def monitorPV(scopeContext, stepProperties):
                 configRow.isDownloaded = (downloadStatus == SUCCESS)
                 if configRow.isDownloaded:
                     configRow.downloadTime = configRow.ioRD.get(STEP_TIME)
-            print 'configRow.download', configRow.download,  'configRow.isDownloaded', configRow.isDownloaded   
+            # print 'configRow.download', configRow.download,  'configRow.isDownloaded', configRow.isDownloaded   
             if configRow.download == WAIT and not configRow.isDownloaded:
-                print '   skipping; not downloaded'
+                # print '   skipping; not downloaded'
                 continue
              
             presentValue = configRow.io.getCurrentValue()
@@ -796,10 +787,10 @@ def monitorPV(scopeContext, stepProperties):
                 referenceTime = startTime
             else:
                 referenceTime = configRow.downloadTime
-            print 'minutes since reference', getMinutesSince(referenceTime)
+            # print 'minutes since reference', getMinutesSince(referenceTime)
             deadTimeExceeded = getMinutesSince(referenceTime) > configRow.deadTime 
-            print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
-            print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
+            # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
+            # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
             # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
             if inToleranceNow:
                 if isPersistent:
@@ -809,7 +800,7 @@ def monitorPV(scopeContext, stepProperties):
                     persistencePending = True
             else: # out of tolerance
                 if deadTimeExceeded:
-                    print '   setting error status'
+                    # print '   setting error status'
                     configRow.status = ERROR
                 elif isConsistentlyOutOfTolerance:
                     configRow.status = WARNING
@@ -817,7 +808,7 @@ def monitorPV(scopeContext, stepProperties):
                     configRow.status = NOT_CONSISTENT
                         
             configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
-            print '   status ', configRow.status    
+            # print '   status ', configRow.status    
         time.sleep(SLEEP_INCREMENT)
         elapsedMinutes =  getMinutesSince(startTime)
         
@@ -844,14 +835,14 @@ def monitorDownload(scopeContext, stepProperties):
     monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)
     mgr = createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger)
     payload = dict()
-    payload[INSTANCE_ID] = getTopChartRunId(chartScope)
     payload[DATA_ID] = mgr.getTimerId()
     transferStepPropertiesToMessage(stepProperties, payload)
     sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload)             
 
 def manualDataEntry(scopeContext, stepProperties):    
     from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOMATIC
-    from system.ils.sfc import getManualDataEntryConfig
+    from system.ils.sfc import getManualDataEntryConfig, parseValue
+    from system.dataset import toDataSet
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     #logger = getChartLogger(chartScope)
@@ -862,3 +853,24 @@ def manualDataEntry(scopeContext, stepProperties):
     if autoMode == AUTOMATIC:
         for row in config.rows:
             s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
+    else:
+        header = ['Description', 'Value', 'Units', 'Low Limit', 'High Limit', 'Key', 'Destination']    
+        rows = []
+        for row in config.rows:
+            rows.append([row.prompt, row.defaultValue, row.units, row.lowLimit, row.highLimit, row.key, row.destination])
+        dataset = toDataSet(header, rows)
+        payload = dict()
+        transferStepPropertiesToMessage(stepProperties, payload)
+        payload[DATA] = dataset
+        messageId = sendMessageToClient(chartScope, 'sfcManualDataEntry', payload)             
+        response = waitOnResponse(messageId, chartScope)
+        returnDataset = response[DATA]
+        for row in range(returnDataset.rowCount):
+            value = returnDataset.getValueAt(row, 1)
+            units = returnDataset.getValueAt(row, 2)
+            key = returnDataset.getValueAt(row, 5)
+            destination = returnDataset.getValueAt(row, 6)
+            if units == None:
+                s88Set(chartScope, stepScope, key, value, destination)
+            else:
+                s88SetWithUnits(chartScope, stepScope, key, value, destination, units)

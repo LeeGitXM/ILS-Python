@@ -39,11 +39,11 @@ def sfcStartChart(payload):
        (CAUTION--there are other gateway script mgrs) and also to save the name of
        the invoking project, as chart status message currently needs this.'''
     import system.sfc.startChart
-    import system.util.sendMessage
+    from system.util import sendMessage
     import ils.common.units
     from system.ils.sfc import registerSfcProject
     from ils.sfc.gateway.api import getDatabaseName
-    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME
+    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME, MESSAGE
     chartName = payload[CHART_NAME]
     project = payload[PROJECT]
     registerSfcProject(project)
@@ -52,7 +52,8 @@ def sfcStartChart(payload):
     runId = system.sfc.startChart(chartName, payload)
     # add the chart run id so the client can know it
     payload[INSTANCE_ID] = runId
-    system.util.sendMessage(project, 'sfcChartStarted', payload, "C")
+    payload[MESSAGE] = 'sfcChartStarted'
+    sendMessage(project, 'sfcMessage', payload, "C")
     return runId
 
 def sfcFailTest(payload):

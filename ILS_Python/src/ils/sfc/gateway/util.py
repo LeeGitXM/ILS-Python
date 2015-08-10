@@ -102,7 +102,9 @@ def waitOnResponse(requestId, chartScope):
         response = getResponse(requestId)
     if response == None:
         handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
-    return response
+        return None
+    else:
+        return response[RESPONSE]
     
 def sendUpdateControlPanelMsg(chartProperties):
     from ils.sfc.gateway.api import sendMessageToClient
@@ -190,12 +192,14 @@ def getDefaultMessageQueueScope():
     return OPERATION_SCOPE
 
 def sendChartStatus(projectName, payload):
-    import system.util
-    system.util.sendMessage(projectName, UPDATE_CHART_STATUS_HANDLER, payload, "C")
+    from system.util import sendMessage
+    payload[MESSAGE] = UPDATE_CHART_STATUS_HANDLER
+    sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def sendCurrentOperation(projectName, payload):
-    import system.util
-    system.util.sendMessage(projectName, UPDATE_CURRENT_OPERATION_HANDLER, payload, "C")
+    from system.util import sendMessage
+    payload[MESSAGE] = UPDATE_CURRENT_OPERATION_HANDLER
+    sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def getDelaySeconds(delay, delayUnit):
     '''get the delay time and convert to seconds'''

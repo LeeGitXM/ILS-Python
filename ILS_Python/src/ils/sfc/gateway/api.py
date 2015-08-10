@@ -11,6 +11,7 @@ def s88DataExists(chartProperties, stepProperties, valuePath, location):
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import recipeDataTagExists
     provider = getProviderName(chartProperties)
+    location = location.lower()
     tagPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
     return recipeDataTagExists(provider, tagPath);
   
@@ -18,22 +19,31 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import getRecipeData
+    from system.ils.sfc.common.Constants import NAMED
     provider = getProviderName(chartProperties)
+    location = location.lower()
     #print 's88Get', valuePath, location
-    stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-    print "Step Path: ", stepPath
-    fullPath = stepPath + "/" + valuePath
-    return getRecipeData(provider, fullPath);
+    if location == NAMED:
+        return getRecipeData(provider, valuePath);
+    else:
+        stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+        fullPath = stepPath + "/" + valuePath
+        return getRecipeData(provider, fullPath);
 
 def s88Set(chartProperties, stepProperties, valuePath, value, location):
     '''Set the given recipe data's value'''
     from system.ils.sfc import getRecipeDataTagPath
     from ils.sfc.common.recipe import setRecipeData
     provider = getProviderName(chartProperties)
+    location = location.lower()
     #print 's88Set', valuePath, location
-    stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-    fullPath = stepPath + "/" + valuePath
-    setRecipeData(provider, fullPath, value, True);
+    from system.ils.sfc.common.Constants import NAMED
+    if location == NAMED:
+        setRecipeData(provider, valuePath, value, True);
+    else:
+        stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
+        fullPath = stepPath + "/" + valuePath
+        setRecipeData(provider, fullPath, value, True);
     
 def getUnitsPath(valuePath):
     '''Get the key for the units associated with a recipe data value; None if not found'''
@@ -45,27 +55,32 @@ def getUnitsPath(valuePath):
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     '''Like s88Get, but adds a conversion to the given units'''
-    from ils.common.units import Unit
     value = s88Get(chartProperties, stepProperties, valuePath, location)
-    unitsPath = getUnitsPath(valuePath)
-    existingUnitsName = s88Get(chartProperties, stepProperties, unitsPath, location)
+    existingUnitsKey = getUnitsPath(valuePath)
+    existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
+    convertedValue = convertUnits(value, existingUnitsName, returnUnitsName)
+    return convertedValue
+
+def convertUnits(chartProperties, value, fromUnitName, toUnitName):    
+    '''Convert a value from one unit to another'''
+    from ils.common.units import Unit
     database = getDatabaseName(chartProperties)
     Unit.lazyInitialize(database)
-    existingUnits = Unit.getUnit(existingUnitsName)
-    if(existingUnits == None):
-        raise Exception("No unit found for " + existingUnitsName)
-    returnUnits = Unit.getUnit(returnUnitsName)
-    if(returnUnits == None):
-        raise Exception("No unit found for " + returnUnitsName)
-    convertedValue = existingUnits.convertTo(returnUnits, value)
+    fromUnit = Unit.getUnit(fromUnitName)
+    if(fromUnit == None):
+        raise Exception("No unit found for " + fromUnitName)
+    toUnit = Unit.getUnit(toUnitName)
+    if(toUnit == None):
+        raise Exception("No unit found for " + toUnitName)
+    convertedValue = fromUnit.convertTo(toUnit, value)
     return convertedValue
     
-def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, newUnitsName):
+def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
     '''Like s88Set, but adds a conversion from the given units'''
-    s88Set(chartProperties, stepProperties, valuePath, value, location)
-    #TODO: fix the unit conversion
-    #unitsPath = getUnitsPath(valuePath)
-    #s88Set(chartProperties, stepProperties, unitsPath, location, newUnitsName)
+    existingUnitsKey = getUnitsPath(valuePath)
+    existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
+    convertedValue = convertUnits(chartProperties, value, valueUnitsName, existingUnitsName)
+    s88Set(chartProperties, stepProperties, valuePath, convertedValue, location)
         
 def pauseChart(chartProperties):
     '''pause the entire chart hierarchy'''
@@ -116,9 +131,8 @@ def setCurrentMessageQueue(chartProperties, queue):
 
 def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
     '''Send an OC alert'''
-    #TODO Need to find a way to get this using the isolation/production API
-    project="XOM"
     from ils.common.ocAlert import sendAlert
+    project=getProject(chartProperties)
     sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds)
 
 def postToQueue(chartScope, status, message, queueKey=None):
@@ -146,12 +160,6 @@ def getIsolationMode(chartProperties):
     topProperties = getTopLevelProperties(chartProperties)
     return topProperties[ISOLATION_MODE]
 
-#returns without square brackets
-def getProviderName(chartProperties):
-    '''Get the name of the tag provider for this chart'''
-    from system.ils.sfc import getProviderName, getIsolationMode
-    return getProviderName(getIsolationMode(chartProperties))
-
 def getTopChartStartTime(chartProperties):
     '''Get the epoch time the chart was started in seconds (float value)'''
     from ils.sfc.gateway.util import getTopLevelProperties
@@ -165,20 +173,19 @@ def getDatabaseName(chartProperties):
     isolationMode = getIsolationMode(chartProperties)
     return getDatabaseName(isolationMode)
 
-def getTagProvider(chartProperties):
-    '''Get the tag provider, taking isolation mode into account'''
-    from system.ils.sfc import getProviderName
-    isolationMode = getIsolationMode(chartProperties)
-    return getProviderName(isolationMode)
+def getProviderName(chartProperties):
+    '''Get the name of the tag provider for this chart, taking isolation mode into account'''
+    from system.ils.sfc import getProviderName, getIsolationMode
+    return getProviderName(getIsolationMode(chartProperties))
 
 #returns with square brackets
-def getProviderBracketed(chartProperties):
-    '''Like getTagProvider(), but puts brackets around the provider name'''
+def getProvider(chartProperties):
+    '''Like getProviderName(), but puts brackets around the provider name'''
     provider = getProviderName(chartProperties)
     return "[" + provider + "]"
    
 def getTimeFactor(chartProperties):
-    '''Get the factor by which all times should be adjusted (typically used to speed up tests)'''
+    '''Get the factor by which all times should be multiplied (typically used to speed up tests)'''
     from system.ils.sfc import getTimeFactor
     isolationMode = getIsolationMode(chartProperties)
     return getTimeFactor(isolationMode)
@@ -187,14 +194,17 @@ def sendMessageToClient(chartProperties, handler, payload):
     '''Send a message to the client(s) of this chart'''
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE
+    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE, INSTANCE_ID
     from ils.sfc.common.util import createUniqueId
+    from ils.sfc.gateway.util import getTopChartRunId
     from system.util import sendMessage
     project = getProject(chartProperties)
     messageId = createUniqueId()
+    payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
     payload[MESSAGE_ID] = messageId 
+    payload[MESSAGE] = handler
     # print 'sending message to client', project, handler, payload
-    sendMessage(project, handler, payload, "C")
+    sendMessage(project, 'sfcMessage', payload, "C")
     return messageId
 
 def getChartLogger(chartScope):
