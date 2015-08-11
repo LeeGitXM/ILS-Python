@@ -62,10 +62,10 @@ def valueChanged(tagPath):
 
 # Update the expression in the selector tag to get its values from a new source
 # This operates entirely on tags and has no database transactions
-def configureSelector(selectorName, sourceName):
+def configureSelector(unitName, selectorName, sourceName):
     from ils.common.config import getTagProvider
     provider = getTagProvider()
-    parentTagPath = '[' + provider + ']LabData/'
+    parentTagPath = '[' + provider + ']LabData/' + unitName + '/'
     tagPath = parentTagPath + selectorName
     log.trace("Configuring: %s" % (tagPath))
 
@@ -90,6 +90,9 @@ def configureSelector(selectorName, sourceName):
     
         log.trace("%s - %s" % (tagPath, str(parameters)))
         system.tag.editTag(tagPath, parameters=parameters)
+        
+        print " **** NEED TO UPDATE THE SELECTOR TABLE ****"
+        SQL = "update"
         
     elif UDTType == "Lab Data/Lab Selector Limit SQC":
         lowerSQCLimitTag='{[.]../' + sourceName + '/lowerSQCLimit}'

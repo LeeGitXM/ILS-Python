@@ -218,6 +218,13 @@ def addValueRowCallback(event):
         " and (V.DisplayTableId is null or V.DisplayTableId <> %s) "\
         " order by ValueName" % (str(postId), str(displayTableId))
 
+    # For display table purposes, I think engineers want to be able to configure lab data on a screen regardless
+    # of what unit it is assigned to.
+    SQL = "select ValueName "\
+        " from LtValue V "\
+        " where V.DisplayTableId is null or V.DisplayTableId <> %s "\
+        " order by ValueName" % (str(displayTableId))
+
     print SQL
     pds = system.db.runQuery(SQL, tx=txId)
     print "Selected %i lab values" % (len(pds))
@@ -226,7 +233,7 @@ def addValueRowCallback(event):
     window = system.nav.openWindow("Lab Data/New Lab Data Display Table Row", payload)
     system.nav.centerWindow(window)
     
-#
+# 
 # When we "add" or "delete" from the bottom table we are not inserting or deleting rows, instead we are updating the reference 
 # in the LtValue table 
 #

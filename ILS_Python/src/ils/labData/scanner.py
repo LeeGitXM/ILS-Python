@@ -419,6 +419,9 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
     limit=limits.get(valueId,None)
     log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limit)))
     
+    # Always write the raw value and the raw sample time immediately
+    writeTags, writeTagValues = updateRawTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, writeTags, writeTagValues, log)
+
     if validationProcedure != None and validationProcedure != "":
         
         from ils.labData.callbackDispatcher import customValidate
@@ -534,17 +537,26 @@ def storeSelector(tagPath, database):
 def updateCache(valueId, valueName, rawValue, sampleTime):
     lastValueCache[valueName]={'valueId': valueId, 'rawValue': rawValue, 'sampleTime': sampleTime}
 
+
+# Update the Lab Data UDT tags
+# FoundConsole is only relevant if the tag failed validation
+def updateRawTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues, log):
+    tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
+    log.trace("Updating *raw* lab data tags %s..." % (tagName))
+    
+    tags.append(tagName + "/rawValue")
+    tagValues.append(rawValue)
+    tags.append(tagName + "/rawSampleTime")
+    tagValues.append(sampleTime)
+
+    return tags, tagValues
     
 # Update the Lab Data UDT tags
 # FoundConsole is only relevant if the tag failed validation
 def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues, log):
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     log.trace("Updating lab data tags %s..." % (tagName))
-    
-    # Always write the raw value
-    tags.append(tagName + "/rawValue")
-    tagValues.append(rawValue)
-    
+       
     if valid:
         tags.append(tagName + "/sampleTime")
         tagValues.append(sampleTime)
@@ -563,7 +575,7 @@ def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, fo
             tags.append(tagName + "/status")
             tagValues.append("bad - waiting for operator review")
         else:
-            # Don't write to any tags here - the notify function will immediatly call the accept logic if there is not a console
+            # Don't write to any tags here - the notify function will immediately call the accept logic if there is not a console
             # and that logic writes to the tags
             pass
         

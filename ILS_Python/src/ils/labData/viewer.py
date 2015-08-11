@@ -5,6 +5,28 @@ Created on Mar 29, 2015
 '''
 import system
 
+# This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
+# but not multiple screens showing the same table.
+def launcher(displayTableTitle):
+    print "Launching..."
+
+    # Check to see if this lab table is already open
+    windowName = 'Lab Data/Lab Data Viewer'
+    
+    # First check if this queue is already displayed
+    windows = system.gui.findWindow(windowName)
+    for window in windows:
+        windowDisplayTableTitle = window.rootContainer.displayTableTitle
+        print "found a window with key: ", windowDisplayTableTitle
+        if windowDisplayTableTitle == displayTableTitle:
+            system.nav.centerWindow(window)
+            system.gui.messageBox("The lab table is already open!")
+            return
+
+    window = system.nav.openWindowInstance(windowName, {'displayTableTitle' : displayTableTitle})
+    system.nav.centerWindow(window)
+    
+
 # Initialize the lab data viewer page with all of the parameters that are defined for 
 # this page.  There is really only one component on this window - the template repeater.
 # Once the repeater is configured, each component in the repeater knows how to configure itself.
@@ -28,7 +50,7 @@ def internalFrameActivated(rootContainer):
     repeater.templateParams=pds
 
 
-# This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
+#  This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
 def configureLabDatumTable(container):
     username = system.security.getUsername()
     print "Checking for lab data viewed by ", username
@@ -37,13 +59,7 @@ def configureLabDatumTable(container):
     displayDecimals=container.DisplayDecimals
     print "Configuring the Lab Datum Viewer table for ", valueName
     
-    # We need to update the column attribute dataset because we change the column name for every parameter and this 
-    # freaks out the table widget (same is true for the power table).
-    table=container.getComponent("Power Table")
-    columnAttributesData=table.columnAttributesData
-    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
-    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
-    table.columnAttributesData=columnAttributesData
+
     
     from ils.labData.common import fetchValueId
     valueId = fetchValueId(valueName)
@@ -54,14 +70,14 @@ def configureLabDatumTable(container):
         " order by SampleTime desc" % (valueName, valueId)
     print SQL
     pds = system.db.runQuery(SQL)
-#    container.data=pds
     
     SQL = "Select HistoryId from LtValueViewed where ValueId = %i and Username = '%s'" % (valueId, username)
     lastHistoryIdViewed = system.db.runScalarQuery(SQL)
 
-    header = [valueDescription, 'seen']
+    header = [str(valueDescription), 'seen']
     print "Fetched ", len(pds), " rows, the header is ", header
     data = []
+    tableData = []
     newestHistoryId=-1
     for record in pds:
         historyId = record['HistoryId']
@@ -95,10 +111,21 @@ def configureLabDatumTable(container):
             seen = 1
             
         data.append([val,seen])
+        tableData.append([val])
     
     ds = system.dataset.toDataSet(header, data)
     container.data=ds
 
+    # We need to update the column attribute dataset because we change the column name for every parameter and this 
+    # freaks out the table widget (same is true for the power table).
+    table=container.getComponent("Power Table")
+    columnAttributesData=table.columnAttributesData
+    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "name", valueName)
+    columnAttributesData=system.dataset.setValue(columnAttributesData, 0, "label", valueDescription)
+    table.columnAttributesData=columnAttributesData
+    
+    ds = system.dataset.toDataSet([str(valueDescription)], tableData)
+    table.data=ds
 
 # This is called when the lab data table window is closed.  As long as the window is open, then we want the rows highlighted. 
 # They may want to add a button that calls this to make the red go away, but for now just call it when the window closes.
