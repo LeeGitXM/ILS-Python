@@ -851,7 +851,6 @@ def manualDataEntry(scopeContext, stepProperties):
     autoMode = getStepProperty(stepProperties, AUTO_MODE)
     configJson = getStepProperty(stepProperties, MANUAL_DATA_CONFIG)
     config = getManualDataEntryConfig(configJson)
-    
     if autoMode == AUTOMATIC:
         for row in config.rows:
             s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)

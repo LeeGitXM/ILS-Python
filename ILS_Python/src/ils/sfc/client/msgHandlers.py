@@ -221,7 +221,7 @@ def sfcManualDataEntry(payload):
 def dispatchMessage(payload):
     from ils.sfc.common.util import callMethodWithParams
     from ils.sfc.common.constants import CLIENT_MSG_HANDLER
-    print payload
+    print 'dispatchMessage', payload
     methodPath = 'ils.sfc.client.msgHandlers.' + payload[CLIENT_MSG_HANDLER]
     keys = ['payload']
     values = [payload]

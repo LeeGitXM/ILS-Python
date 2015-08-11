@@ -43,7 +43,7 @@ def sfcStartChart(payload):
     import ils.common.units
     from system.ils.sfc import registerSfcProject
     from ils.sfc.gateway.api import getDatabaseName
-    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME, MESSAGE
+    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME, CLIENT_MSG_HANDLER
     chartName = payload[CHART_NAME]
     project = payload[PROJECT]
     registerSfcProject(project)
@@ -52,7 +52,7 @@ def sfcStartChart(payload):
     runId = system.sfc.startChart(chartName, payload)
     # add the chart run id so the client can know it
     payload[INSTANCE_ID] = runId
-    payload[MESSAGE] = 'sfcChartStarted'
+    payload[CLIENT_MSG_HANDLER] = 'sfcChartStarted'
     sendMessage(project, 'sfcMessage', payload, "C")
     return runId
 
