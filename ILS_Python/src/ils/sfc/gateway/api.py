@@ -6,52 +6,36 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
 
+def s88GetFullTagPath(chartProperties, stepProperties, valuePath, location):
+    '''Get the full path to the recipe data tag, taking isolation mode into account'''
+    from ils.sfc.common.recipe import getRecipeDataTagPath, getBasicTagPath
+    provider = getProviderName(chartProperties)
+    basicTagPath = getBasicTagPath(chartProperties, stepProperties, valuePath, location)
+    return getRecipeDataTagPath(provider, basicTagPath)
+
 def s88DataExists(chartProperties, stepProperties, valuePath, location):
     '''Returns true if the the specified recipe data exists'''
-    from system.ils.sfc import getRecipeDataTagPath
-    from ils.sfc.common.recipe import recipeDataTagExists
-    provider = getProviderName(chartProperties)
-    location = location.lower()
-    tagPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-    return recipeDataTagExists(provider, tagPath);
+    import system.tag
+    fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
+    return system.tag.exists(fullTagPath)
   
 def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
-    from system.ils.sfc import getRecipeDataTagPath
-    from ils.sfc.common.recipe import getRecipeData
-    from system.ils.sfc.common.Constants import NAMED
-    provider = getProviderName(chartProperties)
-    location = location.lower()
-    #print 's88Get', valuePath, location
-    if location == NAMED:
-        return getRecipeData(provider, valuePath);
-    else:
-        stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-        fullPath = stepPath + "/" + valuePath
-        return getRecipeData(provider, fullPath);
+    import system.tag
+    fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
+    qv = system.tag.read(fullTagPath)
+    return qv.value
+
+def s88GetType(chartProperties, stepProperties, valuePath, location):
+    '''Get the underlying recipe data type; return one of STRING, INT, FLOAT, or BOOLEAN from ils.sfc.common.constants'''
+    fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
+    return getTagType(fullTagPath);
 
 def s88Set(chartProperties, stepProperties, valuePath, value, location):
     '''Set the given recipe data's value'''
-    from system.ils.sfc import getRecipeDataTagPath
-    from ils.sfc.common.recipe import setRecipeData
-    provider = getProviderName(chartProperties)
-    location = location.lower()
-    #print 's88Set', valuePath, location
-    from system.ils.sfc.common.Constants import NAMED
-    if location == NAMED:
-        setRecipeData(provider, valuePath, value, True);
-    else:
-        stepPath = getRecipeDataTagPath(chartProperties, stepProperties, location)
-        fullPath = stepPath + "/" + valuePath
-        setRecipeData(provider, fullPath, value, True);
-    
-def getUnitsPath(valuePath):
-    '''Get the key for the units associated with a recipe data value; None if not found'''
-    valueKeyIndex = valuePath.find(".value")
-    if valueKeyIndex > 0:
-        return valuePath[0 : valueKeyIndex] + ".units"
-    else:
-        raise Exception("no value field to get units for in " + valuePath)
+    import system.tag
+    fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
+    system.tag.writeSynchronous(fullTagPath, value)
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     '''Like s88Get, but adds a conversion to the given units'''
@@ -194,7 +178,7 @@ def sendMessageToClient(chartProperties, handler, payload):
     '''Send a message to the client(s) of this chart'''
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE, INSTANCE_ID
+    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE, INSTANCE_ID, CLIENT_MSG_HANDLER
     from ils.sfc.common.util import createUniqueId
     from ils.sfc.gateway.util import getTopChartRunId
     from system.util import sendMessage
@@ -202,7 +186,7 @@ def sendMessageToClient(chartProperties, handler, payload):
     messageId = createUniqueId()
     payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
     payload[MESSAGE_ID] = messageId 
-    payload[MESSAGE] = handler
+    payload[CLIENT_MSG_HANDLER] = handler
     # print 'sending message to client', project, handler, payload
     sendMessage(project, 'sfcMessage', payload, "C")
     return messageId
@@ -212,3 +196,61 @@ def getChartLogger(chartScope):
     from ils.sfc.gateway.util import getFullChartPath
     from system.util import getLogger
     return getLogger(getFullChartPath(chartScope))
+
+def getTagType(tagPath): 
+    '''Get the value type of a tag; returns one of INT, FLOAT, BOOLEAN, STRING from ils.sfc.common.constants'''
+    from system.tag import browseTags
+    from ils.sfc.common.constants import INT, FLOAT, BOOLEAN, STRING
+    from ils.sfc.common.util import splitPath
+    # unfortunately browseTags() doesn't like a full path to the tag, so we
+    # hack that by giving everything up to the last slash as a folder, then
+    # use the tag name as a filter.
+    prefix, suffix = splitPath(tagPath)  
+    tagFilter = '*' + suffix  
+    browseTags = browseTags(prefix, tagFilter)
+    if len(browseTags) == 1:
+        dataType = str(browseTags[0].dataType)
+        # print 'dataType', dataType, 'prefix', prefix, 'filter', filter
+        # Possible dataTypes: Int1, Int2, Int4, Int8, Float4, Float8, Boolean, String, and DateTime
+        if dataType == 'Int1' or dataType == 'Int2' or dataType == 'Int4' or dataType == 'Int8':
+            return INT
+        elif dataType == 'Float4' or dataType == 'Float8':
+            return FLOAT
+        elif dataType == 'Boolean':
+            return BOOLEAN
+        else:
+            return STRING
+        
+    else:
+        return None
+
+def parseValue(strValue, tagType):
+    '''parse a value of the given type from a string'''
+    from ils.sfc.common.constants import INT, FLOAT, BOOLEAN, STRING
+    if tagType == INT:
+        return int(strValue)
+    elif tagType == FLOAT:
+        return float(strValue)
+    elif tagType == BOOLEAN:
+        return bool(strValue)
+    elif tagType == STRING:
+        return strValue
+
+def convertToTagType(fullTagPath, value):
+    '''if necessary, convert a string value to match the tag type'''
+    from ils.sfc.common.util import isString
+    from ils.sfc.common.constants import STRING
+    if isString(value):
+        tagType = getTagType(fullTagPath)
+        if tagType != STRING:            
+            value = parseValue(value, tagType)
+    return value
+
+def getUnitsPath(valuePath):
+    '''Get the key for the units associated with a recipe data value; None if not found'''
+    valueKeyIndex = valuePath.find(".value")
+    if valueKeyIndex > 0:
+        return valuePath[0 : valueKeyIndex] + ".units"
+    else:
+        raise Exception("no value field to get units for in " + valuePath)
+
