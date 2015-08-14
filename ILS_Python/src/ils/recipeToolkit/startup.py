@@ -77,3 +77,26 @@ def createTags(tagProvider):
         expr = "dateDiff({[.]startTime}, now(0), 'sec')"
         system.tag.addTag(parentPath=path, name=name, tagType="EXPRESSION", dataType="Int8", attributes={"Expression":expr})
 
+
+def restoreLocalRecipe(recipeFamily, grade, database=""):
+    log.info("Restoring local recipe values for family: %s, grade: %s" % (str(recipeFamily), str(grade)) )
+
+    SQL = "Select VD.StoreTag, GD.RecommendedValue "\
+        " from RtGradeMaster GM, RtGradeDetail GD, RtValueDefinition VD, TkWriteLocation WL, RtRecipeFamily RF "\
+        " where GM.Active = 1 "\
+        " and GM.RecipeFamilyId = GD.RecipeFamilyId "\
+        " and GM.Grade = GD.Grade "\
+        " and GM.Version = GD.Version "\
+        " and RF.RecipeFamilyId = GM.RecipeFamilyId "\
+        " and VD.WriteLocationId = WL.WriteLocationId "\
+        " and WL.Alias = 'Local' "\
+        " and GD.RecipeFamilyId = VD.RecipeFamilyId"\
+        " and GM.Grade = %s "\
+        " and RF.RecipeFamilyName = '%s' "\
+        " and GD.ValueId = VD.ValueId  "\
+        " order by StoreTag" % (str(grade), recipeFamily)
+
+    pds = system.db.runQuery(SQL, database)
+    print "Fetched %i rows" % (len(pds))
+    for record in pds:
+        print record["StoreTag"], record["RecommendedValue"]

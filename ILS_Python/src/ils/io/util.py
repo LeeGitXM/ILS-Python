@@ -20,7 +20,6 @@ def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDiff
     if string.upper(str(val1)) == "NAN" or string.upper(str(val2)) == "NAN":
         val1 = string.upper(str(val1))
         val2 = string.upper(str(val2))
-        print "At least one of the value to be compared is NaN: <%s> <%s>" % (val1, val2)
 
         if (val1 == 'NAN' or val1 == '' or val1 == 'NONE' or val1 == None) and (val2 == 'NAN' or val2 == '' or val2 == 'NONE' or val2 == None):
             return True
@@ -142,3 +141,9 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
 
     log.error("Timed out waiting for write complete of %s!" % (tagRoot))
     return False, "Timed out waiting for write complete"
+
+# This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
+# provider without the brackets.
+def getProviderFromTagpath(tagPath):
+    provider=tagPath[1:tagPath.find(']')]
+    return provider

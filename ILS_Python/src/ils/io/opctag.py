@@ -15,6 +15,7 @@
 # NOTE: Subclasses must be added to __init__.py.
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.io.util import getProviderFromTagpath
 log = LogUtil.getLogger("com.ils.io")
 
 class OPCTag():
@@ -28,6 +29,7 @@ class OPCTag():
     # Set any default properties.
     # For this abstract class there aren't many (yet).
     def initialize(self,tagPath):    
+        print "in OPCTag.initialize() The tagPath is ", tagPath
         self.path = str(tagPath)
         
     # Check for the existence of the tag
@@ -40,7 +42,12 @@ class OPCTag():
             log.error(reason)
             return False, reason
  
-        writeEnabled = system.tag.read("[XOM]Configuration/writeEnabled").value
+        provider = getProviderFromTagpath(self.path)
+        recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+        globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+        writeEnabled = recipeWriteEnabled and globalWriteEnabled
+        print "The combined write enabled status is: ", writeEnabled
+        
         if not(writeEnabled):
             log.info('Write bypassed for %s because writes are inhibited!' % (self.path))
             return False, 'Writing is currently inhibited'

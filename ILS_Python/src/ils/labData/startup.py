@@ -18,6 +18,7 @@ def gateway():
     
     # History should be restored on startup, but generally the site needs to perform a site specific selector
     # configuration BEFORE the history is performed.
+    
 
 def client():
     from ils.labData.version import version
@@ -99,31 +100,37 @@ def restoreValueHistory(tagProvider, daysToRestore=7, database=""):
                 log.error("   -- no data found for %s --" % (itemId))
 
             else:
-                for lastQV in valueList:
-                    rawValue=lastQV.value
-                    sampleTime=lastQV.timestamp
-                    quality=lastQV.quality
-                    log.trace("   %s : %s : %s" % (str(rawValue), str(sampleTime), str(quality)))
-                    if quality.isGood():
-                        log.trace("      ...inserting...")
-                        SQL = "insert into LtHistory (ValueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, getdate())"
-                        id=system.db.runPrepUpdate(SQL, [valueId, rawValue, sampleTime],getKey=True)
+                id = None
                 
-                # Write the last value to the tag and then to LastHistoryUd in LtValue
-                SQL = "update ltValue set lastHistoryId = %i where valueId = %i" % (id, valueId)
-                system.db.runUpdateQuery(SQL)
-
-                tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
-                tags.append(tagName + "/rawValue")
-                tagValues.append(rawValue)
-                tags.append(tagName + "/sampleTime")
-                tagValues.append(sampleTime)
-                tags.append(tagName + "/value")
-                tagValues.append(rawValue)
-                tags.append(tagName + "/badValue")
-                tagValues.append(False)
-                tags.append(tagName + "/status")
-                tagValues.append("Restore")
+                try:
+                    for lastQV in valueList:
+                        rawValue=lastQV.value
+                        sampleTime=lastQV.timestamp
+                        quality=lastQV.quality
+                        log.trace("   %s : %s : %s" % (str(rawValue), str(sampleTime), str(quality)))
+                        if quality.isGood():
+                            log.trace("      ...inserting...")
+                            SQL = "insert into LtHistory (ValueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, getdate())"
+                            id=system.db.runPrepUpdate(SQL, [valueId, rawValue, sampleTime],getKey=True)
+                except:
+                    log.trace("Error restoring a value for %s - probably due to a duplicate value" % (valueName))
+                    
+                if id != None:
+                    # Write the last value to the tag and then to LastHistoryUd in LtValue
+                    SQL = "update ltValue set lastHistoryId = %i where valueId = %i" % (id, valueId)
+                    system.db.runUpdateQuery(SQL)
+    
+                    tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
+                    tags.append(tagName + "/rawValue")
+                    tagValues.append(rawValue)
+                    tags.append(tagName + "/sampleTime")
+                    tagValues.append(sampleTime)
+                    tags.append(tagName + "/value")
+                    tagValues.append(rawValue)
+                    tags.append(tagName + "/badValue")
+                    tagValues.append(False)
+                    tags.append(tagName + "/status")
+                    tagValues.append("Restore")
     
     results=system.tag.writeAll(tags, tagValues)
 

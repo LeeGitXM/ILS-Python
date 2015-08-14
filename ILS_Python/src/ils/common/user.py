@@ -26,7 +26,7 @@ def checkRole(ignitionRole):
         role = record['WindowsRole']
         aeRoles.append(str(role))
 
-    print aeRoles
+#    print aeRoles
     for role in myRoles:
 #        print "Checking: ", role
         if role in aeRoles:

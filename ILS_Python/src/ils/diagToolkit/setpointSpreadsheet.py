@@ -9,11 +9,14 @@ import system, string
 def initialize(rootContainer):
     print "In ils.diagToolkit.setpointSpreadsheet.initialize()..."
 
+    database=system.tag.read("[Client]Database").value
+    print "The database is: ", database
+    
     post = rootContainer.post
     repeater = rootContainer.getComponent("Template Repeater")
     
     from ils.diagToolkit.common import fetchActiveOutputsForPost
-    pds = fetchActiveOutputsForPost(post)
+    pds = fetchActiveOutputsForPost(post, database)
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
     header=['type','row','selected','id','command','commandValue','application','output','tag','setpoint','recommendation','finalSetpoint','status','downloadStatus']
@@ -221,17 +224,25 @@ def statusCallback(event):
 def recalcCallback(event):
     rootContainer=event.source.parent
     post=rootContainer.post
+    database=system.tag.read("[Client]Database").value
+    tagProvider=system.tag.read("[Client]Tag Provider").value
+    
+    print "Sending a message to manage applications for post: %s (database: %s)" % (post, database)
+    projectName=system.util.getProjectName()
+    payload={"post": post, "database": database, "provider": tagProvider}
+    system.util.sendMessage(projectName, "recalc", payload, "G")
 
-    from ils.diagToolkit.common import fetchApplicationsForPost
-    pds=fetchApplicationsForPost(post)
+    print "Need to do something to update the spreadsheet..."
+#    from ils.diagToolkit.common import fetchApplicationsForPost
+#    pds=fetchApplicationsForPost(post, database)
 
-    from ils.diagToolkit.finalDiagnosis import manage
-    for record in pds:
-        applicationName=record["ApplicationName"]
-        manage(applicationName)
+#    from ils.diagToolkit.finalDiagnosis import manage
+#    for record in pds:
+#        applicationName=record["ApplicationName"]
+#        manage(applicationName)
 
     # Now update the UI
-    initialize(rootContainer)
+#    initialize(rootContainer)
 
 # This is called from the WAIT button on the setpoint spreadsheet
 def waitCallback(event):

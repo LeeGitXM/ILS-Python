@@ -59,10 +59,10 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
 
     if failures == 0:
         status = "Success"
-        update.recipeMapStatus(recipeKey, 'Download Passed', database)
+        update.recipeFamilyStatus(recipeKey, 'Download Passed', database)
     else:
         status = "Failed"
-        update.recipeMapStatus(recipeKey, 'Download Failed', database)
+        update.recipeFamilyStatus(recipeKey, 'Download Failed', database)
 
     # Write a log book message
     txt = "%s Recipe download of %s - grade %s - version %s - type %s has completed.  %i writes confirmed.  %i writes NOT confirmed." % \

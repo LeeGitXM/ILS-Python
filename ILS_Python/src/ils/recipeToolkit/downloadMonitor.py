@@ -6,7 +6,7 @@ Created on Sep 10, 2014
 
 import system, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.recipeToolkit.download")
+log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
 
 def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database):
     from java.util import Date
@@ -157,7 +157,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                         tagName=formatTagName(provider, familyName, storTagName) + '/writeStatus'
                         qv = system.tag.read(tagName)
                         print tagName, " => ", qv.value, qv.quality 
-                        writeStatus=qv.value
+                        writeStatus=str(qv.value)
                         
                         if string.upper(writeStatus) == 'SUCCESS' or string.upper(writeStatus) == 'FAILURE':
                             if string.upper(writeStatus) == 'SUCCESS':

@@ -74,7 +74,7 @@ class PKSController(controller.Controller):
         
         log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, valType, str(currentValue), outputDisposability, mode))
         
-        # For outputs check tha tthe mode is MANUAL - no other test is required
+        # For outputs check that the mode is MANUAL - no other test is required
         if string.upper(valType) in ["OP", "OUTPUT"]:
             if string.upper(mode) != 'MAN':
                 return False, "%s is not in manual (mode is actually %s)" % (self.path, mode)

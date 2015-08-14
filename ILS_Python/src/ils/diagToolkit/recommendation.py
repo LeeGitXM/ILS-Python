@@ -30,13 +30,12 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         separator=string.rfind(packagemodule, ".")
         package = packagemodule[0:separator]
         module  = packagemodule[separator+1:]
-        log.debug("Using External Python, the package is: <%s>.<%s>" % (package,module))
+        log.trace("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
         exec("import %s" % (package))
         exec("from %s import %s" % (package,module))
 
     try:
         textRecommendation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisId)
-        log.trace("  The recommendations returned from the calculation method are: %s" % (str(rawRecommendationList)))
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
@@ -49,6 +48,7 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         system.db.runUpdateQuery(SQL, database)
     
         recommendationList=[]
+        log.trace("  The recommendations returned from the calculation method are: ")
         for recommendation in rawRecommendationList:
             # Validate that there is a 'QuantOutput' key and a 'Value' Key
             quantOutput = recommendation.get('QuantOutput', None)
@@ -59,7 +59,7 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
                 log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
 
             if quantOutput != None and val != None:
-                val = recommendation.get('Value', 0.0)
+                log.trace("      Output: %s - Value: %s" % (quantOutput, str(val)))
                 recommendation['AutoRecommendation']=val
                 recommendation['AutoOrManual']='Auto'
                 recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
@@ -71,7 +71,6 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
 
 # Insert a recommendation into the database
 def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, database):
-    
     SQL = "select RecommendationDefinitionId "\
         "from DtRecommendationDefinition RD, DtQuantOutput QO "\
         "where RD.QuantOutputID = QO.QuantOutputId "\
@@ -84,11 +83,11 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
         log.error("Unable to fetch a recommendation definition for output <%s> for finalDiagnosis with id: %i" % (quantOutputName, finalDiagnosisId))
         return -1
     
-    print "Recommendation Definition Id: ", recommendationDefinitionId
     SQL = "insert into DtRecommendation (RecommendationDefinitionId,DiagnosisEntryId,Recommendation,AutoRecommendation,AutoOrManual) "\
         "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
     logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
+    log.trace("      ...inserted recommendation id: %s for recommendation definition id: %i" % (recommendationId, recommendationDefinitionId))
     return recommendationId
 
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made.
@@ -109,11 +108,14 @@ def calculateFinalRecommendation(quantOutput):
         autoOrManual = string.upper(quantOutput.get("AutoOrManual", "Auto"))
         if autoOrManual == 'AUTO':
             recommendationValue = recommendation.get('AutoRecommendation', 0.0)
+            log.trace("   ...using the auto value: %f" % (recommendationValue))
         else:
             recommendationValue = recommendation.get('ManualRecommendation', 0.0)
+            log.trace("   ...using the manual value: %f" % (recommendationValue))
     
         feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
-        print "  Feedback Method: ", feedbackMethod
+        log.trace("   ...using feedback method %s to combine recommendations..." % (feedbackMethod))
+
         if feedbackMethod == 'MOST POSITIVE':
             if i == 0: 
                 finalRecommendation = recommendationValue 
@@ -141,14 +143,13 @@ def calculateFinalRecommendation(quantOutput):
 
     quantOutput['ManualOverride'] = False
     quantOutput['FeedbackOutputManual'] = 0.0
-    quantOutput['FeedbackOutputConditioned'] = 0.0
     quantOutput['OutputLimited'] = False
     quantOutput['OutputLimitedStatus'] = 'Not Bound'
     quantOutput['OutputPercent'] = 100.0
     quantOutput['FeedbackOutput'] = finalRecommendation
     quantOutput['FeedbackOutputConditioned'] = finalRecommendation
 
-    log.trace("  The final recommendation is: %s" % (str(quantOutput)))
+    log.trace("  The recommendation after combining multiple recommendations but before bounds checking) is: %f" % (finalRecommendation))
     return quantOutput
 
 # Used within FinalDiagnosis calculation methods. This method creates a

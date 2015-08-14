@@ -3,7 +3,7 @@ Created on Sep 10, 2014
 
 @author: Pete
 '''
-import system
+import system, string
 import ils.common.util as util
 import ils.recipeToolkit.common as recipeToolkit_common
 import ils.recipeToolkit.downloadMonitor as recipeToolkit_downloadMonitor
@@ -85,6 +85,7 @@ def fullyAutomatedDownload(post, project, database, familyName, grade, version):
     recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
     globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
     writeEnabled = recipeWriteEnabled and globalWriteEnabled
+    localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
     
     downloadTimeout = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/downloadTimeout").value
     print "The download timeout is ", downloadTimeout, " seconds"
@@ -106,7 +107,7 @@ def fullyAutomatedDownload(post, project, database, familyName, grade, version):
     
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
-    dsProcessed = writeImmediate(dsProcessed, provider, familyName, logId, writeEnabled)
+    dsProcessed = writeImmediate(dsProcessed, provider, familyName, logId, localWriteAlias, writeEnabled)
     dsProcessed = writeDeferred(dsProcessed, provider, familyName, logId, writeEnabled)
 
     # Start the download monitor
@@ -149,15 +150,17 @@ def download(rootContainer):
     familyName = rootContainer.getPropertyValue("familyName")
     table = rootContainer.getComponent("Power Table")
     
+    localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
     recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
     globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
     writeEnabled = recipeWriteEnabled and globalWriteEnabled
+    print "The combined write enabled status is: ", writeEnabled
     
     downloadTimeout = system.tag.read("/Configuration/RecipeToolkit/downloadTimeout").value
     rootContainer.downloadTimeout = downloadTimeout
     print "The download timeout is ", downloadTimeout, " seconds"
     
-    log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s)..." % (familyName, str(writeEnabled)))
+    log.info("Downloading recipe <%s> (Write Enabled: %s)..." % (familyName, str(writeEnabled)))
     
     recipeToolkit_update.recipeFamilyStatus(familyName, 'Processing Download')
     rootContainer.status = 'Processing Download'
@@ -169,7 +172,7 @@ def download(rootContainer):
 
     # Set the background color to indicate Downloading
     recipeToolkit_common.setBackgroundColor(rootContainer, "screenBackgroundColorDownloading")
-    resetTags(table.processedData, provider, familyName)
+    resetTags(table.processedData, provider, familyName, localWriteAlias)
 
     # Reset the recipe detail objects
     resetRecipeDetails(provider, familyName)
@@ -186,7 +189,7 @@ def download(rootContainer):
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
     ds = table.processedData 
-    ds = writeImmediate(ds, provider, familyName, logId, writeEnabled)
+    ds = writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnabled)
     ds = writeDeferred(ds, provider, familyName, logId, writeEnabled)
     table.processedData = ds
     
@@ -198,10 +201,8 @@ def download(rootContainer):
 
 
 # Reset the command and message tags that are used during the download
-def resetTags(ds, provider, familyName):
-    import string
-        
-    log.trace("Resetting tags...")    
+def resetTags(ds, provider, familyName, localWriteAlias):
+    log.info("Resetting tags...")    
     pds = system.dataset.toPyDataSet(ds)
     
     tags = []
@@ -210,8 +211,9 @@ def resetTags(ds, provider, familyName):
     for record in pds:
         download = record["Download"]
         downloadType = record["Download Type"]
+        writeLocation = record["Write Location"]
 
-        if download and (string.upper(downloadType) == 'IMMEDIATE' or string.upper(downloadType) == 'DEFERRED VALUE'):
+        if download and (string.upper(downloadType) == 'IMMEDIATE' or string.upper(downloadType) == 'DEFERRED VALUE') and (string.upper(writeLocation) != localWriteAlias):
             tagName = record["Store Tag"]
                     
             # Convert to Ignition tag name
@@ -231,8 +233,9 @@ def resetTags(ds, provider, familyName):
             vals.append(False)
 
     # Write them all at once
-    log.trace("Resetting tags: %s" % (str(tags)))
     status = system.tag.writeAll(tags, vals)
+    
+    # TODO - I should check that the reset was successful
     log.trace("Tag write status: %s" % (str(status)))
     
     return
@@ -254,11 +257,8 @@ def resetRecipeDetails(provider, familyName):
             
     system.tag.writeAll(tags, vals)
 
-
 # Log any tags that are skipped by the operator
 def logSkippedTags(table, logId):
-    import string
-        
     log.trace("Logging skipped tags...")    
     ds = table.processedData
     pds = system.dataset.toPyDataSet(ds)
@@ -284,13 +284,11 @@ def logSkippedTags(table, logId):
 
 
 # There are two types of immediate writes: 1) writes to memory tags, and 2) writes to OPC tags that do not involve high low limits 
-def writeImmediate(ds, provider, familyName, logId, writeEnabled):
-    import string
+def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnabled):
     from ils.recipeToolkit.common import formatLocalTagName
     from ils.recipeToolkit.common import formatTagName
 
-    log.trace("  ...writing immediate tags...")
-    localWriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value    
+    log.trace("  ...writing immediate tags...")  
 
     pds = system.dataset.toPyDataSet(ds)
 
@@ -307,22 +305,22 @@ def writeImmediate(ds, provider, familyName, logId, writeEnabled):
         tagName = record["Store Tag"]
         download = record["Download"]
         downloadType = record["Download Type"]
-        log.trace("%s - %s - %s - %s" % (str(step), tagName, str(download), downloadType))
         if string.upper(downloadType) == 'IMMEDIATE' and download:
             pendVal = record["Pend"]
-            print step, tagName, pendVal
             if string.upper(pendVal) == "NAN":
                 pendVal = float("NaN")
             tagName = record["Store Tag"]
             writeLocation = record["Write Location"]
             
-            if writeLocation == localWriteAlias:            
+            if string.upper(writeLocation) == localWriteAlias:
                 tagName = formatLocalTagName(provider, tagName)
+                log.trace("Immediate Local: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
                 localTags.append(tagName)
                 localVals.append(pendVal)
             else:
                 # Convert to Ignition tagname            
                 tagName = formatTagName(provider, familyName, tagName)
+                log.trace("Immediate OPC: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
                 tags.append(tagName + '/writeValue')
                 vals.append(pendVal)
                 commandTags.append(tagName + '/Command')

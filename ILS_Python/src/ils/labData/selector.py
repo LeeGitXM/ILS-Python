@@ -77,6 +77,7 @@ def configureSelector(unitName, selectorName, sourceName):
         badValueTag='{[.]../' + sourceName + '/badValue}'
         rawValueTag='{[.]../' + sourceName + '/rawValue}'
         sampleTimeTag='{[.]../' + sourceName + '/sampleTime}'
+        rawSampleTimeTag='{[.]../' + sourceName + '/rawSampleTime}'
         valueTag='{[.]../' + sourceName + '/value}'
         statusTag='{[.]../' + sourceName + '/status}'
     
@@ -84,6 +85,7 @@ def configureSelector(unitName, selectorName, sourceName):
                     'badValueTag':badValueTag, 
                     'rawValueTag':rawValueTag, 
                     'sampleTimeTag':sampleTimeTag,
+                    'rawSampleTimeTag':rawSampleTimeTag,
                     'valueTag':valueTag,
                     'statusTag':statusTag
                     }
@@ -91,8 +93,10 @@ def configureSelector(unitName, selectorName, sourceName):
         log.trace("%s - %s" % (tagPath, str(parameters)))
         system.tag.editTag(tagPath, parameters=parameters)
         
-        print " **** NEED TO UPDATE THE SELECTOR TABLE ****"
-        SQL = "update"
+        # Update the LtSelector table to reflect the current active source
+        valueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (selectorName))
+        sourceValueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (sourceName))
+        system.db.runUpdateQuery("update LtSelector set sourceValueId = %i where ValueId = %i" % (sourceValueId, valueId))
         
     elif UDTType == "Lab Data/Lab Selector Limit SQC":
         lowerSQCLimitTag='{[.]../' + sourceName + '/lowerSQCLimit}'

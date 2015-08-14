@@ -1,36 +1,119 @@
 # Copyright 2015. ILS Automation. All rights reserved.
 
-import system
-import system.ils.blt.diagram as script
+# This module provides functions for accessing the dynamic properties of 
+# Final Diagnosis, Quant Outputs, and Recommendations.
 
-# Place a result of "true" in the common dictionary
-# if the family is found in the default database.
-# Argument is the family name
-def family(common,app,family):
-	handler = script.getHandler()
-	db = handler.getDefaultDatabase(name)
-	SQL = "SELECT FamilyId FROM DtFamily "\
-          " WHERE Application = '%s' "\
-		  "  AND  Family = '%s';" % app,family
-	val = system.db.runScalarQuery(SQL,db)
-	if val != None:
-		common['result'] = True
+import system, string
+
+def getFinalDiagnosisProperty(common, application, finalDiagnosis, property, db):
+	print "In getFinalDiagnosisProperty..."
+
+	SQL = "select TextRecommendation, Active, Explanation "\
+		" from DtApplication A, DtFamily F, DtFinalDiagnosis FD "\
+		" where A.ApplicationId = F.ApplicationId "\
+		" and F.FamilyId = FD.FamilyId "\
+		" and A.applicationName = '%s' "\
+		" and FD.FinalDiagnosisName = '%s'" % (application, finalDiagnosis)
+	
+	pds=system.db.runQuery(SQL, db)
+	if len(pds) == 0:
+		val = "No records found"
+	elif len(pds) > 1:
+		val = "Multiple records found"
 	else:
-		common['result'] = False
+		record = pds[0]
 
-# Returns the value of a recommendation for a specific quant output for a final diagnosis
-def getRecommendation(common,dpath,finalDiagnosisName, quantOutputName):
-	diagid = getDiagram(dpath).getSelf().toString()
-	state = diagram.getDiagramState(diagid)
-	db = handler.getDatabaseForUUID(diagid)
-	SQL = "SELECT FamilyId FROM DtFamily "\
-          " WHERE Application = '%s' "\
-		  "  AND  Family = '%s';" % app,family
-	val = system.db.runScalarQuery(SQL,db)
+		if string.upper(property) == "TESTRECOMMENDATION":
+			val = record["TextRecommendation"]
+		elif string.upper(property) == "ACTIVE":
+			val = record["Active"]
+		elif string.upper(property) == "EXPLANATION":
+			val = record["Explanation"]
+		else:
+			val = "Unknown parameter"
+		
+	print "Fetched: ", val
 	common['result'] = val
 
-# Return the state of the diagram
-def getRecommendationCount(common,dpath,finalDiagnosisName):
-	diagid = getDiagram(dpath).getSelf().toString()
-	state = diagram.getDiagramState(diagid)
-	common['result'] = state
+
+def getRecommendationProperty(common, application, finalDiagnosis, quantOutput, property, db):
+	print "In getRecommendationProperty..."
+	
+	SQL = "select Recommendation, AutoRecommendation, ManualRecommendation, AutoOrManual "\
+		" from DtApplication A, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
+		" where QO.ApplicationId = A.ApplicationId "\
+		" and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+		" and QO.QuantOutputId = RD.QuantOutputId "\
+		" and RD.RecommendationDefinitionId = R.RecommendationDefinitionId" \
+		" and A.applicationName = '%s' "\
+		" and FD.FinalDiagnosisName = '%s'" \
+		" and QO.QuantOutputName = '%s'" % (application, finalDiagnosis, quantOutput)
+	
+	pds=system.db.runQuery(SQL, db)
+	if len(pds) == 0:
+		val = "No records found"
+	elif len(pds) > 1:
+		val = "Multiple records found"
+	else:
+		record = pds[0]
+
+		if string.upper(property) == "RECOMMENDATION":
+			val = record["Recommendation"]
+		elif string.upper(property) == "AUTORECOMMENDATION":
+			val = record["AutoRecommendation"]
+		elif string.upper(property) == "MANUALRECOMMENDATION":
+			val = record["ManualRecommendation"]
+		elif string.upper(property) == "AUTOORMANUAL":
+			val = record["AutoOrManual"]
+		else:
+			val = "Unknown parameter"
+		
+	print "Fetched: ", val
+	common['result'] = val
+
+
+def getQuantOutputProperty(common, application, quantOutput, property, db):
+	print "In getQuantOutputProperty, fetching property: %s..." % (property)
+	
+	SQL = "select FeedbackOutput, FeedbackOutputManual, FeedbackOutputConditioned, OutputLimitedStatus, OutputLimited, "\
+		" OutputPercent, ManualOverride, Active, CurrentSetpoint, FinalSetpoint, DisplayedRecommendation"\
+		" from DtQuantOutput QO, DtApplication A"\
+		"  where QO.ApplicationId = A.ApplicationId "\
+		" and A.applicationName = '%s' "\
+		" and QO.QuantOutputName = '%s' " % (application, quantOutput)
+	print SQL
+	pds=system.db.runQuery(SQL, db)
+	if len(pds) == 0:
+		val = "No records found"
+	elif len(pds) > 1:
+		val = "Multiple records found"
+	else:
+		record = pds[0]
+	
+		if string.upper(property) == "FEEDBACKOUTPUT":
+			val = record["FeedbackOutput"]
+		elif string.upper(property) == "FEEDBACKOUTPUTMANUAL":
+			val = record["FeedbackOutputManual"]
+		elif string.upper(property) == "FEEDBACKOUTPUTCONDITIONED":
+			val = record["FeedbackOutputConditioned"]
+		elif string.upper(property) == "OUTPUTLIMITEDSTATUS":
+			val = record["OutputLimitedStatus"]
+		elif string.upper(property) == "OUTPUTLIMITED":
+			val = record["OutputLimited"]
+		elif string.upper(property) == "OUTPUTPERCENT":
+			val = record["OutputPercent"]
+		elif string.upper(property) == "MANUALOVERRIDE":
+			val = record["ManualOverride"]
+		elif string.upper(property) == "ACTIVE":
+			val = record["Active"]
+		elif string.upper(property) == "CURRENTSETPOINT":
+			val = record["CurrentSetpoint"]
+		elif string.upper(property) == "FINALSETPOINT":
+			val = record["FinalSetpoint"]
+		elif string.upper(property) == "DISPLAYEDRECOMMENDATION":
+			val = record["DisplayedRecommendation"]
+		else:
+			val = "Unknown parameter"
+		
+	print "Fetched: ", val
+	common['result'] = val

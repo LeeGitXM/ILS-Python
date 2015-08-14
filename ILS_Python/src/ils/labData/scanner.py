@@ -12,6 +12,7 @@ dcsLog = system.util.getLogger("com.ils.labData.reader.dcs")
 phdLog = system.util.getLogger("com.ils.labData.reader.phd")
 derivedLog = system.util.getLogger("com.ils.labData.derivedValues")
 customValidationLog = system.util.getLogger("com.ils.labData.customValidation")
+selectorLog = system.util.getLogger("com.ils.labData.selector")
 import ils.common.util as util
 
 # This should persist from one run to the next 
@@ -211,6 +212,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                     relatedDataIsConsistent = False
             else:
                 derivedLog.error("Unable to find any value for the related data named %s for trigger value %s" % (relatedValueName, valueName))
+                relatedDataIsConsistent = False
         
         if relatedDataIsConsistent:
             from ils.labData.callbackDispatcher import derivedValueCallback
@@ -222,8 +224,9 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 # Use the sample time of the triggerValue and store the value in the database and in the UDT tags
                 storeValue(valueId, valueName, newVal, sampleTime, database)
                 
-                # This updates the Lab Data UDT tags
-                writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, newVal, sampleTime, True, writeTags, writeTagValues, log)
+                # This updates the Lab Data UDT tags - derived values do not get validated, so set valid = true; this makes the console argument irrelevant
+                valid = True
+                writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, newVal, sampleTime, valid, True, writeTags, writeTagValues, log)
                 
                 # Derived lab data also has a target OPC tag that it needs to update - do this immediately
                 if writeEnabled:
@@ -420,7 +423,7 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
     log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limit)))
     
     # Always write the raw value and the raw sample time immediately
-    writeTags, writeTagValues = updateRawTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, writeTags, writeTagValues, log)
+    writeTags, writeTagValues = updateRawTags(tagProvider, unitName, valueName, rawValue, sampleTime, writeTags, writeTagValues, log)
 
     if validationProcedure != None and validationProcedure != "":
         
@@ -429,7 +432,11 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         # If it fails custom validation then don't bother with any further checks!
         if not(isValid):
             log.trace("%s failed custom validation procedure <%s> " % (valueName, validationProcedure))
-            writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, writeTags, writeTagValues, log)
+
+            from ils.labData.limitWarning import notifyCustomValidationViolation
+            foundConsole=notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database)
+        
+            writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)
             updateCache(valueId, valueName, rawValue, sampleTime)
             return writeTags, writeTagValues
         
@@ -507,24 +514,30 @@ def storeValue(valueId, valueName, rawValue, sampleTime, database):
 # will fire off two calls to this procedure, this procedure doesn't know or care who called it.  It will read both tags to get the 
 # current value.  Two identical insert statements will be attempted but the database will reject the second because of the unique index.
 def storeSelector(tagPath, database):
-    print "TagPath: ", tagPath
+    selectorLog.trace("Storing selector of tag %s" % (tagPath))
+
     if tagPath.find('/value') > 0:
         path=tagPath[:tagPath.find("/value")]
     else:
         path=tagPath[:tagPath.find("/sampleTime")]
-    print "Path: <%s>" % (path)
+
     valueName=path[path.find('LabData/') + 8:]
-    print "Value name: <%s>" % (valueName)
+    valueName=valueName[valueName.find('/') + 1:]
+
+    selectorLog.trace("   ...the selector value name is <%s>" % (valueName))
 
     # Read the value and the sample time
     vals = system.tag.readAll([path + '/value', path + '/sampleTime'])
     value=vals[0].value
     sampleTime=vals[1].value
-    print "Handling %s at %s" % (str(value), str(sampleTime))
+    selectorLog.trace("   ...handling %s at %s" % (str(value), str(sampleTime)))
     
     # Fetch the value id using the name
     SQL = "select ValueId from LtValue where ValueName = '%s'" % (valueName)
     valueId=system.db.runScalarQuery(SQL)
+    if valueId == None:
+        selectorLog.error("Error storing lab value for selector <%s> due to unable to find name in LtValue" % (valueName))
+        return
     
     # If the value and the sample time tags are updated nearly simultaneously then there will be two parallel threads running.  There is 
     # a unique index on the history table so we do not need to worry about duplicate data, but we should catch the error and swallow it
@@ -540,7 +553,7 @@ def updateCache(valueId, valueName, rawValue, sampleTime):
 
 # Update the Lab Data UDT tags
 # FoundConsole is only relevant if the tag failed validation
-def updateRawTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues, log):
+def updateRawTags(tagProvider, unitName, valueName, rawValue, sampleTime, tags, tagValues, log):
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     log.trace("Updating *raw* lab data tags %s..." % (tagName))
     

@@ -60,28 +60,28 @@ def showCurrentRecipeCallback(recipeKey):
 
     return
 
-def showMidRunRecipeCallback(recipeKey):
+def showMidRunRecipeCallback(recipeFamilyName):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
-    # Fetch the grade and type from the recipe map table. The grade looks like an int, but it is probably a string
-    SQL = "select CurrentRecipeGrade from RtRecipeMap where RecipeKey = '%s'" % (recipeKey)
+    #   Fetch the grade and type from the recipe map table. The grade looks like an int, but it is probably a string
+    SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (recipeFamilyName)
     print "SQL: ", SQL
     pds = system.db.runQuery(SQL)
 
     if len(pds) == 0:
-        system.gui.errorBox("Unable to retrieve the current recipe for recipe key: %s" % (recipeKey), "Error")
+        system.gui.errorBox("Unable to retrieve the current recipe for recipe family: %s" % (recipeFamilyName), "Error")
         return 
 
     if len(pds) > 1:
-        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe key: %s" % (recipeKey), "Error")
+        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe family: %s" % (recipeFamilyName), "Error")
         return 
 
     record = pds[0];
-    grade = record["CurrentRecipeGrade"]
+    grade = record["CurrentGrade"]
     grade = str(grade)
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'recipeKey': recipeKey, 'grade': grade,'downloadType':'MidRun'})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeFamilyName, 'grade': grade,'downloadType':'MidRun'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
     return
@@ -137,13 +137,13 @@ def initialize(rootContainer):
     from ils.recipeToolkit.fetch import recipeFamily
     recipeFamily = recipeFamily(familyName)
 
-    status = recipeFamily['Status']
+    status = str(recipeFamily['Status'])
     rootContainer.status = status
     timestamp = recipeFamily['Timestamp']
     print "Status:", status, timestamp
     rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/yy HH:mm")
 
-    # Set the background color based on the status
+    # Set the background color based on the status 
     from ils.recipeToolkit.common import setBackgroundColor
     if string.upper(status) == 'INITIALIZING':
         setBackgroundColor(rootContainer, "screenBackgroundColorInitializing")
@@ -404,7 +404,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
 #       print "\nStep: ", step, writeLocation
         downloadType = "Skip"
         dataType = ''
-        if writeLocation == localWriteAlias:
+        if string.upper(str(writeLocation)) == string.upper(str(localWriteAlias)):
 #           print "Handling a local tag"
             downloadType = "Immediate"
 

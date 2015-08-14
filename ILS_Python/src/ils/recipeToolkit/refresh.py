@@ -9,7 +9,7 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 
 def refresh(rootContainer):
-    log.trace("In ils.recipeToolkit.refresh.refresh()")
+    log.info("In ils.recipeToolkit.refresh.refresh()")
 
     status = rootContainer.getPropertyValue("status")
     if status == 'Processing Download':
@@ -39,7 +39,7 @@ def refresh(rootContainer):
 
 
 def automatedRefresh(familyName, processedData, database):
-    log.trace("In ils.recipeToolkit.refresh.automatedRefresh()")
+    log.info("In ils.recipeToolkit.refresh.automatedRefresh()")
     # The downloadType is either GradeChange or MidRun
     downloadType = "GradeChange"
 
@@ -51,8 +51,8 @@ def automatedRefresh(familyName, processedData, database):
 # be shown and put it in table.data.  (If the user is an engineer then processed data is all data, but 
 # operators only see a subset of the data.
 def refresher(familyName, ds, downloadType, database = ""):
-    log.trace("In ils.recipeToolkit.refresh.refresher()")
-    log.trace("---------------\nRefreshing Recipe Table for a %s download..." % (downloadType))
+    log.info("In ils.recipeToolkit.refresh.refresher()")
+    log.info("Refreshing Recipe Table for a %s download..." % (downloadType))
 
     #===============================================
     # This checks if the reason is one of the standard reasons or a custom one entered by the operator.
@@ -69,7 +69,7 @@ def refresher(familyName, ds, downloadType, database = ""):
     from ils.recipeToolkit.update import recipeFamilyStatus
     recipeFamilyStatus(familyName, "Refreshing", database)
 
-    localWriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value
+    localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
     recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
     recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
 
@@ -85,15 +85,16 @@ def refresher(familyName, ds, downloadType, database = ""):
 
     tagNames = []
     localTagNames = []
-    print "  ...extracting tag names from the table..."
+    log.trace("-------------------------------------------")
+    log.trace("  ...extracting tag names from the table...")
     for record in pds:
         step = record['Step']
         writeLocation = record['Write Location']
-#        print "Step: %s <%s>" % ( str(step), writeLocation)
+        log.trace("Step: %s <%s> <%s>" % ( str(step), writeLocation, record['Store Tag']))
 
         storTag = record['Store Tag']
         if writeLocation != "" and writeLocation != None and storTag != "":
-            if writeLocation == localWriteAlias:
+            if string.upper(writeLocation) == localWriteAlias:
                 if storTag not in localTagNames:
                     localTagNames.append(storTag)
             else:
@@ -102,14 +103,14 @@ def refresher(familyName, ds, downloadType, database = ""):
 
         compTag = record['Comp Tag']
         if writeLocation != "" and writeLocation != None and compTag != "":
-            if writeLocation == localWriteAlias:
+            if string.upper(writeLocation) == localWriteAlias:
                 if storTag not in localTagNames:
                     localTagNames.append(compTag)
             else:
                 if storTag not in tagNames:
                     tagNames.append(compTag)
     
-    # Now convert the OPC tagnames from MS Access to Ignition names
+    # Now  convert the OPC tagnames from MS Access to Ignition names
     tags = []
     for tagName in tagNames:
         from ils.recipeToolkit.common import formatTagName
@@ -131,7 +132,7 @@ def refresher(familyName, ds, downloadType, database = ""):
     localValues = system.tag.readAll(tags)
 
     # We have now read all of the tags, merge the values back into the Python dataset
-    print "  ...updating table dataset...."
+    log.trace("  ...updating table dataset....")
     i = 0    
     for record in pds:
         step = record['Step']
@@ -148,7 +149,7 @@ def refresher(familyName, ds, downloadType, database = ""):
 
         storTag = record['Store Tag']
         if writeLocation != "" and writeLocation != None and storTag != "":
-            if writeLocation == localWriteAlias:
+            if string.upper(writeLocation) == localWriteAlias:
                 idx = localTagNames.index(storTag)
                 storVal = localValues[idx].value
                 storQuality = str(localValues[idx].quality) 
@@ -161,7 +162,7 @@ def refresher(familyName, ds, downloadType, database = ""):
     
         compTag = record['Comp Tag']
         if writeLocation != "" and writeLocation != None and compTag != "":
-            if writeLocation == localWriteAlias:
+            if string.upper(writeLocation) == localWriteAlias:
                 idx = localTagNames.index(compTag)
                 compVal = localValues[idx].value
                 compQuality = str(localValues[idx].quality)
@@ -175,7 +176,7 @@ def refresher(familyName, ds, downloadType, database = ""):
                 ds = system.dataset.setValue(ds, i, "Pend", compVal)
                 pendVal = compVal
                 
-        print "line %i - step %i :: pend: %s - stor: %s (%s)- comp: %s (%s)" % (i, step, str(pendVal), str(storVal), str(storQuality), str(compVal), str(compQuality))
+        log.trace("line %i - step %i :: pend: %s - stor: %s (%s)- comp: %s (%s)" % (i, step, str(pendVal), str(storVal), str(storQuality), str(compVal), str(compQuality)))
         
         # Based on everything that we have collected about this tag, determine if we should download it
         # This will override any reason that may have already been entered, which doesn't seem right
@@ -229,6 +230,7 @@ def refresher(familyName, ds, downloadType, database = ""):
         i = i + 1
     
     recipeFamilyStatus(familyName, "Refreshed", database)
+    log.info("-- refresh complete --")
     return ds
 
 
@@ -244,7 +246,7 @@ def equivalentValues(pendVal, storVal, recipeMinimumDifference, recipeMinimumRel
         pendVal = string.upper(str(pendVal))
         storVal = string.upper(str(storVal))
                 
-        print "One of the tags is a NAN... <%s> <%s>" % (pendVal, storVal)
+#        print "One of the tags is a NAN... <%s> <%s>" % (pendVal, storVal)
         if (pendVal == "NAN") and (storVal == "NAN" or storVal == "" or storVal == None or storVal == "NONE"):
             equivalent = True
         else:
@@ -279,7 +281,7 @@ def equivalentValues(pendVal, storVal, recipeMinimumDifference, recipeMinimumRel
 # This takes the processed data, considers the role of the user, and filters out OE data
 # if the user is an operator
 def refreshVisibleData(table):
-    log.trace("In ils.recipeToolkit.refresh.refreshVisibleData()")
+    log.info("In ils.recipeToolkit.refresh.refreshVisibleData()")
     ds = table.processedData    
     # Now create the data that will be shown
     from ils.common.user import isAE

@@ -31,16 +31,16 @@ def formatLocalTagName(provider, tagName):
     tagName = string.replace(tagName, '.', '/')
     
     # Add the provider and root folder for site specific "Local" tags
-    tagName = '[%s]Site/%s' % (provider, tagName)
+    tagName = '[%s]Recipe/Local/%s' % (provider, tagName)
 
     return tagName
 
 
-# Format the path and name for local tags
+# Format the path and name for local tags 
 def formatLocalTagPathAndName(provider, tagName):
     
     # Format the provider and root folder for site specific "Local" tags
-    tagPath = '[%s]Site/' % (provider)    
+    tagPath = '[%s]Recipe/Local/' % (provider)    
 
     # If the tag name ends in ".VALUE" then trim it off
     if tagName.endswith('.VALUE'):

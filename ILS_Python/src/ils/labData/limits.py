@@ -241,7 +241,7 @@ def fetchLimits(database = ""):
 # This is called in response to a grade change (and also maybe on restart).  It fetches the grade specific SQC limits from recipe and 
 # updates the lab data database tables.
 def updateSQCLimitsFromRecipe(grade, database=""):
-    log.trace("Loading SQC limits from recipe for grade: %s" % (str(grade)))
+    log.info("Loading SQC limits from recipe for grade: %s" % (str(grade)))
     
     # I could do this all in one SQL but then I might miss some limits if the parameter names do not match
     # If there is something in recipe that does not exist in lab data then I want to notify someone.

@@ -10,7 +10,7 @@ log = LogUtil.getLogger("com.ils.SQL.diagToolkit")
 
 
 def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
-    print "**Updating the Bound Recommendation percent** "
+    log.trace("Updating the Bound Recommendation percent")
     pds=fetchRecommendationsForOutput(quantOutputId, database)
     for record in pds:
         autoOrManual=record["AutoOrManual"]
@@ -55,7 +55,8 @@ def deleteRecommendations(applicationName, database):
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and A.ApplicationName = '%s')" % (applicationName)
     log.trace(SQL)
-    system.db.runUpdateQuery(SQL, database)
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.trace("Delected %i rcommendations..." % (rows))
     return
 
 # Lookup the application Id given the name
@@ -192,6 +193,7 @@ def fetchActiveOutputsForPost(post, database=""):
         " and QO.Active = 1"\
         " order by A.ApplicationName, QO.QuantOutputName"  % (post)
     log.trace(SQL)
+    print "Using database: ", database
     pds = system.db.runQuery(SQL, database)
     return pds
 
@@ -218,3 +220,14 @@ def fetchApplicationsForPost(post, database=""):
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
+
+# Fetch the post for an application
+def fetchPostForApplication(application, database=""):
+    SQL = "select post "\
+        " from TkPost P, TkUnit U, DtApplication A "\
+        " where P.PostId = U.PostId "\
+        " and U.UnitId = A.UnitId "\
+        " and A.ApplicationName = '%s' " % (application)
+    log.trace(SQL)
+    post = system.db.runScalarQuery(SQL, database)
+    return post

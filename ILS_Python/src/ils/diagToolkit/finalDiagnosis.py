@@ -6,22 +6,19 @@ Created on Sep 12, 2014
 
 import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
-
-handler = ControllerRequestHandler.getInstance()
+from ils.diagToolkit.common import fetchPostForApplication
 
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
 def notifyClients(project, console, notificationText):
-    print "Notifying %s-%s clients" % (project, console)
-    print "Notification Text: <%s>" % (notificationText)
+    log.trace("Notifying %s-%s client to open/update the setpoint spreadsheet..." % (project, console))
+    log.trace("   ...notification text: <%s>" % (notificationText))
     system.util.sendMessage(project=project, messageHandler="consoleManager", 
                             payload={'type':'setpointSpreadsheet', 'console':console, 'notificationText':notificationText}, scope="C")
 
-
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
-# This only runs in the gateway
+# This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def postDiagnosisEntryMessageHandler(payload):
     print "The payload is: ", payload
 
@@ -35,7 +32,7 @@ def postDiagnosisEntryMessageHandler(payload):
     postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database)
 
 # Insert a record into the diagnosis queue
-def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
+def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database="", provider="XOM"):
     log.trace("Post a diagnosis entry for application: %s, family: %s, final diagnosis: %s" % (application, family, finalDiagnosis))
     
     # Lookup the application Id
@@ -50,8 +47,7 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     if unit == None:
         log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (application, family, finalDiagnosis))
         return
-    
-    provider="[XOM]"
+
     grade=system.tag.read("%sSite/%s/Grade/Grade" % (provider,unit)).value
     print "The grade is: ", grade
     textRecommendation = record.get('TextRecommendation', 'Unknown Text')
@@ -66,17 +62,16 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     system.db.runUpdateQuery(SQL, database)
 
     log.info("Starting to manage diagnosis...")
-    notificationText=manage(application, database)
+    notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
     
-    #TODO Need to look these up somehow
-    console="VFU"
+    post=fetchPostForApplication(application)
     # This runs in the gateway, but it should work 
     projectName = system.util.getProjectName()
-    notifyClients(projectName, console, notificationText)
+    notifyClients(projectName, post, notificationText)
     
 # Clear the final diagnosis (make the status = 'InActive') 
-def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
+def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provider=""):
     print "Clearing..."
 
     from ils.diagToolkit.common import fetchFinalDiagnosis
@@ -92,7 +87,7 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
     system.db.runUpdateQuery(SQL, database)
     
     print "Starting to manage as a result of a cleared Final Diagnosis..."
-    notificationText=manage(application, database)
+    notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
     print "...back from manage!"
     
     # This runs in the gateway, but it should work 
@@ -106,42 +101,30 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database=""):
     print "The console is: ", console
     notifyClients(projectName, console, notificationText)
 
+# Unpack the payload into arguments and call the method that posts a diagnosis entry.  
+# This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
+def recalcMessageHandler(payload):
+    post=payload["post"]
+    log.info("Handling message to manage an recommendations for post %s" % (post))
+    database=payload["database"]
+    provider=payload["provider"]
 
-# Return the name of the application tuat is the parent of this block
-# This belongs in a more general environment
-def getApplication(blockId):
-    ans = None
-    diagram = handler.getDiagramForBlock(blockId)
-    if diagram != None:
-        ans = handler.getApplicationName(diagram.getId())
-    return ans
-    
-# This replaces em-get-trget
-# Search upstream for a SQC block. 
-# Return the value on the target inout.
-def     getUpstreamSQCTargetValue(finalDiagnosisId):
-    status = "failure"
-    value = -1
-    diagram = handler.getDiagramForBlock(finalDiagnosisId)
-    # Blocks SerializableBlockStateDescriptor
-    blocks = handler.listBlocksUpstreamOf(diagram.getId(), finalDiagnosisId)
-    for block in blocks:
-        attributes = block.getAttributes()
-        if attributes.get("class") == "com.ils.block.SQC":
-            value = float(attributes.get("target","0.0"))
-            status = "success"
-            break
-            
-    return status, value
+    from ils.diagToolkit.common import fetchApplicationsForPost
+    pds=fetchApplicationsForPost(post, database)
+
+    for record in pds:
+        applicationName=record["ApplicationName"]
+        manage(applicationName, recalcRequested=True, database=database, provider=provider)
+
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
-def manage(application, database=""):
-    log.trace("Managing diagnosis for application: %s" % (application))
+def manage(application, recalcRequested=False, database="", provider="XOM"):
+    log.info("Managing diagnosis for application: %s" % (application))
 
     #---------------------------------------------------------------------
     # Merge the list of output dictionaries for a final diagnosis into the list of all outputs
     def mergeOutputs(quantOutputs, fdQuantOutputs):
-        log.trace("Merging outputs %s into %s" % (str(fdQuantOutputs), str(quantOutputs)))
+ #       log.trace("Merging outputs %s into %s" % (str(fdQuantOutputs), str(quantOutputs)))
         for fdQuantOutput in fdQuantOutputs:
             fdId = fdQuantOutput.get('QuantOutputId', -1)
             found = False
@@ -182,23 +165,23 @@ def manage(application, database=""):
     def selectHighestPriorityFamilies(pds):
         
         aList = []
+        log.trace("The families with the highest priorities are: ")
         highestPriority = pds[0]['FamilyPriority']
-        for record in records:
+        for record in pds:
             if record['FamilyPriority'] == highestPriority:
-                print record['FamilyName'], record['FamilyPriority'], record['FinalDiagnosisName'], record['FinalDiagnosisPriority']
+                log.trace("  Family: %s, Family Priority: %f, Final Diagnosis: %s, Final Diagnosis Priority: %f" % (record['FamilyName'], record['FamilyPriority'], record['FinalDiagnosisName'], record['FinalDiagnosisPriority']))
                 aList.append(record)
-        print "The families with the highest priorities are: ", aList
+        
         return aList
     
     #---------------------------------------------------------------------
     # Filter out low priority diagnosis where there are multiple active diagnosis within the same family
     def selectHighestPriorityDiagnosisForEachFamily(aList):
-        print "\nFiltering out low priority diagnosis for families with multiple active diagnosis..."
+        log.trace("Filtering out low priority diagnosis for families with multiple active diagnosis...")
         lastFamily = ''
         highestPriority = -1
         bList = []
         for record in aList:
-            print record
             family = record['FamilyName']
             finalDiagnosisPriority = record['FinalDiagnosisPriority']
             if family != lastFamily:
@@ -208,7 +191,7 @@ def manage(application, database=""):
             elif finalDiagnosisPriority >= highestPriority:
                 bList.append(record)
             else:
-                print "Filtering out: ", record
+                log.trace("   ...removing %s because it's priority %f is less than the highest priority %f" % (record["FinalDiagnosisName"], finalDiagnosisPriority, highestPriority))
         return bList
     
     #---------------------------------------------------------------------
@@ -230,38 +213,39 @@ def manage(application, database=""):
         else:
             for record in pds:
                 aList.append(record["FinalDiagnosisId"])
-            log.trace("The *PREVIOUS* Highest priority diagnosis are: %s" % (str(aList)))
-        
+                log.trace("   %s - %i" % (record["FinalDiagnosisName"], record["FinalDiagnosisId"]))
+
         return aList
 
     #---------------------------------------------------------------------
-    def setActiveDiagnosisFlag(alist):
+    def setActiveDiagnosisFlag(alist, database):
         log.trace("Setting the active diagnosis flag...")
         # First clear all of the active flags in 
         families = []   # A list of quantOutput dictionaries
         for record in alist:
             familyId = record['FamilyId']
             if familyId not in families:
-                log.trace("   .. clearing diagnosis in family %s " % str(familyId))
+                log.trace("   ...clearing diagnosis in family %s..." % str(familyId))
                 families.append(familyId)
                 SQL = "update dtFinalDiagnosis set Active = 0 where FamilyId = %i" % (familyId)
                 logSQL.trace(SQL)
-                system.db.runUpdateQuery(SQL)
+                rows=system.db.runUpdateQuery(SQL, database)
+                log.trace("      updated %i rows!" % (rows))
 
         for record in alist:
             finalDiagnosisId = record['FinalDiagnosisId']
-            log.trace("  ...setting %i to active..." % (finalDiagnosisId))
+            log.trace("   ...setting %i to active..." % (finalDiagnosisId))
             SQL = "update dtFinalDiagnosis set Active = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
             logSQL.trace(SQL)
-            system.db.runUpdateQuery(SQL)
+            rows = system.db.runUpdateQuery(SQL, database)
+            log.trace("      updated %i rows!" % (rows))
     
     #-------------------------------------------------------------------
     # Compare the list of most important final diagnosis from the last time we managed to the most important right
     # now.  If there was no change then we won't need to recalculate recommendations.  To make this a little more 
     # challenging the contents of the lists are in different formats.
     # oldList is simply a list of diagnosisFamilyIds
-    def compareFinalDiagnosisState(oldList, activeList):
-
+    def compareFinalDiagnosisState(oldList, activeList):       
         # Convert the activeList into a format identical to oldList.
         newList=[]
         for record in activeList:
@@ -270,6 +254,8 @@ def manage(application, database=""):
                 newList.append(finalDiagnosisId)
         
         changed=False
+        log.trace("   old list: %s" % (str(oldList)))
+        log.trace("   new list: %s" % (str(newList)))
         
         # If the lengths of the lists are different then they must be different!
         if len(oldList) != len(newList):
@@ -281,24 +267,30 @@ def manage(application, database=""):
                 changed=True
                 lowPriorityList.append(fdId)
 
+        if changed:
+            log.trace("   the low priority final diagnosis are: %s" % (str(lowPriorityList)))
+
         return changed, lowPriorityList
 
     #-------------------------------------------------------------------
-    def rescindLowPriorityDiagnosis(lowPriorityList):
+    def rescindLowPriorityDiagnosis(lowPriorityList, database):
+        log.trace("...rescinding low priority diagnosis...")
         for fdId in lowPriorityList:
-            print ">>>>>>>>>>>>>>>>>>>Need to rescind: ", fdId
-#            SQL = "delete from DtRecommendation where DiagnosisEntryId in "\
-#                " (select DiagnosisEntryId from DtDiagnosisEntry "\
-#                " where Status = 'Active' and RecommendationStatus = 'REC-Made' "\
-#                " and FinalDiagnosisId = %i)" % (fdId)
-#            logSQL.trace(SQL)
-#            system.db.runUpdateQuery(SQL)
-            
+            log.trace("   ...rescinding recommendations for final diagnosis id: %i..." % (fdId))
+            SQL = "delete from DtRecommendation where DiagnosisEntryId in "\
+                " (select DiagnosisEntryId from DtDiagnosisEntry "\
+                " where Status = 'Active' and RecommendationStatus = 'REC-Made' "\
+                " and FinalDiagnosisId = %i)" % (fdId)
+            logSQL.trace(SQL)
+            rows=system.db.runUpdateQuery(SQL, database)
+            log.trace("      deleted %i recommendations..." % (rows))
+
             SQL = "update DtDiagnosisEntry set RecommendationStatus = 'Rescinded'"\
                 "where Status = 'Active' and RecommendationStatus = 'REC-Made' "\
                 " and FinalDiagnosisId = %i" % (fdId)
             logSQL.trace(SQL)
-            system.db.runUpdateQuery(SQL)
+            rows = system.db.runUpdateQuery(SQL, database)
+            log.trace("      updated %i diagnosis entries..." % (rows))
              
     #--------------------------------------------------------------------
     # This is the start of manage()
@@ -308,47 +300,63 @@ def manage(application, database=""):
          
     from ils.diagToolkit.common import fetchActiveDiagnosis
     pds = fetchActiveDiagnosis(application, database)
-    from ils.common.database import toDict
-    records=toDict(pds)
     
     # If there are no active diagnosis then there is nothing to manage
-    if len(records) == 0:
-        log.info("Exiting the diagnosis manager because there are no active diagnosis!")
-        # TODO we may need to clear something!
+    if len(pds) == 0:
+        log.info("Exiting the diagnosis manager because there are no active diagnosis for %s!" % (application))
+        # TODO we may need to clear something
         return ""
+
+    log.trace("The active diagnosis are: ")
+    for record in pds:
+        log.trace("  Family: %s, Final Diagnosis: %s, Family Priority: %s, FD Priority: %s" % 
+                  (record["FamilyName"], record["FinalDiagnosisName"], 
+                   str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"])))
     
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
     # descending order.
-    list1 = selectHighestPriorityFamilies(pds)
+    from ils.common.database import toDict
+    list0 = toDict(pds)
+    list1 = selectHighestPriorityFamilies(list0)
 
     # Sort out diagnosis where there are multiple diagnosis for the same family
     list2 = selectHighestPriorityDiagnosisForEachFamily(list1)
     
     # Calculate the recommendations for each final diagnosis
-    print "The families / final diagnosis with the highest priorities are: ", list2
+    log.trace("The families / final diagnosis with the highest priorities are: ")
+    for record in list2:
+        log.trace("  Family: %s, Final Diagnosis: %s (%i), Family Priority: %s, FD Priority: %s" % 
+                  (record["FamilyName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], 
+                   str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"])))
     
     log.trace("Checking if there has been a change in the highest priority final diagnosis...")
     changed,lowPriorityList=compareFinalDiagnosisState(oldList, list2)
     
-    if not(changed):
-        log.trace("There has been no change in the most important diagnosis, leaving!")
+    if not(changed) and not(recalcRequested):
+        log.trace("There has been no change in the most important diagnosis, nothing new to manage, so exiting!")
         return ""
 
     # There has been a change in what the most important diagnosis is so set the active flag
-    log.info("There was a change in the highest priority active final diagnosis, updating the database...")
-    from ils.diagToolkit.common import deleteRecommendations      
+    if recalcRequested:
+        log.trace("Continuing to make recommendations because a recalc was requested...")
+    else:
+        log.trace("Continuing to make recommendations because there was a change in the highest priority active final diagnosis...")
+
+    from ils.diagToolkit.common import deleteRecommendations
+    log.trace("...deleting existing recommendations for %s..." % (application))
     deleteRecommendations(application, database)
     
-    rescindLowPriorityDiagnosis(lowPriorityList)
-    setActiveDiagnosisFlag(list2)
+    rescindLowPriorityDiagnosis(lowPriorityList, database)
+    setActiveDiagnosisFlag(list2, database)
 
-    log.info("Making recommendations...")
+    log.info("--- Calculating recommendations ---")
     quantOutputs = []   # A list of quantOutput dictionaries
     for record in list2:
         application = record['ApplicationName']
         family = record['FamilyName']
         finalDiagnosis = record['FinalDiagnosisName']
-        log.trace("Making a recommendation for: %s - %s - %s" % (application, family, finalDiagnosis))
+        finalDiagnosisId = record['FinalDiagnosisId']
+        log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i)" % (application, family, finalDiagnosis, finalDiagnosisId))
         
         # Fetch all of the quant outputs for the final diagnosis
         from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
@@ -361,7 +369,7 @@ def manage(application, database=""):
                 record['FinalDiagnosisId'], record['DiagnosisEntryId'], database)
         quantOutputs = mergeRecommendations(quantOutputs, recommendations)
 
-    log.info("Recommendations have been made, now calculating the final recommendations")
+    log.info("--- Recommendations have been made, now calculating the final recommendations ---")
     finalQuantOutputs = []
     for quantOutput in quantOutputs:
         from ils.diagToolkit.recommendation import calculateFinalRecommendation
@@ -369,7 +377,7 @@ def manage(application, database=""):
         quantOutput = checkBounds(quantOutput, database)
         finalQuantOutputs.append(quantOutput)
 
-    finalQuantOutputs, notificationText = calculateVectorClamps(finalQuantOutputs)
+    finalQuantOutputs, notificationText = calculateVectorClamps(finalQuantOutputs, provider)
     
     # Store the results in the database
     log.trace("Done managing, the final outputs are: %s" % (str(finalQuantOutputs)))
@@ -382,21 +390,25 @@ def manage(application, database=""):
 # Check that recommendation against the bounds configured for the output
 def checkBounds(quantOutput, database):
     
-    log.trace("Checking Bounds for %s" % (str(quantOutput)))
+    log.trace("   ...checking Bounds...")
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
     mostNegativeIncrement = quantOutput.get('MostNegativeIncrement', -1000.0)
     mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
 
     # Compare the incremental recommendation to the **incremental** limits
+    log.trace("      ...comparing the output (%f) to most positive increment (%f) and most negative increment (%f)..." % (feedbackOutput, mostPositiveIncrement, mostNegativeIncrement))
     if feedbackOutput >= mostNegativeIncrement and feedbackOutput <= mostPositiveIncrement:
+        log.trace("      ...the output is not incremental bound...")
         quantOutput['OutputLimited'] = False
         quantOutput['OutputLimitedStatus'] = 'Not Bound'
         feedbackOutputConditioned=feedbackOutput
     elif feedbackOutput > mostPositiveIncrement:
+        log.trace("      ...the output IS positive incremental bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Positive Incremental Bound'
         feedbackOutputConditioned=mostPositiveIncrement
     else:
+        log.trace("      ...the output IS negative incremental bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Negative Incremental Bound'
         feedbackOutputConditioned=mostNegativeIncrement
@@ -404,12 +416,15 @@ def checkBounds(quantOutput, database):
     # Compare the final setpoint to the **absolute** limits
     setpointHighLimit = quantOutput.get('SetpointHighLimit', -1000.0)
     setpointLowLimit = quantOutput.get('SetpointLowLimit', 1000.0)
-    
+    log.trace("      ...comparing the conditioned output (%f) to high limit (%f) and low limit (%f)..." % (feedbackOutputConditioned, setpointHighLimit, setpointLowLimit))
+
     if feedbackOutputConditioned > setpointHighLimit:
+        log.trace("      ...the output IS Positive Absolute Bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Positive Absolute Bound'
         feedbackOutputConditioned=setpointHighLimit
     elif feedbackOutputConditioned < setpointLowLimit:
+        log.trace("      ...the output IS Negative Absolute Bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Negative Absolute Bound'
         feedbackOutputConditioned=setpointLowLimit    
@@ -418,37 +433,44 @@ def checkBounds(quantOutput, database):
     
     minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
     if abs(feedbackOutputConditioned) < minimumIncrement:
+        log.trace("      ...the output IS Minimum change bound because the change (%f) is less then the minimum change amount (%f)..." % (feedbackOutputConditioned, minimumIncrement))
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Minimum Change Bound'
         feedbackOutputConditioned=0.0
+        quantOutput['FeedbackOutputConditioned']=feedbackOutputConditioned
     
     # Calculate the percent of the original recommendation that we are using if the output is limited 
     if quantOutput['OutputLimited'] == True:
-        # I'm not sure hout the feedback output can be 0.0 AND be output limited, unless something is misconfigured
+        # I'm not sure how the feedback output can be 0.0 AND be output limited, unless something is misconfigured
         # on the quant output, but just be extra careful to avoid a divide by zero error.
         if feedbackOutput == 0.0:
             outputPercent = 0.0
         else:
             outputPercent = feedbackOutputConditioned / feedbackOutput * 100.0
-            
+        
+        log.trace("   ...the output is bound - taking %f percent of the recommended change..." % (outputPercent))
         quantOutput['OutputPercent'] = outputPercent
         from ils.diagToolkit.common import updateBoundRecommendationPercent
         updateBoundRecommendationPercent(quantOutput['QuantOutputId'], outputPercent, database)
     
-    log.trace("Output after bounds checking: %s" % (str(quantOutput)))
+    log.trace("   The recommendation after bounds checking is:")
+    log.trace("          Feedback Output Conditioned: %f" % (feedbackOutputConditioned))
+    log.trace("                       Output limited: %s" % (str(quantOutput['OutputLimited'])))
+    log.trace("                Output limited status: %s" % (quantOutput['OutputLimitedStatus']))
+    log.trace("                       Output percent: %f" % (quantOutput['OutputPercent']))
     return quantOutput
 
-
-def calculateVectorClamps(quantOutputs):
+def calculateVectorClamps(quantOutputs, provider):
     #TODO XOM is hard coded
-    qv=system.tag.read("[XOM]Configuration/DiagnosticToolkit/vectorClampMode")
+    log.trace("Checking vector clamping...")
+    qv=system.tag.read("[%s]Configuration/DiagnosticToolkit/vectorClampMode" % (provider))
     vectorClampMode = string.upper(qv.value)
     
     if vectorClampMode == "DISABLED":
-        log.trace("Vector Clamps are NOT enabled")
+        log.trace("...Vector Clamps are NOT enabled")
         return quantOutputs, ""
     
-    log.trace("Vector clamping is enabled")
+    log.trace("...Vector clamping is enabled")
     
     if len(quantOutputs) < 2:
         log.trace("Vector clamps do not apply when there is only one output")
@@ -520,7 +542,7 @@ def updateQuantOutput(quantOutput, database=''):
     
     # Read the current setpoint
     tagpath = quantOutput.get('TagPath','unknown')
-    log.trace("Reading Tag: %s" % (tagpath))
+    log.trace("   ...reading the current value of tag: %s" % (tagpath))
     qv=system.tag.read(tagpath)
     if not(qv.quality.isGood()):
         log.error("Error reading the current setpoint from (%s), tag quality is: (%s)" % (tagpath, str(qv.quality)))
@@ -531,7 +553,7 @@ def updateQuantOutput(quantOutput, database=''):
         system.db.runUpdateQuery(SQL, database)
         return
 
-    log.trace("  read tag values: %s - %s" % (str(qv.value), str(qv.quality)))
+    log.trace("     ...read tag values: %s - %s" % (str(qv.value), str(qv.quality)))
     currentSetpoint=qv.value
 
     # The recommendation may be absolute or incremental, but we always display incremental    
@@ -542,6 +564,8 @@ def updateQuantOutput(quantOutput, database=''):
     else:
         finalSetpoint=feedbackOutputConditioned
         displayedRecommendation=finalSetpoint-currentSetpoint
+
+    log.trace("   ...the final setpoint is %f, the displayed recommendation is %f" % (finalSetpoint, displayedRecommendation))
 
     # Active is hard-coded to True here because these are the final active quantOutputs
     SQL = "update DtQuantOutput set FeedbackOutput = %s, OutputLimitedStatus = '%s', OutputLimited = %i, "\
