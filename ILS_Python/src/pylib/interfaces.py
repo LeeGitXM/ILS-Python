@@ -20,7 +20,7 @@ def listBlocksDownstreamOf(common,dpath,blockName):
 # specified block - and in the same diagram
 def listBlocksUpstreamOf(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
-    # blocks is a list of SerializableBlockStateDescriptor
+	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksUpstreamOf(diagid,blockName)
 	print "==================== blocksUpstreamOf =============="
 	lst = []
@@ -67,8 +67,8 @@ def listBlocksForTag(common,tagpath):
 # gateway are considered.
 def listSinksForSource(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
-    # blocks is a list of SerializableBlockStateDescriptor
-	blocks = application.listSinksForSource(diagid,blockName)
+	# blocks is a list of SerializableBlockStateDescriptor
+	blocks = script.listSinksForSource(diagid,blockName)
 	print "==================== sinksForSource =============="
 	lst = []
 	for block in blocks:
@@ -82,7 +82,7 @@ def listSinksForSource(common,dpath,blockName):
 # gateway are considered.
 def listSourcesForSink(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
-    # blocks is a list of SerializableBlockStateDescriptor
+	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listSourcesForSink(diagid,blockName)
 	print "==================== sourcesForSink =============="
 	lst = []
@@ -98,10 +98,20 @@ def pathForBlock(common,dpath,bname):
 	path = script.pathForBlock(diagid,bname)
 	common['result'] = path 
 
-# Propagate a signal to any receivers on the diagra
+# Propagate a signal to any receivers on the diagram
 def sendLocalSignal(common,dpath,command,message,arg):
 	diagid = getDiagram(dpath).getSelf().toString()
 	script.sendLocalSignal(diagid,command,message,arg)
+
+# Propagate a signal to any receivers on the diagram
+# Timestamp the signal with the current test time
+# Ignore "message" and "arg"
+def sendTimestampedSignal(common,dpath,command,year,mon,day,hr,min,sec):
+	import datetime,time
+	diagid = getDiagram(dpath).getSelf().toString()
+	testtime = datetime.datetime(int(year),int(mon),int(day),int(hr),int(min),int(sec))
+	ts = time.mktime(testtime.timetuple())*1000
+	script.sendTimestampedSignal(diagid,command,"","",long(ts))
 
 # -------------------------- Helper methods ----------------------
 # Return the ProcessDiagram at the specified path
