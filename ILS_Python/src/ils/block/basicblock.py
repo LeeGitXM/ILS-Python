@@ -10,6 +10,7 @@
 import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
 import java.lang.Double as Double
 import java.lang.String as String
+import time
 
 
 class BasicBlock():
@@ -47,7 +48,7 @@ class BasicBlock():
         
     # Called when a value has arrived on one of our input ports
     # By default, we do nothing
-    def acceptValue(self,value,quality,port):
+    def acceptValue(self,port,value,quality,time):
         self.value = value
         self.quality = quality
         
@@ -85,8 +86,8 @@ class BasicBlock():
         self.parentuuid = uid
         
     # Report to the engine that a new value has appeared at an output port
-    def postValue(self,port,value,quality):
-        self.handler.postValue(self.parentuuid,self.uuid,port,value,quality)
+    def postValue(self,port,value,quality,time):
+        self.handler.postValue(self.parentuuid,self.uuid,port,value,quality,long(time))
     # Replace or add a property
     # We expect the dictionary to have all the proper attributes
     def setProperty(self,name,dictionary):
@@ -103,13 +104,15 @@ class BasicBlock():
     # sends notifications on all output connections.
     def reset(self):
         self.state = 'UNSET'
+        now = long(time.time()*1000)
+        print "BASICBLOCK:",now
         for anchor in self.outports:
             if anchor['type'].upper()=='TRUTHVALUE':
-                self.handler.sendConnectionNotification(self.uuid,anchor["name"],'UNKNOWN')
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],'UNKNOWN',"Good",long(now))
             elif anchor['type'].upper() == 'DATA':
-                self.handler.sendConnectionNotification(self.uuid,anchor["name"],String.valueOf(Double.NaN))
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],String.valueOf(Double.NaN),"Good",now)
             else:
-                self.handler.sendConnectionNotification(self.uuid,anchor["name"],"")
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],"","Good",now)
     
     # Convenience method to extract the package name from a module
     # Use this for the import
