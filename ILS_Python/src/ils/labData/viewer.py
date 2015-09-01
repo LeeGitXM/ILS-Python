@@ -59,12 +59,10 @@ def configureLabDatumTable(container):
     displayDecimals=container.DisplayDecimals
     print "Configuring the Lab Datum Viewer table for ", valueName
     
-
-    
     from ils.labData.common import fetchValueId
     valueId = fetchValueId(valueName)
         
-    SQL = "select top 10 RawValue as '%s', SampleTime, HistoryId "\
+    SQL = "select top 13 RawValue as '%s', SampleTime, HistoryId "\
         " from LtHistory "\
         " where ValueId = %i "\
         " order by SampleTime desc" % (valueName, valueId)
@@ -140,6 +138,7 @@ def setSeen(rootContainer):
         valueId=record['ValueId']
         valueName=record['LabValueName']
 
+        print "Setting SEEN for %s - %s" % (valueName, valueId)
         print "Updating %s as seen by %s..." % (valueName, username)
 
         SQL = "select LastHistoryId from LtValue where ValueId = %i " % (valueId)

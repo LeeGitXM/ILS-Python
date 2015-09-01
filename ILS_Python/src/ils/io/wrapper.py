@@ -106,4 +106,9 @@ def writeRecipeDetail(tagPath, command):
         
     log.trace("Leaving writeRecipeDetail(): %s - %s - %s - %s" % (tagPath, command, status, reason))
     return status, reason
-    
+
+# This takes the name of a UDT and reads the proper embedded tag for the value.  Generally, the tag will be '/value'
+# This returns a qualified value.
+def read(tagPath):
+    qv=system.tag.read(tagPath + '/value')
+    return qv

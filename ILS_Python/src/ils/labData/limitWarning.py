@@ -232,16 +232,17 @@ def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvid
     print "Accepting a value which failed validity checks :: valueId: %i, valueName: %s, rawValue: %s, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, str(rawValue), sampleTime, database, tagProvider)
     
     from ils.labData.scanner import storeValue
-    storeValue(valueId, valueName, rawValue, sampleTime, database)
+    storeValue(valueId, valueName, rawValue, sampleTime, log, database)
     
     # Update the Lab Data UDT tags 
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
-    
-    print "Writing to tag <%s>" % (tagName)
+
     # The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
-    tags=[tagName + "/value", tagName + "/sampleTime", tagName + "/badValue", tagName + "/status"]
-    tagValues=[rawValue, sampleTime, False, status]
-    system.tag.writeAll(tags, tagValues)
+    system.tag.writeSynchronous(tagName + "/value", rawValue)
+    system.tag.writeSynchronous(tagName + "/sampleTime", sampleTime)
+    system.tag.writeSynchronous(tagName + "/badValue", False)
+    system.tag.writeSynchronous(tagName + "/status", status)
+
 
 # There is nothing that needs to be done if the operator determines that the value is not valid, by doing nothing we ignore 
 # the value.
@@ -259,10 +260,10 @@ def rejectValue(rootContainer):
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     
     print "Writing to tag <%s>" % (tagName)
-    # The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
+    #  The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
     tags=[tagName + "/badValue", tagName + "/status"]
     tagValues=[True, "Operator rejected value"]
-    system.tag.writeAll(tags, tagValues)
+    system.tag.writeAllSynchronous(tags, tagValues)
 
 
 # If the operator does not respond to the notification in a timely manner, then by default accept the value.  The burden is on

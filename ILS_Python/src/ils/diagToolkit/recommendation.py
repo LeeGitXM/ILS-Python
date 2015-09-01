@@ -15,6 +15,10 @@ def notifyConsole():
 
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, database=""):
+    #TODO Need to do something here to get the provider and database based on the isolation mode settings
+    provider="[XOM]"
+    database="XOM"
+    
     SQL = "select CalculationMethod "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
@@ -35,7 +39,7 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         exec("from %s import %s" % (package,module))
 
     try:
-        textRecommendation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisId)
+        textRecommendation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisId,provider,database)
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)

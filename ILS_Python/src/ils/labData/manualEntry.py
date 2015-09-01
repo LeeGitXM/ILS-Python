@@ -177,7 +177,7 @@ def entryFormEnterData(rootContainer, db = ""):
 
     # Store the value locally in the X O M database
     from ils.labData.scanner import storeValue 
-    storeValue(valueId, valueName, sampleValue, sampleTime, db)
+    storeValue(valueId, valueName, sampleValue, sampleTime, log, db)
     
     # Store the value in the Lab Data UDT memory tags, which are local to Ignition
     from ils.common.config import getTagProvider
@@ -186,7 +186,7 @@ def entryFormEnterData(rootContainer, db = ""):
     from ils.labData.scanner import updateTags
     tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, True, [], [], log)
     print "Writing ", tagValues, " to ", tags
-    system.tag.writeAll(tags, tagValues)
+    system.tag.writeAllSynchronous(tags, tagValues)
     
     # If the lab datum is "local" then write the value to PHD (use a regular OPC write, so we won't 
     # capture the sample time)

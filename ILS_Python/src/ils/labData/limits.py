@@ -80,7 +80,7 @@ def fetchLimits(database = ""):
             lowerValidityLimit=record["LowerValidityLimit"]
             upperSQCLimit=record["UpperSQCLimit"]
             lowerSQCLimit=record["LowerSQCLimit"]
-            target=record["LowerSQCLimit"]
+            target=record["Target"]
             standardDeviation=record["StandardDeviation"]
         return upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation
     #----
@@ -142,9 +142,9 @@ def fetchLimits(database = ""):
             if limitValue != None:
                 tagName="[%s]LabData/%s/%s/%s" % (providerName, unitName, valueName, limitType)
                 print "Writing <%s> to %s" % (limitValue, tagName)
-                result=system.tag.write(tagName, limitValue)
-                if result == 0:
-                    log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
+                system.tag.writeSynchronous(tagName, limitValue)
+#                if result == 0:
+#                    log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
         #-------------
         providerName="XOM"
         unitName=limit.get("UnitName","")
@@ -232,11 +232,6 @@ def fetchLimits(database = ""):
 
     print "The new Limit dictionary is: ", limits
     return limits
-
-
-
-
-
     
 # This is called in response to a grade change (and also maybe on restart).  It fetches the grade specific SQC limits from recipe and 
 # updates the lab data database tables.
@@ -384,13 +379,15 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         tags = [path+'/lowerSQCLimit', path+'/lowerValidityLimit', path+'/standardDeviation', path+'/target', path+'/upperSQCLimit', path+'/upperValidityLimit']
         vals = [lowerSQCLimit, lowerValidityLimit, standardDeviation, target, upperSQCLimit, upperValidityLimit]
     
-    # Now perform the write and feedback any errors
-    status = system.tag.writeAll(tags, vals)
+    # Now perform the write and feedback any errors (Make this a synchronous write so we know what passed and what failed).
+    system.tag.writeAllSynchronous(tags, vals)
     
-    i = 0
-    for stat in status:
-        if stat == 1:
-            log.trace("   successfully wrote %s to %s" % (str(vals[i]), tags[i]))
-        else:
-            log.error("Error writing %s to %s (Status=%i)" % (str(vals[i]), tags[i], stat))
-        i = i + 1
+#    i = 0
+#    for stat in status:
+#        if stat == 0:
+#            log.error("   ERROR writing %s to %s" % (str(vals[i]), tags[i]))
+#        elif stat == 1:
+#            log.trace("   successfully wrote %s to %s" % (str(vals[i]), tags[i]))
+#        else:
+#            log.trace("   write pending %s to %s" % (str(vals[i]), tags[i]))
+#        i = i + 1

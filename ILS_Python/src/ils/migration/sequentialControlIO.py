@@ -34,13 +34,13 @@ def parseRecords(records,recordType):
         tokens = line.split(',')
 
         if i == 0:
-            line = "status," + line
+            line = "status,skip," + line
             line=line.rstrip(',')
             header = line.split(',')
             numTokens=len(header)
         else:
             if recordType == "" or string.upper(tokens[0]) == recordType:
-                line = " ," + line
+                line = " ,False," + line
                 tokens = line.split(',')
                 print "Tokens: ", tokens
                 if len(tokens) != numTokens:
@@ -79,7 +79,11 @@ def createTags(rootContainer):
         status = ""
         folder = ds.getValueAt(row, "Folder")
         className =  ds.getValueAt(row, "class")
-        if (folderFilter == "" or folder == folderFilter) and (classFilter == "" or className == classFilter):
+        skip = ds.getValueAt(row, "skip")
+        if (string.upper(skip) == "TRUE"):
+            status = "Skipped"
+        elif (folderFilter == "" or folder == folderFilter) and (classFilter == "" or className == classFilter):
+            
             className =  ds.getValueAt(row, "class")
             outputName = ds.getValueAt(row, "name")
             outputNames = ds.getValueAt(row, "names")
@@ -112,6 +116,9 @@ def createTags(rootContainer):
                 if className == "OPC-TEXT-OUTPUT":
                     createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "String")
                     status = "Created"
+                elif className == "FLOAT-PARAMETER":
+                    createParameter(parentPath, outputName, scanClass, "Float8")
+                    status = "Created"
                 elif className == "OPC-FLOAT-OUTPUT":
                     createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Float")
                     status = "Created"
@@ -140,7 +147,7 @@ def createTags(rootContainer):
                     permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
                     spItemId = ds.getValueAt(row, "write-target-item-id")
                     # For som ereason that I can't figure out, I couldn't use the column name for this one column...
-                    windupItemId = ds.getValueAt(row, 11)
+                    windupItemId = ds.getValueAt(row, 12)
                     print "Output Disposability: ", windupItemId
 #                    windupItemId = ds.getValueAt(row, "output-disposability-item-id")
                     createPKSController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
@@ -151,7 +158,7 @@ def createTags(rootContainer):
                     permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
                     spItemId = ds.getValueAt(row, "write-target-item-id")
                     # For som ereason that I can't figure out, I couldn't use the column name for this one column...
-                    windupItemId = ds.getValueAt(row, 11)
+                    windupItemId = ds.getValueAt(row, 12)
                     print "Output Disposability: ", windupItemId
 #                    windupItemId = ds.getValueAt(row, "output-disposability-item-id")
                     createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
@@ -164,7 +171,12 @@ def createTags(rootContainer):
         if status != "":
             ds=system.dataset.setValue(ds, row, "status", status)
     table.data=ds
- 
+
+def createParameter(parentPath, tagName, scanClass, dataType):
+    print "Creating a memory tag named: %s, Path: %s, Scan Class: %s" % (tagName, parentPath, scanClass)
+    system.tag.addTag(parentPath=parentPath, name=tagName, tagType="MEMORY", dataType=dataType)
+    
+
 def createOutput(parentPath, outputName, itemId, serverName, scanClass, names, dataType):
     UDTType='Basic IO/OPC Output'
 

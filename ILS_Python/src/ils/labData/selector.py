@@ -6,7 +6,8 @@ Created on Mar 29, 2015
 import system
 log = system.util.getLogger("com.ils.labData.selector")
 
-def select(selectorName, database = ""):
+# I renamed this to CRAP on 8/20/15
+def selectCRAP(selectorName, database = ""):
     print "Configuring lab data for %s..." % (selectorName)
     
     SQL = "select * from LtPHDSelectorView where selectorName = '%s'" % (selectorName)
@@ -32,33 +33,29 @@ def select(selectorName, database = ""):
                 log.error("Error processing PHD Lab Value selector: %s - %s - %i - %s" % (valueName, selectorTypeName, targetId, targetTextValue))
             else:
                 log.trace("Successfully processed PHD Lab Value selector: %s - %s - %i - %s" % (valueName, selectorTypeName, targetId, targetTextValue))
-                
-        
-def updateItemIdCRAP(targetName, itemId, database=""):
-    from ils.labData.common import fetchValueId
-    targetId = fetchValueId(targetName, database)
-
-    if targetId == None:
-        print "Error: target %s was not defined" % targetName
-    else:
-        SQL = "update LtPHDValue set ItemId = '%s' where ValueId = %i " % (itemId, targetId)
-        print SQL 
-        system.db.runUpdateQuery(SQL, database)
 
 
 def valueChanged(tagPath):
+    import time
     log.trace("Detected a value change in: %s" % (tagPath))
     database = "XOM"
-    
-    tagRoot=tagPath.rstrip('/value')    
+ 
+    # Find the root of the tag by stripping off the /value or /sampleTime   
+    tagRoot=tagPath.rstrip('/trigger') 
     enabled=system.tag.read(tagRoot + '/processingEnabled').value
 
-    from ils.labData.scanner import storeSelector
     if enabled:
-        storeSelector(tagPath, database)
+        # Because the value and the sampleTime tags both update nearly simultaneously, wait here 
+        # to allow them to both complete and keep the data consistent
+        time.sleep(5)
+        from ils.labData.scanner import storeSelector
+        storeSelector(tagRoot, database)
     else:
         log.trace("Skipping the value change because processing is not enabled")
         
+    # Reset the trigger
+    system.tag.writeSynchronous(tagRoot + "/trigger", False)
+
 
 # Update the expression in the selector tag to get its values from a new source
 # This operates entirely on tags and has no database transactions
@@ -152,6 +149,4 @@ def updateSelectorDisplayTableDescription(selectorName, sourceName):
     
     SQL = "update LtValue set Description = (select description from LtValue where ValueName = '%s') "\
         " where ValueName = '%s'" % (sourceName, selectorName)
-    print SQL
     rows = system.db.runUpdateQuery(SQL)
-    print "Updated %i rows" % (rows)

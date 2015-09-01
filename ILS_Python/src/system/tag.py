@@ -36,6 +36,9 @@ def write(tagPath,command):
 def writeSynchronous(tagPath, value):
     pass
 
+def writeAllSynchronous(tagPath, value):
+    pass
+
 def writeAll(tags, vals):
     return True
 
