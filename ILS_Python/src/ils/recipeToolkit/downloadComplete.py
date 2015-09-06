@@ -11,10 +11,11 @@ log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 # This is called once it is deemed that the download is complete.  
 # It summarizes the results of the download.
 def downloadComplete(rootContainer):
+    log.trace("In downloadComplete()...")
     logId = rootContainer.getPropertyValue("logId")
     grade = rootContainer.getPropertyValue("grade")
     version = rootContainer.getPropertyValue("version")
-    recipeKey = rootContainer.getPropertyValue("recipeKey")
+    recipeKey = rootContainer.getPropertyValue("familyName")
     downloadType = rootContainer.getPropertyValue("downloadType")
     table = rootContainer.getComponent("Power Table")
 
@@ -34,7 +35,7 @@ def downloadComplete(rootContainer):
 #
 def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManual, gradeChangeOrMidRun, database=""):
     import string
-
+    log.trace("In downloadCompleteRunner()...")
     log.info("Download complete...")
 
     pds = system.dataset.toPyDataSet(ds)
@@ -59,9 +60,11 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
 
     if failures == 0:
         status = "Success"
+        print "Setting recipe family <%s> status to <Download Passed>" % (str(recipeKey))
         update.recipeFamilyStatus(recipeKey, 'Download Passed', database)
     else:
         status = "Failed"
+        print "Setting recipe family <%s> status to <Download Failed>" % (str(recipeKey))
         update.recipeFamilyStatus(recipeKey, 'Download Failed', database)
 
     # Write a log book message

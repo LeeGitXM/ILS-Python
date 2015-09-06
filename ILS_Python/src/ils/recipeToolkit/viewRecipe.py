@@ -33,29 +33,29 @@ def automatedDownloadMessageHandler(payload):
     system.nav.openWindow('Recipe/Recipe Viewer', {'recipeKey': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType})
     system.nav.centerWindow('Recipe/Recipe Viewer')
     
-def showCurrentRecipeCallback(recipeKey):
+def showCurrentRecipeCallback(familyName):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
     # but it is probably a string
-    SQL = "select CurrentRecipeGrade from RtRecipeMap where RecipeKey = '%s'" % (recipeKey)
+    SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
     print "SQL: ", SQL
     pds = system.db.runQuery(SQL)
 
     if len(pds) == 0:
-        system.gui.errorBox("Unable to retrieve the current recipe for recipe key: %s" % (recipeKey), "Error")
+        system.gui.errorBox("Unable to retrieve the current recipe for recipe key: %s" % (familyName), "Error")
         return 
 
     if len(pds) > 1:
-        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe key: %s" % (recipeKey), "Error")
+        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe key: %s" % (familyName), "Error")
         return 
 
     record = pds[0];
-    grade = record["CurrentRecipeGrade"]
+    grade = record["CurrentGrade"]
     grade = str(grade)
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'recipeKey': recipeKey, 'grade': grade,'downloadType':'GradeChange'})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade,'downloadType':'GradeChange'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
     return

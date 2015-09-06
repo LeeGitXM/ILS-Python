@@ -8,6 +8,7 @@ import system, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
 
+# This is called for an automated download and runs in gateway scope.
 def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database):
     from java.util import Date
     
@@ -46,6 +47,7 @@ def start(rootContainer):
     timer = rootContainer.getComponent("Timer")
     timer.running = True
 
+# This is called from the timer widget on the Recipe viewer screen in client scope.
 def runner(rootContainer):
     from java.util import Date
 
@@ -97,6 +99,10 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
 
     log.trace("  Starting project.recipe.downloadMonitor.monitor()")
     
+    recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+    writeEnabled = recipeWriteEnabled and globalWriteEnabled
+
     pds = system.dataset.toPyDataSet(ds)
 
     i = 0
@@ -129,56 +135,62 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                         
                     pendVal = record["Pend"]
                     reason = record["Reason"]
-                    
-                    if writeLocation == localWriteAlias:
-                        from ils.recipeToolkit.common import formatLocalTagName
-                        tagName = formatLocalTagName(provider, storTagName)
-                        storVal = system.tag.read(tagName).value
-                        tagName = formatLocalTagName(provider, compTagName)
-                        compVal = system.tag.read(tagName).value
-                        log.trace("Comparing local value %s to %s" % (str(pendVal), str(storVal)))
-                        ds = system.dataset.setValue(ds, i, "Stor", storVal)
-                        ds = system.dataset.setValue(ds, i, "Comp", compVal)
-                        from ils.io.util import equalityCheck
-                        if equalityCheck(pendVal, storVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
-                            successes = successes + 1
-                            status = "Success"
-                            errorMessage = ""
-                        else:
-                            failures = failures + 1
-                            status = "Failure"
-                            errorMessage = "Local write error"
-                            
-                        logDetail(logId, storTagName, pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database)
-                        ds = system.dataset.setValue(ds, i, "Download Status", status)
-                        
-                    else:
-                        from ils.recipeToolkit.common import formatTagName
-                        tagName=formatTagName(provider, familyName, storTagName) + '/writeStatus'
-                        qv = system.tag.read(tagName)
-                        print tagName, " => ", qv.value, qv.quality 
-                        writeStatus=str(qv.value)
-                        
-                        if string.upper(writeStatus) == 'SUCCESS' or string.upper(writeStatus) == 'FAILURE':
-                            if string.upper(writeStatus) == 'SUCCESS':
-                                successes = successes + 1
-                                status = 'Success'
-                                errorMessage = ''
-                            else:
-                                failures = failures + 1 
-                                status = 'Failure'
-                                errorMessage = system.tag.read(formatTagName(provider, familyName, storTagName) + '/writeErrorMessage').value
 
-                            ds = system.dataset.setValue(ds, i, "Download Status", status)
-                            storVal = system.tag.read(formatTagName(provider, familyName, storTagName) + '/value').value
+                    if writeEnabled:                    
+                        if writeLocation == localWriteAlias:
+                            from ils.recipeToolkit.common import formatLocalTagName
+                            tagName = formatLocalTagName(provider, storTagName)
+                            storVal = system.tag.read(tagName).value
+                            tagName = formatLocalTagName(provider, compTagName)
+                            compVal = system.tag.read(tagName).value
+                            log.trace("Comparing local value %s to %s" % (str(pendVal), str(storVal)))
                             ds = system.dataset.setValue(ds, i, "Stor", storVal)
-                            compVal = system.tag.read(formatTagName(provider, familyName, compTagName) + '/value').value
                             ds = system.dataset.setValue(ds, i, "Comp", compVal)
-                            log.trace("  %s -> %s - %s" % (storTagName, storVal, writeStatus))
-                            logDetail(logId, record["Store Tag"], pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database) 
+                            from ils.io.util import equalityCheck
+                            if equalityCheck(pendVal, storVal, recipeMinimumDifference, recipeMinimumRelativeDifference):
+                                successes = successes + 1
+                                status = "Success"
+                                errorMessage = ""
+                            else:
+                                failures = failures + 1
+                                status = "Failure"
+                                errorMessage = "Local write error"
+                                
+                            logDetail(logId, storTagName, pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database)
+                            ds = system.dataset.setValue(ds, i, "Download Status", status)
+                            
                         else:
-                            pending = pending + 1 
-            
+                            from ils.recipeToolkit.common import formatTagName
+                            tagName=formatTagName(provider, familyName, storTagName) + '/writeStatus'
+                            qv = system.tag.read(tagName)
+                            print tagName, " => ", qv.value, qv.quality 
+                            writeStatus=str(qv.value)
+                            
+                            if string.upper(writeStatus) == 'SUCCESS' or string.upper(writeStatus) == 'FAILURE':
+                                if string.upper(writeStatus) == 'SUCCESS':
+                                    successes = successes + 1
+                                    status = 'Success'
+                                    errorMessage = ''
+                                else:
+                                    failures = failures + 1 
+                                    status = 'Failure'
+                                    errorMessage = system.tag.read(formatTagName(provider, familyName, storTagName) + '/writeErrorMessage').value
+    
+                                ds = system.dataset.setValue(ds, i, "Download Status", status)
+                                storVal = system.tag.read(formatTagName(provider, familyName, storTagName) + '/value').value
+                                ds = system.dataset.setValue(ds, i, "Stor", storVal)
+                                compVal = system.tag.read(formatTagName(provider, familyName, compTagName) + '/value').value
+                                ds = system.dataset.setValue(ds, i, "Comp", compVal)
+                                log.trace("  %s -> %s - %s" % (storTagName, storVal, writeStatus))
+                                logDetail(logId, record["Store Tag"], pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database) 
+                            else:
+                                pending = pending + 1 
+                    else:
+                        # Writing is inhibited so this will never pass...
+                        print "Writes are inhibited"
+                        failures = failures + 1
+                        status = 'Failure - Write inhibited'
+                        ds = system.dataset.setValue(ds, i, "Download Status", status)
                 else:
                     log.info("Unexpected download type: %s on line %s" % (downloadType, str(i)))
 

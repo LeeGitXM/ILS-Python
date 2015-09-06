@@ -110,7 +110,7 @@ def refresher(familyName, ds, downloadType, database = ""):
                 if storTag not in tagNames:
                     tagNames.append(compTag)
     
-    # Now  convert the OPC tagnames from MS Access to Ignition names
+    # Now  convert the OPC tag names from MS Access to Ignition names
     tags = []
     for tagName in tagNames:
         from ils.recipeToolkit.common import formatTagName
@@ -189,7 +189,7 @@ def refresher(familyName, ds, downloadType, database = ""):
                 download = False
             elif (pendVal == None or pendVal == "") and (reccVal == None or reccVal == ""):
                 reason = ""
-                planStatus = "skipped"
+                planStatus = "noChange"
                 download = False
             elif (pendVal == None or pendVal == "") and (reccVal != "" and reccVal != None):
                 if reason == "":
