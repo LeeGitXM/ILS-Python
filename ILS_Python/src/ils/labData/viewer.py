@@ -4,6 +4,7 @@ Created on Mar 29, 2015
 @author: Pete
 '''
 import system
+import ils.common.util as util
 
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
 # but not multiple screens showing the same table.
@@ -154,5 +155,94 @@ def setSeen(rootContainer):
         else:
             print "Skipping %s, probably because it does not have any data..." % (valueName)
 
-        
+# This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
+# This is ALWAYS run from a client.  For now, the "Get History" button appears on every lab data table, regardless of its source,
+# even though it can only work for data that comes from PHD.  It can't work for DCS data, selectors, or derived values.
+def fetchHistory(container):
+    print "Fetching history looking for missing data..."
+    valueName=container.LabValueName
+    valueId=container.ValueId
+    
+    print "Configuring the Lab Datum Viewer table for %s - %i" % (valueName, valueId)
+    
+    SQL = "Select InterfaceName, ItemId from LtPHDValueView where ValueId = %i" % (valueId)
+    pds = system.db.runQuery(SQL)
+    
+    if len(pds) == 0:
+        system.gui.warningBox("This lab data does not have history because it's source is not PHD!")
+        return
+
+    # If they choose a lab selector, should the request be transferred to the source of the selector?
+    
+    hdaInterface=pds[0]["InterfaceName"]
+    itemId=pds[0]["ItemId"]
+    maxValues=0
+    boundingValues=0
+    
+    # Check that the HDA interface is healthy
+    serverIsAvailable=system.opchda.isServerAvailable(hdaInterface)
+    if not(serverIsAvailable):
+        system.gui.warningBox("Unable to fetch history because the HDA interface <%s> is not available!" % (hdaInterface))
+        return
+    
+    # Get the start and stop time for the query
+    endDate = util.getDate()
+    from java.util import Calendar
+    cal = Calendar.getInstance()
+ 
+    cal.setTime(endDate)
+    cal.add(Calendar.HOUR, -24 * 14)
+    startDate = cal.getTime()
+
+    retVals=system.opchda.readRaw(hdaInterface, [itemId], startDate, endDate, maxValues, boundingValues)
+    print "...back from HDA read, read %i values!" % (len(retVals))
+
+    # We are fetching the history for a single lab value.
+    valueList=retVals[0]
+
+    if str(valueList.serviceResult) != 'Good':
+        system.gui.errorBox("The data returned from the PHD historian was %s --" % (valueList.serviceResult))
+        return
+
+    if valueList.size()==0:
+        system.gui.warningBox("No data was found for %s" % (itemId))
+        return
+    
+    system.db.runUpdateQuery("SET IDENTITY_INSERT LtHistory ON")
+    
+    historyId = system.db.runScalarQuery("select min(HistoryId) from LtHistory")
+    print "The minimum history id is: %i", historyId
+
+    # We found some data so now process it - we found data, but that doesn't mean it is new!
+    rows=0
+    for qv in valueList:
+        sampleTime = qv.timestamp
+        rawValue = qv.value
+        quality = qv.quality
+
+        # Only process Good values
+        if quality.isGood():
+            
+            SQL = "select HistoryId from LtHistory where ValueId = ? and RawValue = ? and SampleTime = ?"
+            pds = system.db.runPrepQuery(SQL, [valueId, rawValue, sampleTime]) 
+            if len(pds) == 0:
+                print "*** NEED TO INSERT A MISSING VALUE: ", valueName, itemId, rawValue, sampleTime, quality
+                
+                # Insert the value into the lab history table.
+                historyId = historyId - 1
+                SQL = "insert into LtHistory (historyId, valueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, ?, getdate())"
+                system.db.runPrepUpdate(SQL, [historyId, valueId, rawValue, sampleTime])
+                print "    Inserted value with history id: ", historyId 
+                rows = rows + 1
+#        # Step 2 - Update LtValue with the id of the latest history value
+#        SQL = "update LtValue set LastHistoryId = %i where valueId = %i" % (historyId, valueId)
+#        system.db.runUpdateQuery(SQL, database)
+
+    system.db.runUpdateQuery("SET IDENTITY_INSERT LtHistory OFF")
+    
+    if rows == 0:
+        system.gui.messageBox("No new data was found!")
+    else:
+        configureLabDatumTable(container)
+        system.gui.messageBox("%i new values were loaded!" % (rows))
         

@@ -363,7 +363,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
 def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues):
     
     #----------------------------------------------------------------
-    def checkForANewPHDLabValue(valueName, itemId, valueList):
+    def checkForANewPHDLabValue(valueName, itemId, valueList, endDate):
         phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
         
         if str(valueList.serviceResult) != 'Good':
@@ -374,14 +374,25 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
             phdLog.trace("   -- no data found for %s --" % (itemId))
             return False, -1, -1, "NoDataFound"
         
-        # Get the last value out of the list of values - I couldn't find a way to get this directlt, but there must be a way
+        # There is something strange about SOME of the lab data at EM - for some of the lab data, the results include a 
+        # point in the future, so it will be the last point in the list, and it has a value of None.  I'm not sure how a historian
+        # can have a point in the future - sounds more like fiction than history - plus that time is greater than the
+        # end time I specified.  Filter it out nonetheless.
     #    lastQV=valueList[valueList.size()-1]
-        for lastQV in valueList:
-            pass
-            
-        rawValue=lastQV.value
-        sampleTime=lastQV.timestamp
-        quality=lastQV.quality
+        validatedList = []
+        for qv in valueList:
+            if qv.timestamp < endDate:
+                validatedList.append(qv)
+            else:
+                phdLog.warning("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
+
+        if len(validatedList) == 0:
+            return False, None, None, "NoDataFound"
+
+        qv=validatedList[len(validatedList) - 1]
+        rawValue=qv.value
+        sampleTime=qv.timestamp
+        quality=qv.quality
         
         phdLog.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
         new = checkIfValueIsNew(valueName, rawValue, sampleTime, phdLog)
@@ -395,7 +406,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
     cal = Calendar.getInstance()
  
     cal.setTime(endDate)
-    cal.add(Calendar.HOUR, -8)
+    cal.add(Calendar.HOUR, -24)
     startDate = cal.getTime()
     
     # Fetch the set of lab values that we need to get from PHD
@@ -438,7 +449,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
                 itemId=tagInfo["ItemId"]
                 validationProcedure=tagInfo["ValidationProcedure"]
 
-                new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList)
+                new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList, endDate)
                 if new:
                     writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, \
                         database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, phdLog)
