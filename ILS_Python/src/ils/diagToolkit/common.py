@@ -45,7 +45,7 @@ def clearQuantOutputRecommendations(application, database=""):
 
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
 # and is the first step in evaluating the active FDs and calculating new recommendations.
-def deleteRecommendations(applicationName, database):
+def deleteRecommendations(applicationName, log, database):
     log.trace("Deleting recommendations for %s" % (applicationName))
     SQL = "delete from DtRecommendation " \
         " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
@@ -54,9 +54,20 @@ def deleteRecommendations(applicationName, database):
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and A.ApplicationName = '%s')" % (applicationName)
-    log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     log.trace("Delected %i rcommendations..." % (rows))
+    return
+
+# Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
+# and is the first step in evaluating the active FDs and calculating new recommendations.
+def resetOutputs(applicationName, log, database):
+    log.trace("Resetting QuantOutputs for %s" % (applicationName))
+    SQL = "update DtQuantOutput " \
+        " set Active = 0 where ApplicationId in (select ApplicationId "\
+        " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
+    print SQL
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.trace("Reset %i QuantOutputs..." % (rows))
     return
 
 # Lookup the application Id given the name
@@ -93,7 +104,9 @@ def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
         record = records[0]
     return record
 
-# Fetch all of the active final diagnosis for an application
+# Fetch all of the active final diagnosis for an application.
+# Order the diagnosis from most import to least important - remember that the numeric priority is such that
+# low numbers are higher priority than high numbers. 
 def fetchActiveDiagnosis(applicationName, database=""):
     SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
@@ -105,7 +118,7 @@ def fetchActiveDiagnosis(applicationName, database=""):
         " and DE.Status = 'Active' " \
         " and not (FD.CalculationMethod != 'Constant' and (DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.ApplicationName = '%s'"\
-        " order by FamilyPriority DESC, FinalDiagnosisPriority DESC"  % (applicationName) 
+        " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds

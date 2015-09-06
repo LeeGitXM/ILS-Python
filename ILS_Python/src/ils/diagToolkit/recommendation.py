@@ -14,11 +14,7 @@ def notifyConsole():
     print "Waking up the console"
 
 # This is a replacement to em-quant-recommend-gda
-def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, database=""):
-    #TODO Need to do something here to get the provider and database based on the isolation mode settings
-    provider="[XOM]"
-    database="XOM"
-    
+def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, database="", provider="XOM"):
     SQL = "select CalculationMethod "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)

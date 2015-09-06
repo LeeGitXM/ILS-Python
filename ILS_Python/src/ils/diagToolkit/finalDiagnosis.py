@@ -161,7 +161,8 @@ def manage(application, recalcRequested=False, database="", provider="XOM"):
 
     #---------------------------------------------------------------------
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
-    # descending order.
+    # descending order.  Remember that the highest priority is the lowest number (i.e. priority 1 is more important 
+    # than priority 10.
     def selectHighestPriorityFamilies(pds):
         
         aList = []
@@ -179,22 +180,23 @@ def manage(application, recalcRequested=False, database="", provider="XOM"):
     def selectHighestPriorityDiagnosisForEachFamily(aList):
         log.trace("Filtering out low priority diagnosis for families with multiple active diagnosis...")
         lastFamily = ''
-        highestPriority = -1
+        mostImportantPriority = 10000000
         bList = []
         for record in aList:
             family = record['FamilyName']
             finalDiagnosisPriority = record['FinalDiagnosisPriority']
             if family != lastFamily:
                 lastFamily = family
-                highestPriority = finalDiagnosisPriority
+                mostImportantPriority = finalDiagnosisPriority
                 bList.append(record)
-            elif finalDiagnosisPriority >= highestPriority:
+            elif finalDiagnosisPriority <= mostImportantPriority:
                 bList.append(record)
             else:
-                log.trace("   ...removing %s because it's priority %f is less than the highest priority %f" % (record["FinalDiagnosisName"], finalDiagnosisPriority, highestPriority))
+                log.trace("   ...removing %s because it's priority %f is greater than the most important priority %f" % (record["FinalDiagnosisName"], finalDiagnosisPriority, mostImportantPriority))
         return bList
     
     #---------------------------------------------------------------------
+    # Whatever is Active must have been the highest priority
     def fetchPreviousHighestPriorityDiagnosis(applicationName, database):
         log.trace("Fetching the previous highest priority diagnosis...")
         SQL = "Select FinalDiagnosisName, FinalDiagnosisId "\
@@ -219,22 +221,23 @@ def manage(application, recalcRequested=False, database="", provider="XOM"):
 
     #---------------------------------------------------------------------
     def setActiveDiagnosisFlag(alist, database):
-        log.trace("Setting the active diagnosis flag...")
+        log.trace("Updating the 'active' flag for FinalDiagnosis...")
         # First clear all of the active flags in 
         families = []   # A list of quantOutput dictionaries
         for record in alist:
             familyId = record['FamilyId']
             if familyId not in families:
-                log.trace("   ...clearing diagnosis in family %s..." % str(familyId))
+                log.trace("   ...clearing all FinalDiagnosis in family %s..." % str(familyId))
                 families.append(familyId)
                 SQL = "update dtFinalDiagnosis set Active = 0 where FamilyId = %i" % (familyId)
                 logSQL.trace(SQL)
                 rows=system.db.runUpdateQuery(SQL, database)
                 log.trace("      updated %i rows!" % (rows))
 
+        # Now set the ones that are active...
         for record in alist:
             finalDiagnosisId = record['FinalDiagnosisId']
-            log.trace("   ...setting %i to active..." % (finalDiagnosisId))
+            log.trace("   ...setting Final Diagnosis %i to active..." % (finalDiagnosisId))
             SQL = "update dtFinalDiagnosis set Active = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
             logSQL.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, database)
@@ -344,7 +347,11 @@ def manage(application, recalcRequested=False, database="", provider="XOM"):
 
     from ils.diagToolkit.common import deleteRecommendations
     log.trace("...deleting existing recommendations for %s..." % (application))
-    deleteRecommendations(application, database)
+    deleteRecommendations(application, log, database)
+    
+    from ils.diagToolkit.common import resetOutputs
+    log.trace("...resetting the QuantOutput active flag for %s..." % (application))
+    resetOutputs(application, log, database)
     
     rescindLowPriorityDiagnosis(lowPriorityList, database)
     setActiveDiagnosisFlag(list2, database)
@@ -366,7 +373,7 @@ def manage(application, recalcRequested=False, database="", provider="XOM"):
         from ils.diagToolkit.recommendation import makeRecommendation
         textRecommendation, recommendations = makeRecommendation(
                 record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
-                record['FinalDiagnosisId'], record['DiagnosisEntryId'], database)
+                record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
         quantOutputs = mergeRecommendations(quantOutputs, recommendations)
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")
