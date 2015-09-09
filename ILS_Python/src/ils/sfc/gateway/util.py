@@ -211,13 +211,16 @@ def getDelaySeconds(delay, delayUnit):
         delaySeconds = delay * 3600
     return delaySeconds
 
-def createFilepath(chartScope, stepProperties):
+def createFilepath(chartScope, stepProperties, includeExtension):
     '''Create a filepath from dir/file/suffix in step properties'''
     import time
     logger = getChartLogger(chartScope)
     directory = getStepProperty(stepProperties, DIRECTORY) 
     fileName = getStepProperty(stepProperties, FILENAME) 
-    extension = getStepProperty(stepProperties, EXTENSION) 
+    if includeExtension:
+        extension = getStepProperty(stepProperties, EXTENSION) 
+    else:
+        extension = ''
     # lookup the directory if it is a variab,e
     if directory.startswith('['):
         directory = chartScope.get(directory, None)

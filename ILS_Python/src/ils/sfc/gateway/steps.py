@@ -90,7 +90,7 @@ def saveQueue(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     currentMsgQueue = getCurrentMessageQueue(chartScope)
     database = getDatabaseName(chartScope)
-    filepath = createFilepath(chartScope, stepProperties)
+    filepath = createFilepath(chartScope, stepProperties, False)
     save(currentMsgQueue, True, filepath, database)
 
 def yesNo(scopeContext, stepProperties):
@@ -440,7 +440,7 @@ def saveData(scopeContext, stepProperties):
         logger.error("data for location " + recipeLocation + " not found")
     
     # write the file
-    filepath = createFilepath(chartScope, stepProperties)
+    filepath = createFilepath(chartScope, stepProperties, True)
     fp = open(filepath, 'w')
     writeObj(recipeData, 0, fp)
     fp.close()
