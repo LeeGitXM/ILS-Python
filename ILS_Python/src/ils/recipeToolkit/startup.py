@@ -78,7 +78,7 @@ def createTags(tagProvider):
         system.tag.addTag(parentPath=path, name=name, tagType="EXPRESSION", dataType="Int8", attributes={"Expression":expr})
 
 
-def restoreLocalRecipe(recipeFamily, grade, database=""):
+def restoreLocalRecipe(recipeFamily, grade, tagProvider = "", database=""):
     log.info("Restoring local recipe values for family: %s, grade: %s" % (str(recipeFamily), str(grade)) )
 
     SQL = "Select VD.StoreTag, GD.RecommendedValue "\
@@ -97,6 +97,16 @@ def restoreLocalRecipe(recipeFamily, grade, database=""):
         " order by StoreTag" % (str(grade), recipeFamily)
 
     pds = system.db.runQuery(SQL, database)
-    print "Fetched %i rows" % (len(pds))
+    log.info("Fetched %i rows" % (len(pds)))
+    
+    tags=[]
+    vals=[]
+    from ils.recipeToolkit.common import formatLocalTagName
     for record in pds:
-        print record["StoreTag"], record["RecommendedValue"]
+        log.info("  setting %s to %s..." % (record["StoreTag"], str(record["RecommendedValue"])))
+        tagName=formatLocalTagName(tagProvider, record["StoreTag"])
+        tags.append(tagName)
+        vals.append(record["RecommendedValue"])
+    
+    system.tag.writeAllSynchronous(tags, vals)
+    log.info("Done restoring local recipe tags!")

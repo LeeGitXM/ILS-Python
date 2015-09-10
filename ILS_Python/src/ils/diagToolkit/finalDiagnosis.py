@@ -119,7 +119,7 @@ def recalcMessageHandler(payload):
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
 def manage(application, recalcRequested=False, database="", provider="XOM"):
-    log.info("Managing diagnosis for application: %s" % (application))
+    log.info("Managing diagnosis for application: %s using database %s and tag provider %s" % (application, database, provider))
 
     #---------------------------------------------------------------------
     # Merge the list of output dictionaries for a final diagnosis into the list of all outputs
@@ -389,7 +389,7 @@ def manage(application, recalcRequested=False, database="", provider="XOM"):
     # Store the results in the database
     log.trace("Done managing, the final outputs are: %s" % (str(finalQuantOutputs)))
     for quantOutput in finalQuantOutputs:
-        updateQuantOutput(quantOutput, database)
+        updateQuantOutput(quantOutput, database, provider)
         
     log.info("Finished managing recommendations")
     return notificationText
@@ -468,9 +468,9 @@ def checkBounds(quantOutput, database):
     return quantOutput
 
 def calculateVectorClamps(quantOutputs, provider):
-    #TODO XOM is hard coded
-    log.trace("Checking vector clamping...")
-    qv=system.tag.read("[%s]Configuration/DiagnosticToolkit/vectorClampMode" % (provider))
+    log.trace("Checking vector clamping with tag provider: %s..." % (provider))
+    tagName="[%s]Configuration/DiagnosticToolkit/vectorClampMode" % (provider)
+    qv=system.tag.read(tagName)
     vectorClampMode = string.upper(qv.value)
     
     if vectorClampMode == "DISABLED":
@@ -535,7 +535,7 @@ def calculateVectorClamps(quantOutputs, provider):
     return finalQuantOutputs, notificationText
 
 # Store the updated quantOutput in the database so that it will show up in the setpoint spreadsheet
-def updateQuantOutput(quantOutput, database=''):
+def updateQuantOutput(quantOutput, database='', provider='XOM'):
     from ils.common.cast import toBool
     
     log.trace("Updating the database with the recommendations made to QuantOutput: %s" % (str(quantOutput)))
@@ -549,6 +549,7 @@ def updateQuantOutput(quantOutput, database=''):
     
     # Read the current setpoint
     tagpath = quantOutput.get('TagPath','unknown')
+    tagpath = '[' + provider + ']' + tagpath
     log.trace("   ...reading the current value of tag: %s" % (tagpath))
     qv=system.tag.read(tagpath)
     if not(qv.quality.isGood()):

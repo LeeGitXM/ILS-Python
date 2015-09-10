@@ -20,7 +20,7 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
     logSQL.trace(SQL)
     calculationMethod = system.db.runScalarQuery(SQL, database)
-    log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s" % (finalDiagnosisId, calculationMethod))
+    log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s, database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, database, provider))
      
     # If they specify shared or project scope, then we don't need to do this
     if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):

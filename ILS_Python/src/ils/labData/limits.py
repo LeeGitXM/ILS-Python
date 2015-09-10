@@ -232,18 +232,32 @@ def fetchLimits(database = ""):
 
     print "The new Limit dictionary is: ", limits
     return limits
+
+#
+def parseRecipeFamilyFromGradeTagPath(tagPath):
+    print tagPath
+    i=tagPath.find("Site/") + 5
+    recipeFamily=tagPath[i:]
+    print recipeFamily
     
+    i=recipeFamily.find("/")
+    recipeFamily=recipeFamily[:i]
+    print recipeFamily
+    return recipeFamily
+
+
 # This is called in response to a grade change (and also maybe on restart).  It fetches the grade specific SQC limits from recipe and 
 # updates the lab data database tables.
-def updateSQCLimitsFromRecipe(grade, database=""):
-    log.info("Loading SQC limits from recipe for grade: %s" % (str(grade)))
+def updateSQCLimitsFromRecipe(recipeFamily, grade, database=""):
+    log.info("Loading SQC limits from recipe for family: %s, grade: %s" % (recipeFamily, str(grade)))
     
     # I could do this all in one SQL but then I might miss some limits if the parameter names do not match
     # If there is something in recipe that does not exist in lab data then I want to notify someone.
     SQL = "select P.Parameter, L.UpperLimit, L.LowerLimit "\
-        " from RtSQCParameter P, RtSQCLimit L "\
+        " from RtSQCParameter P, RtSQCLimit L, RtRecipeFamily F "\
         " where P.ParameterId = L.ParameterID "\
-        " and Grade = %s" % (grade)
+        " and P.RecipeFamilyId = F.RecipeFamilyId "\
+        " and L.Grade = %s and F.RecipeFamilyName = '%s'" % (grade, recipeFamily)
     sqlLog.trace(SQL)
 
     pds = system.db.runQuery(SQL, database)
@@ -337,7 +351,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         # It must be an SQC limit - SQC limits must be two-sided
         #TODO SHould NULL values clear out any previous values?
         if upperSQCLimit == None or lowerSQCLimit == None:
-            log.error("Can't calculate target or standard deviation for %s, because one of the limits is NULL" % (valueName))
+            log.error("Can't calculate SQC target or standard deviation for %s, because one of the limits is NULL" % (valueName))
             lowerSQCLimit=float("NaN")
             upperSQCLimit=float("NaN")
             target=float("NaN")
@@ -353,7 +367,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
                 " StandardDeviation = NULL "\
                 " where limitId = %s" % (str(limitId))
         else: 
-            log.trace("Loading new limits for %s: %f to %f" % (valueName, lowerSQCLimit, upperSQCLimit))
+            log.info("Loading new SQC limits for %s: %f to %f" % (valueName, lowerSQCLimit, upperSQCLimit))
             target = (upperSQCLimit + lowerSQCLimit) / 2.0
             standardDeviation = (upperSQCLimit - lowerSQCLimit) / (2.0 * maxStandardDeviations)
             upperValidityLimit = target + (standardDeviationsToValidityLimits * standardDeviation)
@@ -378,6 +392,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
     
         tags = [path+'/lowerSQCLimit', path+'/lowerValidityLimit', path+'/standardDeviation', path+'/target', path+'/upperSQCLimit', path+'/upperValidityLimit']
         vals = [lowerSQCLimit, lowerValidityLimit, standardDeviation, target, upperSQCLimit, upperValidityLimit]
+
     
     # Now perform the write and feedback any errors (Make this a synchronous write so we know what passed and what failed).
     system.tag.writeAllSynchronous(tags, vals)
