@@ -4,6 +4,10 @@ Created on Sep 12, 2014
 @author: Pete
 '''
 
+#
+# Everywhere provider is used here, assume it does not have square brackets
+#
+
 import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.diagToolkit.common import fetchPostForApplication
@@ -32,7 +36,7 @@ def postDiagnosisEntryMessageHandler(payload):
     postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database)
 
 # Insert a record into the diagnosis queue
-def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database="", provider="XOM"):
+def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
     log.trace("Post a diagnosis entry for application: %s, family: %s, final diagnosis: %s" % (application, family, finalDiagnosis))
     
     # Lookup the application Id
@@ -48,7 +52,7 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
         log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (application, family, finalDiagnosis))
         return
 
-    grade=system.tag.read("%sSite/%s/Grade/Grade" % (provider,unit)).value
+    grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
     print "The grade is: ", grade
     textRecommendation = record.get('TextRecommendation', 'Unknown Text')
     
@@ -97,7 +101,7 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
         "where A.UnitId = U.UnitId "\
         "and U.PostId = P.postId "\
         "and A.ApplicationName = '%s'" % (application)
-    console = system.db.runScalarQuery(SQL)
+    console = system.db.runScalarQuery(SQL, database)
     print "The console is: ", console
     notifyClients(projectName, console, notificationText)
 
@@ -118,7 +122,7 @@ def recalcMessageHandler(payload):
 
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
-def manage(application, recalcRequested=False, database="", provider="XOM"):
+def manage(application, recalcRequested=False, database="", provider=""):
     log.info("Managing diagnosis for application: %s using database %s and tag provider %s" % (application, database, provider))
 
     #---------------------------------------------------------------------
@@ -403,7 +407,7 @@ def checkBounds(quantOutput, database):
     mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
 
     # Compare the incremental recommendation to the **incremental** limits
-    log.trace("      ...comparing the output (%f) to most positive increment (%f) and most negative increment (%f)..." % (feedbackOutput, mostPositiveIncrement, mostNegativeIncrement))
+    log.trace("      ...comparing the feedback output (%f) to most positive increment (%f) and most negative increment (%f)..." % (feedbackOutput, mostPositiveIncrement, mostNegativeIncrement))
     if feedbackOutput >= mostNegativeIncrement and feedbackOutput <= mostPositiveIncrement:
         log.trace("      ...the output is not incremental bound...")
         quantOutput['OutputLimited'] = False
@@ -535,7 +539,7 @@ def calculateVectorClamps(quantOutputs, provider):
     return finalQuantOutputs, notificationText
 
 # Store the updated quantOutput in the database so that it will show up in the setpoint spreadsheet
-def updateQuantOutput(quantOutput, database='', provider='XOM'):
+def updateQuantOutput(quantOutput, database='', provider=''):
     from ils.common.cast import toBool
     
     log.trace("Updating the database with the recommendations made to QuantOutput: %s" % (str(quantOutput)))
@@ -547,9 +551,8 @@ def updateQuantOutput(quantOutput, database='', provider='XOM'):
     outputLimited = toBool(outputLimited)
     outputPercent = quantOutput.get('OutputPercent', 0.0)
     
-    # Read the current setpoint
+    # Read the current setpoint - the tagpath in the QuantOutput should already have the provider
     tagpath = quantOutput.get('TagPath','unknown')
-    tagpath = '[' + provider + ']' + tagpath
     log.trace("   ...reading the current value of tag: %s" % (tagpath))
     qv=system.tag.read(tagpath)
     if not(qv.quality.isGood()):

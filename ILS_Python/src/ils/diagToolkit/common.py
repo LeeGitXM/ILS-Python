@@ -55,7 +55,7 @@ def deleteRecommendations(applicationName, log, database):
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and A.ApplicationName = '%s')" % (applicationName)
     rows=system.db.runUpdateQuery(SQL, database)
-    log.trace("Delected %i rcommendations..." % (rows))
+    log.trace("Deleted %i recommendations..." % (rows))
     return
 
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis

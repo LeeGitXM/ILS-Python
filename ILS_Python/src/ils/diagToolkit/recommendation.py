@@ -14,7 +14,7 @@ def notifyConsole():
     print "Waking up the console"
 
 # This is a replacement to em-quant-recommend-gda
-def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, database="", provider="XOM"):
+def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
     SQL = "select CalculationMethod "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
@@ -90,7 +90,8 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
     log.trace("      ...inserted recommendation id: %s for recommendation definition id: %i" % (recommendationId, recommendationDefinitionId))
     return recommendationId
 
-# QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made.
+# QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made
+# for that QuantOutput - in the case where multiple FDs are active and of equal priority and tough the same quantOutput.
 def calculateFinalRecommendation(quantOutput):
     log.trace("Calculating the final recommendation for: %s " % (quantOutput))
 

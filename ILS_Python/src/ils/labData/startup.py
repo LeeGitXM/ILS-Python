@@ -14,7 +14,9 @@ log = system.util.getLogger("com.ils.labData")
 def gateway():
     from ils.labData.version import version
     version, revisionDate = version()
+    log.info("---------------------------------------------------------")
     log.info("Starting Lab Data Toolkit gateway version %s - %s" % (version, revisionDate))
+    log.info("---------------------------------------------------------")
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     createTags("[" + provider + "]")
