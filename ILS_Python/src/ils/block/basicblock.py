@@ -50,8 +50,8 @@ class BasicBlock():
     # By default, we do nothing
     def acceptValue(self,port,value,quality,time):
         self.value = value
-        self.quality = quality
-        
+        self.quality = quality 
+      
     # Return the class name. This is a fully qualified
     # path, including the module path 
     def getClassName(self):
@@ -93,6 +93,7 @@ class BasicBlock():
     def setProperty(self,name,dictionary):
         print "BasicBlock.setProperty:",name,"=",dictionary
         self.properties[name] = dictionary
+        self.handler.sendPropertyNotification(self.uuid,name,dictionary.get("value",""))
         
     # Evaluate the block. This is called on expiration
     # of a timer. This default implementation
