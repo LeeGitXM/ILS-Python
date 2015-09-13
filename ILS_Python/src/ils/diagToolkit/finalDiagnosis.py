@@ -402,9 +402,26 @@ def manage(application, recalcRequested=False, database="", provider=""):
 def checkBounds(quantOutput, database):
     
     log.trace("   ...checking Bounds...")
+    print ">>>>>> Quant Output: ", quantOutput
+    
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
     mostNegativeIncrement = quantOutput.get('MostNegativeIncrement', -1000.0)
     mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
+    
+    # Read the current setpoint - the tagpath in the QuantOutput should already have the provider
+    tagpath = quantOutput.get('TagPath','unknown')
+    log.trace("   ...reading the current value of tag: %s" % (tagpath))
+    qv=system.tag.read(tagpath)
+    if not(qv.quality.isGood()):
+        log.error("Error reading the current setpoint from (%s), tag quality is: (%s)" % (tagpath, str(qv.quality)))
+ 
+        # Make this quant-output inactive since we can't make an intelligent recommendation without the current setpoint
+        quantOutput['CurrentValue'] = None
+        quantOutput['CurrentValueIsGood'] = False
+        return
+
+    quantOutput['CurrentValue'] = qv.value
+    quantOutput['CurrentValueIsGood'] = True
 
     # Compare the incremental recommendation to the **incremental** limits
     log.trace("      ...comparing the feedback output (%f) to most positive increment (%f) and most negative increment (%f)..." % (feedbackOutput, mostPositiveIncrement, mostNegativeIncrement))
@@ -427,14 +444,15 @@ def checkBounds(quantOutput, database):
     # Compare the final setpoint to the **absolute** limits
     setpointHighLimit = quantOutput.get('SetpointHighLimit', -1000.0)
     setpointLowLimit = quantOutput.get('SetpointLowLimit', 1000.0)
-    log.trace("      ...comparing the conditioned output (%f) to high limit (%f) and low limit (%f)..." % (feedbackOutputConditioned, setpointHighLimit, setpointLowLimit))
+    log.trace("      ...comparing the proposed setpoint (%f) to high limit (%f) and low limit (%f)..." % ((qv.value + feedbackOutputConditioned), setpointHighLimit, setpointLowLimit))
 
-    if feedbackOutputConditioned > setpointHighLimit:
+    # For the absolute limits we need to add the current value to the incremental change before comparing to the absolute limits
+    if qv.value + feedbackOutputConditioned > setpointHighLimit:
         log.trace("      ...the output IS Positive Absolute Bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Positive Absolute Bound'
         feedbackOutputConditioned=setpointHighLimit
-    elif feedbackOutputConditioned < setpointLowLimit:
+    elif qv.value + feedbackOutputConditioned < setpointLowLimit:
         log.trace("      ...the output IS Negative Absolute Bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Negative Absolute Bound'
@@ -538,7 +556,7 @@ def calculateVectorClamps(quantOutputs, provider):
 
         finalQuantOutputs.append(quantOutput)
             
-    print txt
+    log.trace(txt)
     
     if vectorClampMode == 'ADVISE':
         notificationText=txt
@@ -560,21 +578,18 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     outputLimited = toBool(outputLimited)
     outputPercent = quantOutput.get('OutputPercent', 0.0)
     
-    # Read the current setpoint - the tagpath in the QuantOutput should already have the provider
-    tagpath = quantOutput.get('TagPath','unknown')
-    log.trace("   ...reading the current value of tag: %s" % (tagpath))
-    qv=system.tag.read(tagpath)
-    if not(qv.quality.isGood()):
-        log.error("Error reading the current setpoint from (%s), tag quality is: (%s)" % (tagpath, str(qv.quality)))
- 
+    # The current setpoint was read when we checked the bounds.
+    isGood = quantOutput.get('CurrentValueIsGood',False)
+    if not(isGood):
         # Make this quant-output inactive since we can't make an intelligent recommendation without the current setpoint
         SQL = "update DtQuantOutput set Active = 0 where QuantOutputId = %i " % (quantOutputId)
         logSQL.trace(SQL)
         system.db.runUpdateQuery(SQL, database)
         return
 
-    log.trace("     ...read tag values: %s - %s" % (str(qv.value), str(qv.quality)))
-    currentSetpoint=qv.value
+    currentSetpoint=quantOutput.get('CurrentValue',None)
+    log.trace("     ...using current setpoint value: %s" % (str(currentSetpoint)))
+    
 
     # The recommendation may be absolute or incremental, but we always display incremental    
     incrementalOutput=quantOutput.get('IncrementalOutput')
