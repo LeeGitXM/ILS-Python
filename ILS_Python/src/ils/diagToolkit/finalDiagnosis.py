@@ -482,18 +482,27 @@ def calculateVectorClamps(quantOutputs, provider):
         return quantOutputs, ""
     
     log.trace("...Vector clamping is enabled")
-    
-    if len(quantOutputs) < 2:
+
+    # There needs to be at least two outputs that are not minimum change bound for vector clamps to be appropriate
+    i = 0
+    for quantOutput in quantOutputs:
+        if quantOutput['OutputLimitedStatus'] != 'Minimum Change Bound':
+            i = i + 1
+
+    if i < 2:
         log.trace("Vector clamps do not apply when there is only one output")
         return quantOutputs, ""
 
     # The first step is to find the most restrictive clamp
     minOutputRatio=100.0
     for quantOutput in quantOutputs:
-        if quantOutput['OutputPercent'] < minOutputRatio:
-            boundOutput=quantOutput
-            minOutputRatio = quantOutput['OutputPercent']
-    
+        if quantOutput['OutputLimitedStatus'] != 'Minimum Change Bound':
+            if quantOutput['OutputPercent'] < minOutputRatio:
+                boundOutput=quantOutput
+                minOutputRatio = quantOutput['OutputPercent']
+        else:
+            log.trace("...not considering %s which is minimum change bound..." % (quantOutput['QuantOutput']))
+            
     if minOutputRatio == 100.0:
         log.trace("No outputs are clamped, therefore there is not a vector clamp")
         return quantOutputs, ""
@@ -507,7 +516,7 @@ def calculateVectorClamps(quantOutputs, provider):
     for quantOutput in quantOutputs:
         
         # Look for an output that isn't bound but needs to be Vector clamped
-        if quantOutput['OutputPercent'] > minOutputRatio:
+        if quantOutput['OutputPercent'] > minOutputRatio and quantOutput['OutputLimitedStatus'] != 'Minimum Change Bound':
             outputPercent = minOutputRatio
             feedbackOutputConditioned = quantOutput['FeedbackOutput'] * minOutputRatio / 100.0
             txt = "%s\n%s should be reduced from %.4f to %.4f" % (txt, quantOutput['QuantOutput'], quantOutput['FeedbackOutput'], 
