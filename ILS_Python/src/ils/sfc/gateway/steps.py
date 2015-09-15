@@ -287,6 +287,7 @@ def dialogMessage(scopeContext, stepProperties):
     sendMessageToClient(chartScope, DIALOG_MSG_HANDLER, payload)
 
 def collectData(scopeContext, stepProperties):
+    from system.ils.sfc.common.Constants import COLLECT_DATA_CONFIG 
     from ils.sfc.common.util import substituteProvider
     from ils.sfc.gateway.util import getTopLevelProperties
     # from ils.sfc.gateway.util import getChartLogger
@@ -296,12 +297,16 @@ def collectData(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
-    configJson = getStepProperty(stepProperties, CONFIG)
+    logger.info("Executing a collect data block")
+    configJson = getStepProperty(stepProperties, COLLECT_DATA_CONFIG)
     config = jsonDecode(configJson)
+    logger.trace("Block Configuration: %s" % (str(config)))
+
     # config.errorHandling
     for row in config['rows']:
         tagPath = substituteProvider(chartScope, row['tagPath'])
         valueType = row['valueType']
+        logger.info("Collecting %s from %s" % (str(valueType), str(tagPath)))
         if valueType == 'current':
             try:
                 tagReadResult = system.tag.read(tagPath)
@@ -312,8 +317,11 @@ def collectData(scopeContext, stepProperties):
         else:
             tagPaths = [tagPath]
             if valueType == 'stdDeviation':
+                logger.trace("calling queryTagHistory() to fetch the dataset for calculating the standard deviation") 
                 tagValues = system.tag.queryTagHistory(tagPaths, rangeHours=row['pastWindow'], ignoreBadQuality=True)
+                logger.trace("Calculating the standard deviation...")
                 tagValue = standardDeviation(tagValues, 1)
+                logger.trace("The standard deviation is: %s" % (tagValue))
                 readOk = True
             else:
                 if valueType == 'average':
@@ -326,10 +334,12 @@ def collectData(scopeContext, stepProperties):
                     logger.error("Unknown value type" + valueType)
                     mode = 'Average'
                 try:
+                    logger.trace("calling queryTagHistory() - rangeMinutes: %s, aggregationMode: %s" % (str(row['pastWindow']), mode))
                     tagValues = system.tag.queryTagHistory(tagPaths, returnSize=1, rangeMinutes=row['pastWindow'], aggregationMode=mode, ignoreBadQuality=True)
                     # ?? how do we tell if there was an error??
                     if tagValues.rowCount == 1:
                         tagValue = tagValues.getValueAt(0,1)
+                        logger.trace("Successfully returned: %s" )
                         readOk = True
                     else:
                         readOk = False
@@ -532,10 +542,13 @@ def writeOutput(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
+    logger.info("Executing a Write Output block")
     verbose = getStepProperty(stepProperties, VERBOSE)
     configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
     config = getWriteOutputConfig(configJson)
+    logger.trace("Block Configuration: %s" % (str(config)))
     outputRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+    logger.trace("Using recipe location: %s" % (outputRecipeLocation))
 
     # filter out disabled rows:
     downloadRows = []
@@ -551,12 +564,16 @@ def writeOutput(scopeContext, stepProperties):
         row.timingMinutes = row.outputRD.get(TIMING)
         if row.timingMinutes > 0.:
             timerNeeded = True
+    logger.trace("Timer is needed: %s" % (str(timerNeeded)))
+    
     if timerNeeded:
         handleTimer(chartScope, stepScope, stepProperties)
         # wait until the timer starts
         timerStart = waitForTimerStart(chartScope, stepScope, stepProperties, logger)
+        logger.trace("The timer start is: %s" % (str(timerStart)))
+        
         if timerStart == None:
-            # the chart has been canceled
+            logger.info("The chart has been canceled")
             return
             
     # separate rows into timed rows and those that are written after timed rows:
@@ -565,6 +582,7 @@ def writeOutput(scopeContext, stepProperties):
     finalRows = []
              
     # initialize row data and separate into immediate/timed/final:
+    logger.trace("Initializing data and classifying outputs...")
     for row in downloadRows:
         row.written = False
          
@@ -603,11 +621,11 @@ def writeOutput(scopeContext, stepProperties):
         isolationMode = getIsolationMode(chartScope)
         row.io = AbstractSfcIO.getIO(row.tagPath, isolationMode) 
         
-    logger.debug("Starting immediate writes")
+    logger.trace("Starting immediate writes")
     for row in immediateRows:
         writeOutput(chartScope, row, verbose, logger)
                      
-    logger.debug("Starting timed writes")
+    logger.trace("Starting timed writes")
     writesPending = True       
     while writesPending:
         writesPending = False 
@@ -615,7 +633,7 @@ def writeOutput(scopeContext, stepProperties):
         elapsedMinutes = getMinutesSince(timerStart)
         for row in timedRows:
             if not row.written:
-                logger.debug("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
+                logger.trace("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
                 if elapsedMinutes >= row.timingMinutes:
                     writeOutput(chartScope, row, verbose, logger)
                 else:
@@ -627,7 +645,7 @@ def writeOutput(scopeContext, stepProperties):
         if checkForCancelOrPause(stepScope, logger):
             return
        
-    logger.debug("Starting final writes")
+    logger.trace("Starting final writes")
     for row in finalRows:
         absTiming = time.time()
         timestamp = formatTime(absTiming)
@@ -635,6 +653,7 @@ def writeOutput(scopeContext, stepProperties):
         row.outputRD.set(STEP_TIME, absTiming)
         writeOutput(chartScope, row, verbose, logger)    
 
+    logger.info("Write output block finished!")
     #Note: write confirmations are on a separate thread and will write the result
     # directly to recipe data
         
