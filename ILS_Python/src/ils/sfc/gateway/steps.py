@@ -613,12 +613,13 @@ def writeOutput(scopeContext, stepProperties):
             # I don't want to propagate the magic 1000 value, so we use None
             # to signal an event-driven step
             row.outputRD.set(STEP_TIME, None)
-        else:
+        elif timerNeeded:
             absTiming = timerStart + row.timingMinutes * 60.
             timestamp = formatTime(absTiming)
             row.outputRD.set(STEP_TIMESTAMP, timestamp)
             row.outputRD.set(STEP_TIME, absTiming)
-
+        # ?? do we need a timestamp for immediate rows?
+        
         isolationMode = getIsolationMode(chartScope)
         row.io = AbstractSfcIO.getIO(row.tagPath, isolationMode) 
         
