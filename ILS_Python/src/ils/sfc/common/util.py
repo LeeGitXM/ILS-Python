@@ -36,12 +36,11 @@ def substituteProvider(chartProperties, tagPath):
         return tagPath
     else:
         provider = getProviderName(chartProperties)
-        rbIndex = tagPath.index(']')
+        rbIndex = tagPath.find(']')
         if rbIndex >= 0:
             return '[' + provider + ']' + tagPath[rbIndex+1:len(tagPath)]
         else:
-            # no provider was specified?! can't to anything
-            return tagPath
+            return '[' + provider + ']' + tagPath
     
 # this should really be in client.util
 def handleUnexpectedClientError(msg):

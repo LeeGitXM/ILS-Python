@@ -287,6 +287,7 @@ def dialogMessage(scopeContext, stepProperties):
     sendMessageToClient(chartScope, DIALOG_MSG_HANDLER, payload)
 
 def collectData(scopeContext, stepProperties):
+    from system.ils.sfc.common.Constants import COLLECT_DATA_CONFIG
     from ils.sfc.common.util import substituteProvider
     from ils.sfc.gateway.util import getTopLevelProperties
     # from ils.sfc.gateway.util import getChartLogger
@@ -296,7 +297,7 @@ def collectData(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
-    configJson = getStepProperty(stepProperties, CONFIG)
+    configJson = getStepProperty(stepProperties, COLLECT_DATA_CONFIG)
     config = jsonDecode(configJson)
     # config.errorHandling
     for row in config['rows']:
@@ -330,6 +331,7 @@ def collectData(scopeContext, stepProperties):
                     # ?? how do we tell if there was an error??
                     if tagValues.rowCount == 1:
                         tagValue = tagValues.getValueAt(0,1)
+                        print 'mode', mode, 'value', tagValue
                         readOk = True
                     else:
                         readOk = False

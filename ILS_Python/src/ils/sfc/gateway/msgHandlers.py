@@ -34,8 +34,7 @@ def sfcReportTests(payload):
     system.ils.sfc.reportTests()
         
 def sfcStartChart(payload):
-    '''start the chart and message the client. At this point the only reason
-       we start on the gateway side is to 1) lazy init the units for this script mgr
+    '''Prepare for chart start. lazy init the units for this script mgr
        (CAUTION--there are other gateway script mgrs) and also to save the name of
        the invoking project, as chart status message currently needs this.'''
     import system.sfc.startChart
@@ -49,12 +48,6 @@ def sfcStartChart(payload):
     registerSfcProject(project)
     database = getDatabaseName(payload)
     ils.common.units.Unit.lazyInitialize(database)
-    runId = system.sfc.startChart(chartName, payload)
-    # add the chart run id so the client can know it
-    payload[INSTANCE_ID] = runId
-    payload[CLIENT_MSG_HANDLER] = 'sfcChartStarted'
-    sendMessage(project, 'sfcMessage', payload, "C")
-    return runId
 
 def sfcFailTest(payload):
     '''this is a message handler'''

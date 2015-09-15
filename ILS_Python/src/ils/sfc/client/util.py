@@ -14,8 +14,8 @@ def sendResponse(messageId, response):
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
 
-# This is always called from the client
-def runChart(chartName, isolationMode):
+def openControlPanel(chartPath, isolationMode):
+    from ils.sfc.client.controlPanel import createControlPanel
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME
     project = system.util.getProjectName() 
     user = system.security.getUsername()
@@ -23,12 +23,10 @@ def runChart(chartName, isolationMode):
     initialChartProps[ISOLATION_MODE] = isolationMode
     initialChartProps[PROJECT] = project
     initialChartProps[USER] = user
-    # chart name is not really needed in the initial chart properties, but we
-    # are using the same dictionary for message payload and initial chart 
-    # properties so we put it in--it is really just in the payload
-    initialChartProps[CHART_NAME] = chartName
+    initialChartProps[CHART_NAME] = chartPath
     system.util.sendMessage(project, 'sfcStartChart', initialChartProps, "G")
-    
+    createControlPanel(initialChartProps)   
+
 def runTests(testChartPaths, isolationMode, reportFile):
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, TEST_CHART_PATHS, TEST_REPORT_FILE
     project = system.util.getProjectName()

@@ -176,10 +176,6 @@ def sfcReviewData(payload):
     values = [window, primaryDataTable, primaryTabLabel, secondaryDataTable, secondaryTabLabel]
     callMethodWithParams(postingMethod, keys, values)
 
-def sfcChartStarted(payload):
-    from ils.sfc.client.controlPanel import createControlPanel
-    createControlPanel(payload)
-
 def sfcTestAddAction(payload):
     from ils.sfc.common.constants import CHART_NAME, COMMAND, INSTANCE_ID
     from ils.sfc.client.test import addAction
@@ -221,7 +217,6 @@ def sfcManualDataEntry(payload):
 def dispatchMessage(payload):
     from ils.sfc.common.util import callMethodWithParams
     from ils.sfc.common.constants import CLIENT_MSG_HANDLER
-    print 'dispatchMessage', payload
     methodPath = 'ils.sfc.client.msgHandlers.' + payload[CLIENT_MSG_HANDLER]
     keys = ['payload']
     values = [payload]

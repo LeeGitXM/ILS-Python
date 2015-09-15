@@ -4,6 +4,7 @@ Created on Oct 31, 2014
 @author: rforbes
 '''
 
+controlPanels = []
 controlPanelsByChartRunId = dict()
 FLASH_INTERVAL = 3.
 import system.dataset
@@ -24,24 +25,7 @@ def flash(obj):
 class ControlPanel:
     """Controller for an SFCControlPanel Vision window"""
     toolbarDataHeader = ['text', 'windowPath', 'windowId', 'chartRunId'] # these are the button properties
-    #window = None
-    #rootContainer = None
-    #chartProperties = None
-    #messageIndex = None
-    #messages = None
-    #timer = None
-    #flashing = False
-    # the masks indicate a user override of enabling Pause/Resume/Cancel
-    #pauseMask = True
-    #resumeMask = True
-    #cancelMask = True
-    # canXXX indicates whether the system would allow the operation
-    #canPause = False
-    #canResume = False
-    #canCancel = False
-    #toolbarDataset = system.dataset.toDataSet(toolbarDataHeader, [])
-    #windowsById = dict()
-    
+     
     def  __init__(self, _window, _chartProperties):
         self.window = _window
         self.rootContainer = self.window.rootContainer
@@ -58,6 +42,7 @@ class ControlPanel:
         self.canPause = False
         self.canResume = False
         self.canCancel = False
+        self.chartStarted = False
         self.toolbarDataset = system.dataset.toDataSet(ControlPanel.toolbarDataHeader, [])
         self.windowsById = dict()
         self.update()
@@ -67,14 +52,17 @@ class ControlPanel:
         return self.chartProperties[USER]
     
     def getChartName(self):
-        return self.chartProperties.chartPath
+        from ils.sfc.common.constants import CHART_NAME
+        return self.chartProperties[CHART_NAME]
     
     def getChartRunId(self):
         from ils.sfc.common.constants import INSTANCE_ID
-        return self.chartProperties[INSTANCE_ID]
+        return self.chartProperties.get(INSTANCE_ID, None)
     
     def update(self):
         '''something has changed; update the UI'''
+        if not self.chartStarted:
+            return
         from ils.sfc.common.sessions import getControlPanelMessages
         from ils.sfc.client.util import getDatabaseName 
         database = getDatabaseName(self.chartProperties)
@@ -213,6 +201,14 @@ class ControlPanel:
         acknowledgeControlPanelMessage(msgId, database)
         self.update()
         
+    def doStart(self):
+        from ils.sfc.common.constants import INSTANCE_ID
+        runId = system.sfc.startChart(self.getChartName(), self.chartProperties)
+        self.chartProperties[INSTANCE_ID] = runId
+        controlPanelsByChartRunId[runId] = self
+        self.window.rootContainer.chartRunId = runId
+        self.chartStarted = True
+        
     def doPause(self):
         from system.sfc import pauseChart
         pauseChart(self.getChartRunId())
@@ -275,16 +271,21 @@ class ControlPanel:
 #    registerClient()
 
 def createControlPanel(chartProperties):
-    from ils.sfc.common.constants import INSTANCE_ID, CHART_NAME
+    from ils.sfc.common.constants import CHART_NAME
     from system.ils.sfc.common.Constants import SFC_CONTROL_PANEL_WINDOW
     window = system.nav.openWindowInstance(SFC_CONTROL_PANEL_WINDOW)
     window.title = chartProperties[CHART_NAME]
-    chartRunId = chartProperties[INSTANCE_ID]
-    window.getRootContainer().chartRunId = chartRunId
+    window.getRootContainer().chartPath = chartProperties[CHART_NAME]
     controller = ControlPanel(window, chartProperties)
-    controlPanelsByChartRunId[chartRunId] = controller
+    controlPanels.append(controller)
     return controller
 
+def getControllerByChartPath(chartPath):
+    for controller in controlPanels:
+        if controller.getChartName() == chartPath:
+            return controller
+    return None
+        
 def getController(chartRunId):
     return controlPanelsByChartRunId.get(chartRunId, None)
 
@@ -312,9 +313,12 @@ def updateCurrentOperation(payload):
     if existingPanel != None:
         existingPanel.getOperationField().setText(operationName)
 
-def removeControlPanel(chartRunId):
-    cp = controlPanelsByChartRunId.pop(chartRunId, None)
+def removeControlPanel(chartPath):
+    cp = getControllerByChartPath(chartPath)
     if cp != None:
+        controlPanels.remove(cp)
+        if cp.getChartRunId() != None:
+            controlPanelsByChartRunId.pop(cp.getChartRunId(), None)
         cp.flashing = False # stop the timer loop
         cp.window.dispose
     
