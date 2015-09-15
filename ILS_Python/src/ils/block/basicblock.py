@@ -100,7 +100,9 @@ class BasicBlock():
     # does nothing.
     def evaluate(self):
         pass
-    
+    # Trigger property and connection notifications on the block
+    def notifyOfStatus(self):
+        pass
     # Reset the block. This default implementation
     # sends notifications on all output connections.
     def reset(self):

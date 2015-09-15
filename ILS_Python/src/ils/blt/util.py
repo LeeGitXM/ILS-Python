@@ -143,6 +143,12 @@ def getBlockPrototypes(prototypes):
         print 'util.getBlockPrototype:',obj.__class__
         prototypes.append(obj.getPrototype())
 #
+# Trigger property and connection status notifications on the block
+def notifyOfStatus(block):
+
+    if block!=None:
+        block.notifyOfStatus()
+#
 #
 # Given an instance of an executable block
 # Call its reset() method. 
