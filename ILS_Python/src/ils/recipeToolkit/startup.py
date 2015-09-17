@@ -110,5 +110,7 @@ def restoreLocalRecipe(recipeFamily, grade, tagProvider = "", database=""):
         tags.append(tagName)
         vals.append(record["RecommendedValue"])
     
-    system.tag.writeAllSynchronous(tags, vals)
+    if len(tags) > 0:
+        system.tag.writeAll(tags, vals)
+        
     log.info("Done restoring local recipe tags!")
