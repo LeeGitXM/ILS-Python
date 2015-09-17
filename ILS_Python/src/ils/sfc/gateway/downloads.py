@@ -70,13 +70,45 @@ def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
         timerStart = getTimerStart(chartScope, stepScope, stepProperties)
     return timerStart
 
+#
 def writeOutput(chartScope, config, verbose, logger):
+    '''write an output value'''
+    from ils.io.api import writeDatum
+    from ils.sfc.gateway.util import queueMessage
+    from ils.sfc.common.constants import MSG_STATUS_INFO
+    from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT
+
+    print "Config: ", config
+    logger.info("writing %s to %s" % (config.value, config.tagPath))
+    writeDatum(config.tagPath, config.value, config.confirmWrite)
+    config.written = True
+    queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value), MSG_STATUS_INFO)
+    
+#    print "Config: ", config
+#    valueType = config.outputRD.get(VALUE_TYPE)
+#    if valueType == SETPOINT:
+#        config.io.setSetpoint(config.value)
+#    else:
+#        config.io.setCurrentValue(config.value)
+#    config.written = True
+#    if config.confirmWrite:
+#        config.outputRD.set(DOWNLOAD_STATUS, PENDING)
+#        confirmWrite(chartScope, config, logger)
+#    else:
+#        config.outputRD.set(DOWNLOAD_STATUS, PENDING)
+
+#    if verbose:
+#    queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value), MSG_STATUS_INFO)
+
+
+def writeOutputOriginal(chartScope, config, verbose, logger):
     '''write an output value'''
     from ils.sfc.gateway.util import queueMessage
     from ils.sfc.common.constants import MSG_STATUS_INFO
     from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT
 
-    logger.debug("writing setpoint %s" % (config.tagPath))
+    logger.trace("writing %s to %s" % (config.value, config.tagPath))
+    print "Config: ", config
     valueType = config.outputRD.get(VALUE_TYPE)
     if valueType == SETPOINT:
         config.io.setSetpoint(config.value)

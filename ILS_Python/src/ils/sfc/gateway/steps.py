@@ -539,8 +539,9 @@ def writeOutput(scopeContext, stepProperties):
     from ils.sfc.gateway.api import getIsolationMode
     from ils.sfc.gateway.util import getChartLogger, checkForCancelOrPause
     from system.ils.sfc import getWriteOutputConfig
-    from ils.sfc.gateway.downloads import handleTimer, writeOutput, waitForTimerStart
+    from ils.sfc.gateway.downloads import handleTimer, waitForTimerStart
     from ils.sfc.gateway.recipe import RecipeData
+    from ils.io.api import writeDatum
     from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
     
     chartScope = scopeContext.getChartScope() 
@@ -628,7 +629,9 @@ def writeOutput(scopeContext, stepProperties):
         
     logger.trace("Starting immediate writes")
     for row in immediateRows:
-        writeOutput(chartScope, row, verbose, logger)
+        print "Writing: ", row
+        writeDatum(row.tagPath, row.value, writeConfirm=True)
+        queueMessage(chartScope, 'tag ' + row.tagPath + " written; value: " + str(row.value), MSG_STATUS_INFO)
                      
     logger.trace("Starting timed writes")
     writesPending = True       
