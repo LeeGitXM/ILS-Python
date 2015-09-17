@@ -100,11 +100,7 @@ def valueChanged(tagPath, currentValue, initialChange):
         bufferIndex = bufferIndex + 1
     
     # Store the mean into the UnitParameter Final Value
-    try:
-        # These are writing to memory tags so they should be very fast
-        system.tag.writeSynchronous(tagPathRoot + '/filteredValue', filteredValue, 1)
-        system.tag.writeSynchronous(tagPathRoot + '/bufferIndex', bufferIndex, 1)
-        log.trace("Successfully wrote the filtered value <%f> to <%s>" % (filteredValue, tagPath))
-    except:
-        log.error("Error writing filtered value <%f> to <%s>" % (filteredValue, tagPath))
-
+    # These are writing to memory tags so they should be very fast
+    system.tag.write(tagPathRoot + '/filteredValue', filteredValue, 1)
+    system.tag.write(tagPathRoot + '/bufferIndex', bufferIndex, 1)
+    log.trace("Successfully wrote the filtered value <%f> to <%s>" % (filteredValue, tagPath))

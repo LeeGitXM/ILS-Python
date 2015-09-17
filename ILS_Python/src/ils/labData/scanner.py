@@ -23,14 +23,6 @@ derivedCalculationCache = {}
 # The purpose of this module is to scan / poll of of the lab data points for new values
 
 def main(database, tagProvider):
-#    print "Writing!!!!!!"
-#    system.tag.write('[XOM]LabData/RLA3/DML-LAB-DATA/value', 17.698)
-#    system.tag.write('[XOM]LabData/RLA3/DC9-LAB-DATA/value', 19.987)
-    
-#    system.tag.writeSynchronous('[XOM]LabData/RLA3/DML-LAB-DATA/value', 17.698)
-#    system.tag.writeSynchronous('[XOM]LabData/RLA3/DC9-LAB-DATA/value', 19.987)
-#    return
-
     log.info("Scanning for lab data (%s, %s)..." % (database, tagProvider))
 
     log.trace("Last Value Cache: %s" % (str(lastValueCache)))
@@ -49,7 +41,7 @@ def main(database, tagProvider):
     log.debug("Writing %i new lab values to local lab data tags" % (len(writeTags)))
 
     log.trace("Writing %s :: %s" % (str(writeTags), str(writeTagValues)))
-    tagWriter(writeTags, writeTagValues,mode="synch")
+    tagWriter(writeTags, writeTagValues,mode="asynchAll")
     log.info("...finished lab data scanning!")
 
 def tagWriter(tags, vals, mode="synch"):

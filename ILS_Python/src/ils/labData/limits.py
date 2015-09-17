@@ -140,9 +140,9 @@ def fetchLimits(database = ""):
             if limitValue != None:
                 tagName="[%s]LabData/%s/%s/%s" % (providerName, unitName, valueName, limitType)
                 print "Writing <%s> to %s" % (limitValue, tagName)
-                system.tag.writeSynchronous(tagName, limitValue)
-#                if result == 0:
-#                    log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
+                result=system.tag.write(tagName, limitValue)
+                if result == 0:
+                    log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
         #-------------
         providerName="XOM"
         unitName=limit.get("UnitName","")
@@ -404,15 +404,15 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         vals = [lowerSQCLimit, lowerValidityLimit, standardDeviation, target, upperSQCLimit, upperValidityLimit]
 
     
-    # Now perform the write and feedback any errors (Make this a synchronous write so we know what passed and what failed).
-    system.tag.writeAllSynchronous(tags, vals)
-    
-#    i = 0
-#    for stat in status:
-#        if stat == 0:
-#            log.error("   ERROR writing %s to %s" % (str(vals[i]), tags[i]))
-#        elif stat == 1:
-#            log.trace("   successfully wrote %s to %s" % (str(vals[i]), tags[i]))
-#        else:
-#            log.trace("   write pending %s to %s" % (str(vals[i]), tags[i]))
-#        i = i + 1
+    # Now perform the write and feedback any errors
+    status=system.tag.writeAll(tags, vals)
+
+    i = 0
+    for stat in status:
+        if stat == 0:
+            log.error("   ERROR writing %s to %s" % (str(vals[i]), tags[i]))
+        elif stat == 1:
+            log.trace("   successfully wrote %s to %s" % (str(vals[i]), tags[i]))
+        else:
+            log.trace("   write pending %s to %s" % (str(vals[i]), tags[i]))
+        i = i + 1

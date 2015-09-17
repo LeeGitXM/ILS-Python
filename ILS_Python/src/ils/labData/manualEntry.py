@@ -186,7 +186,7 @@ def entryFormEnterData(rootContainer, db = ""):
     from ils.labData.scanner import updateTags
     tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, True, [], [], log)
     print "Writing ", tagValues, " to ", tags
-    system.tag.writeAllSynchronous(tags, tagValues)
+    system.tag.writeAll(tags, tagValues)
     
     # If the lab datum is "local" then write the value to PHD (use a regular OPC write, so we won't 
     # capture the sample time)

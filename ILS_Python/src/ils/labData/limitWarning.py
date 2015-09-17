@@ -238,10 +238,10 @@ def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvid
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
 
     # The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
-    system.tag.writeSynchronous(tagName + "/value", rawValue)
-    system.tag.writeSynchronous(tagName + "/sampleTime", sampleTime)
-    system.tag.writeSynchronous(tagName + "/badValue", False)
-    system.tag.writeSynchronous(tagName + "/status", status)
+    system.tag.write(tagName + "/value", rawValue)
+    system.tag.write(tagName + "/sampleTime", sampleTime)
+    system.tag.write(tagName + "/badValue", False)
+    system.tag.write(tagName + "/status", status)
 
 
 # There is nothing that needs to be done if the operator determines that the value is not valid, by doing nothing we ignore 
@@ -261,9 +261,8 @@ def rejectValue(rootContainer):
     
     print "Writing to tag <%s>" % (tagName)
     #  The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
-    tags=[tagName + "/badValue", tagName + "/status"]
-    tagValues=[True, "Operator rejected value"]
-    system.tag.writeAllSynchronous(tags, tagValues)
+    system.tag.write(tagName + "/badValue", True)
+    system.tag.write(tagName + "/status", "Operator rejected value")    
 
 
 # If the operator does not respond to the notification in a timely manner, then by default accept the value.  The burden is on

@@ -54,7 +54,7 @@ def valueChanged(tagPath):
         log.trace("Skipping the value change because processing is not enabled")
         
     # Reset the trigger
-    system.tag.writeSynchronous(tagRoot + "/trigger", False)
+    system.tag.write(tagRoot + "/trigger", False)
 
 
 # Update the expression in the selector tag to get its values from a new source

@@ -33,7 +33,7 @@ def resetSelectorTriggers(provider):
     for selector in selectors:
         tagNames.append(selector.fullPath + "/trigger")
         tagValues.append(False)
-    system.tag.writeAllSynchronous(tagNames, tagValues)
+    system.tag.writeAll(tagNames, tagValues)
         
 
 def client():
@@ -147,7 +147,7 @@ def restoreValueHistory(tagProvider, daysToRestore=7, database=""):
                     tags.append(tagName + "/status")
                     tagValues.append("Restore")
     
-    system.tag.writeAllSynchronous(tags, tagValues)
+    system.tag.writeAll(tags, tagValues)
 
 
 # Restoring the history to selectors uses the data we just restored to the values.  
