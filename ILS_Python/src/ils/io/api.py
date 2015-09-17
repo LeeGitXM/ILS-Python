@@ -7,6 +7,7 @@ import string
 import system
 import time
 import traceback
+from java.util import Date
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -42,29 +43,70 @@ def reset(tagname):
 
 
 # Write a value to an OPC Output.   
-def writeDatum(parentTagPath, val, writeConfirm):
-    log.info("Writing %s to %s (Confirm write: %s)" % (str(val), parentTagPath, str(writeConfirm)))
+def writeDatum(fullTagPath, val, writeConfirm):
+    log.info("Writing %s to %s (Confirm write: %s)" % (str(val), fullTagPath, str(writeConfirm)))
 
-    # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = system.tag.read(parentTagPath + "/pythonClass").value
-    pythonClass = pythonClass.lower()+"."+pythonClass
+    tagExists = system.tag.exists(fullTagPath)
+    if not(tagExists):
+        return False, "%s does not exist" % (fullTagPath)
+    
+    # Try and figure out if the thing is a UDT or a simple memory or OPC tag
+    # There has to be a more direct way to do this but this should work
+    tags = system.tag.browseTags(parentPath=fullTagPath)
+    if len(tags) > 0:
+        isUDT = True
+    else:
+        isUDT = False
 
-    system.tag.write(parentTagPath + '/command', 'RESET')
-    system.tag.write(parentTagPath + '/writeValue', val)
-    system.tag.write(parentTagPath + '/command', 'WRITEDATUM')
+    if isUDT:
+        # Get the name of the Python class that corresponds to this UDT.
+        pythonClass = system.tag.read(fullTagPath + "/pythonClass").value
+        pythonClass = pythonClass.lower()+"."+pythonClass
 
-    # The gateway is going to confirm the write whether we want to or not.   If the caller 
-    # doesn't care, then don't wait around for the answer
-    if writeConfirm:
-        print "Confirming write..."
-        # It is going to be a little tough to come up with the exact path to the tag to be confirmed without using some 
-        # knowledge of the controller structure
-        from ils.io.util import waitForWriteConfirm
-        confirmed, errorMessage = waitForWriteConfirm(parentTagPath)
-        log.trace("Write of %s to %s - Confirmed: %s - %s" % (str(val), parentTagPath, str(confirmed), errorMessage))
-        return confirmed, errorMessage
+        system.tag.write(fullTagPath + '/command', 'RESET')
+        system.tag.write(fullTagPath + '/writeValue', val)
+        system.tag.write(fullTagPath + '/command', 'WRITEDATUM')
+
+        # The gateway is going to confirm the write whether we want to or not.   If the caller 
+        # doesn't care, then don't wait around for the answer
+        if writeConfirm:
+            # It is going to be a little tough to come up with the exact path to the tag to be confirmed without using some 
+            # knowledge of the controller structure
+            from ils.io.util import waitForWriteConfirm
+            confirmed, errorMessage = waitForWriteConfirm(fullTagPath)
+            log.trace("Write of %s to %s - Confirmed: %s - %s" % (str(val), fullTagPath, str(confirmed), errorMessage))
+            return confirmed, errorMessage
+    else:
+        # The 'Tag" is either a simple memory tag or an simple OPC tag
+        log.trace("Simple write of %s to %s..." % (str(val), fullTagPath))
+        system.tag.write(fullTagPath, val)
+        if writeConfirm:
+            confirmed, errorMessage = simpleWriteConfirm(fullTagPath, val)
+            log.trace("Write of %s to %s - Confirmed: %s - %s" % (str(val), fullTagPath, str(confirmed), errorMessage))
+            return confirmed, errorMessage
 
     return True, ""
+
+def simpleWriteConfirm(fullTagPath, val, timeout=60, frequency=1): 
+    log = LogUtil.getLogger("com.ils.io")
+
+    log.trace("Confirming write to a simple tag <%s>..." % (fullTagPath))
+ 
+    startTime = Date().getTime()
+    delta = (Date().getTime() - startTime) / 1000
+
+    while (delta < timeout):
+        readbackValue = system.tag.read(fullTagPath).value
+        if readbackValue == val:
+            return True, ""
+
+        # Time in seconds
+        time.sleep(frequency)
+        delta = (Date().getTime() - startTime) / 1000
+
+    log.error("Timed out waiting for write confirmation of %s!" % (fullTagPath))
+    return False, "Timed out waiting for write confirmation"
+
 
 # Write a value to an OPC Output.   
 def writeWithNoCheck(parentTagPath, val):

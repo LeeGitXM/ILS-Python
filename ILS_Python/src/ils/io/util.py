@@ -147,3 +147,11 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
 def getProviderFromTagpath(tagPath):
     provider=tagPath[1:tagPath.find(']')]
     return provider
+
+# Convert a full tag path to just the tag name.
+# Full tag paths are always used internally, but just the tag name is used for display purposes.
+def splitTagPath(tagPath):
+    parentPath = tagPath[:string.rfind(tagPath, '/')]
+    tagName = tagPath[string.rfind(tagPath, '/') + 1:]
+    print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
+    return parentPath, tagName

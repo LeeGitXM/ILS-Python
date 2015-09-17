@@ -74,7 +74,7 @@ class OPCOutput(opctag.OPCTag):
         system.tag.write(self.path + "/writeStatus", "Writing Value")
  
         # Write the value to the OPC tag
-        log.trace("  Writing value <%s> to %s/tag" % (str(val), self.path))
+        log.trace("  Writing value <%s> to %s/value" % (str(val), self.path))
         status = system.tag.write(self.path + "/value", val)
         log.trace("  Write status: %s" % (status))
                                
