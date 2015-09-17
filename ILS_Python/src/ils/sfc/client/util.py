@@ -14,7 +14,7 @@ def sendResponse(messageId, response):
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
 
-def openControlPanel(chartPath, isolationMode):
+def openControlPanel(chartPath, isolationMode, startChart):
     from ils.sfc.client.controlPanel import createControlPanel
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME
     project = system.util.getProjectName() 
@@ -25,7 +25,9 @@ def openControlPanel(chartPath, isolationMode):
     initialChartProps[USER] = user
     initialChartProps[CHART_NAME] = chartPath
     system.util.sendMessage(project, 'sfcStartChart', initialChartProps, "G")
-    createControlPanel(initialChartProps)   
+    controller = createControlPanel(initialChartProps)   
+    if startChart:
+        controller.doStart()
 
 def runTests(testChartPaths, isolationMode, reportFile):
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, TEST_CHART_PATHS, TEST_REPORT_FILE

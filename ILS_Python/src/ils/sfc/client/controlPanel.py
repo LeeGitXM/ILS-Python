@@ -39,6 +39,7 @@ class ControlPanel:
         self.resumeMask = True
         self.cancelMask = True
     # canXXX indicates whether the system would allow the operation
+        self.canStart = True
         self.canPause = False
         self.canResume = False
         self.canCancel = False
@@ -80,24 +81,24 @@ class ControlPanel:
         statusField.setText(status)
         if status == RUNNING:
             statusField.setBackground(Color.green)
-            self.setCommandCapability(True, False, True)
+            self.setCommandCapability(False, True, False, True)
         elif status == PAUSED:
             statusField.setBackground(Color.yellow)
-            self.setCommandCapability(False, True, True)
+            self.setCommandCapability(False, False, True, True)
         elif status == ABORTED:
             statusField.setBackground(Color.red)
-            self.setCommandCapability(False, False, False)
+            self.setCommandCapability(False, False, False, False)
             self.window.closable = True
             self.setChartStopped()
         elif status == STOPPED or status == CANCELED:
             statusField.setBackground(Color.blue)
-            self.setCommandCapability(False, False, False)
+            self.setCommandCapability(False, False, False, False)
             self.window.closable = True
             self.setChartStopped()
         else:
             #Some other transitory state
             statusField.setBackground(Color.gray)
-            self.setCommandCapability(False, False, False)
+            self.setCommandCapability(False, False, False, False)
             
     def setCommandMask(self, pause, resume, cancel):
         self.pauseMask= pause
@@ -106,11 +107,13 @@ class ControlPanel:
         self.enableChartButtons()
    
     def enableChartButtons(self):
+        self.getStartButton().setEnabled(self.canStart)
         self.getPauseButton().setEnabled(self.canPause and self.pauseMask)
         self.getResumeButton().setEnabled(self.canResume and self.resumeMask)
         self.getCancelButton().setEnabled(self.canCancel and self.cancelMask)
  
-    def setCommandCapability(self, pause, resume, cancel):
+    def setCommandCapability(self, start, pause, resume, cancel):
+        self.canStart = start
         self.canPause = pause
         self.canCancel = cancel
         self.canResume = resume
@@ -156,6 +159,9 @@ class ControlPanel:
 
     def getToolbar(self):
         return self.rootContainer.getComponent('toolbar')
+    
+    def getStartButton(self):
+        return self.getComponent('commandButtons').getComponent("startButton")
     
     def getPauseButton(self):
         return self.getComponent('commandButtons').getComponent("pauseButton")
