@@ -175,6 +175,12 @@ def timedDelay(scopeContext, stepProperties):
     elif timeDelayStrategy == CALLBACK:
         callback = getStepProperty(stepProperties, CALLBACK) 
         delay = callMethod(callback)
+    elif timeDelayStrategy == TAG:
+        from ils.sfc.common.util import substituteProvider
+        tagPath = getStepProperty(stepProperties, TAG_PATH)
+        fullPath = substituteProvider(chartScope, tagPath)
+        qval = system.tag.read(fullPath)
+        delay = qval.value
     else:
         handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
         delay = 0
