@@ -39,8 +39,12 @@ def positionWindow(window, position, scale):
     from ils.sfc.common.constants import LEFT, CENTER, TOP
     mainWindow = window.parent
     position = position.lower()
-    width = mainWindow.getWidth() * scale
-    height = mainWindow.getHeight() * scale
+    
+#    width = mainWindow.getWidth() * scale
+#    height = mainWindow.getHeight() * scale    
+    # Scale of 1 should be w.r.t. how the window was designed, not the size of the parent, but this is an interesting idea
+    width = window.getWidth() * scale
+    height = window.getHeight() * scale
     if position.endswith(LEFT):
         ulx = 0
     elif position.endswith(CENTER):
@@ -54,7 +58,7 @@ def positionWindow(window, position, scale):
         uly = .5 * mainWindow.getHeight() - .5 * height
     else:
         uly = mainWindow.getHeight() - height
-    window.setSize(int(width), int(height))
+#    window.setSize(int(width), int(height))
     window.setLocation(int(ulx), int(uly))
 
 def getWindowId(window):
