@@ -49,6 +49,7 @@ class TagIO:
         self.set('currentValue', value)
     
     def get(self, attribute):
+        print "Reading ", attribute
         if attribute == 'tagPath':
             return self.tagPath
         else:

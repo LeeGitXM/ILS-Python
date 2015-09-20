@@ -131,6 +131,13 @@ def postToQueue(chartScope, status, message, queueKey=None):
     from ils.queue.message import insert
     insert(queueKey, status, message, db)
 
+#
+def writeLoggerMessage(chartScope, block, unit, message):
+    '''Write a message to the system log file from an SFC.'''
+    # The system logbook utility has not been implemented, when it is call it from here
+    print "Simulating a write to the system logbook: %s" % (message)
+
+
 def getProject(chartProperties):
     '''Get the project associated with the client side of this SFC (not the global project!)'''
     from ils.sfc.common.constants import PROJECT

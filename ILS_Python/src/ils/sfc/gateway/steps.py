@@ -541,19 +541,28 @@ def writeOutput(scopeContext, stepProperties):
     from system.ils.sfc import getWriteOutputConfig
     from ils.sfc.gateway.downloads import handleTimer, waitForTimerStart
     from ils.sfc.gateway.recipe import RecipeData
-    from ils.io.api import writeDatum
+    from ils.sfc.gateway.downloads import writeValue
     from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
     
+    print "Step properties: ", stepProperties
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     logger.info("Executing a Write Output block")
     verbose = getStepProperty(stepProperties, VERBOSE)
     configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
+    print "Config: ", configJson
     config = getWriteOutputConfig(configJson)
     logger.trace("Block Configuration: %s" % (str(config)))
     outputRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     logger.trace("Using recipe location: %s" % (outputRecipeLocation))
+
+    # Everything will hae the same tag provider - check isolation mode and get the provider
+    isolationMode = getIsolationMode(chartScope)
+    print "Isolation mode: ", isolationMode
+    from system.ils.sfc import getProviderName
+    providerName = getProviderName(isolationMode)
+    print "Provider: ", providerName
 
     # filter out disabled rows:
     downloadRows = []
@@ -624,42 +633,50 @@ def writeOutput(scopeContext, stepProperties):
             row.outputRD.set(STEP_TIME, absTiming)
         # ?? do we need a timestamp for immediate rows?
         
-        isolationMode = getIsolationMode(chartScope)
+        # I have no idea what this does - maybe it is needed for PV monitoring??? (Pete)
         row.io = AbstractSfcIO.getIO(row.tagPath, isolationMode) 
-        
+          
+    logger.trace("There are %i immediate rows" % (len(immediateRows)))
+    logger.trace("There are %i timed rows" % (len(timedRows)))
+    logger.trace("There are %i final rows" % (len(finalRows)))
+    
     logger.trace("Starting immediate writes")
     for row in immediateRows:
         print "Writing: ", row
-        writeDatum(row.tagPath, row.value, writeConfirm=True)
-        queueMessage(chartScope, 'tag ' + row.tagPath + " written; value: " + str(row.value), MSG_STATUS_INFO)
+        writeValue(chartScope, row, verbose, logger, providerName)
                      
     logger.trace("Starting timed writes")
-    writesPending = True       
+    if len(timedRows) > 0:
+        writesPending = True
+    else:
+        writesPending = False
+             
     while writesPending:
         writesPending = False 
         
         elapsedMinutes = getMinutesSince(timerStart)
         for row in timedRows:
+            print row.key, row.written
             if not row.written:
+                writesPending = True
                 logger.trace("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
                 if elapsedMinutes >= row.timingMinutes:
-                    writeOutput(chartScope, row, verbose, logger)
-                else:
-                    writesPending = True
+                    writeValue(chartScope, row, verbose, logger, providerName)
          
         if writesPending:
             time.sleep(SLEEP_INCREMENT)
  
         if checkForCancelOrPause(stepScope, logger):
+            logger.trace("Aborting the write output because the chart has been cancelled")
             return
-       
+
     logger.trace("Starting final writes")
     for row in finalRows:
         absTiming = time.time()
         timestamp = formatTime(absTiming)
         row.outputRD.set(STEP_TIMESTAMP, timestamp)
         row.outputRD.set(STEP_TIME, absTiming)
-        writeOutput(chartScope, row, verbose, logger)    
+        writeValue(chartScope, row, verbose, logger, providerName)
 
     logger.info("Write output block finished!")
     #Note: write confirmations are on a separate thread and will write the result

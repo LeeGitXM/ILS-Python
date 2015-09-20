@@ -71,34 +71,32 @@ def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
     return timerStart
 
 #
-def writeOutput(chartScope, config, verbose, logger):
+# Modified this to use WriteDatum from the IO layer which automatically does a Write Confirm...
+def writeValue(chartScope, config, verbose, logger, providerName):
     '''write an output value'''
     from ils.io.api import writeDatum
     from ils.sfc.gateway.util import queueMessage
     from ils.sfc.common.constants import MSG_STATUS_INFO
-    from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT
+    from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT,  WRITE_CONFIRMED, DOWNLOAD_STATUS, SUCCESS, FAILURE
 
-    print "Config: ", config
-    logger.info("writing %s to %s" % (config.value, config.tagPath))
-    writeDatum(config.tagPath, config.value, config.confirmWrite)
-    config.written = True
-    queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value), MSG_STATUS_INFO)
+    tagPath = "[%s]%s" % (providerName, config.tagPath)
+    valueType = config.outputRD.get(VALUE_TYPE)
+    logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, valueType,str(config.confirmWrite)))
     
-#    print "Config: ", config
-#    valueType = config.outputRD.get(VALUE_TYPE)
-#    if valueType == SETPOINT:
-#        config.io.setSetpoint(config.value)
-#    else:
-#        config.io.setCurrentValue(config.value)
-#    config.written = True
-#    if config.confirmWrite:
-#        config.outputRD.set(DOWNLOAD_STATUS, PENDING)
-#        confirmWrite(chartScope, config, logger)
-#    else:
-#        config.outputRD.set(DOWNLOAD_STATUS, PENDING)
+    config.outputRD.set(DOWNLOAD_STATUS, PENDING)
+    writeStatus, txt = writeDatum(tagPath, valueType, config.value, config.confirmWrite)
+    logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
+    config.written = True
 
-#    if verbose:
-#    queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value), MSG_STATUS_INFO)
+    if config.confirmWrite:
+        config.outputRD.set(WRITE_CONFIRMED, writeStatus)
+
+    if writeStatus:
+        config.outputRD.set(DOWNLOAD_STATUS, SUCCESS)
+    else:
+        config.outputRD.set(DOWNLOAD_STATUS, FAILURE)
+
+    queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)
 
 
 def writeOutputOriginal(chartScope, config, verbose, logger):
@@ -148,3 +146,14 @@ def confirmWrite(chartScope, config, logger):
     t = threading.Thread(target=worker, args=(chartScope, config, logger,))
     t.start()
 
+def getDisplayName(tagPath, attribute):
+    print "Getting the displayed name from %s using %s" % (tagPath, attribute)
+    if attribute == 'name':
+        displayName=tagPath[tagPath.rfind('/')+1:]
+    elif attribute == 'itemId':
+        # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
+        displayName='Item Id'
+    else:
+        displayName = ''
+
+    return displayName

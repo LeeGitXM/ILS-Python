@@ -11,12 +11,17 @@ Created on Jun 17, 2015
 @author: rforbes
 '''
 
+from ils.sfc.common.constants import STEP_PENDING, STEP_APPROACHING, STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, \
+    PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, PV_BAD_NOT_CONSISTENT, PV_ERROR, PV_NOT_MONITORED, \
+    SETPOINT_OK, SETPOINT_PROBLEM
+
+
 class MonitoringInfo:
     '''Info to monitor one input or output object'''    
     def  __init__(self, _chartScope, _stepScope, _location, _configRow, isolationMode):
         from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
         from ils.sfc.gateway.recipe import RecipeData
-        from system.ils.sfc.common.Constants import TAG_PATH 
+        from system.ils.sfc.common.Constants import TAG_PATH
         self.configRow = _configRow
         self.inout = RecipeData(_chartScope, _stepScope, _location, _configRow.key)
         tagPath = self.inout.get(TAG_PATH)
@@ -53,7 +58,7 @@ class MonitoringMgr:
         '''The dataset-building code should really be on the client'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
         DOWNLOAD_STATUS, STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
-        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, \
+        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, TAG_PATH, \
         SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, TIMEOUT
 
         from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
@@ -63,32 +68,51 @@ class MonitoringMgr:
         from ils.sfc.common.constants import INSTANCE_ID, UNITS
         from java.awt import Color
         import time
+
         # the meaning of the columns:
         #header = ['Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'stepTimeColor', 'pvColor']    
         timerStart = self.getTimerStart()
         formattedStart = formatTime(timerStart)
         rows = []
-        rows.append(['', '', '', '', formattedStart, '', Color.white, Color.white, Color.white])
+        rows.append(['', '', '', '', formattedStart, '', STEP_PENDING, PV_MONITORING, SETPOINT_OK])
         for info in self.monitoringInfos:
             # Note: the data can be an Input or an Output, which are both subclasses of IO
             # oddly enough, Inputs do not have any additional attributes vs IO
             # get common IO attributes and set some defaults:
             description = info.inout.get(DESCRIPTION)
+            tagPath = info.inout.get(TAG_PATH)
             pv = info.io.getCurrentValue()
             monitorActive = info.inout.get(PV_MONITOR_ACTIVE)
-            if monitorActive == True:
+            if pv == None:
+                formattedPV = ""
+            elif monitorActive == True:
                 formattedPV = "%.2f" % pv
             else:
                 formattedPV = "%.2f*" % pv
-            name = info.io.get(info.configRow.labelAttribute)
+            
+            # Determine the DCS Tag ID - this can either be the name of the tag/UDT or the item id
+            import ils.sfc.gateway.downloads as downloads
+            name = downloads.getDisplayName(info.inout.get(TAG_PATH), info.configRow.labelAttribute)
+            
             units = info.inout.get(UNITS)
+            if units != "":
+                description = "%s (%s)" % (description, units)
+
             #TODO: convert to units if GUI units specified
-            setpointColor = Color.white
-            stepTimeColor = Color.white
-            pvColor = Color.white
+
+            stepStatus='unknown'
+            pvStatus='unknown'
+            setpointStatus='unknown'
+            
+            #
+            # THE SETPOINT STATUS HAS TO HAVE MEMORY - CAN'T DETERMINE THIS AT A POINT IN TIME, ONCE
+            # SET IT SHOULDN't BE UNSET
+            #
+
             dataType = info.inout.get(CLASS)
             if dataType == 'Output':
                 downloadStatus = info.inout.get(DOWNLOAD_STATUS)
+                print "Download status: ", downloadStatus
                 timing = info.inout.get(TIMING)
                 if timing < 1000.:
                     formattedTiming = "%.2f" % timing
@@ -107,18 +131,18 @@ class MonitoringMgr:
                 if stepTime != None and timeNow < stepTime:
                     pendingTime = stepTime - 30
                     if timeNow < pendingTime:
-                        stepTimeColor = Color.white
+                        stepStatus = STEP_PENDING
                     else:
-                        stepTimeColor = Color.yellow
+                        stepStatus = STEP_APPROACHING
                 else:
                     if downloadStatus == None:
-                        stepTimeColor = Color.white
+                        stepStatus = STEP_PENDING
                     elif downloadStatus == PENDING:
-                        stepTimeColor = Color.orange
+                        stepStatus = STEP_PENDING
                     elif downloadStatus == SUCCESS:
-                        stepTimeColor = Color.green
+                        stepStatus = STEP_SUCCESS
                     elif downloadStatus == FAILURE:
-                        stepTimeColor = Color.red
+                        stepStatus = STEP_FAILURE
             else:
                 formattedTiming = ''
                 stepTimestamp = ''
@@ -131,23 +155,25 @@ class MonitoringMgr:
             # reference S88-PV-MONITOR-STATUS-COLOR-DECODER.txt
             # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
             if monitorStatus == MONITORING or  monitorStatus == None:
-                pvColor = Color.white
+                pvStatus = PV_MONITORING
             elif monitorStatus == WARNING:    
-                pvColor = Color.yellow
+                pvStatus = PV_WARNING
             elif monitorStatus == NOT_PERSISTENT:    
-                pvColor = Color(154,205,50)
+                pvStatus = PV_OK_NOT_PERSISTENT
             elif monitorStatus == SUCCESS:    
-                pvColor = Color.green
+                pvStatus = PV_OK
             elif monitorStatus == NOT_CONSISTENT:    
-                pvColor = Color.orange
-            elif monitorStatus == ERROR or monitorStatus == TIMEOUT: 
-                # print 'monitoring: status is', monitorStatus   
-                pvColor = Color.red
-            if pvColor == Color.red or stepTimeColor == Color.red:
-                setpointColor = Color.yellow
+                pvStatus = PV_BAD_NOT_CONSISTENT
+            elif monitorStatus == ERROR or monitorStatus == TIMEOUT:    
+                pvStatus = PV_ERROR
+            
+            # THIS ISN'T RIGHT - THIS NEEDS TO LATCH 
+            if pvStatus == PV_ERROR:
+                setpointStatus = SETPOINT_PROBLEM
             else:
-                setpointColor = Color.white
-            rows.append([formattedTiming, name, formattedSetpoint, description, stepTimestamp, formattedPV, setpointColor, stepTimeColor, pvColor])
+                setpointStatus = SETPOINT_OK
+
+            rows.append([formattedTiming, name, formattedSetpoint, description, stepTimestamp, formattedPV, stepStatus, pvStatus, setpointStatus])
                
 
         # TODO: sort by timing
