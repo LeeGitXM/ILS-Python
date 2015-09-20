@@ -21,7 +21,7 @@ def getMonitorDownloadWindow(chartRunId, timerId):
     
 def updateTable(window, rows, timerStart):
     from  system.dataset import toDataSet
-    header = ['Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'stepTimeColor', 'pvColor']    
+    header = ['Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'stepStatus', 'pvStatus', 'setpointStatus']    
     table = window.getRootContainer().getComponent('table')
     newData = toDataSet(header, rows)
     table.data = newData
