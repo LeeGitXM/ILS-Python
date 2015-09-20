@@ -220,6 +220,9 @@ def dispatchMessage(payload):
     methodPath = 'ils.sfc.client.msgHandlers.' + payload[CLIENT_MSG_HANDLER]
     keys = ['payload']
     values = [payload]
+    print "Calling: ", methodPath
+    print "Keys: ", keys
+    print "Values: ", values
     callMethodWithParams(methodPath, keys, values)
 
 
