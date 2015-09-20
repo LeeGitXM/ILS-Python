@@ -42,9 +42,16 @@ def reset(tagname):
         log.error(reason)  
 
 
-# Write a value to an OPC Output.   
-def writeDatum(fullTagPath, val, writeConfirm):
-    log.info("Writing %s to %s (Confirm write: %s)" % (str(val), fullTagPath, str(writeConfirm)))
+# Write a value to a simple memory tag, a simple OPC tag or any UDT.
+# This can run in either the client or the gateway    
+def writeDatum(fullTagPath, valueType, val, writeConfirm):
+    log.info("Writing %s to the %s of %s (Confirm write: %s)" % (str(val), valueType, fullTagPath, str(writeConfirm)))
+    
+    # Translate some valueTypes where we use one thing in the UI and another in the UDT
+    if string.upper(valueType) in ['SP', 'SETPOINT']:
+        valueType = "sp"
+    if string.upper(valueType) in ['OP', 'OUTPUT']:
+        valueType = "op"
 
     tagExists = system.tag.exists(fullTagPath)
     if not(tagExists):
@@ -60,12 +67,24 @@ def writeDatum(fullTagPath, val, writeConfirm):
 
     if isUDT:
         # Get the name of the Python class that corresponds to this UDT.
-        pythonClass = system.tag.read(fullTagPath + "/pythonClass").value
-        pythonClass = pythonClass.lower()+"."+pythonClass
+        pythonClass = string.upper(system.tag.read(fullTagPath + "/pythonClass").value)
+        
+        log.trace("Handling a write to a %s UDT" % (pythonClass))
 
-        system.tag.write(fullTagPath + '/command', 'RESET')
-        system.tag.write(fullTagPath + '/writeValue', val)
-        system.tag.write(fullTagPath + '/command', 'WRITEDATUM')
+        # If the UDT is a controller, then we need to point to the embedded UDT
+        if pythonClass == "PKSCONTROLLER":
+            if string.upper(valueType) == "VALUE":
+                return False, "Illegal attempt to write to the value of a controller"
+            
+            fullTagPath=fullTagPath + '/' + valueType
+            log.trace("Writing to the embedded UDT: %s" % (fullTagPath))
+            system.tag.write(fullTagPath + '/command', 'RESET')
+            system.tag.write(fullTagPath + '/writeValue', val)
+            system.tag.write(fullTagPath + '/command', 'WRITEDATUM')
+        else:
+            system.tag.write(fullTagPath + '/command', 'RESET')
+            system.tag.write(fullTagPath + '/writeValue', val)
+            system.tag.write(fullTagPath + '/command', 'WRITEDATUM')
 
         # The gateway is going to confirm the write whether we want to or not.   If the caller 
         # doesn't care, then don't wait around for the answer
@@ -108,7 +127,8 @@ def simpleWriteConfirm(fullTagPath, val, timeout=60, frequency=1):
     return False, "Timed out waiting for write confirmation"
 
 
-# Write a value to an OPC Output.   
+# Write a value to an OPC Output.  
+# This does not support writes at the UDT layer of a UDT controller 
 def writeWithNoCheck(parentTagPath, val):
     log.info("Writing %s to %s" % (str(val), parentTagPath))
 
