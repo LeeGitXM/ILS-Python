@@ -181,6 +181,26 @@ ORANGE = 'orange'
 RED = 'red'
 GREEN = '0,128,0'
 
+# Write Output / PV Monitoring / Download Monitor STEP column status
+STEP_PENDING = 'pending'
+STEP_APPROACHING = 'approaching'
+STEP_DOWNLOADING = 'downloading'
+STEP_SUCCESS = 'success'
+STEP_FAILURE = 'failure'
+
+# Write Output / PV Monitoring / Download Monitor PV column status
+PV_MONITORING = 'monitoring'
+PV_WARNING = 'warning'
+PV_OK_NOT_PERSISTENT = 'ok not persistent'
+PV_OK = 'ok'
+PV_BAD_NOT_CONSISTENT = 'bad not consistent'
+PV_ERROR = 'error'
+PV_NOT_MONITORED = 'not monitored'
+
+# Write Output / PV Monitoring / Download Monitor SETPOINT column status
+SETPOINT_OK = 'ok'
+SETPOINT_PROBLEM = 'problem'
+
 # the default sleep increment for loops, in seconds
 SLEEP_INCREMENT = 5
 
