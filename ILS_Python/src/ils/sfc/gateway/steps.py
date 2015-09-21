@@ -176,11 +176,9 @@ def timedDelay(scopeContext, stepProperties):
         callback = getStepProperty(stepProperties, CALLBACK) 
         delay = callMethod(callback)
     elif timeDelayStrategy == TAG:
-        from ils.sfc.common.util import substituteProvider
+        from ils.sfc.gateway.api import readTag
         tagPath = getStepProperty(stepProperties, TAG_PATH)
-        fullPath = substituteProvider(chartScope, tagPath)
-        qval = system.tag.read(fullPath)
-        delay = qval.value
+        delay = readTag(chartScope, tagPath)
     else:
         handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
         delay = 0
@@ -396,10 +394,11 @@ def rawQuery(scopeContext, stepProperties):
 def simpleQuery(scopeContext, stepProperties):
     from ils.sfc.gateway.recipe import substituteScopeReferences
     chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     database = getDatabaseName(chartScope)
     sql = getStepProperty(stepProperties, SQL)
-    processedSql = substituteScopeReferences(chartScope, stepProperties, sql)
+    processedSql = substituteScopeReferences(chartScope, stepScope, sql)
     dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 
     if dbRows.rowCount == 0:
         logger.error('No rows returned for query %s', processedSql)

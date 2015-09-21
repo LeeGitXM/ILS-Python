@@ -261,3 +261,12 @@ def getUnitsPath(valuePath):
     else:
         raise Exception("no value field to get units for in " + valuePath)
 
+def readTag(chartScope, tagPath):
+    '''Read an ordinary tag (ie not recipe data), substituting provider
+    according to isolation mode setting'''
+    from ils.sfc.common.util import substituteProvider
+    import system.tag
+    fullPath = substituteProvider(chartScope, tagPath)
+    qval = system.tag.read(fullPath)
+    return qval.value
+
