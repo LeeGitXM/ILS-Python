@@ -55,6 +55,7 @@ def substituteScopeReferences(chartProperties, stepProperties, sql):
         ref = findBracketedScopeReference(sql)
         if ref != None:
             location, key = parseBracketedScopeReference(ref)
+            location = location.lower()
             if location == TAG:
                 value = readTag(chartProperties, key)
             elif location == CHART:
