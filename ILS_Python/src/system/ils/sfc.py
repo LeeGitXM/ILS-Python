@@ -12,6 +12,9 @@ def setResponse(payload):
 def getReviewData(chartScope, stepScope, configJson, addAdvice):
     pass
 
+def getReviewFlows(chartScope, stepScope, configJson, addAdvice):
+    pass
+
 def activateStep(className, chartProperties, stepProperties):
     pass
 

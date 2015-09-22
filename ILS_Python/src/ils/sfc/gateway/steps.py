@@ -531,6 +531,22 @@ def reviewData(scopeContext, stepProperties):
     recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
     s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
 
+def reviewFlows(scopeContext, stepProperties):    
+    from system.ils.sfc import getReviewFlows
+    from system.ils.sfc.common.Constants import REVIEW_FLOWS
+    chartScope = scopeContext.getChartScope() 
+    stepScope = scopeContext.getStepScope()
+    configJson = getStepProperty(stepProperties, REVIEW_FLOWS)       
+    payload = dict()
+    transferStepPropertiesToMessage(stepProperties, payload)
+    payload[DATA] = getReviewFlows(chartScope, stepScope, configJson)
+    messageId = sendMessageToClient(chartScope, 'reviewFlows', payload) 
+    
+    responseValue = waitOnResponse(messageId, chartScope)
+    recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
+    recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
+    s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
+
 def confirmControllers(scopeContext, stepProperties): 
     pass   
 

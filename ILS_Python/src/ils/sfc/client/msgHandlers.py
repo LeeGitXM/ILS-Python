@@ -176,6 +176,19 @@ def sfcReviewData(payload):
     values = [window, primaryDataTable, primaryTabLabel, secondaryDataTable, secondaryTabLabel]
     callMethodWithParams(postingMethod, keys, values)
 
+def sfcReviewFlows(payload):
+    from ils.sfc.common.constants import MESSAGE_ID, POSTING_METHOD, DATA
+    from ils.sfc.client.windowUtil import createPositionedWindow
+    from ils.sfc.common.util import callMethodWithParams
+    windowProperties = dict()
+    windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
+    window = createPositionedWindow(payload, windowProperties)
+    postingMethod = payload[POSTING_METHOD]
+    dataTable = payload[DATA]
+    keys = ['window', 'dataTable']
+    values = [window, dataTable]
+    callMethodWithParams(postingMethod, keys, values)
+
 def sfcTestAddAction(payload):
     from ils.sfc.common.constants import CHART_NAME, COMMAND, INSTANCE_ID
     from ils.sfc.client.test import addAction
