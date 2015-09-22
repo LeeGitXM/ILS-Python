@@ -5,9 +5,11 @@ Created on Jan 14, 2015
 '''
 
 def okActionPerformed(event):
+    from ils.sfc.client.windowUtil import windowClosed
     windowClosed(event, True)
   
 def cancelActionPerformed(event):
+    from ils.sfc.client.windowUtil import windowClosed
     windowClosed(event, False) 
 
 def getTableData():
@@ -22,22 +24,6 @@ def defaultPostingMethod(window, primaryDataTable, primaryTabLabel, secondaryDat
     tabsComponent = window.getRootContainer().getComponent('tabs') 
     tabsComponent.tabData = system.dataset.updateRow(tabsComponent.tabData, 0, {'DISPLAY_NAME' : primaryTabLabel})
     tabsComponent.tabData = system.dataset.updateRow(tabsComponent.tabData, 1, {'DISPLAY_NAME' : secondaryTabLabel})
-    
-def windowClosed(event, response):
-    from ils.sfc.client.util import sendResponse
-    from ils.sfc.client.controlPanel import getController
-    from ils.sfc.client.windowUtil import getWindowId, getMessageId, getChartRunId 
-    import system.gui.getParentWindow
-    window = system.gui.getParentWindow(event)
-        
-    messageId = getMessageId(window)
-    sendResponse(messageId, response)
-    
-    chartRunId = getChartRunId(window)
-    windowId = getWindowId(window)
-    controller = getController(chartRunId)
-    controller.removeWindow(windowId)    
-    system.nav.closeWindow(window)
 
 def togglePrimary(window):
     primaryTable = window.getRootContainer().getComponent('primaryDataTable') 

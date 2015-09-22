@@ -540,7 +540,7 @@ def reviewFlows(scopeContext, stepProperties):
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     payload[DATA] = getReviewFlows(chartScope, stepScope, configJson)
-    messageId = sendMessageToClient(chartScope, 'reviewFlows', payload) 
+    messageId = sendMessageToClient(chartScope, 'sfcReviewFlows', payload) 
     
     responseValue = waitOnResponse(messageId, chartScope)
     recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
