@@ -76,7 +76,7 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     
 # Clear the final diagnosis (make the status = 'InActive') 
 def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provider=""):
-    print "Clearing..."
+    print "Clearing*..."
 
     from ils.diagToolkit.common import fetchFinalDiagnosis
     record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
@@ -85,10 +85,17 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
         log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
         return    
 
-    # Insert an entry into the diagnosis queue
+    # Set the state of the diagnosis entry to InActive
     SQL = "update DtDiagnosisEntry set Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
     logSQL.trace(SQL)
-    system.db.runUpdateQuery(SQL, database)
+    rows = system.db.runUpdateQuery(SQL, database)
+    print "Cleared %i diagnosis entries" % (rows)
+    
+    # Set the state of the Final Diagnosis to InActive
+    SQL = "update DtFinalDiagnosis set Active = 0 where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    logSQL.trace(SQL)
+    rows = system.db.runUpdateQuery(SQL, database)
+    print "Cleared %i final diagnosis" % (rows)
     
     print "Starting to manage as a result of a cleared Final Diagnosis..."
     notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
@@ -385,7 +392,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     for quantOutput in quantOutputs:
         from ils.diagToolkit.recommendation import calculateFinalRecommendation
         quantOutput = calculateFinalRecommendation(quantOutput)
-        quantOutput = checkBounds(quantOutput, database)
+        quantOutput = checkBounds(quantOutput, database, provider)
         finalQuantOutputs.append(quantOutput)
 
     finalQuantOutputs, notificationText = calculateVectorClamps(finalQuantOutputs, provider)
@@ -399,17 +406,16 @@ def manage(application, recalcRequested=False, database="", provider=""):
     return notificationText
 
 # Check that recommendation against the bounds configured for the output
-def checkBounds(quantOutput, database):
-    
+def checkBounds(quantOutput, database, provider):
+
     log.trace("   ...checking Bounds...")
-    print ">>>>>> Quant Output: ", quantOutput
     
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
     mostNegativeIncrement = quantOutput.get('MostNegativeIncrement', -1000.0)
     mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
     
-    # Read the current setpoint - the tagpath in the QuantOutput should already have the provider
-    tagpath = quantOutput.get('TagPath','unknown')
+    # Read the current setpoint - the tagpath in the QuantOutput does not have the provider
+    tagpath = '[' + provider + ']' + quantOutput.get('TagPath','unknown')
     log.trace("   ...reading the current value of tag: %s" % (tagpath))
     qv=system.tag.read(tagpath)
     if not(qv.quality.isGood()):
