@@ -8,10 +8,10 @@ def defaultPostingMethod(window, dataTable):
     dataTableComponent = window.getRootContainer().getComponent('dataTable') 
     dataTableComponent.data = dataTable
     
-def okActionPerformed(event):
-    from ils.sfc.client.windowUtil import windowClosed
-    windowClosed(event, True)
-  
-def cancelActionPerformed(event):
-    from ils.sfc.client.windowUtil import windowClosed
-    windowClosed(event, False) 
+def windowClosed(event, buttonValue, data):
+    from ils.sfc.client.windowUtil import responseWindowClosed
+    from ils.sfc.common.constants import VALUE, DATA
+    payload = dict()
+    payload[VALUE] = buttonValue
+    payload[DATA] = data   
+    responseWindowClosed(event, payload)

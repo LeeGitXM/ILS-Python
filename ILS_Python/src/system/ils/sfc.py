@@ -15,6 +15,12 @@ def getReviewData(chartScope, stepScope, configJson, addAdvice):
 def getReviewFlows(chartScope, stepScope, configJson, addAdvice):
     pass
 
+def getReviewFlowsConfig():
+    pass
+
+def getReviewDataConfig():
+    pass
+
 def activateStep(className, chartProperties, stepProperties):
     pass
 

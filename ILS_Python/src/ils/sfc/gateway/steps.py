@@ -532,21 +532,41 @@ def reviewData(scopeContext, stepProperties):
     s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
 
 def reviewFlows(scopeContext, stepProperties):    
-    from system.ils.sfc import getReviewFlows
+    from system.ils.sfc import getReviewFlows, getReviewFlowsConfig
     from system.ils.sfc.common.Constants import REVIEW_FLOWS
+    from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC, AUTOMATIC, OK, CANCEL
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
-    configJson = getStepProperty(stepProperties, REVIEW_FLOWS)       
-    payload = dict()
-    transferStepPropertiesToMessage(stepProperties, payload)
-    payload[DATA] = getReviewFlows(chartScope, stepScope, configJson)
-    messageId = sendMessageToClient(chartScope, 'sfcReviewFlows', payload) 
+    configJson = getStepProperty(stepProperties, REVIEW_FLOWS) 
+    config = getReviewFlowsConfig(configJson) 
+    dataset = getReviewFlows(chartScope, stepScope, configJson)  
+    autoMode = getStepProperty(stepProperties, AUTO_MODE) 
+    if autoMode == SEMI_AUTOMATIC:   
+        payload = dict()
+        transferStepPropertiesToMessage(stepProperties, payload)
+        payload[DATA] = dataset
+        messageId = sendMessageToClient(chartScope, 'sfcReviewFlows', payload)     
+        response = waitOnResponse(messageId, chartScope)
+        responseButton = response[VALUE]
+        recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
+        recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
+        s88Set(chartScope, stepScope, recipeKey, responseButton, recipeLocation)
+        responseDataset = response[DATA]
+        if responseButton == OK:
+            for i in range(len(config.rows)):
+                configRow = config.rows[i]
+                responseFlow1 = responseDataset.getValueAt(i,2)
+                s88Set(chartScope, stepScope, configRow.flow1Key, responseFlow1, configRow.destination )
+                responseFlow2 = responseDataset.getValueAt(i,3)
+                s88Set(chartScope, stepScope, configRow.flow2Key, responseFlow2, configRow.destination )
+                sumFlows = configRow.flow3Key.lower() == 'sum'
+                if not sumFlows:
+                    responseFlow3 = responseDataset.getValueAt(i,4)
+                    s88Set(chartScope, stepScope, configRow.flow3Key, responseFlow3, configRow.destination )
+    else: # AUTOMATIC
+        # ?? nothing to do ? we got the values from the recipe data ?!
+        pass
     
-    responseValue = waitOnResponse(messageId, chartScope)
-    recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
-    recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
-    s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
-
 def confirmControllers(scopeContext, stepProperties): 
     pass   
 

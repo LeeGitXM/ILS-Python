@@ -73,8 +73,8 @@ def getMessageId(window):
 def getWindowPath(window):
     return window.name
 
-def windowClosed(event, response):
-    '''standard actions when a window is closed by the user'''
+def responseWindowClosed(event, response):
+    '''standard actions when a window representing a response is closed by the user'''
     from ils.sfc.client.util import sendResponse
     from ils.sfc.client.controlPanel import getController
     import system.gui.getParentWindow
