@@ -533,7 +533,7 @@ def reviewData(scopeContext, stepProperties):
 
 def reviewFlows(scopeContext, stepProperties):    
     from system.ils.sfc import getReviewFlows, getReviewFlowsConfig
-    from system.ils.sfc.common.Constants import REVIEW_FLOWS
+    from system.ils.sfc.common.Constants import REVIEW_FLOWS, HEADING1, HEADING2, HEADING3
     from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC, AUTOMATIC, OK, CANCEL
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
@@ -545,6 +545,9 @@ def reviewFlows(scopeContext, stepProperties):
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
         payload[DATA] = dataset
+        payload[HEADING1] = getStepProperty(stepProperties, HEADING1) 
+        payload[HEADING2] = getStepProperty(stepProperties, HEADING2) 
+        payload[HEADING3] = getStepProperty(stepProperties, HEADING3) 
         messageId = sendMessageToClient(chartScope, 'sfcReviewFlows', payload)     
         response = waitOnResponse(messageId, chartScope)
         responseButton = response[VALUE]

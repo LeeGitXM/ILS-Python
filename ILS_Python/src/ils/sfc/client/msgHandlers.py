@@ -180,13 +180,17 @@ def sfcReviewFlows(payload):
     from ils.sfc.common.constants import MESSAGE_ID, POSTING_METHOD, DATA
     from ils.sfc.client.windowUtil import createPositionedWindow
     from ils.sfc.common.util import callMethodWithParams
+    from system.ils.sfc.common.Constants import HEADING1, HEADING2, HEADING3
     windowProperties = dict()
     windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
     window = createPositionedWindow(payload, windowProperties)
     postingMethod = payload[POSTING_METHOD]
     dataTable = payload[DATA]
-    keys = ['window', 'dataTable']
-    values = [window, dataTable]
+    heading1 = payload[HEADING1]
+    heading2 = payload[HEADING2]
+    heading3 = payload[HEADING3]
+    keys = ['window', 'dataTable', 'heading1', 'heading2', 'heading3']
+    values = [window, dataTable, heading1, heading2, heading3]
     callMethodWithParams(postingMethod, keys, values)
 
 def sfcTestAddAction(payload):
