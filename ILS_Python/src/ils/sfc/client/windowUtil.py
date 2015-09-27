@@ -72,3 +72,30 @@ def getMessageId(window):
 
 def getWindowPath(window):
     return window.name
+
+def responseWindowClosed(event, response):
+    '''standard actions when a window representing a response is closed by the user'''
+    from ils.sfc.client.util import sendResponse
+    from ils.sfc.client.controlPanel import getController
+    import system.gui.getParentWindow
+    window = system.gui.getParentWindow(event)
+        
+    messageId = getMessageId(window)
+    sendResponse(messageId, response)
+    
+    chartRunId = getChartRunId(window)
+    windowId = getWindowId(window)
+    controller = getController(chartRunId)
+    controller.removeWindow(windowId)    
+    system.nav.closeWindow(window)
+    
+def updateClockField(window):  
+    '''Update clock time in a field called 'clockField' '''
+    import time
+    from ils.sfc.common.util import formatTime
+    import system.util
+   
+    rootContainer = window.getRootContainer()    
+    clockField = rootContainer.getComponent('clockField')
+    clockField.text = formatTime(time.time())
+        

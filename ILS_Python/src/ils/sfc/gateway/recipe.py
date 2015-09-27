@@ -39,22 +39,31 @@ def findBracketedScopeReference(string):
      '''
     lbIndex = string.find('{')
     rbIndex = string.find('}')
-    colonIndex = string.find(':')
-    if lbIndex != -1 and rbIndex != -1 and colonIndex != -1 and colonIndex > lbIndex and rbIndex > colonIndex:
+    colonIndex = string.find(':', lbIndex)
+    if lbIndex != -1 and rbIndex != -1 and colonIndex != -1 and rbIndex > colonIndex:
         return string[lbIndex : rbIndex+1]
     else:
         return None
 
 def substituteScopeReferences(chartProperties, stepProperties, sql):
-    ''' Substitute for scope variable references, e.g. 'local:selected-emp.val'
+    ''' Substitute for scope variable references, e.g. '{local:selected-emp.value}'
     '''
-    from ils.sfc.gateway.api import s88Get
+    from ils.sfc.gateway.api import s88Get, readTag
+    from ils.sfc.common.constants import TAG, CHART, STEP
     # really wish Python had a do-while loop...
     while True:
         ref = findBracketedScopeReference(sql)
         if ref != None:
             location, key = parseBracketedScopeReference(ref)
-            value = s88Get(chartProperties, stepProperties, key, location)
+            location = location.lower()
+            if location == TAG:
+                value = readTag(chartProperties, key)
+            elif location == CHART:
+                value = chartProperties.get(key, "<not found>")
+            elif location == STEP:
+                value = stepProperties.get(key, "<not found>")
+            else:
+                value = s88Get(chartProperties, stepProperties, key, location)
             sql = sql.replace(ref, str(value))
         else:
             break

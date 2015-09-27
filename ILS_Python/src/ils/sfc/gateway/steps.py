@@ -175,6 +175,10 @@ def timedDelay(scopeContext, stepProperties):
     elif timeDelayStrategy == CALLBACK:
         callback = getStepProperty(stepProperties, CALLBACK) 
         delay = callMethod(callback)
+    elif timeDelayStrategy == TAG:
+        from ils.sfc.gateway.api import readTag
+        tagPath = getStepProperty(stepProperties, TAG_PATH)
+        delay = readTag(chartScope, tagPath)
     else:
         handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
         delay = 0
@@ -390,10 +394,11 @@ def rawQuery(scopeContext, stepProperties):
 def simpleQuery(scopeContext, stepProperties):
     from ils.sfc.gateway.recipe import substituteScopeReferences
     chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     database = getDatabaseName(chartScope)
     sql = getStepProperty(stepProperties, SQL)
-    processedSql = substituteScopeReferences(chartScope, stepProperties, sql)
+    processedSql = substituteScopeReferences(chartScope, stepScope, sql)
     dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 
     if dbRows.rowCount == 0:
         logger.error('No rows returned for query %s', processedSql)
@@ -508,24 +513,67 @@ def reviewData(scopeContext, stepProperties):
     from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
-    showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
-    if showAdvice:
-        primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
-        secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA_WITH_ADVICE) 
-    else:
-        primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA)        
-        secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA)        
-    payload = dict()
-    transferStepPropertiesToMessage(stepProperties, payload)
-    payload[PRIMARY_CONFIG] = getReviewData(chartScope, stepScope, primaryConfig, showAdvice)
-    payload[SECONDARY_CONFIG] = getReviewData(chartScope, stepScope, secondaryConfig, showAdvice)
-    messageId = sendMessageToClient(chartScope, REVIEW_DATA_HANDLER, payload) 
-    
-    responseValue = waitOnResponse(messageId, chartScope)
-    recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
-    recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
-    s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
+    autoMode = getStepProperty(stepProperties, AUTO_MODE) 
+    if autoMode == SEMI_AUTOMATIC:   
+        showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
+        if showAdvice:
+            primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
+            secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA_WITH_ADVICE) 
+        else:
+            primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA)        
+            secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA)        
+        payload = dict()
+        transferStepPropertiesToMessage(stepProperties, payload)
+        payload[PRIMARY_CONFIG] = getReviewData(chartScope, stepScope, primaryConfig, showAdvice)
+        payload[SECONDARY_CONFIG] = getReviewData(chartScope, stepScope, secondaryConfig, showAdvice)
+        messageId = sendMessageToClient(chartScope, REVIEW_DATA_HANDLER, payload)    
+        responseValue = waitOnResponse(messageId, chartScope)
+        recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
+        recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
+        s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
+    else: # AUTOMATIC
+        # ?? nothing to do ? we got the values from the recipe data ?!
+        pass
 
+def reviewFlows(scopeContext, stepProperties):    
+    from system.ils.sfc import getReviewFlows, getReviewFlowsConfig
+    from system.ils.sfc.common.Constants import REVIEW_FLOWS, HEADING1, HEADING2, HEADING3
+    from ils.sfc.common.constants import AUTO_MODE, SEMI_AUTOMATIC, AUTOMATIC, OK, CANCEL
+    chartScope = scopeContext.getChartScope() 
+    stepScope = scopeContext.getStepScope()
+    configJson = getStepProperty(stepProperties, REVIEW_FLOWS) 
+    config = getReviewFlowsConfig(configJson) 
+    dataset = getReviewFlows(chartScope, stepScope, configJson)  
+    autoMode = getStepProperty(stepProperties, AUTO_MODE) 
+    if autoMode == SEMI_AUTOMATIC:   
+        payload = dict()
+        transferStepPropertiesToMessage(stepProperties, payload)
+        payload[DATA] = dataset
+        payload[HEADING1] = getStepProperty(stepProperties, HEADING1) 
+        payload[HEADING2] = getStepProperty(stepProperties, HEADING2) 
+        payload[HEADING3] = getStepProperty(stepProperties, HEADING3) 
+        messageId = sendMessageToClient(chartScope, 'sfcReviewFlows', payload)     
+        response = waitOnResponse(messageId, chartScope)
+        responseButton = response[VALUE]
+        recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
+        recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
+        s88Set(chartScope, stepScope, recipeKey, responseButton, recipeLocation)
+        responseDataset = response[DATA]
+        if responseButton == OK:
+            for i in range(len(config.rows)):
+                configRow = config.rows[i]
+                responseFlow1 = responseDataset.getValueAt(i,2)
+                s88Set(chartScope, stepScope, configRow.flow1Key, responseFlow1, configRow.destination )
+                responseFlow2 = responseDataset.getValueAt(i,3)
+                s88Set(chartScope, stepScope, configRow.flow2Key, responseFlow2, configRow.destination )
+                sumFlows = configRow.flow3Key.lower() == 'sum'
+                if not sumFlows:
+                    responseFlow3 = responseDataset.getValueAt(i,4)
+                    s88Set(chartScope, stepScope, configRow.flow3Key, responseFlow3, configRow.destination )
+    else: # AUTOMATIC
+        # ?? nothing to do ? we got the values from the recipe data ?!
+        pass
+    
 def confirmControllers(scopeContext, stepProperties): 
     pass   
 
