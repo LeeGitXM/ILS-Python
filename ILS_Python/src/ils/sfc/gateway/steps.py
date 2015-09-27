@@ -557,7 +557,7 @@ def writeOutput(scopeContext, stepProperties):
     outputRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     logger.trace("Using recipe location: %s" % (outputRecipeLocation))
 
-    # Everything will hae the same tag provider - check isolation mode and get the provider
+    # Everything will have the same tag provider - check isolation mode and get the provider
     isolationMode = getIsolationMode(chartScope)
     print "Isolation mode: ", isolationMode
     from system.ils.sfc import getProviderName
@@ -642,8 +642,10 @@ def writeOutput(scopeContext, stepProperties):
     
     logger.trace("Starting immediate writes")
     for row in immediateRows:
-        print "Writing: ", row
-        writeValue(chartScope, row, verbose, logger, providerName)
+        def writeImmediate(chartScope=chartScope, row=row, verbose=verbose, logger=logger, providerName=providerName):
+            writeValue(chartScope, row, verbose, logger, providerName)
+        print "Writing immediate tag: %s" % (row.key)
+        system.util.invokeAsynchronous(writeImmediate)
                      
     logger.trace("Starting timed writes")
     if len(timedRows) > 0:
@@ -656,7 +658,6 @@ def writeOutput(scopeContext, stepProperties):
         
         elapsedMinutes = getMinutesSince(timerStart)
         for row in timedRows:
-            print row.key, row.written
             if not row.written:
                 writesPending = True
                 logger.trace("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
@@ -672,6 +673,7 @@ def writeOutput(scopeContext, stepProperties):
 
     logger.trace("Starting final writes")
     for row in finalRows:
+        logger.trace("In steps.writeOutput - Writing a final write for step %s" % (row.key))
         absTiming = time.time()
         timestamp = formatTime(absTiming)
         row.outputRD.set(STEP_TIMESTAMP, timestamp)
@@ -870,6 +872,8 @@ def monitorDownload(scopeContext, stepProperties):
     from system.ils.sfc import getMonitorDownloadsConfig
     from ils.sfc.gateway.downloads import handleTimer
     from ils.sfc.gateway.monitoring import createMonitoringMgr
+    from system.ils.sfc import getProviderName
+    from ils.sfc.gateway.api import getIsolationMode
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
@@ -877,7 +881,10 @@ def monitorDownload(scopeContext, stepProperties):
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     configJson = getStepProperty(stepProperties, MONITOR_DOWNLOADS_CONFIG)
     monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)
-    mgr = createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger)
+    isolationMode = getIsolationMode(chartScope) 
+    providerName = getProviderName(isolationMode)
+
+    mgr = createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger, providerName)
     payload = dict()
     payload[DATA_ID] = mgr.getTimerId()
     transferStepPropertiesToMessage(stepProperties, payload)
