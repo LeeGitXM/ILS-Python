@@ -22,6 +22,9 @@ def deleteRows(dataset, rows):
 def setValue(dataset, row, columnIndexOrName, val):
     return dataset
 
+def sort(dataset, key, order="Asc"):
+    return dataset
+
 def toPyDataSet(dataset):
     return True
 
