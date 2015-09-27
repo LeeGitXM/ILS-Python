@@ -22,6 +22,7 @@ def internalFrameOpened(rootContainer):
 def internalFrameActivated(rootContainer):
     print "In internalFrameActivated()"
     populateRepeater(rootContainer)
+    animatePageTabs(rootContainer)
 
 def newPostSelected(rootContainer):
     print "In newPostSelected()"
@@ -51,6 +52,55 @@ def setNumberOfPages(rootContainer):
     print "The %s post has %s pages of lab data tables" % (selectedPost, str(numPages))
     configureTabStrip(rootContainer, numPages)
     rootContainer.selectedPage = 1
+
+# Populate the template repeater with the table names for the selected post and page
+def animatePageTabs(rootContainer):
+    numberOfPages = rootContainer.numberOfPages
+    tabStrip=rootContainer.getComponent("Tab Strip")
+    tabDataDS=tabStrip.tabData
+    
+    if numberOfPages <= 1:
+        return
+    
+    print "In animatePageTabs"
+    selectedPost = rootContainer.selectedPost
+    for selectedPage in range(1, numberOfPages+1):
+        print "Checking Page ", selectedPage
+        SQL = "Select DisplayTableTitle "\
+            "from LtDisplayTable DT, TkPost P "\
+            "where DT.PostId = P.PostId "\
+            " and P.Post = '%s' "\
+            " and DT.DisplayPage = %i "\
+            " and DT.DisplayFlag = 1 "\
+            "Order by DisplayOrder" % (selectedPost, selectedPage)        
+
+        pds = system.db.runQuery(SQL)
+        
+        data = []
+        tabNewData=False
+        for record in pds:
+            displayTableTitle = record['DisplayTableTitle']
+            newData = checkForNewData(displayTableTitle)            
+            data.append([displayTableTitle,newData])
+            tabNewData = tabNewData or newData
+        
+        if tabNewData:
+            unselectedGradientStartColor=system.gui.color(255,0,0)
+            unselectedGradientEndColor=system.gui.color(217,0,0)
+            selectedBackgroundColor=system.gui.color(255,0,0)
+            print "  There is new data - Make it red"
+        else:
+            print "  There is NOT new data - Make it grey"
+            unselectedGradientStartColor=system.gui.color(238,236,232)
+            unselectedGradientEndColor=system.gui.color(170,170,170)
+            selectedBackgroundColor=system.gui.color(238,236,232,255)
+            
+        tabDataDS=system.dataset.setValue(tabDataDS, selectedPage - 1, "UNSELECTED_GRADIENT_START_COLOR", unselectedGradientStartColor)
+        tabDataDS=system.dataset.setValue(tabDataDS, selectedPage - 1, "UNSELECTED_GRADIENT_END_COLOR",   unselectedGradientEndColor)
+        tabDataDS=system.dataset.setValue(tabDataDS, selectedPage - 1, "SELECTED_BACKGROUND_COLOR", selectedBackgroundColor)
+
+    tabStrip.tabData=tabDataDS
+
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
