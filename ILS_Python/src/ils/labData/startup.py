@@ -4,6 +4,7 @@ Created on Apr 28, 2015
 @author: Pete
 '''
 import system
+import time
 from java.util import Calendar
 import ils.common.util as util
 log = system.util.getLogger("com.ils.labData")
@@ -62,8 +63,36 @@ def createTags(tagProvider):
 def restoreHistory(tagProvider, daysToRestore=7):
     # This is run from a project startup script, so it should have the notion of a default database
     database = ""
+    
+    # wait for the HDA services to be available - We need lab data so this will hang the startup untill it is available
+    allAvailable=waitForHDAInterfaces()
+    if not(allAvailable):
+        log.error("Unable to restore lab data history because the HDA server is unavailable!")
+        return
+    
     restoreValueHistory(tagProvider, daysToRestore, database)
     restoreSelectorHistory(tagProvider, daysToRestore, database)
+
+def waitForHDAInterfaces(delay=5, iterations=20, database=""):
+    print "Waiting for the HDA interfaces to come on-line..."
+    
+    SQL = "select distinct InterfaceName from LtPHDValueView"
+    pds = system.db.runQuery(SQL, database)
+    allAvailable=False
+    cnt = 0
+    while not(allAvailable) and cnt < iterations:
+        print "Checking interfaces..."
+        allAvailable=True
+        for record in pds:
+            hdaInterface = record["InterfaceName"]        
+            serverIsAvailable=system.opchda.isServerAvailable(hdaInterface)
+            if not(serverIsAvailable):
+                allAvailable = False
+        
+        time.sleep(delay)
+        cnt = cnt + 1
+
+    return allAvailable
 
 
 def restoreValueHistory(tagProvider, daysToRestore=7, database=""):
