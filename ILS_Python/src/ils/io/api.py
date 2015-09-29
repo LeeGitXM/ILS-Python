@@ -21,6 +21,43 @@ import ils.io.tdccontroller
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io.api")
 
+# This is a convenience function that determines to correct API to use based on the target of the write.  
+# If the target is a simple memory or OPC tag, then wither writeDatum or writeWithNoCheck will be used.  If the target is
+# a UDT then writeOutput or writeRamp will be used.  If writing to a simple tag, then the valueType attribute is ignored
+# This can run in either the client or the gateway    
+def write(fullTagPath, val, writeConfirm, valueType="value"):
+    log.info("Writing %s to the %s of %s (Confirm write: %s)" % (str(val), valueType, fullTagPath, str(writeConfirm)))
+    
+    tagExists = system.tag.exists(fullTagPath)
+    if not(tagExists):
+        return False, "%s does not exist" % (fullTagPath)
+    
+    # Try and figure out if the thing is a UDT or a simple memory or OPC tag
+    # There has to be a more direct way to do this but this should work
+    tags = system.tag.browseTags(parentPath=fullTagPath)
+    if len(tags) > 0:
+        isController = True
+    else:
+        isController = False
+
+    success = True
+    errorMessage = ""
+    
+    if isController:
+        writeOutput(fullTagPath, val, writeConfirm, valueType)
+
+    else:
+        # The 'Tag" is either a simple memory tag or an simple OPC tag
+        log.trace("Simple write of %s to %s..." % (str(val), fullTagPath))
+        if writeConfirm:
+            success, errorMessage = writeDatum(fullTagPath, val, writeConfirm)
+        else:
+            success, errorMessage = writeWithNoCheck(fullTagPath, val)
+        
+
+    return success, errorMessage
+
+
 # Dispatch the RESET command to the appropriate output/controller.  This should work for outputs and  EPKS or TDC3000 controllers.
 # This is called from Python and runs in the client.  Because this only rests memory tags and confirmation does not apply, all
 # tag writes are called from the client and they should be very fast.
@@ -42,74 +79,67 @@ def reset(tagname):
         log.error(reason)  
 
 
-# Write a value to a simple memory tag, a simple OPC tag or any UDT.
-# This can run in either the client or the gateway    
-def writeDatum(fullTagPath, valueType, val, writeConfirm):
-    log.info("Writing %s to the %s of %s (Confirm write: %s)" % (str(val), valueType, fullTagPath, str(writeConfirm)))
-    
-    # Translate some valueTypes where we use one thing in the UI and another in the UDT
-    if string.upper(valueType) in ['SP', 'SETPOINT']:
-        valueType = "sp"
-    if string.upper(valueType) in ['OP', 'OUTPUT']:
-        valueType = "op"
+# Write a value to a simple memory tag, a simple OPC tag, or one of our simple UDTs but not a controller.  If writing to a UDT, then WriteOutput should be used
+# This can run in either the client or the gateway
+# The tagPath should contain the provider    
+def writeDatum(tagPath, val, writeConfirm):
+    log.info("Writing %s to %s (Confirm write: %s)" % (str(val), tagPath, str(writeConfirm)))
 
-    tagExists = system.tag.exists(fullTagPath)
+# TODO Will this work for a simple OPCFloatBadFlad UDT?
+
+    tagExists = system.tag.exists(tagPath)
     if not(tagExists):
-        return False, "%s does not exist" % (fullTagPath)
+        return False, "%s does not exist" % (tagPath)
     
-    # Try and figure out if the thing is a UDT or a simple memory or OPC tag
-    # There has to be a more direct way to do this but this should work
-    tags = system.tag.browseTags(parentPath=fullTagPath)
-    if len(tags) > 0:
-        isUDT = True
-    else:
-        isUDT = False
-
-    if isUDT:
-        # Get the name of the Python class that corresponds to this UDT.
-        pythonClass = string.upper(system.tag.read(fullTagPath + "/pythonClass").value)
+    if checkIfUDT(tagPath):
+        # The 'Tag" is either a simple memory tag or an simple OPC tag
         
-        log.trace("Handling a write to a %s UDT" % (pythonClass))
-
-        # If the UDT is a controller, then we need to point to the embedded UDT
-        if pythonClass == "PKSCONTROLLER":
-            if string.upper(valueType) == "VALUE":
-                return False, "Illegal attempt to write to the value of a controller"
-            
-            fullTagPath=fullTagPath + '/' + valueType
-            log.trace("Writing to the embedded UDT: %s" % (fullTagPath))
-            system.tag.write(fullTagPath + '/command', 'RESET')
-            system.tag.write(fullTagPath + '/writeValue', val)
-            system.tag.write(fullTagPath + '/command', 'WRITEDATUM')
-        else:
-            system.tag.write(fullTagPath + '/command', 'RESET')
-            system.tag.write(fullTagPath + '/writeValue', val)
-            system.tag.write(fullTagPath + '/command', 'WRITEDATUM')
-
-        # The gateway is going to confirm the write whether we want to or not.   If the caller 
-        # doesn't care, then don't wait around for the answer
+        status = system.tag.write(tagPath + '/command', 'RESET')
+        if status == 0:
+            log.error("ERROR: writing RESET to the command tag for %s" % (tagPath))
+            return False, "Failed writing RESET to command tag"
+         
+        status = system.tag.write(tagPath + '/writeValue', val)
+        if status == 0:
+            log.error("ERROR: writing %s to the writeValue tag for %s" % (str(val), tagPath))
+            return False, "Failed writing %s to writeValue tag" % (str(val))
+        
+        status = system.tag.write(tagPath + '/command', 'WriteDatum')
+        if status == 0:
+            log.error("ERROR: writing WRITEWITHNOCHECK to the command tag for %s" % (tagPath))
+            return False, "Failed writing WRITEWITHNOCHECK to command tag"
+    
+        # Without confirming the round trip of the value
+        from ils.io.util import waitForWriteComplete
+        success, errorMessage = waitForWriteComplete(tagPath)        
+        if not(success):
+            return False, errorMessage
+        
+        # The write was successful, now confirm the write by reading the value back
         if writeConfirm:
-            # It is going to be a little tough to come up with the exact path to the tag to be confirmed without using some 
-            # knowledge of the controller structure
-            from ils.io.util import waitForWriteConfirm
-            confirmed, errorMessage = waitForWriteConfirm(fullTagPath)
-            log.trace("Write of %s to %s - Confirmed: %s - %s" % (str(val), fullTagPath, str(confirmed), errorMessage))
+            confirmed, errorMessage = simpleWriteConfirm(tagPath, val)
+            log.trace("Write of %s to %s - Confirmed: %s - %s" % (str(val), tagPath, str(confirmed), errorMessage))
             return confirmed, errorMessage
     else:
         # The 'Tag" is either a simple memory tag or an simple OPC tag
-        log.trace("Simple write of %s to %s..." % (str(val), fullTagPath))
-        system.tag.write(fullTagPath, val)
+        log.trace("Simple write of %s to %s..." % (str(val), tagPath))
+        system.tag.write(tagPath, val)
         if writeConfirm:
-            confirmed, errorMessage = simpleWriteConfirm(fullTagPath, val)
-            log.trace("Write of %s to %s - Confirmed: %s - %s" % (str(val), fullTagPath, str(confirmed), errorMessage))
+            confirmed, errorMessage = simpleWriteConfirm(tagPath, val)
+            log.trace("Write of %s to %s - Confirmed: %s - %s" % (str(val), tagPath, str(confirmed), errorMessage))
             return confirmed, errorMessage
 
     return True, ""
 
-def simpleWriteConfirm(fullTagPath, val, timeout=60, frequency=1): 
+def simpleWriteConfirm(tagPath, val, timeout=60, frequency=1): 
     log = LogUtil.getLogger("com.ils.io")
 
-    log.trace("Confirming write to a simple tag <%s>..." % (fullTagPath))
+    if checkIfUDT(tagPath):
+        fullTagPath = tagPath + "/value"
+        log.trace("Confirming write to a UDT <%s>..." % (fullTagPath))
+    else:
+        fullTagPath = tagPath
+        log.trace("Confirming write to a simple tag <%s>..." % (fullTagPath))
  
     startTime = Date().getTime()
     delta = (Date().getTime() - startTime) / 1000
@@ -128,40 +158,51 @@ def simpleWriteConfirm(fullTagPath, val, timeout=60, frequency=1):
 
 
 # Write a value to an OPC Output.  
-# This does not support writes at the UDT layer of a UDT controller 
-def writeWithNoCheck(parentTagPath, val):
-    log.info("Writing %s to %s" % (str(val), parentTagPath))
-
-    # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = system.tag.read(parentTagPath + "/pythonClass").value
-    pythonClass = pythonClass.lower()+"."+pythonClass
-
-    status = system.tag.write(parentTagPath + '/command', 'RESET')
-    if status == 0:
-        log.error("ERROR: writing RESET to the command tag for %s" % (parentTagPath))
-        return False, "Failed writing RESET to command tag"
-     
-    status = system.tag.write(parentTagPath + '/writeValue', val)
-    if status == 0:
-        log.error("ERROR: writing %s to the writeValue tag for %s" % (str(val), parentTagPath))
-        return False, "Failed writing %s to writeValue tag" % (str(val))
+# This does not support writes at the UDT layer of a UDT controller
+# The tagPath must contain the provider 
+def writeWithNoCheck(tagPath, val):
+    log.info("Writing %s to %s (writeWithNoCheck)" % (str(val), tagPath))
+    success = True
+    errorMessage = ""
     
-    status = system.tag.write(parentTagPath + '/command', 'WriteWithNoCheck')
-    if status == 0:
-        log.error("ERROR: writing WRITEWITHNOCHECK to the command tag for %s" % (parentTagPath))
-        return False, "Failed writing WRITEWITHNOCHECK to command tag"
-
-    # Without confirming the round trip of the value
-    from ils.io.util import waitForWriteComplete
-    success, errorMessage = waitForWriteComplete(parentTagPath)
+    if checkIfUDT(tagPath):
+        status = system.tag.write(tagPath + '/command', 'RESET')
+        if status == 0:
+            log.error("ERROR: writing RESET to the command tag for %s" % (tagPath))
+            return False, "Failed writing RESET to command tag"
+         
+        status = system.tag.write(tagPath + '/writeValue', val)
+        if status == 0:
+            log.error("ERROR: writing %s to the writeValue tag for %s" % (str(val), tagPath))
+            return False, "Failed writing %s to writeValue tag" % (str(val))
+        
+        status = system.tag.write(tagPath + '/command', 'WriteWithNoCheck')
+        if status == 0:
+            log.error("ERROR: writing WRITEWITHNOCHECK to the command tag for %s" % (tagPath))
+            return False, "Failed writing WRITEWITHNOCHECK to command tag"
     
+        # Without confirming the round trip of the value
+        from ils.io.util import waitForWriteComplete
+        success, errorMessage = waitForWriteComplete(tagPath)
+    else:
+        status = system.tag.write(tagPath, val)
+        if status == 0:
+            log.error("ERROR: writing %s to %s" % (str(val), tagPath))
+            return False, "Failed writing %s to %s" % (str(val), tagPath)
+        
     return success, errorMessage
+
+#---------------------------------
+# Get the name of the Python class that corresponds to this UDT.
+#    pythonClass = system.tag.read(parentTagPath + "/pythonClass").value
+#    pythonClass = pythonClass.lower()+"."+pythonClass
+#---------------------------------
 
 # This is the equivalent of s88-write-output in the old system.  This should work for a EPKS or a TDC3000 controller.
 # This assumes that the controller has already been reset.
 # This is called by Python and runs in the client.  The actual tag writing occurs in the gateway.
 # If writeConfirm is true then this will run for a long time and may block the thread.
-def writeOutput(controllerTagname, block, val, valType, writeConfirm):
+def writeOutput(controllerTagname, val, writeConfirm, valType):
     print "In api.writeOutput()"
     if string.upper(valType) in ["SP", "SETPOINT"]:
         tagRoot = controllerTagname + '/sp'
@@ -235,3 +276,55 @@ def checkConfig(controllerTagname, block, val, testForZero, checkPathToValue, va
 
     return success, errorMessage
 
+def validateValueType(valueType):
+    # Translate some valueTypes where we use one thing in the UI and another in the UDT
+    if string.upper(valueType) in ['SP', 'SETPOINT']:
+        valueType = "sp"
+    if string.upper(valueType) in ['OP', 'OUTPUT']:
+        valueType = "op"
+    return valueType
+
+
+# Try and figure out if the thing is a UDT or a simple memory or OPC tag
+# There has to be a more direct way to do this but this should work
+def checkIfUDT(fullTagPath):    
+    tags = system.tag.browseTags(parentPath=fullTagPath)
+    if len(tags) > 0:
+        isUDT = True
+    else:
+        isUDT = False
+    return isUDT
+    
+# Get the string that will typically be displayed in the DCS Tag Id column of the download monitor
+def getDisplayName(provider, tagPath, valueType, displayAttribute):
+    import string 
+    
+    fullTagPath='[%s]%s' % (provider, tagPath)
+
+    # Check if the tag exists
+    tagExists = system.tag.exists(fullTagPath)
+    if not(tagExists):
+        return "Tag does not exist!"
+    
+    # Use the last portion of the UDT / tag that we are writing to 
+    if string.upper(displayAttribute) == 'NAME':
+        displayName=fullTagPath[fullTagPath.rfind('/')+1:]
+    
+    elif string.upper(displayAttribute) == 'ITEMID':
+        # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
+
+        valueType=validateValueType(valueType)
+        isUDT = checkIfUDT(fullTagPath)
+
+        if isUDT:    
+            if string.upper(valueType) == "VALUE":
+                displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
+            else:
+                displayName = system.tag.read(fullTagPath + '/' + valueType + '/value.OPCItemPath').value        
+        else:
+            displayName = system.tag.read(fullTagPath + '.OPCItemPath').value
+
+    else:
+        displayName = ''
+
+    return displayName
