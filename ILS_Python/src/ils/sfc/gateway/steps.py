@@ -591,15 +591,13 @@ def writeOutput(scopeContext, stepProperties):
     from ils.sfc.gateway.recipe import RecipeData
     from ils.sfc.gateway.downloads import writeValue
     from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
+    from system.ils.sfc import getProviderName
     
-    print "Step properties: ", stepProperties
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     logger.info("Executing a Write Output block")
-    verbose = getStepProperty(stepProperties, VERBOSE)
     configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
-    print "Config: ", configJson
     config = getWriteOutputConfig(configJson)
     logger.trace("Block Configuration: %s" % (str(config)))
     outputRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
@@ -607,10 +605,8 @@ def writeOutput(scopeContext, stepProperties):
 
     # Everything will have the same tag provider - check isolation mode and get the provider
     isolationMode = getIsolationMode(chartScope)
-    print "Isolation mode: ", isolationMode
-    from system.ils.sfc import getProviderName
     providerName = getProviderName(isolationMode)
-    print "Provider: ", providerName
+    logger.trace("Isolation: %s - Provider: %s" % (str(isolationMode), providerName))
 
     # filter out disabled rows:
     downloadRows = []
@@ -626,11 +622,13 @@ def writeOutput(scopeContext, stepProperties):
         row.timingMinutes = row.outputRD.get(TIMING)
         if row.timingMinutes > 0.:
             timerNeeded = True
+
     logger.trace("Timer is needed: %s" % (str(timerNeeded)))
     
     if timerNeeded:
         handleTimer(chartScope, stepScope, stepProperties)
         # wait until the timer starts
+        logger.trace("Waiting for the timer to start...")
         timerStart = waitForTimerStart(chartScope, stepScope, stepProperties, logger)
         logger.trace("The timer start is: %s" % (str(timerStart)))
         
@@ -647,13 +645,7 @@ def writeOutput(scopeContext, stepProperties):
     logger.trace("Initializing data and classifying outputs...")
     for row in downloadRows:
         row.written = False
-         
-        # clear out the dynamic values in recipe data:
-        row.outputRD.set(DOWNLOAD_STATUS, None)
-        # print 'setting output download status to NONE'
-        # STEP_TIMESTAMP and STEP_TIME will be set below
-        row.outputRD.set(WRITE_CONFIRMED, None)
-        
+
         # cache some frequently used values from recipe data:
         row.value = row.outputRD.get(VALUE)
         row.tagPath = row.outputRD.get(TAG_PATH)
@@ -690,11 +682,8 @@ def writeOutput(scopeContext, stepProperties):
     
     logger.trace("Starting immediate writes")
     for row in immediateRows:
-        def writeImmediate(chartScope=chartScope, row=row, verbose=verbose, logger=logger, providerName=providerName):
-            writeValue(chartScope, row, verbose, logger, providerName)
-        print "Writing immediate tag: %s" % (row.key)
-        system.util.invokeAsynchronous(writeImmediate)
-                     
+        writeValue(chartScope, row, logger, providerName)
+             
     logger.trace("Starting timed writes")
     if len(timedRows) > 0:
         writesPending = True
@@ -710,7 +699,7 @@ def writeOutput(scopeContext, stepProperties):
                 writesPending = True
                 logger.trace("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
                 if elapsedMinutes >= row.timingMinutes:
-                    writeValue(chartScope, row, verbose, logger, providerName)
+                    writeValue(chartScope, row, logger, providerName)
          
         if writesPending:
             time.sleep(SLEEP_INCREMENT)
@@ -726,7 +715,7 @@ def writeOutput(scopeContext, stepProperties):
         timestamp = formatTime(absTiming)
         row.outputRD.set(STEP_TIMESTAMP, timestamp)
         row.outputRD.set(STEP_TIME, absTiming)
-        writeValue(chartScope, row, verbose, logger, providerName)
+        writeValue(chartScope, row, logger, providerName)
 
     logger.info("Write output block finished!")
     #Note: write confirmations are on a separate thread and will write the result
@@ -743,6 +732,7 @@ def monitorPV(scopeContext, stepProperties):
     import time
     from ils.sfc.common.util import getMinutesSince
     from ils.sfc.gateway.api import getIsolationMode
+    from system.ils.sfc import getProviderName
     from system.ils.sfc import getPVMonitorConfig
     from ils.sfc.gateway.downloads import handleTimer
     from ils.sfc.gateway.monitoring import getMonitoringMgr
@@ -753,26 +743,41 @@ def monitorPV(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
+    logger.info("Starting a PV monitor...")
+    
+    # Everything will have the same tag provider - check isolation mode and get the provider
+    isolationMode = getIsolationMode(chartScope)
+    providerName = getProviderName(isolationMode)
+    logger.trace("Isolation: %s - Provider: %s" % (str(isolationMode), providerName))
+
     stepScope[NUMBER_OF_TIMEOUTS] = 0
     handleTimer(chartScope, stepScope, stepProperties)
-    dataLocation = getStepProperty(stepProperties, DATA_LOCATION)
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+    print "The recipe location is: ", recipeLocation
+    durationLocation = getStepProperty(stepProperties, DATA_LOCATION)
+    print "The duration location is: ", durationLocation
     durationStrategy = getStepProperty(stepProperties, STRATEGY)
+    print "The duration strategy is: ", durationStrategy
     if durationStrategy == STATIC:
         timeLimitMin = getStepProperty(stepProperties, VALUE) 
     else:
-        durationLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         durationKey = getStepProperty(stepProperties, KEY)
-        durationRD = RecipeData(chartScope, stepScope, durationLocation, durationKey)
-        timeLimitMin = durationRD.get(VALUE)
+        print "The duration key is: ", durationKey
+        timeLimitMin = s88Get(chartScope, stepScope, durationKey, durationLocation)
+        
+        
+    logger.trace("PV Monitor time limit strategy: %s - minutes: %s" % (durationStrategy, str(timeLimitMin)))
         
     configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
     config = getPVMonitorConfig(configJson)
 
     maxPersistence = 0
+    logger.trace("...initializing PV monitor recipe data...")
     # initialize each input:
     for configRow in config.rows:
+        logger.trace("PV Key: %s - Target Type: %s - Target Name: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue))
         configRow.status = MONITORING
-        configRow.ioRD = RecipeData(chartScope, stepScope, dataLocation, configRow.pvKey)
+        configRow.ioRD = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
         configRow.ioRD.set(PV_MONITOR_STATUS, MONITORING)
         configRow.ioRD.set(PV_MONITOR_ACTIVE, True)
         configRow.ioRD.set(PV_VALUE, None)
@@ -787,14 +792,16 @@ def monitorPV(scopeContext, stepProperties):
             
         # we assume the target value won't change, so we get it once:
         if configRow.targetType == SETPOINT:
-            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/value', dataLocation)
+            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/value', recipeLocation)
         elif configRow.targetType == VALUE:
             configRow.targetValue = configRow.targetNameIdOrValue
         elif configRow.targetType == TAG:
-            qualVal = system.tag.read(configRow.targetNameIdOrValue)
+            qualVal = system.tag.read("[" + providerName + "]" + configRow.targetNameIdOrValue)
             configRow.targetValue = qualVal.value
         elif configRow.targetType == RECIPE:
-            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, dataLocation)           
+            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeLocation)           
+        
+        logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
         
         if configRow.toleranceType == ABS:
             tolerance = configRow.tolerance
@@ -813,21 +820,23 @@ def monitorPV(scopeContext, stepProperties):
         
         tagPath = configRow.ioRD.get(TAG_PATH)
         configRow.io = AbstractSfcIO.getIO(tagPath, getIsolationMode(chartScope))
+        print "tag path: ", tagPath
         
     # Monitor for the specified period, possibly extended by persistence time
+    logger.trace("...starting to monitor...")
     startTime = time.time()
     elapsedMinutes = 0    
     extendedDuration = timeLimitMin + maxPersistence # extra time allowed for persistence checks
     persistencePending = False
     while (elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration):
-        
+        logger.trace("Starting a PV monitor pass...")
         if checkForCancelOrPause(stepScope, logger):
             return
 
         persistencePending = False
         for configRow in config.rows:
             # print ''
-            # print 'PV monitor', configRow.pvKey  
+            logger.trace('PV monitoring: %s' % (configRow.pvKey))  
             
             if not configRow.enabled:
                 continue;
@@ -844,6 +853,7 @@ def monitorPV(scopeContext, stepProperties):
                 continue
              
             presentValue = configRow.io.getCurrentValue()
+            logger.trace("The present value is: %s" % (str(presentValue)))
             # ? Not sure why we are writing this to Recipe Data--the monitoring
             # logic has full access to the controller, doesn't it?
             configRow.ioRD.set(PV_VALUE, presentValue)
@@ -903,6 +913,7 @@ def monitorPV(scopeContext, stepProperties):
                         
             configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
             # print '   status ', configRow.status    
+        logger.trace("...finished the PV monitor pass")
         time.sleep(SLEEP_INCREMENT)
         elapsedMinutes =  getMinutesSince(startTime)
         
@@ -914,14 +925,16 @@ def monitorPV(scopeContext, stepProperties):
             configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
         configRow.ioRD.set(PV_MONITOR_ACTIVE, False)
     stepScope[NUMBER_OF_TIMEOUTS] = numTimeouts
-      
+
 def monitorDownload(scopeContext, stepProperties): 
-    from system.ils.sfc.common.Constants import MONITOR_DOWNLOADS_CONFIG, DATA_ID
+    from system.ils.sfc.common.Constants import MONITOR_DOWNLOADS_CONFIG, DATA_ID, DOWNLOAD_STATUS, PENDING, WRITE_CONFIRMED
     from system.ils.sfc import getMonitorDownloadsConfig
     from ils.sfc.gateway.downloads import handleTimer
     from ils.sfc.gateway.monitoring import createMonitoringMgr
     from system.ils.sfc import getProviderName
     from ils.sfc.gateway.api import getIsolationMode
+    from ils.sfc.gateway.recipe import RecipeData
+    
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
@@ -932,10 +945,18 @@ def monitorDownload(scopeContext, stepProperties):
     isolationMode = getIsolationMode(chartScope) 
     providerName = getProviderName(isolationMode)
 
+    # Reset the recipe data download and PV monitoring attributes
+    for row in monitorDownloadsConfig.rows:
+        print "REsetting: ", row.key
+        rd = RecipeData(chartScope, stepScope, recipeLocation, row.key)
+        rd.set(DOWNLOAD_STATUS, None)
+        rd.set(WRITE_CONFIRMED, None)        
+
     mgr = createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger, providerName)
     payload = dict()
     payload[DATA_ID] = mgr.getTimerId()
     transferStepPropertiesToMessage(stepProperties, payload)
+    print "The Payload is: ", payload
     sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload)             
 
 def manualDataEntry(scopeContext, stepProperties):    
