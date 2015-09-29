@@ -3,6 +3,7 @@ Created on May 29, 2015
 
 @author: rforbes
 '''
+import system
 
 def getMonitorDownloadWindow(chartRunId, timerId):
     ''' get the monitor download window. If it is not yet open, 
@@ -21,9 +22,14 @@ def getMonitorDownloadWindow(chartRunId, timerId):
     
 def updateTable(window, rows, timerStart):
     from  system.dataset import toDataSet
-    header = ['Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'stepStatus', 'pvStatus', 'setpointStatus']    
+    print "Updating the table"
+    header = ['RawTiming','Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'stepStatus', 'pvStatus', 'setpointStatus']    
     table = window.getRootContainer().getComponent('table')
     newData = toDataSet(header, rows)
+
+    # Sort the dataset by the timing
+    newData = system.dataset.sort(newData, 'RawTiming')
+    
     table.data = newData
     window.getRootContainer().timerStart = timerStart
 
@@ -47,8 +53,10 @@ def timerWorker(window):
         rootContainer.getComponent('abortButton').enabled = False
         rootContainer.getComponent('pauseButton').enabled = False
         rootContainer.getComponent('resumeButton').enabled = False
-    else:
+
+    if not(rootContainer.stopUpdates):
         #request an update from the gateway
+        print "In timerWorker() - Request an update..."
         payload = {'id': rootContainer.timerId, 'instanceId':rootContainer.instanceId}
         project = system.util.getProjectName()
         system.util.sendMessage(project, 'sfcUpdateDownloads', payload, "G")
