@@ -31,7 +31,7 @@ class MonitoringInfo:
 class MonitoringMgr:
     """Manager supporting clients associated with the same MonitorDownloads step"""
             
-    def  __init__(self, _chartScope, _stepScope, _recipeLocation, _config, _timer, _timerAttribute, _logger):
+    def  __init__(self, _chartScope, _stepScope, _recipeLocation, _config, _timer, _timerAttribute, _logger, _providerName):
         from ils.sfc.gateway.api import getIsolationMode
         self.chartScope = _chartScope
         self.config = _config
@@ -39,7 +39,7 @@ class MonitoringMgr:
         self.timerAttribute = _timerAttribute
         self.logger =_logger
         self.monitoringInfos = []
-        
+        self.providerName = _providerName
         isolationMode = getIsolationMode(_chartScope)
 
         for row in _config.rows:
@@ -58,7 +58,7 @@ class MonitoringMgr:
         '''The dataset-building code should really be on the client'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
         DOWNLOAD_STATUS, STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
-        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, TAG_PATH, \
+        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, PV_VALUE, TAG_PATH, VALUE_TYPE, \
         SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, TIMEOUT
 
         from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
@@ -68,20 +68,26 @@ class MonitoringMgr:
         from ils.sfc.common.constants import INSTANCE_ID, UNITS
         from java.awt import Color
         import time
+        
+        print "In monitoring.sendClientUpdate()..."
 
         # the meaning of the columns:
-        #header = ['Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'stepTimeColor', 'pvColor']    
+        #header = ['RawTiming''Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'stepTimeColor', 'pvColor']    
         timerStart = self.getTimerStart()
+        providerName = self.providerName
         formattedStart = formatTime(timerStart)
         rows = []
-        rows.append(['', '', '', '', formattedStart, '', STEP_PENDING, PV_MONITORING, SETPOINT_OK])
+        rows.append([-1.0,'', '', '', '', formattedStart, '', STEP_PENDING, PV_MONITORING, SETPOINT_OK])
         for info in self.monitoringInfos:
             # Note: the data can be an Input or an Output, which are both subclasses of IO
             # oddly enough, Inputs do not have any additional attributes vs IO
             # get common IO attributes and set some defaults:
             description = info.inout.get(DESCRIPTION)
             tagPath = info.inout.get(TAG_PATH)
-            pv = info.io.getCurrentValue()
+#
+            # This block shouldn't read from a tag, the PV monitoring block should read the tag and set 
+            # the recipe data, so this block is independent of our I/O implemention
+            pv = info.inout.get(PV_VALUE)
             monitorActive = info.inout.get(PV_MONITOR_ACTIVE)
             if pv == None:
                 formattedPV = ""
@@ -91,8 +97,8 @@ class MonitoringMgr:
                 formattedPV = "%.2f*" % pv
             
             # Determine the DCS Tag ID - this can either be the name of the tag/UDT or the item id
-            import ils.sfc.gateway.downloads as downloads
-            name = downloads.getDisplayName(info.inout.get(TAG_PATH), info.configRow.labelAttribute)
+            import ils.io.api as api
+            displayName = api.getDisplayName(providerName, tagPath, info.inout.get(VALUE_TYPE),info.configRow.labelAttribute)
             
             units = info.inout.get(UNITS)
             if units != "":
@@ -112,7 +118,7 @@ class MonitoringMgr:
             dataType = info.inout.get(CLASS)
             if dataType == 'Output':
                 downloadStatus = info.inout.get(DOWNLOAD_STATUS)
-                print "Download status: ", downloadStatus
+
                 timing = info.inout.get(TIMING)
                 if timing < 1000.:
                     formattedTiming = "%.2f" % timing
@@ -128,7 +134,7 @@ class MonitoringMgr:
                 setpoint = info.inout.get(VALUE)
                 formattedSetpoint = "%.2f" % setpoint
                 timeNow = time.time()
-                if stepTime != None and timeNow < stepTime:
+                if stepTime != None and stepTime != "" and timeNow < stepTime:
                     pendingTime = stepTime - 30
                     if timeNow < pendingTime:
                         stepStatus = STEP_PENDING
@@ -167,16 +173,16 @@ class MonitoringMgr:
             elif monitorStatus == ERROR or monitorStatus == TIMEOUT:    
                 pvStatus = PV_ERROR
             
-            # THIS ISN'T RIGHT - THIS NEEDS TO LATCH 
+            # THIS ISN'T RIGHT - THIS NEEDS TO LATCH (PETE)
             if pvStatus == PV_ERROR:
                 setpointStatus = SETPOINT_PROBLEM
             else:
                 setpointStatus = SETPOINT_OK
 
-            rows.append([formattedTiming, name, formattedSetpoint, description, stepTimestamp, formattedPV, stepStatus, pvStatus, setpointStatus])
+            rows.append([timing, formattedTiming, displayName, formattedSetpoint, description, stepTimestamp, formattedPV, stepStatus, pvStatus, setpointStatus])
                
 
-        # TODO: sort by timing
+        # The client will sort this by timing
          
         payload = dict()
         payload[TIME] = timerStart
@@ -185,13 +191,13 @@ class MonitoringMgr:
         payload[DATA] = rows
         sendMessageToClient(self.chartScope, 'sfcUpdateDownloads', payload) 
  
-def createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger):
+def createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger, provider):
     '''Create the manager and store it in the dropbox. When the top-level chart 
     finishes, the dropbox will automatically delete the manager'''
     from system.ils.sfc import dropboxPut
     from ils.sfc.gateway.util import getTopChartRunId
 
-    mgr = MonitoringMgr(chartScope, stepScope, recipeLocation, monitorDownloadsConfig, timer, timerAttribute, logger)
+    mgr = MonitoringMgr(chartScope, stepScope, recipeLocation, monitorDownloadsConfig, timer, timerAttribute, logger, provider)
     topChartRunId = getTopChartRunId(chartScope)
     dropboxPut(topChartRunId, mgr.getTimerId(), mgr)
     return mgr
