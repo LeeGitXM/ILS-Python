@@ -89,6 +89,7 @@ PRINT_FILE = "printFile"
 PRIORITY = "priority"
 PROJECT = 'project'
 PROMPT = "prompt"
+PV_VALUE = "pvValue"
 RECIPE = "recipe"
 RECIPE_LOCATION = "recipeLocation" 
 RECIPE_DATA = "recipeData"
