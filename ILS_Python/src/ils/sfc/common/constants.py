@@ -75,6 +75,7 @@ MINIMUM_VALUE = "minimumValue"
 MAXIMUM_VALUE = "maximumValue"
 MULTIPLE = "multiple"
 NAME = "name"
+NUMBER_OF_TIMEOUTS = "numberOfTimeouts"
 OK = 'Ok'
 PARENT = 'parent'
 POSITION = 'position'

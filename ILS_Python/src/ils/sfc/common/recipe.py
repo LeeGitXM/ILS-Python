@@ -89,4 +89,17 @@ def recipeDataTagExists(provider, path):
     fullPath = getRecipeDataTagPath(provider, path)
     return system.tag.exists(fullPath)
 
-
+def cleanupRecipeData(provider, chartPath, stepNames):
+    '''remove any recipe data for the given chart that does not 
+    belong to one of the supplied step names. This handles
+    cleaning up recipe data for deleted steps and charts. '''
+    chartRdFolder = getRecipeDataTagPath(provider, chartPath)
+    tagInfos = system.tag.browseTags(chartRdFolder)
+    for tagInfo in tagInfos:
+        tagName = tagInfo.name
+        if not tagName in stepNames:
+            print tagName, 'not in chart', tagInfo.fullPath
+            # system.tag.removeTag(tagInfo.fullPath)
+        else:
+            print tagName, 'OK'
+    
