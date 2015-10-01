@@ -40,12 +40,11 @@ def timerWorker(window):
     
     rootContainer = window.getRootContainer()
     
-    clockField = rootContainer.getComponent('clockField')
-    clockField.text = formatTime(time.time())
-    
+    timerField = rootContainer.getComponent('timerField')
     timerStart = rootContainer.timerStart
-    if timerStart != None:
-        timerField = rootContainer.getComponent('timerField')
+    if timerStart == None or timerStart == 0:
+        timerField.text = "0.0"
+    else:
         elapsedMinutes = (time.time() - timerStart) / 60.
         timerField.text = "%.1f" % elapsedMinutes
     
