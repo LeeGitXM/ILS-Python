@@ -9,7 +9,7 @@ Created on Jun 18, 2015
 
 import system
 
-def handleTimer(chartScope, stepScope, stepProperties):
+def handleTimer(chartScope, stepScope, stepProperties, logger):
     '''perform the timer-related logic for a step'''
     from ils.sfc.gateway.api import s88Set, s88Get
     from ils.sfc.gateway.util import getStepProperty
@@ -20,17 +20,21 @@ def handleTimer(chartScope, stepScope, stepProperties):
     
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
+    print "The timer key and attribute is: ", timerKeyAndAttribute
+    print "The step properties are: ", stepProperties
     timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
     timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
     # Note: there may be no timer-clear property, in which case the
     # value is null which 
     clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
     if clearTimer:
+        logger.info("Clearing the download timer...")
         timer.set(timerAttribute, None)
         
     setTimer = getStepProperty(stepProperties, TIMER_SET)
     if setTimer:
         # print 'starting timer'
+        logger.info("Setting the download timer...")
         startTime = time.time()
         timer.set(timerAttribute, startTime)
 
@@ -82,13 +86,14 @@ def writeValue(chartScope, config, logger, providerName):
         from ils.io.api import write
         from ils.sfc.gateway.util import queueMessage
         from ils.sfc.common.constants import MSG_STATUS_INFO
+        from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE
         from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT,  WRITE_CONFIRMED, SUCCESS, FAILURE
     
         tagPath = "[%s]%s" % (providerName, config.tagPath)
         valueType = config.outputRD.get(VALUE_TYPE)
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, valueType,str(config.confirmWrite)))
         
-        config.outputRD.set(DOWNLOAD_STATUS, PENDING)
+        config.outputRD.set(DOWNLOAD_STATUS, STEP_DOWNLOADING)
         writeStatus, txt = write(tagPath, config.value, config.confirmWrite, valueType)
         logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
         config.written = True
@@ -97,14 +102,14 @@ def writeValue(chartScope, config, logger, providerName):
             config.outputRD.set(WRITE_CONFIRMED, writeStatus)
     
         if writeStatus:
-            config.outputRD.set(DOWNLOAD_STATUS, SUCCESS)
+            config.outputRD.set(DOWNLOAD_STATUS, STEP_SUCCESS)
         else:
-            config.outputRD.set(DOWNLOAD_STATUS, FAILURE)
+            config.outputRD.set(DOWNLOAD_STATUS, STEP_FAILURE)
     
         queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)
     #----------------------------------------------------------------------------------------------------
     system.util.invokeAsynchronous(_writeValue)
-    print "Returning..."
+
 
 def writeOutputOriginal(chartScope, config, verbose, logger):
     '''write an output value'''

@@ -55,24 +55,23 @@ class MonitoringMgr:
         
     def sendClientUpdate(self):
         '''Send the current monitoring information to clients'''
-        '''The dataset-building code should really be on the client'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
         DOWNLOAD_STATUS, STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
-        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, PV_VALUE, TAG_PATH, VALUE_TYPE, \
-        SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, TIMEOUT
+        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, PV_VALUE, TAG_PATH, VALUE_TYPE, TIMEOUT
 
-        from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
+        from ils.sfc.common.constants import PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
+        PV_BAD_NOT_CONSISTENT, PV_ERROR, PV_NOT_MONITORED
+        
         from ils.sfc.gateway.util import getTopChartRunId
         from ils.sfc.common.util import formatTime
         from ils.sfc.gateway.api import  sendMessageToClient
         from ils.sfc.common.constants import INSTANCE_ID, UNITS
-        from java.awt import Color
         import time
         
-        print "In monitoring.sendClientUpdate()..."
+#        print "In monitoring.sendClientUpdate()..."
 
         # the meaning of the columns:
-        #header = ['RawTiming''Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'stepTimeColor', 'pvColor']    
+        #header = ['RawTiming', 'Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'stepTimeColor', 'pvColor']    
         timerStart = self.getTimerStart()
         providerName = self.providerName
         formattedStart = formatTime(timerStart)
@@ -134,7 +133,7 @@ class MonitoringMgr:
                 setpoint = info.inout.get(VALUE)
                 formattedSetpoint = "%.2f" % setpoint
                 timeNow = time.time()
-                if stepTime != None and stepTime != "" and timeNow < stepTime:
+                if stepTime != None and stepTime != "" and timeNow < stepTime and downloadStatus == STEP_PENDING:
                     pendingTime = stepTime - 30
                     if timeNow < pendingTime:
                         stepStatus = STEP_PENDING
@@ -143,12 +142,9 @@ class MonitoringMgr:
                 else:
                     if downloadStatus == None:
                         stepStatus = STEP_PENDING
-                    elif downloadStatus == PENDING:
-                        stepStatus = STEP_PENDING
-                    elif downloadStatus == SUCCESS:
-                        stepStatus = STEP_SUCCESS
-                    elif downloadStatus == FAILURE:
-                        stepStatus = STEP_FAILURE
+                    else:
+                        stepStatus = downloadStatus
+
             else:
                 formattedTiming = ''
                 stepTimestamp = ''
@@ -156,22 +152,23 @@ class MonitoringMgr:
                 # we know nothing about pending setpoints, but can at least reflect the current one:
                 setpoint = info.io.getSetpoint()
                 formattedSetpoint = "%.2f" % setpoint
-                
-            monitorStatus = info.inout.get(PV_MONITOR_STATUS)
+            
+            pvStatus = info.inout.get(PV_MONITOR_STATUS)
+#TODO Clean this up
             # reference S88-PV-MONITOR-STATUS-COLOR-DECODER.txt
             # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
-            if monitorStatus == MONITORING or  monitorStatus == None:
-                pvStatus = PV_MONITORING
-            elif monitorStatus == WARNING:    
-                pvStatus = PV_WARNING
-            elif monitorStatus == NOT_PERSISTENT:    
-                pvStatus = PV_OK_NOT_PERSISTENT
-            elif monitorStatus == SUCCESS:    
-                pvStatus = PV_OK
-            elif monitorStatus == NOT_CONSISTENT:    
-                pvStatus = PV_BAD_NOT_CONSISTENT
-            elif monitorStatus == ERROR or monitorStatus == TIMEOUT:    
-                pvStatus = PV_ERROR
+#            if monitorStatus == MONITORING or  monitorStatus == None:
+#                pvStatus = PV_MONITORING
+#            elif monitorStatus == WARNING:    
+#                pvStatus = PV_WARNING
+#            elif monitorStatus == NOT_PERSISTENT:    
+#                pvStatus = PV_OK_NOT_PERSISTENT
+#            elif monitorStatus == SUCCESS:    
+#                pvStatus = PV_OK
+#            elif monitorStatus == NOT_CONSISTENT:    
+#                pvStatus = PV_BAD_NOT_CONSISTENT
+#            elif monitorStatus == ERROR or monitorStatus == TIMEOUT:    
+#                pvStatus = PV_ERROR
             
             # THIS ISN'T RIGHT - THIS NEEDS TO LATCH (PETE)
             if pvStatus == PV_ERROR:
@@ -180,7 +177,6 @@ class MonitoringMgr:
                 setpointStatus = SETPOINT_OK
 
             rows.append([timing, formattedTiming, displayName, formattedSetpoint, description, stepTimestamp, formattedPV, stepStatus, pvStatus, setpointStatus])
-               
 
         # The client will sort this by timing
          

@@ -209,6 +209,10 @@ def getDelaySeconds(delay, delayUnit):
         delaySeconds = delay * 60
     elif delayUnit == DELAY_UNIT_HOUR:
         delaySeconds = delay * 3600
+    else:
+        print "*** Unexpected delay units: <%s> ***" % (str(delayUnit))
+        delaySeconds = delay
+
     return delaySeconds
 
 def createFilepath(chartScope, stepProperties, includeExtension):
@@ -298,4 +302,44 @@ def writeTestRamp(controllers, durationSecs, increment):
             adjustment = sign * min(increment, absDiff)
             controller.setCurrentValue(currentValue + adjustment)
         time.sleep(5)
-          
+
+
+def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger):
+    ''' This is is mainly by PV monitoring but is pretty generic '''
+
+    logger.trace("Comparing value to target - PV: %s, Target %s, Tolerance: %s, Limit-Type: %s, Tolerance: %s" % (str(pv), str(target), str(tolerance), limitType, toleranceType))
+
+    txt = ""
+    valueOk = True
+    
+    if target == 0.0:
+        toleranceType = "Abs"
+    
+    #Depending on the limit type we may not use both the high and low limits, but we can always calculate them both
+    if toleranceType == "Pct":
+        highLimit = target + abs(tolerance * target) / 100.0;
+        lowLimit = target - abs(tolerance * target) / 100.0;
+    else:
+        highLimit = target + tolerance;
+        lowLimit = target - tolerance;
+
+#    if DEBUG-MODE then post "*** PV = [1PV], Target = [TARGET], High Limit = [HIGH-LIMIT], Low Limit = [Low-Limit] ****";
+
+    if limitType == "High/Low":
+        if pv > highLimit or pv < lowLimit:
+            valueOk = False
+            txt = "%s is outside the limits of %s to %s" % (str(pv), str(lowLimit), str(highLimit))
+    elif limitType == "High":    
+        if pv < lowLimit:
+            valueOk = False
+            txt = "%s is below the low limit of %s (Target - Tolerance)" % (str(pv), str(lowLimit), str(highLimit))
+    elif limitType == "Low":
+        if pv > highLimit:
+            valueOk = False
+            txt = "%s is above the high limit of %s (Target + Tolerance)" % (str(pv), str(highLimit))
+    else:
+        return False, "Illegal limit type: <%s>" % (limitType)
+
+    logger.trace("Returning %s-%s" % (str(valueOk), txt))
+    
+    return valueOk, txt
