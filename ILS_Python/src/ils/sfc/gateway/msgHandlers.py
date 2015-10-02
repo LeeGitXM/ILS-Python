@@ -28,7 +28,7 @@ def sfcRunTests(payload):
         system.ils.sfc.startTest(chartPath)
         sfcStartChart(payload)
         system.sfc.startChart(chartPath, payload)
-
+ 
 def sfcReportTests(payload):
     import system.ils.sfc
     system.ils.sfc.reportTests()

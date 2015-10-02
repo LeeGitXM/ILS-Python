@@ -78,6 +78,12 @@ def parseValue(str):
     pass
 
 # Methods for unit tests
+def initializeTests(reportFile):
+    '''clear out any old tests and establish the report file for the new tests'''
+    
+def startTest(chartPath):
+    '''start a test chart'''
+    
 def assertEqual(chart, step, expected, actual):
     '''Assert that the actual object should equal the expected object. If this is
     not true the test fails immediately.'''
