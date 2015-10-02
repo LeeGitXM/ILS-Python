@@ -19,15 +19,15 @@ def sfcActivateStep(payload):
     
 def sfcRunTests(payload):
     '''Run test charts'''
-    from ils.sfc.common.constants import CHART_NAME, TEST_CHART_PATHS, TEST_REPORT_FILE 
+    from ils.sfc.common.constants import TEST_CHART_PATHS, TEST_REPORT_FILE 
     import system.ils.sfc
     testChartPaths = payload[TEST_CHART_PATHS]
     reportFile = payload[TEST_REPORT_FILE]
     system.ils.sfc.initializeTests(reportFile)
     for chartPath in testChartPaths:
-        payload[CHART_NAME] = chartPath
         system.ils.sfc.startTest(chartPath)
         sfcStartChart(payload)
+        system.sfc.startChart(chartPath, payload)
 
 def sfcReportTests(payload):
     import system.ils.sfc
@@ -37,13 +37,10 @@ def sfcStartChart(payload):
     '''Prepare for chart start. lazy init the units for this script mgr
        (CAUTION--there are other gateway script mgrs) and also to save the name of
        the invoking project, as chart status message currently needs this.'''
-    import system.sfc.startChart
-    from system.util import sendMessage
     import ils.common.units
     from system.ils.sfc import registerSfcProject
     from ils.sfc.gateway.api import getDatabaseName
-    from ils.sfc.common.constants import INSTANCE_ID, PROJECT, CHART_NAME, CLIENT_MSG_HANDLER
-    chartName = payload[CHART_NAME]
+    from ils.sfc.common.constants import PROJECT
     project = payload[PROJECT]
     registerSfcProject(project)
     database = getDatabaseName(payload)

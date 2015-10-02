@@ -278,8 +278,7 @@ class ControlPanel:
 
 def createControlPanel(chartProperties):
     from ils.sfc.common.constants import CHART_NAME
-    from system.ils.sfc.common.Constants import SFC_CONTROL_PANEL_WINDOW
-    window = system.nav.openWindowInstance(SFC_CONTROL_PANEL_WINDOW)
+    window = system.nav.openWindowInstance('SFC/ControlPanel')
     window.title = chartProperties[CHART_NAME]
     window.getRootContainer().chartPath = chartProperties[CHART_NAME]
     controller = ControlPanel(window, chartProperties)
