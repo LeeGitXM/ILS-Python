@@ -25,11 +25,13 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
     # Reset the memory tags - this does not write to OPC!
     def reset(self):
         # reset all of the inherited memory tags
-        opcoutput.OPCOutput.reset(self)
+        status, msg = opcoutput.OPCOutput.reset(self)
 
         # reset the permissive related memory tags
         system.tag.write(self.path + '/permissiveAsFound', '')
         system.tag.write(self.path + '/permissiveConfirmation', False)
+
+        return True, ""
 
 
     # Write with confirmation.

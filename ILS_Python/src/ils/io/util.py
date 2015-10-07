@@ -10,6 +10,17 @@ from java.util import Date
 from ils.common.util import isText
 from ils.common.util import isFloattOrSpecialValue
 
+# Try and figure out if the thing is a UDT or a simple memory or OPC tag
+# There has to be a more direct way to do this but this should work
+def checkIfUDT(fullTagPath):    
+    tags = system.tag.browseTags(parentPath=fullTagPath)
+    if len(tags) > 0:
+        isUDT = True
+    else:
+        isUDT = False
+    return isUDT
+
+
 # Compare two tag values taking into account that a float may be disguised as a text string and also
 # calling two floats the same if they are almost the same.
 def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDifference):
@@ -70,7 +81,7 @@ def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0):
     
     while (delta < timeout):
         qv = system.tag.read(tagPath)
-        log.trace("%s Quality: comparing %s-%s to %s" % (tagPath, str(qv.value), str(qv.quality), str(val)))
+        log.trace("%s: comparing %s-%s to %s" % (tagPath, str(qv.value), str(qv.quality), str(val)))
         if string.upper(str(val)) == "NAN":
             if qv.value == None:
                 return True, ""

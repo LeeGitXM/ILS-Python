@@ -56,6 +56,7 @@ def write(tagPath, command):
     # Dynamically create an object (that won't live very long)
     try:
         cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
+        log.trace("Creating a tag object using: <%s>" % (cmd))
         tag = eval(cmd)
         if string.upper(command) == "WRITEDATUM":
             status, reason = tag.writeDatum()
