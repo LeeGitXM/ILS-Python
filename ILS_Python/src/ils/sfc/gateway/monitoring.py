@@ -11,9 +11,9 @@ Created on Jun 17, 2015
 @author: rforbes
 '''
 
-from ils.sfc.common.constants import STEP_PENDING, STEP_APPROACHING, STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, \
-    PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, PV_BAD_NOT_CONSISTENT, PV_ERROR, PV_NOT_MONITORED, \
-    SETPOINT_OK, SETPOINT_PROBLEM
+#from ils.sfc.common.constants import STEP_PENDING, STEP_APPROACHING, STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, \
+#    PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, PV_BAD_NOT_CONSISTENT, PV_ERROR, PV_NOT_MONITORED, \
+#    SETPOINT_OK, SETPOINT_PROBLEM
 
 
 class MonitoringInfo:
@@ -56,11 +56,11 @@ class MonitoringMgr:
     def sendClientUpdate(self):
         '''Send the current monitoring information to clients'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
-        DOWNLOAD_STATUS, STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
-        FAILURE, PENDING, VALUE, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, PV_VALUE, TAG_PATH, VALUE_TYPE, TIMEOUT
+        STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
+        FAILURE, PENDING, VALUE,  PV_MONITOR_ACTIVE, PV_VALUE, TAG_PATH, VALUE_TYPE, TIMEOUT
 
-        from ils.sfc.common.constants import PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
-        PV_BAD_NOT_CONSISTENT, PV_ERROR, PV_NOT_MONITORED
+        from ils.sfc.common.constants import DOWNLOAD_STATUS, PV_MONITOR_STATUS, SETPOINT_STATUS, STEP_PENDING, STEP_APPROACHING, \
+        PV_MONITORING, SETPOINT_OK
         
         from ils.sfc.gateway.util import getTopChartRunId
         from ils.sfc.common.util import formatTime
@@ -108,11 +108,6 @@ class MonitoringMgr:
             stepStatus='unknown'
             pvStatus='unknown'
             setpointStatus='unknown'
-            
-            #
-            # THE SETPOINT STATUS HAS TO HAVE MEMORY - CAN'T DETERMINE THIS AT A POINT IN TIME, ONCE
-            # SET IT SHOULDN't BE UNSET
-            #
 
             dataType = info.inout.get(CLASS)
             if dataType == 'Output':
@@ -154,27 +149,7 @@ class MonitoringMgr:
                 formattedSetpoint = "%.2f" % setpoint
             
             pvStatus = info.inout.get(PV_MONITOR_STATUS)
-#TODO Clean this up
-            # reference S88-PV-MONITOR-STATUS-COLOR-DECODER.txt
-            # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
-#            if monitorStatus == MONITORING or  monitorStatus == None:
-#                pvStatus = PV_MONITORING
-#            elif monitorStatus == WARNING:    
-#                pvStatus = PV_WARNING
-#            elif monitorStatus == NOT_PERSISTENT:    
-#                pvStatus = PV_OK_NOT_PERSISTENT
-#            elif monitorStatus == SUCCESS:    
-#                pvStatus = PV_OK
-#            elif monitorStatus == NOT_CONSISTENT:    
-#                pvStatus = PV_BAD_NOT_CONSISTENT
-#            elif monitorStatus == ERROR or monitorStatus == TIMEOUT:    
-#                pvStatus = PV_ERROR
-            
-            # THIS ISN'T RIGHT - THIS NEEDS TO LATCH (PETE)
-            if pvStatus == PV_ERROR:
-                setpointStatus = SETPOINT_PROBLEM
-            else:
-                setpointStatus = SETPOINT_OK
+            setpointStatus = info.inout.get(SETPOINT_STATUS)
 
             rows.append([timing, formattedTiming, displayName, formattedSetpoint, description, stepTimestamp, formattedPV, stepStatus, pvStatus, setpointStatus])
 

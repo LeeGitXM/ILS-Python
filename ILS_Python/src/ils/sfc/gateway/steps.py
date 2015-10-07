@@ -12,11 +12,7 @@ Created on Sep 30, 2014
 from ils.sfc.gateway.api import s88Set, s88Get, s88SetWithUnits
 from ils.common.units import Unit
 from ils.sfc.gateway.util import * 
-from ils.sfc.common.constants import *
-from ils.sfc.common.constants import _STATUS
-
 from ils.sfc.gateway.api import getDatabaseName, sendMessageToClient, getChartLogger
-
 from ils.queue.message import insert
 from ils.queue.message import clear
 from time import sleep
@@ -162,6 +158,7 @@ def controlPanelMessage(scopeContext, stepProperties):
 def timedDelay(scopeContext, stepProperties):
     from ils.sfc.common.util import createUniqueId, callMethod
     from ils.sfc.gateway.api import getTimeFactor
+    from ils.sfc.common.constants import _STATUS
     import time
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -700,7 +697,8 @@ def writeOutput(scopeContext, stepProperties):
                 logger.trace("checking output step %s; %.2f elapsed %.2f" % (row.key, row.timingMinutes, elapsedMinutes))
                 if elapsedMinutes >= row.timingMinutes:
                     writeValue(chartScope, row, logger, providerName)
-         
+                    row.written = True
+
         if writesPending:
             time.sleep(SLEEP_INCREMENT)
  
@@ -725,12 +723,12 @@ def monitorPV(scopeContext, stepProperties):
     '''see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and 
     S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
     from system.ils.sfc.common.Constants import PV_MONITOR_CONFIG, SETPOINT, MONITOR, \
-    IMMEDIATE, ABS, PCT, LOW, HIGH, CLASS, DOWNLOAD_STATUS, STEP_TIME, \
-    HIGH_LOW, TIMER_LOCATION, DATA_LOCATION, PV_MONITOR_STATUS, PV_MONITOR_ACTIVE, PV_VALUE, \
+    IMMEDIATE, ABS, PCT, LOW, HIGH, CLASS, DOWNLOAD_STATUS,  STEP_TIME, \
+    HIGH_LOW, TIMER_LOCATION, DATA_LOCATION, PV_MONITOR_ACTIVE, PV_VALUE, \
     WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, ERROR, WAIT, SUCCESS
     
-    from ils.sfc.common.constants import PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
-    PV_BAD_NOT_CONSISTENT, PV_ERROR, PV_NOT_MONITORED
+    from ils.sfc.common.constants import PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
+    PV_BAD_NOT_CONSISTENT, PV_ERROR, PV_NOT_MONITORED, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM
     
     import time
     from ils.sfc.common.util import getMinutesSince
@@ -777,7 +775,8 @@ def monitorPV(scopeContext, stepProperties):
         logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
         configRow.status = MONITORING
         configRow.ioRD = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
-        configRow.ioRD.set(PV_MONITOR_STATUS, MONITORING)
+        configRow.ioRD.set(PV_MONITOR_STATUS, PV_MONITORING)
+        configRow.ioRD.set(SETPOINT_STATUS, SETPOINT_OK)
         configRow.ioRD.set(PV_MONITOR_ACTIVE, True)
         configRow.ioRD.set(PV_VALUE, None)
         dataType = configRow.ioRD.get(CLASS)
@@ -814,7 +813,6 @@ def monitorPV(scopeContext, stepProperties):
         if checkForCancelOrPause(stepScope, logger):
             return
 
-
         monitorActiveCount = 0
         persistencePending = False
         for configRow in config.rows:
@@ -841,18 +839,17 @@ def monitorPV(scopeContext, stepProperties):
             tagPath = getMonitoredTagPath(configRow.ioRD, providerName)
             qv = system.tag.read(tagPath)
             
-            logger.trace("The present qualified value for %s is: %s" % (tagPath, str(qv)))
+            logger.trace("The present qualified value for %s is: %s-%s" % (tagPath, str(qv.value), str(qv.quality)))
             if not(qv.quality.isGood()):
-                logger.warning("The monitored value is bad: %s" % (str(qv)))
+                logger.warn("The monitored value is bad: %s-%s" % (str(qv.value), str(qv.quality)))
                 continue
 
             pv=qv.value
             configRow.ioRD.set(PV_VALUE, pv)
 
             # If we are configured to wait for the download and it hasn't been downloaded, then don't start to monitor
-            print 'configRow.download', configRow.download,  'configRow.isDownloaded', configRow.isDownloaded
             if configRow.download == WAIT and not configRow.isDownloaded:
-                print '   skipping; not downloaded'
+                logger.trace('   skipping because this output is designated to wait for a download and it has not been downloaded')
                 continue
            
             # if we're just reading for display purposes, we're done with this pvInput:
@@ -875,8 +872,11 @@ def monitorPV(scopeContext, stepProperties):
                 if configRow.inToleranceTime != 0:
                     isPersistent = getMinutesSince(configRow.inToleranceTime) > configRow.persistence                    
                 else:
-                    isPersistent = False
-                    configRow.inToleranceTime = time.time()   
+                    configRow.inToleranceTime = time.time()
+                    if configRow.persistence > 0.0:
+                        isPersistent = False
+                    else:
+                        isPersistent = True
             else:
                 configRow.inToleranceTime = 0
                 isPersistent = False
@@ -912,22 +912,26 @@ def monitorPV(scopeContext, stepProperties):
                 else:
                     configRow.status = PV_BAD_NOT_CONSISTENT
 
+            if configRow.status == PV_ERROR:
+                # Set the setpoint status to PROBLEM - this cannot be reset
+                configRow.ioRD.set(SETPOINT_STATUS, SETPOINT_PROBLEM)
+
             logger.trace("  Status: %s" % configRow.status)  
             configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
-            # print '   status ', configRow.status    
+
         logger.trace("...finished the PV monitor pass")
         time.sleep(SLEEP_INCREMENT)
         elapsedMinutes =  getMinutesSince(startTime)
     
     if monitorActiveCount == 0:
-        logger.info("The PV monitor is finished because there is nothing left to monitor")
+        logger.info("The PV monitor is finished because there is nothing left to monitor...")
     else:
-        logger.info("The PV monitor is finished because the max run time has been reached")
+        logger.info("The PV monitor is finished because the max run time has been reached...")
 
     numTimeouts = 0
     for configRow in config.rows:
-        if configRow.status == ERROR:
-            ++numTimeouts
+        if configRow.status == PV_ERROR:
+            numTimeouts = numTimeouts + 1
             configRow.status = TIMEOUT
             configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
         configRow.ioRD.set(PV_MONITOR_ACTIVE, False)
