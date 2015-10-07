@@ -4,10 +4,10 @@ Created on Mar 29, 2015
 @author: Pete
 '''
 import system
-log = system.util.getLogger("com.ils.labData.selector")
 
 # I renamed this to CRAP on 8/20/15
 def selectCRAP(selectorName, database = ""):
+    log = system.util.getLogger("com.ils.labData.selector")
     print "Configuring lab data for %s..." % (selectorName)
     
     SQL = "select * from LtPHDSelectorView where selectorName = '%s'" % (selectorName)
@@ -37,6 +37,7 @@ def selectCRAP(selectorName, database = ""):
 
 def valueChanged(tagPath):
     import time
+    log = system.util.getLogger("com.ils.labData.selector")
     log.trace("Detected a value change in: %s" % (tagPath))
     database = "XOM"
  
@@ -60,12 +61,13 @@ def valueChanged(tagPath):
 # Update the expression in the selector tag to get its values from a new source
 # This operates entirely on tags and has no database transactions
 def configureSelector(unitName, selectorName, sourceName):
+    log = system.util.getLogger("com.ils.labData.selector")
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     parentTagPath = '[' + provider + ']LabData/' + unitName + '/'
     tagPath = parentTagPath + selectorName
     log.trace("Configuring: %s" % (tagPath))
-
+    print "Configuring: %s" % (tagPath)
     # Determine the type of the UDT   
     UDTType = system.tag.getAttribute(tagPath, "UDTParentType")
     log.trace("UDT Type: %s" % (UDTType))
