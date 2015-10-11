@@ -38,3 +38,16 @@ def createTags(tagProvider, log):
     from ils.common.tagFactory import createConfigurationTags
     createConfigurationTags(ds, log)
     
+    # Create E-Mail related tags which can be used any toolkit.  These tags are to configure the e-mail
+    # server that sends the emails
+    data = []
+    path = tagProvider + "Configuration/Email/"
+
+    data.append([path, "password", "String", ""])
+    data.append([path, "smtp", "String", ""])
+    data.append([path, "username", "String", ""])
+
+    ds = system.dataset.toDataSet(headers, data)
+    from ils.common.tagFactory import createConfigurationTags
+    createConfigurationTags(ds, log)
+    

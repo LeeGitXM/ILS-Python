@@ -3,7 +3,7 @@ Created on Feb 2, 2015
 
 @author: Pete
 '''
-import system
+import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 
 def createConfigurationTags(ds, log):
@@ -29,5 +29,9 @@ def createConfigurationTags(ds, log):
             elif dataType == "Boolean":
                 from ils.common.cast import toBool
                 val = toBool(val)
-            
-            system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType, value=val)
+
+            if string.upper(dataType) == "DATASET":
+                print "***Creating a dataset tag***"
+                system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType)
+            else:
+                system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType, value=val)
