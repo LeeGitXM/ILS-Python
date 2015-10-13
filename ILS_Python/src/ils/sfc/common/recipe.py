@@ -41,7 +41,8 @@ def createRecipeDataTag(provider, folder, rdName, rdType, valueType):
     #print 'creating', rdType, rdName, 'in', fullFolder
     typePath = RECIPE_DATA_FOLDER + "/" + rdType
     system.tag.addTag(parentPath=fullFolder, name=rdName, tagType='UDT_INST', attributes={"UDTParentType":typePath})
-    if rdType == 'Value' and valueType != None:
+    if (rdType == 'Value' or rdType == 'Output') and valueType != None:
+        print 'changing value type to valueType'
         changeType(fullFolder, rdName, valueType)
 
 

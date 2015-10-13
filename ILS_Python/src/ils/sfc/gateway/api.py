@@ -35,6 +35,7 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
     '''Set the given recipe data's value'''
     import system.tag
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
+    print 's88Set', fullTagPath
     system.tag.writeSynchronous(fullTagPath, value)
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
