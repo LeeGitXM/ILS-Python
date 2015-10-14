@@ -30,8 +30,4 @@ def createConfigurationTags(ds, log):
                 from ils.common.cast import toBool
                 val = toBool(val)
 
-            if string.upper(dataType) == "DATASET":
-                print "***Creating a dataset tag***"
-                system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType)
-            else:
-                system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType, value=val)
+            system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType, value=val)
