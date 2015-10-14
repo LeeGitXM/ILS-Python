@@ -20,15 +20,19 @@ def gateway():
 
 def createTags(tagProvider, log):
     print "Creating UIR configuration tags...."
-
-    headers = ['Path', 'Name', 'Data Type', 'Value']
-    data = []
     path = tagProvider + "Configuration/UIR/"
+    
+    data = []
 
-    # This should create an empty dataset tag, but IA has not added it to their API yet.
-#    data.append([path, "EmailList", "Dataset", ""])
-    data.append([path, "EmailList", "String", ""])
-
+    # Make an empty dataset for the email list
+    header=['First Name','Last Name','Email','Automatic UIR Email']
+    rows=[['Fred','Smith','fredsmith@gmail.com',True]]
+    ds = system.dataset.toDataSet(header, rows)
+    
+    data.append([path, "EmailList", "DataSet", ds])
+    
+    headers = ['Path', 'Name', 'Data Type', 'Value']
     ds = system.dataset.toDataSet(headers, data)
+    
     from ils.common.tagFactory import createConfigurationTags
     createConfigurationTags(ds, log)
