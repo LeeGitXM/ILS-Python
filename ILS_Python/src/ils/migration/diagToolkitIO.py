@@ -317,6 +317,32 @@ def insertQuantOutput(container):
 
     table.data=ds
 
+def updateQuantOutput(container):
+    rootContainer=container.parent
+    
+    targetApplication=container.getComponent("Target Application").text
+    applicationAlias=container.getComponent("Application Alias").text
+    
+    table=container.getComponent("Power Table")
+    ds=table.data
+    cnt = 0
+
+    for row in range(ds.rowCount):
+        quantOutputId = ds.getValueAt(row, "id")
+        application = ds.getValueAt(row, "application")
+        if application == targetApplication:
+            tagName = ds.getValueAt(row, "connected-output-name")
+            
+            # If I could ever figure out how to determine the class of the UDT I could do something smarter here
+            attr = 'sp/value'
+            tagPath = 'DiagnosticToolkit/%s/%s/%s' % (applicationAlias, tagName, attr)
+        
+            SQL = "update DtQuantOutput set TagPath = '%s' where QuantOutputId = %s" % (tagPath, str(quantOutputId))
+            print SQL
+            rows=system.db.runUpdateQuery(SQL)
+            cnt = cnt + rows                                                         
+
+    print "Updated %i Quant Outputs" % (cnt)
 
 
 def createFloatOutput(container):
