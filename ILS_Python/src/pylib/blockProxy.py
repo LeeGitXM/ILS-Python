@@ -41,11 +41,11 @@ def internalBufferSize(common,dpath,blockName):
 def internalBufferValue(common,dpath,blockName,attName,index):
 	diagram = getDiagram(dpath)
 	for block in diagram.getProcessBlocks():
-		print block.getName()
 		if block.getName() == blockName:
 			map = block.getInternalStatus().getBuffer().get(int(index))
 			common['result'] = map.get(attName)
-	return 
+			return
+	print 'internalBufferValue for ',dpath,', ',blockName,' not found'
 			
 # Return the value of a property of a block
 def getBlockProperty(common,dpath,blockName,propName):
@@ -55,7 +55,11 @@ def getBlockProperty(common,dpath,blockName,propName):
 			prop = block.getProperty(propName)
 			if prop != None:
 				common['result'] = prop.getValue()
-			return
+				return
+			else:
+				print 'getBlockProperty ',dpath,':',blockName,' property ',propName,' not found'
+				return
+	print 'getBlockProperty ',dpath,': block',blockName,' not found'
 
 # Set the value of a property of a block
 def setBlockProperty(common,dpath,blockName,propName,value):

@@ -1,4 +1,5 @@
 # Copyright 2015. ILS Automation. All rights reserved.
+
 # Argument is the diagram path
 def setTestTimeOffset(common,yr,mon,dy,hr,min,sec):
 	import datetime,time
