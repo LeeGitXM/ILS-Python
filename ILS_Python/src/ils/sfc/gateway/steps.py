@@ -160,8 +160,10 @@ def timedDelay(scopeContext, stepProperties):
     from ils.sfc.gateway.api import getTimeFactor
     from ils.sfc.common.constants import _STATUS
     import time
+    from ils.sfc.gateway.util import getChartLogger
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    logger = getChartLogger(chartScope)
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
@@ -201,14 +203,18 @@ def timedDelay(scopeContext, stepProperties):
     #TODO: checking the real clock time is probably more accurate
     sleepIncrement = 5
     while delaySeconds > 0:
-        
         # Handle Cancel/Pause
         status = stepScope[_STATUS]
-        if status == CANCEL:
+        print status
+#        if status == CANCEL:
+#            return
+#        elif status == PAUSE:
+#            sleep(sleepIncrement)
+#            continue
+
+        if checkForCancelOrPause(stepScope, logger):
+            print "CANCELLED--dropping out of loop"
             return
-        elif status == PAUSE:
-            sleep(sleepIncrement)
-            continue
         
         delaySeconds = delaySeconds - sleepIncrement
         sleep(sleepIncrement)
