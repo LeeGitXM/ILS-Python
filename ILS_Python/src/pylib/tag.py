@@ -26,8 +26,8 @@ def setDateValue(common,provider,tpath,text):
 	import java.text.SimpleDateFormat as SimpleDateFormat
 	import system
 	
-	parser = SimpleDateFormat(text)
-	date = parser.parse()
+	parser = SimpleDateFormat('yyyy/MM/dd hh:mm:ss')
+	date = parser.parse(text)
 	# Convert to the proper provider
 	path = "["+provider+"]"+tpath
 	system.tag.write(path,date)
