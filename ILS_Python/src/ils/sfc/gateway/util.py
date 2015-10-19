@@ -13,7 +13,6 @@ from ils.sfc.gateway.api import cancelChart
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
 YES_NO_HANDLER = 'sfcYesNo'
 DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
-DELETE_DELAY_NOTIFICATION_HANDLER = 'sfcDeleteDelayNotification'
 POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
 DIALOG_MSG_HANDLER = 'sfcDialogMessage'
 TIMED_DELAY_HANDLER = 'sfcTimedDelay'
@@ -265,19 +264,21 @@ def queueMessage(chartScope, msg, priority):
     database = getDatabaseName(chartScope)
     insert(currentMsgQueue, priority, msg, database) 
 
-def checkForCancelOrPause(stepScope, logger):
+def checkForCancelOrPause(chartScope, logger):
     '''some commonly-used code to check for chart cancellation or pause in the midst
        of long-running loops. A True return should cause a return from the step method'''
-    from ils.sfc.common.constants import _STATUS, CANCEL, PAUSE, SLEEP_INCREMENT
+    from ils.sfc.common.constants import SLEEP_INCREMENT
+    from system.ils.sfc import ilsGetChartCanceled, ilsGetChartPaused
     import time
-    status = stepScope[_STATUS]
-    if status == CANCEL:
-        logger.debug("chart cancelled; exiting step code")
+    runId = chartScope[INSTANCE_ID]
+    
+    if ilsGetChartCanceled(runId):
+        logger.debug("chart terminal; exiting step code")
         return True
-    while status == PAUSE:
+    
+    while ilsGetChartPaused(runId):
         logger.debug("chart paused; holding in do-nothing loop")
         time.sleep(SLEEP_INCREMENT)
-        status = stepScope[_STATUS]
     return False
     
 def writeTestRamp(controllers, durationSecs, increment):
@@ -343,3 +344,26 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     logger.trace("Returning %s-%s" % (str(valueOk), txt))
     
     return valueOk, txt
+
+def ilsSetChartPaused(chartScope):
+    from system.ils.sfc import ilsSetChartPaused
+    while chartScope != None:
+        runId = chartScope[INSTANCE_ID]
+        ilsSetChartPaused(runId)
+        chartScope = chartScope.get('parent', None)
+
+def ilsSetChartResumed(chartScope):
+    from system.ils.sfc import ilsSetChartResumed
+    while chartScope != None:
+        runId = chartScope[INSTANCE_ID]
+        ilsSetChartResumed(runId)
+        chartScope = chartScope.get('parent', None)
+
+def ilsSetChartCanceled(chartScope):
+    from system.ils.sfc import ilsSetChartCanceled
+    while chartScope != None:
+        runId = chartScope[INSTANCE_ID]
+        ilsSetChartCanceled(runId)
+        chartScope = chartScope.get('parent', None)
+    
+    

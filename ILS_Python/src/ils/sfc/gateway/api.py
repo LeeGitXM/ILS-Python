@@ -70,7 +70,8 @@ def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location,
 def pauseChart(chartProperties):
     '''pause the entire chart hierarchy'''
     from system.sfc import pauseChart
-    from ils.sfc.gateway.util import getTopChartRunId
+    from ils.sfc.gateway.util import getTopChartRunId, setIlsChartPaused
+    setIlsChartPaused(chartProperties)
     chartRunId = getTopChartRunId(chartProperties)
     pauseChart(chartRunId)
     
@@ -85,6 +86,7 @@ def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''
     from system.sfc import cancelChart
     from ils.sfc.gateway.util import getTopChartRunId
+    from ils.sfc.gateway.util import getTopChartRunId, setIlsChartCancelled
     chartRunId = getTopChartRunId(chartProperties)
     cancelChart(chartRunId)
 

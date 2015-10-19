@@ -204,15 +204,15 @@ def timedDelay(scopeContext, stepProperties):
     sleepIncrement = 5
     while delaySeconds > 0:
         # Handle Cancel/Pause
-        status = stepScope[_STATUS]
-        print status
+        # status = stepScope[_STATUS]
+        # print status
 #        if status == CANCEL:
 #            return
 #        elif status == PAUSE:
 #            sleep(sleepIncrement)
 #            continue
 
-        if checkForCancelOrPause(stepScope, logger):
+        if checkForCancelOrPause(chartScope, logger):
             print "CANCELLED--dropping out of loop"
             return
         
@@ -613,11 +613,15 @@ def writeOutput(scopeContext, stepProperties):
 
     # filter out disabled rows:
     downloadRows = []
+    numDisabledRows = 0
     for row in config.rows:
         row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
         download = row.outputRD.get(DOWNLOAD)
+        print 'download:', download
         if download:
             downloadRows.append(row)
+        else:
+            ++numDisabledRows
     
     # do the timer logic, if there are rows that need timing
     timerNeeded = False
@@ -646,6 +650,7 @@ def writeOutput(scopeContext, stepProperties):
              
     # initialize row data and separate into immediate/timed/final:
     logger.trace("Initializing data and classifying outputs...")
+    logger.trace("There are %i total rows; %i to download and %i  disabled" % (len(config.rows), len(downloadRows), numDisabledRows))
     for row in downloadRows:
         row.written = False
 
@@ -708,7 +713,7 @@ def writeOutput(scopeContext, stepProperties):
         if writesPending:
             time.sleep(SLEEP_INCREMENT)
  
-        if checkForCancelOrPause(stepScope, logger):
+        if checkForCancelOrPause(chartScope, logger):
             logger.trace("Aborting the write output because the chart has been cancelled")
             return
 
@@ -816,7 +821,7 @@ def monitorPV(scopeContext, stepProperties):
     monitorActiveCount = 1
     while monitorActiveCount > 0 and ((elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)):
         logger.trace("Starting a PV monitor pass...")
-        if checkForCancelOrPause(stepScope, logger):
+        if checkForCancelOrPause(chartScope, logger):
             return
 
         monitorActiveCount = 0
