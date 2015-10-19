@@ -204,8 +204,7 @@ def timedDelay(scopeContext, stepProperties):
     sleepIncrement = 5
     while delaySeconds > 0:
         # Handle Cancel/Pause
-        # status = stepScope[_STATUS]
-        # print status
+
 #        if status == CANCEL:
 #            return
 #        elif status == PAUSE:
