@@ -7,6 +7,7 @@
 		<project>External</project>
 		<project>Ignition-77</project>
 		<project>sfc-common</project>
+		<project>sfc-gateway</project>
 		<project>XOM_Python</project>
 	</projects>
 	<buildSpec>
