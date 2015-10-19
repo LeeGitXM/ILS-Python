@@ -29,7 +29,7 @@ class OPCTag():
     # Set any default properties.
     # For this abstract class there aren't many (yet).
     def initialize(self,tagPath):    
-        print "in OPCTag.initialize() The tagPath is ", tagPath
+        log.trace("in OPCTag.initialize() The tagPath is %s" % (tagPath))
         self.path = str(tagPath)
         
     # Check for the existence of the tag
@@ -46,7 +46,7 @@ class OPCTag():
         recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
         globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
         writeEnabled = recipeWriteEnabled and globalWriteEnabled
-        print "The combined write enabled status is: ", writeEnabled
+        log.trace("The combined write enabled status is: %s" % (str(writeEnabled)))
         
         if not(writeEnabled):
             log.info('Write bypassed for %s because writes are inhibited!' % (self.path))
