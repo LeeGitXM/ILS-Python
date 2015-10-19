@@ -110,7 +110,7 @@ def sendUpdateControlPanelMsg(chartProperties):
     sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
 
 def getFullChartPath(chartProperties):
-    if(chartProperties.parent != None):
+    if(chartProperties.get('parent', None) != None):
         return getFullChartPath(chartProperties.parent) + '/' + chartProperties.chartPath
     else:
         return chartProperties.chartPath
@@ -268,11 +268,11 @@ def checkForCancelOrPause(chartScope, logger):
     '''some commonly-used code to check for chart cancellation or pause in the midst
        of long-running loops. A True return should cause a return from the step method'''
     from ils.sfc.common.constants import SLEEP_INCREMENT
-    from system.ils.sfc import ilsGetChartCanceled, ilsGetChartPaused
+    from system.ils.sfc import ilsGetChartCancelled, ilsGetChartPaused
     import time
     runId = chartScope[INSTANCE_ID]
     
-    if ilsGetChartCanceled(runId):
+    if ilsGetChartCancelled(runId):
         logger.debug("chart terminal; exiting step code")
         return True
     
