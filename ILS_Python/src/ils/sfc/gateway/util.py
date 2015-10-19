@@ -359,11 +359,11 @@ def ilsSetChartResumed(chartScope):
         ilsSetChartResumed(runId)
         chartScope = chartScope.get('parent', None)
 
-def ilsSetChartCanceled(chartScope):
-    from system.ils.sfc import ilsSetChartCanceled
+def ilsSetChartCancelled(chartScope):
+    from system.ils.sfc import ilsSetChartCancelled
     while chartScope != None:
         runId = chartScope[INSTANCE_ID]
-        ilsSetChartCanceled(runId)
+        ilsSetChartCancelled(runId)
         chartScope = chartScope.get('parent', None)
     
     

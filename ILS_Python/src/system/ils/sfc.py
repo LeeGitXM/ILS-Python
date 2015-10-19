@@ -110,7 +110,7 @@ def reportTests():
 def ilsGetChartPaused(runId):
     '''check if ILS code has initiated a pause'''
     
-def ilsGetChartCanceled(runId):
+def ilsGetChartCancelled(runId):
     '''check if ILS code has initiated a cancel'''
     
 def ilsSetChartPaused(runId):
@@ -119,5 +119,5 @@ def ilsSetChartPaused(runId):
 def ilsSetChartResumed(runId):
     '''indicate ILS code has initiated a resume'''
     
-def ilsSetChartCanceled(runId):
+def ilsSetChartCancelled(runId):
     '''indicate ILS code has initiated a cancel'''

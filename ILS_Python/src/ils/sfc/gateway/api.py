@@ -85,8 +85,8 @@ def resumeChart(chartProperties):
 def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''
     from system.sfc import cancelChart
-    from ils.sfc.gateway.util import getTopChartRunId, ilsSetChartCanceled
-    ilsSetChartCanceled(chartProperties)
+    from ils.sfc.gateway.util import getTopChartRunId, ilsSetChartCancelled
+    ilsSetChartCancelled(chartProperties)
     chartRunId = getTopChartRunId(chartProperties)
     cancelChart(chartRunId)
 
