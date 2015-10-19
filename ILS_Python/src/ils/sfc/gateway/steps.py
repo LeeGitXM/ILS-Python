@@ -219,7 +219,7 @@ def timedDelay(scopeContext, stepProperties):
         sleep(sleepIncrement)
     
     if postNotification:
-        sendMessageToClient(chartScope, DELETE_DELAY_NOTIFICATION_HANDLER, payload)
+        sendMessageToClient(chartScope, 'sfcDeleteDelayNotification', payload)
       
 def postDelayNotification(scopeContext, stepProperties):
     from ils.sfc.common.util import createUniqueId
