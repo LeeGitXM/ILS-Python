@@ -45,15 +45,14 @@ def getTimerStart(chartScope, stepScope, stepProperties):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import s88Get
     from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY
-    from ils.sfc.gateway.api import getTopChartStartTime
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
     timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
     # print 'getting timer start'
     # do a sanity check on the timer start:
-    topChartStartTime = getTopChartStartTime(chartScope)
-    if timerStart != None and timerStart < topChartStartTime:
-        handleUnexpectedGatewayError(chartScope, "download timer read before set or cleared; stale value")
+    #topChartStartTime = getTopChartStartTime(chartScope)
+    #if timerStart != None and timerStart < topChartStartTime:
+    #   handleUnexpectedGatewayError(chartScope, "download timer read before set or cleared; stale value")
     
     return timerStart
 

@@ -155,11 +155,10 @@ def getIsolationMode(chartProperties):
     return topProperties[ISOLATION_MODE]
 
 def getTopChartStartTime(chartProperties):
-    '''Get the epoch time the chart was started in seconds (float value)'''
+    '''Get timespamp for chart start'''
     from ils.sfc.gateway.util import getTopLevelProperties
     topProps = getTopLevelProperties(chartProperties)
-    javaDate = topProps['startTime']
-    return javaDate.getTime() * .001
+    return topProps['startTime']
 
 def getDatabaseName(chartProperties):
     '''Get the name of the database this chart is using, taking isolation mode into account'''
