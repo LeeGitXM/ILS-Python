@@ -107,17 +107,14 @@ def reportTests():
     complete, however if there is some question about what has finished and what has not it
     can be useful to print the interim report.'''
 
-def ilsGetChartPaused(runId):
-    '''check if ILS code has initiated a pause'''
-    
-def ilsGetChartCancelled(runId):
-    '''check if ILS code has initiated a cancel'''
-    
-def ilsSetChartPaused(runId):
+def setPauseRequested(runId):
     '''indicate ILS code has initiated a pause'''
 
-def ilsSetChartResumed(runId):
-    '''indicate ILS code has initiated a resume'''
-    
-def ilsSetChartCancelled(runId):
+def setCancelRequested(runId):
     '''indicate ILS code has initiated a cancel'''
+    
+def getPauseRequested(runId):
+    '''check if ILS code has initiated a pause'''
+    
+def getCancelRequested(runId):
+    '''check if ILS code has initiated a cancel'''

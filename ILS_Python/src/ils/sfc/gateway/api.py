@@ -69,26 +69,21 @@ def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location,
         
 def pauseChart(chartProperties):
     '''pause the entire chart hierarchy'''
-    from system.sfc import pauseChart
-    from ils.sfc.gateway.util import getTopChartRunId, ilsSetChartPaused
-    ilsSetChartPaused(chartProperties)
-    chartRunId = getTopChartRunId(chartProperties)
-    pauseChart(chartRunId)
+    from ils.sfc.gateway.util import getTopChartRunId, basicPauseChart
+    topChartRunId = getTopChartRunId(chartProperties)
+    basicPauseChart(topChartRunId)
     
 def resumeChart(chartProperties):
     '''resume the entire chart hierarchy'''
-    from system.sfc import resumeChart
-    from ils.sfc.gateway.util import getTopChartRunId
-    chartRunId = getTopChartRunId(chartProperties)
-    resumeChart(chartRunId)
+    from ils.sfc.gateway.util import getTopChartRunId, basicResumeChart
+    topChartRunId = getTopChartRunId(chartProperties)
+    basicResumeChart(topChartRunId)
 
 def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''
-    from system.sfc import cancelChart
-    from ils.sfc.gateway.util import getTopChartRunId, ilsSetChartCancelled
-    ilsSetChartCancelled(chartProperties)
-    chartRunId = getTopChartRunId(chartProperties)
-    cancelChart(chartRunId)
+    from ils.sfc.gateway.util import getTopChartRunId, basicCancelChart
+    topChartRunId = getTopChartRunId(chartProperties)
+    basicCancelChart(topChartRunId)
 
 def addControlPanelMessage(chartProperties, message, ackRequired):
     '''display a message on the control panel'''

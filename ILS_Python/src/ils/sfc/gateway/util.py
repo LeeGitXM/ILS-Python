@@ -268,15 +268,14 @@ def checkForCancelOrPause(chartScope, logger):
     '''some commonly-used code to check for chart cancellation or pause in the midst
        of long-running loops. A True return should cause a return from the step method'''
     from ils.sfc.common.constants import SLEEP_INCREMENT
-    from system.ils.sfc import ilsGetChartCancelled, ilsGetChartPaused
+    from system.ils.sfc import getCancelRequested, getPauseRequested
     import time
-    runId = chartScope[INSTANCE_ID]
-    
-    if ilsGetChartCancelled(runId):
+    topRunId = getTopChartRunId(chartScope)
+    if getCancelRequested(topRunId):
         logger.debug("chart terminal; exiting step code")
         return True
     
-    while ilsGetChartPaused(runId):
+    while getPauseRequested(topRunId):
         logger.debug("chart paused; holding in do-nothing loop")
         time.sleep(SLEEP_INCREMENT)
     return False
@@ -345,25 +344,20 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     
     return valueOk, txt
 
-def ilsSetChartPaused(chartScope):
-    from system.ils.sfc import ilsSetChartPaused
-    while chartScope != None:
-        runId = chartScope[INSTANCE_ID]
-        ilsSetChartPaused(runId)
-        chartScope = chartScope.get('parent', None)
-
-def ilsSetChartResumed(chartScope):
-    from system.ils.sfc import ilsSetChartResumed
-    while chartScope != None:
-        runId = chartScope[INSTANCE_ID]
-        ilsSetChartResumed(runId)
-        chartScope = chartScope.get('parent', None)
-
-def ilsSetChartCancelled(chartScope):
-    from system.ils.sfc import ilsSetChartCancelled
-    while chartScope != None:
-        runId = chartScope[INSTANCE_ID]
-        ilsSetChartCancelled(runId)
-        chartScope = chartScope.get('parent', None)
+def basicPauseChart(topChartRunId):
+    import system.sfc
+    from system.ils.sfc import setPauseRequested
+    setPauseRequested(topChartRunId)
+    system.sfc.pauseChart(topChartRunId)
     
+def basicResumeChart(topChartRunId):
+    import system.sfc
+    system.sfc.resumeChart(topChartRunId)
+
+def basicCancelChart(topChartRunId):
+    import system.sfc
+    from system.ils.sfc import setCancelRequested
+    setCancelRequested(topChartRunId)
+    system.sfc.pauseChart(topChartRunId)
+            
     

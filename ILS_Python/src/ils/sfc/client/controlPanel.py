@@ -216,16 +216,16 @@ class ControlPanel:
         self.chartStarted = True
         
     def doPause(self):
-        from system.sfc import pauseChart
-        pauseChart(self.getChartRunId())
+        payload = {'instanceId' : self.getChartRunId()}
+        system.util.sendMessage(system.util.getProjectName(), 'sfcPauseChart', payload, "G")
     
     def doResume(self):
-        from system.sfc import resumeChart
-        resumeChart(self.getChartRunId())
+        payload = {'instanceId' : self.getChartRunId()}
+        system.util.sendMessage(system.util.getProjectName(), 'sfcResumeChart', payload, "G")
     
     def doCancel(self):
-        from system.sfc import cancelChart
-        cancelChart(self.getChartRunId())
+        payload = {'instanceId' : self.getChartRunId()}
+        system.util.sendMessage(system.util.getProjectName(), 'sfcCancelChart', payload, "G")
     
     def topWindow(self, windowId):
         window = self.windowsById[windowId]

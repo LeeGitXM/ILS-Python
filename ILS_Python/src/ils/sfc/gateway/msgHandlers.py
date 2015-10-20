@@ -45,7 +45,7 @@ def sfcStartChart(payload):
     registerSfcProject(project)
     database = getDatabaseName(payload)
     ils.common.units.Unit.lazyInitialize(database)
-
+    
 def sfcFailTest(payload):
     '''this is a message handler'''
     from system.ils.sfc import failTest
@@ -61,3 +61,23 @@ def sfcUpdateDownloads(payload):
     if monitoringMgr != None:
         monitoringMgr.sendClientUpdate()
     # else chart probably ended
+
+def sfcCancelChart(payload):
+    from ils.sfc.common.constants import INSTANCE_ID
+    from ils.sfc.gateway.util import basicCancelChart
+    print('gateway msg handler: sfcCancelChart')    
+    topChartRunId = payload[INSTANCE_ID]
+    basicCancelChart(topChartRunId)
+
+def sfcPauseChart(payload):
+    from ils.sfc.common.constants import INSTANCE_ID
+    from ils.sfc.gateway.util import basicPauseChart    
+    topChartRunId = payload[INSTANCE_ID]
+    basicPauseChart(topChartRunId)
+    
+def sfcResumeChart(payload):
+    from ils.sfc.common.constants import INSTANCE_ID
+    from ils.sfc.gateway.util import basicResumeChart    
+    topChartRunId = payload[INSTANCE_ID]
+    basicResumeChart(topChartRunId)
+        
