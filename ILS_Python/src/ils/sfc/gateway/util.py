@@ -265,7 +265,7 @@ def queueMessage(chartScope, msg, priority):
     insert(currentMsgQueue, priority, msg, database) 
 
 def checkForCancelOrPause(chartScope, logger):
-    '''some commonly-used code to check for chart cancellation or pause in the midst
+    '''some commonly-used code to check for chart cancellation or pause in the midst 
        of long-running loops. A True return should cause a return from the step method'''
     from ils.sfc.common.constants import SLEEP_INCREMENT
     from system.ils.sfc import getCancelRequested, getPauseRequested
