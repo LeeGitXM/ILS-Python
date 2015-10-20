@@ -274,11 +274,17 @@ def checkForCancelOrPause(chartScope, logger):
     if getCancelRequested(topRunId):
         logger.debug("chart terminal; exiting step code")
         return True
-    
-    while getPauseRequested(topRunId):
-        logger.debug("chart paused; holding in do-nothing loop")
-        time.sleep(SLEEP_INCREMENT)
-    return False
+    elif getPauseRequested(topRunId):
+        # We had hoped to loop here until the chart was resumed, like this:
+        # while getPauseRequested(topRunId):
+        #    logger.debug("chart paused; holding in do-nothing loop")
+        #    time.sleep(SLEEP_INCREMENT)
+        # Unfortunately, the IA SFC engine appears to stay in Pausing state until the 
+        # step method returns. So we have to exit in order to allow the Resume to 
+        # work. ?!
+        return True
+    else:
+        return False
     
 def writeTestRamp(controllers, durationSecs, increment):
     '''bring the current value up to the setpoint in increments over the given time .'''
@@ -358,6 +364,6 @@ def basicCancelChart(topChartRunId):
     import system.sfc
     from system.ils.sfc import setCancelRequested
     setCancelRequested(topChartRunId)
-    system.sfc.pauseChart(topChartRunId)
+    system.sfc.cancelChart(topChartRunId)
             
     

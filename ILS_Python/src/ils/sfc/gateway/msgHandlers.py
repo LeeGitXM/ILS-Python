@@ -65,7 +65,6 @@ def sfcUpdateDownloads(payload):
 def sfcCancelChart(payload):
     from ils.sfc.common.constants import INSTANCE_ID
     from ils.sfc.gateway.util import basicCancelChart
-    print('gateway msg handler: sfcCancelChart')    
     topChartRunId = payload[INSTANCE_ID]
     basicCancelChart(topChartRunId)
 
