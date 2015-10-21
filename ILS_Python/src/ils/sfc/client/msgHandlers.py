@@ -219,6 +219,7 @@ def sfcManualDataEntry(payload):
     from ils.sfc.common.constants import MESSAGE_ID, POSTING_METHOD, DATA, START_TIME, TIMEOUT
     from ils.sfc.client.windowUtil import createPositionedWindow
     from ils.sfc.common.util import callMethodWithParams
+    from system.ils.sfc.common.Constants import REQUIRE_ALL_INPUTS
     import time
     windowProperties = dict()
     windowProperties[MESSAGE_ID] = payload[MESSAGE_ID]
@@ -227,8 +228,9 @@ def sfcManualDataEntry(payload):
     window = createPositionedWindow(payload, windowProperties)
     postingMethod = payload[POSTING_METHOD]
     dataset = payload[DATA]
-    keys = ['window', 'dataset']
-    values = [window, dataset]
+    requireAllInputs = payload[REQUIRE_ALL_INPUTS]
+    keys = ['window', 'dataset', 'requireAllInputs']
+    values = [window, dataset, requireAllInputs]
     callMethodWithParams(postingMethod, keys, values)
 
 def dispatchMessage(payload):
