@@ -1011,7 +1011,11 @@ def manualDataEntry(scopeContext, stepProperties):
         # have a mixture of float and string values, we convert them all to strings:
         for row in config.rows:
             tagType = s88GetType(chartScope, stepScope, row.key, row.destination)
-            rows.append([row.prompt, str(row.defaultValue), row.units, row.lowLimit, row.highLimit, row.key, row.destination, tagType])
+            if row.defaultValue != None:
+                defaultValue = str(row.defaultValue)
+            else:
+                defaultValue = ""
+            rows.append([row.prompt, defaultValue, row.units, row.lowLimit, row.highLimit, row.key, row.destination, tagType])
         dataset = toDataSet(header, rows)
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
