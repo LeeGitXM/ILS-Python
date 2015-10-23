@@ -257,6 +257,10 @@ def parseRecipeFamilyFromGradeTagPath(tagPath):
 def updateSQCLimitsFromRecipe(recipeFamily, grade, database=""):
     log.info("Loading SQC limits from recipe for family: %s, grade: %s" % (recipeFamily, str(grade)))
     
+    if grade == None:
+        log.warn("Unable to load SQC limits for an unknown grade.")
+        return
+    
     # I could do this all in one SQL but then I might miss some limits if the parameter names do not match
     # If there is something in recipe that does not exist in lab data then I want to notify someone.
     SQL = "select P.Parameter, L.UpperLimit, L.LowerLimit "\
