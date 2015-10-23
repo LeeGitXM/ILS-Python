@@ -83,6 +83,10 @@ def createTags(tagProvider):
 def restoreLocalRecipe(recipeFamily, grade, tagProvider = "", database=""):
     log.info("Restoring local recipe values for family: %s, grade: %s" % (str(recipeFamily), str(grade)) )
 
+    if grade == None:
+        log.warn("Unable to restore local recipe values for an unknown grade.")
+        return
+
     SQL = "Select VD.StoreTag, GD.RecommendedValue "\
         " from RtGradeMaster GM, RtGradeDetail GD, RtValueDefinition VD, TkWriteLocation WL, RtRecipeFamily RF "\
         " where GM.Active = 1 "\
