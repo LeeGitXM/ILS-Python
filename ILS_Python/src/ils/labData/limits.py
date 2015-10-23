@@ -65,14 +65,20 @@ def fetchLimits(database = ""):
     #-------------------------------------
     # When SQC limits are loaded from recipe, the target, standard deviation and validity limits are calculated and then 
     # stored in the XOM database so no further calculations are necessary.
-    def getSQCLimits(record):
+    def getSQCLimits(record, oldLimit=None):
         limitSource=record["LimitSource"]
         if limitSource=="DCS":
             upperSQCLimit, lowerSQCLimit=readSQCLimitsFromDCS(record)
-            upperValidityLimit=-1
-            lowerValidityLimit=-1
-            target=-1
-            standardDeviation=-1
+            
+            if oldLimit == None or oldLimit["UpperSQCLimit"] != upperSQCLimit or oldLimit["LowerSQCLimit"] != lowerSQCLimit:
+                print "A DCS SQC limit has changed - recalculate the target & standard deviation"
+                target, standardDeviation, lowerValidityLimit, upperValidityLimit = updateSQCLimits(record["ValueName"], record["UnitName"], "SQC", record["LimitId"], upperSQCLimit, lowerSQCLimit, database)
+            else:
+                target=0.0
+                standardDeviation=0.0
+                lowerValidityLimit=0.0
+                upperValidityLimit=0.0
+
         else:
             upperValidityLimit=record["UpperValidityLimit"]
             lowerValidityLimit=record["LowerValidityLimit"]
@@ -189,6 +195,8 @@ def fetchLimits(database = ""):
     #------------------------------------------
         
     print "The old limits are:", limits
+    maxStandardDeviations = 3.0
+    standardDeviationsToValidityLimits = system.tag.read("Configuration/LabData/standardDeviationsToValidityLimits").value
     log.trace("Fetching new Limits...")
     SQL = "select * from LtLimitView"
     sqlLog.trace(SQL)
@@ -202,14 +210,14 @@ def fetchLimits(database = ""):
             
             oldLimit=limits[valueId]
             if limitType == "SQC":
-                upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation=getSQCLimits(record)
+                upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation=getSQCLimits(record, oldLimit)
 
-                if oldLimit["UpperValidityLimit"] != upperValidityLimit or \
-                    oldLimit["LowerValidityLimit"] != lowerValidityLimit or \
-                    oldLimit["UpperSQCLimit"] != upperSQCLimit or \
+                if oldLimit["UpperSQCLimit"] != upperSQCLimit or \
                     oldLimit["LowerSQCLimit"] != lowerSQCLimit:
+
                     print "An existing SQC limit has changed"
                     print "Old:", oldLimit
+
                     oldLimit["UpperValidityLimit"]=upperValidityLimit
                     oldLimit["LowerValidityLimit"]=lowerValidityLimit
                     oldLimit["UpperSQCLimit"]=upperSQCLimit
@@ -286,6 +294,11 @@ def updateSQCLimitsFromRecipe(recipeFamily, grade, database=""):
 # The SQC limits can come from anywhere, recipe, the DCS, or manually entered.
 def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowerSQCLimit, database):
     
+    target=float("NaN")
+    standardDeviation=float("NaN")
+    lowerValidityLimit=float("NaN")
+    upperValidityLimit=float("NaN")
+            
     # The default number of standard deviations from the target to the limits is 3
     # The old system would look at the SQC limit blocks that use this lab data and find the max standard deviation,
     # I'm not real sure how I am going to do this. 
@@ -416,3 +429,5 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         else:
             log.trace("   write pending %s to %s" % (str(vals[i]), tags[i]))
         i = i + 1
+    
+    return target, standardDeviation, lowerValidityLimit, upperValidityLimit
