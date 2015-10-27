@@ -150,7 +150,7 @@ class PKSController(controller.Controller):
         
         confirmed, errorMessage = self.confirmWrite(modeValue, 'mode')
         if not(confirmed):
-            log.warning("Warning: EPKS Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!" % (self.path, modeValue))
+            log.warn("Warning: EPKS Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!" % (self.path, modeValue))
 
         # Read the starting point for the ramp
         startValue = system.tag.read(valuePathRoot + '/value')
