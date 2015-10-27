@@ -1,5 +1,6 @@
 # Copyright 2015. ILS Automation. All rights reserved.
 # Operations on a block
+import system
 import system.ils.blt.diagram as script
 
 # Internal status is a SerializableBlockStateDescriptor

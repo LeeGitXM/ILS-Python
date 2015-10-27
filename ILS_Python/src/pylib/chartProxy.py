@@ -1,6 +1,5 @@
 # Copyright 2015. ILS Automation. All rights reserved.
 # Execute a chart from a client/
-import system.sfc
 import system.ils.sfc as ilssfc
 import ils.sfc.gateway.msgHandlers as msghandler
 
@@ -12,7 +11,7 @@ def start(common,project,user,isolation,name):
 	properties = dict()
 	properties[PROJECT] = project
 	properties[USER]    = user
-    # ISOLATION_MODE must be a true boolean
+	# ISOLATION_MODE must be a true boolean
 	properties[ISOLATION_MODE] = str2bool(isolation)
 	properties[CHART_NAME] = name;
 	chartid = msghandler.sfcStartChart(properties)
