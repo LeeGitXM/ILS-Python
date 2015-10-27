@@ -80,3 +80,18 @@ def splitKey(key):
     lastDotIndex = key.rfind(".")
     return key[0:lastDotIndex], key[lastDotIndex + 1:len(key)]
 
+def browseRecipeData(chartProperties, stepProperties, location):
+    '''Get a dictionary of key/value info for
+    all recipe data in the given scope. '''
+    from ils.sfc.gateway.api import s88GetFullTagPath
+    from system.tag import browseTags, read
+    fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, '', location)
+    browseTags = browseTags(fullTagPath)
+    data = dict()
+    for browseTag in browseTags:
+        tagName = browseTag.name
+        tagValue = read(browseTag.fullPath + '/value').value
+        data[str(browseTag.fullPath)] = str(tagValue)
+    return data
+        
+

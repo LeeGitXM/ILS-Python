@@ -38,9 +38,6 @@ def s88GetScope(chartProperties, stepProperties, location):
 def s88ScopeChanged(chartProperties, stepProperties):
     pass
 
-def getRecipeDataText(chartProperties, stepProperties, location):
-    pass
-
 def getDatabaseName(isolationMode):
     pass
 

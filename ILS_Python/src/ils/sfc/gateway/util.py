@@ -27,6 +27,7 @@ CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
 UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
 UPDATE_CURRENT_OPERATION_HANDLER = 'sfcUpdateCurrentOperation'
 REVIEW_DATA_HANDLER = 'sfcReviewData'
+NEWLINE = '\n\r'
 
 def printCounter():
     global counter
@@ -146,25 +147,29 @@ def writeSpace(level, file):
         
 def writeObj(obj, level, file):
     if hasattr(obj, 'keys'):
-        file.write('\n') # newline
+        file.write(NEWLINE) 
         for key in obj:
             writeSpace(level, file)
-            file.write(key)
+            file.write(str(key))
             writeObj(obj[key], level + 1, file)
     else:
         #printSpace(level)
         file.write( ': ')
         file.write(str(obj))
-        file.write('\n')
+        file.write(NEWLINE)
 
-def prettyPrintDict(dict):
+def dictToString(dict):
     '''
     print a java dictionary into a nice, readable indented form
     returns a string containing the pretty-printed representation
     '''
     import StringIO
     out = StringIO.StringIO()
-    printObj(dict, 0, out)
+    for key, value in dict.items():
+        out.write(key)
+        out.write(': ')
+        out.write(value)
+        out.write(NEWLINE)
     result = out.getvalue()
     out.close()
     return result
@@ -172,20 +177,6 @@ def prettyPrintDict(dict):
 def printSpace(level, out):
     for i in range(level):
         out.write('   '),
-        
-def printObj(obj, level, out):
-    import java.util.HashMap
-    if isinstance(obj, java.util.HashMap) :
-        out.write('\n') # newline
-        for key in obj.keySet():
-            printSpace(level, out)
-            out.write(key)
-            printObj(obj[key], level + 1, out)
-    else:
-        #printSpace(level)
-        out.write( ': ')
-        out.write(str(obj))
-        out.write('\n')
 
 def getDefaultMessageQueueScope():
     return OPERATION_SCOPE

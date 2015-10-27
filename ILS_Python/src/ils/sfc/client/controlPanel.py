@@ -46,6 +46,7 @@ class ControlPanel:
         self.chartStarted = False
         self.toolbarDataset = system.dataset.toDataSet(ControlPanel.toolbarDataHeader, [])
         self.windowsById = dict()
+        self.msgQueue = 'Unknown'
         self.update()
  
     def getUser(self):
@@ -190,6 +191,12 @@ class ControlPanel:
     def getAckButton(self):
         return self.getMsgPanelComponent("ackButton")  
 
+    def setMessageQueue(self, queue):
+        self.msgQueue = queue
+
+    def getMessageQueue(self):
+        return self.msgQueue
+
     # Button Actions:
     def doNextMessage(self):
         self.setMessage(self.messageIndex + 1)
@@ -318,6 +325,13 @@ def updateCurrentOperation(payload):
     if existingPanel != None:
         existingPanel.getOperationField().setText(operationName)
 
+def setMessageQueue(payload):
+    from ils.sfc.common.constants import INSTANCE_ID, MESSAGE_QUEUE
+    chartRunId = payload[INSTANCE_ID] 
+    msgQueue = payload[MESSAGE_QUEUE]
+    existingPanel = controlPanelsByChartRunId.get(chartRunId, None)
+    existingPanel.setMessageQueue(msgQueue)
+    
 def removeControlPanel(chartPath):
     cp = getControllerByChartPath(chartPath)
     if cp != None:
