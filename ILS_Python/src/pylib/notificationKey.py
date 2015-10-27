@@ -1,6 +1,7 @@
 # Copyright 2015. ILS Automation. All rights reserved.
 # Argument is the diagram path
 import system.ils.blt.diagram as script
+
 def construct(common,diagramPath,blockName,port):
 	handler = script.getHandler()     # PythonRequestHandler
 	error = "Diagram "+diagramPath+" NOT FOUND"

@@ -115,3 +115,9 @@ def getPauseRequested(runId):
     
 def getCancelRequested(runId):
     '''check if ILS code has initiated a cancel'''
+
+def stepState(chartId,name):
+    '''return the current state of a chart'''
+    
+def watchChart(chartId,name):
+    '''chart state event handler'''

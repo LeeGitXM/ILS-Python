@@ -7,7 +7,7 @@ import system.ils.blt.diagram as script
 # specified block - and in the same diagram
 def listBlocksDownstreamOf(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
-    # blocks is a list of SerializableBlockStateDescriptor
+	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksDownstreamOf(diagid,blockName)
 	print "==================== blocksDownstreamOf =============="
 	lst = []
@@ -32,7 +32,7 @@ def listBlocksUpstreamOf(common,dpath,blockName):
 # Return a list of block names that match the class criterion
 def listBlocksOfClass(common,dpath,classname):
 	diagid = getDiagram(dpath).getSelf().toString()
-    # blocks is a list of SerializableBlockStateDescriptor
+	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listDiagramBlocksOfClass(diagid,classname)
 	lst = []
 	for block in blocks:
@@ -42,7 +42,7 @@ def listBlocksOfClass(common,dpath,classname):
 # Return a list of names of all blocks in the specified diagram
 def listBlocksInDiagram(common,dpath):
 	diagid = getDiagram(dpath).getSelf().toString()
-    # blocks is a list of SerializableBlockStateDescriptor
+	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksInDiagram(diagid)
 	lst = []
 	for block in blocks:
@@ -53,7 +53,7 @@ def listBlocksInDiagram(common,dpath):
 # that are bound to the specified tag. The search is across all
 # diagrams.
 def listBlocksForTag(common,tagpath):
-    # blocks is a list of SerializableBlockStateDescriptor
+	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksForTag(tagpath)
 	print "==================== blocksForTag =============="
 	lst = []

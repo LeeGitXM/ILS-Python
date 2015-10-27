@@ -2,10 +2,20 @@
 # Operations on a diagram
 import system.ils.blt.diagram as script
 
+# Return the name of the production tag provider
+def getProductionProvider(common):
+	provider = script.getToolkitProperty("Provider")
+	return provider
+
+# Return the name of the isolation-mode tag provider
+def getIsolationProvider(common):
+	provider = script.getToolkitProperty("SecondaryProvider")
+	return provider
+	
 # Return the state of the diagram
 def getState(common,dpath):
 	diagid = getDiagram(dpath).getSelf().toString()
-	state = diagram.getDiagramState(diagid)
+	state = script.getDiagramState(diagid)
 	common['result'] = state
 
 # Legal states are: ACTIVE,DISABLED,ISOLATED
