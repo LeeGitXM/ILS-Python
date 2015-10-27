@@ -204,12 +204,12 @@ def getChartLogger(chartScope):
 def getTagType(tagPath): 
     '''Get the value type of a tag; returns one of INT, FLOAT, BOOLEAN, STRING from ils.sfc.common.constants'''
     from system.tag import browseTags
-    from ils.sfc.common.constants import INT, FLOAT, BOOLEAN, STRING
+    from ils.sfc.common.constants import INT, FLOAT, BOOLEAN, STRING, DATE_TIME
     from ils.sfc.common.util import splitPath
     # unfortunately browseTags() doesn't like a full path to the tag, so we
     # hack that by giving everything up to the last slash as a folder, then
     # use the tag name as a filter.
-    prefix, suffix = splitPath(tagPath)  
+    prefix, suffix = splitPath(tagPath)
     tagFilter = '*' + suffix  
     browseTags = browseTags(prefix, tagFilter)
     if len(browseTags) == 1:
@@ -222,6 +222,8 @@ def getTagType(tagPath):
             return FLOAT
         elif dataType == 'Boolean':
             return BOOLEAN
+        elif dataType == 'Date':
+            return DATE_TIME
         else:
             return STRING
         

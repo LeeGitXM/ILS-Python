@@ -241,4 +241,6 @@ def dispatchMessage(payload):
     values = [payload]
     callMethodWithParams(methodPath, keys, values)
 
-
+def setMessageQueue(payload):
+    from ils.sfc.client.controlPanel import setMessageQueue
+    setMessageQueue(payload)

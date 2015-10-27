@@ -216,7 +216,8 @@ SETPOINT_PROBLEM = 'problem'
 # the default sleep increment for loops, in seconds
 SLEEP_INCREMENT = 5
 
-# tag value types 
+# tag value types -- TODO: remove--duplicate with Java
+DATE_TIME = 'date/time'
 STRING = 'string'
 INT = 'int'
 FLOAT = 'float'

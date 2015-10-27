@@ -446,7 +446,7 @@ def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, 
       
     
 def saveData(scopeContext, stepProperties):
-    from system.ils.sfc import getRecipeDataText
+    from ils.sfc.gateway.recipe import browseRecipeData
     # extract property values
     chartScope = scopeContext.getChartScope()
     logger = getChartLogger(chartScope)
@@ -456,23 +456,21 @@ def saveData(scopeContext, stepProperties):
     viewFile = getStepProperty(stepProperties, VIEW_FILE) 
         
     # get the data at the given location
-    recipeData = getRecipeDataText(chartScope, stepScope, recipeLocation)
+    recipeData = browseRecipeData(chartScope, stepScope, recipeLocation)
+    print 'recipeData', recipeData
+    dataText = dictToString(recipeData)
     if chartScope == None:
         logger.error("data for location " + recipeLocation + " not found")
-    
     # write the file
     filepath = createFilepath(chartScope, stepProperties, True)
     fp = open(filepath, 'w')
-    writeObj(recipeData, 0, fp)
+    fp.write(dataText)
     fp.close()
     
     # send message to client for view/print
     if printFile or viewFile:
         payload = dict()
-        #payloadData = dict()
-        #for key in data:
-        #    payloadData[key] = data[key]
-        payload[DATA] = prettyPrintDict(recipeData)
+        payload[DATA] = dataText
         payload[FILEPATH] = filepath
         payload[PRINT_FILE] = printFile
         payload[VIEW_FILE] = viewFile
