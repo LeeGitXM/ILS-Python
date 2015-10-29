@@ -15,6 +15,7 @@ def sendData(window):
     from ils.sfc.client.util import sendResponse
     from ils.sfc.common.constants import DATA
     import system.gui.warningBox
+    from ils.sfc.client.windowUtil import responseWindowClosed
     table = window.getRootContainer().getComponent('table')
     dataset = table.data
     requireAllInputs = window.getRootContainer().requireAllInputs
@@ -26,9 +27,8 @@ def sendData(window):
                 allInputsOk = False
                 break
     if allInputsOk:
-        responseId = window.getRootContainer().messageId
         response = {DATA: dataset}
-        sendResponse(responseId, response)
+        responseWindowClosed(window, response)
         return True
     else:
         system.gui.warningBox("All inputs are required")

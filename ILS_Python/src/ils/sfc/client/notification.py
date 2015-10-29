@@ -11,12 +11,10 @@ def showDelayNotification(chartRunId, message, ackRequired, messageId, endTimeOr
     import system.nav
     windowProps = dict()
     windowProps[ACK_REQUIRED] = ackRequired
-    windowProps[MESSAGE] = message
     windowProps[MESSAGE_ID] = messageId
     windowProps[CHART_RUN_ID]  = chartRunId
     windowProps[WINDOW_ID]  = messageId
     windowProps[END_TIME]  = endTimeOrNone 
-    # ACK_REQUIRED is not used in this case
     window = system.nav.openWindowInstance(DELAY_NOTIFICATION_WINDOW_PATH, windowProps)
     window.closable = False # only close under programmatic control
     window.title = title
@@ -25,7 +23,7 @@ def showDelayNotification(chartRunId, message, ackRequired, messageId, endTimeOr
     controlPanel = getController(chartRunId)
     label = 'Delay'
     if controlPanel != None:
-        controlPanel.addWindow(label, DELAY_NOTIFICATION_WINDOW_PATH, window, messageId)
+        controlPanel.addWindow(label, window)
     else:
         print 'couldnt find control panel for run ', chartRunId
     updateDelayNotifications()

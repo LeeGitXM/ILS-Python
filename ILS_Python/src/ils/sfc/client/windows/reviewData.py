@@ -6,11 +6,15 @@ Created on Jan 14, 2015
 
 def okActionPerformed(event):
     from ils.sfc.client.windowUtil import responseWindowClosed
-    responseWindowClosed(event, True)
+    from system.gui import getParentWindow
+    window = getParentWindow(event)
+    responseWindowClosed(window, True)
   
 def cancelActionPerformed(event):
     from ils.sfc.client.windowUtil import responseWindowClosed
-    responseWindowClosed(event, False) 
+    from system.gui import getParentWindow
+    window = getParentWindow(event)
+    responseWindowClosed(window, False) 
 
 def getTableData():
     '''Get the (possibly modified) data from the table and put it back into JSON'''

@@ -20,7 +20,9 @@ def defaultPostingMethod(window, data, heading1, heading2, heading3):
 def windowClosed(event, buttonValue, data):
     from ils.sfc.client.windowUtil import responseWindowClosed
     from ils.sfc.common.constants import VALUE, DATA
+    from system.gui import getParentWindow
+    window = getParentWindow(event)
     payload = dict()
     payload[VALUE] = buttonValue
     payload[DATA] = data   
-    responseWindowClosed(event, payload)
+    responseWindowClosed(window, payload)

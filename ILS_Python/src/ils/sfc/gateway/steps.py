@@ -389,9 +389,10 @@ def rawQuery(scopeContext, stepProperties):
     database = getDatabaseName(chartScope)
     sql = getStepProperty(stepProperties, SQL) 
     result = system.db.runQuery(sql, database) # returns a PyDataSet
+    jsonResult = system.util.jsonEncode(result)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
-    s88Set(chartScope, stepScope, key, result, recipeLocation)
+    s88Set(chartScope, stepScope, key, jsonResult, recipeLocation)
 
 def simpleQuery(scopeContext, stepProperties):
     from ils.sfc.gateway.recipe import substituteScopeReferences
@@ -457,7 +458,6 @@ def saveData(scopeContext, stepProperties):
         
     # get the data at the given location
     recipeData = browseRecipeData(chartScope, stepScope, recipeLocation)
-    print 'recipeData', recipeData
     dataText = dictToString(recipeData)
     if chartScope == None:
         logger.error("data for location " + recipeLocation + " not found")
@@ -506,7 +506,7 @@ def showWindow(scopeContext, stepProperties):
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
-    sendMessageToClient(chartScope, 'sfcOpenWindow', payload) 
+    sendMessageToClient(chartScope, 'sfcShowWindow', payload) 
 
 def reviewData(scopeContext, stepProperties):    
     from system.ils.sfc import getReviewData

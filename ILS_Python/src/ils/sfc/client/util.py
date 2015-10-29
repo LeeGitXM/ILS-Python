@@ -24,7 +24,6 @@ def openControlPanel(chartPath, isolationMode, startChart):
     initialChartProps[PROJECT] = project
     initialChartProps[USER] = user
     initialChartProps[CHART_NAME] = chartPath
-    system.util.sendMessage(project, 'sfcStartChart', initialChartProps, "G")
     controller = createControlPanel(initialChartProps)   
     if startChart:
         controller.doStart()
