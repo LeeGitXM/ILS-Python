@@ -24,10 +24,10 @@ def insertFromWorkspace(message,color,x,y,wksp):
     insert(queueKey,status,message)
     return 200,10  # Width, height - not used
 
-def queueSQL(queueKey, useCheckpoint, order):
+def queueSQL(queueKey, useCheckpoint, order, db =''):
     
     SQL = "select checkpointTimestamp from QueueMaster where QueueKey = '%s'" % (queueKey)
-    checkPointTimestamp = system.db.runScalarQuery(SQL)
+    checkPointTimestamp = system.db.runScalarQuery(SQL, db)
     
     # Power tables handle wrap text without doing anything special, so no need to add <HTML>
     if useCheckpoint and checkPointTimestamp != None:
@@ -66,7 +66,7 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
 
 
 
-    SQL = queueSQL(queueKey, useCheckpoint, "ASC")
+    SQL = queueSQL(queueKey, useCheckpoint, "ASC", db)
     pds = system.db.runQuery(SQL, db)
     
     # Note: Noetpad does not recognize \n as a carriage return but worpad does.

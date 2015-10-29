@@ -110,11 +110,8 @@ def sendUpdateControlPanelMsg(chartProperties):
     from ils.sfc.gateway.api import sendMessageToClient
     sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
 
-def getFullChartPath(chartProperties):
-    if(chartProperties.get('parent', None) != None):
-        return getFullChartPath(chartProperties.parent) + '/' + chartProperties.chartPath
-    else:
-        return chartProperties.chartPath
+def getChartPath(chartProperties):
+    return chartProperties.chartPath
     
 def escapeSingleQuotes(msg):
     return msg.replace("'", "''")
@@ -184,6 +181,7 @@ def getDefaultMessageQueueScope():
 def sendChartStatus(projectName, payload):
     from system.util import sendMessage
     payload[CLIENT_MSG_HANDLER] = UPDATE_CHART_STATUS_HANDLER
+    print 'sendChartStatus', payload
     sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def sendCurrentOperation(projectName, payload):
@@ -233,7 +231,7 @@ def createFilepath(chartScope, stepProperties, includeExtension):
 
 def getChartLogger(chartScope):
     from system.util import getLogger
-    return getLogger(getFullChartPath(chartScope))
+    return getLogger(chartScope.chartPath)
 
 def standardDeviation(dataset, column):
     '''calculate the standard deviation of the given column of the dataset'''

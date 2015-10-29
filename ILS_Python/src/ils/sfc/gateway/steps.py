@@ -519,7 +519,6 @@ def reviewData(scopeContext, stepProperties):
         if showAdvice:
             primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
             secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA_WITH_ADVICE) 
-        else:
             primaryConfig = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA)        
             secondaryConfig = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA)        
         payload = dict()

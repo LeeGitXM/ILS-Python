@@ -197,9 +197,8 @@ def sendMessageToClient(chartProperties, handler, payload):
 
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
-    from ils.sfc.gateway.util import getFullChartPath
     from system.util import getLogger
-    return getLogger(getFullChartPath(chartScope))
+    return getLogger(chartScope)
 
 def getTagType(tagPath): 
     '''Get the value type of a tag; returns one of INT, FLOAT, BOOLEAN, STRING from ils.sfc.common.constants'''

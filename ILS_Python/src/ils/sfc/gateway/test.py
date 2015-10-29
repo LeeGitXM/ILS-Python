@@ -10,10 +10,10 @@ def addClientAction(chartProperties, methodName):
     from ils.sfc.gateway.api import sendMessageToClient
 
     from ils.sfc.common.constants import CHART_NAME, COMMAND, INSTANCE_ID
-    from ils.sfc.gateway.util import getFullChartPath
+    from ils.sfc.gateway.util import getChartPath
     payload = dict();
     payload[COMMAND] = methodName
-    payload[CHART_NAME] = getFullChartPath(chartProperties)
+    payload[CHART_NAME] = getChartPath(chartProperties)
     payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
     sendMessageToClient(chartProperties, 'sfcTestAddAction', payload) 
     

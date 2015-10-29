@@ -91,8 +91,11 @@ class ControlPanel:
             self.setCommandCapability(True, False, False, False)
             self.window.closable = True
             self.setChartStopped()
-        elif status == STOPPED or status == CANCELED:
-            statusField.setBackground(Color.blue)
+        elif status == STOPPED or status == CANCELED:            
+            if status == STOPPED:
+                statusField.setBackground(Color.blue)
+            else:
+                statusField.setBackground(Color.orange)
             self.setCommandCapability(True, False, False, False)
             self.window.closable = True
             self.setChartStopped()
