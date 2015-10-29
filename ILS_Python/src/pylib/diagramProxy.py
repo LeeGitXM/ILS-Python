@@ -5,12 +5,12 @@ import system.ils.blt.diagram as script
 # Return the name of the production tag provider
 def getProductionProvider(common):
 	provider = script.getToolkitProperty("Provider")
-	return provider
+	common['result'] = provider
 
 # Return the name of the isolation-mode tag provider
 def getIsolationProvider(common):
 	provider = script.getToolkitProperty("SecondaryProvider")
-	return provider
+	common['result'] = provider
 	
 # Return the state of the diagram
 def getState(common,dpath):
