@@ -65,7 +65,7 @@ def resetOutputs(applicationName, log, database):
     SQL = "update DtQuantOutput " \
         " set Active = 0 where ApplicationId in (select ApplicationId "\
         " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
-    print SQL
+    log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     log.trace("Reset %i QuantOutputs..." % (rows))
     return

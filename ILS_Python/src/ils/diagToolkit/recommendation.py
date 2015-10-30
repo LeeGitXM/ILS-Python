@@ -40,34 +40,37 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
         log.error("Caught an exception calling calculation method named %s... \n%s" % (calculationMethod, errorTxt) )
-        return "", []
+        return "", [], "ERROR"
    
     else:
-        SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'REC-Made' where DiagnosisEntryId = %i " % (diagnosisEntryId)
-        logSQL.trace(SQL)
-        system.db.runUpdateQuery(SQL, database)
+        if len(rawRecommendationList) == 0:
+            return textRecommendation, [], "NO-RECOMMENDATIONS"
+        else:
+            SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'REC-Made' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+            logSQL.trace(SQL)
+            system.db.runUpdateQuery(SQL, database)
+        
+            recommendationList=[]
+            log.trace("  The recommendations returned from the calculation method are: ")
+            for recommendation in rawRecommendationList:
+                # Validate that there is a 'QuantOutput' key and a 'Value' Key
+                quantOutput = recommendation.get('QuantOutput', None)
+                if quantOutput == None:
+                    log.error("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key" % (calculationMethod))
+                val = recommendation.get('Value', None)
+                if val == None:
+                    log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
     
-        recommendationList=[]
-        log.trace("  The recommendations returned from the calculation method are: ")
-        for recommendation in rawRecommendationList:
-            # Validate that there is a 'QuantOutput' key and a 'Value' Key
-            quantOutput = recommendation.get('QuantOutput', None)
-            if quantOutput == None:
-                log.error("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key" % (calculationMethod))
-            val = recommendation.get('Value', None)
-            if val == None:
-                log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
+                if quantOutput != None and val != None:
+                    log.trace("      Output: %s - Value: %s" % (quantOutput, str(val)))
+                    recommendation['AutoRecommendation']=val
+                    recommendation['AutoOrManual']='Auto'
+                    recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
+                    recommendation['RecommendationId']=recommendationId
+                    del recommendation['Value']
+                    recommendationList.append(recommendation)
 
-            if quantOutput != None and val != None:
-                log.trace("      Output: %s - Value: %s" % (quantOutput, str(val)))
-                recommendation['AutoRecommendation']=val
-                recommendation['AutoOrManual']='Auto'
-                recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
-                recommendation['RecommendationId']=recommendationId
-                del recommendation['Value']
-                recommendationList.append(recommendation)
-
-    return textRecommendation, recommendationList
+    return textRecommendation, recommendationList, "SUCCESS"
 
 # Insert a recommendation into the database
 def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, database):
@@ -99,9 +102,12 @@ def calculateFinalRecommendation(quantOutput):
     finalRecommendation = 0.0
     recommendations = quantOutput.get("Recommendations", [])
     
-    # It certainly isn't normal to get to this point and NOT have any recommendations.
+    # It certainly isn't normal to get to this point and NOT have any recommendations but it is possible that a FD may have 5 outputs defined
+    # and for a certain situation may only decide to change 3 of them, for example.  This should not be treated as an error and should not cause
+    # the minimum change warning to kick in for the 2 quant outputs that were not changed.
     if len(recommendations) == 0:
         log.error("No recommendations were found for quant output: %s" % (quantOutput.get("QuantOutput", "Unknown")))
+        return None
         
     for recommendation in recommendations:
         log.trace("  The raw recommendation is: %s" % (str(recommendation)))

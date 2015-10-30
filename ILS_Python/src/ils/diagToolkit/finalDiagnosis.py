@@ -305,7 +305,24 @@ def manage(application, recalcRequested=False, database="", provider=""):
             logSQL.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, database)
             log.trace("      updated %i diagnosis entries..." % (rows))
-             
+    
+    #----------------------------------------------------------------------
+    def setDiagnosisEntryErrorStatus(alist, database):
+        log.trace("Updating the diagnosis entries to indicate an error...")
+        # First clear all of the active flags in 
+        ids = []   # A list of quantOutput dictionaries
+        for record in alist:
+            finalDiagnosisId = record['FinalDiagnosisId']
+            finalDiagnosis = record['FinalDiagnosisName']
+            if finalDiagnosisId not in ids:
+                log.trace("   ...setting error status for active diagnosis entries for final diagnosis: %s..." % (finalDiagnosis))
+                ids.append(finalDiagnosisId)
+                SQL = "update dtDiagnosisEntry set RecommendationStatus = 'ERROR' where FinalDiagnosisId = %i and status = 'Active'" % (finalDiagnosisId)
+                logSQL.trace(SQL)
+                rows=system.db.runUpdateQuery(SQL, database)
+                log.trace("      updated %i rows!" % (rows))
+    
+          
     #--------------------------------------------------------------------
     # This is the start of manage()
     
@@ -382,9 +399,25 @@ def manage(application, recalcRequested=False, database="", provider=""):
         quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
         
         from ils.diagToolkit.recommendation import makeRecommendation
-        textRecommendation, recommendations = makeRecommendation(
+        textRecommendation, recommendations, recommendationStatus = makeRecommendation(
                 record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
                 record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
+        
+        if recommendationStatus == "ERROR":
+            log.error("The calculation method had an error")
+            diagnosisEntryId=record['DiagnosisEntryId']
+            SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'ERROR' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+            logSQL.trace(SQL)
+            system.db.runUpdateQuery(SQL, database)
+            return "Error"
+        elif recommendationStatus == "NO-RECOMMENDATIONS":
+            log.warn("No recommendations were made")
+            diagnosisEntryId=record['DiagnosisEntryId']
+            SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'No-Recs' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+            logSQL.trace(SQL)
+            system.db.runUpdateQuery(SQL, database)
+            return "None Made"
+        
         quantOutputs = mergeRecommendations(quantOutputs, recommendations)
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")
@@ -392,8 +425,19 @@ def manage(application, recalcRequested=False, database="", provider=""):
     for quantOutput in quantOutputs:
         from ils.diagToolkit.recommendation import calculateFinalRecommendation
         quantOutput = calculateFinalRecommendation(quantOutput)
-        quantOutput = checkBounds(quantOutput, database, provider)
-        finalQuantOutputs.append(quantOutput)
+        if quantOutput == None:
+            # The case where a FD has 5 quant outputs defined but there are only recommendations to change 3 of them is not an error
+            pass
+        else:
+            quantOutput = checkBounds(quantOutput, database, provider)
+            if quantOutput == None:
+                # If there was an error checking bounds, specifically if the current value could not be read, the we can't make any valid recommendations
+                # Remember that the change is really a vector, and if we lose one dimension then we will twist the plant.
+                finalQuantOutputs = []
+                setDiagnosisEntryErrorStatus(list2, database)
+                break
+         
+            finalQuantOutputs.append(quantOutput)
 
     finalQuantOutputs, notificationText = calculateVectorClamps(finalQuantOutputs, provider)
     
@@ -410,7 +454,9 @@ def checkBounds(quantOutput, database, provider):
 
     log.trace("   ...checking Bounds...")
     
+    # The feedbackOutput can be incremental or absolute
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
+    incrementalOutput=quantOutput.get('IncrementalOutput')
     mostNegativeIncrement = quantOutput.get('MostNegativeIncrement', -1000.0)
     mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
     
@@ -421,15 +467,24 @@ def checkBounds(quantOutput, database, provider):
     if not(qv.quality.isGood()):
         log.error("Error reading the current setpoint from (%s), tag quality is: (%s)" % (tagpath, str(qv.quality)))
  
-        # Make this quant-output inactive since we can't make an intelligent recommendation without the current setpoint
-        quantOutput['CurrentValue'] = None
-        quantOutput['CurrentValueIsGood'] = False
-        return
+        # Make this quant-output inactive since we can't make an intelligent recommendation without the current setpoint;
+        # moreover, we don't want t to make any recommendations related to this problem / FD
+        # Note: I'm not sure how to sort out this output from a situation where multiple FDs may be active - but I think that is rare
+#        quantOutput['CurrentValue'] = None
+#        quantOutput['CurrentValueIsGood'] = False
+#        quantOutput['OutputLimited'] = False
+#        quantOutput['OutputLimitedStatus'] = 'Not Bound'
+        return None
 
     quantOutput['CurrentValue'] = qv.value
     quantOutput['CurrentValueIsGood'] = True
 
-    # Compare the incremental recommendation to the **incremental** limits
+    # If the recommendation was absolute, then convert it to incremental for the may be absolute or incremental, but we always display incremental    
+    if not(incrementalOutput):
+        log.trace("      ...calculating an incremental change for an absolute recommendation...")
+        feedbackOutput = feedbackOutput - qv.value
+
+    # Compare the recommendation to the **incremental** limits
     log.trace("      ...comparing the feedback output (%f) to most positive increment (%f) and most negative increment (%f)..." % (feedbackOutput, mostPositiveIncrement, mostNegativeIncrement))
     if feedbackOutput >= mostNegativeIncrement and feedbackOutput <= mostPositiveIncrement:
         log.trace("      ...the output is not incremental bound...")
@@ -446,7 +501,7 @@ def checkBounds(quantOutput, database, provider):
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Negative Incremental Bound'
         feedbackOutputConditioned=mostNegativeIncrement
-
+        
     # Compare the final setpoint to the **absolute** limits
     setpointHighLimit = quantOutput.get('SetpointHighLimit', -1000.0)
     setpointLowLimit = quantOutput.get('SetpointLowLimit', 1000.0)
@@ -457,15 +512,14 @@ def checkBounds(quantOutput, database, provider):
         log.trace("      ...the output IS Positive Absolute Bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Positive Absolute Bound'
-        feedbackOutputConditioned=setpointHighLimit
+        feedbackOutputConditioned=setpointHighLimit - qv.value
     elif qv.value + feedbackOutputConditioned < setpointLowLimit:
         log.trace("      ...the output IS Negative Absolute Bound...")
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Negative Absolute Bound'
-        feedbackOutputConditioned=setpointLowLimit    
+        feedbackOutputConditioned=setpointLowLimit - qv.value
 
-    quantOutput['FeedbackOutputConditioned'] = feedbackOutputConditioned
-    
+    # Now check the minimum increment requirement
     minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
     if abs(feedbackOutputConditioned) < minimumIncrement:
         log.trace("      ...the output IS Minimum change bound because the change (%f) is less then the minimum change amount (%f)..." % (feedbackOutputConditioned, minimumIncrement))
@@ -473,6 +527,15 @@ def checkBounds(quantOutput, database, provider):
         quantOutput['OutputLimitedStatus'] = 'Minimum Change Bound'
         feedbackOutputConditioned=0.0
         quantOutput['FeedbackOutputConditioned']=feedbackOutputConditioned
+
+    finalIncrementalValue = feedbackOutputConditioned
+    
+    # If the recommendation was absolute, then convert it back to absolute
+    if not(incrementalOutput):
+        log.trace("      ...converting an incremental change (%s) back to an absolute recommendation (%s)..." % (str(feedbackOutputConditioned), str(qv.value + feedbackOutputConditioned)))
+        feedbackOutputConditioned = qv.value + feedbackOutputConditioned
+
+    quantOutput['FeedbackOutputConditioned'] = feedbackOutputConditioned
     
     # Calculate the percent of the original recommendation that we are using if the output is limited 
     if quantOutput['OutputLimited'] == True:
@@ -481,7 +544,7 @@ def checkBounds(quantOutput, database, provider):
         if feedbackOutput == 0.0:
             outputPercent = 0.0
         else:
-            outputPercent = feedbackOutputConditioned / feedbackOutput * 100.0
+            outputPercent = finalIncrementalValue / feedbackOutput * 100.0
         
         log.trace("   ...the output is bound - taking %f percent of the recommended change..." % (outputPercent))
         quantOutput['OutputPercent'] = outputPercent
