@@ -26,25 +26,13 @@ def sfcRunTests(payload):
     system.ils.sfc.initializeTests(reportFile)
     for chartPath in testChartPaths:
         system.ils.sfc.startTest(chartPath)
-        sfcStartChart(payload)
+        # TODO: use new start logic
+        # sfcStartChart(payload)
         system.sfc.startChart(chartPath, payload)
  
 def sfcReportTests(payload):
     import system.ils.sfc
     system.ils.sfc.reportTests()
-        
-def sfcStartChart(payload):
-    '''Prepare for chart start. lazy init the units for this script mgr
-       (CAUTION--there are other gateway script mgrs) and also to save the name of
-       the invoking project, as chart status message currently needs this.'''
-    import ils.common.units
-    from system.ils.sfc import registerSfcProject
-    from ils.sfc.gateway.api import getDatabaseName
-    from ils.sfc.common.constants import PROJECT
-    project = payload[PROJECT]
-    registerSfcProject(project)
-    database = getDatabaseName(payload)
-    ils.common.units.Unit.lazyInitialize(database)
     
 def sfcFailTest(payload):
     '''this is a message handler'''
@@ -80,3 +68,7 @@ def sfcResumeChart(payload):
     topChartRunId = payload[INSTANCE_ID]
     basicResumeChart(topChartRunId)
         
+def sfcDevTest(payload):
+    # from system.ils.sfc.common.Constants import DATA
+    obj = payload['data']
+    obj.sayHi()

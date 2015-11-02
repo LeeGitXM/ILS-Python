@@ -87,7 +87,7 @@ def cancelChart(chartProperties):
 
 def addControlPanelMessage(chartProperties, message, ackRequired):
     '''display a message on the control panel'''
-    from ils.sfc.common.sessions import addControlPanelMessage 
+    from ils.sfc.common.cpmessage import addControlPanelMessage 
     from ils.sfc.gateway.util import escapeSingleQuotes, getTopChartRunId, sendUpdateControlPanelMsg
     escapedMessage = escapeSingleQuotes(message)
     chartRunId = getTopChartRunId(chartProperties)
@@ -106,10 +106,15 @@ def getCurrentMessageQueue(chartProperties):
 
 def setCurrentMessageQueue(chartProperties, queue):
     '''Set the currently used message queue'''
-    from ils.sfc.common.constants import MESSAGE_QUEUE
-    from ils.sfc.gateway.util import getTopLevelProperties
+    from ils.sfc.common.constants import MESSAGE_QUEUE, INSTANCE_ID
+    from ils.sfc.gateway.util import getTopLevelProperties, getTopChartRunId
     topScope = getTopLevelProperties(chartProperties)
     topScope[MESSAGE_QUEUE] = queue
+    # message the client about msg queue
+    payload = dict()
+    payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
+    payload[MESSAGE_QUEUE] = queue
+    sendMessageToClient(chartProperties, 'setMessageQueue', payload)
 
 def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
     '''Send an OC alert'''

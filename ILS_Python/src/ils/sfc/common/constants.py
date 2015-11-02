@@ -41,6 +41,7 @@ CONFIG = 'config'
 CREATE_TIME = 'createTime'
 CREATE = 'create'
 DATA = "data"
+DATABASE = 'database'
 DESCRIPTION = "description"
 DELAY = "delay"
 DELAY_UNIT = "delayUnit"

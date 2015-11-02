@@ -24,9 +24,6 @@ def getReviewDataConfig():
 def activateStep(className, chartProperties, stepProperties):
     pass
 
-def registerSfcProject(projectName):
-    pass
-
 def s88DataExists(chartProperties, stepProperties, ckey, location):
     pass
 

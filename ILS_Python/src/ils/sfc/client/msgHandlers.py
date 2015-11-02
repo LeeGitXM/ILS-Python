@@ -236,10 +236,16 @@ def sfcManualDataEntry(payload):
 def dispatchMessage(payload):
     from ils.sfc.common.util import callMethodWithParams
     from ils.sfc.common.constants import CLIENT_MSG_HANDLER
-    methodPath = 'ils.sfc.client.msgHandlers.' + payload[CLIENT_MSG_HANDLER]
+    msgName = payload[CLIENT_MSG_HANDLER]
+    methodPath = 'ils.sfc.client.msgHandlers.' + msgName
     keys = ['payload']
     values = [payload]
-    callMethodWithParams(methodPath, keys, values)
+    try:
+        callMethodWithParams(methodPath, keys, values)
+    except Exception, e:
+        cause = e.getCause()
+        errMsg = "Error dispatching client message %s: %s" % (msgName, cause.getMessage())
+        system.gui.errorBox(errMsg)
 
 def setMessageQueue(payload):
     from ils.sfc.client.controlPanel import setMessageQueue

@@ -65,7 +65,7 @@ class ControlPanel:
         '''something has changed; update the UI'''
         if not self.chartStarted:
             return
-        from ils.sfc.common.sessions import getControlPanelMessages
+        from ils.sfc.common.cpmessage import getControlPanelMessages
         from ils.sfc.client.util import getDatabaseName 
         database = getDatabaseName(self.chartProperties)
         self.messages = getControlPanelMessages(self.getChartRunId(), database)
@@ -210,7 +210,7 @@ class ControlPanel:
     def doAcknowledge(self):
         from ils.sfc.common.constants import ID
         from ils.sfc.client.util import getDatabaseName
-        from ils.sfc.common.sessions import acknowledgeControlPanelMessage
+        from ils.sfc.common.cpmessage import acknowledgeControlPanelMessage
         msg = self.messages[self.messageIndex]
         msgId = msg[ID]
         database = getDatabaseName(self.chartProperties)
@@ -218,7 +218,11 @@ class ControlPanel:
         self.update()
         
     def doStart(self):
-        from ils.sfc.common.constants import INSTANCE_ID
+        from ils.sfc.common.constants import INSTANCE_ID        
+        # register for chart status updates using the now poorly named sfcStartChart message
+        projectName = system.util.getProjectName()
+        system.util.sendMessage(projectName, 'sfcStartChart', self.chartProperties, 'G')
+        
         runId = system.sfc.startChart(self.getChartName(), self.chartProperties)
         self.chartProperties[INSTANCE_ID] = runId
         controlPanelsByChartRunId[runId] = self
@@ -343,4 +347,12 @@ def removeControlPanel(chartPath):
             controlPanelsByChartRunId.pop(cp.getChartRunId(), None)
         cp.flashing = False # stop the timer loop
         cp.window.dispose
-    
+
+def showMessageQueue(window):   
+    chartRunId = window.getRootContainer().chartRunId
+    controller = getController(chartRunId)
+    queue = controller.getMessageQueue()
+    windowProps = dict()
+    windowProps['key'] = queue
+    windowProps['title'] = queue
+    system.nav.openWindow('Queue/Message Queue', windowProps)

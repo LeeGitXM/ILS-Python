@@ -123,8 +123,7 @@ def pause(scopeContext, stepProperties):
 def controlPanelMessage(scopeContext, stepProperties):
     import time
     from ils.sfc.gateway.recipe import substituteScopeReferences
-    from ils.sfc.common.sessions import getAckTime
-    from ils.sfc.common.sessions import timeOutControlPanelMessageAck
+    from ils.sfc.common.cpmessage import getAckTime, timeOutControlPanelMessageAck
     from ils.sfc.gateway.api import addControlPanelMessage, getCurrentMessageQueue
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
