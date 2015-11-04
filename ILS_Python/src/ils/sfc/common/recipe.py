@@ -38,18 +38,17 @@ def getRecipeDataTagPath(provider, path):
 
 def createRecipeDataTag(provider, folder, rdName, rdType, valueType):    
     fullFolder = getRecipeDataTagPath(provider, folder)
-    #print 'creating', rdType, rdName, 'in', fullFolder
+    # print 'creating', rdType, rdName, 'in', fullFolder
     typePath = RECIPE_DATA_FOLDER + "/" + rdType
     system.tag.addTag(parentPath=fullFolder, name=rdName, tagType='UDT_INST', attributes={"UDTParentType":typePath})
     if (rdType == 'Value' or rdType == 'Output') and valueType != None:
-        print 'changing value type to valueType'
         changeType(fullFolder, rdName, valueType)
 
 
 def changeType(folderPath, tagName, valueType):
     '''For the value tag only, change the tag type to
     agree with the value type'''
-    from system.ils.sfc.common.Constants import INT, FLOAT, BOOLEAN, STRING
+    from system.ils.sfc.common.Constants import INT, FLOAT, BOOLEAN, STRING, DATE_TIME
 
     if valueType == INT:
         newType = 'Int8'
@@ -59,10 +58,11 @@ def changeType(folderPath, tagName, valueType):
         newType = 'Boolean'
     elif valueType == STRING:
         newType = 'String' 
+    elif valueType == DATE_TIME:
+        newType = 'DateTime' 
     else:   
         newType = 'String' 
     valuePath = folderPath + "/" + tagName
-    print 'setting', valuePath, " to ", newType
     system.tag.editTag(valuePath, overrides={"value": {"DataType":newType}})
     
 # TODO: the methods below are called form Java. Should consolidate with s88 methods
