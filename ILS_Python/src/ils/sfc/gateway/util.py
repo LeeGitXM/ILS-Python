@@ -206,6 +206,7 @@ def getDelaySeconds(delay, delayUnit):
 def createFilepath(chartScope, stepProperties, includeExtension):
     '''Create a filepath from dir/file/suffix in step properties'''
     import time
+    from ils.sfc.gateway.api import getChartLogger
     logger = getChartLogger(chartScope)
     directory = getStepProperty(stepProperties, DIRECTORY) 
     fileName = getStepProperty(stepProperties, FILENAME) 
@@ -228,10 +229,6 @@ def createFilepath(chartScope, stepProperties, includeExtension):
         timestamp = ""
     filepath = directory + '/' + fileName + timestamp + extension
     return filepath
-
-def getChartLogger(chartScope):
-    from system.util import getLogger
-    return getLogger(chartScope.chartPath)
 
 def standardDeviation(dataset, column):
     '''calculate the standard deviation of the given column of the dataset'''

@@ -159,10 +159,10 @@ def timedDelay(scopeContext, stepProperties):
     from ils.sfc.gateway.api import getTimeFactor
     from ils.sfc.common.constants import _STATUS
     import time
-    from ils.sfc.gateway.util import getChartLogger
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
+    logger.info("Executing TimedDelay block")
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
@@ -305,7 +305,7 @@ def collectData(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
-    logger.info("Executing a collect data block")
+    logger.trace("Executing a collect data block")
     configJson = getStepProperty(stepProperties, COLLECT_DATA_CONFIG)
     config = jsonDecode(configJson)
     logger.trace("Block Configuration: %s" % (str(config)))
@@ -583,7 +583,7 @@ def writeOutput(scopeContext, stepProperties):
     import time
     from ils.sfc.common.util import getMinutesSince, formatTime
     from ils.sfc.gateway.api import getIsolationMode
-    from ils.sfc.gateway.util import getChartLogger, checkForCancelOrPause
+    from ils.sfc.gateway.util import checkForCancelOrPause
     from system.ils.sfc import getWriteOutputConfig
     from ils.sfc.gateway.downloads import handleTimer, waitForTimerStart
     from ils.sfc.gateway.recipe import RecipeData
