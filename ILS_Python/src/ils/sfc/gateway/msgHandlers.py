@@ -26,8 +26,6 @@ def sfcRunTests(payload):
     system.ils.sfc.initializeTests(reportFile)
     for chartPath in testChartPaths:
         system.ils.sfc.startTest(chartPath)
-        # TODO: use new start logic
-        # sfcStartChart(payload)
         system.sfc.startChart(chartPath, payload)
  
 def sfcReportTests(payload):

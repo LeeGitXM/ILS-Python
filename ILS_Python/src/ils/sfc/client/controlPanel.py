@@ -218,11 +218,7 @@ class ControlPanel:
         self.update()
         
     def doStart(self):
-        from ils.sfc.common.constants import INSTANCE_ID        
-        # register for chart status updates using the now poorly named sfcStartChart message
-        projectName = system.util.getProjectName()
-        system.util.sendMessage(projectName, 'sfcStartChart', self.chartProperties, 'G')
-        
+        from ils.sfc.common.constants import INSTANCE_ID                
         runId = system.sfc.startChart(self.getChartName(), self.chartProperties)
         self.chartProperties[INSTANCE_ID] = runId
         controlPanelsByChartRunId[runId] = self

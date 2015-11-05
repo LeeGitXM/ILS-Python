@@ -7,14 +7,16 @@ import ils.sfc.gateway.msgHandlers as msghandler
 def start(common,project,user,isolation,name):
 	# Assemble initial properties for the chart, the run it.
 	from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME
-
+	from system.sfc import startChart
 	properties = dict()
 	properties[PROJECT] = project
 	properties[USER]    = user
 	# ISOLATION_MODE must be a true boolean
 	properties[ISOLATION_MODE] = str2bool(isolation)
-	properties[CHART_NAME] = name;
-	chartid = msghandler.sfcStartChart(properties)
+	properties[CHART_NAME] = name;	
+	# chartid = msghandler.sfcStartChart(properties)
+	chartid = startChart(name, properties)
+
 	ilssfc.watchChart(chartid,name)
 	common['result'] = chartid
 

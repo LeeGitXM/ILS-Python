@@ -181,7 +181,6 @@ def getDefaultMessageQueueScope():
 def sendChartStatus(projectName, payload):
     from system.util import sendMessage
     payload[CLIENT_MSG_HANDLER] = UPDATE_CHART_STATUS_HANDLER
-    print 'sendChartStatus', payload
     sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def sendCurrentOperation(projectName, payload):
