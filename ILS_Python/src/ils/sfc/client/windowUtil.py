@@ -71,7 +71,7 @@ def getMessageId(window):
     return window.getRootContainer().messageId
 
 def getWindowPath(window):
-    return window.name
+    return window.path
 
 def responseWindowClosed(window, response):
     '''standard actions when a window representing a response is closed by the user'''

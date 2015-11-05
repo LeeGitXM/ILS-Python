@@ -264,9 +264,11 @@ class ControlPanel:
         rowsToRemove = []
         for i in range(self.toolbarDataset.getRowCount()):
             rowWindowName = self.toolbarDataset.getValueAt(i,1)
+            print 'rowWindowName', rowWindowName
             if rowWindowName == windowPath:
                 rowWindowId = self.toolbarDataset.getValueAt(i,2)
                 window = self.windowsById.pop(rowWindowId)     
+                print 'closing window id ', rowWindowId
                 system.nav.closeWindow(window)
                 rowsToRemove.append(i)
         self.toolbarDataset = system.dataset.deleteRows(self.toolbarDataset, rowsToRemove)
