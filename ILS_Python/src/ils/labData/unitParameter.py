@@ -5,24 +5,19 @@ Created on Jun 15, 2015
 '''
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-from com.sun.xml.internal.bind.v2.runtime.unmarshaller import TagName
+from ils.labData.common import parseTagPath
+from ils.labData.common import getDatabaseForTag
+
 log = LogUtil.getLogger("com.ils.labData.unitParameters")
 
-def parseTagPath(tagPath):
-    end = tagPath.rfind('/')
-    tagPathRoot = tagPath[:end]
-    end = tagPath.rfind('/')
-    tagName = tagPath[end + 1:]
-    return tagPathRoot, tagName
+
 
 # The size of the buffer has changed.  We only need to worry about correcting from a large buffer to a small buffer
 def bufferSizeChanged(tagPath, currentValue, initialChange):
     log.info("The buffer size has changed for <%s> to <%s>" % (tagPath, str(currentValue)))
     
-    #TODO - Un-hardcode this
-    database="XOM"
-    
-    tagPathRoot, tagName = parseTagPath(tagPath)
+    database=getDatabaseForTag(tagPath)
+    tagPathRoot, tagName, tagProvider = parseTagPath(tagPath)
     log.trace("In bufferSizeChanged with <%s>, new size = %i (root: %s)" % (tagPath, currentValue.value, tagPathRoot))
     SQL = "select unitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
     unitParameterId = system.db.runScalarQuery(SQL, database)
@@ -32,11 +27,10 @@ def bufferSizeChanged(tagPath, currentValue, initialChange):
     SQL = "Delete from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex >= %i" % (unitParameterId, currentValue.value)
     rows = system.db.runUpdateQuery(SQL, database)
     log.trace("...deleted %i rows" % rows)
-    
+
+# There is a new value, update the filtered value.  This uses a circular buffer in the database table.    
 def valueChanged(tagPath, currentValue, initialChange):
-    
-    #TODO - Un-hardcode this
-    database="XOM"
+    database=getDatabaseForTag(tagPath)
     
     # Check the quality here and only process good values.
     if not(currentValue.quality.isGood()):
@@ -51,7 +45,7 @@ def valueChanged(tagPath, currentValue, initialChange):
         return
     
     # The first step is to get the tag name out of the full tag name.  This should end in either rawValue or manualRawValue    
-    tagPathRoot, tagName = parseTagPath(tagPath)
+    tagPathRoot, tagName, tagProvider = parseTagPath(tagPath)
     log.trace("In valueChanged with <%s> and value: %f (root: %s)" % (tagPath, tagVal, tagPathRoot))
     
     # Check if the buffer has ever been initialized
