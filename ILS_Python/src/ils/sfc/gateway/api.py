@@ -61,9 +61,15 @@ def convertUnits(chartProperties, value, fromUnitName, toUnitName):
     
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
     '''Like s88Set, but adds a conversion from the given units'''
+    from ils.sfc.common.util import isEmpty
     existingUnitsKey = getUnitsPath(valuePath)
     existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
-    convertedValue = convertUnits(chartProperties, value, valueUnitsName, existingUnitsName)
+    if not isEmpty(existingUnitsName):
+        convertedValue = convertUnits(chartProperties, value, valueUnitsName, existingUnitsName)
+    else:
+        logger = getChartLogger(chartProperties)
+        logger.warn("No units in recipe data %s; no conversion done from %s" % (valuePath, valueUnitsName))
+        convertedValue = value
     s88Set(chartProperties, stepProperties, valuePath, convertedValue, location)
         
 def pauseChart(chartProperties):

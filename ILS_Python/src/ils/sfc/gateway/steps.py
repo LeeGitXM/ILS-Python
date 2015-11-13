@@ -1026,10 +1026,8 @@ def manualDataEntry(scopeContext, stepProperties):
             key = returnDataset.getValueAt(row, 5)
             destination = returnDataset.getValueAt(row, 6)
             valueType = returnDataset.getValueAt(row, 7)
-            print 'key', key, 'valueType', valueType, 'units', units, 'isEmpty', isEmpty(units)
             value = parseValue(strValue, valueType)
             if isEmpty(units):
                 s88Set(chartScope, stepScope, key, value, destination)
             else:
-                print 'units', units, ''
                 s88SetWithUnits(chartScope, stepScope, key, value, destination, units)
