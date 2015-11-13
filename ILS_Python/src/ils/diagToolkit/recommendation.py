@@ -21,7 +21,18 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
     logSQL.trace(SQL)
     calculationMethod = system.db.runScalarQuery(SQL, database)
     log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s, database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, database, provider))
-     
+    
+    if string.upper(calculationMethod) == "CONSTANT":
+        log.trace("Detected a CONSTANT calculation method")
+        
+        SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'Posted' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+        logSQL.trace(SQL)
+        system.db.runUpdateQuery(SQL, database)
+            
+        textRecommendation="A constant"
+        recommendationList=[]
+        return textRecommendation, recommendationList, "SUCCESS"
+
     # If they specify shared or project scope, then we don't need to do this
     if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
         # The method contains a full python path, including the method name
