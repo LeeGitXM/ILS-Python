@@ -43,7 +43,6 @@ def getDatabaseForTag(tagPath):
 
     import system.ils.blt.diagram as blt
     productionTagProvider=blt.getToolkitProperty("Provider")
-    print "The current tag provider is: <%s> - the production provider is: <%s>" % (tagProvider, productionTagProvider)
     
     if tagProvider == productionTagProvider:
         database=blt.getToolkitProperty("Database")
@@ -52,7 +51,7 @@ def getDatabaseForTag(tagPath):
         
     return database
 
-# The timeout here is in seconds
+# The timeout here is in seconds, the default time to wait is 1 minute, the refresh interval is always 1 second.
 def waitForConsistency(tag1, tag2, timeout=60):
     cal = Calendar.getInstance()
     now = Date()
@@ -64,10 +63,9 @@ def waitForConsistency(tag1, tag2, timeout=60):
     
     while not(consistent):
         time.sleep(1)
-        print "Checking..."
         consistent=checkConsistency(tag1, tag2)
         
-        # check if we have exceeded out timeout
+        # check if we have exceeded the timeout
         now = Date()
         if now > endTime and not(consistent):
             return "Timeout"
@@ -78,9 +76,10 @@ def checkConsistency(tag1, tag2):
     vals=system.tag.readAll([tag1, tag2])
     qv1=vals[0]
     qv2=vals[1]
+    
     if qv2.timestamp >= qv1.timestamp:
         consistent=True
     else:
         consistent=False
-    print "Consistent: ", consistent
+    
     return consistent    
