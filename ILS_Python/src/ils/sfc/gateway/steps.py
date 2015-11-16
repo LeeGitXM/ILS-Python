@@ -989,7 +989,7 @@ def manualDataEntry(scopeContext, stepProperties):
     from system.ils.sfc import getManualDataEntryConfig 
     from system.dataset import toDataSet
     from ils.sfc.common.util import isEmpty
-    from ils.sfc.gateway.api import s88GetType, parseValue
+    from ils.sfc.gateway.api import s88GetType, parseValue, getUnitsPath
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     #logger = getChartLogger(chartScope)
@@ -1000,7 +1000,7 @@ def manualDataEntry(scopeContext, stepProperties):
         for row in config.rows:
             s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
     else:
-        header = ['Description', 'Value', 'Units', 'Low Limit', 'High Limit', 'Key', 'Destination', 'Type']    
+        header = ['Description', 'Value', 'Units', 'Low Limit', 'High Limit', 'Key', 'Destination', 'Type', 'Recipe Units']    
         rows = []
         # Note: apparently the IA toDataSet method tries to coerce all column values to
         # the same type and throws an error if that is not possible. Since we potentially
@@ -1011,7 +1011,9 @@ def manualDataEntry(scopeContext, stepProperties):
                 defaultValue = str(row.defaultValue)
             else:
                 defaultValue = ""
-            rows.append([row.prompt, defaultValue, row.units, row.lowLimit, row.highLimit, row.key, row.destination, tagType])
+            existingUnitsKey = getUnitsPath(row.key)
+            existingUnitsName = s88Get(chartScope, stepScope, existingUnitsKey, row.destination)
+            rows.append([row.prompt, defaultValue, row.units, row.lowLimit, row.highLimit, row.key, row.destination, tagType, existingUnitsName])
         dataset = toDataSet(header, rows)
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
