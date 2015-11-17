@@ -42,7 +42,7 @@ def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, return
     value = s88Get(chartProperties, stepProperties, valuePath, location)
     existingUnitsKey = getUnitsPath(valuePath)
     existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
-    convertedValue = convertUnits(value, existingUnitsName, returnUnitsName)
+    convertedValue = convertUnits(chartProperties, value, existingUnitsName, returnUnitsName)
     return convertedValue
 
 def convertUnits(chartProperties, value, fromUnitName, toUnitName):    
