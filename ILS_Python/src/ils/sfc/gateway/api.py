@@ -22,10 +22,23 @@ def s88DataExists(chartProperties, stepProperties, valuePath, location):
 def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
     import system.tag
+    from ils.sfc.common.util import isEmpty
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
     qv = system.tag.read(fullTagPath)
-    return qv.value
+    value = qv.value
+    # we're not doing unit conversion here, but if there happens to be a time
+    # unit then we want to do the isolation mode time scaling:
+    if isValueKey(valuePath):
+        unitName = getAssociatedUnitName(chartProperties, stepProperties, valuePath, location)
+        if not isEmpty(unitName):
+            unit = getUnitByName(chartProperties, unitName)
+            value = scaleTimeForIsolationMode(chartProperties, value, unit)
+    return value
 
+def isValueKey(key):
+    '''return true if the given key references the "value" attribute'''
+    return key.endswith('.value') or key.endswith('.Value')
+    
 def s88GetType(chartProperties, stepProperties, valuePath, location):
     '''Get the underlying recipe data type; return one of STRING, INT, FLOAT, or BOOLEAN from ils.sfc.common.constants'''
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
@@ -40,30 +53,58 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     '''Like s88Get, but adds a conversion to the given units'''
     value = s88Get(chartProperties, stepProperties, valuePath, location)
-    existingUnitsKey = getUnitsPath(valuePath)
-    existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
-    convertedValue = convertUnits(value, existingUnitsName, returnUnitsName)
+    existingUnitsName = getAssociatedUnitName(chartProperties, stepProperties, valuePath, location)
+    convertedValue = convertUnits(chartProperties, value, existingUnitsName, returnUnitsName)
     return convertedValue
 
-def convertUnits(chartProperties, value, fromUnitName, toUnitName):    
-    '''Convert a value from one unit to another'''
+def getAssociatedUnitName(chartProperties, stepProperties, valuePath, location):
+    '''given a value key, get associated unit name, or None if there is none.'''
+    unitsKey = getUnitsPath(valuePath)
+    if unitsKey != None:
+        unitsName = s88Get(chartProperties, stepProperties, unitsKey, location)
+        return unitsName
+    else:
+        return None
+
+def getUnitByName(chartProperties, unitName):
+    '''Given the name of a unit, get the Unit object for it.'''
     from ils.common.units import Unit
     database = getDatabaseName(chartProperties)
     Unit.lazyInitialize(database)
-    fromUnit = Unit.getUnit(fromUnitName)
-    if(fromUnit == None):
-        raise Exception("No unit found for " + fromUnitName)
-    toUnit = Unit.getUnit(toUnitName)
-    if(toUnit == None):
-        raise Exception("No unit found for " + toUnitName)
+    unit = Unit.getUnit(unitName)
+    if(unit == None):
+        raise Exception("No unit found for " + unitName)
+    return unit
+
+def convertUnits(chartProperties, value, fromUnitName, toUnitName):    
+    '''Convert a value from one unit to another'''
+    fromUnit = getUnitByName(chartProperties, fromUnitName)
+    toUnit = getUnitByName(chartProperties, toUnitName)
     convertedValue = fromUnit.convertTo(toUnit, value)
+    convertedValue = scaleTimeForIsolationMode(chartProperties, convertedValue, fromUnit)
     return convertedValue
-    
+
+def scaleTimeForIsolationMode(chartProperties, value, unit):
+    '''If the supplied unit is a time unit and we are in isolation mode,
+       scale the value appropriately--otherwise, just return the value'''
+    if unit.type == 'TIME' and getIsolationMode(chartProperties):
+        timeFactor = getTimeFactor(chartProperties)
+        logger = getChartLogger(chartProperties)
+        logger.debug('multiplying time by isolation time factor %f' % timeFactor)
+        value *= timeFactor
+    return value
+         
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
     '''Like s88Set, but adds a conversion from the given units'''
+    from ils.sfc.common.util import isEmpty
     existingUnitsKey = getUnitsPath(valuePath)
     existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)
-    convertedValue = convertUnits(chartProperties, value, valueUnitsName, existingUnitsName)
+    if not isEmpty(existingUnitsName):
+        convertedValue = convertUnits(chartProperties, value, valueUnitsName, existingUnitsName)
+    else:
+        logger = getChartLogger(chartProperties)
+        logger.warn("No units in recipe data %s; no conversion done from %s" % (valuePath, valueUnitsName))
+        convertedValue = value
     s88Set(chartProperties, stepProperties, valuePath, convertedValue, location)
         
 def pauseChart(chartProperties):
@@ -262,7 +303,7 @@ def getUnitsPath(valuePath):
     if valueKeyIndex > 0:
         return valuePath[0 : valueKeyIndex] + ".units"
     else:
-        raise Exception("no value field to get units for in " + valuePath)
+        return None
 
 def readTag(chartScope, tagPath):
     '''Read an ordinary tag (ie not recipe data), substituting provider
