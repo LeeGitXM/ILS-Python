@@ -127,6 +127,28 @@ def recalcMessageHandler(payload):
         applicationName=record["ApplicationName"]
         manage(applicationName, recalcRequested=True, database=database, provider=provider)
 
+# This is based on the original G2 procedure outout-msg-core()
+# I think this updates the diagnosis entry with the results of the recommendation.
+def updateOutputMessage(finalDiagnosisId, diagnosisEntryId, textRecommendation, recommendations, quantOutputs, database):
+
+    if len(recommendations) == 0:
+        textRecommendation = textRecommendation + "\nNo Outputs Calculated"
+    else:
+        textRecommendation = textRecommendation + "\nOutputs are:"
+        
+    for recommendation in recommendations:
+        autoOrManual=recommendation.get('AutoOrManual', None)
+        outputName = recommendation.get('QuantOutput','')
+        if autoOrManual == 'Auto':
+            val = recommendation.get('AutoRecommendation', None)
+            textRecommendation = "%s\n%s = %s" % (textRecommendation, outputName, str(val))
+            
+        elif autoOrManual == 'Manual':
+            textRecommendation = "%s\nManual move for %s = %s" % (textRecommendation, outputName, str(val))
+
+    SQL = "update DtDiagnosisEntry set TextRecommendation = '%s' where DiagnosisEntryId = %i" % (textRecommendation, diagnosisEntryId)
+    system.db.runUpdateQuery(SQL, database)
+    return textRecommendation
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
 def manage(application, recalcRequested=False, database="", provider=""):
@@ -340,9 +362,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     log.trace("The active diagnosis are: ")
     for record in pds:
-        log.trace("  Family: %s, Final Diagnosis: %s, Family Priority: %s, FD Priority: %s" % 
-                  (record["FamilyName"], record["FinalDiagnosisName"], 
-                   str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"])))
+        log.trace("  Family: %s, Final Diagnosis: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s" % 
+                  (record["FamilyName"], record["FinalDiagnosisName"], str(record["FamilyPriority"]), 
+                   str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"]) ))
     
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
     # descending order.
@@ -356,9 +378,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # Calculate the recommendations for each final diagnosis
     log.trace("The families / final diagnosis with the highest priorities are: ")
     for record in list2:
-        log.trace("  Family: %s, Final Diagnosis: %s (%i), Family Priority: %s, FD Priority: %s" % 
+        log.trace("  Family: %s, Final Diagnosis: %s (%i), Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s" % 
                   (record["FamilyName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], 
-                   str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"])))
+                   str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"])))
     
     log.trace("Checking if there has been a change in the highest priority final diagnosis...")
     changed,lowPriorityList=compareFinalDiagnosisState(oldList, list2)
@@ -391,6 +413,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         family = record['FamilyName']
         finalDiagnosis = record['FinalDiagnosisName']
         finalDiagnosisId = record['FinalDiagnosisId']
+        diagnosisEntryId = record["DiagnosisEntryId"]
         log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i)" % (application, family, finalDiagnosis, finalDiagnosisId))
         
         # Fetch all of the quant outputs for the final diagnosis
@@ -402,6 +425,13 @@ def manage(application, recalcRequested=False, database="", provider=""):
         textRecommendation, recommendations, recommendationStatus = makeRecommendation(
                 record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
                 record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
+        
+        textRecommendation = updateOutputMessage(finalDiagnosisId, diagnosisEntryId, textRecommendation, recommendations, quantOutputs, database)
+        print "-----------------"
+        print "Text Recommendation: ", textRecommendation
+        print "Recommendations: ", recommendations
+        print "Status: ", recommendationStatus
+        print "-----------------"
         
         if recommendationStatus == "ERROR":
             log.error("The calculation method had an error")
@@ -419,6 +449,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
             return "None Made"
         
         quantOutputs = mergeRecommendations(quantOutputs, recommendations)
+        print "-----------------"
+        print "Quant Outputs: ", quantOutputs
+        print "-----------------"
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")
     finalQuantOutputs = []
