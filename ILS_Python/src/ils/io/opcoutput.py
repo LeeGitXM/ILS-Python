@@ -21,7 +21,10 @@ class OPCOutput(opctag.OPCTag):
         
     # Check some basic things about this OPC tag to determine if a write is likely to succeed!
     def checkConfig(self):
-        # Check that the tag exists
+        log.trace("In OPCOutput.checkConfig()...")
+        
+        # Check that the tag exists - 
+        # TODO there should be a better way to call next method
         tagExists, reason = opctag.OPCTag.checkConfig(self)
         # TODO: Check if there is an item ID and an OPC server
                                                

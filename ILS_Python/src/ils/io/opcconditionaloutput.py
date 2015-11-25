@@ -60,7 +60,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
         # Update the status to "Writing"
         system.tag.write(self.path + "/writeStatus", "Writing Permissive")
  
-        # Read the current permissive and save it so that we can put it back the way is was when we are donw
+        # Read the current permissive and save it so that we can put it back the way is was when we are done
         permissiveAsFound = system.tag.read(self.path + "/permissive").value
         system.tag.write(self.path + "/permissiveAsFound", permissiveAsFound)
         

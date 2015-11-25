@@ -97,7 +97,7 @@ def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0):
         delta = (Date().getTime() - startTime) / 1000
 
     log.info("Write of <%s> to %s was not confirmed!" % (str(val), tagPath))
-    return False, "Value was not confirmed"   
+    return False, "Value %s was not confirmed" % (str(val))  
 
 # This waits for a pending write / confirmation to complete and then reports back the results.  This does not perform 
 # any value comparison or have any output specific knowledge.  There is another thread running, generally in the gateway,

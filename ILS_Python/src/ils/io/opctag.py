@@ -34,6 +34,7 @@ class OPCTag():
         
     # Check for the existence of the tag
     def checkConfig(self):
+        log.trace("In OPCTag.checkConfig()...")
         # Check that the tag exists
         reason = ""
         tagExists = system.tag.exists(self.path)
