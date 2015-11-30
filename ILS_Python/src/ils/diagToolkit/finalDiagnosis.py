@@ -271,7 +271,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         for record in alist:
             finalDiagnosisId = record['FinalDiagnosisId']
             log.trace("   ...setting Final Diagnosis %i to active..." % (finalDiagnosisId))
-            SQL = "update dtFinalDiagnosis set Active = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
+            SQL = "update dtFinalDiagnosis set Active = 1, LastRecommendationTime = getdate() where FinalDiagnosisId = %i" % (finalDiagnosisId)
             logSQL.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, database)
             log.trace("      updated %i rows!" % (rows))
