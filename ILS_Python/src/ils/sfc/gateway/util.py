@@ -92,6 +92,7 @@ def waitOnResponse(requestId, chartScope):
     #TODO: configurable timeout??
     maxCycles = 5 * 60 / SLEEP_INCREMENT
     cycle = 0
+    print 'waitOnResponse', requestId
     while response == None and cycle < maxCycles:
         time.sleep(SLEEP_INCREMENT);
         cycle = cycle + 1
@@ -99,11 +100,13 @@ def waitOnResponse(requestId, chartScope):
         # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
             # TODO: log that we're bailing
         # return None
+        print 'calling getResponse', requestId
         response = getResponse(requestId)
     if response == None:
         handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
         return None
     else:
+        print 'returning response'
         return response[RESPONSE]
     
 def sendUpdateControlPanelMsg(chartProperties):
