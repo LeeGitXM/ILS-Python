@@ -92,8 +92,9 @@ def scaleTimeForIsolationMode(chartProperties, value, unit):
         logger = getChartLogger(chartProperties)
         logger.debug('multiplying time by isolation time factor %f' % timeFactor)
         value *= timeFactor
+        logger.debug('the scaled time is %f' % value)
     return value
-         
+
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
     '''Like s88Set, but adds a conversion from the given units'''
     from ils.sfc.common.util import isEmpty
