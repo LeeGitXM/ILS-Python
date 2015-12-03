@@ -5,39 +5,30 @@ Created on Nov 3, 2014
 '''
 from ils.sfc.common.constants import MESSAGE_ID
 
+def dispatchMessage(payload):
+    from ils.sfc.common.util import callMethodWithParams
+    from ils.sfc.common.constants import MESSAGE
+    msgName = payload[MESSAGE]
+    methodPath = 'ils.sfc.gateway.msgHandlers.' + msgName
+    keys = ['payload']
+    values = [payload]
+    try:
+        callMethodWithParams(methodPath, keys, values)
+    except Exception, e:
+        try:
+            cause = e.getCause()
+            errMsg = "Error dispatching gateway message %s: %s" % (msgName, cause.getMessage())
+        except:
+            errMsg = "Error dispatching gateway message %s: %s" % (msgName, str(e))
+        #TODO: whats the right logger here?
+        print errMsg
+                              
 def sfcResponse(payload):
     '''Handle a message that is a response to a request sent from the Gateway'''
     from system.ils.sfc import setResponse
     messageId = payload[MESSAGE_ID]
     setResponse(messageId, payload)
-
-def sfcActivateStep(payload):
-    '''For testing only--activate a step as if it was being run in a chart'''
-    from ils.sfc.common.constants import  CLASS_NAME, CHART_PROPERTIES, STEP_PROPERTIES
-    from system.ils.sfc import activateStep
-    activateStep(payload[CLASS_NAME], payload[CHART_PROPERTIES], payload[STEP_PROPERTIES])
-    
-def sfcRunTests(payload):
-    '''Run test charts'''
-    from ils.sfc.common.constants import TEST_CHART_PATHS, TEST_REPORT_FILE 
-    import system.ils.sfc
-    testChartPaths = payload[TEST_CHART_PATHS]
-    reportFile = payload[TEST_REPORT_FILE]
-    system.ils.sfc.initializeTests(reportFile)
-    for chartPath in testChartPaths:
-        system.ils.sfc.startTest(chartPath)
-        system.sfc.startChart(chartPath, payload)
- 
-def sfcReportTests(payload):
-    import system.ils.sfc
-    system.ils.sfc.reportTests()
-    
-def sfcFailTest(payload):
-    '''this is a message handler'''
-    from system.ils.sfc import failTest
-    from ils.sfc.common.constants import CHART_NAME, MESSAGE
-    failTest(payload[CHART_NAME], payload[MESSAGE])
-    
+        
 def sfcUpdateDownloads(payload):
     from ils.sfc.common.constants import ID, INSTANCE_ID
     from ils.sfc.gateway.monitoring import getMonitoringMgr
@@ -65,8 +56,70 @@ def sfcResumeChart(payload):
     from ils.sfc.gateway.util import basicResumeChart    
     topChartRunId = payload[INSTANCE_ID]
     basicResumeChart(topChartRunId)
+
+# test stuff
+def sfcRunTests(payload):
+    '''Run test charts'''
+    from ils.sfc.common.constants import TEST_CHART_PATHS, TEST_REPORT_FILE 
+    import system.ils.sfc
+    testChartPaths = payload[TEST_CHART_PATHS]
+    reportFile = payload[TEST_REPORT_FILE]
+    system.ils.sfc.initializeTests(reportFile)
+    for chartPath in testChartPaths:
+        system.ils.sfc.startTest(chartPath)
+        system.sfc.startChart(chartPath, payload)
+ 
+def sfcReportTests(payload):
+    import system.ils.sfc
+    system.ils.sfc.reportTests()
+    
+def sfcFailTest(payload):
+    '''this is a message handler'''
+    from system.ils.sfc import failTest
+    from ils.sfc.common.constants import CHART_NAME, MESSAGE
+    failTest(payload[CHART_NAME], payload[MESSAGE])
+
+def sfcActivateStep(payload):
+    '''For testing only--activate a step as if it was being run in a chart'''
+    from ils.sfc.common.constants import  CLASS_NAME, CHART_PROPERTIES, STEP_PROPERTIES
+    from system.ils.sfc import activateStep
+    activateStep(payload[CLASS_NAME], payload[CHART_PROPERTIES], payload[STEP_PROPERTIES])
         
 def sfcDevTest(payload):
     # from system.ils.sfc.common.Constants import DATA
     obj = payload['data']
     obj.sayHi()
+    
+########## New thin client stuff ################
+def sfcStartSession(payload):
+    '''Create a new session'''
+    from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME, CLIENT_ID
+    from ils.sfc.gateway.util import startSession
+    startSession(payload[CHART_NAME], payload[ISOLATION_MODE], payload[PROJECT], payload[USER], payload[CLIENT_ID])
+
+def sfcStartChart(payload):
+    '''start the sessions SFC'''
+    from ils.sfc.common.constants import SESSION_ID
+    from ils.sfc.gateway.util import startChart
+    startChart(payload[SESSION_ID])
+    
+def sfcGetSessionData(payload):
+    '''return a map of chart names keyed by session id'''
+    from system.ils.sfc import getSessionData
+    from ils.sfc.gateway.api import basicSendMessageToClient
+    from ils.sfc.common.constants import RESPONSE, CLIENT_ID, PROJECT
+    clientId = payload[CLIENT_ID] 
+    project = payload[PROJECT]
+    payload = {RESPONSE: getSessionData()}
+    basicSendMessageToClient(project, 'sfcGetSessionDataResponse', payload, clientId)
+    
+def sfcAddClient(payload):
+    from system.ils.sfc import addClient
+    from ils.sfc.common.constants import SESSION, CLIENT_ID, SESSION_ID, PROJECT
+    from ils.sfc.gateway.api import basicSendMessageToClient
+    clientId = payload[CLIENT_ID] 
+    project = payload[PROJECT]
+    sessionId = payload[SESSION_ID]
+    session = addClient(sessionId, clientId)
+    payload = {SESSION:session}
+    basicSendMessageToClient(project, 'sfcSessionStarted', payload, clientId)

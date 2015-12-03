@@ -10,6 +10,9 @@ def getSessionInfo():
     pds=""
     return pds
 
+def getClientId():
+    pass
+
 def invokeLater(func):
     return True
 

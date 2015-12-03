@@ -227,19 +227,26 @@ def sendMessageToClient(chartProperties, handler, payload):
     '''Send a message to the client(s) of this chart'''
     # TODO: check returned list of recipients
     # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE, INSTANCE_ID, CLIENT_MSG_HANDLER
-    from ils.sfc.common.util import createUniqueId
+    from ils.sfc.common.constants import INSTANCE_ID
     from ils.sfc.gateway.util import getTopChartRunId
-    from system.util import sendMessage
     project = getProject(chartProperties)
-    messageId = createUniqueId()
     payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
-    payload[MESSAGE_ID] = messageId 
-    payload[CLIENT_MSG_HANDLER] = handler
-    # print 'sending message to client', project, handler, payload
-    sendMessage(project, 'sfcMessage', payload, "C")
-    return messageId
+    return basicSendMessageToClient(project, handler, payload)
 
+def basicSendMessageToClient(project, handler, payload, clientSessionId=None):
+    '''to send a dispatched message outside a chart run context'''
+    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE
+    from system.util import sendMessage
+    from ils.sfc.common.util import createUniqueId
+    messageId = createUniqueId()
+    payload[MESSAGE_ID] = messageId 
+    payload[MESSAGE] = handler
+    # print 'sending message to client', project, handler, payload
+    if clientSessionId != None:
+        sendMessage(project, 'sfcMessage', payload, "C", clientSessionId)
+    else:
+        sendMessage(project, 'sfcMessage', payload, "C")
+    return messageId
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
     from system.util import getLogger

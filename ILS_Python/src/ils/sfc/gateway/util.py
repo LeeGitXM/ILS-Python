@@ -7,7 +7,7 @@ Created on Sep 30, 2014
 '''
 from system.ils.sfc import getResponse
 from ils.sfc.common.constants import *
-from ils.sfc.gateway.api import cancelChart
+from ils.sfc.gateway.api import cancelChart, sendMessageToClient
 
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
@@ -49,6 +49,10 @@ def getStepId(stepProperties):
 def getTopChartRunId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''
     return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
+
+def getSessionId(chartProperties):
+    '''Get the run id of the chart at the TOP enclosing level'''
+    return str(getTopLevelProperties(chartProperties)[SESSION_ID])
     
 def getTopLevelProperties(chartProperties):
     while chartProperties.get(PARENT, None) != None:
@@ -183,12 +187,12 @@ def getDefaultMessageQueueScope():
 
 def sendChartStatus(projectName, payload):
     from system.util import sendMessage
-    payload[CLIENT_MSG_HANDLER] = UPDATE_CHART_STATUS_HANDLER
+    payload[MESSAGE] = UPDATE_CHART_STATUS_HANDLER
     sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def sendCurrentOperation(projectName, payload):
     from system.util import sendMessage
-    payload[CLIENT_MSG_HANDLER] = UPDATE_CURRENT_OPERATION_HANDLER
+    payload[MESSAGE] = UPDATE_CURRENT_OPERATION_HANDLER
     sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def getDelaySeconds(delay, delayUnit):
@@ -353,5 +357,35 @@ def basicCancelChart(topChartRunId):
     from system.ils.sfc import setCancelRequested
     setCancelRequested(topChartRunId)
     system.sfc.cancelChart(topChartRunId)
-            
-    
+
+#################### New thin client stuff
+def startSession(chartName, isolationMode, project, user, clientId):
+    from system.ils.sfc import addSession
+    from ils.sfc.common.session.sfcSession import SfcSession
+    from ils.sfc.gateway.api import basicSendMessageToClient
+    session = SfcSession(chartName, isolationMode, project, user)
+    addSession(session, clientId)
+    payload = dict()
+    payload[SESSION] = session
+    basicSendMessageToClient(project, 'sfcSessionStarted', payload)
+
+def startChart(sessionId):
+    from system.ils.sfc import getSession
+    import system.sfc
+    model = getSession(sessionId)
+    initialChartParams = dict()
+    initialChartParams[PROJECT] = model.project
+    initialChartParams[USER] = model.user
+    initialChartParams[ISOLATION_MODE] = model.isolationMode
+    initialChartParams[SESSION_ID] = sessionId
+    system.sfc.startChart(model.chartName, initialChartParams)
+    updateClientSessions(sessionId)
+
+def updateClientSessions(session, clientIds): 
+    from ils.sfc.common.constants import SESSION
+    from ils.sfc.gateway.api import basicSendMessageToClient
+    payload = dict()
+    payload[SESSION] = session
+    for clientId in clientIds:
+        basicSendMessageToClient(session.project, 'sfcUpdateSession', payload, clientId)
+   

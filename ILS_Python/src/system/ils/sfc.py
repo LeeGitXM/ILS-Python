@@ -118,3 +118,19 @@ def stepState(chartId,name):
     
 def watchChart(chartId,name):
     '''chart state event handler'''
+
+# new session stuff:
+def getSession(sessionId):
+    pass
+
+def addSession(session, clientId):
+    pass
+
+def removeSession(sessionId):
+    pass
+
+def addClient(sessionId, clientId):
+    pass
+
+def getSessionData():
+    pass

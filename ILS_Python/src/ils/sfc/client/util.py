@@ -172,3 +172,7 @@ def getDatabaseName(chartProperties):
     from system.ils.sfc import getDatabaseName
     isolationMode = getIsolationMode(chartProperties)
     return getDatabaseName(isolationMode)
+
+
+
+    

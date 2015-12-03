@@ -95,13 +95,20 @@ def yesNo(scopeContext, stepProperties):
     Get a yes/no response from the user; block until a
     response is received, put response in chart properties
     '''
+    from ils.sfc.gateway.api import getTimeFactor
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     prompt = getStepProperty(stepProperties, PROMPT)
     recipeLocation = getRecipeScope(stepProperties) 
     key = getStepProperty(stepProperties, KEY) 
+    timeFactor = getTimeFactor(chartScope)
+    timeout = getStepProperty(stepProperties, TIMEOUT)
+    timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
+    timeoutSeconds = getDelaySeconds(timeout, timeoutUnit)
+    timeoutSeconds *= timeFactor
     payload = dict()
     payload[PROMPT] = prompt 
+    payload[TIMEOUT] = timeoutSeconds
     messageId = sendMessageToClient(chartScope, YES_NO_HANDLER, payload)
     value = waitOnResponse(messageId, chartScope)
     s88Set(chartScope, stepScope, key, value, recipeLocation)
@@ -184,7 +191,7 @@ def timedDelay(scopeContext, stepProperties):
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     delaySeconds = getDelaySeconds(delay, delayUnit)
     timeFactor = getTimeFactor(chartScope)
-    delaySeconds = delaySeconds * timeFactor
+    delaySeconds = delaySeconds * timeFactor 
     startTimeEpochSecs = time.time()
     endTimeEpochSecs = startTimeEpochSecs + delaySeconds
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 

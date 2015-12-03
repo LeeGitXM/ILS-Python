@@ -130,10 +130,12 @@ def sfcDeleteDelayNotification(payload):
     removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
         
 def sfcYesNo(payload):
-    from ils.sfc.common.constants import PROMPT, MESSAGE_ID
+    from ils.sfc.common.constants import PROMPT, MESSAGE_ID, TIMEOUT
     from system.ils.sfc.common.Constants import YES, NO
         
     prompt = payload[PROMPT]
+    timeoutSecs = payload[TIMEOUT]
+    print 'timeout secs', timeoutSecs
     booleanResponse = system.gui.confirm(prompt, 'Input', False)
     if booleanResponse:
         textResponse = YES
@@ -235,18 +237,46 @@ def sfcManualDataEntry(payload):
 
 def dispatchMessage(payload):
     from ils.sfc.common.util import callMethodWithParams
-    from ils.sfc.common.constants import CLIENT_MSG_HANDLER
-    msgName = payload[CLIENT_MSG_HANDLER]
+    from ils.sfc.common.constants import MESSAGE
+    msgName = payload[MESSAGE]
     methodPath = 'ils.sfc.client.msgHandlers.' + msgName
     keys = ['payload']
     values = [payload]
     try:
         callMethodWithParams(methodPath, keys, values)
     except Exception, e:
-        cause = e.getCause()
-        errMsg = "Error dispatching client message %s: %s" % (msgName, cause.getMessage())
+        try:
+            cause = e.getCause()
+            errMsg = "Error dispatching client message %s: %s" % (msgName, cause.getMessage())
+        except:
+            errMsg = "Error dispatching client message %s: %s" % (msgName, str(e))
         system.gui.errorBox(errMsg)
 
 def setMessageQueue(payload):
     from ils.sfc.client.controlPanel import setMessageQueue
     setMessageQueue(payload)
+
+################ New thin client ###################
+def sfcSessionStarted(payload):
+    '''start or re-establish a session'''
+    from ils.sfc.common.constants import SESSION
+    from ils.sfc.client.session.controlPanelView import ControlPanelView
+    model = payload[SESSION]
+    ControlPanelView(model)
+
+def sfcUpdateSession(payload):
+    '''update a session'''
+    from ils.sfc.common.constants import SESSION
+    from ils.sfc.client.session.viewMgr import getControlPanelView
+    model = payload[SESSION]
+    controlPanelView = getControlPanelView(model.sessionId)
+    controlPanelView.updateModel(model)
+    
+def sfcGetSessionDataResponse(payload):
+    '''The response for a sfcRequestChartNames msg'''
+    from ils.sfc.common.constants import RESPONSE
+    sessionData = payload[RESPONSE]
+    window = system.gui.getWindow('Reconnect')
+    sessionTable = window.getRootContainer().getComponent("sessionTable")
+    sessionTable.data = sessionData
+    

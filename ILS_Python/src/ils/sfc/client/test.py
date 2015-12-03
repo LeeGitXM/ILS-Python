@@ -16,6 +16,7 @@ def clientTestWatcher():
     for action in completedActions:
         actions.remove(action) 
         
+
 def addAction(methodName, testName, chartRunId):
     actions.append({'testName' : testName, 'methodName' : methodName, 'chartRunId' : chartRunId})
     
