@@ -130,14 +130,16 @@ def sfcDeleteDelayNotification(payload):
     removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
         
 def sfcYesNo(payload):
-    from ils.sfc.common.constants import PROMPT, MESSAGE_ID, TIMEOUT, INSTANCE_ID
-    from system.ils.sfc.common.Constants import YES, NO   
-    from ils.sfc.client.windowUtil import createWindow
-    windowProps = dict()
-    windowProps[MESSAGE_ID] = payload[MESSAGE_ID]
-    windowProps[PROMPT] = payload[PROMPT]
-    windowProps[TIMEOUT] = payload[TIMEOUT]
-    createWindow('SFC/YesNo', '', payload[INSTANCE_ID], windowProps)
+    from ils.sfc.common.constants import PROMPT, MESSAGE_ID, TIMEOUT
+    print "In msgHandlers.sfcYesNo()..."
+    
+    prompt = payload[PROMPT]
+    timeoutSecs = payload[TIMEOUT]
+    messageId = payload[MESSAGE_ID]
+    print "The message id is:", messageId
+    
+    window=system.nav.openWindow("SFC/YesNo", {"prompt": prompt, "timeoutSecs": timeoutSecs, "messageId": messageId})
+    system.nav.centerWindow(window)
 
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError
