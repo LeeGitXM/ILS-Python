@@ -190,8 +190,10 @@ def timedDelay(scopeContext, stepProperties):
         
     delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
     delaySeconds = getDelaySeconds(delay, delayUnit)
+    unscaledDelaySeconds=delaySeconds
     timeFactor = getTimeFactor(chartScope)
-    delaySeconds = delaySeconds * timeFactor 
+    delaySeconds = delaySeconds * timeFactor
+    logger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
     startTimeEpochSecs = time.time()
     endTimeEpochSecs = startTimeEpochSecs + delaySeconds
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
@@ -207,7 +209,7 @@ def timedDelay(scopeContext, stepProperties):
         sendMessageToClient(chartScope, POST_DELAY_NOTIFICATION_HANDLER, payload)
     
     #TODO: checking the real clock time is probably more accurate
-    sleepIncrement = 5
+    sleepIncrement = 1
     while delaySeconds > 0:
         # Handle Cancel/Pause
 

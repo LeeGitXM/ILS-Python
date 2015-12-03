@@ -48,10 +48,12 @@ def resetUI(container):
  
 def typeSelected(container):
     selectedType = container.getComponent(UNIT_TYPES).selectedStringValue
+    print "The selected type is: ", selectedType
     if selectedType != None:
-        unitsOfSelectedType = ils.common.units.Unit.getUnitsOfType(selectedType, "")
+        unitsOfSelectedType = ils.common.units.Unit.getUnitsOfType(selectedType)
     else:
         unitsOfSelectedType = []
+    print "The list of units is: ", unitsOfSelectedType
     fromUnitCombo = container.getComponent(FROM_UNITS)
     setComboValues(fromUnitCombo, unitsOfSelectedType)
     toUnitCombo = container.getComponent(TO_UNITS)

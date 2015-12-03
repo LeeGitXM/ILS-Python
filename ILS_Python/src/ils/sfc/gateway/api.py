@@ -92,8 +92,9 @@ def scaleTimeForIsolationMode(chartProperties, value, unit):
         logger = getChartLogger(chartProperties)
         logger.debug('multiplying time by isolation time factor %f' % timeFactor)
         value *= timeFactor
+        logger.debug('the scaled time is %f' % value)
     return value
-         
+
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
     '''Like s88Set, but adds a conversion from the given units'''
     from ils.sfc.common.util import isEmpty
@@ -141,7 +142,6 @@ def getCurrentMessageQueue(chartProperties):
     from ils.sfc.common.constants import MESSAGE_QUEUE
     from ils.sfc.gateway.util import getTopLevelProperties
     topScope = getTopLevelProperties(chartProperties)
-    print 'current queue', topScope[MESSAGE_QUEUE]
     return topScope[MESSAGE_QUEUE]
 
 def setCurrentMessageQueue(chartProperties, queue):
