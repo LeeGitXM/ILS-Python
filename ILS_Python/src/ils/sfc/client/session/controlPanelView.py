@@ -6,25 +6,14 @@ Created on Nov 24, 2015
 
 FLASH_INTERVAL = 3.
 import system.dataset
-
-def flash(obj):
-    from java.awt import Color
-    import threading 
-    if not obj.flashing:
-        return
-    msgArea = obj.getMessageArea()
-    if msgArea.getBackground() == Color.red:
-        msgArea.setBackground(Color.blue)
-    elif msgArea.getBackground() == Color.blue:
-        msgArea.setBackground(Color.red)
-    t = threading.Timer(FLASH_INTERVAL, flash, [obj])
-    t.start() 
+                      
+sessionData = None # a dataset of all gateway sessions
+viewsById = dict() # map of all control panel views indexed by id
 
 class ControlPanelView:
     toolbarDataHeader = ['text', 'windowPath', 'windowId', 'chartRunId'] # these are the button properties
 
     def  __init__(self, _session):
-        from ils.sfc.client.session.viewMgr import addControlPanelView
         self.session = _session
         self.pauseMask = True
         self.resumeMask = True
@@ -82,7 +71,7 @@ class ControlPanelView:
         elif ackRequired and ackTime == None:
             self.flashing = True
             self.getMessageArea().setBackground(Color.red)
-            flash(self)
+            flashMessageArea(self)
         else: # ordinary message
             self.getMessageArea().setBackground(Color.white)
         self.getSelectedMsgField().setText("%d of %d" % (self.messageIndex + 1, len(self.messages)))       
@@ -193,4 +182,42 @@ class ControlPanelView:
         payload = dict()
         payload[SESSION_ID] = self.session.sessionId
         sendMessageToGateway('sfcStartChart', payload)
-                      
+
+def flashMessageArea(obj):
+    '''Start a timer that will flash the message area background'''
+    from java.awt import Color
+    import threading 
+    if not obj.flashing:
+        return
+    msgArea = obj.getMessageArea()
+    if msgArea.getBackground() == Color.red:
+        msgArea.setBackground(Color.blue)
+    elif msgArea.getBackground() == Color.blue:
+        msgArea.setBackground(Color.red)
+    t = threading.Timer(FLASH_INTERVAL, flashMessageArea, [obj])
+    t.start() 
+
+def getControlPanelView(model):
+    view = viewsById[model.sessionId]
+    if view == None:
+        view = ControlPanelView(model)
+    return view
+
+def addControlPanelView(controlPanelView):
+    viewsById[controlPanelView.session.sessionId] = controlPanelView
+
+def removeControlPanelView(cpid):
+    viewsById.remove(cpid)
+
+def sessionChanged(session):
+    view = getControlPanelView(session)
+    if view != None:
+        view.updateModel(session)
+    else:
+        ControlPanelView(session)
+
+def sessionsChanged(sessions):
+    window = system.gui.getWindow('Reconnect')
+    sessionTable = window.getRootContainer().getComponent("sessionTable")
+    sessionTable.data = sessionData
+    

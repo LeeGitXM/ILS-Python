@@ -44,6 +44,17 @@ def requestSessionData():
     payload = {PROJECT:system.util.getProjectName(), CLIENT_ID:system.util.getClientId()}
     sendMessageToGateway('sfcGetSessionData', payload)
     
+def removeSession(sessionId):
+    '''Send a message to the gateway to delete a session'''
+    from ils.sfc.common.constants import PROJECT, CLIENT_ID, SESSION_ID
+    import system.util
+    payload = {
+        PROJECT:system.util.getProjectName(), 
+        CLIENT_ID:system.util.getClientId(), 
+        SESSION_ID:sessionId }
+    sendMessageToGateway('sfcDeleteSession', payload)
+
+
 def requestAddClient(sessionId):
     from ils.sfc.common.constants import PROJECT,CLIENT_ID, SESSION_ID
     import system.util

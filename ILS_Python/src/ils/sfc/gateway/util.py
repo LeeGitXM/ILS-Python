@@ -247,6 +247,17 @@ def standardDeviation(dataset, column):
         pvalues.append(value)
     jvalues = jarray.array(pvalues, 'd')
     return stdDev.evaluate(jvalues)
+
+def getTimeoutSeconds(chartScope, stepProperties, payload):
+    '''For input steps that pass a timeout, get the value in seconds.
+       Take the isolation mode time factor into account'''
+    from ils.sfc.gateway.api import getTimeFactor
+    timeFactor = getTimeFactor(chartScope)
+    timeout = getStepProperty(stepProperties, TIMEOUT)
+    timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
+    timeoutSeconds = getDelaySeconds(timeout, timeoutUnit)
+    timeoutSeconds *= timeFactor
+    return timeoutSeconds
     
 def queueMessage(chartScope, msg, priority):
     '''insert a message in the current message queue'''
@@ -359,16 +370,14 @@ def basicCancelChart(topChartRunId):
     system.sfc.cancelChart(topChartRunId)
 
 #################### New thin client stuff
-def startSession(chartName, isolationMode, project, user, clientId):
+
+def addSession(chartName, isolationMode, project, user, clientId):
     from system.ils.sfc import addSession
     from ils.sfc.common.session.sfcSession import SfcSession
     from ils.sfc.gateway.api import basicSendMessageToClient
     session = SfcSession(chartName, isolationMode, project, user)
-    addSession(session, clientId)
-    payload = dict()
-    payload[SESSION] = session
-    basicSendMessageToClient(project, 'sfcSessionStarted', payload)
-
+    addSession(session)
+    
 def startChart(sessionId):
     from system.ils.sfc import getSession
     import system.sfc
@@ -381,11 +390,4 @@ def startChart(sessionId):
     system.sfc.startChart(model.chartName, initialChartParams)
     updateClientSessions(sessionId)
 
-def updateClientSessions(session, clientIds): 
-    from ils.sfc.common.constants import SESSION
-    from ils.sfc.gateway.api import basicSendMessageToClient
-    payload = dict()
-    payload[SESSION] = session
-    for clientId in clientIds:
-        basicSendMessageToClient(session.project, 'sfcUpdateSession', payload, clientId)
    

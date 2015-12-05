@@ -255,26 +255,14 @@ def setMessageQueue(payload):
     setMessageQueue(payload)
 
 ################ New thin client ###################
-def sfcSessionStarted(payload):
-    '''start or re-establish a session'''
-    from ils.sfc.common.constants import SESSION
-    from ils.sfc.client.session.controlPanelView import ControlPanelView
-    model = payload[SESSION]
-    ControlPanelView(model)
-
-def sfcUpdateSession(payload):
+def sfcSessionChanged(payload):
     '''update a session'''
     from ils.sfc.common.constants import SESSION
-    from ils.sfc.client.session.viewMgr import getControlPanelView
-    model = payload[SESSION]
-    controlPanelView = getControlPanelView(model.sessionId)
-    controlPanelView.updateModel(model)
+    from ils.sfc.client.session.controlPanelView import sessionChanged
+    sessionChanged(payload[SESSION])
     
-def sfcGetSessionDataResponse(payload):
-    '''The response for a sfcRequestChartNames msg'''
-    from ils.sfc.common.constants import RESPONSE
-    sessionData = payload[RESPONSE]
-    window = system.gui.getWindow('Reconnect')
-    sessionTable = window.getRootContainer().getComponent("sessionTable")
-    sessionTable.data = sessionData
-    
+def sfcSessionsChanged(payload):
+    '''update a session'''
+    from ils.sfc.common.constants import SESSIONS
+    from ils.sfc.client.session.controlPanelView import sessionsChanged
+    sessionsChanged(payload[SESSIONS])

@@ -110,6 +110,7 @@ SEMI_AUTOMATIC = 'semiAutomatic'
 SERVER = 'server'
 SESSION = "session"
 SESSION_ID = 'sessionId'
+SESSIONS = "sessions"
 SETPOINT = 'setpoint'
 SETPOINT_STATUS = 'setpointStatus'
 SINGLE = "single"

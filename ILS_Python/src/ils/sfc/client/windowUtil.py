@@ -98,4 +98,4 @@ def updateClockField(window):
     rootContainer = window.getRootContainer()    
     clockField = rootContainer.getComponent('clockField')
     clockField.text = formatTime(time.time())
-        
+

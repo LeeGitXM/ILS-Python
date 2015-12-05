@@ -95,17 +95,13 @@ def yesNo(scopeContext, stepProperties):
     Get a yes/no response from the user; block until a
     response is received, put response in chart properties
     '''
-    from ils.sfc.gateway.api import getTimeFactor
+    from ils.sfc.gateway.util import getTimeoutSeconds
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     prompt = getStepProperty(stepProperties, PROMPT)
     recipeLocation = getRecipeScope(stepProperties) 
     key = getStepProperty(stepProperties, KEY) 
-    timeFactor = getTimeFactor(chartScope)
-    timeout = getStepProperty(stepProperties, TIMEOUT)
-    timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
-    timeoutSeconds = getDelaySeconds(timeout, timeoutUnit)
-    timeoutSeconds *= timeFactor
+    timeoutSeconds = getTimeoutSeconds(chartScope, stepProperties)
     payload = dict()
     payload[PROMPT] = prompt 
     payload[TIMEOUT] = timeoutSeconds
@@ -252,6 +248,7 @@ def enableDisable(scopeContext, stepProperties):
     sendMessageToClient(chartScope, ENABLE_DISABLE_HANDLER, payload)
 
 def selectInput(scopeContext, stepProperties):
+    from ils.sfc.gateway.util import getTimeoutSeconds
     # extract properties
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -259,20 +256,23 @@ def selectInput(scopeContext, stepProperties):
     choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
     choicesKey = getStepProperty(stepProperties, CHOICES_KEY) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    key = getStepProperty(stepProperties, KEY) 
-
+    key = getStepProperty(stepProperties, KEY)     
+    timeoutSeconds = getTimeoutSeconds(chartScope, stepProperties)
+    
     choices = s88Get(chartScope, stepScope, choicesKey, choicesRecipeLocation)
     
     # send message
     payload = dict()
     payload[PROMPT] = prompt
     payload[CHOICES] = choices
-    
+    payload[TIMEOUT] = timeoutSeconds
+
     messageId = sendMessageToClient(chartScope, SELECT_INPUT_HANDLER, payload) 
     value = waitOnResponse(messageId, chartScope)
     s88Set(chartScope, stepScope, key, value, recipeLocation)
 
 def getLimitedInput(scopeContext, stepProperties):
+    from ils.sfc.gateway.util import getTimeoutSeconds
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     prompt = getStepProperty(stepProperties, PROMPT) 
@@ -280,11 +280,13 @@ def getLimitedInput(scopeContext, stepProperties):
     key = getStepProperty(stepProperties, KEY) 
     minimumValue = getStepProperty(stepProperties, MINIMUM_VALUE)
     maximumValue = getStepProperty(stepProperties, MAXIMUM_VALUE) 
-    
+    timeoutSeconds = getTimeoutSeconds(chartScope, stepProperties)
+        
     payload = dict()
     payload[PROMPT] = prompt
     payload[MINIMUM_VALUE] = minimumValue
     payload[MAXIMUM_VALUE] = maximumValue
+    payload[TIMEOUT] = timeoutSeconds
     responseIsValid = False
     while not responseIsValid:
         messageId = sendMessageToClient(chartScope, LIMITED_INPUT_HANDLER, payload)   
@@ -378,14 +380,16 @@ def collectData(scopeContext, stepProperties):
                 s88Set(chartScope, stepScope, row['recipeKey'], row['defaultValue'], row['location'] )
                 
 def getInput(scopeContext, stepProperties):
+    from ils.sfc.gateway.util import getTimeoutSeconds
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     prompt = getStepProperty(stepProperties, PROMPT) 
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
-   
+    timeoutSeconds = getTimeoutSeconds(chartScope, stepProperties)
     payload = dict()
     payload[PROMPT] = prompt
+    payload[TIMEOUT] = timeoutSeconds
     
     messageId = sendMessageToClient(chartScope, INPUT_HANDLER, payload)
     value = waitOnResponse(messageId, chartScope)

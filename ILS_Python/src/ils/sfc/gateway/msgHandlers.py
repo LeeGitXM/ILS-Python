@@ -91,35 +91,35 @@ def sfcDevTest(payload):
     obj.sayHi()
     
 ########## New thin client stuff ################
-def sfcStartSession(payload):
+def sfcAddClient(payload):
+    from system.ils.sfc import addClient
+    from ils.sfc.common.constants import NAME, PROJECT, CLIENT_ID
+    addClient(payload[NAME], payload[PROJECT], payload[CLIENT_ID])
+
+def sfcRemoveClient(payload):
+    from system.ils.sfc import removeClient
+    from ils.sfc.common.constants import CLIENT_ID
+    removeClient(payload[CLIENT_ID])
+
+def sfcAddSessionListener(payload):
+    from system.ils.sfc import addSessionListener
+    from ils.sfc.common.constants import CLIENT_ID, SESSION_ID
+    addSessionListener(payload[SESSION_ID], payload[CLIENT_ID])
+
+def sfcRemoveSessionListener(payload):
+    from system.ils.sfc import removeSessionListener
+    from ils.sfc.common.constants import CLIENT_ID, SESSION_ID
+    removeSessionListener(payload[SESSION_ID], payload[CLIENT_ID])
+        
+def sfcAddSession(payload):
     '''Create a new session'''
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME, CLIENT_ID
-    from ils.sfc.gateway.util import startSession
-    startSession(payload[CHART_NAME], payload[ISOLATION_MODE], payload[PROJECT], payload[USER], payload[CLIENT_ID])
+    from ils.sfc.gateway.util import addSession
+    addSession(payload[CHART_NAME], payload[ISOLATION_MODE], payload[PROJECT], payload[USER], payload[CLIENT_ID])
 
 def sfcStartChart(payload):
     '''start the sessions SFC'''
     from ils.sfc.common.constants import SESSION_ID
     from ils.sfc.gateway.util import startChart
     startChart(payload[SESSION_ID])
-    
-def sfcGetSessionData(payload):
-    '''return a map of chart names keyed by session id'''
-    from system.ils.sfc import getSessionData
-    from ils.sfc.gateway.api import basicSendMessageToClient
-    from ils.sfc.common.constants import RESPONSE, CLIENT_ID, PROJECT
-    clientId = payload[CLIENT_ID] 
-    project = payload[PROJECT]
-    payload = {RESPONSE: getSessionData()}
-    basicSendMessageToClient(project, 'sfcGetSessionDataResponse', payload, clientId)
-    
-def sfcAddClient(payload):
-    from system.ils.sfc import addClient
-    from ils.sfc.common.constants import SESSION, CLIENT_ID, SESSION_ID, PROJECT
-    from ils.sfc.gateway.api import basicSendMessageToClient
-    clientId = payload[CLIENT_ID] 
-    project = payload[PROJECT]
-    sessionId = payload[SESSION_ID]
-    session = addClient(sessionId, clientId)
-    payload = {SESSION:session}
-    basicSendMessageToClient(project, 'sfcSessionStarted', payload, clientId)
+

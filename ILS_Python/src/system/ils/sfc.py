@@ -120,17 +120,30 @@ def watchChart(chartId,name):
     '''chart state event handler'''
 
 # new session stuff:
-def getSession(sessionId):
+def addClient(client):
     pass
 
-def addSession(session, clientId):
+def removeClient(clientId):
+    pass
+
+def addSessionListener(sessionId, clientId):
+    pass
+
+def removeSessionListener(sessionId, clientId):
+    pass
+
+def addSession(session):
+    pass
+
+def updateSession(session):
+    pass
+
+def getSession(sessionId):
     pass
 
 def removeSession(sessionId):
     pass
-
-def addClient(sessionId, clientId):
-    pass
-
+    
 def getSessionData():
     pass
+    
