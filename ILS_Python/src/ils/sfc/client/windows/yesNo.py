@@ -5,26 +5,24 @@ Created on Dec 3, 2015
 '''
 
 import system
+from ils.sfc.client.windowUtil import responseWindowClosed
 
 def yesActionPerformed(event):
-    rootContainer=event.source.parent
-    messageId=rootContainer.messageId
-    sendResponse(messageId, "Yes")
-    system.nav.closeParentWindow(event)
+    window=system.gui.getParentWindow(event)
+    sendResponse(window, "Yes")
+#    system.nav.closeParentWindow(event)
   
 def noActionPerformed(event):
-    rootContainer=event.source.parent
-    messageId=rootContainer.messageId
-    sendResponse(messageId, "No")
-    system.nav.closeParentWindow(event)
+    window=system.gui.getParentWindow(event)
+    sendResponse(window, "No")
+#    system.nav.closeParentWindow(event)
 
 def timeoutActionPerformed(event):
-    rootContainer=event.source.parent
-    messageId=rootContainer.messageId
-    sendResponse(messageId, "Timeout")
-    system.nav.closeParentWindow(event)
+    window=system.gui.getParentWindow(event)
+    sendResponse(window, "Timeout")
+#    system.nav.closeParentWindow(event)
 
-def sendResponse(messageId, textResponse): 
+def sendResponse(window, textResponse): 
     # I'm not sure who this message is going to - presumably the gateway handler
-    from ils.sfc.client.util import sendResponse 
-    sendResponse(messageId, textResponse)
+    from ils.sfc.client.windowUtil import responseWindowClosed 
+    responseWindowClosed(window, textResponse)

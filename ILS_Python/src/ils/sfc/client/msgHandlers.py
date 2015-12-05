@@ -8,6 +8,7 @@ import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
 from ils.sfc.client.controlPanel import ControlPanel
 from ils.sfc.client.util import getTopChartRunId 
+from ils.sfc.client.windowUtil import createPositionedWindow
 
 def sfcCloseWindow(payload):
     from ils.sfc.client.controlPanel import getController
@@ -130,17 +131,23 @@ def sfcDeleteDelayNotification(payload):
     removeDelayNotification(payload[CHART_RUN_ID], payload[WINDOW_ID])
         
 def sfcYesNo(payload):
-    from ils.sfc.common.constants import PROMPT, MESSAGE_ID, TIMEOUT, INSTANCE_ID
-    from ils.sfc.client.windowUtil import createWindow
+    from ils.sfc.common.constants import WINDOW, PROMPT, MESSAGE_ID, TIMEOUT, INSTANCE_ID, BUTTON_LABEL, CENTER, POSITION,  SCALE, WINDOW_TITLE
+    from ils.sfc.client.windowUtil import createPositionedWindow
     print "In msgHandlers.sfcYesNo()...", payload
+
+    payload[WINDOW]="SFC/YesNo"
+    payload[POSITION]=CENTER
+    payload[SCALE]=0.25
+    payload[WINDOW_TITLE]=""
+    payload[BUTTON_LABEL]="Yes/No"
     
     prompt = payload[PROMPT]
     timeoutSecs = payload[TIMEOUT]
     messageId = payload[MESSAGE_ID]
     chartRunId = payload[INSTANCE_ID]
     print "The message id is:", messageId    
-    createWindow("SFC/YesNo", "", chartRunId, {"prompt": prompt, "timeoutSecs": timeoutSecs, "messageId": messageId})
-
+    window=createPositionedWindow(payload, {"prompt": prompt, "timeoutSecs": timeoutSecs, "messageId": messageId})
+    system.nav.centerWindow(window)
 
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError
