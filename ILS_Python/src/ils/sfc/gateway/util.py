@@ -248,7 +248,7 @@ def standardDeviation(dataset, column):
     jvalues = jarray.array(pvalues, 'd')
     return stdDev.evaluate(jvalues)
 
-def getTimeoutSeconds(chartScope, stepProperties, payload):
+def getTimeoutSeconds(chartScope, stepProperties):
     '''For input steps that pass a timeout, get the value in seconds.
        Take the isolation mode time factor into account'''
     from ils.sfc.gateway.api import getTimeFactor
