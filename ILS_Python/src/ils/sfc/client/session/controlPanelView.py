@@ -7,7 +7,6 @@ Created on Nov 24, 2015
 FLASH_INTERVAL = 3.
 import system.dataset
                       
-sessionData = None # a dataset of all gateway sessions
 viewsById = dict() # map of all control panel views indexed by id
 
 class ControlPanelView:
@@ -20,6 +19,7 @@ class ControlPanelView:
         self.cancelMask = True
     # canXXX indicates whether the system would allow the operation
         self.canStart = True
+        print 'canStart'
         self.canPause = False
         self.canResume = False
         self.canCancel = False
@@ -87,6 +87,7 @@ class ControlPanelView:
     def updateStatus(self):
         from java.awt import Color
         from ils.sfc.common.constants import RUNNING, PAUSED, CANCELED, STOPPED, ABORTED
+        print 'updateStatus'
         status = self.session.chartStatus
         statusField = self.getStatusField()
         statusField.setText(status)
@@ -197,11 +198,8 @@ def flashMessageArea(obj):
     t = threading.Timer(FLASH_INTERVAL, flashMessageArea, [obj])
     t.start() 
 
-def getControlPanelView(model):
-    view = viewsById[model.sessionId]
-    if view == None:
-        view = ControlPanelView(model)
-    return view
+def getControlPanelView(sessionId):
+    return viewsById.get(sessionId, None)
 
 def addControlPanelView(controlPanelView):
     viewsById[controlPanelView.session.sessionId] = controlPanelView
@@ -210,14 +208,16 @@ def removeControlPanelView(cpid):
     viewsById.remove(cpid)
 
 def sessionChanged(session):
-    view = getControlPanelView(session)
+    view = viewsById.get(session.sessionId, None)
     if view != None:
+        print 'view found; updating'
         view.updateModel(session)
     else:
+        'creating new view'
         ControlPanelView(session)
 
-def sessionsChanged(sessions):
+def sessionsChanged(newSessionData):
     window = system.gui.getWindow('Reconnect')
     sessionTable = window.getRootContainer().getComponent("sessionTable")
-    sessionTable.data = sessionData
+    sessionTable.data = newSessionData
     
