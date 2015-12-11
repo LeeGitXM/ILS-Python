@@ -15,3 +15,5 @@ def resumeChart(chartId):
 def startChart(chartName, payload):
     pass
 
+def getRunningCharts():
+    pass
