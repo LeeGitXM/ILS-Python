@@ -13,11 +13,13 @@ import string
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
+#from ils.sfc.common.util import callMethod
 import ils.io.opcoutput
 import ils.io.opcconditionaloutput
 import ils.io.recipedetail
 import ils.io.controller
 import ils.io.pkscontroller
+import ils.io.pksacecontroller
 import ils.io.tdccontroller
 
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
@@ -48,16 +50,27 @@ def write(tagPath, command):
         parentTagPath = tagPath
  
     # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = system.tag.read(parentTagPath + "/pythonClass").value
-    pythonClass = pythonClass.lower()+"."+pythonClass
+    pyc = system.tag.read(parentTagPath + "/pythonClass").value
+    pkg = "ils.io.%s"%pyc.lower()
+    pythonClass = pyc.lower()+"."+pyc
 
     status = False
     reason = ""
     # Dynamically create an object (that won't live very long)
     try:
+        # This is the preferred way to do this using Rob's utility procedure
+#        log.trace("Creating a tag object using: <%s>" % (pythonClass))
+#        tag = callMethod(pythonClass)
+
+#        This was Carl's idea
+#        cmd = "import "+pkg+"\nils.io." + pythonClass + "('"+parentTagPath+"')"
+
+        # This requires that I explicitly import everything up above
         cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
+        print "***", cmd
         log.trace("Creating a tag object using: <%s>" % (cmd))
         tag = eval(cmd)
+            
         if string.upper(command) == "WRITEDATUM":
             status, reason = tag.writeDatum()
         elif string.upper(command) == "WRITEWITHNOCHECK":

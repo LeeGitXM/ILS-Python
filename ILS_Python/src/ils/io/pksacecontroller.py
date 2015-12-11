@@ -9,7 +9,7 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io")
 
 class PKSACEController(pkscontroller.PKSController):
-    def __init__(self,path):
+    def __init__(self, path):
         pkscontroller.PKSController.__init__(self,path)
     
     def writeDatum(self):
