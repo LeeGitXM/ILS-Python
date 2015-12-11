@@ -93,8 +93,8 @@ def sfcDevTest(payload):
 ########## New thin client stuff ################
 def sfcAddClient(payload):
     from system.ils.sfc import addClient
-    from ils.sfc.common.constants import NAME, PROJECT, CLIENT_ID
-    addClient(payload[NAME], payload[PROJECT], payload[CLIENT_ID])
+    from ils.sfc.common.constants import USER, PROJECT, CLIENT_ID
+    addClient(payload[USER], payload[PROJECT], payload[CLIENT_ID])
 
 def sfcRemoveClient(payload):
     from system.ils.sfc import removeClient
@@ -115,7 +115,7 @@ def sfcAddSession(payload):
     '''Create a new session'''
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME, CLIENT_ID
     from ils.sfc.gateway.util import addSession
-    addSession(payload[CHART_NAME], payload[ISOLATION_MODE], payload[PROJECT], payload[USER], payload[CLIENT_ID])
+    addSession(payload[CHART_NAME], payload[ISOLATION_MODE], payload[CLIENT_ID])
 
 def sfcStartChart(payload):
     '''start the sessions SFC'''

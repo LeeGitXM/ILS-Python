@@ -26,24 +26,32 @@ def sendMessageToGateway(handler, payload):
 def startSession(chartPath, isolationMode, startChart):
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME, CLIENT_ID
     import system.util, system.security
-    project = system.util.getProjectName() 
-    user = system.security.getUsername()
     payload = dict()
     payload[ISOLATION_MODE] = isolationMode
-    payload[PROJECT] = project
-    payload[USER] = user
     payload[CHART_NAME] = chartPath
     payload[CLIENT_ID] = system.util.getClientId()
-    sendMessageToGateway('sfcStartSession', payload)
+    sendMessageToGateway('sfcAddSession', payload)
 
-def requestSessionData():
+def addClient():
     '''Send a message to the gateway requesting chart names for sessions;
        the return message is sfcChartNamesResponse'''
-    from ils.sfc.common.constants import PROJECT,CLIENT_ID
+    from ils.sfc.common.constants import PROJECT,USER,CLIENT_ID
+    import system.util, system.security
+    payload = {
+        PROJECT:system.util.getProjectName(), 
+        USER:system.security.getUsername(),
+        CLIENT_ID:system.util.getClientId()}
+    sendMessageToGateway('sfcAddClient', payload)
+
+def connectToSession(sessionId):
+    '''Listen for changes on a particular session'''
+    from ils.sfc.common.constants import SESSION_ID, CLIENT_ID
     import system.util
-    payload = {PROJECT:system.util.getProjectName(), CLIENT_ID:system.util.getClientId()}
-    sendMessageToGateway('sfcGetSessionData', payload)
-    
+    payload = {
+        SESSION_ID:sessionId,
+        CLIENT_ID:system.util.getClientId()}
+    sendMessageToGateway('sfcAddSessionListener', payload)
+        
 def removeSession(sessionId):
     '''Send a message to the gateway to delete a session'''
     from ils.sfc.common.constants import PROJECT, CLIENT_ID, SESSION_ID
@@ -53,14 +61,3 @@ def removeSession(sessionId):
         CLIENT_ID:system.util.getClientId(), 
         SESSION_ID:sessionId }
     sendMessageToGateway('sfcDeleteSession', payload)
-
-
-def requestAddClient(sessionId):
-    from ils.sfc.common.constants import PROJECT,CLIENT_ID, SESSION_ID
-    import system.util
-    payload = {
-        PROJECT:system.util.getProjectName(), 
-        CLIENT_ID:system.util.getClientId(),
-        SESSION_ID: sessionId
-        }
-    sendMessageToGateway('sfcAddClient', payload)

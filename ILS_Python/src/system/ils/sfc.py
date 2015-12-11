@@ -132,7 +132,7 @@ def addSessionListener(sessionId, clientId):
 def removeSessionListener(sessionId, clientId):
     pass
 
-def addSession(session):
+def addSession(session, clientId):
     pass
 
 def updateSession(session):
@@ -144,6 +144,4 @@ def getSession(sessionId):
 def removeSession(sessionId):
     pass
     
-def getSessionData():
-    pass
-    
+

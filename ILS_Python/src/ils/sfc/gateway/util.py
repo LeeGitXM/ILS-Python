@@ -371,12 +371,11 @@ def basicCancelChart(topChartRunId):
 
 #################### New thin client stuff
 
-def addSession(chartName, isolationMode, project, user, clientId):
+def addSession(chartName, isolationMode, clientId):
     from system.ils.sfc import addSession
     from ils.sfc.common.session.sfcSession import SfcSession
-    from ils.sfc.gateway.api import basicSendMessageToClient
-    session = SfcSession(chartName, isolationMode, project, user)
-    addSession(session)
+    session = SfcSession(chartName, isolationMode)
+    addSession(session, clientId)
     
 def startChart(sessionId):
     from system.ils.sfc import getSession
@@ -388,6 +387,6 @@ def startChart(sessionId):
     initialChartParams[ISOLATION_MODE] = model.isolationMode
     initialChartParams[SESSION_ID] = sessionId
     system.sfc.startChart(model.chartName, initialChartParams)
-    updateClientSessions(sessionId)
+
 
    
