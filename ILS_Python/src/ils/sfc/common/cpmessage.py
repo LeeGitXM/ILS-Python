@@ -9,7 +9,7 @@ import system
 from ils.sfc.common.util import boolToBit
 from ils.sfc.common.util import handleUnexpectedClientError
 
-MSG_TABLE = 'SfcControlPanelMsgs'
+MSG_TABLE = 'SfcControlPanelMsg'
 
 def getControlPanelMessages(chartRunId, db):
     sql = "select * from " + MSG_TABLE + " where chartRunId = '%s' order by createTime asc" % (chartRunId)
