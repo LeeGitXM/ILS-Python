@@ -9,54 +9,60 @@ from ils.migration.common import lookupMessageQueue
 from ils.common.database import lookup
 #from xom.extensions import family
 
-def load(rootContainer):
+def load(rootContainer, stripGDA):
     filename=rootContainer.getComponent("File Field").text
     if not(system.file.fileExists(filename)):
         system.gui.messageBox("Yes, the file exists")
         return
     
+    print "Stripping: ", stripGDA
+    
     contents = system.file.readFileAsString(filename, "US-ASCII")
     records = contents.split('\n')
     
-    ds=parseRecords(records,"INTERFACE")
+    ds=parseRecords(records,"INTERFACE", stripGDA)
     table=rootContainer.getComponent("Interface Container").getComponent("Power Table")
     table.data=ds
     
-    ds=parseRecords(records,"APPLICATION")
+    ds=parseRecords(records,"APPLICATION", stripGDA)
     table=rootContainer.getComponent("Application Container").getComponent("Power Table")
     table.data=ds
     
-    ds=parseRecords(records,"FAMILY")
+    ds=parseRecords(records,"FAMILY", stripGDA)
     table=rootContainer.getComponent("Family Container").getComponent("Power Table")
     table.data=ds
     
-    ds=parseRecords(records,"FINAL-DIAGNOSIS")
+    ds=parseRecords(records,"FINAL-DIAGNOSIS", stripGDA)
     table=rootContainer.getComponent("Final Diagnosis Container").getComponent("Power Table")
     table.data=ds
     
-    ds=parseRecords(records,"QUANT-OUTPUT")
+    ds=parseRecords(records,"SQC-DIAGNOSIS", stripGDA)
+    table=rootContainer.getComponent("SQC Diagnosis Container").getComponent("Power Table")
+    table.data=ds
+    
+    ds=parseRecords(records,"QUANT-OUTPUT", stripGDA)
     table=rootContainer.getComponent("Quant Output Container").getComponent("Power Table")
     table.data=ds
     
-    ds=parseRecords(records,"QUANT-RECOMMENDATION-DEF")
+    ds=parseRecords(records,"QUANT-RECOMMENDATION-DEF", stripGDA)
     table=rootContainer.getComponent("Quant Recommendation Def Container").getComponent("Power Table")
     table.data=ds
     
-    ds=parseRecords(records,"OPC-FLOAT-OUTPUT")
+    ds=parseRecords(records,"OPC-FLOAT-OUTPUT", stripGDA)
     table=rootContainer.getComponent("Float Output Container").getComponent("Power Table")
     table.data=ds
 
-    ds=parseRecords(records,"OPC-TEXT-COND-CNTRL-ACE-OUTPUT")
+    ds=parseRecords(records,"OPC-TEXT-COND-CNTRL-ACE-OUTPUT", stripGDA)
     table=rootContainer.getComponent("Text Cond Cntrl ACE Output Container").getComponent("Power Table")
     table.data=ds
     
-    ds=parseRecords(records,"OPC-TEXT-COND-CNTRL-PKS-OUTPUT")
+    ds=parseRecords(records,"OPC-TEXT-COND-CNTRL-PKS-OUTPUT", stripGDA)
     table=rootContainer.getComponent("Text Cond Cntrl PKS Output Container").getComponent("Power Table")
     table.data=ds
         
     print "Done Loading!"
 
-def parseRecords(records,recordType):        
+def parseRecords(records,recordType, stripGDA=True):
     print "Parsing %s records... " % (recordType)
     i = 0
     numTokens=100
@@ -64,7 +70,9 @@ def parseRecords(records,recordType):
     for line in records:
         line=line[:len(line)-1] #Strip off the last character which is some sort of CRLF
         tokens = line.split(',')
+        
         if string.upper(tokens[0]) == recordType:
+   
             if (i == 0):
                 line=line.rstrip(',')
                 line="id,%s" % (line)
@@ -73,6 +81,8 @@ def parseRecords(records,recordType):
             else:
                 line="-1,%s" % (line)
                 tokens = line.split(',')
+                if stripGDA:
+                    tokens = stripTokens(tokens) 
                 data.append(tokens[:numTokens])
             i = i + 1
 
@@ -82,6 +92,14 @@ def parseRecords(records,recordType):
     ds = system.dataset.toDataSet(header, data)
     print "   ...parsed %i %s records!" % (len(data), recordType)
     return ds
+
+def stripTokens(tokens):
+    strippedTokens=[]
+    for token in tokens:
+        strippedToken=token.strip('-GDA')
+        strippedTokens.append(strippedToken)
+    return strippedTokens
+
 
 def initializeApplication(container):
     SQL="delete from DtApplication"
@@ -101,6 +119,11 @@ def initializeFinalDiagnosis(container):
     SQL="delete from DtFinalDiagnosis"
     rows=system.db.runUpdateQuery(SQL)
     print "Delete %i rows from DtFinalDiagnosis" % (rows)    
+
+def initializeSQCDiagnosis(container):
+    SQL="delete from DtSQCDiagnosis"
+    rows=system.db.runUpdateQuery(SQL)
+    print "Delete %i rows from DtSQCDiagnosis" % (rows)    
     
 def initializeQuantOutput(container):
     SQL="delete from DtQuantOutput"
@@ -274,6 +297,29 @@ def insertFinalDiagnosis(container):
 
     table.data=ds
 
+def insertSQCDiagnosis(container):
+    rootContainer=container.parent
+    table=container.getComponent("Power Table")
+    ds=table.data
+
+    for row in range(ds.rowCount):
+        family=ds.getValueAt(row, "family")
+        sqcDiagnosis=ds.getValueAt(row, 4)    # I used to use the label, but Chuck is using the name, so use the name
+            
+        familyId=getFamilyId(rootContainer, family)
+            
+        if familyId >= 0:
+            SQL = "insert into DtSQCDiagnosis (SQCDiagnosisName, FamilyId, Status) "\
+                "values ('%s', %s, 'Unknown')" % \
+                 (sqcDiagnosis, str(familyId))
+            print SQL
+            sqcDiagnosisId=system.db.runUpdateQuery(SQL, getKey=True)
+            ds=system.dataset.setValue(ds, row, "id", sqcDiagnosisId) 
+            print "Insert %s and got id: %i" % (family, sqcDiagnosisId)                                                         
+        else:
+            print "Could not find family: <%s>" % (family)
+
+    table.data=ds
 
 def insertQuantOutput(container):
     rootContainer=container.parent
