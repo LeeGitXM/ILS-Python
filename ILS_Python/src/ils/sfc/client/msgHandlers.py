@@ -262,15 +262,4 @@ def setMessageQueue(payload):
     from ils.sfc.client.controlPanel import setMessageQueue
     setMessageQueue(payload)
 
-################ New thin client ###################
-def sfcSessionChanged(payload):
-    '''update a session'''
-    from ils.sfc.common.constants import SESSION
-    from ils.sfc.client.session.controlPanelView import sessionChanged
-    sessionChanged(payload[SESSION])
-    
-def sfcSessionsChanged(payload):
-    '''update a session'''
-    from ils.sfc.common.constants import SESSIONS
-    from ils.sfc.client.session.controlPanelView import sessionsChanged
-    sessionsChanged(payload[SESSIONS])
+
