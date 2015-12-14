@@ -8,7 +8,7 @@ import system
 import time
 import traceback
 from java.util import Date
-from ils.io.util import checkIfUDT
+from ils.io.util import checkIfUDT, checkIfController
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -145,13 +145,14 @@ def writeWithNoCheck(tagPath, val, valueType=""):
 # This implements the common core write logic.  It is used by both WriteDatum and WriteWithNoCheck.
 # The reason for not just making this WriteWithNoCheck is so that I can make distinct log messages.
 def writer(tagPath, val, valueType=""):
+    log.trace("In writer with %s-%s-%s" % (tagPath, str(val), valueType))
     errorMessage=""
     tagExists = system.tag.exists(tagPath)
     if not(tagExists):
         return False, "%s does not exist" % (tagPath)
     
     if checkIfUDT(tagPath):
-        
+        log.trace("The target is a UDT - resetting...")
         status = system.tag.write(tagPath + '/command', 'RESET')
         if status == 0:
             log.error("ERROR: writing RESET to the command tag for %s" % (tagPath))
@@ -160,6 +161,8 @@ def writer(tagPath, val, valueType=""):
         # Give the reset command a chance to complete
         time.sleep(0.5)
         
+        # I think valueType is always used - REQUIRED!  This is now handled below by checking 
+        # if it is a controller.
         if valueType == "":
             # The 'Tag" is one of the OPC Output classes - not a controller
             log.trace("Writing %s to /writeval..." % (str(val)))
@@ -169,13 +172,22 @@ def writer(tagPath, val, valueType=""):
                 return False, "Failed writing %s to writeValue tag" % (str(val))
         else:
             # The 'Tag" is a controller
-            payload = {"val": val, "valueType": valueType}
-            log.trace("Writing %s to /payload..." % (str(payload)))
+            isController=checkIfController(tagPath)
+            if isController:
+                payload = {"val": val, "valueType": valueType}
+                log.trace("Writing %s to /payload..." % (str(payload)))
             
-            status = system.tag.write(tagPath + '/payload', str(payload))
-            if status == 0:
-                log.error("ERROR: writing %s to the payload tag for %s" % (str(payload), tagPath))
-                return False, "Failed writing %s to payload tag" % (str(val))
+                status = system.tag.write(tagPath + '/payload', str(payload))
+                if status == 0:
+                    log.error("ERROR: writing %s to the payload tag for %s" % (str(payload), tagPath))
+                    return False, "Failed writing %s to payload tag" % (str(val))
+            else:
+                # The 'Tag" is one of the OPC Output classes - not a controller
+                log.trace("Writing %s to /writeval..." % (str(val)))
+                status = system.tag.write(tagPath + '/writeValue', val)
+                if status == 0:
+                    log.error("ERROR: writing %s to the writeValue tag for %s" % (str(val), tagPath))
+                    return False, "Failed writing %s to writeValue tag" % (str(val))
         
         log.trace("Writing WriteDatum to /command")
         status = system.tag.write(tagPath + '/command', 'WriteDatum')
@@ -230,22 +242,6 @@ def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1):
     confirmation, errorMessage = confirmWrite(fullTagPath, val)
 
     return confirmation, errorMessage
-
-#    startTime = Date().getTime()
-#    delta = (Date().getTime() - startTime) / 1000
-
-#    while (delta < timeout):
-#        readbackValue = system.tag.read(fullTagPath).value
-#        log.trace("...read value: %s" % (str(readbackValue)))
-#        if readbackValue == val:
-#            return True, ""
-
-        # Time in seconds
-#        time.sleep(frequency)
-#        delta = (Date().getTime() - startTime) / 1000
-
-#    log.error("Timed out waiting for write confirmation of %s!" % (fullTagPath))
-#    return False, "Timed out waiting for write confirmation"
 
 
 # This is the equivalent of s88-write-setpoint-ramp in the old system.

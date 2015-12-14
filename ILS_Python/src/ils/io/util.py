@@ -20,6 +20,21 @@ def checkIfUDT(fullTagPath):
         isUDT = False
     return isUDT
 
+# Try and figure out if the thing is a controller, we should already know that it is a UDT.
+# If it has a tag PythonClass, and the Python class contains the word controller then it is a controller, 
+# otherwise it is NOT a controller.
+def checkIfController(fullTagPath):
+    tagPath=fullTagPath + '/pythonClass'
+    exists=system.tag.exists(tagPath)
+    if not(exists):
+        return False
+
+    pythonClass=system.tag.read(tagPath).value
+    print "Checking if <%s> contains <CONTROLLER>" % (pythonClass)
+    if pythonClass.upper().find('CONTROLLER') > -1:
+        return True
+
+    return False
 
 # Compare two tag values taking into account that a float may be disguised as a text string and also
 # calling two floats the same if they are almost the same.
