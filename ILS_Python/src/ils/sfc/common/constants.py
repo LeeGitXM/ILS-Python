@@ -39,6 +39,7 @@ CLIENT_ID = 'clientId'
 COMMAND = "callback"
 COMPUTER = 'computer'
 CONFIG = 'config'
+CONTROL_PANEL_ID = 'controlPanelId'
 CREATE_TIME = 'createTime'
 CREATE = 'create'
 DATA = "data"

@@ -6,18 +6,12 @@ from system.print import createPrintJob
 
 import ils.sfc.common.util
 from ils.sfc.client.util import sendResponse 
-from ils.sfc.client.controlPanel import ControlPanel
 from ils.sfc.client.util import getTopChartRunId 
 from ils.sfc.client.windowUtil import createPositionedWindow
 
 def sfcCloseWindow(payload):
-    from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.constants import WINDOW, INSTANCE_ID
-    windowPath = payload[WINDOW]  
-    system.nav.closeWindow(windowPath)
-    controlPanel = getController(payload[INSTANCE_ID])
-    if controlPanel != None:
-        controlPanel.removeWindows(windowPath)
+    
  
 def sfcDialogMessage(payload):
     from ils.sfc.common.constants import METHOD, MESSAGE, MESSAGE_ID, ACK_REQUIRED
@@ -34,11 +28,11 @@ def sfcDialogMessage(payload):
     createPositionedWindow(payload, windowProps)
 
 def sfcEnableDisable(payload):
-    from ils.sfc.client.controlPanel import getController
     from ils.sfc.common.constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL
-    chartRunId = getTopChartRunId(payload)
-    controlPanel = getController(chartRunId)
-    controlPanel.setCommandMask(payload[ENABLE_PAUSE], payload[ENABLE_RESUME], payload[ENABLE_CANCEL])
+    #TODO: re-implement enabling at db level
+    #chartRunId = getTopChartRunId(payload)
+    #controlPanel = getController(chartRunId)
+    #controlPanel.setCommandMask(payload[ENABLE_PAUSE], payload[ENABLE_RESUME], payload[ENABLE_CANCEL])
 
 def sfcInput(payload):
     from ils.sfc.common.constants import PROMPT, INPUT, MESSAGE_ID
@@ -155,18 +149,6 @@ def sfcUnexpectedError(payload):
     msg = payload[MESSAGE]
     handleUnexpectedClientError(msg)
 
-def sfcUpdateControlPanel(payload):
-    from ils.sfc.client.controlPanel import updateControlPanels 
-    updateControlPanels()
-
-def sfcUpdateChartStatus(payload):
-    from ils.sfc.client.controlPanel import updateChartStatus 
-    updateChartStatus(payload)
-
-def sfcUpdateCurrentOperation(payload):
-    from ils.sfc.client.controlPanel import updateCurrentOperation 
-    updateCurrentOperation(payload)
-
 def sfcReviewData(payload):
     from ils.sfc.common.constants import MESSAGE_ID, PRIMARY_CONFIG, SECONDARY_CONFIG, POSTING_METHOD, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
     from ils.sfc.client.windowUtil import createPositionedWindow
@@ -258,8 +240,11 @@ def dispatchMessage(payload):
             errMsg = "Error dispatching client message %s: %s" % (msgName, str(e))
         system.gui.errorBox(errMsg)
 
-def setMessageQueue(payload):
-    from ils.sfc.client.controlPanel import setMessageQueue
-    setMessageQueue(payload)
-
+# new windowing stuff:
+def sfcOpenWindow(payload):
+    from ils.sfc.common.constants import WINDOW, WINDOW_ID
+    from ils.sfc.client.util import openWindow
+    windowId = payload[WINDOW_ID]
+    window = payload[WINDOW]
+    openWindow(windowId, window)
 

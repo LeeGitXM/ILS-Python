@@ -5,24 +5,32 @@ Created on Dec 3, 2015
 '''
 
 import system
-from ils.sfc.client.windowUtil import responseWindowClosed
+yesNoTable = 'SfcYesNo'
 
 def yesActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendResponse(window, "Yes")
-#    system.nav.closeParentWindow(event)
+    sendResponse(window, yesNoTable, "Yes")
   
 def noActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendResponse(window, "No")
-#    system.nav.closeParentWindow(event)
+    sendResponse(window, yesNoTable, "No")
 
 def timeoutActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendResponse(window, "Timeout")
-#    system.nav.closeParentWindow(event)
-
-def sendResponse(window, textResponse): 
-    # I'm not sure who this message is going to - presumably the gateway handler
-    from ils.sfc.client.windowUtil import responseWindowClosed 
-    responseWindowClosed(window, textResponse)
+    sendResponse(window, yesNoTable, "Timeout")
+    
+def sendResponse(window, windowTable, response):
+    '''standard actions when a window representing a response is closed by the user'''
+    from ils.sfc.client.util import sendResponse
+    import system.db
+    from ils.sfc.common.constants import RESPONSE, MESSAGE_ID
+    rootContainer = window.getRootContainer()
+    windowId = rootContainer.windowId
+    system.db.runUpdateQuery("delete from %s where windowId = '%s'" % (windowTable, windowId))
+    system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId))
+    replyPayload = dict() 
+    replyPayload[RESPONSE] = response
+    replyPayload[MESSAGE_ID] = windowId    
+    project = system.util.getProjectName()
+    system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
+    system.nav.closeWindow(window)

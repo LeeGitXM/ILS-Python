@@ -98,3 +98,28 @@ def updateClockField(window):
     clockField = rootContainer.getComponent('clockField')
     clockField.text = formatTime(time.time())
 
+# new window stuff
+def openDbWindow(buttonDataset, row):
+    '''A generic helper method for message handlers to open a window in the 
+       control panel that has an associated toolbar button'''
+    import system.nav
+    from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
+    windowId = buttonDataset.getValueAt(0,'windowId')
+    windowType = buttonDataset.getValueAt(0,'type')
+    position = buttonDataset.getValueAt(0,POSITION)
+    scale = buttonDataset.getValueAt(0,SCALE)
+    title = buttonDataset.getValueAt(0,'title')
+    window = system.nav.openWindowInstance(windowType, {WINDOW_ID:windowId})
+    window.title = title
+    positionWindow(window, position, scale)
+    
+def closeDbWindow(targetId):
+    import system.gui, system.nav
+    for window in system.gui.getOpenedWindows():
+        try:
+            windowId = window.getRootContainer().windowId
+            if windowId == targetId:
+                system.nav.closeWindow(window)
+        except:
+            # no window id property
+            pass

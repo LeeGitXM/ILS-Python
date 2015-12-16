@@ -14,20 +14,6 @@ def sendResponse(messageId, response):
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
 
-def openControlPanel(chartPath, isolationMode, startChart):
-    from ils.sfc.client.controlPanel import createControlPanel
-    from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME
-    project = system.util.getProjectName() 
-    user = system.security.getUsername()
-    initialChartProps = dict()
-    initialChartProps[ISOLATION_MODE] = isolationMode
-    initialChartProps[PROJECT] = project
-    initialChartProps[USER] = user
-    initialChartProps[CHART_NAME] = chartPath
-    controller = createControlPanel(initialChartProps)   
-    if startChart:
-        controller.doStart()
-
 def runTests(testChartPaths, isolationMode, reportFile):
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, TEST_CHART_PATHS, TEST_REPORT_FILE
     project = system.util.getProjectName()
@@ -173,6 +159,28 @@ def getDatabaseName(chartProperties):
     isolationMode = getIsolationMode(chartProperties)
     return getDatabaseName(isolationMode)
 
+# new window stuff
+   
+def openWindow(windowId, window):
+    '''Open a window given its type and database key'''
+    import system.nav
+    from ils.sfc.common.constants import WINDOW_ID
+    windowProps = {WINDOW_ID:windowId}
+    system.nav.openWindow(window, windowProps)
+    
+def getChartStatus(runId):
+    '''Get the status of a running chart. Returns None if the run is not found'''
+    from system.sfc import getRunningCharts
+    runningCharts = getRunningCharts()
+    status = 'None'
+    for row in range(runningCharts.rowCount):
+        rowRunId = runningCharts.getValueAt(row, 'instanceId')
+        if rowRunId == runId:
+            chartState = runningCharts.getValueAt(row, 'chartState')
+            status = str(chartState)
+    return status
 
-
+def getRootContainer(event):
+    from system.gui import getParentWindow
+    return getParentWindow(event).rootContainer
     

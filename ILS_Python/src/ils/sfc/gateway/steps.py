@@ -29,6 +29,13 @@ def invokeStep(scopeContext, stepProperties, methodName):
         msg = "Unexpected error: " + type(e).__name__ + " " + str(e)
         print msg
         handleUnexpectedGatewayError(scopeContext.getChartScope(), msg)
+
+def operation(scopeContext, stepProperties):
+    chartScope = scopeContext.getChartScope()
+    stepName = getStepProperty(stepProperties, NAME)
+    database = getDatabaseName(chartScope)
+    chartRunId = getTopChartRunId(chartScope)
+    system.db.runUpdateQuery("update SfcControlPanel set operation = '%s' where chartRunId = '%s'" % (stepName, chartRunId), database)
          
 def queueInsert(scopeContext, stepProperties):
     '''
@@ -95,18 +102,40 @@ def yesNo(scopeContext, stepProperties):
     Get a yes/no response from the user; block until a
     response is received, put response in chart properties
     '''
-    from ils.sfc.gateway.util import getTimeoutSeconds
+    from ils.sfc.gateway.util import getTimeoutSeconds, getControlPanelId, createWindow, sendOpenWindowMessage
+    from ils.sfc.gateway.api import getDatabaseName
+    import time
+    import system.db
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    
+    # window common properties:
+    controlPanelId = getControlPanelId(chartScope)
+    buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+    position = getStepProperty(stepProperties, POSITION) 
+    scale = getStepProperty(stepProperties, SCALE) 
+    title = getStepProperty(stepProperties, WINDOW_TITLE) 
+
+    database = getDatabaseName(chartScope)
+    
+    # create record in common window table:
+    windowId = createWindow(controlPanelId, 'SFC/YesNo', buttonLabel, position, scale, title, database)
+ 
+    # step-specific properties:
     prompt = getStepProperty(stepProperties, PROMPT)
     recipeLocation = getRecipeScope(stepProperties) 
     key = getStepProperty(stepProperties, KEY) 
-    timeoutSeconds = getTimeoutSeconds(chartScope, stepProperties)
-    payload = dict()
-    payload[PROMPT] = prompt 
-    payload[TIMEOUT] = timeoutSeconds
-    messageId = sendMessageToClient(chartScope, YES_NO_HANDLER, payload)
-    value = waitOnResponse(messageId, chartScope)
+
+    # calculate the absolute timeout time in epoch secs:
+    timeoutSecs = time.time() + getTimeoutSeconds(chartScope, stepProperties)
+
+    # create Y/N step-specific db record:
+    system.db.runUpdateQuery("insert into SfcYesNo (windowId, prompt, timeout, recipeLocation, recipeKey) values ('%s', '%s', %f, '%s', '%s')" % (windowId, prompt, timeoutSecs, recipeLocation, key), database)
+    
+    payload = {WINDOW_ID:windowId}
+    #sendOpenWindowMessage(chartScope, payload)
+    
+    value = waitOnResponse(windowId, chartScope)
     s88Set(chartScope, stepScope, key, value, recipeLocation)
 
 def cancel(scopeContext, stepProperties):
@@ -155,7 +184,7 @@ def controlPanelMessage(scopeContext, stepProperties):
             elapsedSeconds = time.time() - startTime
         if ackTime == None:
             timeOutControlPanelMessageAck(msgId, database)
-        sendUpdateControlPanelMsg(chartScope)
+        # sendUpdateControlPanelMsg(chartScope)
             
 def timedDelay(scopeContext, stepProperties):
     from ils.sfc.common.util import createUniqueId, callMethod
