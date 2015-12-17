@@ -91,7 +91,7 @@ class BasicBlock():
     # Replace or add a property
     # We expect the dictionary to have all the proper attributes
     def setProperty(self,name,dictionary):
-        print "BasicBlock.setProperty:",name,"=",dictionary
+        #print "BasicBlock.setProperty:",name,"=",dictionary
         self.properties[name] = dictionary
         self.handler.sendPropertyNotification(self.uuid,name,dictionary.get("value",""))
         
