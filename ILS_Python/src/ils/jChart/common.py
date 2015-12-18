@@ -3,6 +3,30 @@ Created on Aug 27, 2014
 
 @author: ILS
 '''
+
+def getJFChart(chart):
+#    jfChart=None
+#    from app.scriptmodel import findJFChart
+    print "Finding the J Free Chart..."
+    try:
+        print "Done 1"
+        # return (chart.chart)
+    except:
+        print "Pass 1"
+    try:
+        for x in range(chart.componentCount):
+            try:
+                comp=chart.getComponent(x)
+                print "Component: ", comp
+                print " this component has ", comp.componentCount, " components"
+                print "---"
+            except:
+                print "Pass 2"
+    except:
+        print "Pass 3"
+
+    print "Done 2"
+
 # Return the request plot from a stacked plot or the single plot
 def getPlot(jfchart, plotIndex):
     plot = jfchart.getPlot()

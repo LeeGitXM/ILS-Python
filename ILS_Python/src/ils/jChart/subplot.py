@@ -11,7 +11,7 @@ Created on Aug 27, 2014
 
 # Initialize a plot (clears any existing datasets)
 def add(chart):
-    from ils.jChart.common import getPlot
+    from ils.BatchExpert.jChart.common import getPlot
     
     print "Adding a plot"
     plotIndex = 0
@@ -29,7 +29,7 @@ def add(chart):
 # This seems to work on one of the original subplots, but seems to throw an error if I try to remove 
 # a dataset that I added.
 def remove(chart, plotIndex):
-    from ils.jChart.common import getPlot
+    from ils.BatchExpert.jChart.common import getPlot
 
     subPlot = getPlot(chart, plotIndex)
     combinedPlot = chart.getChart().getPlot()

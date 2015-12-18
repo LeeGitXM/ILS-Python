@@ -49,7 +49,7 @@ def addSeriesFromIgDataset(chart, plotIndex, axisIndex, key, igDataset):
     # Add the new jF datasets to the plot
     plot = getPlot(chart, plotIndex)
     for col in range(1, igDataset.columnCount):
-        print "Adding Dataset: ", plot.getDataset().getClass().getName()
+#        print "Adding Dataset: ", plot.getDataset().getClass().getName()
         plot.getDataset(axisIndex).addSeries(xySeries[col])
 
 # Add a single x,y data point to an existing series

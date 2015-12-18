@@ -58,7 +58,6 @@ def yAdd(chart, plotIndex, axisIndex, label, leftOrRight):
     plot.setRenderer(axisIndex, XYLineAndShapeRenderer())
     
 
-
 def yOrientation(chart, plotIndex, axisIndex, label, leftOrRight):
     import string
     from ils.jChart.common import getPlot
