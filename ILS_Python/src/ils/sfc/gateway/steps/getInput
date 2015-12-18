@@ -1,0 +1,22 @@
+'''
+Created on Dec 17, 2015
+
+@author: rforbes
+'''
+def activate(scopeContext, stepProperties):
+    from ils.sfc.gateway.util import getTimeoutSeconds, sendMessageToClient, getStepProperty, waitOnResponse
+    from ils.sfc.gateway.api import s88Set
+    from system.ils.sfc.common.Constants import RECIPE_LOCATION, TIMEOUT, PROMPT, KEY
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    prompt = getStepProperty(stepProperties, PROMPT) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
+    timeoutSeconds = getTimeoutSeconds(chartScope, stepProperties)
+    payload = dict()
+    payload[PROMPT] = prompt
+    payload[TIMEOUT] = timeoutSeconds
+    
+    messageId = sendMessageToClient(chartScope, 'sfcInput', payload)
+    value = waitOnResponse(messageId, chartScope)
+    s88Set(chartScope, stepScope, key, value, recipeLocation )
