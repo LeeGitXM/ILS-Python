@@ -77,6 +77,13 @@ def fetchApplicationId(application, database=""):
     applicationId = system.db.runScalarQuery(SQL, database)
     return applicationId
 
+# Lookup the family Id given the name
+def fetchFamilyId(familyName, database=""):
+    SQL = "select FamilyId from DtFamily where FamilyName = '%s'" % (familyName)
+    log.trace(SQL)
+    familyId = system.db.runScalarQuery(SQL, database)
+    return familyId
+
 # Update the application priority
 def updateFamilyPriority(familyName, familyPriority, database=""):
     SQL = "update DtFamily set FamilyPriority = %i where FamilyName = '%s'" % (familyPriority, familyName)
