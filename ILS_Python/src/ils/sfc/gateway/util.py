@@ -84,7 +84,7 @@ def transferStepPropertiesToMessage(stepProperties, payload):
         if not (prop.getName() == 'associated-data'):
             payload[prop.getName()] = stepProperties.getOrDefault(prop)
  
-def waitOnResponse(requestId, chartScope):
+def waitOnResponse(requestId, chartScope, timeoutTime=None):
     '''
     Sleep until a response to the given request
     has been received. Callers should be
@@ -98,14 +98,16 @@ def waitOnResponse(requestId, chartScope):
     cycle = 0
     print 'waitOnResponse', requestId
     while response == None and cycle < maxCycles:
+        if timeoutTime != None and time.time() >= timeoutTime:
+            break
         time.sleep(SLEEP_INCREMENT);
         cycle = cycle + 1
         # chartState = chartScope[CHART_STATE]
         # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
             # TODO: log that we're bailing
         # return None
-        print 'calling getResponse', requestId
         response = getResponse(requestId)
+
     if response == None:
         handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
         return None
@@ -373,18 +375,17 @@ def basicCancelChart(topChartRunId):
     from system.ils.sfc import setCancelRequested
     setCancelRequested(topChartRunId)
     system.sfc.cancelChart(topChartRunId)
-
-#################### New thin client stuff
     
-def createWindow(controlPanelId, window, buttonLabel, position, scale, title, database):
+def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, title, database):
     import system.db
     from ils.sfc.common.util import createUniqueId
     windowId = createUniqueId()
     system.db.runUpdateQuery("Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title), database)
     return windowId
     
-def sendOpenWindowMessage(chartProperties, handler, payload):
-    return sendMessageToClient(chartProperties, 'sfcOpenWindow', payload)
-    
+def sendOpenWindow(chartScope, windowId, database):
+    sendMessageToClient(chartScope, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
 
+def sendCloseWindow(chartScope, windowId):
+    sendMessageToClient(chartScope, 'sfcCloseWindow', {WINDOW_ID: windowId})
    

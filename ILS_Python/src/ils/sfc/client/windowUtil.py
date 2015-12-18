@@ -4,36 +4,6 @@ Created on May 3, 2015
 @author: rforbes
 '''
 
-def createPositionedWindow(payload, windowProps = dict()):
-    '''A generic helper method for message handlers to open a window in the 
-       control panel that has an associated toolbar button'''
-    from ils.sfc.client.controlPanel import getController
-    # We expect these keys in the payload:
-    from ils.sfc.common.constants import POSITION, SCALE, WINDOW, WINDOW_TITLE, INSTANCE_ID, BUTTON_LABEL
-    window = createWindow(payload[WINDOW], payload[WINDOW_TITLE], payload[INSTANCE_ID], windowProps)
-    positionWindow(window, payload[POSITION],  payload[SCALE])
-    controlPanel = getController(payload[INSTANCE_ID])
-    buttonLabel = payload.get(BUTTON_LABEL, None)
-    if controlPanel != None:
-        controlPanel.addWindow(buttonLabel, window) 
-    else:
-        print 'could not find control panel for run ', payload[INSTANCE_ID]
-    return window
-
-def createWindow(windowName, windowTitle, chartRunId, windowProps = dict()):
-    '''Create an instance of the given window.
-       "Instance" implies multiple windows of this type may be open at once.
-       ALL windows must be created with this method.
-       windowProps contains any extra (ie beyond basic) properties; it may be defaulted'''
-    from ils.sfc.common.constants import WINDOW_ID, INSTANCE_ID
-    from ils.sfc.common.util import createUniqueId
-    import system.nav
-    windowProps[INSTANCE_ID] = chartRunId
-    windowProps[WINDOW_ID] = createUniqueId()
-    window = system.nav.openWindowInstance(windowName, windowProps)
-    window.title = windowTitle
-    return window
-
 def positionWindow(window, position, scale):
     '''Position and size a window within the main window''' 
     from ils.sfc.common.constants import LEFT, CENTER, TOP
@@ -64,29 +34,12 @@ def positionWindow(window, position, scale):
 def getWindowId(window):
     return window.getRootContainer().windowId
 
-def getChartRunId(window):
-    return window.getRootContainer().instanceId
-
-def getMessageId(window):
-    return window.getRootContainer().messageId
-
 def getWindowPath(window):
     return window.path
 
-def responseWindowClosed(window, response):
-    '''standard actions when a window representing a response is closed by the user'''
-    from ils.sfc.client.util import sendResponse
-    from ils.sfc.client.controlPanel import getController
-    import system.gui.getParentWindow
-        
-    messageId = getMessageId(window)
-    sendResponse(messageId, response)
-    
-    chartRunId = getChartRunId(window)
-    windowId = getWindowId(window)
-    controller = getController(chartRunId)
-    controller.removeWindow(windowId)    
-    system.nav.closeWindow(window)
+def getRootContainer(event):
+    from system.gui import getParentWindow
+    return getParentWindow(event).rootContainer
     
 def updateClockField(window):  
     '''Update clock time in a field called 'clockField' '''
@@ -98,17 +51,31 @@ def updateClockField(window):
     clockField = rootContainer.getComponent('clockField')
     clockField.text = formatTime(time.time())
 
-# new window stuff
-def openDbWindow(buttonDataset, row):
+def controlPanelOpen(controlPanelId):
+    import system.gui
+    controlPanels = system.gui.findWindow('SFC/ControlPanel')
+    for controlPanel in controlPanels:
+        if controlPanel.getRootContainer().controlPanelId == controlPanelId:
+            return True
+        else:
+            return False
+    
+def openDbWindow(windowId, database):
     '''A generic helper method for message handlers to open a window in the 
        control panel that has an associated toolbar button'''
-    import system.nav
+    import system.nav, system.security
     from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
-    windowId = buttonDataset.getValueAt(0,'windowId')
-    windowType = buttonDataset.getValueAt(0,'type')
-    position = buttonDataset.getValueAt(0,POSITION)
-    scale = buttonDataset.getValueAt(0,SCALE)
-    title = buttonDataset.getValueAt(0,'title')
+    pyWindowData = system.db.runQuery("select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId), database)
+    controlPanelId = pyWindowData[0]['controlPanelId']
+    originator = pyWindowData[0]['originator']
+    if not controlPanelOpen(controlPanelId) and (originator != system.security.getUsername()):
+        # this client should not see windows from this run
+        return
+    
+    windowType = pyWindowData[0]['type']
+    position = pyWindowData[0][POSITION]
+    scale = pyWindowData[0][SCALE]
+    title = pyWindowData[0]['title']
     window = system.nav.openWindowInstance(windowType, {WINDOW_ID:windowId})
     window.title = title
     positionWindow(window, position, scale)

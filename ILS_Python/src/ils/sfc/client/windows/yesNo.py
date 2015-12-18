@@ -5,29 +5,20 @@ Created on Dec 3, 2015
 '''
 
 import system
-yesNoTable = 'SfcYesNo'
 
 def yesActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendResponse(window, yesNoTable, "Yes")
+    sendResponse(window, "Yes")
   
 def noActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendResponse(window, yesNoTable, "No")
-
-def timeoutActionPerformed(event):
-    window=system.gui.getParentWindow(event)
-    sendResponse(window, yesNoTable, "Timeout")
+    sendResponse(window, "No")
     
-def sendResponse(window, windowTable, response):
+def sendResponse(window, response):
     '''standard actions when a window representing a response is closed by the user'''
-    from ils.sfc.client.util import sendResponse
-    import system.db
     from ils.sfc.common.constants import RESPONSE, MESSAGE_ID
     rootContainer = window.getRootContainer()
     windowId = rootContainer.windowId
-    system.db.runUpdateQuery("delete from %s where windowId = '%s'" % (windowTable, windowId))
-    system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId))
     replyPayload = dict() 
     replyPayload[RESPONSE] = response
     replyPayload[MESSAGE_ID] = windowId    

@@ -4,7 +4,7 @@ Created on Dec 9, 2015
 @author: rforbes
 '''
 from system.gui import getParentWindow
-from ils.sfc.client.util import getRootContainer
+from ils.sfc.client.windowUtil import getRootContainer
 
 def startChart(event):
     from ils.sfc.common.constants import PROJECT, ISOLATION_MODE, CONTROL_PANEL_ID
@@ -26,7 +26,11 @@ def startChart(event):
         runId = system.sfc.startChart(chartPath, initialChartParams)
         originator = system.security.getUsername()
         project = system.util.getProjectName
-        numUpdated = system.db.runUpdateQuery("Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s' where controlPanelId = %d" % (runId, originator, project, cpId));
+        if isolationMode:
+            isolationFlag = 1
+        else:
+            isolationFlag = 0
+        numUpdated = system.db.runUpdateQuery("Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %d" % (runId, originator, project, cpId, isolationFlag));
     else:
         system.gui.warningBox('Chart already running')
 
