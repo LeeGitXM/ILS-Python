@@ -20,3 +20,16 @@ def resetDiagram(diagid):
     
 def setDiagramState(diagid,state):
     '''Set the state of the specified diagram'''
+    
+def getDiagramForBlock(blockId):
+    '''Get the diagram serializable block state descriptor'''
+
+def getBlockState(diagramId, blockName):
+    '''Get the internal state of a block'''
+    
+# I don't think this is correct...
+def getPropertyValue(diagramId, blockId, property):
+    '''Get the diagram serializable block state descriptor'''
+
+def listBlocksUpstreamOf(diagramId, sqcBlockName):
+    '''Get a list of serializable block state descriptor all of the upstream blocks'''
