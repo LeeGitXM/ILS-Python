@@ -129,12 +129,12 @@ def cancelChart(chartProperties):
 def addControlPanelMessage(chartProperties, message, ackRequired):
     '''display a message on the control panel'''
     from ils.sfc.common.cpmessage import addControlPanelMessage 
-    from ils.sfc.gateway.util import escapeSingleQuotes, getTopChartRunId, sendUpdateControlPanelMsg
+    from ils.sfc.gateway.util import escapeSingleQuotes, getTopChartRunId
     escapedMessage = escapeSingleQuotes(message)
     chartRunId = getTopChartRunId(chartProperties)
     database = getDatabaseName(chartProperties)
     msgId = addControlPanelMessage(escapedMessage, ackRequired, chartRunId, database)
-    sendUpdateControlPanelMsg(chartProperties)
+    #sendUpdateControlPanelMsg(chartProperties)
     return msgId
 
 def getCurrentMessageQueue(chartProperties):

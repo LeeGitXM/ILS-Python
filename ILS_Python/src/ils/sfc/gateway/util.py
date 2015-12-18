@@ -11,7 +11,7 @@ from ils.sfc.gateway.api import cancelChart, sendMessageToClient
 
 # client message handlers
 SHOW_QUEUE_HANDLER = 'sfcShowQueue'
-YES_NO_HANDLER = 'sfcYesNo'
+#YES_NO_HANDLER = 'sfcYesNo'
 DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
 POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
 DIALOG_MSG_HANDLER = 'sfcDialogMessage'
@@ -23,9 +23,9 @@ ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
 SAVE_DATA_HANDLER = 'sfcSaveData'
 PRINT_FILE_HANDLER = 'sfcPrintFile'
 PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
-CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
-UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
-UPDATE_CURRENT_OPERATION_HANDLER = 'sfcUpdateCurrentOperation'
+#CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
+#UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
+#UPDATE_CURRENT_OPERATION_HANDLER = 'sfcUpdateCurrentOperation'
 REVIEW_DATA_HANDLER = 'sfcReviewData'
 NEWLINE = '\n\r'
 
@@ -84,7 +84,7 @@ def transferStepPropertiesToMessage(stepProperties, payload):
         if not (prop.getName() == 'associated-data'):
             payload[prop.getName()] = stepProperties.getOrDefault(prop)
  
-def waitOnResponse(requestId, chartScope):
+def waitOnResponse(requestId, chartScope, timeoutTime=None):
     '''
     Sleep until a response to the given request
     has been received. Callers should be
@@ -98,14 +98,16 @@ def waitOnResponse(requestId, chartScope):
     cycle = 0
     print 'waitOnResponse', requestId
     while response == None and cycle < maxCycles:
+        if timeoutTime != None and time.time() >= timeoutTime:
+            break
         time.sleep(SLEEP_INCREMENT);
         cycle = cycle + 1
         # chartState = chartScope[CHART_STATE]
         # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
             # TODO: log that we're bailing
         # return None
-        print 'calling getResponse', requestId
         response = getResponse(requestId)
+
     if response == None:
         handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
         return None
@@ -113,9 +115,9 @@ def waitOnResponse(requestId, chartScope):
         print 'returning response'
         return response[RESPONSE]
     
-def sendUpdateControlPanelMsg(chartProperties):
-    from ils.sfc.gateway.api import sendMessageToClient
-    sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
+#def sendUpdateControlPanelMsg(chartProperties):
+#    from ils.sfc.gateway.api import sendMessageToClient
+#    sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
 
 def getChartPath(chartProperties):
     return chartProperties.chartPath
@@ -185,15 +187,15 @@ def printSpace(level, out):
 def getDefaultMessageQueueScope():
     return OPERATION_SCOPE
 
-def sendChartStatus(projectName, payload):
-    from system.util import sendMessage
-    payload[MESSAGE] = UPDATE_CHART_STATUS_HANDLER
-    sendMessage(projectName, 'sfcMessage', payload, "C")
+#def sendChartStatus(projectName, payload):
+#    from system.util import sendMessage
+#    payload[MESSAGE] = UPDATE_CHART_STATUS_HANDLER
+#    sendMessage(projectName, 'sfcMessage', payload, "C")
     
-def sendCurrentOperation(projectName, payload):
-    from system.util import sendMessage
-    payload[MESSAGE] = UPDATE_CURRENT_OPERATION_HANDLER
-    sendMessage(projectName, 'sfcMessage', payload, "C")
+#def sendCurrentOperation(projectName, payload):
+#    from system.util import sendMessage
+#    payload[MESSAGE] = UPDATE_CURRENT_OPERATION_HANDLER
+#    sendMessage(projectName, 'sfcMessage', payload, "C")
     
 def getDelaySeconds(delay, delayUnit):
     '''get the delay time and convert to seconds'''
@@ -247,6 +249,11 @@ def standardDeviation(dataset, column):
         pvalues.append(value)
     jvalues = jarray.array(pvalues, 'd')
     return stdDev.evaluate(jvalues)
+
+def getControlPanelId(chartScope):
+    from ils.sfc.common.constants import CONTROL_PANEL_ID
+    topScope = getTopLevelProperties(chartScope)
+    return topScope[CONTROL_PANEL_ID]
 
 def getTimeoutSeconds(chartScope, stepProperties):
     '''For input steps that pass a timeout, get the value in seconds.
@@ -368,11 +375,17 @@ def basicCancelChart(topChartRunId):
     from system.ils.sfc import setCancelRequested
     setCancelRequested(topChartRunId)
     system.sfc.cancelChart(topChartRunId)
-
-#################### New thin client stuff
     
-
+def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, title, database):
+    import system.db
+    from ils.sfc.common.util import createUniqueId
+    windowId = createUniqueId()
+    system.db.runUpdateQuery("Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title), database)
+    return windowId
     
-    
+def sendOpenWindow(chartScope, windowId, database):
+    sendMessageToClient(chartScope, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
 
+def sendCloseWindow(chartScope, windowId):
+    sendMessageToClient(chartScope, 'sfcCloseWindow', {WINDOW_ID: windowId})
    

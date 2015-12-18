@@ -14,20 +14,6 @@ def sendResponse(messageId, response):
     project = system.util.getProjectName()
     system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
 
-def openControlPanel(chartPath, isolationMode, startChart):
-    from ils.sfc.client.controlPanel import createControlPanel
-    from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, CHART_NAME
-    project = system.util.getProjectName() 
-    user = system.security.getUsername()
-    initialChartProps = dict()
-    initialChartProps[ISOLATION_MODE] = isolationMode
-    initialChartProps[PROJECT] = project
-    initialChartProps[USER] = user
-    initialChartProps[CHART_NAME] = chartPath
-    controller = createControlPanel(initialChartProps)   
-    if startChart:
-        controller.doStart()
-
 def runTests(testChartPaths, isolationMode, reportFile):
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, TEST_CHART_PATHS, TEST_REPORT_FILE
     project = system.util.getProjectName()
@@ -38,8 +24,7 @@ def runTests(testChartPaths, isolationMode, reportFile):
     initialChartProps[USER] = user
     initialChartProps[TEST_CHART_PATHS] = testChartPaths
     initialChartProps[TEST_REPORT_FILE] = reportFile
-    system.util.sendMessage(project, 'sfcRunTests', initialChartProps, "G")
-    
+    system.util.sendMessage(project, 'sfcRunTests', initialChartProps, "G")   
 
 def testQuery(query, isolationMode):
     from java.lang import Exception
@@ -142,37 +127,25 @@ def tableExists(table, database):
         return results != None
     except:
         return False
-
-# Unfortunately, these are duplicates of the methods in gateway util and api
-# trying to reference the gateway module from the client--though Python is perfectly
-# happy to do it--causes some problems because modules get dragged in that reference
-# Gateway java methods that are mapped to Python , and those are missing in the client
-# TODO: we shouldn't really be sending chart properties collections to the client;
-# we should extract the necessary info on the gateway side and include it in the message
-# instead
-def getTopChartRunId(chartProperties):
-    from ils.sfc.common.constants import INSTANCE_ID
-    '''Get the run id of the chart at the TOP enclosing level'''
-    return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
+   
+def openWindow(windowId, window):
+    '''Open a window given its type and database key'''
+    import system.nav
+    from ils.sfc.common.constants import WINDOW_ID
+    windowProps = {WINDOW_ID:windowId}
+    system.nav.openWindow(window, windowProps)
     
-def getTopLevelProperties(chartProperties):
-    from ils.sfc.common.constants import INSTANCE_ID, PARENT
-    while chartProperties.get(PARENT, None) != None:
-        chartProperties = chartProperties.get(PARENT)
-    return chartProperties
-
-def getIsolationMode(chartProperties):
-    '''Returns true if the chart is running in isolation mode'''
-    from ils.sfc.common.constants import ISOLATION_MODE
-    topProperties = getTopLevelProperties(chartProperties)
-    return topProperties[ISOLATION_MODE]
-
-def getDatabaseName(chartProperties):
-    '''Get the name of the database this chart is using, taking isolation mode into account'''
-    from system.ils.sfc import getDatabaseName
-    isolationMode = getIsolationMode(chartProperties)
-    return getDatabaseName(isolationMode)
-
+def getChartStatus(runId):
+    '''Get the status of a running chart. Returns None if the run is not found'''
+    from system.sfc import getRunningCharts
+    runningCharts = getRunningCharts()
+    status = 'None'
+    for row in range(runningCharts.rowCount):
+        rowRunId = runningCharts.getValueAt(row, 'instanceId')
+        if rowRunId == runId:
+            chartState = runningCharts.getValueAt(row, 'chartState')
+            status = str(chartState)
+    return status
 
 
     
