@@ -9,10 +9,10 @@ def listBlocksDownstreamOf(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksDownstreamOf(diagid,blockName)
-	print "==================== blocksDownstreamOf =============="
+	#print "==================== blocksDownstreamOf ",blockName," =============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		#print block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 
@@ -22,13 +22,41 @@ def listBlocksUpstreamOf(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksUpstreamOf(diagid,blockName)
-	print "==================== blocksUpstreamOf =============="
+	#print "==================== blocksUpstreamOf ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		#print block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 
+# Return a list of block names that are upstream of a 
+# specified block and of a specified class.
+def listBlocksOfClassUpstream(common,dpath,blockName,classname):
+	diagid = getDiagram(dpath).getSelf().toString()
+	# blocks is a list of SerializableBlockStateDescriptor
+	blocks = script.listBlocksUpstreamOf(diagid,blockName)
+	lst = []
+	#print "==================== listBlocksOfClassUpstream ",blockName,"=============="
+	for block in blocks:
+		#print block.getName()," is ",block.getClassName()
+		if block.getClassName()==classname:
+			lst.append(block.getName())
+	common['result'] = lst 
+#
+# Return a list of block names that are downstream of a 
+# specified block and of a specified class.
+def listBlocksOfClassDownstream(common,dpath,blockName,classname):
+	diagid = getDiagram(dpath).getSelf().toString()
+	# blocks is a list of SerializableBlockStateDescriptor
+	blocks = script.listBlocksDownstreamOf(diagid,blockName)
+	lst = []
+	#print "==================== listBlocksOfClassDownstream ",blockName,"=============="
+	for block in blocks:
+		#print block.getName()," is ",block.getClassName()
+		if block.getClassName()==classname:
+			lst.append(block.getName())
+	common['result'] = lst 
+#
 # Return a list of block names that match the class criterion
 def listBlocksOfClass(common,dpath,classname):
 	diagid = getDiagram(dpath).getSelf().toString()
@@ -55,10 +83,10 @@ def listBlocksInDiagram(common,dpath):
 def listBlocksForTag(common,tagpath):
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksForTag(tagpath)
-	print "==================== blocksForTag =============="
+	#print "==================== blocksForTag ",tagpath,"=============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		#print block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 
@@ -69,10 +97,10 @@ def listSinksForSource(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listSinksForSource(diagid,blockName)
-	print "==================== sinksForSource =============="
+	#print "==================== sinksForSource ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		#print block.getName()
 		lst.append(block.getName())
 
 	common['result'] = lst 
@@ -84,10 +112,10 @@ def listSourcesForSink(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listSourcesForSink(diagid,blockName)
-	print "==================== sourcesForSink =============="
+	#print "==================== sourcesForSink ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		#print block.getName()
 		lst.append(block.getName())
 
 	common['result'] = lst 

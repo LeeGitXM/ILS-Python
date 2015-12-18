@@ -3,6 +3,19 @@
 import system
 import system.ils.blt.diagram as script
 
+# This is a little convoluted because we already have the diagram path,
+# but it does test a different set of scripting functions
+def getDiagramForBlock(common,dpath,blockName):
+	diagram = getDiagram(dpath)
+	for block in diagram.getProcessBlocks():
+		if block.getName() == blockName:
+			id = block.getBlockId().toString()
+			desc = script.getDiagramForBlock(id)
+			if desc==None:
+				common['result'] = "Diagram not found for block ",id
+			else:
+				common['result'] = desc.getName()
+	return 
 # Internal status is a SerializableBlockStateDescriptor
 # -- the descriptor has methods getAttributes(), getBuffer()
 # -- both return lists of dictionaries.
