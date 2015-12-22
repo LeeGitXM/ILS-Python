@@ -102,13 +102,17 @@ def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
         " and F.FamilyName = '%s'" \
         " and FD.FinalDiagnosisName = '%s'" % (application, family, finalDiagnosis)
     log.trace(SQL)
-    pds = system.db.runQuery(SQL, database)
-    from ils.common.database import toDict
-    records=toDict(pds)
-    if len(records) == 0:
+    try:
+        pds = system.db.runQuery(SQL, database)
+        from ils.common.database import toDict
+        records=toDict(pds)      
+        if len(records) == 0:
+            record={}
+        else:
+            record = records[0]
+    except:
+        log.errorf("fetchFinalDiagnosis: SQL error in %s for (%s)",database,SQL)
         record={}
-    else:
-        record = records[0]
     return record
 
 # Fetch all of the active final diagnosis for an application.

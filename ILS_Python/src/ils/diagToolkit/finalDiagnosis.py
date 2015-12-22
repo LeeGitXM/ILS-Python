@@ -63,7 +63,10 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
         % (finalDiagnosisId, grade, textRecommendation, UUID, diagramUUID)
     logSQL.trace(SQL)
     
-    system.db.runUpdateQuery(SQL, database)
+    try:
+        system.db.runUpdateQuery(SQL, database)
+    except:
+        log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
     log.info("Starting to manage diagnosis...")
     notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
