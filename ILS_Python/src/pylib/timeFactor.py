@@ -17,4 +17,5 @@ def setTimeFactor(common,factor):
 
 def setSfcTimeFactor(common,factor):
 	import system.ils.sfc as ilssfc
+	factor = float(fact)
 	ilssfc.setTimeFactor(float(factor))
