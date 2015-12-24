@@ -11,11 +11,11 @@ def setTestTimeOffset(common,yr,mon,dy,hr,min,sec):
 	print "TestTimeOffset: ",offset
 	script.setTestTimeOffset(long(offset))
 
+# Time factor is the clock speedup ratio (factor>1)
 def setTimeFactor(common,factor):
 	import system.ils.blt.diagram as script
 	script.setTimeFactor(float(factor))
 
 def setSfcTimeFactor(common,factor):
 	import system.ils.sfc as ilssfc
-	factor = float(fact)
 	ilssfc.setTimeFactor(float(factor))
