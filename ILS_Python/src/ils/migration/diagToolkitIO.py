@@ -12,7 +12,7 @@ from ils.common.database import lookup
 def load(rootContainer, stripGDA):
     filename=rootContainer.getComponent("File Field").text
     if not(system.file.fileExists(filename)):
-        system.gui.messageBox("Yes, the file exists")
+        system.gui.messageBox("Error - the requested file does not exist!")
         return
     
     print "Stripping: ", stripGDA
@@ -78,6 +78,7 @@ def parseRecords(records,recordType, stripGDA=True):
                 line="id,%s" % (line)
                 header = line.split(',')
                 numTokens=len(header)
+                print "Header: ", header
             else:
                 line="-1,%s" % (line)
                 tokens = line.split(',')
@@ -86,7 +87,6 @@ def parseRecords(records,recordType, stripGDA=True):
                 data.append(tokens[:numTokens])
             i = i + 1
 
-    print "Header: ", header
     print "Data: ", data
         
     ds = system.dataset.toDataSet(header, data)
@@ -96,8 +96,11 @@ def parseRecords(records,recordType, stripGDA=True):
 def stripTokens(tokens):
     strippedTokens=[]
     for token in tokens:
-        strippedToken=token.strip('-GDA')
-        strippedTokens.append(strippedToken)
+        if token.endswith('-GDA'):
+            strippedToken=token.rstrip('-GDA')
+            strippedTokens.append(strippedToken)
+        else:
+            strippedTokens.append(token)
     return strippedTokens
 
 
@@ -252,6 +255,13 @@ def getFamilyId(rootContainer, family):
             return ds.getValueAt(row, "id")
     return familyId
 
+# Lookup the id of the family in the DtFamily table
+def fetchFamilyId(familyName):
+    SQL = "select familyId from DtFamily where FamilyName = '%s'" % (familyName)
+    familyId = system.db.runScalarQuery(SQL)
+    print "Fetched id: <%s> for family <%s>" % (familyId, familyName)
+    return familyId
+
 
 def insertFinalDiagnosis(container):
     rootContainer=container.parent
@@ -303,10 +313,10 @@ def insertSQCDiagnosis(container):
     ds=table.data
 
     for row in range(ds.rowCount):
-        family=ds.getValueAt(row, "family")
+        familyName=ds.getValueAt(row, "family")
         sqcDiagnosis=ds.getValueAt(row, 4)    # I used to use the label, but Chuck is using the name, so use the name
             
-        familyId=getFamilyId(rootContainer, family)
+        familyId=fetchFamilyId(familyName)
             
         if familyId >= 0:
             SQL = "insert into DtSQCDiagnosis (SQCDiagnosisName, FamilyId, Status) "\
@@ -315,9 +325,9 @@ def insertSQCDiagnosis(container):
             print SQL
             sqcDiagnosisId=system.db.runUpdateQuery(SQL, getKey=True)
             ds=system.dataset.setValue(ds, row, "id", sqcDiagnosisId) 
-            print "Insert %s and got id: %i" % (family, sqcDiagnosisId)                                                         
+            print "Inserted %s and got id: %i" % (sqcDiagnosis, sqcDiagnosisId)                                                         
         else:
-            print "Could not find family: <%s>" % (family)
+            print "Could not find family: <%s>" % (familyName)
 
     table.data=ds
 
