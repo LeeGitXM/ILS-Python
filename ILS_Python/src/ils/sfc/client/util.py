@@ -147,5 +147,9 @@ def getChartStatus(runId):
             status = str(chartState)
     return status
 
+def getStartInIsolationMode():
+    '''Get the client-side flag that indicates whether to start charts in isolation mode.
+       CAUTION: this does not relate to any particular chart run and is only meaningful
+       at the moment a chart is started.'''
+    return system.tag.read('[Client]/Isolation Mode').value
 
-    

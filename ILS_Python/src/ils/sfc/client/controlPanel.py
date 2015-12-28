@@ -8,29 +8,31 @@ from ils.sfc.client.windowUtil import getRootContainer
 
 def startChart(event):
     from ils.sfc.common.constants import PROJECT, ISOLATION_MODE, CONTROL_PANEL_ID
+    from ils.sfc.client.util import getStartInIsolationMode
     import system.util, system.sfc, system.db, system.gui, system.security, system.tag
     rootContainer = getRootContainer(event)
     cpId = rootContainer.controlPanelId
     data = rootContainer.windowData
-    #numUpdated = system.db.runUpdateQuery("Update SfcControlPanel set status = 'Locked' where id = %d and status is null" % (cpId));
-    #if numUpdated == 1:
+    #TODO: check if chart is running to set canStart flag
     canStart = True
     if canStart:
         chartPath = data.getValueAt(0,'chartPath')
         project = system.util.getProjectName()
-        isolationMode = system.tag.read('[Client]/Isolation Mode')
+        isolationMode = getStartInIsolationMode()
         initialChartParams = dict()
         initialChartParams[PROJECT] = project
-        initialChartParams[ISOLATION_MODE] = isolationMode.value
+        initialChartParams[ISOLATION_MODE] = isolationMode
         initialChartParams[CONTROL_PANEL_ID] = cpId
         runId = system.sfc.startChart(chartPath, initialChartParams)
         originator = system.security.getUsername()
-        project = system.util.getProjectName
         if isolationMode:
             isolationFlag = 1
         else:
             isolationFlag = 0
-        numUpdated = system.db.runUpdateQuery("Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %d" % (runId, originator, project, cpId, isolationFlag));
+        updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %d" % (runId, originator, project, isolationFlag, cpId)
+        numUpdated = system.db.runUpdateQuery(updateSql)
+        if numUpdated == 0:
+            system.gui.errorBox("Failed to updated SfcControlPanel with chart start info")
     else:
         system.gui.warningBox('Chart already running')
 
