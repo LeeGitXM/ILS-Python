@@ -10,6 +10,9 @@ def setValues(udtTagPath):
     # Get the dataset of tagpaths
     print udtTagPath
     dsTagPaths = system.tag.read(udtTagPath + "/Dataset Tags").value  # Recall a qualified value so need .value
+    if dsTagPaths == None:
+        print "UDT TagPath does not exist %s:" % (udtTagPath)
+        return
     pyDsTagPaths = system.dataset.toPyDataSet(dsTagPaths)  # Easier to work with py dataset for tagpaths
     # Get the dataset of values.  Datasets are immutable so this is just a copy not actual dataset
     dsTagValues = system.tag.read(udtTagPath + "/Dataset Values").value  # Recall a qualified value so need .value
@@ -19,7 +22,7 @@ def setValues(udtTagPath):
     alignWindowMinutes = system.tag.read(udtTagPath + "/Align Window Minutes").value
     # Read the trigger tag first, need the timestamp for comparison
     triggerTagPath = system.tag.read(udtTagPath + "/Trigger Tagpath").value  # This is the Trigger Tag path
-    # Don't need to check if tag exists because would not get nto code if it did not exist
+    # Don't need to check if tag exists because would not get into code if it did not exist
     print "Trigger Tagpath: %s" % (triggerTagPath)
     triggerTagQv = system.tag.read(triggerTagPath)
     # Check if quality good, otherwise leave
