@@ -37,6 +37,13 @@ def valueChanged(tagPath, currentValue, initialChange):
         log.warn("%s quality is %s - value will not be propagated!" % (tagPath, currentValue.quality))
         return
     
+    # I'm not sure if we want to ignore this on startup or not - but this does eliminate the module loading werror that IA is working
+    # where BLT is not loaded when this gets called on startup.
+    # This didn't seem to work anyway
+#    if initialChange:
+#        log.warn("Ignoring new value for %s because this is an initial value change!" % (tagPath))
+#        return
+    
     # We can only process numeric values
     try:
         tagVal = float(currentValue.value)
