@@ -57,3 +57,13 @@ def getChartStatus(event):
     runId = rootContainer.windowData.getValueAt(0,'chartRunId')
     status = getChartStatus(runId)
     statusField.text = status
+    
+def reset(event):
+    import system.db
+    rootContainer = event.source.parent.parent
+    database = system.tag.read('[Client]Database').value
+    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '' where controlPanelId = %d" % (rootContainer.controlPanelId), database)
+    rootContainer.msgIndex = 0
+    system.db.runUpdateQuery("delete from SfcTimeDelayNotification", database)
+    system.db.runUpdateQuery("delete from SfcInput", database)
+    system.db.runUpdateQuery("delete from SfcWindow", database)

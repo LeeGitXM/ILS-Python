@@ -19,7 +19,7 @@ def okActionPerformed(event):
     response = responseField.text
     lowLimit = rootContainer.data.getValueAt(0,'lowLimit')
     highLimit = rootContainer.data.getValueAt(0,'highLimit')
-    if lowLimit != None:
+    if (lowLimit != None) and (response != None):
         # check a float value against limits
         try:
             floatResponse = float(response)

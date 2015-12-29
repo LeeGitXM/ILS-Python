@@ -153,3 +153,10 @@ def getStartInIsolationMode():
        at the moment a chart is started.'''
     return system.tag.read('[Client]/Isolation Mode').value
 
+def getDatabase():
+    '''Get the database name, taking isolation mode into account'''
+    return system.tag.read('[Client]/Database').value
+
+def getTagProvider():
+    '''Get the tag provider name, taking isolation mode into account'''
+    return system.tag.read('[Client]/Provider').value

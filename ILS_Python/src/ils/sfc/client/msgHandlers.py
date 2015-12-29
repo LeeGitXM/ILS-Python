@@ -11,8 +11,7 @@ def sfcOpenWindow(payload):
     from ils.sfc.common.constants import DATABASE, WINDOW_ID
     from ils.sfc.client.windowUtil import openDbWindow
     windowId = payload[WINDOW_ID]
-    database = payload[DATABASE]
-    openDbWindow(windowId, database)
+    openDbWindow(windowId)
 
 def sfcCloseWindow(payload):
     from ils.sfc.common.constants import WINDOW_ID

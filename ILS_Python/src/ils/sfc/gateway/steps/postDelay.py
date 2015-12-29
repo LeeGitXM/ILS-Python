@@ -5,15 +5,29 @@ Created on Dec 17, 2015
 '''
 
 def activate(scopeContext, stepProperties):
-    from ils.sfc.gateway.util import getTopChartRunId, getStepProperty
-    from ils.sfc.gateway.api import sendMessageToClient
-    from system.ils.sfc.common.Constants import MESSAGE
-    from ils.sfc.common.constants import CHART_RUN_ID, WINDOW_ID
-    from ils.sfc.common.util import createUniqueId
+    from ils.sfc.gateway.util import getControlPanelId, createWindowRecord, getStepProperty, \
+        handleUnexpectedGatewayError, getStepId, sendOpenWindow
+    from ils.sfc.gateway.api import getDatabaseName, getChartLogger
+    from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
+    import system.db
     chartScope = scopeContext.getChartScope()
-    message = getStepProperty(stepProperties, MESSAGE) 
-    payload = dict()
-    payload[MESSAGE] = message
-    payload[CHART_RUN_ID] = getTopChartRunId(chartScope)
-    payload[WINDOW_ID] = createUniqueId()
-    sendMessageToClient(chartScope, 'sfcPostDelayNotification', payload)
+    chartLogger = getChartLogger(chartScope)
+    
+    # window common properties:
+    database = getDatabaseName(chartScope)
+    controlPanelId = getControlPanelId(chartScope)
+    buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+    position = getStepProperty(stepProperties, POSITION) 
+    scale = getStepProperty(stepProperties, SCALE) 
+    title = getStepProperty(stepProperties, WINDOW_TITLE) 
+    # step-specific properties:
+    message = getStepProperty(stepProperties, MESSAGE)
+    stepId = getStepId(stepProperties) 
+
+    # create db window records:
+    windowId = createWindowRecord(controlPanelId, 'SFC/BusyNotification', buttonLabel, position, scale, title, database)
+    numInserted = system.db.runUpdateQuery("insert into SfcBusyNotification (windowId, message) values ('%s', '%s')" % (windowId, message), database)
+    if numInserted == 0:
+        handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', chartLogger)
+        
+    sendOpenWindow(chartScope, windowId, stepId, database)
