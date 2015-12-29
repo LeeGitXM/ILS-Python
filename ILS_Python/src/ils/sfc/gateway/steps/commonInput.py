@@ -9,9 +9,11 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='nul
     Get an response from the user; block until a
     response is received, put response in chart properties
     '''
-    from ils.sfc.gateway.util import getTimeoutSeconds, getControlPanelId, createWindowRecord, getStepProperty, waitOnResponse, getRecipeScope, sendOpenWindow, sendCloseWindow, handleUnexpectedGatewayError
+    from ils.sfc.gateway.util import getTimeoutSeconds, getControlPanelId, createWindowRecord, \
+        getStepProperty, waitOnResponse, getRecipeScope, sendOpenWindow, deleteAndSendClose, \
+        handleUnexpectedGatewayError, getStepId
     from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger
-    from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
+    from system.ils.sfc.common.Constants import ID, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
     import system.util
     import time
     import system.db
@@ -20,18 +22,17 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='nul
     chartLogger = getChartLogger(chartScope)
     
     # window common properties:
+    database = getDatabaseName(chartScope)
     controlPanelId = getControlPanelId(chartScope)
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
     position = getStepProperty(stepProperties, POSITION) 
     scale = getStepProperty(stepProperties, SCALE) 
     title = getStepProperty(stepProperties, WINDOW_TITLE) 
-
-    database = getDatabaseName(chartScope)
-     
     # step-specific properties:
     prompt = getStepProperty(stepProperties, PROMPT)
     recipeLocation = getRecipeScope(stepProperties) 
     key = getStepProperty(stepProperties, KEY) 
+    stepId = getStepId(stepProperties) 
 
     # calculate the absolute timeout time in epoch secs:
     timeoutDurationSecs = getTimeoutSeconds(chartScope, stepProperties)
@@ -56,7 +57,7 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='nul
             system.db.runUpdateQuery("insert into SfcInputChoices (windowId, choice) values ('%s', '%s')" % (windowId, choice), database)
             
         
-    sendOpenWindow(chartScope, windowId, database)
+    sendOpenWindow(chartScope, windowId, stepId, database)
     
     value = waitOnResponse(windowId, chartScope, timeoutTime)
     if value == None:
@@ -69,5 +70,5 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='nul
     if choices != None:
         system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
     system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)
-    system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
-    sendCloseWindow(chartScope, windowId)
+    
+    deleteAndSendClose(chartScope, windowId, database)

@@ -9,6 +9,9 @@ def getResponse(id):
 def setResponse(payload):
     pass
 
+def addRequestId((windowId, stepId)):
+    pass
+
 def getReviewData(chartScope, stepScope, configJson, addAdvice):
     pass
 

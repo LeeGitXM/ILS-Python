@@ -382,9 +382,14 @@ def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, tit
     system.db.runUpdateQuery("Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title), database)
     return windowId
     
-def sendOpenWindow(chartScope, windowId, database):
+def sendOpenWindow(chartScope, windowId, stepId, database):
+    from system.ils.sfc import addRequestId
+    addRequestId(windowId, stepId)
     sendMessageToClient(chartScope, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
 
-def sendCloseWindow(chartScope, windowId):
+def deleteAndSendClose(chartScope, windowId, database):
+    '''Delete the common window record and message the client to close the window'''
+    import system.db
+    system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
     sendMessageToClient(chartScope, 'sfcCloseWindow', {WINDOW_ID: windowId})
    

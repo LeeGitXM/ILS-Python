@@ -5,17 +5,23 @@ Created on Dec 16, 2015
 '''
 
 def activate(scopeContext, stepProperties):
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getDelaySeconds, getStepName, checkForCancelOrPause, sendMessageToClient, getTopChartRunId
-    from ils.sfc.gateway.api import getChartLogger, s88Get
-    from ils.sfc.common.util import createUniqueId, callMethod
+    from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
+        handleUnexpectedGatewayError, getDelaySeconds, checkForCancelOrPause, deleteAndSendClose, \
+        sendOpenWindow
+    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
+    from ils.sfc.common.util import callMethod
+    from ils.sfc.gateway.util import getStepId
     from ils.sfc.gateway.api import getTimeFactor
-    from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, CHART_NAME, STEP_NAME, CHART_RUN_ID, MESSAGE, ACK_REQUIRED, WINDOW_ID, END_TIME
-    
+    from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, \
+        BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
+    import system.db
     import time
+    
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    logger = getChartLogger(chartScope)
-    logger.info("Executing TimedDelay block")
+    chartLogger = getChartLogger(chartScope)
+    chartLogger.info("Executing TimedDelay block")
+    stepId = getStepId(stepProperties) 
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     if timeDelayStrategy == STATIC:
         delay = getStepProperty(stepProperties, DELAY) 
@@ -39,21 +45,26 @@ def activate(scopeContext, stepProperties):
     unscaledDelaySeconds=delaySeconds
     timeFactor = getTimeFactor(chartScope)
     delaySeconds = delaySeconds * timeFactor
-    logger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
+    chartLogger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
     startTimeEpochSecs = time.time()
     endTimeEpochSecs = startTimeEpochSecs + delaySeconds
+    
     postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
     if postNotification:
-        payload = dict()
-        payload[CHART_NAME] = chartScope.chartPath
-        payload[STEP_NAME] = getStepName(stepProperties)
-        payload[CHART_RUN_ID] = getTopChartRunId(chartScope)
-        payload[MESSAGE] = str(delay) + ' ' + delayUnit + " remaining."
-        payload[ACK_REQUIRED] = False
-        payload[WINDOW_ID] = createUniqueId()
-        payload[END_TIME] = endTimeEpochSecs
-        sendMessageToClient(chartScope, 'sfcPostDelayNotification', payload)
-    
+        message = getStepProperty(stepProperties, MESSAGE) 
+        # window common properties:
+        database = getDatabaseName(chartScope)
+        controlPanelId = getControlPanelId(chartScope)
+        buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+        position = getStepProperty(stepProperties, POSITION) 
+        scale = getStepProperty(stepProperties, SCALE) 
+        title = getStepProperty(stepProperties, WINDOW_TITLE) 
+        windowId = createWindowRecord(controlPanelId, 'SFC/TimeDelayNotification', buttonLabel, position, scale, title, database)
+        numInserted = system.db.runUpdateQuery("insert into SfcTimeDelayNotification (windowId, message, endTime) values ('%s', '%s', %f)" % (windowId, message, endTimeEpochSecs), database)
+        if numInserted == 0:
+            handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
+    sendOpenWindow(chartScope, windowId, stepId, database)
+        
     #TODO: checking the real clock time is probably more accurate
     sleepIncrement = 1
     while delaySeconds > 0:
@@ -65,12 +76,13 @@ def activate(scopeContext, stepProperties):
 #            sleep(sleepIncrement)
 #            continue
 
-        if checkForCancelOrPause(chartScope, logger):
+        if checkForCancelOrPause(chartScope, chartLogger):
             print "CANCELLED--dropping out of loop"
-            return
+            break
         
         delaySeconds = delaySeconds - sleepIncrement
         time.sleep(sleepIncrement)
     
     if postNotification:
-        sendMessageToClient(chartScope, 'sfcDeleteDelayNotification', payload)
+        system.db.runUpdateQuery("delete from SfcTimeDelayNotification where windowId = '%s'" % (windowId), database)
+        deleteAndSendClose(chartScope, windowId, database)

@@ -29,7 +29,7 @@ def okActionPerformed(event):
         if valueOk:
             sendWindowResponse(window, floatResponse)
         else:
-            system.gui.warningBox('Value must be between %f and %f' % (lowLimit, highLimit))
+            system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
     else:
         # return the response as a string
         sendWindowResponse(window, response)
