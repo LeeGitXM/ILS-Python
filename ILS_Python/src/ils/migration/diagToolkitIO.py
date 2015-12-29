@@ -62,7 +62,7 @@ def load(rootContainer, stripGDA):
         
     print "Done Loading!"
 
-def parseRecords(records,recordType, stripGDA=True):
+def parseRecords(records, recordType, stripGDA=True):
     print "Parsing %s records... " % (recordType)
     i = 0
     numTokens=100
@@ -83,7 +83,27 @@ def parseRecords(records,recordType, stripGDA=True):
                 line="-1,%s" % (line)
                 tokens = line.split(',')
                 if stripGDA:
-                    tokens = stripTokens(tokens) 
+                    tokens = stripTokens(tokens)
+                
+                if recordType == 'APPLICATION':
+                    tokens[2]=changeCase(tokens[2])
+                elif recordType == 'FAMILY':
+                    tokens[2]=changeCase(tokens[2])
+                    tokens[3]=changeCase(tokens[3])
+                elif recordType == 'FINAL-DIAGNOSIS':
+                    tokens[2]=changeCase(tokens[2])
+                    tokens[3]=changeCase(tokens[3])
+                    tokens[4]=changeCase(tokens[4])
+                elif recordType == 'SQC-DIAGNOSIS':
+                    tokens[2]=changeCase(tokens[2])
+                    tokens[3]=changeCase(tokens[3])
+                    tokens[4]=changeCase(tokens[4])
+                elif recordType == 'QUANT-OUTPUT':
+                    tokens[2]=changeCase(tokens[2])
+                elif recordType == 'QUANT-RECOMMENDATION-DEF':
+                    tokens[2]=changeCase(tokens[2])
+                    tokens[6]=changeCase(tokens[6])
+
                 data.append(tokens[:numTokens])
             i = i + 1
 
@@ -92,6 +112,15 @@ def parseRecords(records,recordType, stripGDA=True):
     ds = system.dataset.toDataSet(header, data)
     print "   ...parsed %i %s records!" % (len(data), recordType)
     return ds
+
+def changeCase(txt):
+    t1=txt
+    t1=t1.title()
+    t1=string.replace(t1,"_","")
+    t1=string.replace(t1,"-","")
+    
+    print "Converted <%s> to <%s>" % (txt, t1)
+    return t1
 
 def stripTokens(tokens):
     strippedTokens=[]

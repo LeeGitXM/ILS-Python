@@ -5,13 +5,28 @@ Created on Dec 10, 2015
 '''
 import system, string
 
+def internalFrameOpened(rootContainer):
+    print "In internalFrameOpened()"
+    configureChart(rootContainer)
+
+
+def internalFrameActivated(rootContainer):
+    print "In internalFrameActivated()"
+
+
 def configureChart(rootContainer):
     import system.ils.blt.diagram as diagram
     sqcDiagnosisName=rootContainer.sqcDiagnosisName
     sqcDiagnosisId=rootContainer.blockId
     
     chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
+    print "Chart Info: ", chartInfo
+    if chartInfo == None:
+        system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
+        return
+    
     labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
+    print "Lab Value Name: ", labValueName
     rootContainer.valueName=labValueName
 
     # Get the SQC limits out of the chartInfo
@@ -19,14 +34,17 @@ def configureChart(rootContainer):
     lowLimits=[]
     violatedRules=[]
     for info in chartInfo:
-        if info['limitType'] == 'HIGH' and info['limit'] >= 0.5:
-            highLimits.append(info['limit'])
-        if info['limitType'] == 'LOW' and info['limit'] >= 0.5:
-            lowLimits.append(info['limit'])
+        print "Info: ", info
+        if info['limitType'] == 'HIGH' and abs(info['numberOfStandardDeviations']) >= 0.5:
+            highLimits.append(abs(info['numberOfStandardDeviations']))
+        if info['limitType'] == 'LOW' and abs(info['numberOfStandardDeviations']) >= 0.5:
+            lowLimits.append(abs(info['numberOfStandardDeviations']))
             
         if string.upper(info['state']) == 'SET':
             rule="%s %s of %s" % (info["limitType"], str(info["minimumOutOfRange"]), str(info["sampleSize"]))
             violatedRules.append([rule])
+
+    print "Violated Rules: ", violatedRules
 
     # Create a dataset from the violated rules and put it in the rootContainer which will drive the table of violated rules
     ds=system.dataset.toDataSet(["rule"], violatedRules)
@@ -35,26 +53,37 @@ def configureChart(rootContainer):
     # Each block dictionary has target and standard deviation, but they should all be the same
     target=info['target']
     standardDeviation=info['standardDeviation']
+    print "Target: ", target
+    print "Standard Deviation:", standardDeviation
     
     highLimits.sort()
     lowLimits.sort()
     print "The high limits are: ", highLimits
     print "The low limits are: ", lowLimits
     
-    # Configure two upper limit red lines and two lower limit red lines
-    upperLimit1=target
-    upperLimit2=target
-    if len(highLimits) >= 1:
-        upperLimit1 = target + standardDeviation * highLimits[0]
-    if len(highLimits) >= 2:
-        upperLimit2 = target + standardDeviation * highLimits[1]
-    
-    lowerLimit1=target
-    lowerLimit2=target
-    if len(lowLimits) >= 1:
-        lowerLimit1 = target - standardDeviation * lowLimits[0]
-    if len(lowLimits) >= 2:
-        lowerLimit2 = target - standardDeviation * lowLimits[1]
+    if target == None or target == "NaN" or standardDeviation != None or standardDeviation != "NaN":
+        print "Unable to completely configure the SQC chart"
+        target=0.0
+        standardDeviation=0.0
+        upperLimit1=target
+        upperLimit2=target
+        lowerLimit1=target
+        lowerLimit2=target
+    else:
+        # Configure two upper limit red lines and two lower limit red lines
+        upperLimit1=target
+        upperLimit2=target
+        if len(highLimits) >= 1:
+            upperLimit1 = target + standardDeviation * highLimits[0]
+        if len(highLimits) >= 2:
+            upperLimit2 = target + standardDeviation * highLimits[1]
+        
+        lowerLimit1=target
+        lowerLimit2=target
+        if len(lowLimits) >= 1:
+            lowerLimit1 = target - standardDeviation * lowLimits[0]
+        if len(lowLimits) >= 2:
+            lowerLimit2 = target - standardDeviation * lowLimits[1]
 
     rootContainer.lowerLimit1=lowerLimit1
     rootContainer.lowerLimit2=lowerLimit2
@@ -123,6 +152,8 @@ def calculateLimitsFromTargetAndSigma(rootContainer):
 def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
     import system.ils.blt.diagram as diagram
     
+    print "Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisId)
+    
 #    chartInfo=[]
 #    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":1,"minimumOutOfRange":1,"limit":3.0,"state":"Set"})
 #    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":4,"minimumOutOfRange":3,"limit":1.45,"state":"Set"})
@@ -140,22 +171,23 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
     print "Diagram Descriptor: ", diagramDescriptor
     diagramId=diagramDescriptor.getId()
     
-    print "Fetching chart info..."
+    print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
     #Now get the SQC observation blocks
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
     print "Found blocks: ", blocks
     sqcInfo=[]
     for block in blocks:
-        print "Found a block..."
+        print "Found a %s block..." % (block.getClassName())
         if block.getClassName() == "com.ils.block.SQC":
             print "   ... it is a SQC block..."
             blockId=block.getIdString()
             print "Id: ", blockId
             
             # First get block properties
-            blockName=diagram.getPropertyValue(diagramId, blockId, 'BlockName')
+            blockName=block.getName()
             print "Name: ", blockName
+            
             sampleSize=diagram.getPropertyValue(diagramId, blockId, 'SampleSize')
             print "Sample Size: ", sampleSize
             numberOfStandardDeviations=diagram.getPropertyValue(diagramId, blockId, 'NumberOfStandardDeviations')
@@ -168,10 +200,11 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
             print "State: ", state
             
             # now get some block internals
-            attributes = block.getInternalStatus().getAttributes()
+            print "Getting attributes..."
+            attributes = block.getAttributes()
             print "Attributes: ", attributes
-            target=diagram.getPropertyValue(diagramId, blockId, 'Target')
-            standardDeviation=diagram.getPropertyValue(diagramId, blockId, 'StandardDeviation')
+            target=attributes.get('Mean (target)')
+            standardDeviation=attributes.get('StandardDeviation')
                 
             sqcInfo.append({
                             "target": target,
@@ -182,6 +215,7 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
                             "numberOfStandardDeviations": numberOfStandardDeviations,
                             "state": state
                             })
+            print sqcInfo
     
 #    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":1,"minimumOutOfRange":1,"limit":3.0,"state":"Set"})
 #    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":4,"minimumOutOfRange":3,"limit":1.45,"state":"Set"})
