@@ -4,6 +4,19 @@ Created on May 3, 2015
 @author: rforbes
 '''
 
+def sendWindowResponse(window, response):
+    '''standard actions when a window representing a response is closed by the user'''
+    from ils.sfc.common.constants import RESPONSE, MESSAGE_ID
+    rootContainer = window.getRootContainer()
+    windowId = rootContainer.windowId
+    import system.util, system.nav
+    replyPayload = dict() 
+    replyPayload[RESPONSE] = response
+    replyPayload[MESSAGE_ID] = windowId    
+    project = system.util.getProjectName()
+    system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
+    system.nav.closeWindow(window)
+    
 def positionWindow(window, position, scale):
     '''Position and size a window within the main window''' 
     from ils.sfc.common.constants import LEFT, CENTER, TOP

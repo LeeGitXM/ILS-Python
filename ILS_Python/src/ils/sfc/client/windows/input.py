@@ -8,27 +8,33 @@ Created on Jan 15, 2015
 
 @author: rforbes
 '''
-def visionWindowOpened(event):
-    rootContainer = event.source.getRootContainer()
-    label = rootContainer.getComponent("label")
-    label.text = rootContainer.prompt
- 
+
+from ils.sfc.client.windowUtil import sendWindowResponse
+import system.gui
+
 def okActionPerformed(event):
-    from ils.sfc.client.util import sendResponse
-    import system.gui.getParentWindow
-    # get the selected value
-    textField = event.source.parent.getComponent("TextField")
-    response = textField.text
-    
-    # send response to the Gateway
-    thisWindow = system.gui.getParentWindow(event)
-    sendResponse(event.source.parent.messageId, response)
-    system.nav.closeWindow(thisWindow)
-    
+    window=system.gui.getParentWindow(event)
+    rootContainer = window.getRootContainer()
+    responseField = rootContainer.getComponent('responseField')
+    response = responseField.text
+    lowLimit = rootContainer.data.getValueAt(0,'lowLimit')
+    highLimit = rootContainer.data.getValueAt(0,'highLimit')
+    if lowLimit != None:
+        # check a float value against limits
+        try:
+            floatResponse = float(response)
+            valueOk = (floatResponse >= lowLimit) and (floatResponse <= highLimit)
+        except ValueError:
+            valueOk = False
+        if valueOk:
+            sendWindowResponse(window, floatResponse)
+        else:
+            system.gui.warningBox('Value must be between %f and %f' % (lowLimit, highLimit))
+    else:
+        # return the response as a string
+        sendWindowResponse(window, response)
+  
 def cancelActionPerformed(event):
-    from ils.sfc.client.util import sendResponse
-    import system.gui.getParentWindow
-    thisWindow = system.gui.getParentWindow(event)
-    response = None
-    sendResponse(event.source.parent.messageId, response)
-    system.nav.closeWindow(thisWindow)
+    window=system.gui.getParentWindow(event)
+    sendWindowResponse(window, None)
+    

@@ -10,9 +10,9 @@ def sfcUnexpectedError(payload):
 def sfcOpenWindow(payload):
     from ils.sfc.common.constants import DATABASE, WINDOW_ID
     from ils.sfc.client.windowUtil import openDbWindow
-    import system.db
     windowId = payload[WINDOW_ID]
     database = payload[DATABASE]
+    print 'sfcOpenWindow', windowId
     openDbWindow(windowId, database)
 
 def sfcCloseWindow(payload):

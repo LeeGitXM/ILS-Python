@@ -93,12 +93,11 @@ def waitOnResponse(requestId, chartScope, timeoutTime=None):
     '''
     import time
     response = None
-    #TODO: configurable timeout??
     maxCycles = 5 * 60 / SLEEP_INCREMENT
     cycle = 0
     print 'waitOnResponse', requestId
     while response == None and cycle < maxCycles:
-        if timeoutTime != None and time.time() >= timeoutTime:
+        if (timeoutTime != None) and (timeoutTime > 0) and (time.time() >= timeoutTime):
             break
         time.sleep(SLEEP_INCREMENT);
         cycle = cycle + 1

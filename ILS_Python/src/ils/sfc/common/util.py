@@ -132,3 +132,6 @@ def splitPath(path):
 def isString(value):
     '''check if the given value is a string'''
     return isinstance(value, str)
+
+def escapeSqlQuotes(string):
+    return string.replace("'", "''")
