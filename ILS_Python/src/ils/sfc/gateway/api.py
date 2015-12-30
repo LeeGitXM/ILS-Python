@@ -235,12 +235,12 @@ def sendMessageToClient(chartProperties, handler, payload):
 
 def basicSendMessageToClient(project, handler, payload, clientSessionId=None):
     '''to send a dispatched message outside a chart run context'''
-    from ils.sfc.common.constants import MESSAGE_ID, MESSAGE
+    from ils.sfc.common.constants import MESSAGE_ID, HANDLER
     from system.util import sendMessage
     from ils.sfc.common.util import createUniqueId
     messageId = createUniqueId()
     payload[MESSAGE_ID] = messageId 
-    payload[MESSAGE] = handler
+    payload[HANDLER] = handler
     # print 'sending message to client', project, handler, payload
     if clientSessionId != None:
         sendMessage(project, 'sfcMessage', payload, "C", clientSessionId)

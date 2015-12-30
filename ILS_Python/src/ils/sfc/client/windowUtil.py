@@ -115,13 +115,8 @@ def openDbWindow(windowId):
     window.title = title
     positionWindow(window, position, scale)
     
-def closeDbWindow(targetId):
-    import system.gui, system.nav
-    for window in system.gui.getOpenedWindows():
-        try:
-            windowId = window.getRootContainer().windowId
-            if windowId == targetId:
-                system.nav.closeWindow(window)
-        except:
-            # no window id property
-            pass
+def closeDbWindow(windowId):
+    import system.nav
+    window = getOpenWindow(windowId)
+    if window != None:
+        system.nav.closeWindow(window)

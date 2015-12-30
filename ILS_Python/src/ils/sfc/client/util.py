@@ -134,6 +134,28 @@ def openWindow(windowId, window):
     from ils.sfc.common.constants import WINDOW_ID
     windowProps = {WINDOW_ID:windowId}
     system.nav.openWindow(window, windowProps)
+
+def startChart(controlPanelId):
+    from ils.sfc.common.constants import PROJECT, ISOLATION_MODE, CONTROL_PANEL_ID
+    from ils.sfc.client.windows.controlPanel import getControlPanelChartPath
+    project = system.util.getProjectName()
+    isolationMode = getStartInIsolationMode()
+    initialChartParams = dict()
+    initialChartParams[PROJECT] = project
+    initialChartParams[ISOLATION_MODE] = isolationMode
+    initialChartParams[CONTROL_PANEL_ID] = controlPanelId
+    chartPath = getControlPanelChartPath(controlPanelId)
+    runId = system.sfc.startChart(chartPath, initialChartParams)
+    originator = system.security.getUsername()
+    if isolationMode:
+        isolationFlag = 1
+    else:
+        isolationFlag = 0
+    updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %d" % (runId, originator, project, isolationFlag, controlPanelId)
+    numUpdated = system.db.runUpdateQuery(updateSql)
+    if numUpdated == 0:
+        system.gui.messageBox("Failed to updated SfcControlPanel with chart start info")
+
     
 def getChartStatus(runId):
     '''Get the status of a running chart. Returns None if the run is not found'''

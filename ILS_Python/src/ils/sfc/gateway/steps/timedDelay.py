@@ -9,7 +9,7 @@ def activate(scopeContext, stepProperties):
         handleUnexpectedGatewayError, getDelaySeconds, checkForCancelOrPause, deleteAndSendClose, \
         sendOpenWindow
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
-    from ils.sfc.common.util import callMethod
+    from ils.sfc.common.util import callMethod, isEmpty
     from ils.sfc.gateway.util import getStepId
     from ils.sfc.gateway.api import getTimeFactor
     from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, \
@@ -20,7 +20,7 @@ def activate(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
-    chartLogger.info("Executing TimedDelay block")
+    chartLogger.trace("Executing TimedDelay block")
     stepId = getStepId(stepProperties) 
     timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
     if timeDelayStrategy == STATIC:
@@ -56,6 +56,8 @@ def activate(scopeContext, stepProperties):
         database = getDatabaseName(chartScope)
         controlPanelId = getControlPanelId(chartScope)
         buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+        if isEmpty(buttonLabel):
+            buttonLabel = 'Delay'
         position = getStepProperty(stepProperties, POSITION) 
         scale = getStepProperty(stepProperties, SCALE) 
         title = getStepProperty(stepProperties, WINDOW_TITLE) 

@@ -62,6 +62,7 @@ FETCH_MODE = "fetchMode"
 FILEPATH = "filepath"
 FILENAME = "filename"
 GLOBAL = "global"
+HANDLER = 'handler'
 ID = 'id'
 INPUT = 'input'
 INSTANCE_ID = 'instanceId'

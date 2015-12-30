@@ -7,35 +7,15 @@ from system.gui import getParentWindow
 from ils.sfc.client.windowUtil import getRootContainer
 
 def startChart(event):
-    from ils.sfc.common.constants import PROJECT, ISOLATION_MODE, CONTROL_PANEL_ID
-    from ils.sfc.client.util import getStartInIsolationMode
-    import system.util, system.sfc, system.db, system.gui, system.security, system.tag
+    from ils.sfc.client.util import startChart
     rootContainer = getRootContainer(event)
     cpId = rootContainer.controlPanelId
     data = rootContainer.windowData
     #TODO: check if chart is running to set canStart flag
     canStart = True
     if canStart:
-        chartPath = data.getValueAt(0,'chartPath')
-        project = system.util.getProjectName()
-        isolationMode = getStartInIsolationMode()
-        initialChartParams = dict()
-        initialChartParams[PROJECT] = project
-        initialChartParams[ISOLATION_MODE] = isolationMode
-        initialChartParams[CONTROL_PANEL_ID] = cpId
-        runId = system.sfc.startChart(chartPath, initialChartParams)
-        originator = system.security.getUsername()
-        if isolationMode:
-            isolationFlag = 1
-        else:
-            isolationFlag = 0
-        updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %d" % (runId, originator, project, isolationFlag, cpId)
-        numUpdated = system.db.runUpdateQuery(updateSql)
-        if numUpdated == 0:
-            system.gui.errorBox("Failed to updated SfcControlPanel with chart start info")
-    else:
-        system.gui.warningBox('Chart already running')
-
+        startChart(cpId)
+        
 def pauseChart(event):
     from system.sfc import pauseChart
     pauseChart(getParentWindow(event).rootContainer.chartRunId)
@@ -67,3 +47,26 @@ def reset(event):
     system.db.runUpdateQuery("delete from SfcTimeDelayNotification", database)
     system.db.runUpdateQuery("delete from SfcInput", database)
     system.db.runUpdateQuery("delete from SfcWindow", database)
+
+def getControlPanelChartPath(controlPanelId):
+    import system.db
+    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId))
+    if len(results) == 1:
+        return results[0][0]
+    else:
+        return None
+
+def getControlPanelId(controlPanelName):
+    import system.db
+    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
+    if len(results) == 1:
+        return results[0][0]
+    else:
+        return None
+    
+def setControlPanelChartPath(controlPanelId, chartPath):
+    import system.db
+    '''start a chart using the given contrl panel and over-writing that control panel's
+       chart path in the database'''
+    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId))
+     

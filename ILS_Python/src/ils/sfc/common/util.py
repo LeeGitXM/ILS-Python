@@ -44,7 +44,7 @@ def substituteProvider(chartProperties, tagPath):
     
 # this should really be in client.util
 def handleUnexpectedClientError(msg):
-    system.gui.errorBox(msg, 'Unexpected Error') 
+    system.gui.messageBox(msg, 'Unexpected Error') 
 
 def isEmpty(str):
     return str == None or str.strip() == ""

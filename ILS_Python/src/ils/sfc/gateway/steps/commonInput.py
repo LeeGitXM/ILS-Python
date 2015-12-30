@@ -3,19 +3,19 @@ Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='null', highLimit='null'):
+def activate(scopeContext, stepProperties, windowType, choices='', lowLimit=None, highLimit=None):
     '''
     Action for java InputStep
     Get an response from the user; block until a
     response is received, put response in chart properties
     '''
-    from ils.sfc.gateway.util import getTimeoutSeconds, getControlPanelId, createWindowRecord, \
+    from ils.sfc.gateway.util import getTimeoutTime, getControlPanelId, createWindowRecord, \
         getStepProperty, waitOnResponse, getRecipeScope, sendOpenWindow, deleteAndSendClose, \
-        handleUnexpectedGatewayError, getStepId
+        handleUnexpectedGatewayError, getStepId, dbStringForFloat
+    from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger
-    from system.ils.sfc.common.Constants import ID, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
+    from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
     import system.util
-    import time
     import system.db
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -25,6 +25,8 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='nul
     database = getDatabaseName(chartScope)
     controlPanelId = getControlPanelId(chartScope)
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+    if isEmpty(buttonLabel):
+        buttonLabel = 'Input'
     position = getStepProperty(stepProperties, POSITION) 
     scale = getStepProperty(stepProperties, SCALE) 
     title = getStepProperty(stepProperties, WINDOW_TITLE) 
@@ -35,17 +37,13 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='nul
     stepId = getStepId(stepProperties) 
 
     # calculate the absolute timeout time in epoch secs:
-    timeoutDurationSecs = getTimeoutSeconds(chartScope, stepProperties)
-    if(timeoutDurationSecs > 0):
-        timeoutTime = time.time() + timeoutDurationSecs
-    else:
-        timeoutTime = 0
+    timeoutTime = getTimeoutTime(chartScope, stepProperties)
 
     # create db window records:
     windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)
     # Note: the low/high limits are formatted as strings so we can insert 'null' if desired
-    lowLimit = str(lowLimit)
-    highLimit = str(highLimit)
+    lowLimit = dbStringForFloat(lowLimit)
+    highLimit = dbStringForFloat(highLimit)
     
     numInserted = system.db.runUpdateQuery("insert into SfcInput (windowId, prompt, recipeLocation, recipeKey, lowLimit, highLimit) values ('%s', '%s', '%s', '%s', %s, %s)" % (windowId, prompt, recipeLocation, key, lowLimit, highLimit), database)
     if numInserted == 0:
@@ -59,14 +57,12 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit='nul
         
     sendOpenWindow(chartScope, windowId, stepId, database)
     
-    value = waitOnResponse(windowId, chartScope, timeoutTime)
-    if value == None:
-        print "timed out"
-        value = "Timeout"
-    s88Set(chartScope, stepScope, key, value, recipeLocation)
+    response = waitOnResponse(windowId, chartScope, timeoutTime)
+    if response == None:
+        response = "Timeout"
+    s88Set(chartScope, stepScope, key, response, recipeLocation)
     
     # delete db window records:
-    print 'deleting window records', windowId
     if choices != None:
         system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
     system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)

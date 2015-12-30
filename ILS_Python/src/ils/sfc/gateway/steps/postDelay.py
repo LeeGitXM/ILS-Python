@@ -8,6 +8,7 @@ def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import getControlPanelId, createWindowRecord, getStepProperty, \
         handleUnexpectedGatewayError, getStepId, sendOpenWindow
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger
+    from ils.sfc.common.util import isEmpty
     from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
     import system.db
     chartScope = scopeContext.getChartScope()
@@ -17,6 +18,8 @@ def activate(scopeContext, stepProperties):
     database = getDatabaseName(chartScope)
     controlPanelId = getControlPanelId(chartScope)
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+    if isEmpty(buttonLabel):
+        buttonLabel = 'Busy'
     position = getStepProperty(stepProperties, POSITION) 
     scale = getStepProperty(stepProperties, SCALE) 
     title = getStepProperty(stepProperties, WINDOW_TITLE) 

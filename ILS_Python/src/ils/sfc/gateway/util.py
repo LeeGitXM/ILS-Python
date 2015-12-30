@@ -92,12 +92,11 @@ def waitOnResponse(requestId, chartScope, timeoutTime=None):
     the chart has been canceled/paused/aborted
     '''
     import time
-    response = None
+    responsePayload = None
     maxCycles = 5 * 60 / SLEEP_INCREMENT
     cycle = 0
-    print 'waitOnResponse', requestId
-    while response == None and cycle < maxCycles:
-        if (timeoutTime != None) and (timeoutTime > 0) and (time.time() >= timeoutTime):
+    while responsePayload == None and cycle < maxCycles:
+        if (timeoutTime != None) and (timeoutTime > 0.) and (time.time() >= timeoutTime):
             break
         time.sleep(SLEEP_INCREMENT);
         cycle = cycle + 1
@@ -105,19 +104,15 @@ def waitOnResponse(requestId, chartScope, timeoutTime=None):
         # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
             # TODO: log that we're bailing
         # return None
-        response = getResponse(requestId)
+        responsePayload = getResponse(requestId)
 
-    if response == None:
+    if responsePayload == None:
         handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
         return None
     else:
         print 'returning response'
-        return response[RESPONSE]
+        return responsePayload[RESPONSE]
     
-#def sendUpdateControlPanelMsg(chartProperties):
-#    from ils.sfc.gateway.api import sendMessageToClient
-#    sendMessageToClient(chartProperties, CP_UPDATE_HANDLER, dict())
-
 def getChartPath(chartProperties):
     return chartProperties.chartPath
     
@@ -254,16 +249,20 @@ def getControlPanelId(chartScope):
     topScope = getTopLevelProperties(chartScope)
     return topScope[CONTROL_PANEL_ID]
 
-def getTimeoutSeconds(chartScope, stepProperties):
-    '''For input steps that pass a timeout, get the value in seconds.
+def getTimeoutTime(chartScope, stepProperties):
+    '''For steps that time out, get the time in epoch seconds when the timeout expires.
        Take the isolation mode time factor into account'''
     from ils.sfc.gateway.api import getTimeFactor
+    import time
     timeFactor = getTimeFactor(chartScope)
+    timeoutTime = None
     timeout = getStepProperty(stepProperties, TIMEOUT)
-    timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
-    timeoutSeconds = getDelaySeconds(timeout, timeoutUnit)
-    timeoutSeconds *= timeFactor
-    return timeoutSeconds
+    if timeout != None and timeout > 0.:
+        timeoutUnit = getStepProperty(stepProperties, TIMEOUT_UNIT)
+        timeoutSeconds = getDelaySeconds(timeout, timeoutUnit)
+        timeoutSeconds *= timeFactor
+        timeoutTime = time.time() + timeoutSeconds
+    return timeoutTime
     
 def queueMessage(chartScope, msg, priority):
     '''insert a message in the current message queue'''
@@ -393,3 +392,9 @@ def deleteAndSendClose(chartScope, windowId, database):
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
     sendMessageToClient(chartScope, 'sfcCloseWindow', {WINDOW_ID: windowId})
    
+def dbStringForFloat(numberValue):
+    '''return a string representation of the given number suitable for a nullable SQL float column'''
+    if numberValue != None:
+        return str(numberValue)
+    else:
+        return 'null'
