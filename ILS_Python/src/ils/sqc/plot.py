@@ -4,6 +4,8 @@ Created on Dec 10, 2015
 @author: Pete
 '''
 import system, string
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+log = LogUtil.getLogger("com.ils.sqc.plot")
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()"
@@ -25,27 +27,29 @@ def configureChart(rootContainer):
         system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
         return
     
-    labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
-    print "Lab Value Name: ", labValueName
+    unitName, labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
+    rootContainer.unitName=unitName
     rootContainer.valueName=labValueName
 
     # Get the SQC limits out of the chartInfo
     highLimits=[]
     lowLimits=[]
     violatedRules=[]
+    print "Determining violated rules..."
     for info in chartInfo:
         print "Info: ", info
-        if info['limitType'] == 'HIGH' and abs(info['numberOfStandardDeviations']) >= 0.5:
-            highLimits.append(abs(info['numberOfStandardDeviations']))
-        if info['limitType'] == 'LOW' and abs(info['numberOfStandardDeviations']) >= 0.5:
-            lowLimits.append(abs(info['numberOfStandardDeviations']))
-            
-        if string.upper(info['state']) == 'SET':
+        if info['limitType'] == 'HIGH' and abs(float(str(info['numberOfStandardDeviations']))) >= 0.5:
+            highLimits.append(abs(float(str(info['numberOfStandardDeviations']))))
+        if info['limitType'] == 'LOW' and abs(float(str(info['numberOfStandardDeviations']))) >= 0.5:
+            lowLimits.append(abs(float(str(info['numberOfStandardDeviations']))))
+        
+        state=string.upper(str(info['state']))
+        if state in ['SET', 'TRUE']:
             rule="%s %s of %s" % (info["limitType"], str(info["minimumOutOfRange"]), str(info["sampleSize"]))
             violatedRules.append([rule])
 
-    print "Violated Rules: ", violatedRules
-
+    print "...violated Rules: ", violatedRules
+    
     # Create a dataset from the violated rules and put it in the rootContainer which will drive the table of violated rules
     ds=system.dataset.toDataSet(["rule"], violatedRules)
     rootContainer.violatedRules=ds
@@ -60,8 +64,10 @@ def configureChart(rootContainer):
     lowLimits.sort()
     print "The high limits are: ", highLimits
     print "The low limits are: ", lowLimits
+
+    sqcInfo=[]
     
-    if target == None or target == "NaN" or standardDeviation != None or standardDeviation != "NaN":
+    if target == None or target == "NaN" or standardDeviation == None or standardDeviation == "NaN":
         print "Unable to completely configure the SQC chart"
         target=0.0
         standardDeviation=0.0
@@ -74,16 +80,38 @@ def configureChart(rootContainer):
         upperLimit1=target
         upperLimit2=target
         if len(highLimits) >= 1:
-            upperLimit1 = target + standardDeviation * highLimits[0]
+            upperLimit1 = float(target) + float(standardDeviation) * float(highLimits[0])
         if len(highLimits) >= 2:
-            upperLimit2 = target + standardDeviation * highLimits[1]
+            upperLimit2 = float(target) + float(standardDeviation) * float(highLimits[1])
         
         lowerLimit1=target
         lowerLimit2=target
         if len(lowLimits) >= 1:
-            lowerLimit1 = target - standardDeviation * lowLimits[0]
+            lowerLimit1 = float(target) - float(standardDeviation) * float(lowLimits[0])
         if len(lowLimits) >= 2:
-            lowerLimit2 = target - standardDeviation * lowLimits[1]
+            lowerLimit2 = float(target) - float(standardDeviation) * float(lowLimits[1])
+
+        print "Determining SQC Info..."
+        sqcInfo.append(["Target", float(str(target))])
+        for info in chartInfo:
+            print "Info: ", info
+    
+            if info['limitType'] == 'HIGH':
+                txt="High Limit (%s sigma)" % (str(info['numberOfStandardDeviations']))
+                val = float(target) + float(standardDeviation) * float(info['numberOfStandardDeviations'])
+                sqcInfo.append([txt, val])
+            if info['limitType'] == 'LOW':
+                txt="Low Limit (%s sigma)" % (str(info['numberOfStandardDeviations']))
+                val = float(target) - float(standardDeviation) * float(info['numberOfStandardDeviations'])
+                sqcInfo.append([txt, val])
+
+        print "...SQC info:", sqcInfo
+    
+    
+    # Create a dataset from SQC Info and put it in the rootContainer which will drive the SQC Info table
+    ds=system.dataset.toDataSet(["Limit", "Value"], sqcInfo)
+    ds=system.dataset.sort(ds,"Value", False)
+    rootContainer.sqcInfo=ds  
 
     rootContainer.lowerLimit1=lowerLimit1
     rootContainer.lowerLimit2=lowerLimit2
@@ -92,19 +120,19 @@ def configureChart(rootContainer):
     rootContainer.target=target
     rootContainer.standardDeviation=standardDeviation
     
-    # Now set the auto Y-axis limits
-    calculateLimitsFromTargetAndSigma(rootContainer)
+    # Now set the auto Y-axis limits - this will be called automatically from a property change script
+#    calculateLimitsFromTargetAndSigma(rootContainer)
     
-    # Configure the where clause of the database pens
-    configureChartValuePen(rootContainer, labValueName)
+    # Configure the where clause of the database pens which should drive the update of the chart
+    configureChartValuePen(rootContainer, unitName, labValueName)
 
 # This sets the target and limit values of a chart.  This is called when any of the limits that
 # are properties of the window change and this updates the chart.
-def configureChartValuePen(rootContainer, labValueName):
+def configureChartValuePen(rootContainer, unitName, labValueName):
     print "Updating the value database pen for %s..." % (labValueName)
     chart=rootContainer.getComponent('Easy Chart')
     ds = chart.pens
-    whereClause = "ValueName = '%s'" % labValueName
+    whereClause = "UnitName = '%s' and ValueName = '%s'" % (unitName, labValueName)
     ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
     chart.pens = ds
 
@@ -138,7 +166,10 @@ def setYAxisLimits(rootContainer, limit, value):
     ds = system.dataset.setValue(ds, row, col, value)
     
     chart.axes = ds
-    
+
+
+# This is called from the Reset button at the user's discretion and from a property change 
+# script on the target and the standard deviation, which are set when the window is opened.
 def calculateLimitsFromTargetAndSigma(rootContainer):
     target=rootContainer.target
     standardDeviation=rootContainer.standardDeviation
@@ -153,60 +184,42 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
     import system.ils.blt.diagram as diagram
     
     print "Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisId)
-    
-#    chartInfo=[]
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":1,"minimumOutOfRange":1,"limit":3.0,"state":"Set"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":4,"minimumOutOfRange":3,"limit":1.45,"state":"Set"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":9,"minimumOutOfRange":9,"limit":0.001,"state":"Unset"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'LOW',"sampleSize":9,"minimumOutOfRange":9,"limit":0.001,"state":"Unset"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'LOW',"sampleSize":4,"minimumOutOfRange":3,"limit":1.45,"state":"Unset"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'LOW',"sampleSize":1,"minimumOutOfRange":1,"limit":3.0,"state":"Unset"})   
-#    return chartInfo
-    
+   
     diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisId)
     if diagramDescriptor == None:
         print "Unable to locate the diagram for block with id: ", sqcDiagnosisId
         return None
-    
-    print "Diagram Descriptor: ", diagramDescriptor
+
     diagramId=diagramDescriptor.getId()
     
     print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
     #Now get the SQC observation blocks
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
-    print "Found blocks: ", blocks
+#    print "Found blocks: ", blocks
     sqcInfo=[]
     for block in blocks:
-        print "Found a %s block..." % (block.getClassName())
+#        print "Found a %s block..." % (block.getClassName())
         if block.getClassName() == "com.ils.block.SQC":
-            print "   ... it is a SQC block..."
+            print "   ... found a SQC block..."
             blockId=block.getIdString()
-            print "Id: ", blockId
+            blockName=block.getName()
             
             # First get block properties
-            blockName=block.getName()
-            print "Name: ", blockName
-            
             sampleSize=diagram.getPropertyValue(diagramId, blockId, 'SampleSize')
-            print "Sample Size: ", sampleSize
             numberOfStandardDeviations=diagram.getPropertyValue(diagramId, blockId, 'NumberOfStandardDeviations')
-            print "# of Std Devs: ", numberOfStandardDeviations
-            limitType=diagram.getPropertyValue(diagramId, blockId, 'LimitType')
-            print "Limit Type: ", limitType
             
             # now the state
             state=diagram.getBlockState(diagramId, blockName)
-            print "State: ", state
             
             # now get some block internals
-            print "Getting attributes..."
             attributes = block.getAttributes()
-            print "Attributes: ", attributes
+#            print "Attributes: ", attributes
             target=attributes.get('Mean (target)')
             standardDeviation=attributes.get('StandardDeviation')
-                
-            sqcInfo.append({
+            limitType=attributes.get('Limit type')
+            
+            sqcDictionary = {
                             "target": target,
                             "standardDeviation": standardDeviation,
                             "limitType": str(limitType),
@@ -214,21 +227,73 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
                             "minimumOutOfRange": 1,
                             "numberOfStandardDeviations": numberOfStandardDeviations,
                             "state": state
-                            })
-            print sqcInfo
-    
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":1,"minimumOutOfRange":1,"limit":3.0,"state":"Set"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":4,"minimumOutOfRange":3,"limit":1.45,"state":"Set"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'HIGH',"sampleSize":9,"minimumOutOfRange":9,"limit":0.001,"state":"Unset"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'LOW',"sampleSize":9,"minimumOutOfRange":9,"limit":0.001,"state":"Unset"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'LOW',"sampleSize":4,"minimumOutOfRange":3,"limit":1.45,"state":"Unset"})
-#    chartInfo.append({"target": 7.5,"standardDeviation": 0.5,"limitType":'LOW',"sampleSize":1,"minimumOutOfRange":1,"limit":3.0,"state":"Unset"})
-    
+                            }
+            sqcInfo.append(sqcDictionary)
+            print sqcDictionary
+        
     return sqcInfo
 
 
+def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
+    import system.ils.blt.diagram as diagram
+    
+    unitName=None
+    labValueName=None
+    
+    print "Getting Lab value name for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisId)
+   
+    diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisId)
+    if diagramDescriptor == None:
+        print "Unable to locate the diagram for block with id: ", sqcDiagnosisId
+        return unitName, labValueName
+    
+    diagramId=diagramDescriptor.getId()
+    
+    print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
 
-def fetchChartData(labDatum):
+    # Get all of the upstream blocks
+    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
+    blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
+#    print "Found blocks: ", blocks
+
+    for block in blocks:
+#        print "Found a %s block..." % (block.getClassName())
+        if block.getClassName() == "com.ils.block.LabData":
+            print "   ... found the LabData block..."
+            blockId=block.getIdString()
+            blockName=block.getName()
+            
+            # First get block properties
+            valueTagPath=diagram.getPropertyValue(diagramId, blockId, 'ValueTagPath')
+            print "valueTagPath: ", valueTagPath
+            
+            # TODO - This was returning the value of the tag and I want the name of the tag
+            print "*****************************************"
+            print "* Have C9-LAB-DATA hard coded here      *"
+            print "*****************************************"
+            valueTagPath="[XOM]LabData/RLA3/C9-LAB-DATA/value"
+            
+            # Strip off the trailing "/value"
+            if valueTagPath.endswith("/value"):
+                valueTagPath=valueTagPath[:len(valueTagPath) - 6]
+            else:
+                log.warn("Unexpected lab value tag path - expected path to end with /value")
+            
+            # Now strip off everything (provider and path from the left up to the last "/"
+            valueTagPath=valueTagPath[valueTagPath.find("]")+1:]
+            print valueTagPath
+            unitName=valueTagPath[valueTagPath.find("/")+1:valueTagPath.rfind("/")]
+            labValueName=valueTagPath[valueTagPath.rfind("/")+1:]
+            
+            # now get some block internals
+#            attributes = block.getAttributes()
+#            print "Attributes: ", attributes
+    
+    print "Found unit: <%s> - lab value: <%s>" % (unitName, labValueName)
+    return unitName, labValueName
+
+
+def fetchChartData(unitName, labValueName):
 
     chartData = []
     chartData.append({"x": 0.0, "y": 7.9})
@@ -236,9 +301,32 @@ def fetchChartData(labDatum):
     
     return chartData
 
-def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
-    import system.ils.blt.diagram as diagram
+def tooltipGenerator(dataset, series, item):
+#    print "Here's a tip"
+    grade="Chocolate"
+    x1 = dataset.getXValue(series, item);
+    x2 = dataset.getYValue(series, item);
+    HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(grade)
+    HTML=HTML+" X:'%f'<br/>"%(x1)
+    HTML=HTML+" Y:'%f'<br/>"%(x2)
+    HTML=HTML+"</p></html>"
+    return HTML
     
-    labValueName="MOONEY-LAB-DATA"
+#
+from org.jfree.chart import labels
+class CustomTooltipGenerator(labels.XYToolTipGenerator):
     
-    return labValueName
+    def __init__(self):
+        self.grade = "Ethanol"
+    
+    # Dataset is a jfree XYDataset
+    # Series and item are integers
+    def generateToolTip(self,dataset, series, item):
+#        print "Generating a tooltip"
+        x1 = dataset.getXValue(series, item);
+        x2 = dataset.getYValue(series, item);
+        HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(self.grade)
+        HTML=HTML+" X:'%f'<br/>"%(x1)
+        HTML=HTML+" Y:'%f'<br/>"%(x2)
+        HTML=HTML+"</p></html>"
+        return HTML
