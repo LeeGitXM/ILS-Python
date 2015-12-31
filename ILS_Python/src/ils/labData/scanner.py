@@ -250,7 +250,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 if string.upper(status) == "SUCCESS":
                     newVal=returnDictionary.get("value", None)
                     # Use the sample time of the triggerValue and store the value in the database and in the UDT tags
-                    storeValue(valueId, valueName, newVal, sampleTime, derivedLog, database)
+                    storeValue(valueId, valueName, newVal, sampleTime, unitName, derivedLog, tagProvider, database)
                 
                     # This updates the Lab Data UDT tags - derived values do not get validated, so set valid = true; this makes the console argument irrelevant
                     valid = True
@@ -516,7 +516,7 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
       
     else:
         log.trace("%s passed all limit checks" % (valueName))
-        storeValue(valueId, valueName, rawValue, sampleTime, log, database)
+        storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database)
         writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues, log)
             
     # regardless of whether we passed or failed validation, add the value to the cache so we don't process it again
@@ -537,12 +537,28 @@ def handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, write
 # Store a new lab value.  Insert the value into LtHistory and update LtValue with the id of the latest history value.
 # This is called by one of two callers - directly by the scanner if the value is good or if the value is outside the limits and 
 # the operator presses accept 
-def storeValue(valueId, valueName, rawValue, sampleTime, log, database):
+def storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database):
     log.trace("Storing %s - %s - %s - %s ..." % (valueName, str(valueId), str(rawValue), str(sampleTime)))
+
+    # Try to read the current grade
+    tagPath="[%s]Site/%s/Grade/grade" % (tagProvider, unitName)
+
+    exists=system.tag.exists(tagPath)
+    if exists:
+        grade=system.tag.read(tagPath)
+        if grade.quality.isGood():
+            grade=grade.value
+        else:
+            log.warn("Grade tag (%s) quality is bad!" % (tagPath))
+            grade=None
+    else:
+        log.warn("Grade tag (%s) does not exist" % (tagPath))
+        grade=None
+    
     try:
         # Step 1 - Insert the value into the lab history table.
-        SQL = "insert into LtHistory (valueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, getdate())"
-        historyId = system.db.runPrepUpdate(SQL, [valueId, rawValue, sampleTime], database, getKey=1)
+        SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (?, ?, ?, ?, getdate())"
+        historyId = system.db.runPrepUpdate(SQL, [valueId, rawValue, grade, sampleTime], database, getKey=1)
         
         # Step 2 - Update LtValue with the id of the latest history value
         SQL = "update LtValue set LastHistoryId = %i where valueId = %i" % (historyId, valueId)
@@ -557,10 +573,11 @@ def storeValue(valueId, valueName, rawValue, sampleTime, log, database):
 def storeSelector(tagRoot, database):
     selectorLog.trace("Storing selector of tag %s" % (tagRoot))
 
+    tagProvider=tagRoot[1:tagRoot.find(']')]
     valueName=tagRoot[tagRoot.find('LabData/') + 8:]
+    unitName=valueName[:valueName.find('/')]
     valueName=valueName[valueName.find('/') + 1:]
-
-    selectorLog.trace("   ...the selector value name is <%s>" % (valueName))
+    selectorLog.trace("   ...the selector value name is <%s> (unit=%s)" % (valueName,unitName))
 
     # Read the value and the sample time
     vals = system.tag.readAll([tagRoot + '/value', tagRoot + '/sampleTime'])
@@ -575,7 +592,7 @@ def storeSelector(tagRoot, database):
         selectorLog.error("Error storing lab value for selector <%s> due to unable to find name in LtValue" % (valueName))
         return
      
-    storeValue(valueId, valueName, value, sampleTime, selectorLog, database)
+    storeValue(valueId, valueName, value, sampleTime, unitName, selectorLog, tagProvider, database)
 
     
 def updateCache(valueId, valueName, rawValue, sampleTime):
