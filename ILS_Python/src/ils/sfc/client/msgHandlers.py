@@ -4,15 +4,14 @@ All SFC Client Message Handlers
 def sfcUnexpectedError(payload):
     from ils.sfc.common.util import handleUnexpectedClientError
     from ils.sfc.common.constants import MESSAGE
-    msg = payload[MESSAGE]
+    msg = payload.get(MESSAGE, '<no message>')
     handleUnexpectedClientError(msg)
 
 def sfcOpenWindow(payload):
-    from ils.sfc.common.constants import DATABASE, WINDOW_ID
+    from ils.sfc.common.constants import WINDOW_ID
     from ils.sfc.client.windowUtil import openDbWindow
     windowId = payload[WINDOW_ID]
-    database = payload[DATABASE]
-    openDbWindow(windowId, database)
+    openDbWindow(windowId)
 
 def sfcCloseWindow(payload):
     from ils.sfc.common.constants import WINDOW_ID
@@ -22,11 +21,11 @@ def sfcCloseWindow(payload):
     
 def dispatchMessage(payload):
     from ils.sfc.common.util import callMethodWithParams
-    from ils.sfc.common.constants import MESSAGE
+    from ils.sfc.common.constants import HANDLER
     import system.gui
     # print 'dispatchMessage: payload:', payload
-    msgName = payload[MESSAGE]
-    methodPath = 'ils.sfc.client.msgHandlers.' + msgName
+    handlerMethod = payload[HANDLER]
+    methodPath = 'ils.sfc.client.msgHandlers.' + handlerMethod
     keys = ['payload']
     values = [payload]
     try:
@@ -34,9 +33,9 @@ def dispatchMessage(payload):
     except Exception, e:
         try:
             cause = e.getCause()
-            errMsg = "Error dispatching client message %s: %s" % (msgName, cause.getMessage())
+            errMsg = "Error dispatching client message %s: %s" % (handlerMethod, cause.getMessage())
         except:
-            errMsg = "Error dispatching client message %s: %s" % (msgName, str(e))
+            errMsg = "Error dispatching client message %s: %s" % (handlerMethod, str(e))
         system.gui.errorBox(errMsg)
 
 

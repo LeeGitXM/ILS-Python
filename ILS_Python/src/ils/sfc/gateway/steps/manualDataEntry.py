@@ -5,14 +5,20 @@ Created on Dec 17, 2015
 '''
 
 def activate(scopeContext, stepProperties):    
-    from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOMATIC, DATA
+    from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOMATIC, DATA, \
+    BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS
     from system.ils.sfc import getManualDataEntryConfig 
-    from system.dataset import toDataSet
     from ils.sfc.common.util import isEmpty
-    from ils.sfc.gateway.util import sendMessageToClient, waitOnResponse, getStepProperty, transferStepPropertiesToMessage
-    from ils.sfc.gateway.api import s88GetType, parseValue, getUnitsPath, s88Set, s88Get, s88SetWithUnits
+    from ils.sfc.gateway.util import getStepId, sendOpenWindow, createWindowRecord, \
+        getControlPanelId, waitOnResponse, getStepProperty, deleteAndSendClose, getTimeoutTime, dbStringForFloat
+    from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, s88Set, s88Get, s88SetWithUnits
+    import system.db
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    # chartLogger = getChartLogger(chartScope)
+
+    # window common properties:
+ 
     #logger = getChartLogger(chartScope)
     autoMode = getStepProperty(stepProperties, AUTO_MODE)
     configJson = getStepProperty(stepProperties, MANUAL_DATA_CONFIG)
@@ -21,11 +27,19 @@ def activate(scopeContext, stepProperties):
         for row in config.rows:
             s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
     else:
-        header = ['Description', 'Value', 'Units', 'Low Limit', 'High Limit', 'Key', 'Destination', 'Type', 'Recipe Units']    
-        rows = []
-        # Note: apparently the IA toDataSet method tries to coerce all column values to
-        # the same type and throws an error if that is not possible. Since we potentially
-        # have a mixture of float and string values, we convert them all to strings:
+        database = getDatabaseName(chartScope)
+        controlPanelId = getControlPanelId(chartScope)
+        buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+        if isEmpty(buttonLabel):
+            buttonLabel = 'Input'
+        position = getStepProperty(stepProperties, POSITION) 
+        scale = getStepProperty(stepProperties, SCALE) 
+        title = getStepProperty(stepProperties, WINDOW_TITLE) 
+        windowId = createWindowRecord(controlPanelId, 'SFC/ManualDataEntry', buttonLabel, position, scale, title, database)
+        stepId = getStepId(stepProperties) 
+        requireAllInputs = getStepProperty(stepProperties, REQUIRE_ALL_INPUTS)
+        system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, requireAllInputs) values ('%s', %d)" % (windowId, requireAllInputs), database)
+        rowNum = 0
         for row in config.rows:
             tagType = s88GetType(chartScope, stepScope, row.key, row.destination)
             if row.defaultValue != None:
@@ -34,23 +48,33 @@ def activate(scopeContext, stepProperties):
                 defaultValue = ""
             existingUnitsKey = getUnitsPath(row.key)
             existingUnitsName = s88Get(chartScope, stepScope, existingUnitsKey, row.destination)
-            rows.append([row.prompt, defaultValue, row.units, row.lowLimit, row.highLimit, row.key, row.destination, tagType, existingUnitsName])
-        dataset = toDataSet(header, rows)
-        payload = dict()
-        transferStepPropertiesToMessage(stepProperties, payload)
-        payload[DATA] = dataset
-        messageId = sendMessageToClient(chartScope, 'sfcManualDataEntry', payload)             
-        response = waitOnResponse(messageId, chartScope)
-        returnDataset = response[DATA]
-        # Note: all values are returned as strings; we depend on s88Set to make the conversion
-        for row in range(returnDataset.rowCount):
-            strValue = returnDataset.getValueAt(row, 1)
-            units = returnDataset.getValueAt(row, 2)
-            key = returnDataset.getValueAt(row, 5)
-            destination = returnDataset.getValueAt(row, 6)
-            valueType = returnDataset.getValueAt(row, 7)
-            value = parseValue(strValue, valueType)
-            if isEmpty(units):
-                s88Set(chartScope, stepScope, key, value, destination)
-            else:
-                s88SetWithUnits(chartScope, stepScope, key, value, destination, units)
+            lowLimitDbStr = dbStringForFloat(row.lowLimit)
+            highLimitDbStr = dbStringForFloat(row.highLimit)
+            system.db.runUpdateQuery("insert into SfcManualDataEntryTable (windowId, rowNum, description, value, units, lowLimit, highLimit, dataKey, destination, type, recipeUnits) values ('%s', %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s')" % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, tagType, existingUnitsName), database)
+            ++rowNum
+        sendOpenWindow(chartScope, windowId, stepId, database)
+        
+        timeoutTime = getTimeoutTime(chartScope, stepProperties)
+        response = waitOnResponse(windowId, chartScope, timeoutTime)
+        
+        if response != None:
+            returnDataset = response[DATA]
+            # Note: all values are returned as strings; we depend on s88Set to make the conversion
+            for row in range(returnDataset.rowCount):
+                strValue = returnDataset.getValueAt(row, 1)
+                units = returnDataset.getValueAt(row, 2)
+                key = returnDataset.getValueAt(row, 5)
+                destination = returnDataset.getValueAt(row, 6)
+                valueType = returnDataset.getValueAt(row, 7)
+                value = parseValue(strValue, valueType)
+                if isEmpty(units):
+                    s88Set(chartScope, stepScope, key, value, destination)
+                else:
+                    s88SetWithUnits(chartScope, stepScope, key, value, destination, units)
+        else:
+            pass
+            # timeout--is some action needed?
+    system.db.runUpdateQuery("delete from SfcManualDataEntryTable where windowId = '%s'" % (windowId), database)
+    system.db.runUpdateQuery("delete from SfcManualDataEntry where windowId = '%s'" % (windowId), database)
+    
+    deleteAndSendClose(chartScope, windowId, database)

@@ -16,7 +16,7 @@ def sendData(window):
     from ils.sfc.common.util import isEmpty
     from ils.sfc.common.constants import DATA
     import system.gui.warningBox
-    from ils.sfc.client.windowUtil import responseWindowClosed
+    from ils.sfc.client.windowUtil import sendWindowResponse
     table = window.getRootContainer().getComponent('table')
     dataset = table.data
     
@@ -27,9 +27,9 @@ def sendData(window):
             recipeUnits = dataset.getValueAt(row, 8)
             key = dataset.getValueAt(row, 5)
             if isEmpty(recipeUnits):
-                system.gui.warningBox("Unit %s is specified but recipe data %s has no units. No conversion will be done." % (units, key))
+                system.gui.messageBox("Unit %s is specified but recipe data %s has no units. No conversion will be done." % (units, key), 'Warning')
      
-    requireAllInputs = window.getRootContainer().requireAllInputs
+    requireAllInputs = window.getRootContainer().data.getValueAt(0,'requireAllInputs')
     allInputsOk = True
     if requireAllInputs:
         for row in range(dataset.rowCount):
@@ -39,7 +39,7 @@ def sendData(window):
                 break
     if allInputsOk:
         response = {DATA: dataset}
-        responseWindowClosed(window, response)
+        sendWindowResponse(window, response)    
         return True
     else:
         system.gui.warningBox("All inputs are required")
