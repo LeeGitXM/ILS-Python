@@ -170,12 +170,37 @@ def calculateFinalRecommendation(quantOutput):
     log.trace("  The recommendation after combining multiple recommendations but before bounds checking) is: %f" % (finalRecommendation))
     return quantOutput
 
-# Used within FinalDiagnosis calculation methods. This method creates a
-# new a dictionary corresponding to a quant output.
-# The dictionary contains QuantOutput, Value
-# The dictionary is local to the method. It is ultimately returned
-# my the method and incorporated into the object.
-def defineQuantOutput(fdname,name):
-    qo = {}
-    qo["QuantOutput"] = str(name)
-    return qo
+def test(applicationName, familyName, finalDiagnosisName, database="", provider=""):
+    SQL = "select CalculationMethod "\
+        "from DtFinalDiagnosisView "\
+        "where ApplicationName = '%s' "\
+        "  and FamilyName = '%s' "\
+        "  and FinalDiagnosisName = '%s'" % (applicationName, familyName, finalDiagnosisName)
+    print SQL
+    calculationMethod = system.db.runScalarQuery(SQL, database)
+    print "Using calculation method: <%s>" % (calculationMethod)
+    
+    if string.upper(calculationMethod) == "CONSTANT":
+        print "Bypassing calculations for a CONSTANT calculation method!"
+        return
+
+    # If they specify shared or project scope, then we don't need to do this
+    if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
+        # The method contains a full python path, including the method name
+        separator=string.rfind(calculationMethod, ".")
+        packagemodule=calculationMethod[0:separator]
+        separator=string.rfind(packagemodule, ".")
+        package = packagemodule[0:separator]
+        module  = packagemodule[separator+1:]
+        print "   ...using External Python, the package is: <%s>.<%s>" % (package, module)
+        exec("import %s" % (package))
+        exec("from %s import %s" % (package,module))
+
+    textRecommendation, rawRecommendationList = eval(calculationMethod)(applicationName,finalDiagnosisName,provider,database)
+
+    if len(rawRecommendationList) == 0:
+        print "NO-RECOMMENDATIONS were returned!"
+    else:
+        print "Recommendations: ", rawRecommendationList
+
+    return
