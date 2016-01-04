@@ -33,6 +33,7 @@ def load(rootContainer, stripGDA):
     table.data=ds
     
     ds=parseRecords(records,"FINAL-DIAGNOSIS", stripGDA)
+    ds=morphCalculationMethodName(rootContainer, ds)
     table=rootContainer.getComponent("Final Diagnosis Container").getComponent("Power Table")
     table.data=ds
     
@@ -77,6 +78,10 @@ def parseRecords(records, recordType, stripGDA=True):
                 line=line.rstrip(',')
                 line="id,%s" % (line)
                 header = line.split(',')
+                
+                if recordType == 'FINAL-DIAGNOSIS':
+                    header.append('new-recommendation-calculation-method')
+                
                 numTokens=len(header)
                 print "Header: ", header
             else:
@@ -94,6 +99,9 @@ def parseRecords(records, recordType, stripGDA=True):
                     tokens[2]=changeCase(tokens[2])
                     tokens[3]=changeCase(tokens[3])
                     tokens[4]=changeCase(tokens[4])
+                    
+                    # Copy the calculation method to the end - we are going to morph this name
+                    tokens.append(tokens[8])
                 elif recordType == 'SQC-DIAGNOSIS':
                     tokens[2]=changeCase(tokens[2])
                     tokens[3]=changeCase(tokens[3])
@@ -108,9 +116,67 @@ def parseRecords(records, recordType, stripGDA=True):
             i = i + 1
 
     print "Data: ", data
-        
+    
     ds = system.dataset.toDataSet(header, data)
     print "   ...parsed %i %s records!" % (len(data), recordType)
+    return ds
+
+def morphCalculationMethodName(rootContainer, ds):
+    #-----------------------------------------
+    def mapApplication(oldName):
+        oldName = string.upper(oldName)
+        
+        #
+        # Vistalon Applications
+        #
+        
+        if oldName == 'CSTRPRODUCTQUALITY':
+            newName = "cstr"
+        elif oldName == 'CRXPRODUCTQUALITY':
+            newName = 'crx'
+        elif oldName == 'VFUPRODUCTQUALITY':
+            newName = 'vfu'
+        elif oldName == 'POLYRATECHANGESYSTEM':
+            newName = 'rateChange'
+        elif oldName == 'POLYFLYINGSWITCHSYSTEM':
+            newName = 'flyingSwitch'
+
+        #
+        # Put next application here
+        #
+        
+        else:
+            print "Mapping not found for application: ", oldName
+            newName = oldName
+        return newName
+    #-------------------------------------------
+    calculationMethodRoot=rootContainer.getComponent("Calculation Method Root Field").text
+
+    for row in range(ds.rowCount):
+        application=ds.getValueAt(row, "application")
+        applicationNickName=mapApplication(application)
+        
+        oldCalculationMethod=ds.getValueAt(row, "recommendation-calculation-method")
+        if string.upper(oldCalculationMethod) == 'CONSTANT':
+            newCalculationMethod='CONSTANT'
+        else:
+            newCalculationMethod=oldCalculationMethod
+#            print "Morphing ", newCalculationMethod
+            
+            if newCalculationMethod.startswith("CALC-"):
+                newCalculationMethod=newCalculationMethod[5:]
+#                print "   <%s>" % (newCalculationMethod)
+            
+            if newCalculationMethod.endswith("_PROBLEM-OUTPUT"):
+                newCalculationMethod=newCalculationMethod[:len(newCalculationMethod)-15]
+#                print "   <%s>" % (newCalculationMethod)
+            
+            newCalculationMethod=changeCase(newCalculationMethod)
+#            print "   <%s>" % (newCalculationMethod)
+            
+            newCalculationMethod=calculationMethodRoot + applicationNickName + "." + newCalculationMethod + '.calculate'
+ 
+        ds = system.dataset.setValue(ds, row, 'new-recommendation-calculation-method', newCalculationMethod)
     return ds
 
 def changeCase(txt):
@@ -302,7 +368,7 @@ def insertFinalDiagnosis(container):
         finalDiagnosis=ds.getValueAt(row, 4)    # I used to use the label, but Chuck is using the name, so use the name
         explanation=ds.getValueAt(row, "explanation")
         priority=ds.getValueAt(row, "priority")
-        calculationMethod=ds.getValueAt(row, "recommendation-calculation-method")
+        calculationMethod=ds.getValueAt(row, "new-recommendation-calculation-method")
         trapInsignificantRecommendations=ds.getValueAt(row, "trap-insignificant-recommendation-conditions")
         if trapInsignificantRecommendations == "TRUE":
             trapInsignificantRecommendations=1

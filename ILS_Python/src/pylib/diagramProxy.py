@@ -23,7 +23,6 @@ def setState(common,dpath,state):
 	diagid = getDiagram(dpath).getSelf().toString()
 	script.setDiagramState(diagid,state)
 	
-
 # Argument is the diagram path
 def reset(common,dpath):
 	diagid = getDiagram(dpath).getSelf().toString()
