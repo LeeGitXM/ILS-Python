@@ -32,6 +32,9 @@ def getStepState(common,chartid,name):
 def getStepCount(common,chartid,name):
 	state = ilssfc.stepCount(chartid,name)
 	common['result'] = state
+	
+def postResponse(common,chartPath,stepName,text):
+	ilssfc.postResponse(chartPath,stepName,text)
 # --------------------------- private ------------------
 def str2bool(val):
 	return val.lower() in ("true","yes","t","1")

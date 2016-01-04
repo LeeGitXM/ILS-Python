@@ -245,9 +245,8 @@ def standardDeviation(dataset, column):
     return stdDev.evaluate(jvalues)
 
 def getControlPanelId(chartScope):
-    from ils.sfc.common.constants import CONTROL_PANEL_ID
     topScope = getTopLevelProperties(chartScope)
-    return topScope[CONTROL_PANEL_ID]
+    return topScope.get(CONTROL_PANEL_ID,"")
 
 def getTimeoutTime(chartScope, stepProperties):
     '''For steps that time out, get the time in epoch seconds when the timeout expires.

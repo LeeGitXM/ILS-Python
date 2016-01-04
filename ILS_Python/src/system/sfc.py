@@ -19,9 +19,11 @@ def getRunningCharts():
     pass
 def pauseChart(chartId):
     pass
+def postResponse(chartPath,stepName,text):
+    pass
 def resumeChart(chartId):
     pass
-def setSfcTimeFactor(factor):
+def setTimeFactor(factor):
     pass
 def start(datadict):
     pass
