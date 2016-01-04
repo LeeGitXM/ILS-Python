@@ -21,6 +21,8 @@ def pauseChart(chartId):
     pass
 def postResponse(chartPath,stepName,text):
     pass
+def requestCount(chartid,stepName):
+    pass
 def resumeChart(chartId):
     pass
 def setTimeFactor(factor):

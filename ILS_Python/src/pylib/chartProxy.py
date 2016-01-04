@@ -10,7 +10,7 @@ def start(common,path,isolation):
 	project = testframe.getProjectName() 
 	user = testframe.getUserName()
 	try:
-		chartid = ilssfc.debugChart(path,project,user, str2bool(isolation))
+		chartid = ilssfc.debugChart(path,project,user,str2bool(isolation))
 	except:
 		chartid = "none"
 	print path,chartid,project,user,isolation,str2bool(isolation)
@@ -32,6 +32,10 @@ def getStepState(common,chartid,name):
 def getStepCount(common,chartid,name):
 	state = ilssfc.stepCount(chartid,name)
 	common['result'] = state
+	
+def getPendingRequestCount(common,chartid,name):
+	count = ilssfc.requestCount(chartid,name)
+	common['result'] = count
 	
 def postResponse(common,chartPath,stepName,text):
 	ilssfc.postResponse(chartPath,stepName,text)

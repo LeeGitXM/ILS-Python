@@ -200,7 +200,7 @@ class Unit(object):
                     newUnits[row["alias"]] = realUnit
             Unit.addUnits(newUnits)
         except:
-            print "units.py: Exception reading units : " + str(sys.exc_info()[0])+str(sys.exc_info()[1])
+            print "ils.common.units.py: Exception reading units : " + str(sys.exc_info()[0])+str(sys.exc_info()[1])
 
 def getUnits():
     return Unit.getUnits()

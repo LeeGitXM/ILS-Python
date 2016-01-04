@@ -246,7 +246,7 @@ def standardDeviation(dataset, column):
 
 def getControlPanelId(chartScope):
     topScope = getTopLevelProperties(chartScope)
-    return topScope.get(CONTROL_PANEL_ID,"")
+    return topScope.get(CONTROL_PANEL_ID,None)
 
 def getTimeoutTime(chartScope, stepProperties):
     '''For steps that time out, get the time in epoch seconds when the timeout expires.
