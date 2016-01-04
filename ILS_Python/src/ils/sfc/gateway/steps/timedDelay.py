@@ -65,7 +65,7 @@ def activate(scopeContext, stepProperties):
         numInserted = system.db.runUpdateQuery("insert into SfcTimeDelayNotification (windowId, message, endTime) values ('%s', '%s', %f)" % (windowId, message, endTimeEpochSecs), database)
         if numInserted == 0:
             handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
-    sendOpenWindow(chartScope, windowId, stepId, database)
+        sendOpenWindow(chartScope, windowId, stepId, database)
         
     #TODO: checking the real clock time is probably more accurate
     sleepIncrement = 1

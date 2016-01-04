@@ -31,7 +31,7 @@ def activate(scopeContext, stepProperties):
         controlPanelId = getControlPanelId(chartScope)
         buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
         if isEmpty(buttonLabel):
-            buttonLabel = 'Input'
+            buttonLabel = 'Enter Data'
         position = getStepProperty(stepProperties, POSITION) 
         scale = getStepProperty(stepProperties, SCALE) 
         title = getStepProperty(stepProperties, WINDOW_TITLE) 

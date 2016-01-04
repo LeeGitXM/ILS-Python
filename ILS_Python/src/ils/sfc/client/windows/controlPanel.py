@@ -6,11 +6,14 @@ Created on Dec 9, 2015
 from system.gui import getParentWindow
 from ils.sfc.client.windowUtil import getRootContainer
 
+def openControlPanel(controlPanelId, startImmediately):
+    import system.gui
+    system.gui.openWindow('SFC/ControlPanel', {'controlPanelId': controlPanelId, 'startImmediately': startImmediately})
+
 def startChart(event):
     from ils.sfc.client.util import startChart
     rootContainer = getRootContainer(event)
     cpId = rootContainer.controlPanelId
-    data = rootContainer.windowData
     #TODO: check if chart is running to set canStart flag
     canStart = True
     if canStart:
@@ -44,6 +47,10 @@ def reset(event):
     database = system.tag.read('[Client]Database').value
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '' where controlPanelId = %d" % (rootContainer.controlPanelId), database)
     rootContainer.msgIndex = 0
+    system.db.runUpdateQuery("delete from SfcReviewDataTable", database)
+    system.db.runUpdateQuery("delete from SfcReviewData", database)
+    system.db.runUpdateQuery("delete from SfcManualDataEntryTable", database)
+    system.db.runUpdateQuery("delete from SfcManualDataEntry", database)
     system.db.runUpdateQuery("delete from SfcTimeDelayNotification", database)
     system.db.runUpdateQuery("delete from SfcInput", database)
     system.db.runUpdateQuery("delete from SfcWindow", database)

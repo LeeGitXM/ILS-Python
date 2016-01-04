@@ -18,6 +18,9 @@ def errorBox(txt):
 def findWindow(windowName):
     pass
 
+def openWindow(windowName, props):
+    pass
+
 def getOpenedWindows():
     return 
 

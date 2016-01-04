@@ -391,7 +391,14 @@ def deleteAndSendClose(chartScope, windowId, database):
     import system.db
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
     sendMessageToClient(chartScope, 'sfcCloseWindow', {WINDOW_ID: windowId})
-   
+
+def dbStringForString(strValue):
+    '''return a string representation of the given string suitable for a nullable SQL varchar column'''
+    if strValue != None:
+        return "'" + strValue + "'"
+    else:
+        return 'null'  
+    
 def dbStringForFloat(numberValue):
     '''return a string representation of the given number suitable for a nullable SQL float column'''
     if numberValue != None:
