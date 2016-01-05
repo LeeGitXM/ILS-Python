@@ -109,7 +109,7 @@ def escapeSingleQuotes(msg):
 
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.constants import MESSAGE
-    from  ils.sfc.gateway.api import sendMessageToClient
+    from  ils.sfc.gateway.api import sendMessageToClient, getProject
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
@@ -119,6 +119,7 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     cancelChart(chartScope)
     payload = dict()
     payload[MESSAGE] = msg
+    project = getProject(chartScope)
     sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
@@ -376,16 +377,18 @@ def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, tit
 def sendOpenWindow(chartScope, windowId, stepId, database):
     '''Message the client to open a window'''
     from ils.sfc.common.constants import WINDOW_ID, DATABASE
+    from ils.sfc.gateway.api import getProject
     from system.ils.sfc import addRequestId
     addRequestId(windowId, stepId)
-    sendMessageToClient(chartScope, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
+    project = getProject(chartScope)
+    sendMessageToClient(project, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
 
-def deleteAndSendClose(chartScope, windowId, database):
+def deleteAndSendClose(project, windowId, database):
     '''Delete the common window record and message the client to close the window'''
     from ils.sfc.common.constants import WINDOW_ID
     import system.db
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
-    sendMessageToClient(chartScope, 'sfcCloseWindow', {WINDOW_ID: windowId})
+    sendMessageToClient(project, 'sfcCloseWindow', {WINDOW_ID: windowId})
 
 def dbStringForString(strValue):
     '''return a string representation of the given string suitable for a nullable SQL varchar column'''

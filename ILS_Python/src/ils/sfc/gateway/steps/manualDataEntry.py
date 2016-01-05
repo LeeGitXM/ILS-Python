@@ -11,7 +11,8 @@ def activate(scopeContext, stepProperties):
     from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.util import getStepId, sendOpenWindow, createWindowRecord, \
         getControlPanelId, waitOnResponse, getStepProperty, deleteAndSendClose, getTimeoutTime, dbStringForFloat
-    from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, s88Set, s88Get, s88SetWithUnits
+    from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, \
+    getUnitsPath, s88Set, s88Get, s88SetWithUnits, getProject
     import system.db
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -76,5 +77,5 @@ def activate(scopeContext, stepProperties):
             # timeout--is some action needed?
     system.db.runUpdateQuery("delete from SfcManualDataEntryTable where windowId = '%s'" % (windowId), database)
     system.db.runUpdateQuery("delete from SfcManualDataEntry where windowId = '%s'" % (windowId), database)
-    
-    deleteAndSendClose(chartScope, windowId, database)
+    project = getProject(chartScope)
+    deleteAndSendClose(project, windowId, database)

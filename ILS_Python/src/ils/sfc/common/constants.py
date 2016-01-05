@@ -128,6 +128,7 @@ SUM_FLOWS = 'sumFlows'
 TAG_PATH = 'tagPath'
 TAG = 'tag'
 STRATEGY = "strategy"
+TABLE = 'table'
 TEST_CHART_PATHS = 'testChartPaths'
 TEST_REPORT_FILE = 'testReportFile'
 TIMEOUT = "timeout"

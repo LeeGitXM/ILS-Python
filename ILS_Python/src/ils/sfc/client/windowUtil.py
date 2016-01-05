@@ -3,6 +3,7 @@ Created on May 3, 2015
 
 @author: rforbes
 '''
+from ils.sfc.client.util import getDatabase
 
 def sendWindowResponse(window, response):
     '''standard actions when a window representing a response is closed by the user'''
@@ -111,3 +112,14 @@ def closeDbWindow(windowId):
     window = getOpenWindow(windowId)
     if window != None:
         system.nav.closeWindow(window)
+
+def sendCloseWindow(window, table):
+    from ils.sfc.common.constants import DATABASE, WINDOW_ID, TABLE, PROJECT
+    import system.util
+    windowId = window.getRootContainer().windowId
+    database = getDatabase()
+    project = system.util.getProjectName()
+    payload = {WINDOW_ID:windowId, DATABASE: database, TABLE: table, PROJECT: project}
+    system.util.sendMessage(project, 'sfcCloseWindow', payload, "G")
+    system.nav.closeWindow(window)
+

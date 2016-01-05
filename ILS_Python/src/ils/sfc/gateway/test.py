@@ -7,7 +7,7 @@ Unit test support
 def addClientAction(chartProperties, methodName):
     '''send the name of a method to be executed on the client'''
     from ils.sfc.gateway.util import getTopChartRunId
-    from ils.sfc.gateway.api import sendMessageToClient
+    from ils.sfc.gateway.api import sendMessageToClient, getProject
 
     from ils.sfc.common.constants import CHART_NAME, COMMAND, INSTANCE_ID
     from ils.sfc.gateway.util import getChartPath
@@ -15,5 +15,6 @@ def addClientAction(chartProperties, methodName):
     payload[COMMAND] = methodName
     payload[CHART_NAME] = getChartPath(chartProperties)
     payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
-    sendMessageToClient(chartProperties, 'sfcTestAddAction', payload) 
+    project = getProject(chartProperties)
+    sendMessageToClient(project, 'sfcTestAddAction', payload) 
     

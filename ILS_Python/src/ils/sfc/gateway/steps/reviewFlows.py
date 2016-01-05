@@ -7,7 +7,7 @@ Created on Dec 17, 2015
 def activate(scopeContext, stepProperties):    
     from ils.sfc.gateway.util import createWindowRecord, sendOpenWindow, getStepId, getControlPanelId,\
     getStepProperty, waitOnResponse, deleteAndSendClose
-    from ils.sfc.gateway.api import s88Set, getDatabaseName
+    from ils.sfc.gateway.api import s88Set, getDatabaseName, getProject
     from ils.sfc.common.util import isEmpty
     from system.ils.sfc import getReviewFlows, getReviewFlowsConfig
     from system.ils.sfc.common.Constants import BUTTON_KEY, BUTTON_KEY_LOCATION, BUTTON_LABEL,  VALUE, \
@@ -65,8 +65,8 @@ def activate(scopeContext, stepProperties):
 
     system.db.runUpdateQuery("delete from SfcReviewFlowsTable where windowId = '%s'" % (windowId), database)
     system.db.runUpdateQuery("delete from SfcReviewFlows where windowId = '%s'" % (windowId), database)
-    
-    deleteAndSendClose(chartScope, windowId, database)
+    project = getProject(chartScope)
+    deleteAndSendClose(project, windowId, database)
 
 def addData(windowId, dataset, row, isPrimary, database):
     import system.db

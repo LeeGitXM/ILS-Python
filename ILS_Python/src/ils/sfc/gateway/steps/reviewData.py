@@ -7,7 +7,7 @@ Created on Dec 17, 2015
 def activate(scopeContext, stepProperties):    
     from ils.sfc.gateway.util import sendOpenWindow, getTimeoutTime, getStepId, createWindowRecord, \
         getControlPanelId, hasStepProperty, getStepProperty, waitOnResponse, deleteAndSendClose
-    from ils.sfc.gateway.api import s88Set, getDatabaseName
+    from ils.sfc.gateway.api import s88Set, getDatabaseName, getProject
     from ils.sfc.common.util import isEmpty 
     from system.ils.sfc.common.Constants import AUTO_MODE, AUTOMATIC, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, BUTTON_KEY, BUTTON_KEY_LOCATION 
     from ils.sfc.common.constants import PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, BUTTON_LABEL, \
@@ -57,8 +57,8 @@ def activate(scopeContext, stepProperties):
 
     system.db.runUpdateQuery("delete from SfcReviewDataTable where windowId = '%s'" % (windowId), database)
     system.db.runUpdateQuery("delete from SfcReviewData where windowId = '%s'" % (windowId), database)
-    
-    deleteAndSendClose(chartScope, windowId, database)
+    project = getProject(chartScope)
+    deleteAndSendClose(project, windowId, database)
 
 def addData(windowId, dataset, row, isPrimary, showAdvice, database):
     import system.db

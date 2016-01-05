@@ -6,7 +6,7 @@ Created on Dec 17, 2015
 
 def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import dictToString, getStepProperty, createFilepath, sendMessageToClient
-    from ils.sfc.gateway.api import getChartLogger
+    from ils.sfc.gateway.api import getChartLogger, getProject
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, DATA, FILEPATH
     from ils.sfc.gateway.recipe import browseRecipeData
     # extract property values
@@ -35,4 +35,5 @@ def activate(scopeContext, stepProperties):
         payload[FILEPATH] = filepath
         payload[PRINT_FILE] = printFile
         payload[VIEW_FILE] = viewFile
-        sendMessageToClient(chartScope, 'sfcSaveData', payload)
+        project = getProject(chartScope)
+        sendMessageToClient(project, 'sfcSaveData', payload)

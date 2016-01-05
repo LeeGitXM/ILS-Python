@@ -7,7 +7,7 @@ Created on Dec 17, 2015
 def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import getControlPanelId, createWindowRecord, getStepProperty, getTimeoutTime, \
         handleUnexpectedGatewayError, getStepId, sendOpenWindow, deleteAndSendClose, waitOnResponse
-    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
+    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, getProject
     from ils.sfc.common.util import isEmpty
     from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, \
     ACK_REQUIRED, STRATEGY, STATIC, RECIPE_LOCATION, KEY
@@ -47,7 +47,8 @@ def activate(scopeContext, stepProperties):
 
     if ackRequired:
         response = waitOnResponse(windowId, chartScope, timeoutTime)
+        system.db.runUpdateQuery("delete from SfcDialogMsg where windowId = '%s'" % (windowId), database)   
+        project = getProject(chartScope)
+        deleteAndSendClose(project, windowId, database)
     # Todo: timeout action??
     
-    system.db.runUpdateQuery("delete from SfcDialogMsg where windowId = '%s'" % (windowId), database)   
-    deleteAndSendClose(chartScope, windowId, database)

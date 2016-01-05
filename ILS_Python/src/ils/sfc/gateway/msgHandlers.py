@@ -90,3 +90,16 @@ def sfcDevTest(payload):
     obj = payload['data']
     obj.sayHi()
     
+def sfcCloseWindow(payload):
+    '''close an open window. this is not usually called, as the step methods delete their own 
+       windows. The client only needs to message a close window request when the window persists
+       beyond the step scope, like for MessageDialog'''
+    from ils.sfc.common.constants import DATABASE, WINDOW_ID, TABLE, PROJECT
+    from ils.sfc.gateway.util import deleteAndSendClose
+    import system.db
+    table = payload[TABLE]
+    project = payload[PROJECT]
+    windowId = payload[WINDOW_ID]
+    database = payload[DATABASE]
+    system.db.runUpdateQuery("delete from %s where windowId = '%s'" % (table, windowId), database)   
+    deleteAndSendClose(project, windowId, database)

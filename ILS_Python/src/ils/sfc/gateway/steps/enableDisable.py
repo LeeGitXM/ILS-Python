@@ -5,9 +5,10 @@ Created on Dec 17, 2015
 '''
 
 def activate(scopeContext, stepProperties):
-    from ils.sfc.gateway.api import sendMessageToClient
+    from ils.sfc.gateway.api import sendMessageToClient, getProject
     from ils.sfc.gateway.util import transferStepPropertiesToMessage
     chartScope = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
-    sendMessageToClient(chartScope, 'sfcEnableDisable', payload)
+    project = getProject(chartScope)
+    sendMessageToClient(project, 'sfcEnableDisable', payload)
