@@ -1,4 +1,4 @@
-222222222222222222'''
+'''
 Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
