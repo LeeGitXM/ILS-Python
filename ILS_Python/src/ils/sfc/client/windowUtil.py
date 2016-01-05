@@ -57,15 +57,6 @@ def getWindowPath(window):
 def getRootContainer(event):
     from system.gui import getParentWindow
     return getParentWindow(event).rootContainer
-    
-def updateClockField(window):  
-    '''Update clock time in a field called 'clockField' '''
-    import time
-    from ils.sfc.common.util import formatTime
-   
-    rootContainer = window.getRootContainer()    
-    clockField = rootContainer.getComponent('clockField')
-    clockField.text = formatTime(time.time())
 
 def controlPanelOpen(controlPanelId):
     import system.gui
