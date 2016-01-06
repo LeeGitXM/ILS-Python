@@ -13,7 +13,7 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit=None
         getStepProperty, waitOnResponse, getRecipeScope, sendOpenWindow, deleteAndSendClose,\
         handleUnexpectedGatewayError, getStepId, dbStringForFloat
     from ils.sfc.common.util import isEmpty,createUniqueId
-    from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger
+    from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger, getProject
     from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
     import system.util
     import system.db
@@ -70,5 +70,5 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit=None
         if choices != None:
             system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
         system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)
-        
-        deleteAndSendClose(chartScope, windowId, database)
+        project = getProject(chartScope)
+        deleteAndSendClose(project, windowId, database)

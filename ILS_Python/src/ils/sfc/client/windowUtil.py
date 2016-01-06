@@ -3,6 +3,7 @@ Created on May 3, 2015
 
 @author: rforbes
 '''
+from ils.sfc.client.util import getDatabase
 
 def sendWindowResponse(window, response):
     '''standard actions when a window representing a response is closed by the user'''
@@ -57,15 +58,6 @@ def getWindowPath(window):
 def getRootContainer(event):
     from system.gui import getParentWindow
     return getParentWindow(event).rootContainer
-    
-def updateClockField(window):  
-    '''Update clock time in a field called 'clockField' '''
-    import time
-    from ils.sfc.common.util import formatTime
-   
-    rootContainer = window.getRootContainer()    
-    clockField = rootContainer.getComponent('clockField')
-    clockField.text = formatTime(time.time())
 
 def controlPanelOpen(controlPanelId):
     import system.gui
@@ -120,3 +112,14 @@ def closeDbWindow(windowId):
     window = getOpenWindow(windowId)
     if window != None:
         system.nav.closeWindow(window)
+
+def sendCloseWindow(window, table):
+    from ils.sfc.common.constants import DATABASE, WINDOW_ID, TABLE, PROJECT
+    import system.util
+    windowId = window.getRootContainer().windowId
+    database = getDatabase()
+    project = system.util.getProjectName()
+    payload = {WINDOW_ID:windowId, DATABASE: database, TABLE: table, PROJECT: project}
+    system.util.sendMessage(project, 'sfcCloseWindow', payload, "G")
+    system.nav.closeWindow(window)
+

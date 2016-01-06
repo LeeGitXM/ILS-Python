@@ -54,6 +54,7 @@ class MonitoringMgr:
         return self.timer.get(self.timerAttribute)
         
     def sendClientUpdate(self):
+        from ils.sfc.gateway.api import getProject
         '''Send the current monitoring information to clients'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
         STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
@@ -160,7 +161,8 @@ class MonitoringMgr:
         payload[INSTANCE_ID] = getTopChartRunId(self.chartScope)
         payload[DATA_ID] = self.getTimerId()
         payload[DATA] = rows
-        sendMessageToClient(self.chartScope, 'sfcUpdateDownloads', payload) 
+        project = getProject(self.chartScope)
+        sendMessageToClient(project, 'sfcUpdateDownloads', payload) 
  
 def createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger, provider):
     '''Create the manager and store it in the dropbox. When the top-level chart 

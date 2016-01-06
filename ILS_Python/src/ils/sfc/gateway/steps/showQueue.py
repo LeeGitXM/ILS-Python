@@ -11,9 +11,10 @@ def activate(scopeContext, stepProperties):
     '''
     from ils.sfc.gateway.util import sendMessageToClient
     from system.ils.sfc.common.Constants import MESSAGE_QUEUE
-    from ils.sfc.gateway.api import getCurrentMessageQueue
+    from ils.sfc.gateway.api import getCurrentMessageQueue, getProject
     chartScope = scopeContext.getChartScope()
     currentMsgQueue = getCurrentMessageQueue(chartScope)
     payload = dict()
     payload[MESSAGE_QUEUE] = currentMsgQueue 
-    sendMessageToClient(chartScope, 'sfcShowQueue', payload)
+    project = getProject(chartScope)
+    sendMessageToClient(project, 'sfcShowQueue', payload)

@@ -6,7 +6,7 @@ Created on Dec 17, 2015
 
 def activate(scopeContext, stepProperties):
     import system.db
-    from ils.sfc.gateway.api import getChartLogger, getDatabaseName
+    from ils.sfc.gateway.api import getDatabaseName, getProject
     from ils.sfc.gateway.util import deleteAndSendClose
     chartScope = scopeContext.getChartScope()
     # chartLogger = getChartLogger(chartScope)
@@ -17,4 +17,5 @@ def activate(scopeContext, stepProperties):
     for row in results:
         windowId = row[0]
         system.db.runUpdateQuery("delete from SfcBusyNotification where windowId = '%s'" % (windowId), database)    
-        deleteAndSendClose(chartScope, windowId, database)
+        project = getProject(chartScope)
+        deleteAndSendClose(project, windowId, database)

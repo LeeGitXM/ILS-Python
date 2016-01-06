@@ -227,18 +227,8 @@ def getTimeFactor(chartProperties):
     isolationMode = getIsolationMode(chartProperties)
     return getTimeFactor(isolationMode)
 
-def sendMessageToClient(chartProperties, handler, payload):
+def sendMessageToClient(project, handler, payload, clientSessionId=None):
     '''Send a message to the client(s) of this chart'''
-    # TODO: check returned list of recipients
-    # TODO: restrict to a particular client session
-    from ils.sfc.common.constants import INSTANCE_ID
-    from ils.sfc.gateway.util import getTopChartRunId
-    project = getProject(chartProperties)
-    payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
-    return basicSendMessageToClient(project, handler, payload)
-
-def basicSendMessageToClient(project, handler, payload, clientSessionId=None):
-    '''to send a dispatched message outside a chart run context'''
     from ils.sfc.common.constants import MESSAGE_ID, HANDLER
     from system.util import sendMessage
     from ils.sfc.common.util import createUniqueId

@@ -6,10 +6,12 @@ Created on Dec 17, 2015
 
 def activate(scopeContext, stepProperties):   
     from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient
+    from ils.sfc.gateway.api import getProject
     from system.ils.sfc.common.Constants import SECURITY
     chartScope = scopeContext.getChartScope()
     payload = dict()
     transferStepPropertiesToMessage(stepProperties, payload)
     security = payload[SECURITY]
     #TODO: implement security
-    sendMessageToClient(chartScope, 'sfcShowWindow', payload) 
+    project = getProject(chartScope)
+    sendMessageToClient(project, 'sfcShowWindow', payload) 

@@ -55,15 +55,8 @@ def reset(event):
     system.db.runUpdateQuery("delete from SfcInput", database)
     system.db.runUpdateQuery("delete from SfcWindow", database)
 
-def getControlPanelChartPath(controlPanelId):
-    import system.db
-    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId))
-    if len(results) == 1:
-        return results[0][0]
-    else:
-        return None
-
 def getControlPanelId(controlPanelName):
+    '''Get the control panel id given the name'''
     import system.db
     results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
     if len(results) == 1:
@@ -71,9 +64,16 @@ def getControlPanelId(controlPanelName):
     else:
         return None
     
+def getControlPanelChartPath(controlPanelId):
+    '''get the name of the SFC chart associated with the given control panel'''
+    import system.db
+    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId))
+    if len(results) == 1:
+        return results[0][0]
+    else:
+        return None
+
 def setControlPanelChartPath(controlPanelId, chartPath):
     import system.db
-    '''start a chart using the given contrl panel and over-writing that control panel's
-       chart path in the database'''
+    '''set the name of the SFC chart associated with the given control panel'''
     system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId))
-     

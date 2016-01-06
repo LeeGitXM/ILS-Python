@@ -6,27 +6,8 @@ Created on Sep 30, 2014
 @author: rforbes
 '''
 from system.ils.sfc import getResponse
-from ils.sfc.common.constants import *
 from ils.sfc.gateway.api import cancelChart, sendMessageToClient
 
-# client message handlers
-SHOW_QUEUE_HANDLER = 'sfcShowQueue'
-#YES_NO_HANDLER = 'sfcYesNo'
-DELETE_DELAY_NOTIFICATIONS_HANDLER = 'sfcDeleteDelayNotifications'
-POST_DELAY_NOTIFICATION_HANDLER = 'sfcPostDelayNotification'
-DIALOG_MSG_HANDLER = 'sfcDialogMessage'
-TIMED_DELAY_HANDLER = 'sfcTimedDelay'
-SELECT_INPUT_HANDLER = 'sfcSelectInput'
-LIMITED_INPUT_HANDLER = 'sfcLimitedInput'
-INPUT_HANDLER = 'sfcInput'
-ENABLE_DISABLE_HANDLER = 'sfcEnableDisable'
-SAVE_DATA_HANDLER = 'sfcSaveData'
-PRINT_FILE_HANDLER = 'sfcPrintFile'
-PRINT_WINDOW_HANDLER = 'sfcPrintWindow'
-#CP_UPDATE_HANDLER = 'sfcUpdateControlPanel'
-#UPDATE_CHART_STATUS_HANDLER = 'sfcUpdateChartStatus'
-#UPDATE_CURRENT_OPERATION_HANDLER = 'sfcUpdateCurrentOperation'
-REVIEW_DATA_HANDLER = 'sfcReviewData'
 NEWLINE = '\n\r'
 
 def printCounter():
@@ -41,6 +22,7 @@ def getWithPath(properties, key):
         
 def getStepId(stepProperties):
     # need to translate the UUID to a string:
+    from ils.sfc.common.constants import ID
     if stepProperties != None:
         return str(getStepProperty(stepProperties, ID))
     else:
@@ -48,18 +30,22 @@ def getStepId(stepProperties):
 
 def getTopChartRunId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''
+    from ils.sfc.common.constants import INSTANCE_ID
     return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
 
 def getSessionId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''
+    from ils.sfc.common.constants import SESSION_ID
     return str(getTopLevelProperties(chartProperties)[SESSION_ID])
     
 def getTopLevelProperties(chartProperties):
+    from ils.sfc.common.constants import PARENT
     while chartProperties.get(PARENT, None) != None:
         chartProperties = chartProperties.get(PARENT)
     return chartProperties
 
 def getRecipeScope(stepProperties):
+    from ils.sfc.common.constants import RECIPE_LOCATION
     return getStepProperty(stepProperties, RECIPE_LOCATION) 
 
 def getStepProperty(stepProperties, pname):
@@ -69,6 +55,7 @@ def getStepProperty(stepProperties, pname):
     return None
 
 def getStepName(stepProperties):
+    from ils.sfc.common.constants import NAME
     return getStepProperty(stepProperties, NAME)
 
 def hasStepProperty(stepProperties, pname):
@@ -91,6 +78,7 @@ def waitOnResponse(requestId, chartScope, timeoutTime=None):
     prepared for a None return, which means
     the chart has been canceled/paused/aborted
     '''
+    from ils.sfc.common.constants import SLEEP_INCREMENT, RESPONSE
     import time
     responsePayload = None
     maxCycles = 5 * 60 / SLEEP_INCREMENT
@@ -120,8 +108,8 @@ def escapeSingleQuotes(msg):
     return msg.replace("'", "''")
 
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
-    from  ils.sfc.gateway.api import sendMessageToClient
-    UNEXPECTED_ERROR_HANDLER = 'sfcUnexpectedError'
+    from ils.sfc.common.constants import MESSAGE
+    from  ils.sfc.gateway.api import sendMessageToClient, getProject
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
@@ -131,7 +119,8 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     cancelChart(chartScope)
     payload = dict()
     payload[MESSAGE] = msg
-    sendMessageToClient(chartScope, UNEXPECTED_ERROR_HANDLER, payload)
+    project = getProject(chartScope)
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()
@@ -179,6 +168,7 @@ def printSpace(level, out):
         out.write('   '),
 
 def getDefaultMessageQueueScope():
+    from ils.sfc.common.constants import OPERATION_SCOPE
     return OPERATION_SCOPE
 
 #def sendChartStatus(projectName, payload):
@@ -193,6 +183,7 @@ def getDefaultMessageQueueScope():
     
 def getDelaySeconds(delay, delayUnit):
     '''get the delay time and convert to seconds'''
+    from ils.sfc.common.constants import DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR
     if delayUnit == DELAY_UNIT_SECOND:
         delaySeconds = delay
     elif delayUnit == DELAY_UNIT_MINUTE:
@@ -207,6 +198,7 @@ def getDelaySeconds(delay, delayUnit):
 
 def createFilepath(chartScope, stepProperties, includeExtension):
     '''Create a filepath from dir/file/suffix in step properties'''
+    from ils.sfc.common.constants import DIRECTORY, FILENAME, EXTENSION, TIMESTAMP
     import time
     from ils.sfc.gateway.api import getChartLogger
     logger = getChartLogger(chartScope)
@@ -245,12 +237,14 @@ def standardDeviation(dataset, column):
     return stdDev.evaluate(jvalues)
 
 def getControlPanelId(chartScope):
+    from ils.sfc.common.constants import CONTROL_PANEL_ID
     topScope = getTopLevelProperties(chartScope)
     return topScope.get(CONTROL_PANEL_ID,None)
 
 def getTimeoutTime(chartScope, stepProperties):
     '''For steps that time out, get the time in epoch seconds when the timeout expires.
        Take the isolation mode time factor into account'''
+    from ils.sfc.common.constants import TIMEOUT, TIMEOUT_UNIT
     from ils.sfc.gateway.api import getTimeFactor
     import time
     timeFactor = getTimeFactor(chartScope)
@@ -381,15 +375,20 @@ def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, tit
     return windowId
     
 def sendOpenWindow(chartScope, windowId, stepId, database):
+    '''Message the client to open a window'''
+    from ils.sfc.common.constants import WINDOW_ID, DATABASE
+    from ils.sfc.gateway.api import getProject
     from system.ils.sfc import addRequestId
     addRequestId(windowId, stepId)
-    sendMessageToClient(chartScope, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
+    project = getProject(chartScope)
+    sendMessageToClient(project, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
 
-def deleteAndSendClose(chartScope, windowId, database):
+def deleteAndSendClose(project, windowId, database):
     '''Delete the common window record and message the client to close the window'''
+    from ils.sfc.common.constants import WINDOW_ID
     import system.db
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
-    sendMessageToClient(chartScope, 'sfcCloseWindow', {WINDOW_ID: windowId})
+    sendMessageToClient(project, 'sfcCloseWindow', {WINDOW_ID: windowId})
 
 def dbStringForString(strValue):
     '''return a string representation of the given string suitable for a nullable SQL varchar column'''

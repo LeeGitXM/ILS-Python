@@ -8,7 +8,7 @@ def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
         handleUnexpectedGatewayError, getDelaySeconds, checkForCancelOrPause, deleteAndSendClose, \
         sendOpenWindow
-    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
+    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, getProject
     from ils.sfc.common.util import callMethod, isEmpty
     from ils.sfc.gateway.util import getStepId
     from ils.sfc.gateway.api import getTimeFactor
@@ -87,4 +87,5 @@ def activate(scopeContext, stepProperties):
     
     if postNotification:
         system.db.runUpdateQuery("delete from SfcTimeDelayNotification where windowId = '%s'" % (windowId), database)
-        deleteAndSendClose(chartScope, windowId, database)
+        project = getProject(chartScope)
+        deleteAndSendClose(project, windowId, database)

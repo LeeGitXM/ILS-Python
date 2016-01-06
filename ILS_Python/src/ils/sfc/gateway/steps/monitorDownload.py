@@ -12,7 +12,7 @@ def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.monitoring import createMonitoringMgr
     from ils.sfc.gateway.util import sendMessageToClient, getStepProperty, transferStepPropertiesToMessage
     from system.ils.sfc import getProviderName
-    from ils.sfc.gateway.api import getIsolationMode, getChartLogger
+    from ils.sfc.gateway.api import getIsolationMode, getChartLogger, getProject
     from ils.sfc.gateway.recipe import RecipeData
     
     chartScope = scopeContext.getChartScope()
@@ -42,4 +42,5 @@ def activate(scopeContext, stepProperties):
     payload = dict()
     payload[DATA_ID] = mgr.getTimerId()
     transferStepPropertiesToMessage(stepProperties, payload)
-    sendMessageToClient(chartScope, 'sfcMonitorDownloads', payload)             
+    project = getProject(chartScope)
+    sendMessageToClient(project, 'sfcMonitorDownloads', payload)             
