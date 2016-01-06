@@ -48,7 +48,11 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
     '''Set the given recipe data's value'''
     import system.tag
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
-    system.tag.writeSynchronous(fullTagPath, value)
+    try:
+        system.tag.writeSynchronous(fullTagPath, value)
+        # print "ils.sfc.api.s88Set: Write to ",fullTagPath
+    except:
+        print "ils.sfc.api.s88Set: Failed to write to ",fullTagPath
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     '''Like s88Get, but adds a conversion to the given units'''

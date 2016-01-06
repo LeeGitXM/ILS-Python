@@ -54,11 +54,9 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit=None
             choicesList = system.util.jsonDecode(choices)
             for choice in choicesList:
                 system.db.runUpdateQuery("insert into SfcInputChoices (windowId, choice) values ('%s', '%s')" % (windowId, choice), database)
-                
-            
-        sendOpenWindow(chartScope, windowId, stepId, database)
     else:
         windowId=createUniqueId()
+    sendOpenWindow(chartScope, windowId, stepId, database)
     
     print "CommonInput: Waiting for response ..."
     response = waitOnResponse(windowId, chartScope, timeoutTime)
