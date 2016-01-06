@@ -5,10 +5,12 @@ Created on Dec 17, 2015
 '''
 
 def activate(scopeContext, stepProperties):
-    from ils.sfc.gateway.api import sendMessageToClient, getProject
-    from ils.sfc.gateway.util import transferStepPropertiesToMessage
+    from  system.ils.sfc.common.Constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL
+    from ils.sfc.gateway.util import getStepProperty, getControlPanelId
+    import system.db
     chartScope = scopeContext.getChartScope()
-    payload = dict()
-    transferStepPropertiesToMessage(stepProperties, payload)
-    project = getProject(chartScope)
-    sendMessageToClient(project, 'sfcEnableDisable', payload)
+    enablePause = getStepProperty(stepProperties, ENABLE_PAUSE)
+    enableResume = getStepProperty(stepProperties, ENABLE_RESUME)
+    enableCancel = getStepProperty(stepProperties, ENABLE_CANCEL)
+    controlPanelId = getControlPanelId(chartScope)
+    system.db.runUpdateQuery("update SfcControlPanel set enablePause = %d,  enableResume = %d,  enableCancel = %d where controlPanelId = '%s'" % (enablePause, enableResume, enableCancel, controlPanelId))

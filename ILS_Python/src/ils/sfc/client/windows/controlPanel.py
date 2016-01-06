@@ -45,7 +45,7 @@ def reset(event):
     import system.db
     rootContainer = event.source.parent.parent
     database = system.tag.read('[Client]Database').value
-    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '' where controlPanelId = %d" % (rootContainer.controlPanelId), database)
+    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelId = %d" % (rootContainer.controlPanelId), database)
     rootContainer.msgIndex = 0
     system.db.runUpdateQuery("delete from SfcReviewDataTable", database)
     system.db.runUpdateQuery("delete from SfcReviewData", database)
