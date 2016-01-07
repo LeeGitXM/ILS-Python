@@ -20,4 +20,4 @@ def okActionPerformed(event):
         sendWindowResponse(window, "Yes")
     else:
         # send async window close request, 
-        sendCloseWindow(window, 'SfcDialogMessage')
+        sendCloseWindow(window, 'SfcDialogMsg')
