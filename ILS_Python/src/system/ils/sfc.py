@@ -3,6 +3,14 @@ Created on Nov 4, 2014
 
 @author: rforbes
 '''
+def clearRequestResponseMaps():
+    pass
+def clearStepMonitor():
+    pass
+def startStepMonitor():
+    pass
+def stopStepMonitor():
+    pass
 def getResponse(id):
     pass
 

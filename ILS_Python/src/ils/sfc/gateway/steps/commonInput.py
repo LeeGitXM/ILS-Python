@@ -37,7 +37,6 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
     
         # calculate the absolute timeout time in epoch secs:
         timeoutTime = getTimeoutTime(chartScope, stepProperties)
-    
         # create db window records:
         if controlPanelId!=None:
             windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)

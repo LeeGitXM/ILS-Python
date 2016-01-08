@@ -11,8 +11,6 @@ def chartState(chartid):
     pass
 def clear(datadict):
     pass
-def clearStepMonitor():
-    pass
 def debugChart(path,project,user, isIsolation):
     return -1
 def getRunningCharts():
@@ -31,13 +29,9 @@ def start(datadict):
     pass
 def startChart(chartName, payload):
     pass
-def startStepMonitor():
-    pass
 def stepCount(chartid,stepName):
     pass
 def stepState(chartid,stepName):
     pass
 def stop(datadict):
-    pass
-def stopStepMonitor():
     pass

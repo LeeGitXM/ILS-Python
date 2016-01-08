@@ -4,8 +4,13 @@
 # NOTE: These are available in Gateway scope only.
 #
 import system.ils.sfc as ilssfc
+
+# Important: Clearing the step monitor also clears
+#            the request/response buffer.
 def clear(common):
 	ilssfc.clearStepMonitor()
+	ilssfc.clearRequestResponseMaps()
+	
 def start(common):
 	ilssfc.startStepMonitor()
 def stop(common):
