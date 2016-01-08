@@ -25,6 +25,16 @@ def sfcShowQueue(payload):
     # Note: the control panel logic will take care of setting the current msg queue on this window
     system.nav.openWindow(MSG_QUEUE_WINDOW)
         
+def sfcPrintWindow(payload):
+    import system
+    windowName = payload['window']
+    showPrintDialog = payload['showPrintDialog']
+    windows = system.gui.findWindow(windowName)
+    for window in windows:
+        printJob = system.print.createPrintJob(window)
+        printJob.showPrintDialog = showPrintDialog
+        printJob.print()
+                
 def dispatchMessage(payload):
     '''call the appropriate method in this module and pass it the payload'''
     from ils.sfc.common.util import callMethodWithParams

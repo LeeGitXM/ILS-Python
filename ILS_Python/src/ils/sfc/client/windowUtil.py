@@ -69,13 +69,13 @@ def controlPanelOpen(controlPanelId):
             return False
 
 def getOpenWindowByPath(path):
-    '''Get the open window with the given id, or None if there isnt one'''
+    '''Get the open window with the given path, or None if there isnt one'''
     import system.gui
-    openWindows = system.gui.getOpenedWindows()
-    for window in openWindows:        
-        if getWindowPath(window) == path:
-            return window
-    return None
+    openWindows = system.gui.findWindow(path)
+    if len(openWindows) > 0:
+        return openWindows[0]
+    else:
+        return None
 
 def getOpenWindow(windowId):
     '''Get the open window with the given id, or None if there isnt one'''

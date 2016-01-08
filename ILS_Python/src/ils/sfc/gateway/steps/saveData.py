@@ -5,11 +5,13 @@ Created on Dec 17, 2015
 '''
 
 def activate(scopeContext, stepProperties):
-    from ils.sfc.gateway.util import dictToString, getStepProperty, createFilepath, sendMessageToClient, \
-        handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getChartLogger, getProject
-    from system.ils.sfc.common.Constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, DATA, FILEPATH
+    from ils.sfc.gateway.util import dictToString, getStepProperty, createFilepath, \
+        handleUnexpectedGatewayError, getControlPanelId, createWindowRecord, createSaveDataRecord
+    from ils.sfc.gateway.api import getChartLogger, getDatabaseName
+    from system.ils.sfc.common.Constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, \
+    SERVER, POSITION, SCALE, WINDOW_TITLE, BUTTON_LABEL
     from ils.sfc.gateway.recipe import browseRecipeData
+    from ils.sfc.common.util import isEmpty
     
     try:
         # extract property values
@@ -33,12 +35,17 @@ def activate(scopeContext, stepProperties):
         
         # send message to client for view/print
         if printFile or viewFile:
-            payload = dict()
-            payload[DATA] = dataText
-            payload[FILEPATH] = filepath
-            payload[PRINT_FILE] = printFile
-            payload[VIEW_FILE] = viewFile
-            project = getProject(chartScope)
-            sendMessageToClient(project, 'sfcSaveData', payload)
+            database = getDatabaseName(chartScope)
+            controlPanelId = getControlPanelId(chartScope)
+            buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+            if isEmpty(buttonLabel):
+                buttonLabel = 'Save'
+            position = getStepProperty(stepProperties, POSITION) 
+            scale = getStepProperty(stepProperties, SCALE) 
+            title = getStepProperty(stepProperties, WINDOW_TITLE) 
+            if isEmpty(title):
+                title = filepath
+            windowId = createWindowRecord(controlPanelId, 'SFC/SaveData', buttonLabel, position, scale, title, database)
+            createSaveDataRecord(windowId, dataText, filepath, SERVER, printFile, viewFile, database)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in saveData.py', logger)
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in saveData.py', logger) 

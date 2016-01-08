@@ -411,3 +411,7 @@ def dbStringForFloat(numberValue):
         return str(numberValue)
     else:
         return 'null'
+    
+def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, viewFile, database):
+    import system.db
+    system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, viewText) values ('%s', '%s', '%s', '%s', %d, %d)" % (windowId, dataText, filepath, computer, printFile, viewFile), database)
