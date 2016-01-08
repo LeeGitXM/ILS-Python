@@ -77,6 +77,7 @@ MESSAGE_QUEUE = 'msgQueue'
 METHOD = "method"
 MINIMUM_VALUE = "minimumValue"
 MAXIMUM_VALUE = "maximumValue"
+MSG_QUEUE_WINDOW = 'Queue/Message Queue'
 MULTIPLE = "multiple"
 NAME = "name"
 NUMBER_OF_TIMEOUTS = "numberOfTimeouts"

@@ -110,13 +110,11 @@ def initializeView(rootContainer):
     queueKey = rootContainer.getPropertyValue("key")
     
     SQL = "select Title from QueueMaster where QueueKey = '%s'" % (queueKey)
-    print SQL
     pds = system.db.runQuery(SQL)
     
     if len(pds) == 1:
         record = pds[0]
         title = record['Title']
-        print "title: ", title
         rootContainer.setPropertyValue('title', title) 
 
     table = rootContainer.getComponent("Power Table")
@@ -134,7 +132,6 @@ def initializeView(rootContainer):
 #    ds = table.columnAttributesData
 #    ds=system.dataset.setValue(ds, 0, "", 20)
 #    table.columnAttributesData = ds
-    print "Done initializing"
 
 def updateView(rootContainer):
     table = rootContainer.getComponent('Power Table')

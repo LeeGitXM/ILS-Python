@@ -68,6 +68,15 @@ def controlPanelOpen(controlPanelId):
         else:
             return False
 
+def getOpenWindowByPath(path):
+    '''Get the open window with the given id, or None if there isnt one'''
+    import system.gui
+    openWindows = system.gui.getOpenedWindows()
+    for window in openWindows:        
+        if getWindowPath(window) == path:
+            return window
+    return None
+
 def getOpenWindow(windowId):
     '''Get the open window with the given id, or None if there isnt one'''
     import system.gui

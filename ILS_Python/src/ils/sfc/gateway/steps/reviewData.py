@@ -60,7 +60,7 @@ def activate(scopeContext, stepProperties):
         s88Set(chartScope, stepScope, recipeKey, responseValue, recipeLocation )
     
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cancel.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in reviewData.py', chartLogger)
     finally:
         system.db.runUpdateQuery("delete from SfcReviewDataTable where windowId = '%s'" % (windowId), database)
         system.db.runUpdateQuery("delete from SfcReviewData where windowId = '%s'" % (windowId), database)

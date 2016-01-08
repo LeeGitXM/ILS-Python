@@ -157,7 +157,7 @@ def setCurrentMessageQueue(chartProperties, queue):
     topScope[MESSAGE_QUEUE] = queue
     database = getDatabaseName(chartProperties)
     controlPanelId = getControlPanelId(chartProperties)
-    system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where contrlPanelId = '%s'" % (queue, controlPanelId), database)
+    system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where controlPanelId = %d" % (queue, controlPanelId), database)
 
 def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
     '''Send an OC alert'''

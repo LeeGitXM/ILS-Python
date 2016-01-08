@@ -110,6 +110,7 @@ def escapeSingleQuotes(msg):
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.constants import MESSAGE
     from  ils.sfc.gateway.api import sendMessageToClient, getProject
+    import sys
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
@@ -118,9 +119,16 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
         logger.error(msg)
     cancelChart(chartScope)
     payload = dict()
+    try:
+        # try to get the cause
+        e = sys.exc_info()[1]
+        msg = msg + ": " + str(e)
+    except:
+        # no system error info I guess
+        pass
     payload[MESSAGE] = msg
     project = getProject(chartScope)
-    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+    sendMessageToClient(project, 'sfcUnexpectedError', payload)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()

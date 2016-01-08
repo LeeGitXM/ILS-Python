@@ -43,8 +43,9 @@ def getChartStatus(event):
     
 def reset(event):
     import system.db
+    from ils.sfc.client.util import getDatabase
     rootContainer = event.source.parent.parent
-    database = system.tag.read('[Client]Database').value
+    database = getDatabase()
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelId = %d" % (rootContainer.controlPanelId), database)
     rootContainer.msgIndex = 0
     system.db.runUpdateQuery("delete from SfcReviewDataTable", database)
@@ -77,3 +78,9 @@ def setControlPanelChartPath(controlPanelId, chartPath):
     import system.db
     '''set the name of the SFC chart associated with the given control panel'''
     system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId))
+
+def showMsgQueue(window):
+    import system.nav
+    rootContainer = window.getRootContainer()
+    msgQueueWindow = system.nav.openWindow('Queue/Message Queue')
+    msgQueueWindow.getRootContainer().key = rootContainer.windowData.getValueAt(0,'msgQueue')

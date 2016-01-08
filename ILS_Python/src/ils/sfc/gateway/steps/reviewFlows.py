@@ -66,7 +66,7 @@ def activate(scopeContext, stepProperties):
                     responseFlow3 = responseDataset.getValueAt(i,4)
                     s88Set(chartScope, stepScope, configRow.flow3Key, responseFlow3, configRow.destination )   
     except:
-            handleUnexpectedGatewayError(chartScope, 'Unexpected error in cancel.py', chartLogger)
+            handleUnexpectedGatewayError(chartScope, 'Unexpected error in reviewFlows.py', chartLogger)
     finally:
         system.db.runUpdateQuery("delete from SfcReviewFlowsTable where windowId = '%s'" % (windowId), database)
         system.db.runUpdateQuery("delete from SfcReviewFlows where windowId = '%s'" % (windowId), database)
