@@ -38,7 +38,7 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
         # calculate the absolute timeout time in epoch secs:
         timeoutTime = getTimeoutTime(chartScope, stepProperties)
         # create db window records:
-        if controlPanelId!=None:
+        if controlPanelId != None:
             windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)
             # Note: the low/high limits are formatted as strings so we can insert 'null' if desired
             lowLimit = dbStringForFloat(lowLimit)
@@ -56,8 +56,11 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
                 
             sendOpenWindow(chartScope, windowId, stepId, database)
         else:
+            from system.ils.sfc import addRequestId
+            # in "headless" test mode; just register the request under an arbitrary id:
             windowId=createUniqueId()
-        
+            addRequestId(windowId, stepId)
+       
         print "CommonInput: Waiting for response ..."
         response = waitOnResponse(windowId, chartScope, timeoutTime)
         if response == None:
