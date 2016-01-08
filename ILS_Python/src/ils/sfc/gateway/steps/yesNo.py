@@ -17,4 +17,4 @@ def activate(scopeContext, stepProperties):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
     if isEmpty(buttonLabel):
         buttonLabel = 'Y/N'
-    commonInput.activate(scopeContext, stepProperties, 'SFC/YesNo')
+    commonInput.activate(scopeContext, stepProperties, buttonLabel, 'SFC/YesNo')

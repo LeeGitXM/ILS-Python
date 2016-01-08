@@ -9,9 +9,14 @@ def activate(scopeContext, stepProperties):
     action for java SetQueueStep
     sets the chart's current message queue
     '''
-    from ils.sfc.gateway.util import getStepProperty
+    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from system.ils.sfc.common.Constants import MESSAGE_QUEUE
-    from ils.sfc.gateway.api import setCurrentMessageQueue
-    chartScope = scopeContext.getChartScope()
-    queue = getStepProperty(stepProperties, MESSAGE_QUEUE)
-    setCurrentMessageQueue(chartScope, queue)
+    from ils.sfc.gateway.api import setCurrentMessageQueue, getChartLogger
+    
+    try: 
+        chartScope = scopeContext.getChartScope()
+        chartLogger = getChartLogger(chartScope)
+        queue = getStepProperty(stepProperties, MESSAGE_QUEUE)
+        setCurrentMessageQueue(chartScope, queue)
+    except:
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in setQueue.py', chartLogger)

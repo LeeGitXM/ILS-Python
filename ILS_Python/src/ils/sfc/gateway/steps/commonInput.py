@@ -3,7 +3,7 @@ Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties, windowType, choices='', lowLimit=None, highLimit=None):
+def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', lowLimit=None, highLimit=None):
     '''
     Action for java InputStep
     Get an response from the user; block until a
@@ -11,66 +11,67 @@ def activate(scopeContext, stepProperties, windowType, choices='', lowLimit=None
     '''
     from ils.sfc.gateway.util import getTimeoutTime, getControlPanelId, createWindowRecord, \
         getStepProperty, waitOnResponse, getRecipeScope, sendOpenWindow, deleteAndSendClose,\
-        handleUnexpectedGatewayError, getStepId, dbStringForFloat
-    from ils.sfc.common.util import isEmpty,createUniqueId
+        getStepId, dbStringForFloat, handleUnexpectedGatewayError
+    from ils.sfc.common.util import createUniqueId
     from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger, getProject
-    from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
+    from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
     import system.util
     import system.db
-    chartScope = scopeContext.getChartScope()
-    stepScope = scopeContext.getStepScope()
-    chartLogger = getChartLogger(chartScope)
     
-    # window common properties:
-    database = getDatabaseName(chartScope)
-    controlPanelId = getControlPanelId(chartScope)
-    buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
-    if isEmpty(buttonLabel):
-        buttonLabel = 'Input'
-    position = getStepProperty(stepProperties, POSITION) 
-    scale = getStepProperty(stepProperties, SCALE) 
-    title = getStepProperty(stepProperties, WINDOW_TITLE) 
-    # step-specific properties:
-    prompt = getStepProperty(stepProperties, PROMPT)
-    recipeLocation = getRecipeScope(stepProperties) 
-    key = getStepProperty(stepProperties, KEY) 
-    stepId = getStepId(stepProperties) 
-
-    # calculate the absolute timeout time in epoch secs:
-    timeoutTime = getTimeoutTime(chartScope, stepProperties)
-
-    # create db window records:
-    if controlPanelId!=None:
-        windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)
-        # Note: the low/high limits are formatted as strings so we can insert 'null' if desired
-        lowLimit = dbStringForFloat(lowLimit)
-        highLimit = dbStringForFloat(highLimit)
+    try:
+        chartScope = scopeContext.getChartScope()
+        stepScope = scopeContext.getStepScope()
+        chartLogger = getChartLogger(chartScope)
+        
+        # window common properties:
+        database = getDatabaseName(chartScope)
+        controlPanelId = getControlPanelId(chartScope)
+        position = getStepProperty(stepProperties, POSITION) 
+        scale = getStepProperty(stepProperties, SCALE) 
+        title = getStepProperty(stepProperties, WINDOW_TITLE) 
+        # step-specific properties:
+        prompt = getStepProperty(stepProperties, PROMPT)
+        recipeLocation = getRecipeScope(stepProperties) 
+        key = getStepProperty(stepProperties, KEY) 
+        stepId = getStepId(stepProperties) 
     
-        numInserted = system.db.runUpdateQuery("insert into SfcInput (windowId, prompt, recipeLocation, recipeKey, lowLimit, highLimit) values ('%s', '%s', '%s', '%s', %s, %s)" % (windowId, prompt, recipeLocation, key, lowLimit, highLimit), database)
-        if numInserted == 0:
-            handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', chartLogger)
-            
-        if choices != None:
-            choicesList = system.util.jsonDecode(choices)
-            for choice in choicesList:
-                system.db.runUpdateQuery("insert into SfcInputChoices (windowId, choice) values ('%s', '%s')" % (windowId, choice), database)
+        # calculate the absolute timeout time in epoch secs:
+        timeoutTime = getTimeoutTime(chartScope, stepProperties)
+    
+        # create db window records:
+        if controlPanelId!=None:
+            windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)
+            # Note: the low/high limits are formatted as strings so we can insert 'null' if desired
+            lowLimit = dbStringForFloat(lowLimit)
+            highLimit = dbStringForFloat(highLimit)
+        
+            numInserted = system.db.runUpdateQuery("insert into SfcInput (windowId, prompt, recipeLocation, recipeKey, lowLimit, highLimit) values ('%s', '%s', '%s', '%s', %s, %s)" % (windowId, prompt, recipeLocation, key, lowLimit, highLimit), database)
+            if numInserted == 0:
+                handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', chartLogger)
                 
-            
-        sendOpenWindow(chartScope, windowId, stepId, database)
-    else:
-        windowId=createUniqueId()
-    
-    print "CommonInput: Waiting for response ..."
-    response = waitOnResponse(windowId, chartScope, timeoutTime)
-    if response == None:
-        response = "Timeout"
-    print "CommonInput: Received response ",response
-    s88Set(chartScope, stepScope, key, response, recipeLocation)
-    
-    if controlPanelId!=None:
-        # delete db window records:
-        if choices != None:
-            system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
-        system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)
-        project = getProject(chartScope)
-        deleteAndSendClose(project, windowId, database)
+            if choices != None:
+                choicesList = system.util.jsonDecode(choices)
+                for choice in choicesList:
+                    system.db.runUpdateQuery("insert into SfcInputChoices (windowId, choice) values ('%s', '%s')" % (windowId, choice), database)
+                    
+                
+            sendOpenWindow(chartScope, windowId, stepId, database)
+        else:
+            windowId=createUniqueId()
+        
+        print "CommonInput: Waiting for response ..."
+        response = waitOnResponse(windowId, chartScope, timeoutTime)
+        if response == None:
+            response = "Timeout"
+        print "CommonInput: Received response ",response
+        s88Set(chartScope, stepScope, key, response, recipeLocation)
+    except:
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', chartLogger)
+    finally:
+        if controlPanelId!=None:
+            # delete db window records:
+            if choices != None:
+                system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
+            system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)
+            project = getProject(chartScope)
+            deleteAndSendClose(project, windowId, database)

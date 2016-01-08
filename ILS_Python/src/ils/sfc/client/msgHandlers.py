@@ -20,6 +20,7 @@ def sfcCloseWindow(payload):
     closeDbWindow(windowId)
     
 def dispatchMessage(payload):
+    '''call the appropriate method in this module and pass it the payload'''
     from ils.sfc.common.util import callMethodWithParams
     from ils.sfc.common.constants import HANDLER
     import system.gui
