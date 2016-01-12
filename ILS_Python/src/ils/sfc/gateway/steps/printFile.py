@@ -34,8 +34,9 @@ def activate(scopeContext, stepProperties):
             text = ''
         printFile = getStepProperty(stepProperties, PRINT_FILE) 
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 
-                   
+        print 'b4 createWindowRecord'      
         windowId = createWindowRecord(controlPanelId, 'SFC/SaveData', buttonLabel, position, scale, title, database)
+        print 'b4 createSaveDataRecord'
         createSaveDataRecord(windowId, text, fileName, computer, printFile, viewFile, database)
   
     except:
