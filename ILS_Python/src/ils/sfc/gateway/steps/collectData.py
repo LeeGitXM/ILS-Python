@@ -3,7 +3,7 @@ Created on Dec 17, 2015
 
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     from ils.sfc.gateway.util import standardDeviation, getTopLevelProperties, getStepProperty, \
     getTopChartRunId, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, s88Set
@@ -15,6 +15,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         logger = getChartLogger(chartScope)
         logger.trace("Executing a collect data block")
         configJson = getStepProperty(stepProperties, COLLECT_DATA_CONFIG)

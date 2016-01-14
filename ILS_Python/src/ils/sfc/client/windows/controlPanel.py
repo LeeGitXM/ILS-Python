@@ -59,7 +59,9 @@ def reset(event):
 def getControlPanelId(controlPanelName):
     '''Get the control panel id given the name'''
     import system.db
-    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
+    from ils.sfc.client.util import getDatabase
+    database = getDatabase()
+    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database)
     if len(results) == 1:
         return results[0][0]
     else:
@@ -68,16 +70,20 @@ def getControlPanelId(controlPanelName):
 def getControlPanelChartPath(controlPanelId):
     '''get the name of the SFC chart associated with the given control panel'''
     import system.db
-    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId))
+    from ils.sfc.client.util import getDatabase
+    database = getDatabase()
+    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId), database)
     if len(results) == 1:
         return results[0][0]
     else:
         return None
 
 def setControlPanelChartPath(controlPanelId, chartPath):
-    import system.db
     '''set the name of the SFC chart associated with the given control panel'''
-    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId))
+    from ils.sfc.client.util import getDatabase
+    import system.db
+    database = getDatabase()
+    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId), database)
 
 def showMsgQueue(window):
     import system.nav

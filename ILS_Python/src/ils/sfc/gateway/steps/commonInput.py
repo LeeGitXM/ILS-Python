@@ -3,7 +3,7 @@ Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', lowLimit=None, highLimit=None):
+def activate(scopeContext, step, buttonLabel, windowType, choices='', lowLimit=None, highLimit=None):
     '''
     Action for java InputStep
     Get an response from the user; block until a
@@ -21,11 +21,13 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         
         # window common properties:
         database = getDatabaseName(chartScope)
         controlPanelId = getControlPanelId(chartScope)
+        print 'controlPanelId', controlPanelId
         position = getStepProperty(stepProperties, POSITION) 
         scale = getStepProperty(stepProperties, SCALE) 
         title = getStepProperty(stepProperties, WINDOW_TITLE) 
@@ -39,12 +41,15 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
         timeoutTime = getTimeoutTime(chartScope, stepProperties)
         # create db window records:
         if controlPanelId != None:
+            print 'creating window record'
             windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)
             # Note: the low/high limits are formatted as strings so we can insert 'null' if desired
+            print 'getting strings for limits'
             lowLimit = dbStringForFloat(lowLimit)
             highLimit = dbStringForFloat(highLimit)
-        
-            numInserted = system.db.runUpdateQuery("insert into SfcInput (windowId, prompt, recipeLocation, recipeKey, lowLimit, highLimit) values ('%s', '%s', '%s', '%s', %s, %s)" % (windowId, prompt, recipeLocation, key, lowLimit, highLimit), database)
+            sql = "insert into SfcInput (windowId, prompt, recipeLocation, recipeKey, lowLimit, highLimit) values ('%s', '%s', '%s', '%s', %s, %s)" % (windowId, prompt, recipeLocation, key, lowLimit, highLimit)
+            print sql
+            numInserted = system.db.runUpdateQuery(sql, database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', chartLogger)
                 

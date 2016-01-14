@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     from  system.ils.sfc.common.Constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL
     from ils.sfc.gateway.util import getStepProperty, getControlPanelId, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger
@@ -13,6 +13,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
+        stepProperties = step.getProperties();
         enablePause = getStepProperty(stepProperties, ENABLE_PAUSE)
         enableResume = getStepProperty(stepProperties, ENABLE_RESUME)
         enableCancel = getStepProperty(stepProperties, ENABLE_CANCEL)

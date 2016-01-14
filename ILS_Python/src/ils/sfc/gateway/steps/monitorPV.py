@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     '''see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and 
     S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
     from ils.sfc.gateway.util import getStepProperty, checkForCancelOrPause, handleUnexpectedGatewayError
@@ -32,6 +32,7 @@ def activate(scopeContext, stepProperties):
         # general initialization:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         logger = getChartLogger(chartScope)
         logger.info("Starting a PV monitor...")
         

@@ -4,13 +4,14 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     from ils.sfc.gateway.util import getStepProperty, getTopChartRunId, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger
     from system.ils.sfc.common.Constants import NAME
     import system.db
     try:
         chartScope = scopeContext.getChartScope()
+        stepProperties = step.getProperties();
         stepName = getStepProperty(stepProperties, NAME)
         chartLogger = getChartLogger(chartScope)
         database = getDatabaseName(chartScope)

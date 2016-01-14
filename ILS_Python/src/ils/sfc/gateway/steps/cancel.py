@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     ''' Abort the chart execution'''
     from ils.sfc.gateway.api import cancelChart, addControlPanelMessage, getChartLogger
     from ils.sfc.gateway.util import handleUnexpectedGatewayError

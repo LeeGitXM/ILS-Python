@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):   
+def activate(scopeContext, step):   
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, sendOpenWindow, getStepId, \
     handleUnexpectedGatewayError, getStepProperty
     from ils.sfc.common.util import isEmpty
@@ -15,6 +15,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
+        stepProperties = step.getProperties();
         stepId = getStepId(stepProperties) 
 
         # window common properties:

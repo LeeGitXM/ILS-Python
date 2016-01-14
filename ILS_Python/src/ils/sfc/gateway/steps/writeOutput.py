@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties): 
+def activate(scopeContext, step): 
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, \
@@ -24,6 +24,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope() 
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         logger = getChartLogger(chartScope)
         logger.info("Executing a Write Output block")
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)

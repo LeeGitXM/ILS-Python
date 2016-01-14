@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     '''
     action for java SetQueueStep
     sets the chart's current message queue
@@ -16,6 +16,7 @@ def activate(scopeContext, stepProperties):
     try: 
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
+        stepProperties = step.getProperties();
         queue = getStepProperty(stepProperties, MESSAGE_QUEUE)
         setCurrentMessageQueue(chartScope, queue)
     except:

@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     '''
     action for java ShowQueueStep
     send a message to the client to show the current message queue
@@ -15,6 +15,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
+        stepProperties = step.getProperties();
         payload = dict()
         project = getProject(chartScope)
         sendMessageToClient(project, 'sfcShowQueue', payload)

@@ -3,7 +3,7 @@ Created on Dec 17, 2015
 
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     '''
     Action for java InputStep
     Get an response from the user; block until a
@@ -13,7 +13,8 @@ def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.steps import commonInput
     from ils.sfc.gateway.util import getStepProperty
     from system.ils.sfc.common.Constants import BUTTON_LABEL
+    stepProperties = step.getProperties();
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
     if isEmpty(buttonLabel):
         buttonLabel = 'Input'
-    commonInput.activate(scopeContext, stepProperties, buttonLabel, 'SFC/Input')
+    commonInput.activate(scopeContext, step, buttonLabel, 'SFC/Input')

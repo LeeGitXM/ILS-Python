@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     '''
     action for java QueueMessageStep
     queues the step's message
@@ -19,6 +19,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         currentMsgQueue = getCurrentMessageQueue(chartScope)
         message = getStepProperty(stepProperties, MESSAGE)  

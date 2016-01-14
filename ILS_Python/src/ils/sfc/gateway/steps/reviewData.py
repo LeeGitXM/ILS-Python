@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):    
+def activate(scopeContext, step):    
     from ils.sfc.gateway.util import sendOpenWindow, getTimeoutTime, getStepId, createWindowRecord, \
         getControlPanelId, hasStepProperty, getStepProperty, waitOnResponse, deleteAndSendClose, \
         handleUnexpectedGatewayError
@@ -19,6 +19,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope() 
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         autoMode = getStepProperty(stepProperties, AUTO_MODE) 
         if autoMode == AUTOMATIC:   

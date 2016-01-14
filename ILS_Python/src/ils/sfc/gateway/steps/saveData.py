@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     from ils.sfc.gateway.util import dictToString, getStepProperty, createFilepath, \
         handleUnexpectedGatewayError, getControlPanelId, createWindowRecord, createSaveDataRecord
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName
@@ -18,6 +18,7 @@ def activate(scopeContext, stepProperties):
         chartScope = scopeContext.getChartScope()
         logger = getChartLogger(chartScope)
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
         printFile = getStepProperty(stepProperties, PRINT_FILE) 
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 

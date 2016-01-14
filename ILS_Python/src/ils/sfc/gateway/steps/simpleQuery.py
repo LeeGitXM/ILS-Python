@@ -10,11 +10,12 @@ from system.ils.sfc.common.Constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, 
 from ils.sfc.gateway.recipe import substituteScopeReferences
 import system.db
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         logger = getChartLogger(chartScope)
         database = getDatabaseName(chartScope)
         sql = getStepProperty(stepProperties, SQL)
