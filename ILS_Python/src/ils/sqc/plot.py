@@ -301,32 +301,32 @@ def fetchChartData(unitName, labValueName):
     
     return chartData
 
-def tooltipGenerator(dataset, series, item):
+#def tooltipGenerator(dataset, series, item):
 #    print "Here's a tip"
-    grade="Chocolate"
-    x1 = dataset.getXValue(series, item);
-    x2 = dataset.getYValue(series, item);
-    HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(grade)
-    HTML=HTML+" X:'%f'<br/>"%(x1)
-    HTML=HTML+" Y:'%f'<br/>"%(x2)
-    HTML=HTML+"</p></html>"
-    return HTML
+#    grade="Chocolate"
+#    x1 = dataset.getXValue(series, item);
+#    x2 = dataset.getYValue(series, item);
+#    HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(grade)
+#    HTML=HTML+" X:'%f'<br/>"%(x1)
+#    HTML=HTML+" Y:'%f'<br/>"%(x2)
+#    HTML=HTML+"</p></html>"
+#    return HTML
     
 #
-from org.jfree.chart import labels
-class CustomTooltipGenerator(labels.XYToolTipGenerator):
+#from org.jfree.chart import labels
+#class CustomTooltipGenerator(labels.XYToolTipGenerator):
     
-    def __init__(self):
-        self.grade = "Ethanol"
+#   def __init__(self):
+#       self.grade = "Ethanol"
     
     # Dataset is a jfree XYDataset
     # Series and item are integers
-    def generateToolTip(self,dataset, series, item):
+#   def generateToolTip(self,dataset, series, item):
 #        print "Generating a tooltip"
-        x1 = dataset.getXValue(series, item);
-        x2 = dataset.getYValue(series, item);
-        HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(self.grade)
-        HTML=HTML+" X:'%f'<br/>"%(x1)
-        HTML=HTML+" Y:'%f'<br/>"%(x2)
-        HTML=HTML+"</p></html>"
-        return HTML
+#        x1 = dataset.getXValue(series, item);
+#        x2 = dataset.getYValue(series, item);
+#        HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(self.grade)
+#        HTML=HTML+" X:'%f'<br/>"%(x1)
+#        HTML=HTML+" Y:'%f'<br/>"%(x2)
+#        HTML=HTML+"</p></html>"
+#        return HTML
