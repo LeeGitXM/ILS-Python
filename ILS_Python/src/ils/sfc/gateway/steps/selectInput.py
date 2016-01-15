@@ -21,7 +21,7 @@ def activate(scopeContext, stepProperties):
         choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
         choicesKey = getStepProperty(stepProperties, CHOICES_KEY) 
         choices = s88Get(chartScope, stepScope, choicesKey, choicesRecipeLocation)    
-        commonInput.activate(scopeContext, stepProperties, buttonLabel, 'SFC/SelectInput', choices)
+        return commonInput.activate(scopeContext, stepProperties, buttonLabel, 'SFC/SelectInput', choices)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in selectInput.py', chartLogger)
     finally:

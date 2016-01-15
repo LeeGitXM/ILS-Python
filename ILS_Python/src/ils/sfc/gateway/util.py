@@ -380,7 +380,6 @@ def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, tit
     from ils.sfc.common.util import createUniqueId
     windowId = createUniqueId()
     sql = "Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title)
-    print sql
     system.db.runUpdateQuery(sql, database)
     return windowId
     
