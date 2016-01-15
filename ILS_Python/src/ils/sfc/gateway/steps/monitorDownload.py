@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step): 
+def activate(scopeContext, stepProperties): 
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, MONITOR_DOWNLOADS_CONFIG, DATA_ID, DOWNLOAD_STATUS, WRITE_CONFIRMED
     from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, STEP_PENDING,  PV_NOT_MONITORED
     from system.ils.sfc import getMonitorDownloadsConfig
@@ -18,7 +18,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         logger = getChartLogger(chartScope)
         timer, timerAttribute = handleTimer(chartScope, stepScope, stepProperties, logger)
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
@@ -49,5 +48,4 @@ def activate(scopeContext, step):
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorDownload.py', logger)
     finally:
-        # do cleanup here
-        pass
+        return True

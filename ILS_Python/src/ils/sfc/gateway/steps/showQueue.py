@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     '''
     action for java ShowQueueStep
     send a message to the client to show the current message queue
@@ -15,9 +15,10 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        stepProperties = step.getProperties();
         payload = dict()
         project = getProject(chartScope)
         sendMessageToClient(project, 'sfcShowQueue', payload)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in showQueue.py', chartLogger)
+    finally:
+        return True

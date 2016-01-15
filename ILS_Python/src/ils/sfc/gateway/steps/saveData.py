@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import dictToString, getStepProperty, createFilepath, \
         handleUnexpectedGatewayError, getControlPanelId, createWindowRecord, createSaveDataRecord
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName
@@ -18,7 +18,6 @@ def activate(scopeContext, step):
         chartScope = scopeContext.getChartScope()
         logger = getChartLogger(chartScope)
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
         printFile = getStepProperty(stepProperties, PRINT_FILE) 
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 
@@ -50,3 +49,5 @@ def activate(scopeContext, step):
             createSaveDataRecord(windowId, dataText, filepath, SERVER, printFile, viewFile, database)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in saveData.py', logger) 
+    finally:
+        return True

@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger
     from system.ils.sfc.common.Constants import SQL, RECIPE_LOCATION, KEY
@@ -13,7 +13,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         database = getDatabaseName(chartScope)
         sql = getStepProperty(stepProperties, SQL) 
@@ -24,3 +23,5 @@ def activate(scopeContext, step):
         s88Set(chartScope, stepScope, key, jsonResult, recipeLocation)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in rawQuery.py', chartLogger)
+    finally:
+        return True

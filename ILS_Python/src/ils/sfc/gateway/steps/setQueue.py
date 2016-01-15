@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     '''
     action for java SetQueueStep
     sets the chart's current message queue
@@ -16,8 +16,9 @@ def activate(scopeContext, step):
     try: 
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        stepProperties = step.getProperties();
         queue = getStepProperty(stepProperties, MESSAGE_QUEUE)
         setCurrentMessageQueue(chartScope, queue)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in setQueue.py', chartLogger)
+    finally:
+        return True

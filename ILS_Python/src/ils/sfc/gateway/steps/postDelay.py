@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import getControlPanelId, createWindowRecord, getStepProperty, \
         handleUnexpectedGatewayError, getStepId, sendOpenWindow
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger
@@ -15,7 +15,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        stepProperties = step.getProperties();
         # window common properties:
         database = getDatabaseName(chartScope)
         controlPanelId = getControlPanelId(chartScope)
@@ -38,4 +37,6 @@ def activate(scopeContext, step):
         sendOpenWindow(chartScope, windowId, stepId, database)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in postDelay.py', chartLogger)
+    finally:
+        return True
     # no window cleanup/close; windows stay open until DeleteDelayNotification step executes

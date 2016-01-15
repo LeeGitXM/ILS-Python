@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):    
+def activate(scopeContext, stepProperties):    
     from ils.sfc.gateway.util import createWindowRecord, sendOpenWindow, getStepId, getControlPanelId,\
     getStepProperty, waitOnResponse, deleteAndSendClose, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import s88Set, getDatabaseName, getProject, getChartLogger
@@ -17,7 +17,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope() 
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)    
         autoMode = getStepProperty(stepProperties, AUTO_MODE) 
         if autoMode == AUTOMATIC:   

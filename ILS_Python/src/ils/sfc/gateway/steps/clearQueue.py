@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     '''
     action for java ClearQueueStep
     delete all messages from the current message queue
@@ -15,10 +15,11 @@ def activate(scopeContext, step):
     from ils.sfc.gateway.util import handleUnexpectedGatewayError
     chartScope = scopeContext.getChartScope()
     chartLogger = getChartLogger(chartScope)
-    stepProperties = step.getProperties();
     try:
         currentMsgQueue = getCurrentMessageQueue(chartScope)
         database = getDatabaseName(chartScope)
         clear(currentMsgQueue, database)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in clearQueue.py', chartLogger)
+    finally:
+        return True

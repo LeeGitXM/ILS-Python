@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     import system.db
     from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
     from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
@@ -14,7 +14,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        stepProperties = step.getProperties();
         # window common properties:
         database = getDatabaseName(chartScope)
         results = system.db.runQuery('select windowId from SfcBusyNotification', database)
@@ -25,3 +24,5 @@ def activate(scopeContext, step):
             deleteAndSendClose(project, windowId, database)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in deleteDelay.py', chartLogger)
+    finally:
+        return True

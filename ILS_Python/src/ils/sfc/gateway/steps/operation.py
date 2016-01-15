@@ -4,14 +4,13 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import getStepProperty, getTopChartRunId, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger
     from system.ils.sfc.common.Constants import NAME
     import system.db
     try:
         chartScope = scopeContext.getChartScope()
-        stepProperties = step.getProperties();
         stepName = getStepProperty(stepProperties, NAME)
         chartLogger = getChartLogger(chartScope)
         database = getDatabaseName(chartScope)
@@ -19,3 +18,5 @@ def activate(scopeContext, step):
         system.db.runUpdateQuery("update SfcControlPanel set operation = '%s' where chartRunId = '%s'" % (stepName, chartRunId), database)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in operation.py', chartLogger)
+    finally:
+        return True

@@ -115,10 +115,6 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
     '''
-    if logger != None:
-        logger.error(msg)
-    cancelChart(chartScope)
-    payload = dict()
     try:
         # try to get the cause
         e = sys.exc_info()[1]
@@ -126,6 +122,10 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     except:
         # no system error info I guess
         pass
+    if logger != None:
+        logger.error(msg)
+    cancelChart(chartScope)
+    payload = dict()
     payload[MESSAGE] = msg
     project = getProject(chartScope)
     sendMessageToClient(project, 'sfcUnexpectedError', payload)

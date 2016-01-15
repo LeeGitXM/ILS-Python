@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     '''
     action for java QueueMessageStep
     queues the step's message
@@ -19,7 +19,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         currentMsgQueue = getCurrentMessageQueue(chartScope)
         message = getStepProperty(stepProperties, MESSAGE)  
@@ -29,3 +28,5 @@ def activate(scopeContext, step):
         insert(currentMsgQueue, priority, message, database)    
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in queueInsert.py', chartLogger)
+    finally:
+        return True

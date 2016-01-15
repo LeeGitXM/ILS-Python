@@ -3,7 +3,7 @@ Created on Dec 17, 2015
 
 @author: rforbes
 '''
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import standardDeviation, getTopLevelProperties, getStepProperty, \
     getTopChartRunId, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, s88Set
@@ -15,7 +15,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         logger = getChartLogger(chartScope)
         logger.trace("Executing a collect data block")
         configJson = getStepProperty(stepProperties, COLLECT_DATA_CONFIG)
@@ -81,3 +80,5 @@ def activate(scopeContext, step):
                     s88Set(chartScope, stepScope, row['recipeKey'], row['defaultValue'], row['location'] )
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in collectData.py', logger)
+    finally:
+        return True

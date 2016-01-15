@@ -4,18 +4,16 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):   
+def activate(scopeContext, stepProperties):   
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, sendOpenWindow, getStepId, \
     handleUnexpectedGatewayError, getStepProperty
     from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName
     from system.ils.sfc.common.Constants import SECURITY, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, WINDOW
-    import system.db
     
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        stepProperties = step.getProperties();
         stepId = getStepId(stepProperties) 
 
         # window common properties:
@@ -37,3 +35,5 @@ def activate(scopeContext, step):
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in showWindow.py', chartLogger)
     # No window cleanup--window is closed in CloseWindow step
+    finally:
+        return True

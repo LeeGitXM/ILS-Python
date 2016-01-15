@@ -10,12 +10,11 @@ from system.ils.sfc.common.Constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, 
 from ils.sfc.gateway.recipe import substituteScopeReferences
 import system.db
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         logger = getChartLogger(chartScope)
         database = getDatabaseName(chartScope)
         sql = getStepProperty(stepProperties, SQL)
@@ -27,7 +26,9 @@ def activate(scopeContext, step):
         simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in simpleQuery.py', logger)
-        
+    finally:
+        return True
+    
 def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()

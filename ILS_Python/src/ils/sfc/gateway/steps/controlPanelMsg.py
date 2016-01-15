@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, step):
+def activate(scopeContext, stepProperties):
     import time
     from ils.sfc.gateway.util import getStepProperty, getDelaySeconds, handleUnexpectedGatewayError
     from system.ils.sfc.common.Constants import MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY, TIMEOUT, TIMEOUT_UNIT
@@ -15,7 +15,6 @@ def activate(scopeContext, step):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         message = getStepProperty(stepProperties, MESSAGE)
         message = substituteScopeReferences(chartScope, stepScope, message)
