@@ -66,7 +66,7 @@ def getControlPanelId(controlPanelName, createIfNotFound = True):
     if len(results) == 1:
         return results[0][0]
     elif createIfNotFound:
-        system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName) values ('%s')" % (controlPanelName))
+        system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName, chartPath) values ('%s', '')" % (controlPanelName), database)
         return getControlPanelId(controlPanelName, False)
     else:
         return None
