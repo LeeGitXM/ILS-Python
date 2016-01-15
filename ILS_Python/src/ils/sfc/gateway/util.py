@@ -379,7 +379,9 @@ def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, tit
     import system.db
     from ils.sfc.common.util import createUniqueId
     windowId = createUniqueId()
-    system.db.runUpdateQuery("Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title), database)
+    sql = "Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title)
+    print sql
+    system.db.runUpdateQuery(sql, database)
     return windowId
     
 def sendOpenWindow(chartScope, windowId, stepId, database):

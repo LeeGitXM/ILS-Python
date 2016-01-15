@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):  
+def activate(scopeContext, step):  
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, \
     getControlPanelId, createWindowRecord, createSaveDataRecord
     from system.ils.sfc.common.Constants import COMPUTER, SERVER, FILENAME, BUTTON_LABEL, \
@@ -14,6 +14,7 @@ def activate(scopeContext, stepProperties):
     # extract property values
     try:
         chartScope = scopeContext.getChartScope()
+        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         fileName = getStepProperty(stepProperties, FILENAME) 
         database = getDatabaseName(chartScope)
@@ -34,8 +35,9 @@ def activate(scopeContext, stepProperties):
             text = ''
         printFile = getStepProperty(stepProperties, PRINT_FILE) 
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 
-                   
+        print 'b4 createWindowRecord'      
         windowId = createWindowRecord(controlPanelId, 'SFC/SaveData', buttonLabel, position, scale, title, database)
+        print 'b4 createSaveDataRecord'
         createSaveDataRecord(windowId, text, fileName, computer, printFile, viewFile, database)
   
     except:

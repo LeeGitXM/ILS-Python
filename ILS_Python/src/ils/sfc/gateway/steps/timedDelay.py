@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
         handleUnexpectedGatewayError, getDelaySeconds, checkForCancelOrPause, deleteAndSendClose, \
         sendOpenWindow
@@ -16,11 +16,13 @@ def activate(scopeContext, stepProperties):
         BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
     import system.db
     import time
-    
+    print 'timedDelay.py: activate'
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        chartLogger = getChartLogger(chartScope)
+        stepProperties = step.getProperties();
+        chartLogger = getChartLogger(chartScope)       
+        postNotification = getStepProperty(stepProperties, POST_NOTIFICATION)         
         chartLogger.trace("Executing TimedDelay block")
         stepId = getStepId(stepProperties) 
         timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
@@ -49,8 +51,7 @@ def activate(scopeContext, stepProperties):
         chartLogger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
         startTimeEpochSecs = time.time()
         endTimeEpochSecs = startTimeEpochSecs + delaySeconds
-        
-        postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
+        stepScope['_endTimeEpochSecs'] = endTimeEpochSecs
         if postNotification:
             message = getStepProperty(stepProperties, MESSAGE) 
             # window common properties:
@@ -68,26 +69,32 @@ def activate(scopeContext, stepProperties):
                 handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
             sendOpenWindow(chartScope, windowId, stepId, database)
             
-        #TODO: checking the real clock time is probably more accurate
-        sleepIncrement = 1
-        while delaySeconds > 0:
-            # Handle Cancel/Pause
-    
-    #        if status == CANCEL:
-    #            return
-    #        elif status == PAUSE:
-    #            sleep(sleepIncrement)
-    #            continue
-    
-            if checkForCancelOrPause(chartScope, chartLogger):
-                print "CANCELLED--dropping out of loop"
-                break
-            
-            delaySeconds = delaySeconds - sleepIncrement
-            time.sleep(sleepIncrement)
+        while True:
+            if step.isRunning():
+                secondsLeft = endTimeEpochSecs - time.time()
+                if secondsLeft > 0:
+                    sleepSeconds = min(secondsLeft, 5)
+                    print 'sleeping for', sleepSeconds, 'secs'
+                    time.sleep(sleepSeconds)
+                else:
+                    print 'done'
+                    break # we're done
+            elif step.isPaused():
+                print 'waiting to resume...'
+                # wait for step to resume
+                time.sleep(1)
+            elif step.isCancelled():
+                print 'cancelled'
+                # break out of loop and do cleanup
+                break;
+            print 'yielding'
+            step.yieldControl() # allow SFC engine to process other messages
+
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in timedDelay.py', chartLogger)        
+
     finally:
+        print 'done; cleaning up'
         if postNotification:
             system.db.runUpdateQuery("delete from SfcTimeDelayNotification where windowId = '%s'" % (windowId), database)
             project = getProject(chartScope)

@@ -181,4 +181,4 @@ def getDatabase():
 
 def getTagProvider():
     '''Get the tag provider name, taking isolation mode into account'''
-    return system.tag.read('[Client]/Provider').value
+    return system.tag.read('[Client]/Tag Provider').value

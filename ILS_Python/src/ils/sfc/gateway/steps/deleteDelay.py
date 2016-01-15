@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     import system.db
     from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
     from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
@@ -14,6 +14,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
+        stepProperties = step.getProperties();
         # window common properties:
         database = getDatabaseName(chartScope)
         results = system.db.runQuery('select windowId from SfcBusyNotification', database)

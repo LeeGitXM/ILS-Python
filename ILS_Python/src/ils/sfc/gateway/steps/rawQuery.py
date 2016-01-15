@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, step):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger
     from system.ils.sfc.common.Constants import SQL, RECIPE_LOCATION, KEY
@@ -13,6 +13,7 @@ def activate(scopeContext, stepProperties):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepProperties = step.getProperties();
         chartLogger = getChartLogger(chartScope)
         database = getDatabaseName(chartScope)
         sql = getStepProperty(stepProperties, SQL) 
