@@ -56,14 +56,18 @@ def reset(event):
     system.db.runUpdateQuery("delete from SfcInput", database)
     system.db.runUpdateQuery("delete from SfcWindow", database)
 
-def getControlPanelId(controlPanelName):
-    '''Get the control panel id given the name'''
+def getControlPanelId(controlPanelName, createIfNotFound = True):
+    '''Get the control panel id given the name, creating a new record if not found
+       and createIfNotFound flag is set.'''
     import system.db
     from ils.sfc.client.util import getDatabase
     database = getDatabase()
     results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database)
     if len(results) == 1:
         return results[0][0]
+    elif createIfNotFound:
+        system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName) values ('%s')" % (controlPanelName))
+        return getControlPanelId(controlPanelName, False)
     else:
         return None
     
