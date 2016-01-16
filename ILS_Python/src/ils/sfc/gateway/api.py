@@ -150,15 +150,14 @@ def getCurrentMessageQueue(chartProperties):
 
 def setCurrentMessageQueue(chartProperties, queue):
     '''Set the currently used message queue'''
-    from ils.sfc.common.constants import MESSAGE_QUEUE, INSTANCE_ID
-    from ils.sfc.gateway.util import getTopLevelProperties, getTopChartRunId
+    from ils.sfc.common.constants import MESSAGE_QUEUE
+    from ils.sfc.gateway.util import getTopLevelProperties, getControlPanelId
+    import system.db
     topScope = getTopLevelProperties(chartProperties)
     topScope[MESSAGE_QUEUE] = queue
-    # message the client about msg queue
-    payload = dict()
-    payload[INSTANCE_ID] = getTopChartRunId(chartProperties)
-    payload[MESSAGE_QUEUE] = queue
-    sendMessageToClient(chartProperties, 'setMessageQueue', payload)
+    database = getDatabaseName(chartProperties)
+    controlPanelId = getControlPanelId(chartProperties)
+    system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where controlPanelId = %d" % (queue, controlPanelId), database)
 
 def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
     '''Send an OC alert'''

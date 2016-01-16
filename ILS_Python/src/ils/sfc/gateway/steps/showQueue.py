@@ -9,12 +9,16 @@ def activate(scopeContext, stepProperties):
     action for java ShowQueueStep
     send a message to the client to show the current message queue
     '''
-    from ils.sfc.gateway.util import sendMessageToClient
-    from system.ils.sfc.common.Constants import MESSAGE_QUEUE
-    from ils.sfc.gateway.api import getCurrentMessageQueue, getProject
-    chartScope = scopeContext.getChartScope()
-    currentMsgQueue = getCurrentMessageQueue(chartScope)
-    payload = dict()
-    payload[MESSAGE_QUEUE] = currentMsgQueue 
-    project = getProject(chartScope)
-    sendMessageToClient(project, 'sfcShowQueue', payload)
+    from ils.sfc.gateway.util import handleUnexpectedGatewayError
+    from ils.sfc.gateway.api import getChartLogger, sendMessageToClient, getProject
+    
+    try:
+        chartScope = scopeContext.getChartScope()
+        chartLogger = getChartLogger(chartScope)
+        payload = dict()
+        project = getProject(chartScope)
+        sendMessageToClient(project, 'sfcShowQueue', payload)
+    except:
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in showQueue.py', chartLogger)
+    finally:
+        return True

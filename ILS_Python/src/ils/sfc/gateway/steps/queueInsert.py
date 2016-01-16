@@ -9,18 +9,24 @@ def activate(scopeContext, stepProperties):
     action for java QueueMessageStep
     queues the step's message
     '''
-    from ils.sfc.gateway.util import getStepProperty
+    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName
     from ils.queue.message import insert
     from system.ils.sfc.common.Constants import MESSAGE, PRIORITY
-    from ils.sfc.gateway.api import getCurrentMessageQueue
+    from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger
     from ils.sfc.gateway.recipe import substituteScopeReferences
 
-    chartScope = scopeContext.getChartScope()
-    stepScope = scopeContext.getStepScope()
-    currentMsgQueue = getCurrentMessageQueue(chartScope)
-    message = getStepProperty(stepProperties, MESSAGE)  
-    message = substituteScopeReferences(chartScope, stepScope, message)
-    priority = getStepProperty(stepProperties, PRIORITY)  
-    database = getDatabaseName(chartScope)
-    insert(currentMsgQueue, priority, message, database) 
+    try:
+        chartScope = scopeContext.getChartScope()
+        stepScope = scopeContext.getStepScope()
+        chartLogger = getChartLogger(chartScope)
+        currentMsgQueue = getCurrentMessageQueue(chartScope)
+        message = getStepProperty(stepProperties, MESSAGE)  
+        message = substituteScopeReferences(chartScope, stepScope, message)
+        priority = getStepProperty(stepProperties, PRIORITY)  
+        database = getDatabaseName(chartScope)
+        insert(currentMsgQueue, priority, message, database)    
+    except:
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in queueInsert.py', chartLogger)
+    finally:
+        return True

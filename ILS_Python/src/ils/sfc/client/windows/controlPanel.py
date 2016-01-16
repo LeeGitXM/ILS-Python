@@ -43,8 +43,9 @@ def getChartStatus(event):
     
 def reset(event):
     import system.db
+    from ils.sfc.client.util import getDatabase
     rootContainer = event.source.parent.parent
-    database = system.tag.read('[Client]Database').value
+    database = getDatabase()
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelId = %d" % (rootContainer.controlPanelId), database)
     rootContainer.msgIndex = 0
     system.db.runUpdateQuery("delete from SfcReviewDataTable", database)
@@ -55,25 +56,41 @@ def reset(event):
     system.db.runUpdateQuery("delete from SfcInput", database)
     system.db.runUpdateQuery("delete from SfcWindow", database)
 
-def getControlPanelId(controlPanelName):
-    '''Get the control panel id given the name'''
+def getControlPanelId(controlPanelName, createIfNotFound = True):
+    '''Get the control panel id given the name, creating a new record if not found
+       and createIfNotFound flag is set.'''
     import system.db
-    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
+    from ils.sfc.client.util import getDatabase
+    database = getDatabase()
+    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database)
     if len(results) == 1:
         return results[0][0]
+    elif createIfNotFound:
+        system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName, chartPath) values ('%s', '')" % (controlPanelName), database)
+        return getControlPanelId(controlPanelName, False)
     else:
         return None
     
 def getControlPanelChartPath(controlPanelId):
     '''get the name of the SFC chart associated with the given control panel'''
     import system.db
-    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId))
+    from ils.sfc.client.util import getDatabase
+    database = getDatabase()
+    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId), database)
     if len(results) == 1:
         return results[0][0]
     else:
         return None
 
 def setControlPanelChartPath(controlPanelId, chartPath):
-    import system.db
     '''set the name of the SFC chart associated with the given control panel'''
-    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId))
+    from ils.sfc.client.util import getDatabase
+    import system.db
+    database = getDatabase()
+    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId), database)
+
+def showMsgQueue(window):
+    import system.nav
+    rootContainer = window.getRootContainer()
+    msgQueueWindow = system.nav.openWindow('Queue/Message Queue')
+    msgQueueWindow.getRootContainer().key = rootContainer.windowData.getValueAt(0,'msgQueue')

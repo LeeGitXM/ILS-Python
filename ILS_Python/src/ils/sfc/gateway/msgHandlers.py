@@ -56,39 +56,6 @@ def sfcResumeChart(payload):
     from ils.sfc.gateway.util import basicResumeChart    
     topChartRunId = payload[INSTANCE_ID]
     basicResumeChart(topChartRunId)
-
-# test stuff
-def sfcRunTests(payload):
-    '''Run test charts'''
-    from ils.sfc.common.constants import TEST_CHART_PATHS, TEST_REPORT_FILE 
-    import system.ils.sfc
-    testChartPaths = payload[TEST_CHART_PATHS]
-    reportFile = payload[TEST_REPORT_FILE]
-    system.ils.sfc.initializeTests(reportFile)
-    for chartPath in testChartPaths:
-        system.ils.sfc.startTest(chartPath)
-        system.sfc.startChart(chartPath, payload)
- 
-def sfcReportTests(payload):
-    import system.ils.sfc
-    system.ils.sfc.reportTests()
-    
-def sfcFailTest(payload):
-    '''this is a message handler'''
-    from system.ils.sfc import failTest
-    from ils.sfc.common.constants import CHART_NAME, MESSAGE
-    failTest(payload[CHART_NAME], payload[MESSAGE])
-
-def sfcActivateStep(payload):
-    '''For testing only--activate a step as if it was being run in a chart'''
-    from ils.sfc.common.constants import  CLASS_NAME, CHART_PROPERTIES, STEP_PROPERTIES
-    from system.ils.sfc import activateStep
-    activateStep(payload[CLASS_NAME], payload[CHART_PROPERTIES], payload[STEP_PROPERTIES])
-        
-def sfcDevTest(payload):
-    # from system.ils.sfc.common.Constants import DATA
-    obj = payload['data']
-    obj.sayHi()
     
 def sfcCloseWindow(payload):
     '''close an open window. this is not usually called, as the step methods delete their own 

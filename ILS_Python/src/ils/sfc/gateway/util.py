@@ -110,17 +110,25 @@ def escapeSingleQuotes(msg):
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.constants import MESSAGE
     from  ils.sfc.gateway.api import sendMessageToClient, getProject
+    import sys
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue
     '''
+    try:
+        # try to get the cause
+        e = sys.exc_info()[1]
+        msg = msg + ": " + str(e)
+    except:
+        # no system error info I guess
+        pass
     if logger != None:
         logger.error(msg)
     cancelChart(chartScope)
     payload = dict()
     payload[MESSAGE] = msg
     project = getProject(chartScope)
-    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+    sendMessageToClient(project, 'sfcUnexpectedError', payload)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()
@@ -371,7 +379,8 @@ def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, tit
     import system.db
     from ils.sfc.common.util import createUniqueId
     windowId = createUniqueId()
-    system.db.runUpdateQuery("Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title), database)
+    sql = "Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title)
+    system.db.runUpdateQuery(sql, database)
     return windowId
     
 def sendOpenWindow(chartScope, windowId, stepId, database):
@@ -403,3 +412,7 @@ def dbStringForFloat(numberValue):
         return str(numberValue)
     else:
         return 'null'
+    
+def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, viewFile, database):
+    import system.db
+    system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, viewText) values ('%s', '%s', '%s', '%s', %d, %d)" % (windowId, dataText, filepath, computer, printFile, viewFile), database)

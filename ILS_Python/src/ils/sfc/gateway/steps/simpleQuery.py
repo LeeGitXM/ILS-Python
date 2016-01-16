@@ -4,25 +4,31 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-from ils.sfc.gateway.util import getStepProperty,getRecipeScope, copyRowToDict
+from ils.sfc.gateway.util import getStepProperty,getRecipeScope, copyRowToDict, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import getDatabaseName, s88Get, getChartLogger
 from system.ils.sfc.common.Constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE_OR_CREATE, STATIC, DYNAMIC
 from ils.sfc.gateway.recipe import substituteScopeReferences
 import system.db
 
 def activate(scopeContext, stepProperties):
-    chartScope = scopeContext.getChartScope()
-    stepScope = scopeContext.getStepScope()
-    logger = getChartLogger(chartScope)
-    database = getDatabaseName(chartScope)
-    sql = getStepProperty(stepProperties, SQL)
-    processedSql = substituteScopeReferences(chartScope, stepScope, sql)
-    dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 
-    if dbRows.rowCount == 0:
-        logger.error('No rows returned for query %s', processedSql)
-        return
-    simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
-
+    
+    try:
+        chartScope = scopeContext.getChartScope()
+        stepScope = scopeContext.getStepScope()
+        logger = getChartLogger(chartScope)
+        database = getDatabaseName(chartScope)
+        sql = getStepProperty(stepProperties, SQL)
+        processedSql = substituteScopeReferences(chartScope, stepScope, sql)
+        dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 
+        if dbRows.rowCount == 0:
+            logger.error('No rows returned for query %s', processedSql)
+            return
+        simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
+    except:
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in simpleQuery.py', logger)
+    finally:
+        return True
+    
 def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
