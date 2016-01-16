@@ -273,28 +273,6 @@ def queueMessage(chartScope, msg, priority):
     database = getDatabaseName(chartScope)
     insert(currentMsgQueue, priority, msg, database) 
 
-def checkForCancelOrPause(chartScope, logger):
-    '''some commonly-used code to check for chart cancellation or pause in the midst 
-       of long-running loops. A True return should cause a return from the step method'''
-    from ils.sfc.common.constants import SLEEP_INCREMENT
-    from system.ils.sfc import getCancelRequested, getPauseRequested
-    import time
-    topRunId = getTopChartRunId(chartScope)
-    if getCancelRequested(topRunId):
-        logger.debug("chart terminal; exiting step code")
-        return True
-    elif getPauseRequested(topRunId):
-        # We had hoped to loop here until the chart was resumed, like this:
-        # while getPauseRequested(topRunId):
-        #    logger.debug("chart paused; holding in do-nothing loop")
-        #    time.sleep(SLEEP_INCREMENT)
-        # Unfortunately, the IA SFC engine appears to stay in Pausing state until the 
-        # step method returns. So we have to exit in order to allow the Resume to 
-        # work. ?!
-        return True
-    else:
-        return False
-    
 def writeTestRamp(controllers, durationSecs, increment):
     '''bring the current value up to the setpoint in increments over the given time .'''
     from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
@@ -358,23 +336,7 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     logger.trace("Returning %s-%s" % (str(valueOk), txt))
     
     return valueOk, txt
-
-def basicPauseChart(topChartRunId):
-    import system.sfc
-    from system.ils.sfc import setPauseRequested
-    setPauseRequested(topChartRunId)
-    system.sfc.pauseChart(topChartRunId)
-    
-def basicResumeChart(topChartRunId):
-    import system.sfc
-    system.sfc.resumeChart(topChartRunId)
-
-def basicCancelChart(topChartRunId):
-    import system.sfc
-    from system.ils.sfc import setCancelRequested
-    setCancelRequested(topChartRunId)
-    system.sfc.cancelChart(topChartRunId)
-    
+   
 def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, title, database):
     import system.db
     from ils.sfc.common.util import createUniqueId

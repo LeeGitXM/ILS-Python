@@ -7,7 +7,7 @@ Created on Dec 17, 2015
 def activate(scopeContext, stepProperties):
     '''see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and 
     S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
-    from ils.sfc.gateway.util import getStepProperty, checkForCancelOrPause, handleUnexpectedGatewayError
+    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, s88Get
     import system.tag
     from system.ils.sfc.common.Constants import PV_MONITOR_CONFIG, MONITOR, \
@@ -98,9 +98,7 @@ def activate(scopeContext, stepProperties):
         monitorActiveCount = 1
         while monitorActiveCount > 0 and ((elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)):
             logger.trace("Starting a PV monitor pass...")
-            if checkForCancelOrPause(chartScope, logger):
-                return
-    
+   
             monitorActiveCount = 0
             persistencePending = False
             for configRow in config.rows:

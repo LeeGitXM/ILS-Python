@@ -112,21 +112,6 @@ def reportTests():
     complete, however if there is some question about what has finished and what has not it
     can be useful to print the interim report.'''
 
-def setPauseRequested(runId):
-    '''indicate ILS code has initiated a pause'''
-
-def setCancelRequested(runId):
-    '''indicate ILS code has initiated a cancel'''
-    
-def getPauseRequested(runId):
-    '''check if ILS code has initiated a pause'''
-    
-def getCancelRequested(runId):
-    '''check if ILS code has initiated a cancel'''
-
-def stepState(chartId,name):
-    '''return the current state of a chart'''
-    
 def watchChart(chartId,name):
     '''chart state event handler'''
 

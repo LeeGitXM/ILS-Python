@@ -114,21 +114,24 @@ def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location,
         
 def pauseChart(chartProperties):
     '''pause the entire chart hierarchy'''
-    from ils.sfc.gateway.util import getTopChartRunId, basicPauseChart
+    from ils.sfc.gateway.util import getTopChartRunId
+    import system.sfc
     topChartRunId = getTopChartRunId(chartProperties)
-    basicPauseChart(topChartRunId)
+    system.sfc.pauseChart(topChartRunId)
     
 def resumeChart(chartProperties):
     '''resume the entire chart hierarchy'''
-    from ils.sfc.gateway.util import getTopChartRunId, basicResumeChart
+    from ils.sfc.gateway.util import getTopChartRunId
+    import system.sfc
     topChartRunId = getTopChartRunId(chartProperties)
-    basicResumeChart(topChartRunId)
+    system.sfc.resumeChart(topChartRunId)
 
 def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''
-    from ils.sfc.gateway.util import getTopChartRunId, basicCancelChart
+    from ils.sfc.gateway.util import getTopChartRunId
+    import system.sfc
     topChartRunId = getTopChartRunId(chartProperties)
-    basicCancelChart(topChartRunId)
+    system.sfc.cancelChart(topChartRunId)
 
 def addControlPanelMessage(chartProperties, message, ackRequired):
     '''display a message on the control panel'''

@@ -13,7 +13,6 @@ def activate(scopeContext, stepProperties):
     import time
     from ils.sfc.common.util import getMinutesSince, formatTime
     from ils.sfc.gateway.api import getIsolationMode
-    from ils.sfc.gateway.util import checkForCancelOrPause
     from system.ils.sfc import getWriteOutputConfig
     from ils.sfc.gateway.downloads import handleTimer, waitForTimerStart
     from ils.sfc.gateway.recipe import RecipeData
@@ -139,10 +138,6 @@ def activate(scopeContext, stepProperties):
             if writesPending:
                 time.sleep(SLEEP_INCREMENT)
      
-            if checkForCancelOrPause(chartScope, logger):
-                logger.trace("Aborting the write output because the chart has been cancelled")
-                return
-    
         logger.trace("Starting final writes")
         for row in finalRows:
             logger.trace("In steps.writeOutput - Writing a final write for step %s" % (row.key))

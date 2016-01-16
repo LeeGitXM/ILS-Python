@@ -6,7 +6,7 @@ Created on Dec 16, 2015
 
 def activate(scopeContext, stepProperties):
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
-        handleUnexpectedGatewayError, getDelaySeconds, checkForCancelOrPause, deleteAndSendClose, \
+        handleUnexpectedGatewayError, getDelaySeconds, deleteAndSendClose, \
         sendOpenWindow
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, getProject
     from ils.sfc.common.util import callMethod, isEmpty
