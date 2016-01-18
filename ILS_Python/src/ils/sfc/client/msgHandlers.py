@@ -39,6 +39,7 @@ def dispatchMessage(payload):
     '''call the appropriate method in this module and pass it the payload'''
     from ils.sfc.common.util import callMethodWithParams
     from ils.sfc.common.constants import HANDLER
+    from ils.sfc.client.windowUtil import openErrorPopup
     import system.gui
     # print 'dispatchMessage: payload:', payload
     handlerMethod = payload[HANDLER]
@@ -53,6 +54,6 @@ def dispatchMessage(payload):
             errMsg = "Error dispatching client message %s: %s" % (handlerMethod, cause.getMessage())
         except:
             errMsg = "Error dispatching client message %s: %s" % (handlerMethod, str(e))
-        system.gui.errorBox(errMsg)
+        openErrorPopup(errMsg)
 
 
