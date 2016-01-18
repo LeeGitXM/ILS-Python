@@ -134,3 +134,8 @@ def sendCloseWindow(window, table):
     sendMessageToGateway(project, 'sfcCloseWindow', payload)
     system.nav.closeWindow(window)
 
+def openErrorPopup(msg):
+    import system.nav
+    window = system.nav.openWindow('SFC/ErrorPopup')
+    textArea = window.getRootContainer().getComponent("textArea")
+    textArea.text = msg

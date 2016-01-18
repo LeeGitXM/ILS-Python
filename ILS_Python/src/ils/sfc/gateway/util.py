@@ -111,7 +111,6 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
         pass
     if logger != None:
         logger.error(msg)
-    cancelChart(chartScope)
     payload = dict()
     payload[MESSAGE] = msg
     project = getProject(chartScope)

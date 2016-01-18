@@ -44,7 +44,8 @@ def substituteProvider(chartProperties, tagPath):
     
 # this should really be in client.util
 def handleUnexpectedClientError(msg):
-    system.gui.messageBox(msg, 'Unexpected Error') 
+    from ils.sfc.client.windowUtil import openErrorPopup
+    openErrorPopup(msg)
 
 def isEmpty(str):
     return str == None or str.strip() == ""
