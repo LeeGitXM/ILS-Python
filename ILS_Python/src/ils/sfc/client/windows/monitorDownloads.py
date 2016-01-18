@@ -35,7 +35,7 @@ def updateTable(window, rows, timerStart):
 
 def timerWorker(window):  
     import time
-    from ils.sfc.common.util import formatTime
+    from ils.sfc.client.util import sendMessageToGateway
     import system.util
     
     rootContainer = window.getRootContainer()
@@ -58,5 +58,5 @@ def timerWorker(window):
         print "In timerWorker() - Request an update..."
         payload = {'id': rootContainer.timerId, 'instanceId':rootContainer.instanceId}
         project = system.util.getProjectName()
-        system.util.sendMessage(project, 'sfcUpdateDownloads', payload, "G")
+        sendMessageToGateway(project, 'sfcUpdateDownloads', payload)
     

@@ -38,24 +38,6 @@ def sfcUpdateDownloads(payload):
     if monitoringMgr != None:
         monitoringMgr.sendClientUpdate()
     # else chart probably ended
-
-def sfcCancelChart(payload):
-    from ils.sfc.common.constants import INSTANCE_ID
-    from ils.sfc.gateway.util import basicCancelChart
-    topChartRunId = payload[INSTANCE_ID]
-    basicCancelChart(topChartRunId)
-
-def sfcPauseChart(payload):
-    from ils.sfc.common.constants import INSTANCE_ID
-    from ils.sfc.gateway.util import basicPauseChart    
-    topChartRunId = payload[INSTANCE_ID]
-    basicPauseChart(topChartRunId)
-    
-def sfcResumeChart(payload):
-    from ils.sfc.common.constants import INSTANCE_ID
-    from ils.sfc.gateway.util import basicResumeChart    
-    topChartRunId = payload[INSTANCE_ID]
-    basicResumeChart(topChartRunId)
     
 def sfcCloseWindow(payload):
     '''close an open window. this is not usually called, as the step methods delete their own 

@@ -12,7 +12,7 @@ def sendResponse(messageId, response):
     replyPayload[RESPONSE] = response
     replyPayload[MESSAGE_ID] = messageId    
     project = system.util.getProjectName()
-    system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
+    sendMessageToGateway(project, 'sfcResponse', replyPayload)
 
 def runTests(testChartPaths, isolationMode, reportFile):
     from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, TEST_CHART_PATHS, TEST_REPORT_FILE
@@ -182,3 +182,10 @@ def getDatabase():
 def getTagProvider():
     '''Get the tag provider name, taking isolation mode into account'''
     return system.tag.read('[Client]/Tag Provider').value
+
+def sendMessageToGateway(project, handler, payload):
+    '''Send a message to the gateway'''
+    from ils.sfc.common.constants import HANDLER
+    from system.util import sendMessage
+    payload[HANDLER] = handler
+    sendMessage(project, 'sfcMessage', payload, "G")

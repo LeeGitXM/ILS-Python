@@ -8,6 +8,7 @@ from ils.sfc.client.util import getDatabase
 def sendWindowResponse(window, response):
     '''standard actions when a window representing a response is closed by the user'''
     from ils.sfc.common.constants import RESPONSE, MESSAGE_ID
+    from ils.sfc.client.util import sendMessageToGateway
     rootContainer = window.getRootContainer()
     windowId = rootContainer.windowId
     import system.util, system.nav
@@ -15,7 +16,7 @@ def sendWindowResponse(window, response):
     replyPayload[RESPONSE] = response
     replyPayload[MESSAGE_ID] = windowId    
     project = system.util.getProjectName()
-    system.util.sendMessage(project, 'sfcResponse', replyPayload, "G")
+    sendMessageToGateway(project, 'sfcResponse', replyPayload)
     system.nav.closeWindow(window)
     
 def positionWindow(window, position, scale):
@@ -124,11 +125,12 @@ def closeDbWindow(windowId):
 
 def sendCloseWindow(window, table):
     from ils.sfc.common.constants import DATABASE, WINDOW_ID, TABLE, PROJECT
+    from ils.sfc.client.util import sendMessageToGateway
     import system.util
     windowId = window.getRootContainer().windowId
     database = getDatabase()
     project = system.util.getProjectName()
     payload = {WINDOW_ID:windowId, DATABASE: database, TABLE: table, PROJECT: project}
-    system.util.sendMessage(project, 'sfcCloseWindow', payload, "G")
+    sendMessageToGateway(project, 'sfcCloseWindow', payload)
     system.nav.closeWindow(window)
 
