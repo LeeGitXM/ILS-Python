@@ -12,7 +12,7 @@ def activate(scopeContext, stepProperties):
     from system.ils.sfc.common.Constants import AUTO_MODE, AUTOMATIC, \
     PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE
     from ils.sfc.common.constants import PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, BUTTON_LABEL, \
-        POSITION, SCALE, WINDOW_TITLE, RECIPE_LOCATION, KEY
+        POSITION, SCALE, WINDOW_TITLE, BUTTON_KEY_LOCATION, BUTTON_KEY
     from system.ils.sfc import getReviewData
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMEOUT_RESPONSE, WINDOW_ID
     from ils.sfc.gateway.util import checkForResponse
@@ -26,7 +26,6 @@ def activate(scopeContext, stepProperties):
         
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
-     
         if not waitingForReply:
             autoMode = getStepProperty(stepProperties, AUTO_MODE) 
             if autoMode == AUTOMATIC:   
@@ -65,9 +64,12 @@ def activate(scopeContext, stepProperties):
         else:
             response = checkForResponse(chartScope, stepScope, stepProperties, TIMEOUT_RESPONSE)                
             if response != None: 
-                recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-                key = getStepProperty(stepProperties, KEY) 
+                print 'getting location/key'
+                recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION) 
+                key = getStepProperty(stepProperties, BUTTON_KEY) 
+                print 'b4 s88Set location', recipeLocation
                 s88Set(chartScope, stepScope, key, response, recipeLocation)
+                print 'after s88Set'
                 workDone = True    
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in reviewData.py', chartLogger)

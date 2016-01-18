@@ -6,28 +6,17 @@ Created on Jan 14, 2015
 
 def okActionPerformed(event):
     from ils.sfc.client.windowUtil import sendWindowResponse
+    from ils.sfc.common.constants import OK
     from system.gui import getParentWindow
     window = getParentWindow(event)
-    sendWindowResponse(window, True)
+    sendWindowResponse(window, OK)
   
 def cancelActionPerformed(event):
     from ils.sfc.client.windowUtil import sendWindowResponse
+    from ils.sfc.common.constants import CANCEL
     from system.gui import getParentWindow
     window = getParentWindow(event)
-    sendWindowResponse(window, False) 
-
-def getTableData():
-    '''Get the (possibly modified) data from the table and put it back into JSON'''
-
-def defaultPostingMethod(window, primaryDataTable, primaryTabLabel, secondaryDataTable, secondaryTabLabel):
-    import system.dataset
-    primaryDataTableComponent = window.getRootContainer().getComponent('primaryDataTable') 
-    primaryDataTableComponent.data = primaryDataTable
-    secondaryDataTableComponent = window.getRootContainer().getComponent('secondaryDataTable')
-    secondaryDataTableComponent.data = secondaryDataTable
-    tabsComponent = window.getRootContainer().getComponent('tabs') 
-    tabsComponent.tabData = system.dataset.updateRow(tabsComponent.tabData, 0, {'DISPLAY_NAME' : primaryTabLabel})
-    tabsComponent.tabData = system.dataset.updateRow(tabsComponent.tabData, 1, {'DISPLAY_NAME' : secondaryTabLabel})
+    sendWindowResponse(window, CANCEL) 
 
 def togglePrimary(window):
     primaryTable = window.getRootContainer().getComponent('primaryDataTable') 

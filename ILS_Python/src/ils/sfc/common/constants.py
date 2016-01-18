@@ -71,7 +71,6 @@ KEY = "key"
 KEY_MODE = "keyMode"
 LOCATION = 'location'
 MESSAGE = "message"
-MESSAGE_ID = 'messageId'
 DEFAULT_MESSAGE_QUEUE = 'SFC-Message-Queue'
 MESSAGE_QUEUE = 'msgQueue'
 METHOD = "method"
@@ -149,7 +148,6 @@ WINDOW_ID = 'windowId'
 WINDOW_TITLE = 'windowTitle'
 WINDOW_PROPERTIES = 'windowProperties'
 
-MESSAGE_ID = 'messageId'
 RECIPE_LOCATION = "recipeLocation"  
 
 # Some standard client responses

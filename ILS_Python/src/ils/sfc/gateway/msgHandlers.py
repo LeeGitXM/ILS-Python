@@ -3,13 +3,12 @@ Created on Nov 3, 2014
 
 @author: rforbes
 '''
-from ils.sfc.common.constants import MESSAGE_ID
 
 def dispatchMessage(payload):
     from ils.sfc.common.util import callMethodWithParams
-    from ils.sfc.common.constants import MESSAGE
-    msgName = payload[MESSAGE]
-    methodPath = 'ils.sfc.gateway.msgHandlers.' + msgName
+    from ils.sfc.common.constants import HANDLER
+    methodName = payload[HANDLER]
+    methodPath = 'ils.sfc.gateway.msgHandlers.' + methodName
     keys = ['payload']
     values = [payload]
     try:
@@ -17,17 +16,18 @@ def dispatchMessage(payload):
     except Exception, e:
         try:
             cause = e.getCause()
-            errMsg = "Error dispatching gateway message %s: %s" % (msgName, cause.getMessage())
+            errMsg = "Error dispatching gateway message %s: %s" % (methodName, cause.getMessage())
         except:
-            errMsg = "Error dispatching gateway message %s: %s" % (msgName, str(e))
+            errMsg = "Error dispatching gateway message %s: %s" % (methodName, str(e))
         #TODO: whats the right logger here?
         print errMsg
                               
 def sfcResponse(payload):
     '''Handle a message that is a response to a request sent from the Gateway'''
     from system.ils.sfc import setResponse
-    messageId = payload[MESSAGE_ID]
-    setResponse(messageId, payload)
+    from ils.sfc.common.constants import WINDOW_ID
+    windowId = payload[WINDOW_ID]
+    setResponse(windowId, payload)
         
 def sfcUpdateDownloads(payload):
     from ils.sfc.common.constants import ID, INSTANCE_ID

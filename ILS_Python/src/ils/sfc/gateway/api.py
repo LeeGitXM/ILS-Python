@@ -231,18 +231,15 @@ def getTimeFactor(chartProperties):
 
 def sendMessageToClient(project, handler, payload, clientSessionId=None):
     '''Send a message to the client(s) of this chart'''
-    from ils.sfc.common.constants import MESSAGE_ID, HANDLER
+    from ils.sfc.common.constants import HANDLER
     from system.util import sendMessage
-    from ils.sfc.common.util import createUniqueId
-    messageId = createUniqueId()
-    payload[MESSAGE_ID] = messageId 
     payload[HANDLER] = handler
     # print 'sending message to client', project, handler, payload
     if clientSessionId != None:
         sendMessage(project, 'sfcMessage', payload, "C", clientSessionId)
     else:
         sendMessage(project, 'sfcMessage', payload, "C")
-    return messageId
+
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
     from system.util import getLogger

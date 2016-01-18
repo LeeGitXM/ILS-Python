@@ -7,10 +7,10 @@ import system.util
 
 def sendResponse(messageId, response):
     ''' send a message to the Gateway in response to a previous request message''' 
-    from ils.sfc.common.constants import RESPONSE, MESSAGE_ID
+    from ils.sfc.common.constants import RESPONSE, WINDOW_ID
     replyPayload = dict() 
     replyPayload[RESPONSE] = response
-    replyPayload[MESSAGE_ID] = messageId    
+    replyPayload[WINDOW_ID] = messageId    
     project = system.util.getProjectName()
     sendMessageToGateway(project, 'sfcResponse', replyPayload)
 
@@ -188,4 +188,5 @@ def sendMessageToGateway(project, handler, payload):
     from ils.sfc.common.constants import HANDLER
     from system.util import sendMessage
     payload[HANDLER] = handler
+    print 'sending msg', handler
     sendMessage(project, 'sfcMessage', payload, "G")

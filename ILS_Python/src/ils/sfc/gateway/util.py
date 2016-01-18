@@ -82,7 +82,7 @@ def checkForResponse(chartScope, stepScope, stepProperties, timeoutResponse):
     responsePayload = getResponse(windowId)    
     if responsePayload != None:
         response = responsePayload[RESPONSE]
-    elif time.time() > timeoutTime:
+    elif timeoutTime != None and time.time() > timeoutTime:
         response = timeoutResponse        
     else:
         response = None
@@ -116,6 +116,11 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     payload[MESSAGE] = msg
     project = getProject(chartScope)
     sendMessageToClient(project, 'sfcUnexpectedError', payload)
+    try:
+        import traceback
+        traceback.print_tb(sys.last_traceback)
+    except:
+        pass
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()
