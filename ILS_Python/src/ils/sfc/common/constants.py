@@ -152,6 +152,11 @@ WINDOW_PROPERTIES = 'windowProperties'
 MESSAGE_ID = 'messageId'
 RECIPE_LOCATION = "recipeLocation"  
 
+# Some standard client responses
+YES_RESPONSE = "Yes"
+NO_RESPONSE = "No"
+TIMEOUT_RESPONSE = "Timeout"
+
 # The name of the second unit is really defined in the database,
 # so this constant should agree with that. Likewise for type:
 SECOND= "SEC"

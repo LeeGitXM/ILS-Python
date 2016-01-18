@@ -5,12 +5,13 @@ Created on Dec 3, 2015
 '''
 import system.gui
 from ils.sfc.client.windowUtil import sendWindowResponse
+from ils.sfc.common.constants import YES_RESPONSE, NO_RESPONSE
 
 def yesActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendWindowResponse(window, "Yes")
+    sendWindowResponse(window, YES_RESPONSE)
   
 def noActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendWindowResponse(window, "No")
+    sendWindowResponse(window, NO_RESPONSE)
     

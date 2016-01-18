@@ -70,36 +70,23 @@ def transferStepPropertiesToMessage(stepProperties, payload):
         # omit the associated-data as the JSONObject causes a serialization error
         if not (prop.getName() == 'associated-data'):
             payload[prop.getName()] = stepProperties.getOrDefault(prop)
- 
-def waitOnResponse(requestId, chartScope, timeoutTime=None):
-    '''
-    Sleep until a response to the given request
-    has been received. Callers should be
-    prepared for a None return, which means
-    the chart has been canceled/paused/aborted
-    '''
-    from ils.sfc.common.constants import SLEEP_INCREMENT, RESPONSE
-    import time
-    responsePayload = None
-    maxCycles = 5 * 60 / SLEEP_INCREMENT
-    cycle = 0
-    while responsePayload == None and cycle < maxCycles:
-        if (timeoutTime != None) and (timeoutTime > 0.) and (time.time() >= timeoutTime):
-            break
-        time.sleep(SLEEP_INCREMENT);
-        cycle = cycle + 1
-        # chartState = chartScope[CHART_STATE]
-        # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
-            # TODO: log that we're bailing
-        # return None
-        responsePayload = getResponse(requestId)
 
-    if responsePayload == None:
-        handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
-        return None
+def checkForResponse(chartScope, stepScope, stepProperties, timeoutResponse):
+    '''Common code for processing responses from client. Returns true if work was
+       completed, i.e. either response was received or timed out'''
+    from ils.sfc.common.constants import TIMEOUT_TIME, WINDOW_ID, RESPONSE
+    import time
+    timeoutTime = stepScope[TIMEOUT_TIME]
+    windowId = stepScope[WINDOW_ID]
+    
+    responsePayload = getResponse(windowId)    
+    if responsePayload != None:
+        response = responsePayload[RESPONSE]
+    elif time.time() > timeoutTime:
+        response = timeoutResponse        
     else:
-        print 'returning response'
-        return responsePayload[RESPONSE]
+        response = None
+    return response
     
 def getChartPath(chartProperties):
     return chartProperties.chartPath
@@ -378,3 +365,34 @@ def dbStringForFloat(numberValue):
 def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, viewFile, database):
     import system.db
     system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, viewText) values ('%s', '%s', '%s', '%s', %d, %d)" % (windowId, dataText, filepath, computer, printFile, viewFile), database)
+
+#TODO: delete this when re-entrant code migration complete
+def waitOnResponse(requestId, chartScope, timeoutTime=None):
+    '''
+    Sleep until a response to the given request
+    has been received. Callers should be
+    prepared for a None return, which means
+    the chart has been canceled/paused/aborted
+    '''
+    from ils.sfc.common.constants import SLEEP_INCREMENT, RESPONSE
+    import time
+    responsePayload = None
+    maxCycles = 5 * 60 / SLEEP_INCREMENT
+    cycle = 0
+    while responsePayload == None and cycle < maxCycles:
+        if (timeoutTime != None) and (timeoutTime > 0.) and (time.time() >= timeoutTime):
+            break
+        time.sleep(SLEEP_INCREMENT);
+        cycle = cycle + 1
+        # chartState = chartScope[CHART_STATE]
+        # if chartState == Canceling or chartState == Pausing or chartState == Aborting:
+            # TODO: log that we're bailing
+        # return None
+        responsePayload = getResponse(requestId)
+
+    if responsePayload == None:
+        handleUnexpectedGatewayError(chartScope, "timed out waiting for response for requestId" + requestId)
+        return None
+    else:
+        print 'returning response'
+        return responsePayload[RESPONSE]

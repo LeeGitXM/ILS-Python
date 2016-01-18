@@ -10,13 +10,11 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
     response is received, put response in chart properties
     '''
     from ils.sfc.gateway.util import getTimeoutTime, getControlPanelId, createWindowRecord, \
-        getStepProperty, getRecipeScope, sendOpenWindow,\
+        getStepProperty, sendOpenWindow, checkForResponse,\
         getStepId, dbStringForFloat, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger
-    from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID
-    from system.ils.sfc import getResponse
-    import time
+    from ils.sfc.gateway.api import getDatabaseName,getChartLogger, s88Set
+    from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT, RECIPE_LOCATION, KEY
+    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMEOUT_RESPONSE
     import system.util
     import system.db
     
@@ -63,18 +61,12 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
                 
             sendOpenWindow(chartScope, windowId, stepId, database)
         else: # waiting for reply
-            timeoutTime = stepScope[TIMEOUT_TIME]
-            if time.time() > timeoutTime:
-                response = "Timeout"
-            else:
-                response = getResponse(windowId)
-        
-            if response != None:
-                print "CommonInput: Received response ",response
-                recipeLocation = getRecipeScope(stepProperties) 
+            response = checkForResponse(chartScope, stepScope, stepProperties, TIMEOUT_RESPONSE)
+            if response != None: 
+                recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
                 key = getStepProperty(stepProperties, KEY) 
                 s88Set(chartScope, stepScope, key, response, recipeLocation)
-                workDone = True           
+                workDone = True
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', chartLogger)
         workDone = True

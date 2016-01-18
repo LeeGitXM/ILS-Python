@@ -48,13 +48,18 @@ def reset(event):
     database = getDatabase()
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelId = %d" % (rootContainer.controlPanelId), database)
     rootContainer.msgIndex = 0
+    system.db.runUpdateQuery("delete from SfcDialogMsg", database)
+    system.db.runUpdateQuery("delete from SfcReviewFlowsTable", database)
+    system.db.runUpdateQuery("delete from SfcReviewFlows", database)
     system.db.runUpdateQuery("delete from SfcReviewDataTable", database)
     system.db.runUpdateQuery("delete from SfcReviewData", database)
     system.db.runUpdateQuery("delete from SfcManualDataEntryTable", database)
     system.db.runUpdateQuery("delete from SfcManualDataEntry", database)
     system.db.runUpdateQuery("delete from SfcTimeDelayNotification", database)
+    system.db.runUpdateQuery("delete from SfcInputChoices", database)
     system.db.runUpdateQuery("delete from SfcInput", database)
     system.db.runUpdateQuery("delete from SfcWindow", database)
+    #TODO: should we close all open SFC*  windows except for control panel?
 
 def getControlPanelId(controlPanelName, createIfNotFound = True):
     '''Get the control panel id given the name, creating a new record if not found
