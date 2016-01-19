@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, stepProperties, deactivate):
     '''
     action for java ClearQueueStep
     delete all messages from the current message queue

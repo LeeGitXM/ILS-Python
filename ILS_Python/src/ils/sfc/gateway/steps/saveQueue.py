@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger
     from ils.queue.message import save
     from ils.sfc.gateway.util import createFilepath, handleUnexpectedGatewayError

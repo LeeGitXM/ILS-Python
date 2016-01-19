@@ -3,7 +3,7 @@ Created on Dec 17, 2015
 
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, stepProperties, deactivate):
     '''
     Action for java InputStep
     Get an response from the user; block until a

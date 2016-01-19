@@ -10,7 +10,7 @@ from system.ils.sfc.common.Constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, 
 from ils.sfc.gateway.recipe import substituteScopeReferences
 import system.db
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, stepProperties, deactivate):
     
     try:
         chartScope = scopeContext.getChartScope()

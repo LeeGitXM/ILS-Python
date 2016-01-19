@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, stepProperties, deactivate):
     import time
     from ils.sfc.gateway.util import getStepProperty, getDelaySeconds, handleUnexpectedGatewayError
     from system.ils.sfc.common.Constants import MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY, TIMEOUT, TIMEOUT_UNIT

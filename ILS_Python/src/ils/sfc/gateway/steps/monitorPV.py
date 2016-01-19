@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties):
+def activate(scopeContext, stepProperties, deactivate):
     '''see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and 
     S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError

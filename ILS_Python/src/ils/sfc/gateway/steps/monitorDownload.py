@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties): 
+def activate(scopeContext, stepProperties, deactivate): 
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, MONITOR_DOWNLOADS_CONFIG, DATA_ID, DOWNLOAD_STATUS, WRITE_CONFIRMED
     from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, STEP_PENDING,  PV_NOT_MONITORED
     from system.ils.sfc import getMonitorDownloadsConfig
