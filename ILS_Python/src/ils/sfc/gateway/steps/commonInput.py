@@ -3,7 +3,7 @@ Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', lowLimit=None, highLimit=None):
+def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, choices='', lowLimit=None, highLimit=None):
     '''
     Action for java InputStep
     Get an response from the user; block until a
@@ -17,10 +17,16 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMEOUT_RESPONSE
     import system.util
     import system.db
-    
+
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+
+    if deactivate:
+        print 'step deactivated; cleaning up'
+        cleanup(chartScope, stepScope)
+        return True
+            
     try:
-        chartScope = scopeContext.getChartScope()
-        stepScope = scopeContext.getStepScope()
         
         # Get info from scope common across invocations 
         chartLogger = getChartLogger(chartScope)
@@ -33,6 +39,7 @@ def activate(scopeContext, stepProperties, buttonLabel, windowType, choices='', 
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
             # calculate the absolute timeout time in epoch secs:
+
             stepScope[WAITING_FOR_REPLY] = True
             timeoutTime = getTimeoutTime(chartScope, stepProperties)
             stepScope[TIMEOUT_TIME] = timeoutTime
@@ -83,10 +90,11 @@ def cleanup(chartScope, stepScope):
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
-        windowId = stepScope.get(WINDOW_ID, '???')
-        system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
-        system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)   
-        deleteAndSendClose(project, windowId, database)
+        windowId = stepScope.get(WINDOW_ID, None)
+        if windowId != None:
+            system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
+            system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)   
+            deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in commonInput.py', chartLogger)
