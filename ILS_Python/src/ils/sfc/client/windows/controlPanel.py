@@ -99,3 +99,13 @@ def showMsgQueue(window):
     rootContainer = window.getRootContainer()
     msgQueueWindow = system.nav.openWindow('Queue/Message Queue')
     msgQueueWindow.getRootContainer().key = rootContainer.windowData.getValueAt(0,'msgQueue')
+
+def ackMessage(window):
+    from ils.sfc.common.cpmessage import acknowledgeControlPanelMessage
+    from ils.sfc.client.util import getDatabase
+    database = getDatabase()
+    rootContainer = window.getRootContainer()
+    msgIndex = rootContainer.msgIndex
+    msgId = rootContainer.messages.getValueAt(msgIndex, 'id')
+    acknowledgeControlPanelMessage(msgId, database)
+    

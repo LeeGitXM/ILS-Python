@@ -73,6 +73,7 @@ LOCATION = 'location'
 MESSAGE = "message"
 DEFAULT_MESSAGE_QUEUE = 'SFC-Message-Queue'
 MESSAGE_QUEUE = 'msgQueue'
+MESSAGE_ID = 'msgId'
 METHOD = "method"
 MINIMUM_VALUE = "minimumValue"
 MAXIMUM_VALUE = "maximumValue"
