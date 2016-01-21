@@ -48,3 +48,26 @@ def populateRepeater(rootContainer):
     repeater=rootContainer.getComponent("Template Repeater")
     repeater.templateParams=ds
 
+def openSQCPlot(event):
+    sqcWindowPath='SQC/SQC Plot'
+    sqcDiagnosisName = event.source.text
+    blockId = event.source.BlockId
+
+    print "The user selected %s - %s " % (sqcDiagnosisName, blockId)
+    
+    # If this is the first SQC plot open it at full size and centered, if it is the nth plot
+    # then open it tiled at 75%
+    
+    instanceCount = 0
+    windows = system.gui.getOpenedWindows()
+    for w in windows:
+        windowPath = w.getPath()
+        if windowPath == sqcWindowPath:
+            instanceCount = instanceCount + 1 
+
+    from ils.common.windowUtil import openWindowInstance
+    if instanceCount == 0:
+        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'blockId' : blockId}, mode="CENTER", scale=1.0)
+    else:
+        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'blockId' : blockId}, mode="Tile", scale = 0.75)
+        

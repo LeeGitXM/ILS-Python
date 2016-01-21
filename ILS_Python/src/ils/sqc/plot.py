@@ -9,6 +9,10 @@ log = LogUtil.getLogger("com.ils.sqc.plot")
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()"
+    
+    # Reset the tab strip so the plot tab is selected
+    tabStrip = rootContainer.getComponent("Tab Strip")
+    tabStrip.selectedTab="Plot"
     configureChart(rootContainer)
 
 
