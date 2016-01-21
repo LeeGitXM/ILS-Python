@@ -11,6 +11,7 @@ def sfcOpenWindow(payload):
     from ils.sfc.common.constants import WINDOW_ID
     from ils.sfc.client.windowUtil import openDbWindow
     windowId = payload[WINDOW_ID]
+    print "Opening window:", windowId
     openDbWindow(windowId)
 
 def sfcCloseWindow(payload):
@@ -41,7 +42,7 @@ def dispatchMessage(payload):
     from ils.sfc.common.constants import HANDLER
     from ils.sfc.client.windowUtil import openErrorPopup
     import system.gui
-    # print 'dispatchMessage: payload:', payload
+    print 'dispatchMessage() received a message, payload:', payload
     handlerMethod = payload[HANDLER]
     methodPath = 'ils.sfc.client.msgHandlers.' + handlerMethod
     keys = ['payload']
