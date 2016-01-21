@@ -36,7 +36,7 @@ def activate(scopeContext, stepProperties, deactivate):
         
     logger = getChartLogger(chartScope)
     logger.trace("--------------------")
-    logger.trace("In writeOutput.activate()...")
+    logger.trace("In writeOutput.activate() (deactivate: %s)..." % (deactivate))
     
     # This does not initially exist in the step scope dictionary, so we will get a value of False
     initialized = stepScope.get(INITIALIZED, False);    
@@ -113,6 +113,7 @@ def activate(scopeContext, stepProperties, deactivate):
         
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             complete = True
+            stepScope[COMPLETE_FLAG]=True
         else:
             handleTimer(chartScope, stepScope, stepProperties, logger)
 
