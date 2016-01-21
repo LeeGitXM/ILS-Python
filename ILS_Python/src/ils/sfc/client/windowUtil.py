@@ -94,25 +94,34 @@ def openDbWindow(windowId):
     import system.nav, system.security
     from ils.sfc.client.util import getDatabase
     from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
+    print "in openDbWindow() with ", windowId
     existingWindow = getOpenWindow(windowId)
     if existingWindow != None:
+        print "Bringing an open window to the front..."
         existingWindow.toFront()
         return
+    
     database = getDatabase()
-    pyWindowData = system.db.runQuery("select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId), database)
+    SQL = "select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId)
+    print SQL
+    pyWindowData = system.db.runQuery(SQL, database)
     if len(pyWindowData) == 0:
         # window closed already; ignore
+        print "...window has been closed..."
         return
+    
     controlPanelId = pyWindowData[0]['controlPanelId']
     originator = pyWindowData[0]['originator']
     if not controlPanelOpen(controlPanelId) and (originator != system.security.getUsername()):
         # this client should not see windows from this run
+        print "don't display the window because there isn't a control panel"
         return
     
     windowType = pyWindowData[0]['type']
     position = pyWindowData[0][POSITION]
     scale = pyWindowData[0][SCALE]
     title = pyWindowData[0]['title']
+    print "opening a window instance"
     window = system.nav.openWindowInstance(windowType, {WINDOW_ID:windowId})
     window.title = title
     positionWindow(window, position, scale)
