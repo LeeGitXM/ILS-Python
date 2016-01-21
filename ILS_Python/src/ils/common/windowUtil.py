@@ -111,6 +111,13 @@ def tileWindow(window, scale=1.0):
         if instanceCount == 2:
             print "Need to reposition the first window..."
             firstWindow.setLocation(originX, originY)
+            if scale != 1.0:
+                # I'm not sure if this returns the scaled height/width or the displayed height and width.  
+                # This works if the window is originally displayed at full size, I'm not sure what it does
+                # if it is originally scaled.
+                width = firstWindow.getWidth()
+                height = firstWindow.getHeight()
+                firstWindow.setSize(int(width * scale), int(height * scale))
             
         # Figure out a grid based on the main window size and the child window size
         rows = math.floor(mainHeight / (height * scale))
