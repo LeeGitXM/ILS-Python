@@ -368,7 +368,11 @@ def insertFinalDiagnosis(container):
         finalDiagnosis=ds.getValueAt(row, 4)    # I used to use the label, but Chuck is using the name, so use the name
         explanation=ds.getValueAt(row, "explanation")
         priority=ds.getValueAt(row, "priority")
-        calculationMethod=ds.getValueAt(row, "new-recommendation-calculation-method")
+        
+        autoTranslatedCalculationMethod=ds.getValueAt(row, "new-recommendation-calculation-method")
+        calculationMethod=ds.getValueAt(row, "recommendation-calculation-method")
+        calculationMethod=lookupTranslatedName("CalculationMethod", calculationMethod, autoTranslatedCalculationMethod)
+            
         trapInsignificantRecommendations=ds.getValueAt(row, "trap-insignificant-recommendation-conditions")
         if trapInsignificantRecommendations == "TRUE":
             trapInsignificantRecommendations=1
@@ -396,11 +400,24 @@ def insertFinalDiagnosis(container):
             print SQL
             familyId=system.db.runUpdateQuery(SQL, getKey=True)
             ds=system.dataset.setValue(ds, row, "id", familyId) 
+            ds=system.dataset.setValue(ds, row, "translated-calculation-method-name", calculationMethod)
             print "Insert %s and got id: %i" % (family, familyId)                                                         
         else:
             print "Could not find family: <%s>" % (family)
 
     table.data=ds
+
+def lookupTranslatedName(translationType, oldName, suggestedName):
+    SQL = "select NewName from NameTranslations where Type = '%s' and oldName = '%s'" % (translationType, oldName)
+    newName = system.db.runScalarQuery(SQL, "XOMMigration")
+    
+    if newName == None:
+        print "Inserting a new translatable item..."
+        SQL = "insert into NameTranslations (Type, OldName, NewName) values ('%s','%s','%s')" % (translationType, oldName, suggestedName)
+        system.db.runUpdateQuery(SQL, "XOMMigration")
+        newName = suggestedName
+        
+    return newName
 
 def insertSQCDiagnosis(container):
     rootContainer=container.parent
