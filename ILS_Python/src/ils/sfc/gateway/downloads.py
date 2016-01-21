@@ -20,8 +20,8 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
     
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
-    print "The timer key and attribute is: ", timerKeyAndAttribute
-    print "The step properties are: ", stepProperties
+    logger.trace("The timer key and attribute are: %s" % (timerKeyAndAttribute))
+#    print "The step properties are: ", stepProperties
     timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
     timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
     # Note: there may be no timer-clear property, in which case the
