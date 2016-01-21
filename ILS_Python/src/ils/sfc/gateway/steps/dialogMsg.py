@@ -6,7 +6,7 @@ Created on Dec 17, 2015
 
 def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.util import getControlPanelId, createWindowRecord, getStepProperty, getTimeoutTime, \
-        handleUnexpectedGatewayError, getStepId, sendOpenWindow
+        handleUnexpectedGatewayError, getStepId, sendOpenWindow, logStepDeactivated
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, s88Set
     from ils.sfc.common.util import isEmpty
     from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, \
@@ -14,12 +14,17 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMEOUT_RESPONSE, WINDOW_ID
     from ils.sfc.gateway.util import checkForResponse
     import system.db
-    
+
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    chartLogger = getChartLogger(chartScope)
+
+    if deactivate:
+        logStepDeactivated(chartScope, stepProperties)
+        cleanup(chartScope, stepScope)
+        return True
+ 
     try:
-        chartScope = scopeContext.getChartScope()
-        stepScope = scopeContext.getStepScope()
-        chartLogger = getChartLogger(chartScope)
-        
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
         

@@ -6,21 +6,25 @@ Created on Dec 16, 2015
 
 def activate(scopeContext, stepProperties, deactivate):
     import time
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getTimeoutTime
+    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getTimeoutTime, \
+    logStepDeactivated
     from system.ils.sfc.common.Constants import MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, MESSAGE_ID
     from ils.queue.message import insert
     from ils.sfc.gateway.recipe import substituteScopeReferences
     from ils.sfc.common.cpmessage import getAckTime, timeOutControlPanelMessageAck
-    from ils.sfc.gateway.api import getDatabaseName, addControlPanelMessage, getCurrentMessageQueue, getChartLogger
+    from ils.sfc.gateway.api import getDatabaseName, addControlPanelMessage, getCurrentMessageQueue, getChartLogger 
 
-    
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    chartLogger = getChartLogger(chartScope)
+
+    if deactivate:
+        # no cleanup is needed
+        logStepDeactivated(chartScope, stepProperties)
+        return True
     
     try:
-        chartScope = scopeContext.getChartScope()
-        stepScope = scopeContext.getStepScope()
-        chartLogger = getChartLogger(chartScope)
-
         database = getDatabaseName(chartScope)
         
         workDone = False

@@ -369,3 +369,10 @@ def dbStringForFloat(numberValue):
 def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, viewFile, database):
     import system.db
     system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, viewText) values ('%s', '%s', '%s', '%s', %d, %d)" % (windowId, dataText, filepath, computer, printFile, viewFile), database)
+
+def logStepDeactivated(chartScope, stepProperties):
+    from ils.sfc.gateway.api import getChartLogger
+    chartLogger = getChartLogger(chartScope)
+    chartPath = getChartPath(chartScope)
+    stepName = getStepName(stepProperties)
+    chartLogger.info("Step %s in %s deactivated before completing" % (stepName, chartPath))

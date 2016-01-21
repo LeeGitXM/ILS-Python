@@ -10,26 +10,26 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
     response is received, put response in chart properties
     '''
     from ils.sfc.gateway.util import getTimeoutTime, getControlPanelId, createWindowRecord, \
-        getStepProperty, sendOpenWindow, checkForResponse,\
+        getStepProperty, sendOpenWindow, checkForResponse, logStepDeactivated, \
         getStepId, dbStringForFloat, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName,getChartLogger, s88Set
-    from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT, RECIPE_LOCATION, KEY
+    from ils.sfc.gateway.api import getDatabaseName, getChartLogger
+    from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMEOUT_RESPONSE
     import system.util
     import system.db
 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-
+    chartLogger = getChartLogger(chartScope)
+    
     if deactivate:
-        print 'step deactivated; cleaning up'
+        logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope)
         return True
             
     try:
         
         # Get info from scope common across invocations 
-        chartLogger = getChartLogger(chartScope)
         stepId = getStepId(stepProperties) 
 
         # Check for previous state:
@@ -39,7 +39,7 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
             # calculate the absolute timeout time in epoch secs:
-
+            setResponse(chartScope, stepScope, stepProperties, None)
             stepScope[WAITING_FOR_REPLY] = True
             timeoutTime = getTimeoutTime(chartScope, stepProperties)
             stepScope[TIMEOUT_TIME] = timeoutTime
@@ -70,9 +70,7 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
         else: # waiting for reply
             response = checkForResponse(chartScope, stepScope, stepProperties, TIMEOUT_RESPONSE)
             if response != None: 
-                recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-                key = getStepProperty(stepProperties, KEY) 
-                s88Set(chartScope, stepScope, key, response, recipeLocation)
+                setResponse(chartScope, stepScope, stepProperties, response)
                 workDone = True
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', chartLogger)
@@ -81,6 +79,14 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
         if workDone:
             cleanup(chartScope, stepScope)
         return workDone
+
+def setResponse(chartScope, stepScope, stepProperties, response):
+    from ils.sfc.gateway.util import getStepProperty
+    from ils.sfc.gateway.api import s88Set
+    from system.ils.sfc.common.Constants import RECIPE_LOCATION, KEY
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+    key = getStepProperty(stepProperties, KEY) 
+    s88Set(chartScope, stepScope, key, response, recipeLocation)
     
 def cleanup(chartScope, stepScope):
     import system.db

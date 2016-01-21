@@ -6,26 +6,31 @@ Created on Dec 16, 2015
 
 def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
-        handleUnexpectedGatewayError, getDelaySeconds, deleteAndSendClose, \
-        sendOpenWindow
-    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, getProject
+        handleUnexpectedGatewayError, getDelaySeconds, sendOpenWindow
+    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
     from ils.sfc.common.util import callMethod, isEmpty
-    from ils.sfc.gateway.util import getStepId
+    from ils.sfc.gateway.util import getStepId, logStepDeactivated
     from ils.sfc.gateway.api import getTimeFactor
-    from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, \
-        BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
+    from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
+    RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, \
+    BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
     import system.db
     import time
-    print 'timedDelay.py: activate'
+
+    chartScope = scopeContext.getChartScope() 
+    stepScope = scopeContext.getStepScope()
+    chartLogger = getChartLogger(chartScope)
+
+    if deactivate:
+        logStepDeactivated(chartScope, stepProperties)
+        cleanup(chartScope, stepScope, stepProperties)
+        return True
+       
     try:
-        chartScope = scopeContext.getChartScope()
-        stepScope = scopeContext.getStepScope()
-        chartLogger = getChartLogger(chartScope)
-        
         # Recover state from work in progress:
         endTimeEpochSecs = stepScope.get('_endTimeEpochSecs', None)
         postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
-        workIsDone = True # in case of error, this will prevent more calls
+        workIsDone = False
         
         if endTimeEpochSecs == None:
             print 'first time--initializing'
@@ -54,6 +59,7 @@ def activate(scopeContext, stepProperties, deactivate):
             unscaledDelaySeconds=delaySeconds
             timeFactor = getTimeFactor(chartScope)
             delaySeconds = delaySeconds * timeFactor
+            print 'delaySeconds', delaySeconds
             chartLogger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
             startTimeEpochSecs = time.time()
             endTimeEpochSecs = startTimeEpochSecs + delaySeconds
@@ -74,23 +80,37 @@ def activate(scopeContext, stepProperties, deactivate):
                 if numInserted == 0:
                     handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
                 sendOpenWindow(chartScope, windowId, stepId, database)
-            
-        secondsLeft = endTimeEpochSecs - time.time()
-        sleepSeconds = min(secondsLeft, 5)
-        print 'sleeping for 5 secs'
-        time.sleep(sleepSeconds)
-        workIsDone = sleepSeconds == secondsLeft
+        else:    
+            secondsLeft = endTimeEpochSecs - time.time()
+            sleepSeconds = max(0, min(secondsLeft, 5))
+            print 'sleeping for 5 secs'
+            time.sleep(sleepSeconds)
+            workIsDone = sleepSeconds >= secondsLeft
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in timedDelay.py', chartLogger)        
-        return True
+        workIsDone = True
     finally:
         if workIsDone:
-            print 'done; cleaning up'
-            if postNotification:
-                system.db.runUpdateQuery("delete from SfcTimeDelayNotification where windowId = '%s'" % (windowId), database)
-                project = getProject(chartScope)
-                deleteAndSendClose(project, windowId, database)
-            return True
-        else:
-            print 'not done yet'
-            return False
+            cleanup(chartScope, stepScope, stepProperties)
+        print 'workIsDone', workIsDone
+        return workIsDone
+        
+def cleanup(chartScope, stepScope, stepProperties):
+    import system.db
+    from ils.sfc.gateway.util import getStepProperty, deleteAndSendClose, handleUnexpectedGatewayError
+    from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
+    from ils.sfc.common.constants import WINDOW_ID
+    from ils.sfc.common.constants import POST_NOTIFICATION
+    try:
+        database = getDatabaseName(chartScope)
+        project = getProject(chartScope)
+        windowId = stepScope.get(WINDOW_ID, None)
+        postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
+        if postNotification:
+            system.db.runUpdateQuery("delete from SfcTimeDelayNotification where windowId = '%s'" % (windowId), database)
+            project = getProject(chartScope)
+            deleteAndSendClose(project, windowId, database)
+    except:
+        chartLogger = getChartLogger(chartScope)
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in commonInput.py', chartLogger)
+    
