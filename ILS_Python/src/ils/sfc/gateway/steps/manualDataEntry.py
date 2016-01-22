@@ -10,19 +10,24 @@ def activate(scopeContext, stepProperties, deactivate):
     from system.ils.sfc import getManualDataEntryConfig 
     from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.util import getStepId, sendOpenWindow, createWindowRecord, \
-        getControlPanelId, getStepProperty, getTimeoutTime, \
+        getControlPanelId, getStepProperty, getTimeoutTime, logStepDeactivated, \
         dbStringForFloat, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, \
     getUnitsPath, s88Set, s88Get, s88SetWithUnits
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMEOUT_RESPONSE, WINDOW_ID
     from ils.sfc.gateway.util import checkForResponse
     import system.db
-   
-    try:
-        chartScope = scopeContext.getChartScope()
-        stepScope = scopeContext.getStepScope()
-        chartLogger = getChartLogger(chartScope)
-    
+
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    chartLogger = getChartLogger(chartScope)
+
+    if deactivate:
+        logStepDeactivated(chartScope, stepProperties)
+        cleanup(chartScope, stepScope)
+        return True
+        
+    try:   
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
      

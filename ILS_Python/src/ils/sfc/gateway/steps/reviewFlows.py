@@ -13,14 +13,19 @@ def activate(scopeContext, stepProperties, deactivate):
     from system.ils.sfc.common.Constants import BUTTON_KEY, BUTTON_KEY_LOCATION, BUTTON_LABEL,  VALUE, \
     AUTO_MODE, AUTOMATIC, OK, DATA, REVIEW_FLOWS, HEADING1, HEADING2, HEADING3, POSITION, SCALE, WINDOW_TITLE
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMEOUT_RESPONSE, WINDOW_ID
-    from ils.sfc.gateway.util import checkForResponse
+    from ils.sfc.gateway.util import checkForResponse, logStepDeactivated
     import system.db
     
-    try:
-        chartScope = scopeContext.getChartScope() 
-        stepScope = scopeContext.getStepScope()
-        chartLogger = getChartLogger(chartScope)    
+    chartScope = scopeContext.getChartScope() 
+    stepScope = scopeContext.getStepScope()
+    chartLogger = getChartLogger(chartScope)
 
+    if deactivate:
+        logStepDeactivated(chartScope, stepProperties)
+        cleanup(chartScope, stepScope)
+        return True
+        
+    try:
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
         

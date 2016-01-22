@@ -52,3 +52,37 @@ def sfcCloseWindow(payload):
     database = payload[DATABASE]
     system.db.runUpdateQuery("delete from %s where windowId = '%s'" % (table, windowId), database)   
     deleteAndSendClose(project, windowId, database)
+
+def sfcRunTests(payload):
+    '''Run test charts'''
+    from ils.sfc.common.constants import TEST_CHART_PATHS, TEST_REPORT_FILE 
+    import system.ils.sfc
+    testChartPaths = payload[TEST_CHART_PATHS]
+    reportFile = payload[TEST_REPORT_FILE]
+    system.ils.sfc.initializeTests(reportFile)
+    for chartPath in testChartPaths:
+        system.ils.sfc.startTest(chartPath)
+        system.sfc.startChart(chartPath, payload)
+
+def sfcStartTest(payload):
+    '''Run test charts'''
+    from ils.sfc.common.constants import NAME
+    import system.ils.sfc
+    system.ils.sfc.startTest(payload[NAME])
+
+def sfcInitializeTests(payload):
+    '''Run test charts'''
+    from ils.sfc.common.constants import TEST_REPORT_FILE 
+    import system.ils.sfc
+    reportFile = payload[TEST_REPORT_FILE]
+    system.ils.sfc.initializeTests(reportFile)
+         
+def sfcReportTests(payload):
+    import system.ils.sfc
+    system.ils.sfc.reportTests()
+    
+def sfcFailTest(payload):
+    '''this is a message handler'''
+    from system.ils.sfc import failTest
+    from ils.sfc.common.constants import CHART_NAME, MESSAGE
+    failTest(payload[CHART_NAME], payload[MESSAGE])
