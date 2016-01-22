@@ -8,7 +8,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, \
-    STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH
+    STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
     from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY
     import time
     from ils.sfc.common.util import getMinutesSince, formatTime
@@ -39,11 +39,16 @@ def activate(scopeContext, stepProperties, deactivate):
     logger.trace("In writeOutput.activate() (deactivate: %s)..." % (deactivate))
     
     # This does not initially exist in the step scope dictionary, so we will get a value of False
-    initialized = stepScope.get(INITIALIZED, False);    
-    if not initialized:
+    initialized = stepScope.get(INITIALIZED, False)
+    if deactivate:
+        logger.trace("*** A deactivate has been detected ***")
+        complete=True
+        
+    elif not initialized:
         print "*** Initialize the Write Output data ****"
 
         stepScope[INITIALIZED]=True
+        stepScope["workDone"]=False
         logger.info("Initializing a Write Output block")
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
         config = getWriteOutputConfig(configJson)
@@ -59,11 +64,13 @@ def activate(scopeContext, stepProperties, deactivate):
         numDisabledRows = 0
         for row in config.rows:
             row.outputRD = RecipeData(chartScope, stepScope, outputRecipeLocation, row.key)
+            row.outputRD.set("setpointStatus", "")
             download = row.outputRD.get(DOWNLOAD)
             if download:
                 downloadRows.append(row)
             else:
                 ++numDisabledRows
+                row.outputRD.set(DOWNLOAD_STATUS, "")
         
         # do the timer logic, if there are rows that need timing
         timerNeeded = False
@@ -94,10 +101,13 @@ def activate(scopeContext, stepProperties, deactivate):
             # classify the rows
             if row.timingMinutes == 0.:
                 immediateRows.append(row)
+                row.outputRD.set(DOWNLOAD_STATUS, "approaching")
             elif row.timingMinutes >= 1000.:
                 finalRows.append(row)
+                row.outputRD.set(DOWNLOAD_STATUS, "pending")
             else:
                 timedRows.append(row)
+                row.outputRD.set(DOWNLOAD_STATUS, "pending")
         
             # I have no idea what this does - maybe it is needed for PV monitoring??? (Pete)
             row.io = AbstractSfcIO.getIO(row.tagPath, isolationMode) 
@@ -113,7 +123,6 @@ def activate(scopeContext, stepProperties, deactivate):
         
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             complete = True
-            stepScope[COMPLETE_FLAG]=True
         else:
             handleTimer(chartScope, stepScope, stepProperties, logger)
 
@@ -162,6 +171,7 @@ def activate(scopeContext, stepProperties, deactivate):
             
                     logger.trace("...performing immediate writes...")
                     for row in immediateRows:
+#                        row.outputRD.set("setpointStatus", "downloading")
                         logger.trace("   writing a immediate write for step %s" % (row.key))
                         writeValue(chartScope, row, logger, providerName)
                      
@@ -173,12 +183,16 @@ def activate(scopeContext, stepProperties, deactivate):
                         if not row.written:
                             # If the row hasn't been written and the elapsed time is greater than the requested time then write the output
                             logger.trace("   checking output step %s at %.2f" % (row.key, row.timingMinutes))
+
                             if elapsedMinutes >= row.timingMinutes:
                                 logger.trace("      writing a timed write for step %s" % (row.key))
+#                                row.outputRD.set("setpointStatus", "downloading")
                                 writeValue(chartScope, row, logger, providerName)
                                 row.written = True
                             else:
                                 writesPending = True
+                                if elapsedMinutes >= row.timingMinutes - 0.5:
+                                    row.outputRD.set(DOWNLOAD_STATUS, "approaching")
             
                 # If all of the timed writes have been written then do the final writes
                 if not(writesPending):
@@ -189,6 +203,7 @@ def activate(scopeContext, stepProperties, deactivate):
                         timestamp = formatTime(absTiming)
                         row.outputRD.set(STEP_TIMESTAMP, timestamp)
                         row.outputRD.set(STEP_TIME, absTiming)
+#                        row.outputRD.set("setpointStatus", "downloading")
                         writeValue(chartScope, row, logger, providerName)
                     
                     # All of the timed writes have completed and the final writes have been made so signal that the block is done
@@ -206,4 +221,7 @@ def activate(scopeContext, stepProperties, deactivate):
     logger.trace("leaving writeOutput.activate()...")    
     logger.trace("--------------------")    
     
+    if complete:
+        stepScope["workDone"]=True
+        
     return complete

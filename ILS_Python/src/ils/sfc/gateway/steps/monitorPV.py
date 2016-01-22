@@ -52,10 +52,15 @@ def activate(scopeContext, stepProperties, deactivate):
     
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
-        if not initialized:
+        if deactivate:
+            logger.trace("*** A deactivate has been detected ***")
+            complete=True
+        
+        elif not initialized:
             logger.trace("...initializing...")
             stepScope[NUMBER_OF_TIMEOUTS] = 0
             stepScope[INITIALIZED]=True
+            stepScope["workDone"]=False
             
             # Clear and/or start the timer
             handleTimer(chartScope, stepScope, stepProperties, logger)
@@ -104,6 +109,7 @@ def activate(scopeContext, stepProperties, deactivate):
             stepScope[PV_MONITOR_CONFIG] = config
             stepScope[MONITOR_ACTIVE_COUNT] = monitorActiveCount
             stepScope[PERSISTENCE_PENDING] = False
+            stepScope[MAX_PERSISTENCE] = maxPersistence
             print "The initialized configuration is: ", config
             
             handleTimer(chartScope, stepScope, stepProperties, logger)
@@ -129,9 +135,11 @@ def activate(scopeContext, stepProperties, deactivate):
             elapsedMinutes = getMinutesSince(timerStart)
 #            startTime = time.time()
 
-            extendedDuration = timeLimitMin + maxPersistence # extra time allowed for persistence checks
             persistencePending = stepScope[PERSISTENCE_PENDING]
             monitorActiveCount = stepScope[MONITOR_ACTIVE_COUNT]
+            maxPersistence = stepScope[MAX_PERSISTENCE]
+            
+            extendedDuration = timeLimitMin + maxPersistence # extra time allowed for persistence checks
             
             if monitorActiveCount > 0 and ((elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)):
                 logger.trace("Starting a PV monitor pass...")
@@ -240,10 +248,7 @@ def activate(scopeContext, stepProperties, deactivate):
                         configRow.ioRD.set(SETPOINT_STATUS, SETPOINT_PROBLEM)
         
                     logger.trace("  Status: %s" % configRow.status)  
-                    configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
-        
-
-                
+                    configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)        
             
             if monitorActiveCount == 0:
                 logger.info("The PV monitor is finished because there is nothing left to monitor...")
@@ -268,4 +273,7 @@ def activate(scopeContext, stepProperties, deactivate):
         # do cleanup here
         pass
     
+    if complete:
+        stepScope["workDone"]=True
+        
     return complete
