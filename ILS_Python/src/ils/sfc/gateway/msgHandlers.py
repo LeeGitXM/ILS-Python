@@ -64,12 +64,6 @@ def sfcRunTests(payload):
         system.ils.sfc.startTest(chartPath)
         system.sfc.startChart(chartPath, payload)
 
-def sfcStartTest(payload):
-    '''Run test charts'''
-    from ils.sfc.common.constants import NAME
-    import system.ils.sfc
-    system.ils.sfc.startTest(payload[NAME])
-
 def sfcInitializeTests(payload):
     '''Run test charts'''
     from ils.sfc.common.constants import TEST_REPORT_FILE 

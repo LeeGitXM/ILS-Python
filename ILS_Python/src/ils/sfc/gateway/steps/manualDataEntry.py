@@ -25,7 +25,7 @@ def activate(scopeContext, stepProperties, deactivate):
     if deactivate:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope)
-        return True
+        return False
         
     try:   
         workDone = False

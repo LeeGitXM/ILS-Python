@@ -12,19 +12,7 @@ def sendResponse(messageId, response):
     replyPayload[RESPONSE] = response
     replyPayload[WINDOW_ID] = messageId    
     project = system.util.getProjectName()
-    sendMessageToGateway(project, 'sfcResponse', replyPayload)
-
-def runTests(testChartPaths, isolationMode, reportFile):
-    from ils.sfc.common.constants import PROJECT, USER, ISOLATION_MODE, TEST_CHART_PATHS, TEST_REPORT_FILE
-    project = system.util.getProjectName()
-    user = system.security.getUsername()
-    initialChartProps = dict()
-    initialChartProps[ISOLATION_MODE] = isolationMode
-    initialChartProps[PROJECT] = project
-    initialChartProps[USER] = user
-    initialChartProps[TEST_CHART_PATHS] = testChartPaths
-    initialChartProps[TEST_REPORT_FILE] = reportFile
-    system.util.sendMessage(project, 'sfcRunTests', initialChartProps, "G")   
+    sendMessageToGateway(project, 'sfcResponse', replyPayload)  
 
 def testQuery(query, isolationMode):
     from java.lang import Exception

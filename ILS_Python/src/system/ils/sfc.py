@@ -87,22 +87,22 @@ def initializeTests(reportFile):
     '''clear out any old tests and establish the report file for the new tests'''
     
 def startTest(chartPath):
-    '''start a test chart'''
+    '''start a test'''
     
-def assertEqual(chart, step, expected, actual):
+def assertEqual(chartScope, expected, actual):
     '''Assert that the actual object should equal the expected object. If this is
     not true the test fails immediately.'''
 
-def assertTrue(chart, step, flag, msg): 
+def assertTrue(chartScope, flag, msg): 
     '''Assert that the flag is true. Typically the call to this will pass an expression
     that will be evaluated, e.g. assertTrue(chart, step, 3 < 6, 'should be less'). If this is
     not true the test fails immediately.'''
 
-def failTest(chart):
+def failTest(chartScope):
     '''Fail the test. Typically called when the chart comes to an unhappy ending, e.g. in the
     OnAbort action method of an SFC or in an exception handler.'''
     
-def passTest(chart):
+def passTest(chartScope):
     '''Pass the test. Typically called when the chart comes to a happy ending, e.g. in the
     OnStop action method of an SFC.'''
 

@@ -32,8 +32,9 @@ def doActions():
         
 def failTest(testName, msg):
     from ils.sfc.common.constants import CHART_NAME, MESSAGE
+    from ils.sfc.client.util import sendMessageToGateway
     import system.util
     payload = dict()
     payload[CHART_NAME] = testName
     payload[MESSAGE] = msg
-    system.util.sendMessage(system.util.getProjectName(), 'sfcTestFail', payload, "G")
+    sendMessageToGateway(system.util.getProjectName(), 'sfcFailTest', payload)
