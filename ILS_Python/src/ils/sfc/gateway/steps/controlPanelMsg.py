@@ -22,7 +22,7 @@ def activate(scopeContext, stepProperties, deactivate):
     if deactivate:
         # no cleanup is needed
         logStepDeactivated(chartScope, stepProperties)
-        return True
+        return False
     
     try:
         database = getDatabaseName(chartScope)
