@@ -92,6 +92,7 @@ def writeValue(chartScope, config, logger, providerName):
         valueType = config.outputRD.get(VALUE_TYPE)
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, valueType,str(config.confirmWrite)))
         
+        print "---- setting status to downloading ----"
         config.outputRD.set(DOWNLOAD_STATUS, STEP_DOWNLOADING)
         writeStatus, txt = write(tagPath, config.value, config.confirmWrite, valueType)
         logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
@@ -101,8 +102,10 @@ def writeValue(chartScope, config, logger, providerName):
             config.outputRD.set(WRITE_CONFIRMED, writeStatus)
     
         if writeStatus:
+            print "---- setting status to SUCCESS ----"
             config.outputRD.set(DOWNLOAD_STATUS, STEP_SUCCESS)
         else:
+            print "---- setting status to FAILURE ----"
             config.outputRD.set(DOWNLOAD_STATUS, STEP_FAILURE)
     
         queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)
