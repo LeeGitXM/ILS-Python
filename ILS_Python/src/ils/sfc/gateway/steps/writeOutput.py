@@ -48,7 +48,7 @@ def activate(scopeContext, stepProperties, deactivate):
         print "*** Initialize the Write Output data ****"
 
         stepScope[INITIALIZED]=True
-        stepScope["workDone"]=False
+#        stepScope["workDone"]=False
         logger.info("Initializing a Write Output block")
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
         config = getWriteOutputConfig(configJson)
@@ -218,10 +218,10 @@ def activate(scopeContext, stepProperties, deactivate):
             # TODO: handle re-entrant logic; don't return True until really done
             pass
 
-    logger.trace("leaving writeOutput.activate()...")    
+    logger.trace("leaving writeOutput.activate(), complete=%s..." % (str(complete)))    
     logger.trace("--------------------")    
-    
-    if complete:
-        stepScope["workDone"]=True
+
+#    if complete:
+#        stepScope["workDone"]=True
         
     return complete

@@ -60,6 +60,7 @@ def activate(scopeContext, stepProperties, deactivate):
             rd.set(PV_MONITOR_ACTIVE, False)
             rd.set(PV_VALUE, None)
             rd.set(PV_MONITOR_STATUS, PV_NOT_MONITORED)
+            rd.set("stepTimestamp", "")
             
             fullTagPath=s88GetFullTagPath(chartScope, stepScope, row.key, recipeLocation)
             
