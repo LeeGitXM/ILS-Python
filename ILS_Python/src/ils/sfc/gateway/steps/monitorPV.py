@@ -75,12 +75,15 @@ def activate(scopeContext, stepProperties, deactivate):
             for configRow in config.rows:
                 logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
                 configRow.status = MONITORING
-                configRow.ioRD = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
-                configRow.ioRD.set(PV_MONITOR_STATUS, PV_MONITORING)
-                configRow.ioRD.set(SETPOINT_STATUS, SETPOINT_OK)
-                configRow.ioRD.set(PV_MONITOR_ACTIVE, True)
-                configRow.ioRD.set(PV_VALUE, None)
-                dataType = configRow.ioRD.get(CLASS)
+                rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+                print "The recipe data is: ", rd
+                rd.set(PV_MONITOR_STATUS, PV_MONITORING)
+                rd.set(SETPOINT_STATUS, SETPOINT_OK)
+                rd.set(PV_MONITOR_ACTIVE, True)
+                rd.set("advice", "Take two advil and call me in the morning")
+#                rd.set(PV_VALUE, None)
+                dataType = rd.get(CLASS)
+                print "The data type is: ", dataType
                 configRow.isOutput = (dataType == 'Output')
                 configRow.isDownloaded = False
                 configRow.persistenceOK = False
@@ -147,6 +150,9 @@ def activate(scopeContext, stepProperties, deactivate):
                 monitorActiveCount = 0
                 persistencePending = False
                 for configRow in config.rows:
+                    rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+                    print "The recipe data is: ", rd
+                    rd.set("errorCode", "This ain't no stinkin error")
                     if not configRow.enabled:
                         continue;
                     
@@ -160,23 +166,24 @@ def activate(scopeContext, stepProperties, deactivate):
                     #TODO: how are we supposed to know about a download unless we have an Output??
                     if configRow.isOutput and not configRow.isDownloaded:
                         logger.trace("The item is an output and it hasn't been downloaded...")
-                        downloadStatus = configRow.ioRD.get(DOWNLOAD_STATUS)
+                        downloadStatus = rd.get(DOWNLOAD_STATUS)
                         configRow.isDownloaded = (downloadStatus == STEP_SUCCESS or downloadStatus == STEP_FAILURE)
                         if configRow.isDownloaded:
                             logger.trace("...the download just completed!")
-                            configRow.downloadTime = configRow.ioRD.get(STEP_TIME)
+                            configRow.downloadTime = rd.get(STEP_TIME)
         
                     # Display the PVs as soon as the block starts running, even before the SP has been written
-                    tagPath = getMonitoredTagPath(configRow.ioRD, providerName)
+                    tagPath = getMonitoredTagPath(rd, providerName)
                     qv = system.tag.read(tagPath)
                     
                     logger.trace("The present qualified value for %s is: %s-%s" % (tagPath, str(qv.value), str(qv.quality)))
                     if not(qv.quality.isGood()):
                         logger.warn("The monitored value is bad: %s-%s" % (str(qv.value), str(qv.quality)))
                         continue
-        
+
                     pv=qv.value
-                    configRow.ioRD.set(PV_VALUE, pv)
+                    rd.set(PV_VALUE, pv)
+                    print "...writing ", pv, " to the PV to the pvValue of the OUTPUT recipe data..."
         
                     # If we are configured to wait for the download and it hasn't been downloaded, then don't start to monitor
                     if configRow.download == WAIT and not configRow.isDownloaded:
@@ -230,7 +237,7 @@ def activate(scopeContext, stepProperties, deactivate):
                     if valueOk:
                         if isPersistent:
                             configRow.status = PV_OK
-                            configRow.ioRD.set(PV_MONITOR_ACTIVE, False)
+                            rd.set(PV_MONITOR_ACTIVE, False)
                         else:
                             configRow.status = PV_OK_NOT_PERSISTENT
                             persistencePending = True
@@ -245,10 +252,10 @@ def activate(scopeContext, stepProperties, deactivate):
         
                     if configRow.status == PV_ERROR:
                         # Set the setpoint status to PROBLEM - this cannot be reset
-                        configRow.ioRD.set(SETPOINT_STATUS, SETPOINT_PROBLEM)
+                        rd.set(SETPOINT_STATUS, SETPOINT_PROBLEM)
         
                     logger.trace("  Status: %s" % configRow.status)  
-                    configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)        
+                    rd.set(PV_MONITOR_STATUS, configRow.status)        
             
             if monitorActiveCount == 0:
                 logger.info("The PV monitor is finished because there is nothing left to monitor...")
@@ -257,14 +264,15 @@ def activate(scopeContext, stepProperties, deactivate):
             # If the maximum time has been exceeded then count how many items did not complete their monitoring, aka Timed-Out 
             if (elapsedMinutes > timeLimitMin) or (persistencePending and elapsedMinutes > extendedDuration):
                 logger.info("The PV monitor is finished because the max run time has been reached...")
-        
+                complete = True
+                
                 numTimeouts = 0
                 for configRow in config.rows:
                     if configRow.status == PV_ERROR:
                         numTimeouts = numTimeouts + 1
                         configRow.status = TIMEOUT
-                        configRow.ioRD.set(PV_MONITOR_STATUS, configRow.status)
-                    configRow.ioRD.set(PV_MONITOR_ACTIVE, False)
+                        rd.set(PV_MONITOR_STATUS, configRow.status)
+                    rd.set(PV_MONITOR_ACTIVE, False)
                 stepScope[NUMBER_OF_TIMEOUTS] = numTimeouts
                 logger.info("...there were %i PV monitoring timeouts " % (numTimeouts))
     except:
@@ -272,8 +280,7 @@ def activate(scopeContext, stepProperties, deactivate):
     finally:
         # do cleanup here
         pass
-    
-    if complete:
-        stepScope["workDone"]=True
+
+    print "Returning complete = ", complete
         
     return complete

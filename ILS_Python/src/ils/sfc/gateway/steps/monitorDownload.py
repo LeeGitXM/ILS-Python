@@ -5,6 +5,7 @@ Created on Dec 17, 2015
 '''
 
 import system
+from com.sun.rowset.internal import Row
 
 def activate(scopeContext, stepProperties, deactivate): 
     from system.ils.sfc.common.Constants import BUTTON_LABEL, RECIPE_LOCATION, MONITOR_DOWNLOADS_CONFIG, DATA_ID, DOWNLOAD_STATUS, WRITE_CONFIRMED, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
@@ -45,7 +46,7 @@ def activate(scopeContext, stepProperties, deactivate):
         stepScope[WINDOW_ID] = windowId     # This step completes as soon as the GUI is posted do I doubt I need to save this.
         print "Inserted a window with id: ", windowId
             
-        SQL = "insert into SfcDownloadGUI (windowId) values ('%s')" % (windowId)
+        SQL = "insert into SfcDownloadGUI (windowId, state, timeStamp) values ('%s', 'created', CURRENT_TIMESTAMP)" % (windowId)
         system.db.runUpdateQuery(SQL, database)
         
         # Reset the recipe data download and PV monitoring attributes
@@ -53,10 +54,12 @@ def activate(scopeContext, stepProperties, deactivate):
             logger.trace("Resetting recipe data with key: %s" % (row.key))
             rd = RecipeData(chartScope, stepScope, recipeLocation, row.key)
             print "Recipe Data: ", rd
-                # Initialze properties used by the write output process
+            
+            # Initialize properties used by the write output process
             rd.set(DOWNLOAD_STATUS, STEP_PENDING)
             rd.set(WRITE_CONFIRMED, None)
-                # Initialize properties used by a PV monitoring process
+                
+            # Initialize properties used by a PV monitoring process
             rd.set(PV_MONITOR_ACTIVE, False)
             rd.set(PV_VALUE, None)
             rd.set(PV_MONITOR_STATUS, PV_NOT_MONITORED)
@@ -64,7 +67,8 @@ def activate(scopeContext, stepProperties, deactivate):
             
             fullTagPath=s88GetFullTagPath(chartScope, stepScope, row.key, recipeLocation)
             
-            SQL = "insert into SfcDownloadGUITable (windowId, recipeDataPath) values ('%s', '%s')" % (windowId, fullTagPath)
+            SQL = "insert into SfcDownloadGUITable (windowId, recipeDataPath, labelAttribute) "\
+                "values ('%s', '%s', '%s')" % (windowId, fullTagPath, row.labelAttribute)
 
             system.db.runUpdateQuery(SQL, database)
     
