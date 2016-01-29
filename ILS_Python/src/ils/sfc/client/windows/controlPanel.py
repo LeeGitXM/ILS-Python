@@ -11,13 +11,20 @@ def openControlPanel(controlPanelId, startImmediately):
     system.gui.openWindow('SFC/ControlPanel', {'controlPanelId': controlPanelId, 'startImmediately': startImmediately})
 
 def startChart(event):
-    from ils.sfc.client.util import startChart
+    from ils.sfc.client.util import getStartInIsolationMode
+    from ils.sfc.common.util import startChart
+    import system.util
     rootContainer = getRootContainer(event)
     cpId = rootContainer.controlPanelId
+    isolationMode = getStartInIsolationMode()
+    project = system.util.getProjectName()
+    chartPath = getControlPanelChartPath(cpId)
+    originator = system.security.getUsername()
+
     #TODO: check if chart is running to set canStart flag
     canStart = True
     if canStart:
-        startChart(cpId)
+        startChart(chartPath, cpId, project, originator, isolationMode)
         
 def pauseChart(event):
     from system.sfc import pauseChart

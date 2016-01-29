@@ -131,6 +131,7 @@ TAG = 'tag'
 STRATEGY = "strategy"
 TABLE = 'table'
 TEST_CHART_PATHS = 'testChartPaths'
+TEST_PATTERN = 'testPattern'
 TEST_REPORT_FILE = 'testReportFile'
 TIMEOUT = "timeout"
 TIMEOUT_TIME = 'timeoutTime'

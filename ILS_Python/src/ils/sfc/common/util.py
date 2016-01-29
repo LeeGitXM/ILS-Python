@@ -7,6 +7,22 @@ import system
 
 from ils.sfc.common.constants import PARENT, INSTANCE_ID, RECIPE_DATA, PROJECT
 
+def startChart(chartPath, controlPanelId, project, originator, isolationMode):
+    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID
+    initialChartParams = dict()
+    initialChartParams[PROJECT] = project
+    initialChartParams[ISOLATION_MODE] = isolationMode
+    initialChartParams[CONTROL_PANEL_ID] = controlPanelId
+    runId = system.sfc.startChart(chartPath, initialChartParams)
+    if isolationMode:
+        isolationFlag = 1
+    else:
+        isolationFlag = 0
+    updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %d" % (runId, originator, project, isolationFlag, controlPanelId)
+    numUpdated = system.db.runUpdateQuery(updateSql)
+    if numUpdated == 0:
+        system.gui.messageBox("Failed to updated SfcControlPanel with chart start info")
+
 def readFile(filepath):
     '''
     Read the contents of a file into a string

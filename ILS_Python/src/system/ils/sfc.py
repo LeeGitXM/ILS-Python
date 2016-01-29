@@ -112,6 +112,9 @@ def reportTests():
     complete, however if there is some question about what has finished and what has not it
     can be useful to print the interim report.'''
 
+def getMatchingCharts(regex):
+    '''Get the chart paths that match the regex'''
+    
 def watchChart(chartId,name):
     '''chart state event handler'''
 
