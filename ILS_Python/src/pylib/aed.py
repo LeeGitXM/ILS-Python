@@ -25,7 +25,11 @@ def createExpressionTable(common,database,tableName,tag1,tag2,tag3,tag4):
 	setup.addIndex(database, tableName)
 	
 	populateTestTable(database,tableName,columnName(tag1),columnName(tag2),columnName(tag3),columnName(tag4))
-	
+
+# Create a single expression.
+def createExpression(common,provider,path,text):
+	testframe.createExpression(provider,path,"Float8",text)
+			
 # Create a set of expressions. The actual expression
 # will be set later. Use the root name plus index.
 def createExpressions(common,provider,root,count):
@@ -40,6 +44,9 @@ def createTag(common,provider,path):
 # Delete a tag or expression
 def deleteTag(common,provider,path):
 	testframe.deleteTag(provider,path);
+	
+def defineTablebasedTest(common,provider,database,table,timecol,mintime,maxtime,timefact):
+	testframe.defineTablebasedTest(provider, database, table, timecol, mintime, maxtime, timefact)
 	
 def setExpressions(common,provider,root,count,expr):
 	for index in range(int(count)):

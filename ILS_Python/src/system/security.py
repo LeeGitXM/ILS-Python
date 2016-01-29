@@ -7,3 +7,9 @@ def getRoles():
 
 def getUsername():
     return "Mom"
+
+def logout():
+    pass
+
+def switchUser(name,password,data,flag):
+    pass

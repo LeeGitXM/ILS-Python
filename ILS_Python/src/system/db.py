@@ -21,7 +21,8 @@ def getConnectionInfo(dbName):
 
 def getConnections():
     pass
-
+def refresh(component,name):
+    pass
 def rollbackTransaction(tx):
     return True
 
