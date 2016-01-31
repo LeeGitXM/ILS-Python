@@ -29,11 +29,18 @@ def update(rootContainer):
     database = getDatabaseClient()
     tagProvider = getTagProviderClient()
     
-    state, elapsedSeconds = fetchWindowState(windowId, database)
+    state, elapsedSeconds, startTime, timerTagPath = fetchWindowState(windowId, database)
+    
+    if startTime == None:
+        startTime = system.tag.read(timerTagPath).value
+        if startTime != None:
+            updateStartTime(windowId, startTime, database)
+        
+    rootContainer.startTime = startTime
     
     if string.upper(state)  == "CREATED":
         initializeDatabaseTable(windowId, database, tagProvider)
-        updateWindowState(windowId, database)
+        updateWindowState(windowId, database)    
     
     else:
         # If the database was updated less than 10 seconds ago, then skip the update.  This is useful
@@ -41,6 +48,7 @@ def update(rootContainer):
         # the work of reading tags and updating the database. 
         if elapsedSeconds > 10.0:
             updateDatabaseTable(windowId, database)
+            updateWindowState(windowId, database) 
     
     # Now update the Vision table from the data in the database table 
     SQL = "select * from SfcDownloadGUITable where windowId = '%s' order by rawTiming, DCSTagId " % (windowId)
@@ -51,32 +59,34 @@ def update(rootContainer):
 
 def fetchWindowState(windowId, database):
     print "...fetching the window state..."
-    
-    SQL = "select State, DATEDIFF(second,Timestamp,CURRENT_TIMESTAMP) ElapsedSeconds from SfcDownloadGUI where windowId = '%s'" % (windowId)
+    SQL = "select State, StartTime, TimerTagPath, DATEDIFF(second,LastUpdated,CURRENT_TIMESTAMP) ElapsedSeconds "\
+        "from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
-    
     state = pds[0]["State"]
     elapsedSeconds = pds[0]["ElapsedSeconds"]
-    
-    print "Fetched State: %s, Elapsed Seconds: %s" % (state, str(elapsedSeconds))
-    
-    return state, elapsedSeconds
+    startTime = pds[0]["StartTime"]
+    timerTagPath = pds[0]["TimerTagPath"]
+    print "...fetched State: %s, Seconds since last update: %s" % (state, str(elapsedSeconds))
+    return state, elapsedSeconds, startTime, timerTagPath
 
 def updateWindowState(windowId, database):
     print "...updating the window state..."
-    
-    SQL = "update SfcDownloadGUI set state = 'updated', timestamp = CURRENT_TIMESTAMP where windowId = '%s'" % (windowId)
+    SQL = "update SfcDownloadGUI set state = 'updated', LastUpdated = CURRENT_TIMESTAMP where windowId = '%s'" % (windowId)
     rows = system.db.runUpdateQuery(SQL, database)
     
-    print "Updated %i rows" % (rows)
-
+def updateStartTime(windowId, startTime, database):
+    print "...updating the startTime..."
+    startTime=system.db.dateFormat(startTime, "MM/dd/yyyy H:mm:ss")
+    startTime="%s"%(startTime)
+    SQL = "update SfcDownloadGUI set StartTime = '%s' where windowId = '%s'" % (startTime, windowId)
+    rows = system.db.runUpdateQuery(SQL, database)
 
 # Because download GUI works in conjunction with the writeOutput and PVMonitoring block, it is possible that 
 # the recipe data that we are using to configure the table for download GUI has not been fully configured. 
 # The difference between rawTiming and timing is the final rows whose raw timing is > 1000.  When the tag 
 # is actually written then timing and stepTimestamp are updated but raw Timing remains the same. 
 def initializeDatabaseTable(windowId, database, tagProvider):
-    print "Initializing the database table..."
+    print "***Initializing*** the database table..."
     SQL = "select * from SfcDownloadGUITable where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
@@ -86,7 +96,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
     for record in pds:
         recipeDataPath=record["RecipeDataPath"]
         labelAttribute=record["LabelAttribute"]
-        print recipeDataPath
+        
         tagPaths=[]
         tagPaths.append(recipeDataPath + '/timing')
         tagPaths.append(recipeDataPath + '/tagPath')
@@ -150,17 +160,17 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 # happens then we may need to read all tags and update all fields in database.  It doesn't seem like that 
 # would be much additional overhead anyway.
 def updateDatabaseTable(windowId, database):
-    print "Updating the database table..."
+    print "...updating the database table..."
     SQL = "select * from SfcDownloadGUITable where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
     for record in pds:
         recipeDataPath=record["RecipeDataPath"]
         
-        print recipeDataPath
         tagPaths=[]
         tagPaths.append(recipeDataPath + '/downloadStatus')
         tagPaths.append(recipeDataPath + '/pvMonitorStatus')
+        tagPaths.append(recipeDataPath + '/pvMonitorActive')
         tagPaths.append(recipeDataPath + '/setpointStatus')
         tagPaths.append(recipeDataPath + '/pvValue')
         tagPaths.append(recipeDataPath + '/timing')
@@ -170,78 +180,25 @@ def updateDatabaseTable(windowId, database):
         
         downloadStatus = tagValues[0].value
         pvMonitorStatus = tagValues[1].value
-        setpointStatus = tagValues[2].value
-        pvValue = tagValues[3].value
-        pvQuality = tagValues[3].quality
-        timing = tagValues[4].value
-        stepTimestamp = tagValues[5].value
+        pvMonitorActive = tagValues[2].value
+        setpointStatus = tagValues[3].value
+        pvValue = tagValues[4].value
+        pvQuality = tagValues[4].quality
+        timing = tagValues[5].value
+        stepTimestamp = tagValues[6].value
         
         if pvValue == None:
-            pvValue="NULL"
+            formattedPV = ""
+        elif pvMonitorActive == True:
+            formattedPV = "%.2f" % pvValue
+        else:
+            formattedPV = "%.2f*" % pvValue
 
-        print "PV = %s.%s" % (str(pvValue), str(pvQuality))
-
-        SQL = "update SfcDownloadGUITable set PV=%s,DownloadStatus='%s', PVMonitorStatus='%s', " \
+        SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
             "SetpointStatus='%s', Timing=%s, StepTimestamp='%s' "\
             "where windowId = '%s' and RecipeDataPath = '%s' " % \
-            (str(pvValue), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
+            (str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
              str(timing), stepTimestamp, windowId, recipeDataPath)
 
         system.db.runUpdateQuery(SQL, database)
-
-def getMonitorDownloadWindow(chartRunId, timerId):
-    ''' get the monitor download window. If it is not yet open, 
-    will wait for a short period of time to try to get it.'''
-    import time
-    import system.gui 
-    from system.ils.sfc.common.Constants import SFC_MONITOR_DOWNLOADS_WINDOW
-    for i in range(5):
-        windows = system.gui.findWindow(SFC_MONITOR_DOWNLOADS_WINDOW)
-        for window in windows:
-            if window.getRootContainer().timerId == timerId and \
-                window.getRootContainer().instanceId == chartRunId:
-                return window        
-        time.sleep(2) # seconds
-    return None
- 
    
-def updateTable(window, rows, timerStart):
-    from  system.dataset import toDataSet
-    print "Updating the table"
-    header = ['RawTiming','Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'stepStatus', 'pvStatus', 'setpointStatus']    
-    table = window.getRootContainer().getComponent('table')
-    newData = toDataSet(header, rows)
-
-    # Sort the dataset by the timing
-    newData = system.dataset.sort(newData, 'RawTiming')
-    
-    table.data = newData
-    window.getRootContainer().timerStart = timerStart
-
-def timerWorker(window):  
-    import time
-    from ils.sfc.client.util import sendMessageToGateway
-    import system.util
-    
-    rootContainer = window.getRootContainer()
-    
-    timerField = rootContainer.getComponent('timerField')
-    timerStart = rootContainer.timerStart
-    if timerStart == None or timerStart == 0:
-        timerField.text = "0.0"
-    else:
-        elapsedMinutes = (time.time() - timerStart) / 60.
-        timerField.text = "%.1f" % elapsedMinutes
-    
-    if rootContainer.chartStopped:
-        rootContainer.getComponent('abortButton').enabled = False
-        rootContainer.getComponent('pauseButton').enabled = False
-        rootContainer.getComponent('resumeButton').enabled = False
-
-    if not(rootContainer.stopUpdates):
-        #request an update from the gateway
-        print "In timerWorker() - updating..."
-#        payload = {'id': rootContainer.timerId, 'instanceId':rootContainer.instanceId}
-#        project = system.util.getProjectName()
-#        sendMessageToGateway(project, 'sfcUpdateDownloads', payload)
-    
