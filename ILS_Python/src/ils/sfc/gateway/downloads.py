@@ -15,7 +15,7 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
     from ils.sfc.gateway.util import getStepProperty
     from ils.sfc.gateway.recipe import getSiblingKey
     from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY, TIMER_SET, TIMER_CLEAR, DATA_ID
-    import time
+    from java.util import Date
     from ils.sfc.gateway.recipe import RecipeData, splitKey
     
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
@@ -35,8 +35,7 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
     if setTimer:
         # print 'starting timer'
         logger.info("Setting the download timer...")
-        startTime = time.time()
-        timer.set(timerAttribute, startTime)
+        timer.set(timerAttribute, Date())
 
     return timer, timerAttribute
 
@@ -55,6 +54,12 @@ def getTimerStart(chartScope, stepScope, stepProperties):
     #   handleUnexpectedGatewayError(chartScope, "download timer read before set or cleared; stale value")
     
     return timerStart
+
+def getElapsedMinutes(startTime):
+    from java.util import Date
+    now=Date()
+    elapsedMinutes = (now.getTime() - startTime.getTime()) / 1000.0 / 60.0
+    return elapsedMinutes
 
 def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
     '''Wait until the i/o timer shows a non-null value'''
