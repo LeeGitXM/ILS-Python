@@ -8,15 +8,16 @@ import system
 from com.sun.rowset.internal import Row
 
 def activate(scopeContext, stepProperties, deactivate): 
-    from system.ils.sfc.common.Constants import BUTTON_LABEL, RECIPE_LOCATION, MONITOR_DOWNLOADS_CONFIG, DATA_ID, DOWNLOAD_STATUS, WRITE_CONFIRMED, POSITION, SCALE, WINDOW_TITLE, PROMPT, KEY
-    from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, STEP_PENDING,  PV_NOT_MONITORED, WINDOW_ID
+    from system.ils.sfc.common.Constants import BUTTON_LABEL, RECIPE_LOCATION, MONITOR_DOWNLOADS_CONFIG, DATA_ID, DOWNLOAD_STATUS, \
+        WRITE_CONFIRMED, POSITION, SCALE, TIMER_KEY, WINDOW_TITLE, PROMPT, KEY
+    from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID
     from system.ils.sfc import getMonitorDownloadsConfig
     from ils.sfc.gateway.downloads import handleTimer
     from ils.sfc.gateway.monitoring import createMonitoringMgr
     from ils.sfc.gateway.util import sendMessageToClient, getStepProperty, transferStepPropertiesToMessage, handleUnexpectedGatewayError, getControlPanelId, createWindowRecord
     from system.ils.sfc import getProviderName, getDatabaseName
     from ils.sfc.gateway.api import getIsolationMode, getChartLogger, getProject, s88GetFullTagPath
-    from ils.sfc.gateway.recipe import RecipeData
+    from ils.sfc.gateway.recipe import RecipeData, splitKey
 
     try:
         chartScope = scopeContext.getChartScope()
@@ -45,8 +46,13 @@ def activate(scopeContext, stepProperties, deactivate):
         windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)
         stepScope[WINDOW_ID] = windowId     # This step completes as soon as the GUI is posted do I doubt I need to save this.
         print "Inserted a window with id: ", windowId
-            
-        SQL = "insert into SfcDownloadGUI (windowId, state, timeStamp) values ('%s', 'created', CURRENT_TIMESTAMP)" % (windowId)
+        
+        print "Getting the full timer tagPath..."
+        timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
+        timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
+        timerTagPath = s88GetFullTagPath(chartScope, stepScope, timerKey, recipeLocation) + '/value'
+        
+        SQL = "insert into SfcDownloadGUI (windowId, state, LastUpdated, timerTagPath) values ('%s', 'created', CURRENT_TIMESTAMP, '%s')" % (windowId, timerTagPath)
         system.db.runUpdateQuery(SQL, database)
         
         # Reset the recipe data download and PV monitoring attributes

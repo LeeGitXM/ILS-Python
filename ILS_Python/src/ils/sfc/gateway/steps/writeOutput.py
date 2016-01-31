@@ -10,11 +10,11 @@ def activate(scopeContext, stepProperties, deactivate):
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, \
     STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
     from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY
-    import time
-    from ils.sfc.common.util import getMinutesSince, formatTime
+    import system, time
+    from ils.sfc.common.util import formatTime
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getWriteOutputConfig
-    from ils.sfc.gateway.downloads import handleTimer, getTimerStart
+    from ils.sfc.gateway.downloads import handleTimer, getTimerStart, getElapsedMinutes
     from ils.sfc.gateway.recipe import RecipeData
     from ils.sfc.gateway.downloads import writeValue
     from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
@@ -123,6 +123,7 @@ def activate(scopeContext, stepProperties, deactivate):
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             complete = True
         else:
+            print ">>>> Handling the timer <<<<<"
             handleTimer(chartScope, stepScope, stepProperties, logger)
 
         # TODO: start the timer if the block is configured to do so
@@ -135,7 +136,7 @@ def activate(scopeContext, stepProperties, deactivate):
             if timerStart == None:
                 logger.trace("The timer has not been started")
             else:
-                elapsedMinutes = getMinutesSince(timerStart)
+                elapsedMinutes = getElapsedMinutes(timerStart)
                 logger.trace("   the timer start is: %s, the elapsed time is: %.2f" % (str(timerStart), elapsedMinutes))    
                 immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
                 timedRows=stepScope.get(TIMED_ROWS,[])
@@ -154,7 +155,7 @@ def activate(scopeContext, stepProperties, deactivate):
                     # Immediately after the timer starts running we need to calculate the absolute download time.            
                     for row in downloadRows:
                         row.written = False
-            
+                        
                         # write the absolute step timing back to recipe data
                         if row.timingMinutes >= 1000.0:
                             row.outputRD.set(STEP_TIMESTAMP, '')
@@ -162,8 +163,12 @@ def activate(scopeContext, stepProperties, deactivate):
                             # to signal an event-driven step
                             row.outputRD.set(STEP_TIME, None)
                         elif row.timingMinutes > 0 and row.timingMinutes < 1000.0:
-                            absTiming = timerStart + row.timingMinutes * 60.
-                            timestamp = formatTime(absTiming)
+                            from java.util import Calendar
+                            cal = Calendar.getInstance()
+                            cal.setTime(timerStart)
+                            cal.add(Calendar.SECOND, int(row.timingMinutes) * 60)
+                            absTiming = cal.getTime()
+                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
                             row.outputRD.set(STEP_TIMESTAMP, timestamp)
                             row.outputRD.set(STEP_TIME, absTiming)
                         # ?? do we need a timestamp for immediate rows?
