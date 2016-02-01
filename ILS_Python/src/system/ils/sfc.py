@@ -98,14 +98,23 @@ def assertTrue(chartScope, flag, msg):
     that will be evaluated, e.g. assertTrue(chart, step, 3 < 6, 'should be less'). If this is
     not true the test fails immediately.'''
 
-def failTest(chartScope):
+def failTest(chartScope, message):
     '''Fail the test. Typically called when the chart comes to an unhappy ending, e.g. in the
     OnAbort action method of an SFC or in an exception handler.'''
+
+def failTestChart(topChartPath, message):
+    '''Like failTest(), but takes the path of the top-level SFC chart'''
     
 def passTest(chartScope):
     '''Pass the test. Typically called when the chart comes to a happy ending, e.g. in the
     OnStop action method of an SFC.'''
 
+def timeoutRunningTests():
+    '''fail any tests still running with a timeout error'''
+
+def testsAreRunning():
+    '''return if any tests are still running'''
+        
 def reportTests():
     '''Print out a report on the current batch of tests, including those in progress. Calling
     this is not necessary, as the report will be automatically produced when the last test is

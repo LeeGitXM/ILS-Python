@@ -96,11 +96,11 @@ def escapeSingleQuotes(msg):
 
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.constants import MESSAGE
-    from  ils.sfc.gateway.api import sendMessageToClient, getProject
+    from  ils.sfc.gateway.api import cancelChart, getProject
     import sys
     '''
     Report an unexpected error so that it is visible to the operator--
-    e.g. put in a message queue
+    e.g. put in a message queue. Then cancel the chart.
     '''
     try:
         # try to get the cause
@@ -120,6 +120,7 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
         traceback.print_tb(sys.last_traceback)
     except:
         pass
+    cancelChart(chartScope)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()

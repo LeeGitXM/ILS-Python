@@ -56,27 +56,15 @@ def sfcCloseWindow(payload):
 def sfcRunTests(payload):
     '''Run test charts'''
     from ils.sfc.common.constants import TEST_REPORT_FILE, TEST_PATTERN, \
-    ISOLATION_MODE, PROJECT, USER
-    from system.ils.sfc import getMatchingCharts, getDatabaseName
-    from ils.sfc.common.util import startChart
-    import system.ils.sfc, system.db
+    ISOLATION_MODE, PROJECT, USER, TIMEOUT
+    from ils.sfc.gateway.test import runTests
     originator = payload[USER]
     isolationMode = payload[ISOLATION_MODE]
     project = payload[PROJECT]
     reportFile = payload[TEST_REPORT_FILE]
     testPattern = payload[TEST_PATTERN]
-    testCharts = getMatchingCharts(testPattern)
-    system.ils.sfc.initializeTests(reportFile)
-    database = getDatabaseName(isolationMode)
-    system.db.runUpdateQuery("SET IDENTITY_INSERT SfcControlPanel ON")
-    system.db.runUpdateQuery("delete from SfcControlPanel where controlPanelId < 0")
-    controlPanelId = -1
-    for chartPath in testCharts:
-        system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelId, controlPanelName, chartPath) values (%d, '%s', '%s')" % (controlPanelId, chartPath, chartPath), database)
-        print 'starting test', chartPath
-        startChart(chartPath, controlPanelId, project, originator, isolationMode)
-        controlPanelId -= 1
-    system.db.runUpdateQuery("delete from SfcControlPanel where controlPanelId < 0")
+    timeoutSecs = payload[TIMEOUT]
+    runTests(originator, isolationMode, project, reportFile, testPattern, timeoutSecs)
          
 def sfcReportTests(payload):
     import system.ils.sfc
@@ -84,6 +72,6 @@ def sfcReportTests(payload):
     
 def sfcFailTest(payload):
     '''this is a message handler'''
-    from system.ils.sfc import failTest
     from ils.sfc.common.constants import CHART_NAME, MESSAGE
-    failTest(payload[CHART_NAME], payload[MESSAGE])
+    import system.ils.sfc
+    system.ils.sfc.failTestChart(payload[CHART_NAME], payload[MESSAGE])
