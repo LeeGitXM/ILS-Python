@@ -117,7 +117,9 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     sendMessageToClient(project, 'sfcUnexpectedError', payload)
     try:
         import traceback
-        traceback.print_tb(sys.last_traceback)
+#        traceback.print_tb(sys.last_traceback)
+        # This seems to print something more useful.... (Pete)
+        print traceback.format_exc()
     except:
         pass
     cancelChart(chartScope)

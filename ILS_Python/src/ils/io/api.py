@@ -66,18 +66,21 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
 
 # Given an OUTPUT recipe data, which generally specifies a write target, get the monitor target.  For example,
 # if the recipe data points to a controller, we generally write to the SP and then monitor the PV. 
-def getMonitoredTagPath(outputRecipeData, tagProvider):
+def getMonitoredTagPath(recipeData, tagProvider):
     from ils.sfc.common.constants import TAG_PATH, VALUE_TYPE, SETPOINT, VALUE
 
-    tagPath = outputRecipeData.get(TAG_PATH)
+    tagPath = recipeData.get(TAG_PATH)
     tagPath = "[" + tagProvider + "]" + tagPath
     
-    valueType = outputRecipeData.get(VALUE_TYPE)
+    valueType = recipeData.get(VALUE_TYPE)
     
     if valueType in [SETPOINT, VALUE]:
         tagPath = tagPath + "/value"
+    elif valueType == "float":
+        tagPath = tagPath
     else:
-        print "Unexpected valueType <%s>" % (valueType)
+        # this is the default path for just a plain old tag
+        tagPath = tagPath + "/value"
 
     log.trace("The monitored tag path for valuetype <%s> is: %s" % (valueType, tagPath))
     return tagPath

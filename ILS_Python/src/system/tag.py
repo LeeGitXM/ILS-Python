@@ -21,11 +21,20 @@ def exists(tagPath):
 def getAttribute(tagPath, attr):
     return ""
 
+def getTagValue(tagPath):
+    return ""
+    
+def queryTagHistory():
+    pass
+
 def read(tagPath):
     return 0.0
 
 def readAll(paths):
     return []
+
+def removeTag(path):
+    pass
 
 def removeTags(paths):
     return []
@@ -42,8 +51,5 @@ def writeAllSynchronous(tagPath, value):
 def writeAll(tags, vals):
     return True
 
-def queryTagHistory():
-    pass
-
-def removeTag(path):
-    pass
+def writeToTag(tagpath, vals):
+    return True

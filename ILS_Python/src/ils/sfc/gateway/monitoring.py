@@ -42,7 +42,9 @@ class MonitoringMgr:
         self.providerName = _providerName
         isolationMode = getIsolationMode(_chartScope)
 
+        print "Configuring the monitor manager..."
         for row in _config.rows:
+            print "Row: ", row
             self.monitoringInfos.append(MonitoringInfo(_chartScope, _stepScope, _recipeLocation, row, isolationMode))
             #key, labelAttribute, units
     
@@ -69,7 +71,7 @@ class MonitoringMgr:
         from ils.sfc.common.constants import INSTANCE_ID, UNITS
         import time
         
-#        print "In monitoring.sendClientUpdate()..."
+        print "In monitoring.sendClientUpdate()..."
 
         # the meaning of the columns:
         #header = ['RawTiming', 'Timing', 'DCS Tag ID', 'Setpoint', 'Description', 'Step Time', 'PV', 'setpointColor', 'stepTimeColor', 'pvColor']    

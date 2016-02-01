@@ -15,7 +15,7 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
     from ils.sfc.gateway.util import getStepProperty
     from ils.sfc.gateway.recipe import getSiblingKey
     from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY, TIMER_SET, TIMER_CLEAR, DATA_ID
-    import time
+    from java.util import Date
     from ils.sfc.gateway.recipe import RecipeData, splitKey
     
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
@@ -35,11 +35,11 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
     if setTimer:
         # print 'starting timer'
         logger.info("Setting the download timer...")
-        startTime = time.time()
-        timer.set(timerAttribute, startTime)
+        timer.set(timerAttribute, Date())
 
     return timer, timerAttribute
 
+# The timer start time is read from a date time tag (recipe data)
 def getTimerStart(chartScope, stepScope, stepProperties):
     '''get the start time for a timer (will be None if cleared but not set)'''
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
@@ -55,6 +55,13 @@ def getTimerStart(chartScope, stepScope, stepProperties):
     #   handleUnexpectedGatewayError(chartScope, "download timer read before set or cleared; stale value")
     
     return timerStart
+
+# This returns the elapsed time in minutes from the given Java time (milliseconds sine the epoch)
+def getElapsedMinutes(startTime):
+    from java.util import Date
+    now=Date()
+    elapsedMinutes = (now.getTime() - startTime.getTime()) / 1000.0 / 60.0
+    return elapsedMinutes
 
 def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
     '''Wait until the i/o timer shows a non-null value'''
@@ -92,6 +99,7 @@ def writeValue(chartScope, config, logger, providerName):
         valueType = config.outputRD.get(VALUE_TYPE)
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, valueType,str(config.confirmWrite)))
         
+        print "---- setting status to downloading ----"
         config.outputRD.set(DOWNLOAD_STATUS, STEP_DOWNLOADING)
         writeStatus, txt = write(tagPath, config.value, config.confirmWrite, valueType)
         logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
@@ -101,8 +109,10 @@ def writeValue(chartScope, config, logger, providerName):
             config.outputRD.set(WRITE_CONFIRMED, writeStatus)
     
         if writeStatus:
+            print "---- setting status to SUCCESS ----"
             config.outputRD.set(DOWNLOAD_STATUS, STEP_SUCCESS)
         else:
+            print "---- setting status to FAILURE ----"
             config.outputRD.set(DOWNLOAD_STATUS, STEP_FAILURE)
     
         queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)

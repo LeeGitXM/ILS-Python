@@ -25,6 +25,9 @@ def setValue(dataset, row, columnIndexOrName, val):
 def sort(dataset, key, order="Asc"):
     return dataset
 
+def toCSV(ds, True, False, False):
+    return ""
+
 def toPyDataSet(dataset):
     return True
 
