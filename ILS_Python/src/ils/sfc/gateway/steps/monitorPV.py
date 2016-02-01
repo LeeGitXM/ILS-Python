@@ -18,7 +18,8 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.common.constants import NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
     STEP_SUCCESS, STEP_FAILURE, SLEEP_INCREMENT
-    
+    import time
+    from ils.sfc.common.util import getMinutesSince
     from java.util import Date 
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getProviderName, getPVMonitorConfig
@@ -76,12 +77,10 @@ def activate(scopeContext, stepProperties, deactivate):
                 pvRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
                 targetType = configRow.targetType
                 if targetType == SETPOINT:
-                    print "A"
                     targetRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
                     targetRd.set(PV_MONITOR_STATUS, PV_MONITORING)
                     targetRd.set(SETPOINT_STATUS, SETPOINT_OK)
                     targetRd.set(PV_MONITOR_ACTIVE, True)
-                    print "B"
                     targetRd.set("advice", "Take two advil and call me in the morning")
                     targetRd.set(PV_VALUE, None)
                     dataType = targetRd.get(CLASS)
@@ -92,7 +91,7 @@ def activate(scopeContext, stepProperties, deactivate):
                 configRow.isDownloaded = False
                 configRow.persistenceOK = False
                 configRow.inToleranceTime = 0
-                configRow.outToleranceTime = Date()
+                configRow.outToleranceTime = time.time()
                 monitorActiveCount = monitorActiveCount + 1
                 
                 if configRow.persistence > maxPersistence:
@@ -137,12 +136,11 @@ def activate(scopeContext, stepProperties, deactivate):
             logger.trace("   PV Monitor time limit strategy: %s - minutes: %s" % (durationStrategy, str(timeLimitMin)))
                 
             config = stepScope[PV_MONITOR_CONFIG]
-            print "Using configuration: ", config
         
             # Monitor for the specified period, possibly extended by persistence time
             timerStart=getTimerStart(chartScope, stepScope, stepProperties)
+            print "The timer start is: %s" % (str(timerStart))
             elapsedMinutes = getElapsedMinutes(timerStart)
-#            startTime = time.time()
 
             persistencePending = stepScope[PERSISTENCE_PENDING]
             monitorActiveCount = stepScope[MONITOR_ACTIVE_COUNT]
@@ -199,8 +197,7 @@ def activate(scopeContext, stepProperties, deactivate):
 
                     pv=qv.value
                     rd.set(PV_VALUE, pv)
-                    print "...writing ", pv, " to the PV to the pvValue of the OUTPUT recipe data..."
-        
+
                     # If we are configured to wait for the download and it hasn't been downloaded, then don't start to monitor
                     if configRow.download == WAIT and not configRow.isDownloaded:
                         logger.trace('   skipping because this output is designated to wait for a download and it has not been downloaded')
@@ -224,9 +221,9 @@ def activate(scopeContext, stepProperties, deactivate):
                         configRow.outToleranceTime = 0
                         isConsistentlyOutOfTolerance = False
                         if configRow.inToleranceTime != 0:
-                            isPersistent = getElapsedMinutes(configRow.inToleranceTime) > configRow.persistence                    
+                            isPersistent = getMinutesSince(configRow.inToleranceTime) > configRow.persistence                    
                         else:
-                            configRow.inToleranceTime = Date()
+                            configRow.inToleranceTime = time.time()
                             if configRow.persistence > 0.0:
                                 isPersistent = False
                             else:
@@ -235,18 +232,19 @@ def activate(scopeContext, stepProperties, deactivate):
                         configRow.inToleranceTime = 0
                         isPersistent = False
                         if configRow.outToleranceTime != 0:
-                            isConsistentlyOutOfTolerance = getElapsedMinutes(configRow.outToleranceTime) > configRow.consistency
+                            isConsistentlyOutOfTolerance = getMinutesSince(configRow.outToleranceTime) > configRow.consistency
                         else:
                             isConsistentlyOutOfTolerance = False
-                            configRow.outToleranceTime = Date()  
+                            configRow.outToleranceTime = time.time()  
                             
                     # check dead time - assume that immediate writes coincide with starting the timer.      
                     if configRow.download == IMMEDIATE:
-                        referenceTime = timerStart
+                        referenceTime = timerStart / 1000.0
                     else:
                         referenceTime = configRow.downloadTime
 
-                    deadTimeExceeded = getElapsedMinutes(referenceTime) > configRow.deadTime 
+                    print "The minutes since the reference time is: %s (The reference time is: %s)" % (str(getMinutesSince(referenceTime)), str(referenceTime))
+                    deadTimeExceeded = getMinutesSince(referenceTime) > configRow.deadTime 
                     # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
                     # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
                     # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
@@ -274,6 +272,7 @@ def activate(scopeContext, stepProperties, deactivate):
                     logger.trace("  Status: %s" % configRow.status)  
                     rd.set(PV_MONITOR_STATUS, configRow.status)        
             
+            logger.trace("Checking end conditions...")
             if monitorActiveCount == 0:
                 logger.info("The PV monitor is finished because there is nothing left to monitor...")
                 complete = True
@@ -285,11 +284,18 @@ def activate(scopeContext, stepProperties, deactivate):
                 
                 numTimeouts = 0
                 for configRow in config.rows:
-                    rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+                    
+                    targetType = configRow.targetType
+                    if targetType == SETPOINT:
+                        rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
+                    else:
+                        rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+
                     if configRow.status == PV_ERROR:
+                        print "...counting a timeout..."
                         numTimeouts = numTimeouts + 1
-                        configRow.status = TIMEOUT
-                        rd.set(PV_MONITOR_STATUS, configRow.status)
+                        
+                    print "Setting monitor active to false"
                     rd.set(PV_MONITOR_ACTIVE, False)
                 stepScope[NUMBER_OF_TIMEOUTS] = numTimeouts
                 logger.info("...there were %i PV monitoring timeouts " % (numTimeouts))
@@ -303,7 +309,5 @@ def activate(scopeContext, stepProperties, deactivate):
     finally:
         # do cleanup here
         pass
-
-    print "Returning complete = ", complete
         
     return complete

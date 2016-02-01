@@ -39,6 +39,7 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
 
     return timer, timerAttribute
 
+# The timer start time is read from a date time tag (recipe data)
 def getTimerStart(chartScope, stepScope, stepProperties):
     '''get the start time for a timer (will be None if cleared but not set)'''
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
@@ -55,6 +56,7 @@ def getTimerStart(chartScope, stepScope, stepProperties):
     
     return timerStart
 
+# This returns the elapsed time in minutes from the given Java time (milliseconds sine the epoch)
 def getElapsedMinutes(startTime):
     from java.util import Date
     now=Date()

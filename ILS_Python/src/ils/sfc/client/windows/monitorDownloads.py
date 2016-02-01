@@ -43,10 +43,10 @@ def update(rootContainer):
         updateWindowState(windowId, database)    
     
     else:
-        # If the database was updated less than 10 seconds ago, then skip the update.  This is useful
+        # If the database was just updated, then skip the update.  This is useful
         # if there are two or more client watching the same download GUI - they don't both need to do 
         # the work of reading tags and updating the database. 
-        if elapsedSeconds > 10.0:
+        if elapsedSeconds > 1.5:
             updateDatabaseTable(windowId, database)
             updateWindowState(windowId, database) 
     
@@ -113,7 +113,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
         tagPaths.append(recipeDataPath + '/guiUnits')
         
         tagValues=system.tag.readAll(tagPaths)
-        timing = tagValues[0].value
+        rawTiming = tagValues[0].value
         tagPath = tagValues[1].value
         setpoint = tagValues[2].value
         downloadStatus = tagValues[3].value
@@ -127,6 +127,11 @@ def initializeDatabaseTable(windowId, database, tagProvider):
         valueType = tagValues[10].value
         units = tagValues[11].value
         guiUnits = tagValues[12].value
+        
+        if rawTiming >=1000.0:
+            timing = "NULL"
+        else:
+            timing = rawTiming
             
         if pvValue == None:
             formattedPV = ""
@@ -145,7 +150,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
         SQL = "update SfcDownloadGUITable set RawTiming=%s, Timing=%s, DcsTagId='%s', SetPoint='%s', PV='%s'," \
             "StepTimestamp='%s', DownloadStatus='%s', PVMonitorStatus='%s', SetpointStatus='%s', " \
             "Description = '%s' where windowId = '%s' and RecipeDataPath = '%s'  " % \
-            (str(timing), str(timing), displayName, str(setpoint), formattedPV, \
+            (str(rawTiming), str(timing), displayName, str(setpoint), formattedPV, \
              stepTimestamp, str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
              description, windowId, recipeDataPath)
 
@@ -173,7 +178,6 @@ def updateDatabaseTable(windowId, database):
         tagPaths.append(recipeDataPath + '/pvMonitorActive')
         tagPaths.append(recipeDataPath + '/setpointStatus')
         tagPaths.append(recipeDataPath + '/pvValue')
-        tagPaths.append(recipeDataPath + '/timing')
         tagPaths.append(recipeDataPath + '/stepTimestamp')
         
         tagValues=system.tag.readAll(tagPaths)
@@ -184,8 +188,7 @@ def updateDatabaseTable(windowId, database):
         setpointStatus = tagValues[3].value
         pvValue = tagValues[4].value
         pvQuality = tagValues[4].quality
-        timing = tagValues[5].value
-        stepTimestamp = tagValues[6].value
+        stepTimestamp = tagValues[5].value
         
         if pvValue == None:
             formattedPV = ""
@@ -195,10 +198,10 @@ def updateDatabaseTable(windowId, database):
             formattedPV = "%.2f*" % pvValue
 
         SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
-            "SetpointStatus='%s', Timing=%s, StepTimestamp='%s' "\
+            "SetpointStatus='%s', StepTimestamp='%s' "\
             "where windowId = '%s' and RecipeDataPath = '%s' " % \
             (str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
-             str(timing), stepTimestamp, windowId, recipeDataPath)
+             stepTimestamp, windowId, recipeDataPath)
 
         system.db.runUpdateQuery(SQL, database)
    

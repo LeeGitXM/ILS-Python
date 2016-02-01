@@ -11,6 +11,7 @@ def activate(scopeContext, stepProperties, deactivate):
     STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
     from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY
     import system, time
+    from java.util import Date
     from ils.sfc.common.util import formatTime
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getWriteOutputConfig
@@ -158,21 +159,33 @@ def activate(scopeContext, stepProperties, deactivate):
                         
                         # write the absolute step timing back to recipe data
                         if row.timingMinutes >= 1000.0:
+                            # Final writes
                             row.outputRD.set(STEP_TIMESTAMP, '')
                             # I don't want to propagate the magic 1000 value, so we use None
                             # to signal an event-driven step
                             row.outputRD.set(STEP_TIME, None)
+                            
                         elif row.timingMinutes > 0 and row.timingMinutes < 1000.0:
+                            # Timed writes
                             from java.util import Calendar
                             cal = Calendar.getInstance()
                             cal.setTime(timerStart)
-                            cal.add(Calendar.SECOND, int(row.timingMinutes) * 60)
+                            cal.add(Calendar.SECOND, int(row.timingMinutes * 60))
                             absTiming = cal.getTime()
                             timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
                             row.outputRD.set(STEP_TIMESTAMP, timestamp)
                             row.outputRD.set(STEP_TIME, absTiming)
-                        # ?? do we need a timestamp for immediate rows?
-            
+                        
+                        else:
+                            # Immediate writes
+                            from java.util import Calendar
+                            cal = Calendar.getInstance()
+                            cal.setTime(timerStart)
+                            absTiming = cal.getTime()
+                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
+                            row.outputRD.set(STEP_TIMESTAMP, timestamp)
+                            row.outputRD.set(STEP_TIME, absTiming)
+
                     logger.trace("...performing immediate writes...")
                     for row in immediateRows:
 #                        row.outputRD.set("setpointStatus", "downloading")
@@ -203,8 +216,8 @@ def activate(scopeContext, stepProperties, deactivate):
                     logger.trace("...starting final writes...")
                     for row in finalRows:
                         logger.trace("   writing a final write for step %s" % (row.key))
-                        absTiming = time.time()
-                        timestamp = formatTime(absTiming)
+                        absTiming = Date()
+                        timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
                         row.outputRD.set(STEP_TIMESTAMP, timestamp)
                         row.outputRD.set(STEP_TIME, absTiming)
 #                        row.outputRD.set("setpointStatus", "downloading")
