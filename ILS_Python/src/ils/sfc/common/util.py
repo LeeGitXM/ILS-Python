@@ -150,3 +150,25 @@ def isString(value):
 def escapeSqlQuotes(string):
     return string.replace("'", "''")
 
+def getChartStatus(runId):
+    '''Get the status of a running chart. Returns None if the run is not found'''
+    from system.sfc import getRunningCharts
+    runningCharts = getRunningCharts()
+    status = None
+    for row in range(runningCharts.rowCount):
+        rowRunId = runningCharts.getValueAt(row, 'instanceId')
+        if rowRunId == runId:
+            chartState = runningCharts.getValueAt(row, 'chartState')
+            status = str(chartState)
+    return status
+
+def chartIsRunning(chartPath):
+    '''Check if the given chart is running. '''
+    from system.sfc import getRunningCharts
+    runningCharts = getRunningCharts()
+    for row in range(runningCharts.rowCount):
+        if chartPath == runningCharts.getValueAt(row, 'chartPath'):
+            chartState = runningCharts.getValueAt(row, 'chartState')
+            if not chartState.isTerminal():
+                return True
+    return False

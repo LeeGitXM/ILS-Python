@@ -94,7 +94,6 @@ def openDbWindow(windowId):
     import system.nav, system.security
     from ils.sfc.client.util import getDatabase
     from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
-    print "in openDbWindow() with ", windowId
     existingWindow = getOpenWindow(windowId)
     if existingWindow != None:
         print "Bringing an open window to the front..."
@@ -103,7 +102,6 @@ def openDbWindow(windowId):
     
     database = getDatabase()
     SQL = "select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId)
-    print SQL
     pyWindowData = system.db.runQuery(SQL, database)
     if len(pyWindowData) == 0:
         # window closed already; ignore
@@ -121,7 +119,6 @@ def openDbWindow(windowId):
     position = pyWindowData[0][POSITION]
     scale = pyWindowData[0][SCALE]
     title = pyWindowData[0]['title']
-    print "opening a window instance"
     window = system.nav.openWindowInstance(windowType, {WINDOW_ID:windowId})
     window.title = title
     positionWindow(window, position, scale)
