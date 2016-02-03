@@ -93,15 +93,15 @@ def writeValue(chartScope, config, logger, providerName):
         from ils.sfc.gateway.util import queueMessage
         from ils.sfc.common.constants import MSG_STATUS_INFO
         from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE
-        from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT,  WRITE_CONFIRMED, SUCCESS, FAILURE
+        from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT,  WRITE_CONFIRMED, SUCCESS, FAILURE
     
         tagPath = "[%s]%s" % (providerName, config.tagPath)
-        valueType = config.outputRD.get(VALUE_TYPE)
-        logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, valueType,str(config.confirmWrite)))
+        outputType = config.outputRD.get(OUTPUT_TYPE)
+        logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, outputType,str(config.confirmWrite)))
         
         logger.trace("---- setting status to downloading ----")
         config.outputRD.set(DOWNLOAD_STATUS, STEP_DOWNLOADING)
-        writeStatus, txt = write(tagPath, config.value, config.confirmWrite, valueType)
+        writeStatus, txt = write(tagPath, config.value, config.confirmWrite, outputType)
         logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
         config.written = True
     
