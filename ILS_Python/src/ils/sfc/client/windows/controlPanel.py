@@ -6,6 +6,7 @@ Created on Dec 9, 2015
 from system.gui import getParentWindow
 
 controlPanelWindowPath = 'SFC/ControlPanel'
+sfcWindowPrefix = 'SFC/'
 
 def openControlPanel(controlPanelId, startImmediately):
     import system.nav
@@ -78,7 +79,8 @@ def closeAllPopups():
     import system.gui, system.nav
     from ils.sfc.client.windowUtil import getWindowPath
     for window in system.gui.getOpenedWindows():
-        if getWindowPath(window) != controlPanelWindowPath:
+        windowPath = getWindowPath(window)
+        if windowPath.startswith(sfcWindowPrefix) and windowPath != controlPanelWindowPath:
             system.nav.closeWindow(window)
        
 def resetDb(controlPanelId):
