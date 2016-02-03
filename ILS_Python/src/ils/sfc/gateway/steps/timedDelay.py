@@ -33,8 +33,7 @@ def activate(scopeContext, stepProperties, deactivate):
         workIsDone = False
         
         if endTimeEpochSecs == None:
-            print 'first time--initializing'
-            chartLogger.trace("Executing TimedDelay block")
+            chartLogger.trace("Executing TimedDelay block - First time initialization")
             stepId = getStepId(stepProperties) 
             timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
             if timeDelayStrategy == STATIC:
@@ -59,7 +58,6 @@ def activate(scopeContext, stepProperties, deactivate):
             unscaledDelaySeconds=delaySeconds
             timeFactor = getTimeFactor(chartScope)
             delaySeconds = delaySeconds * timeFactor
-            print 'delaySeconds', delaySeconds
             chartLogger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
             startTimeEpochSecs = time.time()
             endTimeEpochSecs = startTimeEpochSecs + delaySeconds
@@ -80,10 +78,10 @@ def activate(scopeContext, stepProperties, deactivate):
                 if numInserted == 0:
                     handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
                 sendOpenWindow(chartScope, windowId, stepId, database)
-        else:    
+        else:
+            chartLogger.trace("Executing TimedDelay block - working...")
             secondsLeft = endTimeEpochSecs - time.time()
             sleepSeconds = max(0, min(secondsLeft, 5))
-            print 'sleeping for 5 secs'
             time.sleep(sleepSeconds)
             workIsDone = sleepSeconds >= secondsLeft
     except:
@@ -92,7 +90,6 @@ def activate(scopeContext, stepProperties, deactivate):
     finally:
         if workIsDone:
             cleanup(chartScope, stepScope, stepProperties)
-        print 'workIsDone', workIsDone
         return workIsDone
         
 def cleanup(chartScope, stepScope, stepProperties):
