@@ -99,7 +99,7 @@ def writeValue(chartScope, config, logger, providerName):
         valueType = config.outputRD.get(VALUE_TYPE)
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, valueType,str(config.confirmWrite)))
         
-        print "---- setting status to downloading ----"
+        logger.trace("---- setting status to downloading ----")
         config.outputRD.set(DOWNLOAD_STATUS, STEP_DOWNLOADING)
         writeStatus, txt = write(tagPath, config.value, config.confirmWrite, valueType)
         logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
@@ -109,39 +109,16 @@ def writeValue(chartScope, config, logger, providerName):
             config.outputRD.set(WRITE_CONFIRMED, writeStatus)
     
         if writeStatus:
-            print "---- setting status to SUCCESS ----"
+            logger.trace("---- setting status to SUCCESS ----")
             config.outputRD.set(DOWNLOAD_STATUS, STEP_SUCCESS)
         else:
-            print "---- setting status to FAILURE ----"
+            logger.trace("---- setting status to FAILURE ----")
             config.outputRD.set(DOWNLOAD_STATUS, STEP_FAILURE)
     
         queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)
     #----------------------------------------------------------------------------------------------------
     system.util.invokeAsynchronous(_writeValue)
 
-
-def writeOutputOriginal(chartScope, config, verbose, logger):
-    '''write an output value'''
-    from ils.sfc.gateway.util import queueMessage
-    from ils.sfc.common.constants import MSG_STATUS_INFO
-    from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, VALUE_TYPE, SETPOINT
-
-    logger.trace("writing %s to %s" % (config.value, config.tagPath))
-    print "Config: ", config
-    valueType = config.outputRD.get(VALUE_TYPE)
-    if valueType == SETPOINT:
-        config.io.setSetpoint(config.value)
-    else:
-        config.io.setCurrentValue(config.value)
-    config.written = True
-    if config.confirmWrite:
-        config.outputRD.set(DOWNLOAD_STATUS, PENDING)
-        confirmWrite(chartScope, config, logger)
-    else:
-        config.outputRD.set(DOWNLOAD_STATUS, PENDING)
-
-    if verbose:
-        queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value), MSG_STATUS_INFO)
 
 def confirmWrite(chartScope, config, logger):
     '''confirms the write on a separate thread and writes the result back to recipe data'''
