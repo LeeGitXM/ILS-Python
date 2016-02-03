@@ -170,15 +170,9 @@ def calculateFinalRecommendation(quantOutput):
     log.trace("  The recommendation after combining multiple recommendations but before bounds checking) is: %f" % (finalRecommendation))
     return quantOutput
 
-def test(applicationName, familyName, finalDiagnosisName, database="", provider=""):
-    SQL = "select CalculationMethod "\
-        "from DtFinalDiagnosisView "\
-        "where ApplicationName = '%s' "\
-        "  and FamilyName = '%s' "\
-        "  and FinalDiagnosisName = '%s'" % (applicationName, familyName, finalDiagnosisName)
-    print SQL
-    calculationMethod = system.db.runScalarQuery(SQL, database)
-    print "Using calculation method: <%s>" % (calculationMethod)
+def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):
+
+    print "Testing %s - %s" % (finalDiagnosisName, calculationMethod)
     
     if string.upper(calculationMethod) == "CONSTANT":
         print "Bypassing calculations for a CONSTANT calculation method!"
@@ -203,4 +197,4 @@ def test(applicationName, familyName, finalDiagnosisName, database="", provider=
     else:
         print "Recommendations: ", rawRecommendationList
 
-    return
+    return rawRecommendationList
