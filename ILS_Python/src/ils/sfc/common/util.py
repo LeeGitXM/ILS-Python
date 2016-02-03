@@ -5,10 +5,8 @@ Created on Nov 3, 2014
 '''
 import system
 
-from ils.sfc.common.constants import PARENT, INSTANCE_ID, RECIPE_DATA, PROJECT
-
 def startChart(chartPath, controlPanelId, project, originator, isolationMode):
-    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID
+    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, PROJECT
     initialChartParams = dict()
     initialChartParams[PROJECT] = project
     initialChartParams[ISOLATION_MODE] = isolationMode
@@ -19,9 +17,8 @@ def startChart(chartPath, controlPanelId, project, originator, isolationMode):
     else:
         isolationFlag = 0
     updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %d" % (runId, originator, project, isolationFlag, controlPanelId)
-    numUpdated = system.db.runUpdateQuery(updateSql)
-    if numUpdated == 0:
-        system.gui.messageBox("Failed to updated SfcControlPanel with chart start info")
+    system.db.runUpdateQuery(updateSql)
+    return runId
 
 def readFile(filepath):
     '''
@@ -152,3 +149,26 @@ def isString(value):
 
 def escapeSqlQuotes(string):
     return string.replace("'", "''")
+
+def getChartStatus(runId):
+    '''Get the status of a running chart. Returns None if the run is not found'''
+    from system.sfc import getRunningCharts
+    runningCharts = getRunningCharts()
+    status = None
+    for row in range(runningCharts.rowCount):
+        rowRunId = runningCharts.getValueAt(row, 'instanceId')
+        if rowRunId == runId:
+            chartState = runningCharts.getValueAt(row, 'chartState')
+            status = str(chartState)
+    return status
+
+def chartIsRunning(chartPath):
+    '''Check if the given chart is running. '''
+    from system.sfc import getRunningCharts
+    runningCharts = getRunningCharts()
+    for row in range(runningCharts.rowCount):
+        if chartPath == runningCharts.getValueAt(row, 'chartPath'):
+            chartState = runningCharts.getValueAt(row, 'chartState')
+            if not chartState.isTerminal():
+                return True
+    return False

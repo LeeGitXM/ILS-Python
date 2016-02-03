@@ -122,19 +122,7 @@ def openWindow(windowId, window):
     from ils.sfc.common.constants import WINDOW_ID
     windowProps = {WINDOW_ID:windowId}
     system.nav.openWindow(window, windowProps)
-    
-def getChartStatus(runId):
-    '''Get the status of a running chart. Returns None if the run is not found'''
-    from system.sfc import getRunningCharts
-    runningCharts = getRunningCharts()
-    status = 'None'
-    for row in range(runningCharts.rowCount):
-        rowRunId = runningCharts.getValueAt(row, 'instanceId')
-        if rowRunId == runId:
-            chartState = runningCharts.getValueAt(row, 'chartState')
-            status = str(chartState)
-    return status
-
+        
 def getStartInIsolationMode():
     '''Get the client-side flag that indicates whether to start charts in isolation mode.
        CAUTION: this does not relate to any particular chart run and is only meaningful
@@ -154,5 +142,6 @@ def sendMessageToGateway(project, handler, payload):
     from ils.sfc.common.constants import HANDLER
     from system.util import sendMessage
     payload[HANDLER] = handler
-    print 'sending msg', handler
+    # print 'sending msg', handler
     sendMessage(project, 'sfcMessage', payload, "G")
+    
