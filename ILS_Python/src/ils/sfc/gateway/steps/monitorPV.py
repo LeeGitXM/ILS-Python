@@ -40,8 +40,7 @@ def activate(scopeContext, stepProperties, deactivate):
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         
         logger = getChartLogger(chartScope)
-        logger.trace("+++++++++++++++++++++++++++")
-        logger.info("In monitorPV.activate()...")
+        logger.trace("In monitorPV.activate()...")
         
         # Everything will have the same tag provider - check isolation mode and get the provider
         isolationMode = getIsolationMode(chartScope)
@@ -79,7 +78,6 @@ def activate(scopeContext, stepProperties, deactivate):
                     targetRd.set(PV_MONITOR_STATUS, PV_MONITORING)
                     targetRd.set(SETPOINT_STATUS, SETPOINT_OK)
                     targetRd.set(PV_MONITOR_ACTIVE, True)
-                    targetRd.set("advice", "Take two advil and call me in the morning")
                     targetRd.set(PV_VALUE, None)
                     dataType = targetRd.get(CLASS)
                     configRow.isOutput = (dataType == 'Output')
@@ -111,12 +109,11 @@ def activate(scopeContext, stepProperties, deactivate):
                 logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
 
             # Put the initialized config data back into step scope for the next iteration
-            print "stashing configuration: ", config
+
             stepScope[PV_MONITOR_CONFIG] = config
             stepScope[MONITOR_ACTIVE_COUNT] = monitorActiveCount
             stepScope[PERSISTENCE_PENDING] = False
             stepScope[MAX_PERSISTENCE] = maxPersistence
-            print "The initialized configuration is: ", config
             
             handleTimer(chartScope, stepScope, stepProperties, logger)
         

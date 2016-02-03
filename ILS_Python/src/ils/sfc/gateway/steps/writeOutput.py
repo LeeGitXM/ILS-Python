@@ -36,7 +36,6 @@ def activate(scopeContext, stepProperties, deactivate):
     providerName = getProviderName(isolationMode)
         
     logger = getChartLogger(chartScope)
-    logger.trace("--------------------")
     logger.trace("In writeOutput.activate() (deactivate: %s)..." % (deactivate))
     
     # This does not initially exist in the step scope dictionary, so we will get a value of False
@@ -46,8 +45,6 @@ def activate(scopeContext, stepProperties, deactivate):
         complete=True
         
     elif not initialized:
-        print "*** Initialize the Write Output data ****"
-
         stepScope[INITIALIZED]=True
         logger.info("Initializing a Write Output block")
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
@@ -124,10 +121,7 @@ def activate(scopeContext, stepProperties, deactivate):
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             complete = True
         else:
-            print ">>>> Handling the timer <<<<<"
             handleTimer(chartScope, stepScope, stepProperties, logger)
-
-        # TODO: start the timer if the block is configured to do so
 
     else:
         logger.trace("...performing write output work...")
@@ -236,6 +230,5 @@ def activate(scopeContext, stepProperties, deactivate):
             pass
 
     logger.trace("leaving writeOutput.activate(), complete=%s..." % (str(complete)))    
-    logger.trace("--------------------")    
         
     return complete
