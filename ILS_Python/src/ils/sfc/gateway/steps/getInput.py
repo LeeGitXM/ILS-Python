@@ -16,4 +16,4 @@ def activate(scopeContext, stepProperties, deactivate):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
     if isEmpty(buttonLabel):
         buttonLabel = 'Input'
-    return commonInput.activate(scopeContext, stepProperties, buttonLabel, 'SFC/Input')
+    return commonInput.activate(scopeContext, stepProperties, deactivate, buttonLabel, 'SFC/Input')
