@@ -67,7 +67,6 @@ def write(tagPath, command):
 
         # This requires that I explicitly import everything up above
         cmd = "ils.io." + pythonClass + "('"+parentTagPath+"')"
-        print "***", cmd
         log.trace("Creating a tag object using: <%s>" % (cmd))
         tag = eval(cmd)
             

@@ -18,7 +18,6 @@ class PKSController(controller.Controller):
     def reset(self):
         success = True
         errorMessage = ""
-        print "resetting a PKS controller"
         log.trace('Resetting a PKSController...')       
         
         system.tag.write(self.path + '/command', '')
@@ -160,10 +159,10 @@ class PKSController(controller.Controller):
 
     # Perform a really basic check of the configuration of a tag
     def checkConfig(self, tagRoot):
-        print "In pkscontroller.checkConfig, checking %s" % (tagRoot)
+        log.trace("In pkscontroller.checkConfig, checking %s" % (tagRoot))
         
         itemPath = system.tag.getAttribute(tagRoot, "OPCItemPath")
-        print "OPCItemPath: ", str(itemPath)
+
         if itemPath == "":
             return False, "%s OPCItemPath is not configured" % (tagRoot)
         

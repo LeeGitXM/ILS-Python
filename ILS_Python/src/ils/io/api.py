@@ -64,25 +64,25 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
 
     return success, errorMessage
 
-# Given an OUTPUT recipe data, which generally specifies a write target, get the monitor target.  For example,
-# if the recipe data points to a controller, we generally write to the SP and then monitor the PV. 
+# Given an recipe data specified by the PV Key of the PV monitoring blocks config data, figure out the tag path
+# that we are monitoring.  I'm not exactly sure what all of the possibilities are for things in the PV key but I think 
+# it must be either an INPUT or OUTPUT recipe data.  So I'm going to use these assumptions:
+#  1) If the recipe data is an output then we monitor the value tag of the controller
+#  2) If the recipe data is an input then just monitor the tag 
 def getMonitoredTagPath(recipeData, tagProvider):
-    from ils.sfc.common.constants import TAG_PATH, VALUE_TYPE, SETPOINT, VALUE
+    from system.ils.sfc.common.Constants import TAG_PATH, OUTPUT_TYPE, SETPOINT, OUTPUT, VALUE
 
+    rdClass = recipeData.get("class")
     tagPath = recipeData.get(TAG_PATH)
     tagPath = "[" + tagProvider + "]" + tagPath
-    
-    valueType = recipeData.get(VALUE_TYPE)
-    
-    if valueType in [SETPOINT, VALUE]:
+
+    if string.upper(rdClass) == "OUTPUT":
         tagPath = tagPath + "/value"
-    elif valueType == "float":
-        tagPath = tagPath
     else:
         # this is the default path for just a plain old tag
-        tagPath = tagPath + "/value"
+        pass
 
-    log.trace("The monitored tag path for valuetype <%s> is: %s" % (valueType, tagPath))
+    log.trace("The monitored tag path is: %s" % (tagPath))
     return tagPath
 
 # Dispatch the RESET command to the appropriate output/controller.  This should work for outputs and  EPKS or TDC3000 controllers.

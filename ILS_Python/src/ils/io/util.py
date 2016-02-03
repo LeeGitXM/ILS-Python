@@ -30,7 +30,7 @@ def checkIfController(fullTagPath):
         return False
 
     pythonClass=system.tag.read(tagPath).value
-    print "Checking if <%s> contains <CONTROLLER>" % (pythonClass)
+#    print "Checking if <%s> contains <CONTROLLER>" % (pythonClass)
     if pythonClass.upper().find('CONTROLLER') > -1:
         return True
 
