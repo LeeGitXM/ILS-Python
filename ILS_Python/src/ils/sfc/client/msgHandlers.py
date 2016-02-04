@@ -20,10 +20,9 @@ def sfcCloseWindow(payload):
     closeDbWindow(windowId)
 
 def sfcShowQueue(payload):
-    import system
-    from ils.sfc.common.constants import MSG_QUEUE_WINDOW
-    # Note: the control panel logic will take care of setting the current msg queue on this window
-    system.nav.openWindow(MSG_QUEUE_WINDOW)
+    queueKey=payload['queueKey']
+    from ils.queue.message import view
+    view(queueKey, useCheckpoint=True)
         
 def sfcPrintWindow(payload):
     import system
