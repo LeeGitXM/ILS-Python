@@ -156,8 +156,9 @@ def setControlPanelChartPath(controlPanelId, chartPath):
 def showMsgQueue(window):
     import system.nav
     rootContainer = window.getRootContainer()
-    msgQueueWindow = system.nav.openWindow('Queue/Message Queue')
-    msgQueueWindow.getRootContainer().key = rootContainer.windowData.getValueAt(0,'msgQueue')
+    queueKey=rootContainer.windowData.getValueAt(0,'msgQueue')
+    from ils.queue.message import view
+    view(queueKey, useCheckpoint=True)
 
 def ackMessage(window):
     from ils.sfc.common.cpmessage import acknowledgeControlPanelMessage
