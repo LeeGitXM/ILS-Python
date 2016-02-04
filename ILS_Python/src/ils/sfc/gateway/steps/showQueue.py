@@ -10,12 +10,13 @@ def activate(scopeContext, stepProperties, deactivate):
     send a message to the client to show the current message queue
     '''
     from ils.sfc.gateway.util import handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getChartLogger, sendMessageToClient, getProject
+    from ils.sfc.gateway.api import getChartLogger, sendMessageToClient, getProject, getCurrentMessageQueue
     
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        payload = dict()
+        currentMsgQueue = getCurrentMessageQueue(chartScope)
+        payload = {'queueKey': currentMsgQueue}
         project = getProject(chartScope)
         sendMessageToClient(project, 'sfcShowQueue', payload)
     except:
