@@ -11,18 +11,20 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.steps import commonInput
     from ils.sfc.common.util import isEmpty
     
+    chartScope = scopeContext.getChartScope()
+    chartLogger = getChartLogger(chartScope)
+    stepScope = scopeContext.getStepScope()
+    buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
+    if isEmpty(buttonLabel):
+        buttonLabel = 'Select'
+    
+    # Get the choices from recipe data:
     try:
-        chartScope = scopeContext.getChartScope()
-        chartLogger = getChartLogger(chartScope)
-        stepScope = scopeContext.getStepScope()
-        buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
-        if isEmpty(buttonLabel):
-            buttonLabel = 'Select'
         choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
         choicesKey = getStepProperty(stepProperties, CHOICES_KEY) 
         choices = s88Get(chartScope, stepScope, choicesKey, choicesRecipeLocation)    
-        return commonInput.activate(scopeContext, stepProperties, deactivate, buttonLabel, 'SFC/SelectInput', choices)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in selectInput.py', chartLogger)
-    finally:
         return True
+    
+    return commonInput.activate(scopeContext, stepProperties, deactivate, buttonLabel, 'SFC/SelectInput', choices)
