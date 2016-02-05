@@ -1,9 +1,10 @@
 # Copyright 2016. ILS Automation. All rights reserved.
 # 
 # Scripts used for AED testing with the test framework
-import datetime,time
+import datetime
 import random
 import system
+import java.lang.Double as Double
 import system.ils.tf as testframe
 import xom.emre.simulation.setup as setup
 
@@ -77,8 +78,9 @@ def populateTestTable(database,table,col1,col2,col3,col4,col5):
 		r = random.random()*maxrandom
 		bad = r
 		if index>4 and index<12:
-			bad = 'BAD'
-		if index>19 and index<25:
-			bad = 'BAD'
-		system.db.runPrepUpdate(sql,[date,bad,5,index,saw,r],database)
+			system.db.runPrepUpdate(sql,[date,None,5,index,saw,r],database)
+		elif index>19 and index<25:
+			system.db.runPrepUpdate(sql,[date,None,5,index,saw,r],database)
+		else:
+			system.db.runPrepUpdate(sql,[date,bad,5,index,saw,r],database)
 		date += datetime.timedelta(minutes=1)
