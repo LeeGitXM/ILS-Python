@@ -79,11 +79,7 @@ def activate(scopeContext, stepProperties, deactivate):
                     handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
                 sendOpenWindow(chartScope, windowId, stepId, database)
         else:
-            chartLogger.trace("Executing TimedDelay block - working...")
-            secondsLeft = endTimeEpochSecs - time.time()
-            sleepSeconds = max(0, min(secondsLeft, 5))
-            time.sleep(sleepSeconds)
-            workIsDone = sleepSeconds >= secondsLeft
+            workIsDone = time.time() >= endTimeEpochSecs
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in timedDelay.py', chartLogger)        
         workIsDone = True
