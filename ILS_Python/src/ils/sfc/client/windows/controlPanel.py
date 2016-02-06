@@ -50,26 +50,29 @@ def updateChartStatus(event):
     '''Get the status of this panel's chart run and set the status field appropriately.
        Will show None if the chart is not running.'''
     from ils.sfc.common.util import getChartStatus
+    from ils.sfc.common.constants import CANCELED
     import system.gui
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     runId = rootContainer.windowData.getValueAt(0,'chartRunId')
     status = getChartStatus(runId)
-    setChartStatus(window, status)
-
-def setChartStatus(window, status):
     statusField = window.rootContainer.getComponent('statusLabel')
+    if statusField.text == '':
+        oldStatus = None
+    else:
+        oldStatus = statusField.text
     if status != None:
         statusField.text = status
     else:
         statusField.text = ''
+    if status != oldStatus and status == CANCELED:
+        reset(event)
         
 def reset(event):
     import system.gui
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     rootContainer.msgIndex = 0
-    setChartStatus(window, '')
     resetDb(rootContainer.controlPanelId)
     closeAllPopups()
 

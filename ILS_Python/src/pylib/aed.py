@@ -1,9 +1,10 @@
 # Copyright 2016. ILS Automation. All rights reserved.
 # 
 # Scripts used for AED testing with the test framework
-import datetime,time
+import datetime
 import random
 import system
+import java.lang.Double as Double
 import system.ils.tf as testframe
 import xom.emre.simulation.setup as setup
 
@@ -11,20 +12,21 @@ import xom.emre.simulation.setup as setup
 # Create and populate the table for holding expression
 # test data. This method creates 4 data columns.
 # Tags in order are: constant,ramp,random,sawtooth.
-def createExpressionTable(common,database,tableName,tag1,tag2,tag3,tag4):
+def createExpressionTable(common,database,tableName,tag1,tag2,tag3,tag4,tag5):
 	header=["TagPath","ColumnName","DataType"]
 	ds = []
 	ds.append([tag1,columnName(tag1),"float"])
 	ds.append([tag2,columnName(tag2),"float"])
 	ds.append([tag3,columnName(tag3),"float"])
 	ds.append([tag4,columnName(tag4),"float"])
+	ds.append([tag5,columnName(tag5),"float"])
 	mapping = system.dataset.toDataSet(header,ds)
 	testframe.populateColumnTagMap(database, tableName, mapping)
 	# Time column is tstamp 
 	setup.createDataTable(database, tableName)
 	setup.addIndex(database, tableName)
 	
-	populateTestTable(database,tableName,columnName(tag1),columnName(tag2),columnName(tag3),columnName(tag4))
+	populateTestTable(database,tableName,columnName(tag1),columnName(tag2),columnName(tag3),columnName(tag4),columnName(tag5))
 
 # Create a single expression.
 def createExpression(common,provider,path,text):
@@ -58,21 +60,27 @@ def columnName(tagname):
 	segments=tagname.split('/')
 	return segments[-1]
 
-# Fill a database table with sample data: constant,ramp,random,sawtooth
+# Fill a database table with sample data: bad, constant,ramp,random,sawtooth
+# NOTE: "bad" is random with segments of BAD quality
 # Time column is: tstamp
 # Time range is: 2000/01/01 00:00:00 for 100 minutes
-def populateTestTable(database,table,col1,col2,col3,col4):
+def populateTestTable(database,table,col1,col2,col3,col4,col5):
 	date  = datetime.datetime(2000,01,01,00,00,00)
 	system.db.runUpdateQuery("DELETE FROM "+table,database)
 	
 	# End of range is exclusive
-	sql = "INSERT INTO "+table+"(tstamp,"+col1+","+col2+","+col3+","+col4+") VALUES(?,?,?,?,?)"
+	sql = "INSERT INTO "+table+"(tstamp,"+col1+","+col2+","+col3+","+col4+","+col5+") VALUES(?,?,?,?,?,?)"
 	
-	minutes = 0
 	stepspan = 10
 	maxrandom = 10.
 	for index in range(0,100):
 		saw = index%stepspan
 		r = random.random()*maxrandom
-		system.db.runPrepUpdate(sql,[date,5,index,saw,r],database)
+		bad = r
+		if index>4 and index<12:
+			system.db.runPrepUpdate(sql,[date,None,5,index,saw,r],database)
+		elif index>19 and index<25:
+			system.db.runPrepUpdate(sql,[date,None,5,index,saw,r],database)
+		else:
+			system.db.runPrepUpdate(sql,[date,bad,5,index,saw,r],database)
 		date += datetime.timedelta(minutes=1)

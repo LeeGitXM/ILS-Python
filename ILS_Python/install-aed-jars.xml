@@ -1,0 +1,20 @@
+<project name="ILS-Python" default="install-jars" basedir=".">
+	<property name="repo.dir" value="${basedir}/../.." />
+	<property name="external.jar.dir" value="${repo.dir}/external/lib" />
+	
+	
+	<!-- This target is used to copy jar files into the Ignition install area.
+	     These jars are used for AED testing.
+	   -->
+	<target name="install-jars" >
+		<echo message="Copying jar files into ${ignition.py.lib}/../../lib/core/common" />		
+		<copy todir="${ignition.py.lib}/../../lib/core/common">
+			<fileset dir="${external.jar.dir}">
+				<include name="jackson*.jar" />
+				<include name="poi*.jar" />
+				<include name="stax*.jar" />
+				<include name="xmlbeans*.jar" />
+			</fileset>
+		</copy>
+		</target>
+</project>
