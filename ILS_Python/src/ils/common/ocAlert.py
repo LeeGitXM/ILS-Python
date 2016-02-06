@@ -101,3 +101,9 @@ def buttonHandler(event):
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 1000)
         print"Caught an exception calling callback... \n%s" % (errorTxt)
+
+
+# This is a callback from the Acknowledge button in the middle of the loud workspace.
+def testCallback(event, payload):
+    system.nav.closeParentWindow(event)    
+    system.gui.messageBox("Hello - this is from the custom callback!")
