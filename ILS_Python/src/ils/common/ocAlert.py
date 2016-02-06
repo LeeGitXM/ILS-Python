@@ -26,7 +26,15 @@ def sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback=No
         }
     print "Payload: ", payload
     system.util.sendMessage(project, "ocAlert", payload, scope="C")
-    
+
+# This runs in a client and is called when the OC alert message is sent to every client.  The first
+# step is to sort out if THIS client is meant to display the OC alert.  OC alerts are sent to a post,
+# which corresponds to a username.  So if the OC alert is sent to post XO1RLA3 and the [Client]Post
+# tag is XO1RLA3, then the OC alert should be displayed.  A second client that should receive the
+# OC alert is if the client has the console open for the post.  This is applicable to an AE that 
+# is shadowing a console from his office.  All he would need to do is open the RLA3 console and
+# he will receive the OC alerts for the XO1RLA3 post.
+# Alas, if they did not provide a post in the payload then display the alert everywhere.  
 def handleMessage(payload):
     print "In ils.common.ocAlert.handleMessage()", payload
     
@@ -36,7 +44,18 @@ def handleMessage(payload):
         if targetPost == post:
             system.nav.openWindowInstance("Common/OC Alert", payload)
         else:
-            print "Skipping this OC alert because it was destined for a different post"
+            windows = system.gui.getOpenedWindows()
+            print 'There are %d windows open' % len(windows)
+            found=False
+            for window in windows:
+                windowPath=string.upper(window.getPath())
+                print windowPath
+                if windowPath.find("CONSOLE") >= 0:
+                    if window.getRootContainer().getPropertyValue('post') == targetPost:
+                        system.nav.openWindowInstance("Common/OC Alert", payload)
+                        found=True
+            if not(found):
+                print "Skipping this OC alert because it was destined for a different post"
     else:
         system.nav.openWindowInstance("Common/OC Alert", payload)
 
