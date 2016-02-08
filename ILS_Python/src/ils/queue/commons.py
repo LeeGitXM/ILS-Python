@@ -13,8 +13,8 @@ def getQueueId(queueKey, db = ''):
     return queueId
 
 # Fetch the queue  id given the Queue Key 
-def getQueueForConsole(console, db = ''):
-    SQL = "select MessageQueueKey from DtConsole where Console = '%s'" % (console)
+def getQueueForPost(post, db = ''):
+    SQL = "select QueueKey from QueueMaster QM, TkPost P where P.MessageQueueId = QM.QueueId and Post = '%s'" % (post)
     queueKey = system.db.runScalarQuery(SQL, db)
     return queueKey
 

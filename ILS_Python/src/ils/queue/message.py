@@ -17,6 +17,12 @@ def insert(queueKey, status, message, db = ''):
 
     system.db.runUpdateQuery(SQL, db)
 
+def insertPostMessage(post, status, message, db=''):
+    from ils.queue.commons import getQueueForPost
+    queueKey=getQueueForPost(post)
+    
+    insert(queueKey, status, message, db)
+
 # This version of the insert stems from translation of "build-msg-on-wksp"
 def insertFromWorkspace(message,color,x,y,wksp):
     status   = 'Info'
