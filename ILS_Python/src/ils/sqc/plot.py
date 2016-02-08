@@ -111,7 +111,6 @@ def configureChart(rootContainer):
 
         print "...SQC info:", sqcInfo
     
-    
     # Create a dataset from SQC Info and put it in the rootContainer which will drive the SQC Info table
     ds=system.dataset.toDataSet(["Limit", "Value"], sqcInfo)
     ds=system.dataset.sort(ds,"Value", False)
@@ -123,9 +122,10 @@ def configureChart(rootContainer):
     rootContainer.upperLimit2=upperLimit2
     rootContainer.target=target
     rootContainer.standardDeviation=standardDeviation
+    rootContainer.yAxisAutoScaling=True
     
     # Now set the auto Y-axis limits - this will be called automatically from a property change script
-#    calculateLimitsFromTargetAndSigma(rootContainer)
+    calculateLimitsFromTargetAndSigma(rootContainer)
     
     # Configure the where clause of the database pens which should drive the update of the chart
     configureChartValuePen(rootContainer, unitName, labValueName)
@@ -134,7 +134,7 @@ def configureChart(rootContainer):
 # are properties of the window change and this updates the chart.
 def configureChartValuePen(rootContainer, unitName, labValueName):
     print "Updating the value database pen for %s..." % (labValueName)
-    chart=rootContainer.getComponent('Easy Chart')
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.pens
     whereClause = "UnitName = '%s' and ValueName = '%s'" % (unitName, labValueName)
     ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
@@ -145,7 +145,7 @@ def configureChartValuePen(rootContainer, unitName, labValueName):
 # are properties of the window change and this updates the chart.
 def configureChartSQCLimit(rootContainer, limit, value):
     print "Setting %s to %f..." % (limit, value)
-    chart=rootContainer.getComponent('Easy Chart')
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.calcPens
     
     for row in range(ds.rowCount):
@@ -157,7 +157,7 @@ def configureChartSQCLimit(rootContainer, limit, value):
 
 def setYAxisLimits(rootContainer, limit, value):
     print "Setting %s to %f..." % (limit, value)
-    chart=rootContainer.getComponent('Easy Chart')
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.axes
     
     if limit == 'yAxisLowerLimit':
@@ -170,7 +170,6 @@ def setYAxisLimits(rootContainer, limit, value):
     ds = system.dataset.setValue(ds, row, col, value)
     
     chart.axes = ds
-
 
 # This is called from the Reset button at the user's discretion and from a property change 
 # script on the target and the standard deviation, which are set when the window is opened.
@@ -268,6 +267,12 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
             blockName=block.getName()
             
             # First get block properties
+            
+            #********************
+            # 2/8/2016
+            # Chuck is adding a new scripting function getPropertyBinding which should give me the tagpath rathe rthan the value.
+            #********************
+            
             valueTagPath=diagram.getPropertyValue(diagramId, blockId, 'ValueTagPath')
             print "valueTagPath: ", valueTagPath
             
