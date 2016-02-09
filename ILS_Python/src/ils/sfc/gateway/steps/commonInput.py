@@ -14,7 +14,8 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
         getStepId, dbStringForFloat, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger
     from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMEOUT_RESPONSE
+    from ils.sfc.common.constants import TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME,\
+    WINDOW_ID
     import system.util
     import system.db
 
@@ -68,10 +69,11 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
                 
             sendOpenWindow(chartScope, windowId, stepId, database)
         else: # waiting for reply
-            response = checkForResponse(chartScope, stepScope, stepProperties, TIMEOUT_RESPONSE)
+            response = checkForResponse(chartScope, stepScope, stepProperties)
             if response != None: 
-                setResponse(chartScope, stepScope, stepProperties, response)
                 workDone = True
+                if response != TIMED_OUT:
+                    setResponse(chartScope, stepScope, stepProperties, response)                
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', chartLogger)
         workDone = True

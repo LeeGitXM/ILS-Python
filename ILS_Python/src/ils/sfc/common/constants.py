@@ -133,6 +133,7 @@ TABLE = 'table'
 TEST_CHART_PATHS = 'testChartPaths'
 TEST_PATTERN = 'testPattern'
 TEST_REPORT_FILE = 'testReportFile'
+TIMED_OUT = "timedOut"
 TIMEOUT = "timeout"
 TIMEOUT_TIME = 'timeoutTime'
 TIMEOUT_UNIT = "timeoutUnit"
@@ -155,7 +156,6 @@ RECIPE_LOCATION = "recipeLocation"
 # Some standard client responses
 YES_RESPONSE = "Yes"
 NO_RESPONSE = "No"
-TIMEOUT_RESPONSE = "Timeout"
 
 # The name of the second unit is really defined in the database,
 # so this constant should agree with that. Likewise for type:

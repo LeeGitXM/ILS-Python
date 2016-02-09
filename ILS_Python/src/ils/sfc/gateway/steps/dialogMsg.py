@@ -11,7 +11,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.common.util import isEmpty
     from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, \
     ACK_REQUIRED, STRATEGY, STATIC, RECIPE_LOCATION, KEY
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMEOUT_RESPONSE, WINDOW_ID
+    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT
     from ils.sfc.gateway.util import checkForResponse
     import system.db
 
@@ -63,12 +63,14 @@ def activate(scopeContext, stepProperties, deactivate):
                 
             sendOpenWindow(chartScope, windowId, stepId, database)
         else:
-            response = checkForResponse(chartScope, stepScope, stepProperties, TIMEOUT_RESPONSE)    
+            response = checkForResponse(chartScope, stepScope, stepProperties)    
             if response != None: 
-                recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-                key = getStepProperty(stepProperties, KEY) 
-                s88Set(chartScope, stepScope, key, response, recipeLocation)
                 workDone = True
+                if response != TIMED_OUT:
+                    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+                    key = getStepProperty(stepProperties, KEY) 
+                    s88Set(chartScope, stepScope, key, response, recipeLocation)
+                
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in dialogMsg.py', chartLogger)
         workDone = True

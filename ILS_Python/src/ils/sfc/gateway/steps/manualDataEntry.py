@@ -14,7 +14,7 @@ def activate(scopeContext, stepProperties, deactivate):
         dbStringForFloat, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, \
     getUnitsPath, s88Set, s88Get, s88SetWithUnits
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMEOUT_RESPONSE, WINDOW_ID
+    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT
     from ils.sfc.gateway.util import checkForResponse
     import system.db
 
@@ -71,9 +71,10 @@ def activate(scopeContext, stepProperties, deactivate):
                 sendOpenWindow(chartScope, windowId, stepId, database)
             
         else:
-            response = checkForResponse(chartScope, stepScope, stepProperties, TIMEOUT_RESPONSE)                
+            response = checkForResponse(chartScope, stepScope, stepProperties)                
             if response != None:
-                if response != TIMEOUT_RESPONSE:
+                workDone = True
+                if response != TIMED_OUT:
                     returnDataset = response[DATA]
                     # Note: all values are returned as strings; we depend on s88Set to make the conversion
                     for row in range(returnDataset.rowCount):
@@ -87,10 +88,6 @@ def activate(scopeContext, stepProperties, deactivate):
                             s88Set(chartScope, stepScope, key, value, destination)
                         else:
                             s88SetWithUnits(chartScope, stepScope, key, value, destination, units)
-                    workDone = True
-                else:
-                    # timeout!! --is some action needed?
-                    workDone = True
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in manualDataEntry.py', chartLogger)
         workDone = True

@@ -17,7 +17,7 @@ def activate(scopeContext, stepProperties, deactivate):
 
     from ils.sfc.common.constants import NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
-    STEP_SUCCESS, STEP_FAILURE, SLEEP_INCREMENT
+    STEP_SUCCESS, STEP_FAILURE, SLEEP_INCREMENT, TIMED_OUT
     from java.util import Date 
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getProviderName, getPVMonitorConfig
@@ -56,6 +56,7 @@ def activate(scopeContext, stepProperties, deactivate):
             if not initialized:
                 logger.trace("...initializing...")
                 stepScope[NUMBER_OF_TIMEOUTS] = 0
+                stepScope[TIMED_OUT] = False
                 stepScope[INITIALIZED]=True
                 stepScope["workDone"]=False
                 
@@ -279,7 +280,7 @@ def activate(scopeContext, stepProperties, deactivate):
                     numTimeouts = 0
                     for configRow in config.rows:
                         
-                        logger.trace("...checking row whose status is: ", configRow.status
+                        logger.trace("...checking row whose status is: ", configRow.status)
                         targetType = configRow.targetType
                         if targetType == SETPOINT:
                             rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
@@ -293,6 +294,8 @@ def activate(scopeContext, stepProperties, deactivate):
     
                         rd.set(PV_MONITOR_ACTIVE, False)
                     stepScope[NUMBER_OF_TIMEOUTS] = numTimeouts
+                    if numTimeouts > 0:
+                        stepScope[TIMED_OUT] = True
                     logger.info("...there were %i PV monitoring timeouts!" % (numTimeouts))
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorPV.py', logger)
