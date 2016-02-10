@@ -4,8 +4,7 @@ Created on Dec 10, 2015
 @author: Pete
 '''
 import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.sqc.plot")
+log = system.util.getLogger("com.ils.sqc.plot")
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()"
@@ -273,7 +272,7 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
             # Chuck is adding a new scripting function getPropertyBinding which should give me the tagpath rathe rthan the value.
             #********************
             
-            valueTagPath=diagram.getPropertyValue(diagramId, blockId, 'ValueTagPath')
+            valueTagPath=diagram.getPropertyBinding(diagramId, blockId, 'ValueTagPath')
             print "valueTagPath: ", valueTagPath
             
             # TODO - This was returning the value of the tag and I want the name of the tag
