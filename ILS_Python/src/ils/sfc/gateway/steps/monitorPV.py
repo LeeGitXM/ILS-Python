@@ -278,8 +278,7 @@ def activate(scopeContext, stepProperties, deactivate):
                     
                     numTimeouts = 0
                     for configRow in config.rows:
-                        
-                        logger.trace("...checking row whose status is: ", configRow.status
+                        logger.trace("...checking row whose status is: %s" % (configRow.status))
                         targetType = configRow.targetType
                         if targetType == SETPOINT:
                             rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
