@@ -9,7 +9,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getTimeoutTime, \
     logStepDeactivated
     from system.ils.sfc.common.Constants import MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, MESSAGE_ID
+    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, MESSAGE_ID, TIMED_OUT
     from ils.queue.message import insert
     from ils.sfc.gateway.recipe import substituteScopeReferences
     from ils.sfc.common.cpmessage import getAckTime, timeOutControlPanelMessageAck
@@ -52,8 +52,10 @@ def activate(scopeContext, stepProperties, deactivate):
             msgId = stepScope[MESSAGE_ID]
             ackTime = getAckTime(msgId, database)
             if ackTime != None:
+                stepScope[TIMED_OUT] = False
                 workDone = True
             elif time.time() > timeoutTime:
+                stepScope[TIMED_OUT] = True
                 timeOutControlPanelMessageAck(msgId, database)
                 workDone = True
     except:

@@ -71,19 +71,21 @@ def transferStepPropertiesToMessage(stepProperties, payload):
         if not (prop.getName() == 'associated-data'):
             payload[prop.getName()] = stepProperties.getOrDefault(prop)
 
-def checkForResponse(chartScope, stepScope, stepProperties, timeoutResponse):
+def checkForResponse(chartScope, stepScope, stepProperties):
     '''Common code for processing responses from client. Returns true if work was
        completed, i.e. either response was received or timed out'''
-    from ils.sfc.common.constants import TIMEOUT_TIME, WINDOW_ID, RESPONSE
+    from ils.sfc.common.constants import TIMEOUT_TIME, WINDOW_ID, RESPONSE, TIMED_OUT
     import time
     timeoutTime = stepScope[TIMEOUT_TIME]
     windowId = stepScope[WINDOW_ID]
-    
+    stepScope[TIMED_OUT] = False
+
     responsePayload = getResponse(windowId)    
     if responsePayload != None:
         response = responsePayload[RESPONSE]
     elif timeoutTime != None and time.time() > timeoutTime:
-        response = timeoutResponse        
+        stepScope[TIMED_OUT] = True
+        response = TIMED_OUT        
     else:
         response = None
     return response
