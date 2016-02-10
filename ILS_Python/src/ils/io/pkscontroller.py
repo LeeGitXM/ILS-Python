@@ -173,7 +173,7 @@ class PKSController(controller.Controller):
         return True, ""
     
     # Check if a controller is in the appropriate mode for writing to.  This does not attempt to change the 
-    # mode of the controller.
+    # mode of the controller.  Return True if the controller is in the correct mode for writing.
     # This is equivalent to s88-confirm-controller-mode in the old system. 
     def confirmControllerMode(self, newVal, testForZero, checkPathToValve, valueType):
         success = True
