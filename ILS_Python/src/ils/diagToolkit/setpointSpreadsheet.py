@@ -244,6 +244,10 @@ def recalcCallback(event):
     # Now update the UI
 #    initialize(rootContainer)
 
+#
+# FYI - the download callback is in its own module.
+#
+
 # This is called from the WAIT button on the setpoint spreadsheet
 def waitCallback(event):
     rootContainer=event.source.parent
@@ -256,4 +260,5 @@ def noDownloadCallback(event):
     rootContainer=event.source.parent
     
     system.gui.messageBox("The NO DOWNLOAD functionality has not been implemented!")
+
     
