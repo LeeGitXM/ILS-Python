@@ -11,14 +11,45 @@ from ils.common.util import isText
 from ils.common.util import isFloattOrSpecialValue
 
 # Try and figure out if the thing is a UDT or a simple memory or OPC tag
-# There has to be a more direct way to do this but this should work
-def checkIfUDT(fullTagPath):    
-    tags = system.tag.browseTags(parentPath=fullTagPath)
-    if len(tags) > 0:
-        isUDT = True
+# There has to be a more direct way to do this but this should work.
+# **** This does not work for a folder ****
+def isUDT(fullTagPath):
+    parentPath, tagPath = splitTagPath(fullTagPath)
+    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+    for tag in tags:
+        print "  Checking %s - isUDT:%s, isFolder:%s" % (tag.fullPath, str(tag.isUDT()), str(tag.isFolder()) )
+#    if len(tags) > 0:
+#        isUDT = True
+#    else:
+#        isUDT = False
+        
+    return tag.isUDT()
+
+def getOuterUDT(fullTagPath):
+    # Strip off the provider
+    print fullTagPath
+    if fullTagPath.find("]")>=0:
+        provider=fullTagPath[:fullTagPath.find("]") + 1]
+        tagPath=fullTagPath[fullTagPath.find("]") + 1:]
     else:
-        isUDT = False
-    return isUDT
+        provider="[]"
+        tagPath=fullTagPath
+    
+    print "Provider: <%s>, tag path: <%s>" % (provider, tagPath)
+
+    tokens=tagPath.split('/')
+    print tokens
+    
+    tp = ""
+    for token in tokens:
+        if tp == "":
+            tp=provider + token
+        else:
+            tp=tp + '/' + token
+        
+        print "Checking if <%s> is a UDT: " % (tp)
+
+    return "foo"
 
 # Try and figure out if the thing is a controller, we should already know that it is a UDT.
 # If it has a tag PythonClass, and the Python class contains the word controller then it is a controller, 
@@ -177,7 +208,17 @@ def getProviderFromTagpath(tagPath):
 # Convert a full tag path to just the tag name.
 # Full tag paths are always used internally, but just the tag name is used for display purposes.
 def splitTagPath(tagPath):
-    parentPath = tagPath[:string.rfind(tagPath, '/')]
-    tagName = tagPath[string.rfind(tagPath, '/') + 1:]
+    if tagPath.find('/') < 0:
+        # There isn't a folder, so we either have a root folder or a tag at the root level.  
+        # Return the provider as the parent and the rest as the tag
+        if tagPath.find(']') < 0:
+            parentPath = "[]"
+            tagName = tagPath
+        else:
+            parentPath=tagPath[:string.rfind(tagPath, ']') + 1]
+            tagName=tagPath[string.rfind(tagPath, ']') + 1:]
+    else:
+        parentPath = tagPath[:string.rfind(tagPath, '/')]
+        tagName = tagPath[string.rfind(tagPath, '/') + 1:]
     print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
     return parentPath, tagName
