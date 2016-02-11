@@ -6,7 +6,7 @@ Created on Feb 4, 2015
 
 import system, string
 from __builtin__ import False
-log = system.util.getLogger("com.ils.diagToolkit.downlload")
+log = system.util.getLogger("com.ils.diagToolkit.download")
 from ils.queue.message import insertPostMessage
 from ils.io.api import confirmControllerMode
 from ils.io.api import write
