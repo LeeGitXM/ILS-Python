@@ -30,6 +30,11 @@ def getBlockState(diagramId, blockName):
 # I don't think this is correct...
 def getPropertyValue(diagramId, blockId, property):
     '''Get the diagram serializable block state descriptor'''
+    
+def getRequestHandlere():
+    '''Get the controller request handler'''
 
 def listBlocksUpstreamOf(diagramId, sqcBlockName):
     '''Get a list of serializable block state descriptor all of the upstream blocks'''
+def resetBlock(diagramId,blockId):
+    '''Reset a block within a diagram'''
