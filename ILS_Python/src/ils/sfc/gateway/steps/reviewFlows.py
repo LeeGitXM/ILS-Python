@@ -12,7 +12,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from system.ils.sfc import getReviewFlows, getReviewFlowsConfig
     from system.ils.sfc.common.Constants import BUTTON_KEY, BUTTON_KEY_LOCATION, BUTTON_LABEL,  VALUE, \
     AUTO_MODE, AUTOMATIC, OK, DATA, REVIEW_FLOWS, HEADING1, HEADING2, HEADING3, POSITION, SCALE, WINDOW_TITLE
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMEOUT_RESPONSE, WINDOW_ID
+    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMED_OUT, WINDOW_ID
     from ils.sfc.gateway.util import checkForResponse, logStepDeactivated
     import system.db
     
@@ -62,26 +62,28 @@ def activate(scopeContext, stepProperties, deactivate):
          
             sendOpenWindow(chartScope, windowId, stepId, database)
         else:
-            response = checkForResponse(chartScope, stepScope, stepProperties, TIMEOUT_RESPONSE)                
+            response = checkForResponse(chartScope, stepScope, stepProperties)                
             if response != None: 
-                responseButton = response[VALUE]
-                recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
-                recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
-                s88Set(chartScope, stepScope, recipeKey, responseButton, recipeLocation)            
-                if responseButton == OK:
-                    config = getReviewFlowsConfig(configJson) 
-                    responseDataset = response[DATA]
-                    for i in range(len(config.rows)):
-                        configRow = config.rows[i]
-                        responseFlow1 = responseDataset.getValueAt(i,2)
-                        s88Set(chartScope, stepScope, configRow.flow1Key, responseFlow1, configRow.destination )
-                        responseFlow2 = responseDataset.getValueAt(i,3)
-                        s88Set(chartScope, stepScope, configRow.flow2Key, responseFlow2, configRow.destination )
-                        sumFlows = configRow.flow3Key.lower() == 'sum'
-                        if not sumFlows:
-                            responseFlow3 = responseDataset.getValueAt(i,4)
-                            s88Set(chartScope, stepScope, configRow.flow3Key, responseFlow3, configRow.destination )   
                 workDone = True
+                if response != TIMED_OUT:
+                    responseButton = response[VALUE]
+                    recipeKey = getStepProperty(stepProperties, BUTTON_KEY)
+                    recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
+                    s88Set(chartScope, stepScope, recipeKey, responseButton, recipeLocation)            
+                    if responseButton == OK:
+                        config = getReviewFlowsConfig(configJson) 
+                        responseDataset = response[DATA]
+                        for i in range(len(config.rows)):
+                            configRow = config.rows[i]
+                            responseFlow1 = responseDataset.getValueAt(i,2)
+                            s88Set(chartScope, stepScope, configRow.flow1Key, responseFlow1, configRow.destination )
+                            responseFlow2 = responseDataset.getValueAt(i,3)
+                            s88Set(chartScope, stepScope, configRow.flow2Key, responseFlow2, configRow.destination )
+                            sumFlows = configRow.flow3Key.lower() == 'sum'
+                            if not sumFlows:
+                                responseFlow3 = responseDataset.getValueAt(i,4)
+                                s88Set(chartScope, stepScope, configRow.flow3Key, responseFlow3, configRow.destination )   
+                
 
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in reviewFlows.py', chartLogger)

@@ -277,7 +277,11 @@ def writeRamp(controllerTagpath, val, rampTime, updateFrequency, valType, writeC
 # This is a method dispatcher to the method appropriate for the class of controller.
 # This is called from Python and runs in the client.
 def confirmControllerMode(controllerTagpath, val, testForZero, checkPathToValve, valueType):
-    print "In api.checkConfig()"
+    print "In api.checkConfig(), checking %s" % (controllerTagpath)
+
+    if not(checkIfUDT(controllerTagpath)):
+        print "The target is not a controller so assume it is reachable"
+        return True, "The target is not a Controller"
 
     # Get the name of the Python class that corresponds to this UDT.
     pythonClass = system.tag.read(controllerTagpath + "/pythonClass").value

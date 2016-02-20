@@ -11,7 +11,7 @@ def activate(scopeContext, stepProperties, deactivate):
     STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
     from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY
     import system, time
-    from java.util import Date
+    from java.util import Date, Calendar
     from ils.sfc.common.util import formatTime
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getWriteOutputConfig
@@ -146,6 +146,12 @@ def activate(scopeContext, stepProperties, deactivate):
 
                     # wait until the timer starts
                     logger.trace("   the timer just started at: %s" % (str(timerStart)))
+                    
+                    # This is a strange little initialization that is done to initialize final writes in the bizzare case where ALL of the writes are final
+                    cal = Calendar.getInstance()
+                    cal.setTime(timerStart)
+                    absTiming = cal.getTime()
+                    timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
 
                     # Immediately after the timer starts running we need to calculate the absolute download time.            
                     for row in downloadRows:
@@ -154,14 +160,14 @@ def activate(scopeContext, stepProperties, deactivate):
                         # write the absolute step timing back to recipe data
                         if row.timingMinutes >= 1000.0:
                             # Final writes
-                            row.outputRD.set(STEP_TIMESTAMP, '')
+                            # Because the rows are ordered by the timing, it is safe to use the last timestamp...
+                            row.outputRD.set(STEP_TIMESTAMP, timestamp)
                             # I don't want to propagate the magic 1000 value, so we use None
                             # to signal an event-driven step
                             row.outputRD.set(STEP_TIME, None)
                             
                         elif row.timingMinutes > 0 and row.timingMinutes < 1000.0:
                             # Timed writes
-                            from java.util import Calendar
                             cal = Calendar.getInstance()
                             cal.setTime(timerStart)
                             cal.add(Calendar.SECOND, int(row.timingMinutes * 60))
@@ -172,7 +178,6 @@ def activate(scopeContext, stepProperties, deactivate):
                         
                         else:
                             # Immediate writes
-                            from java.util import Calendar
                             cal = Calendar.getInstance()
                             cal.setTime(timerStart)
                             absTiming = cal.getTime()

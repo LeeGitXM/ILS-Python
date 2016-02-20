@@ -4,8 +4,7 @@ Created on Dec 10, 2015
 @author: Pete
 '''
 import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.sqc.plot")
+log = system.util.getLogger("com.ils.sqc.plot")
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()"
@@ -111,7 +110,6 @@ def configureChart(rootContainer):
 
         print "...SQC info:", sqcInfo
     
-    
     # Create a dataset from SQC Info and put it in the rootContainer which will drive the SQC Info table
     ds=system.dataset.toDataSet(["Limit", "Value"], sqcInfo)
     ds=system.dataset.sort(ds,"Value", False)
@@ -123,9 +121,10 @@ def configureChart(rootContainer):
     rootContainer.upperLimit2=upperLimit2
     rootContainer.target=target
     rootContainer.standardDeviation=standardDeviation
+    rootContainer.yAxisAutoScaling=True
     
     # Now set the auto Y-axis limits - this will be called automatically from a property change script
-#    calculateLimitsFromTargetAndSigma(rootContainer)
+    calculateLimitsFromTargetAndSigma(rootContainer)
     
     # Configure the where clause of the database pens which should drive the update of the chart
     configureChartValuePen(rootContainer, unitName, labValueName)
@@ -134,7 +133,7 @@ def configureChart(rootContainer):
 # are properties of the window change and this updates the chart.
 def configureChartValuePen(rootContainer, unitName, labValueName):
     print "Updating the value database pen for %s..." % (labValueName)
-    chart=rootContainer.getComponent('Easy Chart')
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.pens
     whereClause = "UnitName = '%s' and ValueName = '%s'" % (unitName, labValueName)
     ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
@@ -145,7 +144,7 @@ def configureChartValuePen(rootContainer, unitName, labValueName):
 # are properties of the window change and this updates the chart.
 def configureChartSQCLimit(rootContainer, limit, value):
     print "Setting %s to %f..." % (limit, value)
-    chart=rootContainer.getComponent('Easy Chart')
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.calcPens
     
     for row in range(ds.rowCount):
@@ -157,7 +156,7 @@ def configureChartSQCLimit(rootContainer, limit, value):
 
 def setYAxisLimits(rootContainer, limit, value):
     print "Setting %s to %f..." % (limit, value)
-    chart=rootContainer.getComponent('Easy Chart')
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.axes
     
     if limit == 'yAxisLowerLimit':
@@ -170,7 +169,6 @@ def setYAxisLimits(rootContainer, limit, value):
     ds = system.dataset.setValue(ds, row, col, value)
     
     chart.axes = ds
-
 
 # This is called from the Reset button at the user's discretion and from a property change 
 # script on the target and the standard deviation, which are set when the window is opened.
@@ -268,7 +266,13 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
             blockName=block.getName()
             
             # First get block properties
-            valueTagPath=diagram.getPropertyValue(diagramId, blockId, 'ValueTagPath')
+            
+            #********************
+            # 2/8/2016
+            # Chuck is adding a new scripting function getPropertyBinding which should give me the tagpath rathe rthan the value.
+            #********************
+            
+            valueTagPath=diagram.getPropertyBinding(diagramId, blockId, 'ValueTagPath')
             print "valueTagPath: ", valueTagPath
             
             # TODO - This was returning the value of the tag and I want the name of the tag
@@ -304,33 +308,3 @@ def fetchChartData(unitName, labValueName):
     chartData.append({"x": 0.0, "y": 7.9})
     
     return chartData
-
-#def tooltipGenerator(dataset, series, item):
-#    print "Here's a tip"
-#    grade="Chocolate"
-#    x1 = dataset.getXValue(series, item);
-#    x2 = dataset.getYValue(series, item);
-#    HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(grade)
-#    HTML=HTML+" X:'%f'<br/>"%(x1)
-#    HTML=HTML+" Y:'%f'<br/>"%(x2)
-#    HTML=HTML+"</p></html>"
-#    return HTML
-    
-#
-#from org.jfree.chart import labels
-#class CustomTooltipGenerator(labels.XYToolTipGenerator):
-    
-#   def __init__(self):
-#       self.grade = "Ethanol"
-    
-    # Dataset is a jfree XYDataset
-    # Series and item are integers
-#   def generateToolTip(self,dataset, series, item):
-#        print "Generating a tooltip"
-#        x1 = dataset.getXValue(series, item);
-#        x2 = dataset.getYValue(series, item);
-#        HTML="<html><p style='background:#ddddff;foreground:black;'>Grade:%s<br/>"%(self.grade)
-#        HTML=HTML+" X:'%f'<br/>"%(x1)
-#        HTML=HTML+" Y:'%f'<br/>"%(x2)
-#        HTML=HTML+"</p></html>"
-#        return HTML

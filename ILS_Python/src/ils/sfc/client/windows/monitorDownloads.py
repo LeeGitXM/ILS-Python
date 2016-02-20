@@ -37,6 +37,7 @@ def update(rootContainer):
             updateStartTime(windowId, startTime, database)
         
     rootContainer.startTime = startTime
+    startTimeFormatted = system.db.dateFormat(startTime, "dd-MMM-yy H:mm:ss a")
     
     if string.upper(state)  == "CREATED":
         initializeDatabaseTable(windowId, database, tagProvider)
@@ -54,8 +55,12 @@ def update(rootContainer):
     SQL = "select * from SfcDownloadGUITable where windowId = '%s' order by rawTiming, DCSTagId " % (windowId)
     pds = system.db.runQuery(SQL, database)
     
+    # Need to add a row at the top to specify the time that the download started.
+    ds = system.dataset.toDataSet(pds)
+    ds = system.dataset.addRow(ds,0,["","",None,None,None,None,None, "", startTimeFormatted,None, "pending", "monitoring", ""])
+    
     table=rootContainer.getComponent("table")
-    table.data=pds
+    table.data=ds
 
 def fetchWindowState(windowId, database):
     print "...fetching the window state..."
@@ -80,6 +85,7 @@ def updateStartTime(windowId, startTime, database):
     startTime="%s"%(startTime)
     SQL = "update SfcDownloadGUI set StartTime = '%s' where windowId = '%s'" % (startTime, windowId)
     rows = system.db.runUpdateQuery(SQL, database)
+
 
 # Because download GUI works in conjunction with the writeOutput and PVMonitoring block, it is possible that 
 # the recipe data that we are using to configure the table for download GUI has not been fully configured. 

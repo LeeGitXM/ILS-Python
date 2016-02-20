@@ -8,18 +8,118 @@ import system, string, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from java.util import Date
 from ils.common.util import isText
-from ils.common.util import isFloattOrSpecialValue
 
-# Try and figure out if the thing is a UDT or a simple memory or OPC tag
-# There has to be a more direct way to do this but this should work
-def checkIfUDT(fullTagPath):    
-    tags = system.tag.browseTags(parentPath=fullTagPath)
-    if len(tags) > 0:
-        isUDT = True
-    else:
-        isUDT = False
+# Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
+# There is possibly an easier way to do this and avoid the whole broseTag API issues of 
+# having to put a wild card in front of the tagPath.  I could use system.tag.read(tagPath + ".TagType.
+# but I don't know how to decode the integer enumeration that is returned.   
+def isUDT(fullTagPath):
+    isUDT = False
+    parentPath, tagPath = splitTagPath(fullTagPath)
+    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+    for tag in tags:
+        if tag.fullPath == fullTagPath:
+            isUDT = tag.isUDT()       
     return isUDT
 
+# This is the easier method but I need to know how to decode the tagTypoe integer
+#def ___isUDTNew(fullTagPath):
+#    isUDT = False
+#    tagType = system.tag.read(fullTagPath + ".TagType")
+#    print tagType       
+#    return isUDT
+
+
+def isFolder(fullTagPath):
+    isFolder = False
+    parentPath, tagPath = splitTagPath(fullTagPath)
+    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+    for tag in tags:
+        if tag.fullPath == fullTagPath:
+            isFolder = tag.isFolder()       
+    return isFolder
+
+def getOuterUDT(fullTagPath):
+    # Strip off the provider
+    UDTType=None
+    
+    if fullTagPath.find("]")>=0:
+        provider=fullTagPath[:fullTagPath.find("]") + 1]
+        tagPath=fullTagPath[fullTagPath.find("]") + 1:]
+    else:
+        provider="[]"
+        tagPath=fullTagPath
+    
+#    print "Provider: <%s>, tag path: <%s>" % (provider, tagPath)
+
+    tokens=tagPath.split('/')
+    
+    tp = ""
+    for token in tokens:
+        if tp == "":
+            tp=provider + token
+        else:
+            tp=tp + '/' + token
+        
+#        print "Checking if <%s> is a UDT: " % (tp)
+        if isUDT(tp):
+            UDTType=getUDTType(tp)
+            return UDTType 
+
+#        print "There must not be a UDT in the tag path..."
+    return UDTType
+
+def getInnerUDT(fullTagPath):
+    # Strip off the provider
+    UDTType=None
+    
+    if fullTagPath.find("]")>=0:
+        provider=fullTagPath[:fullTagPath.find("]") + 1]
+        tagPath=fullTagPath[fullTagPath.find("]") + 1:]
+    else:
+        provider="[]"
+        tagPath=fullTagPath
+    
+#    print "Provider: <%s>, tag path: <%s>" % (provider, tagPath)
+
+    # Before we start walking up the tag path, check if the tag itself is a UDT
+    tp = provider + tagPath
+    if isUDT(tp):
+        UDTType=getUDTType(tp)
+        return UDTType 
+    
+    tokens=tagPath.split('/')
+    
+    # Now walk up the tagpath until we find a UDT
+    tokens.reverse()
+    for token in tokens:
+        tp=provider + tagPath[:tagPath.rfind(token)]
+        if tp[len(tp) - 1] == "/":
+            tp = tp[:len(tp) - 1]
+        
+#        print "Checking if <%s> is a UDT: " % (tp)
+        if isUDT(tp):
+            UDTType=getUDTType(tp)
+            return UDTType 
+
+#    print "There must not be a UDT in the tag path..."
+    return UDTType
+
+def getUDTType(fullTagPath):
+    # Strip off the provider
+#    print "Getting the type of UDT for tagpath: ", fullTagPath
+    UDTType = system.tag.read(fullTagPath + '.UDTParentType').value
+    return UDTType
+
+#    UDTType=None
+#    parentPath, tagPath = splitTagPath(fullTagPath)
+#    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+#    for tag in tags:
+#        if tag.fullPath == fullTagPath:
+#            print tag.type, tag.dataType, tag.UDTParentType
+#    return UDTType
+    
+            
 # Try and figure out if the thing is a controller, we should already know that it is a UDT.
 # If it has a tag PythonClass, and the Python class contains the word controller then it is a controller, 
 # otherwise it is NOT a controller.
@@ -177,7 +277,17 @@ def getProviderFromTagpath(tagPath):
 # Convert a full tag path to just the tag name.
 # Full tag paths are always used internally, but just the tag name is used for display purposes.
 def splitTagPath(tagPath):
-    parentPath = tagPath[:string.rfind(tagPath, '/')]
-    tagName = tagPath[string.rfind(tagPath, '/') + 1:]
-    print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
+    if tagPath.find('/') < 0:
+        # There isn't a folder, so we either have a root folder or a tag at the root level.  
+        # Return the provider as the parent and the rest as the tag
+        if tagPath.find(']') < 0:
+            parentPath = "[]"
+            tagName = tagPath
+        else:
+            parentPath=tagPath[:string.rfind(tagPath, ']') + 1]
+            tagName=tagPath[string.rfind(tagPath, ']') + 1:]
+    else:
+        parentPath = tagPath[:string.rfind(tagPath, '/')]
+        tagName = tagPath[string.rfind(tagPath, '/') + 1:]
+#    print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
     return parentPath, tagName
