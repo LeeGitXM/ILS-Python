@@ -232,8 +232,8 @@ def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvid
     print "Accepting a value which failed validity checks :: valueId: %i, valueName: %s, rawValue: %s, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, str(rawValue), sampleTime, database, tagProvider)
     
     from ils.labData.scanner import storeValue
-    storeValue(valueId, valueName, rawValue, sampleTime, log, database)
-    
+    storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database)
+        
     # Update the Lab Data UDT tags 
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
 
