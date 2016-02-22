@@ -6,12 +6,12 @@ Created on Dec 1, 2014
 
 import system, string, time
 import ils.io.controller as controller
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from java.util import Date
-log = LogUtil.getLogger("com.ils.io")
+log = system.util.getLogger("com.ils.io")
 
 class PKSController(controller.Controller):
     def __init__(self,path):
+        #print "Initializing a PKS controller"
         controller.Controller.__init__(self,path)
 
     # Reset the UDT in preparation for a write 
@@ -192,30 +192,36 @@ class PKSController(controller.Controller):
 
         # Read the current values of all of the tags we need to consider to determine if the configuration is valid.
         currentValue = system.tag.read(tagRoot + '/value')
-        
-        # TODO Does OutputDisposability belong here?
-#        outputDisposability = system.tag.read(self.path + '/outputDisposability/value')
-        mode = system.tag.read(self.path + '/mode/value')
-        
+
         # Check the quality of the tags to make sure we can trust their values
         if str(currentValue.quality) != 'Good': 
             log.info("checkConfig failed for %s because the %s quality is %s" % (self.path, valueType, str(currentValue.quality)))
             return False, "The %s quality is %s" % (valueType, str(currentValue.quality))
 
-#        if str(outputDisposability.quality) != 'Good': 
-#            log.info("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
-#            return False, "The output disposability quality is %s" % (str(outputDisposability.quality))
+        # The quality is good so not get the values in a convenient form
+        currentValue = float(currentValue.value)
+
+        # Check the Mode
+
+        mode = system.tag.read(self.path + '/mode/value')
         
         if str(mode.quality) != 'Good': 
             log.info("checkConfig failed for %s because the mode quality is %s" % (self.path, str(mode.quality)))
             return False, "The mode quality is %s" % (str(mode.quality))
         
-        # The quality is good so not get the values in a mode convenient form
-        currentValue = float(currentValue.value)
-#        outputDisposability = string.strip(outputDisposability.value)
-        outputDisposability="HILO"
         mode = string.strip(mode.value)
         
+        # Check the Output Disposability
+        
+        outputDisposability = system.tag.read(self.path + '/outputDisposability/value')
+        
+        # Check the quality of the tags to make sure we can trust their values
+        if str(outputDisposability.quality) != 'Good': 
+            log.info("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
+            return False, "The outputDisposability quality is %s" % (str(outputDisposability.quality))
+
+        outputDisposability = string.strip(outputDisposability.value)        
+
         log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, valueType, str(currentValue), outputDisposability, mode))
 
         # For outputs check that the mode is MANUAL - no other test is required
@@ -227,7 +233,7 @@ class PKSController(controller.Controller):
         # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is 
         # optional 
         elif string.upper(valueType) in ["SP", "SETPOINT"]:
-            if string.upper(outputDisposability) != 'HILO' and checkPathToValve:
+            if string.upper(outputDisposability) == 'HILO' and checkPathToValve:
                 success = False
                 errorMessage = "%s has no path to valve" % (self.path)
         
@@ -237,7 +243,8 @@ class PKSController(controller.Controller):
             
             # I don't understand this check, not sure if we are checking the current value or the new value.  
             # If checking the currentValue, what difference does it make what the new value is??
-            if (currentValue > float(newVal) * 0.03) and testForZero:
+            # See s88-confirm-controller-mode(opc-pks-controller)
+            if (currentValue > (float(newVal) * 0.03)) and testForZero:
                 success = False
                 errorMessage = "%s %s setpoint is not zero (it is actually %f)" % (errorMessage, self.path, currentValue)
 

@@ -8,7 +8,7 @@ import system
 import time
 import traceback
 from java.util import Date
-from ils.io.util import checkIfUDT, checkIfController
+from ils.io.util import isUDT, checkIfController, getOuterUDT
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -17,10 +17,10 @@ import ils.io.opcconditionaloutput
 import ils.io.recipedetail
 import ils.io.controller
 import ils.io.pkscontroller
+import ils.io.pksacecontroller
 import ils.io.tdccontroller
 
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.io.api")
+log = system.util.getLogger("com.ils.io.api")
 
 # This is a convenience function that determines the correct API to use based on the target of the write.
 # (If this is a convenience function, why would I ever use the INCONVENIENT functions?)
@@ -37,7 +37,7 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
     success = True
     errorMessage = ""
 
-    if checkIfUDT(fullTagPath):
+    if isUDT(fullTagPath):
         # This could be collapsed - we don't really need to know the Python class here - leaving it in for now as 
         # an example of how to determine the Python class. 
         pythonClass = system.tag.read(fullTagPath + "/pythonClass").value
@@ -70,10 +70,10 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
 #  1) If the recipe data is an output then we monitor the value tag of the controller
 #  2) If the recipe data is an input then just monitor the tag 
 def getMonitoredTagPath(recipeData, tagProvider):
-    from system.ils.sfc.common.Constants import TAG_PATH, OUTPUT_TYPE, SETPOINT, OUTPUT, VALUE
+#    from system.ils.sfc.common.Constants import TAG_PATH
 
     rdClass = recipeData.get("class")
-    tagPath = recipeData.get(TAG_PATH)
+    tagPath = recipeData.get("tagPath")
     tagPath = "[" + tagProvider + "]" + tagPath
 
     if string.upper(rdClass) == "OUTPUT":
@@ -154,7 +154,7 @@ def writer(tagPath, val, valueType=""):
     if not(tagExists):
         return False, "%s does not exist" % (tagPath)
     
-    if checkIfUDT(tagPath):
+    if isUDT(tagPath):
         log.trace("The target is a UDT - resetting...")
         status = system.tag.write(tagPath + '/command', 'RESET')
         if status == 0:
@@ -222,10 +222,7 @@ def writer(tagPath, val, valueType=""):
 #       just monitor the write status of the UDT but for a simple tag we need to read the value in the tag.
 #       For now ALWAYS read the value in the tag. 
 def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1): 
-    log = LogUtil.getLogger("com.ils.io")
-
-    if checkIfUDT(tagPath):
-        
+    if isUDT(tagPath):
         if string.upper(valueType) in ["SP", "SETPOINT"]:
             tagRoot = tagPath + '/sp'
         elif string.upper(valueType) in ["OP", "OUTPUT"]:
@@ -276,13 +273,16 @@ def writeRamp(controllerTagpath, val, rampTime, updateFrequency, valType, writeC
 # This is the equivalent of s88-confirm-controller-mode in the old system.
 # This is a method dispatcher to the method appropriate for the class of controller.
 # This is called from Python and runs in the client.
-def confirmControllerMode(controllerTagpath, val, testForZero, checkPathToValve, valueType):
-    print "In api.checkConfig(), checking %s" % (controllerTagpath)
+def confirmControllerMode(tagpath, val, testForZero, checkPathToValve, valueType):
+    print "In io.api.confirmControllerMode(), checking %s" % (tagpath)
 
-    if not(checkIfUDT(controllerTagpath)):
+    controllerUDTType, controllerTagpath=getOuterUDT(tagpath)
+    
+    if controllerUDTType == None:
         print "The target is not a controller so assume it is reachable"
         return True, "The target is not a Controller"
 
+    print "The UDT is: %s\nThe path to the UDT is: %s" % (controllerUDTType, controllerTagpath)
     # Get the name of the Python class that corresponds to this UDT.
     pythonClass = system.tag.read(controllerTagpath + "/pythonClass").value
     pythonClass = pythonClass.lower() + "." + pythonClass
@@ -290,6 +290,7 @@ def confirmControllerMode(controllerTagpath, val, testForZero, checkPathToValve,
     # Dynamically create an object (that won't live very long) and then call its reset method
     try:
         cmd = "ils.io." + pythonClass + "('" + controllerTagpath + "')"
+        print "Command: ", cmd
         controller = eval(cmd)
         success, errorMessage = controller.confirmControllerMode(val, testForZero, checkPathToValve, valueType)
 
@@ -311,8 +312,6 @@ def validateValueType(valueType):
     
 # Get the string that will typically be displayed in the DCS Tag Id column of the download monitor
 def getDisplayName(provider, tagPath, valueType, displayAttribute):
-    import string 
-    
     fullTagPath='[%s]%s' % (provider, tagPath)
 
     # Check if the tag exists
@@ -328,9 +327,7 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
         # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
 
         valueType=validateValueType(valueType)
-        isUDT = checkIfUDT(fullTagPath)
-
-        if isUDT:    
+        if isUDT(fullTagPath):    
             if string.upper(valueType) == "VALUE":
                 displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
             else:

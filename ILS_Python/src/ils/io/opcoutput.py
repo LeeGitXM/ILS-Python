@@ -6,14 +6,13 @@ Either a float or text output to OPC.
 Created on Jul 9, 2014
 @author: phassler
 '''
+import ils
+import ils.io
 import ils.io.opctag as opctag
-import string
 import system
-import time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.io")
-from java.util import Date
-from ils.io.util import equalityCheck
+
+log = system.util.getLogger("com.ils.io")
+
 
 class OPCOutput(opctag.OPCTag):
     def __init__(self,path):

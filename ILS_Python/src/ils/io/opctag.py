@@ -14,9 +14,8 @@
 #          Could it be from the import * in util.py? 
 # NOTE: Subclasses must be added to __init__.py.
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.io.util import getProviderFromTagpath
-log = LogUtil.getLogger("com.ils.io")
+log = system.util.getLogger("com.ils.io")
 
 class OPCTag():
 

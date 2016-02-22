@@ -6,8 +6,7 @@ Created on Nov 30, 2014
 
 import ils.io.opctag as opctag
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.io")
+log = system.util.getLogger("com.ils.io")
 
 class Controller(opctag.OPCTag):
     def __init__(self,path):

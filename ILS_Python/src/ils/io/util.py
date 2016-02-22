@@ -5,9 +5,9 @@ Created on Dec 3, 2014
 '''
 
 import system, string, time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from java.util import Date
 from ils.common.util import isText
+log = system.util.getLogger("com.ils.io")
 
 # Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
 # There is possibly an easier way to do this and avoid the whole broseTag API issues of 
@@ -40,9 +40,7 @@ def isFolder(fullTagPath):
     return isFolder
 
 def getOuterUDT(fullTagPath):
-    # Strip off the provider
-    UDTType=None
-    
+    # Strip off the provider   
     if fullTagPath.find("]")>=0:
         provider=fullTagPath[:fullTagPath.find("]") + 1]
         tagPath=fullTagPath[fullTagPath.find("]") + 1:]
@@ -64,10 +62,10 @@ def getOuterUDT(fullTagPath):
 #        print "Checking if <%s> is a UDT: " % (tp)
         if isUDT(tp):
             UDTType=getUDTType(tp)
-            return UDTType 
+            return UDTType, tp 
 
 #        print "There must not be a UDT in the tag path..."
-    return UDTType
+    return None, None
 
 def getInnerUDT(fullTagPath):
     # Strip off the provider
@@ -188,7 +186,6 @@ def dataTypeMatch(val1, val2):
 # reasonable amount of time.  As soon as we read the value back we are done.  The tagPath must be the full path to the 
 # OPC tag that we are confirming, not the UDT that contains it. 
 def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0): 
-    log = LogUtil.getLogger("com.ils.io")
     log.trace("Confirming the write of <%s> to %s..." % (str(val), tagPath))
  
     startTime = Date().getTime()
@@ -219,10 +216,7 @@ def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0):
 # that is methodized on the class of object performing the write that does the actual write comparison.  This probably should 
 # keep checking as long as the write method is still running, as indicated by a NULL writeStatus, but I have implemented a 
 # timeout just to prevent it from running forever. 
-def waitForWriteConfirm(tagRoot, timeout=60, frequency=1): 
-    
-    log = LogUtil.getLogger("com.ils.io")
-
+def waitForWriteConfirm(tagRoot, timeout=60, frequency=1):
     log.trace("Waiting for write confirmation for <%s>..." % (tagRoot))
  
     startTime = Date().getTime()
@@ -247,7 +241,6 @@ def waitForWriteConfirm(tagRoot, timeout=60, frequency=1):
 # It will check the basics of tag configuration and report that back.  It will also report if the OPC write was successful. 
 # It determines if a write is complete by checking for SUCCESS or FAILURE in the writeStatus tag.
 def waitForWriteComplete(tagRoot, timeout=60, frequency=1): 
-    log = LogUtil.getLogger("com.ils.io")
     log.trace("Waiting for write completion for <%s>..." % (tagRoot))
  
     startTime = Date().getTime()

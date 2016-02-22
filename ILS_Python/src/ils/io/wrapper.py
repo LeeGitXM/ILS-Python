@@ -8,8 +8,7 @@ Created on Jul 9, 2014
 
 @author: phassler
 '''
-import traceback
-import string
+import system, string, traceback
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -22,8 +21,7 @@ import ils.io.pkscontroller
 import ils.io.pksacecontroller
 import ils.io.tdccontroller
 
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.io")
+log = system.util.getLogger("com.ils.io")
 
 # Chuck isn't sure why this doesn't work!
 import system
@@ -38,7 +36,6 @@ def tagWriter(tagPath, val):
 
 # Command a BasicIO object
 def write(tagPath, command):
-
     tagPath = str(tagPath)
 
     log.trace("Tag <%s> received command: %s" % (tagPath, command))
