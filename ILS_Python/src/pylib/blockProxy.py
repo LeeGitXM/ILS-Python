@@ -75,15 +75,13 @@ def getBlockProperty(common,dpath,blockName,propName):
 				return
 	print 'getBlockProperty ',dpath,': block',blockName,' not found'
 
-# Set the value of a property of a block
+# Set the value of a property of a block. Use the controller
+# request handler in order to set the property in such a way
+# that the block is notified.
 def setBlockProperty(common,dpath,blockName,propName,value):
-	diagram = getDiagram(dpath)
-	for block in diagram.getProcessBlocks():
-		if block.getName() == blockName:
-			prop = block.getProperty(propName)
-			if prop != None:
-				prop.setValue(value)
-			return
+	requestHandler = script.getRequestHandler()
+	diagid = getDiagram(dpath).getSelf().toString()
+	requestHandler.setBlockPropertyValue(diagid,blockName,propName,value)
 
 # Return the state of a block
 def getBlockState(common,dpath,blockName):
