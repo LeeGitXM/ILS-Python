@@ -18,6 +18,12 @@ def getQueueForPost(post, db = ''):
     queueKey = system.db.runScalarQuery(SQL, db)
     return queueKey
 
+def getQueueForDiagnosticApplication(applicationName, db = ''):
+    SQL = "select QueueKey from QueueMaster QM, DtApplication A "\
+        "where A.MessageQueueId = QM.QueueId and ApplicationName = '%s'" % (applicationName)
+    queueKey = system.db.runScalarQuery(SQL, db)
+    return queueKey
+
 # Get the names of all current queues
 def getQueueNames(db = ''):
     SQL = "select QueueKey from QueueMaster"
