@@ -27,3 +27,6 @@ def getLogger(path):
 
 def invokeAsynchronous(fn):
     pass
+
+def getGlobals():
+    pass

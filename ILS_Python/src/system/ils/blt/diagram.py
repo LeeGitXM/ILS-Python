@@ -17,6 +17,9 @@ def getToolkitProperty(name):
    
 def resetDiagram(diagid):
     '''Reset the specified diagram'''
+
+def resetBlock(diagid, blockid):
+    '''Reset the specified block'''
     
 def setDiagramState(diagid,state):
     '''Set the state of the specified diagram'''
