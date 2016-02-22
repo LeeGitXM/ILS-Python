@@ -5,7 +5,7 @@ Created on Jun 30, 2015
 '''
 import system
 
-# Not sure if this is used in production, but it is neded for testing
+# Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
     print "Sending a message to post a diagnosis entry..."
     projectName=system.util.getProjectName()
@@ -22,36 +22,42 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
 def handleNotification(payload):
     print "Handling a notification", payload
     
-    console=payload.get('console', '')
+    post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
-    print "Notification Text: <%s>" % (notificationText)
+    
     windows = system.gui.getOpenedWindows()
     
     # First check if the setpoint spreadsheet is already open.  This does not check which console's
     # spreadsheet is open, it assumes a client can only be interested in one console.
+    print "Checking to see if the setpoint spreadsheet is already open..."
     for window in windows:
         windowPath=window.getPath()
         pos = windowPath.find('Setpoint Spreadsheet')
         if pos >= 0:
-            print "The spreadsheet is already open!"
+            print "...found an open spreadsheet..."
             rootContainer=window.rootContainer
             rootContainer.refresh=True
             
             if notificationText != "":
-                system.gui.messageBox(notificationText, "Vector Clamp Advice")
+                system.gui.messageBox(notificationText)
                 
             return
     
     # We didn't find an open setpoint spreadsheet, so check if this client is interested in the console
+    print "Checking for a mating console window..."
     for window in windows:
         windowPath=window.getPath()
-        pos = windowPath.find(console)
-        if pos >= 0:
-            print "Found an interested window - post the setpoint spreadsheet"
-            system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'console': console})
+        rootContainer=window.rootContainer
+        windowPost=rootContainer.getPropertyValue("post")
+        if post == windowPost:
+            print "Found an interested console window - post the setpoint spreadsheet"
+            system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'post': post})
             system.nav.centerWindow('DiagToolkit/Setpoint Spreadsheet')
             
             if notificationText != "":
-                system.gui.messageBox(notificationText, "Vector Clamp Advice")
+                system.gui.messageBox(notificationText)
                 
             return
+    
+    print "*** This client is not interested in the setpoint spreadsheet for the %s post ***" % (post)
+    

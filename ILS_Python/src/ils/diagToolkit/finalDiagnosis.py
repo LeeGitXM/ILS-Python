@@ -9,17 +9,18 @@ Created on Sep 12, 2014
 #
 
 import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.diagToolkit.common import fetchPostForApplication
 
-log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
-logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
+log = system.util.getLogger("com.ils.diagToolkit")
+logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
-def notifyClients(project, console, notificationText):
-    log.trace("Notifying %s-%s client to open/update the setpoint spreadsheet..." % (project, console))
+# Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
+# console and the spreadsheet isn't displayed.
+def notifyClients(project, post, notificationText=""):
+    log.trace("Notifying %s-%s client to open/update the setpoint spreadsheet..." % (project, post))
     log.trace("   ...notification text: <%s>" % (notificationText))
     system.util.sendMessage(project=project, messageHandler="consoleManager", 
-                            payload={'type':'setpointSpreadsheet', 'console':console, 'notificationText':notificationText}, scope="C")
+                            payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText}, scope="C")
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -68,6 +69,18 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
+    # Update the UUID and DiagramUUID of the final diagnosis
+    SQL = "update DtFinalDiagnosis set UUID = '%s', DiagramUUID = '%s' "\
+        " where FinalDiagnosisId = %i "\
+        % (UUID, diagramUUID, finalDiagnosisId)
+    logSQL.trace(SQL)
+    
+    try:
+        system.db.runUpdateQuery(SQL, database)
+    except:
+        log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
+    
+
     log.info("Starting to manage diagnosis...")
     notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
@@ -111,14 +124,15 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
         "where A.UnitId = U.UnitId "\
         "and U.PostId = P.postId "\
         "and A.ApplicationName = '%s'" % (application)
-    console = system.db.runScalarQuery(SQL, database)
-    print "The console is: ", console
-    notifyClients(projectName, console, notificationText)
+    post = system.db.runScalarQuery(SQL, database)
+    print "The post is: ", post
+    notifyClients(projectName, post, notificationText)
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def recalcMessageHandler(payload):
     post=payload["post"]
+    project=system.util.getProjectName()
     log.info("Handling message to manage an recommendations for post %s" % (post))
     database=payload["database"]
     provider=payload["provider"]
@@ -130,6 +144,10 @@ def recalcMessageHandler(payload):
         applicationName=record["ApplicationName"]
         manage(applicationName, recalcRequested=True, database=database, provider=provider)
 
+    # Send a message to every client monitoring this post that the spreadsheet should be updated.
+    notifyClients(project, post)
+
+    
 # This is based on the original G2 procedure outout-msg-core()
 # I think this updates the diagnosis entry with the results of the recommendation.
 def updateOutputMessage(finalDiagnosisId, diagnosisEntryId, textRecommendation, recommendations, quantOutputs, database):
@@ -194,6 +212,34 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 quantOutputs=newQuantOutputs
         log.trace("The outputs merged with recommendations are: %s" % (str(quantOutputs)))
         return quantOutputs
+
+    #-------------------------------------------------------------------------
+    # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
+    # and is the first step in evaluating the active FDs and calculating new recommendations.
+    def resetRecommendations(applicationName, log, database):
+        log.info("Deleting recommendations for %s" % (applicationName))
+        SQL = "delete from DtRecommendation " \
+            " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
+            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+            " where A.ApplicationId = F.ApplicationId "\
+            " and F.FamilyId = FD.FamilyId "\
+            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+            " and A.ApplicationName = '%s')" % (applicationName)
+        log.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        log.trace("Deleted %i recommendations..." % (rows))
+
+    #----------------------------------------------------------------------------
+    # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
+    # and is the first step in evaluating the active FDs and calculating new recommendations.
+    def resetOutputs(applicationName, log, database):
+        log.info("Resetting QuantOutputs for %s" % (applicationName))
+        SQL = "update DtQuantOutput " \
+            " set Active = 0 where ApplicationId in (select ApplicationId "\
+            " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
+        log.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        log.trace("Reset %i QuantOutputs..." % (rows))
 
     #---------------------------------------------------------------------
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
@@ -398,11 +444,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
     else:
         log.trace("Continuing to make recommendations because there was a change in the highest priority active final diagnosis...")
 
-    from ils.diagToolkit.common import deleteRecommendations
     log.trace("...deleting existing recommendations for %s..." % (application))
-    deleteRecommendations(application, log, database)
+    resetRecommendations(application, log, database)
     
-    from ils.diagToolkit.common import resetOutputs
     log.trace("...resetting the QuantOutput active flag for %s..." % (application))
     resetOutputs(application, log, database)
     
