@@ -4,6 +4,9 @@
 @author: chuckc
 '''
 
+def clearWatermark(diagId):
+    '''Clear the watermark from the diagram'''
+    
 def getBlockState(diagramId, blockName):
     '''Get the internal state of a block'''
 
@@ -46,3 +49,7 @@ def setDiagramState(diagid,state):
 
 def setState(diagId, blockName, state):
     '''Set the state of the named block on the specified diagram'''
+    
+def setWatermark(diagId, txt):
+    '''Add a watermark with desired text to the diagram'''
+    
