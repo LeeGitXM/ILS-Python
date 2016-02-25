@@ -23,7 +23,7 @@ def getHandler():
     '''Return a python request handler'''
 
 # I don't think this is correct...
-def getPropertyValue(diagramId, blockId, property):
+def getPropertyValue(diagId, blockId, property):
     '''Get the diagram serializable block state descriptor'''
     
 def getRequestHandler():
@@ -32,8 +32,11 @@ def getRequestHandler():
 def getToolkitProperty(name):
     return name
 
-def listBlocksUpstreamOf(diagramId, sqcBlockName):
-    '''Get a list of serializable block state descriptor all of the upstream blocks'''
+def listBlocksUpstreamOf(diagId, blockName):
+    '''Get a list of serializable block state descriptors of the upstream blocks'''
+
+def listBlocksDownstreamOf(diagId, blockName):
+    '''Get a list of serializable block state descriptors of the downstream blocks'''
 
 def resetBlock(diagId, blockName):
     '''Reset the specified block'''
@@ -41,10 +44,13 @@ def resetBlock(diagId, blockName):
 def resetDiagram(diagid):
     '''Reset the specified diagram'''
 
-def sendSignal(diagramUUID, blockName, signal, message):
+def sendSignal(diagId, blockName, signal, message):
     '''Send a signal to the named block on the specified diagram'''
+
+def setBlockState(diagId, blockName, blockState):
+    '''Set the internal state of a block, states are TRUE, FALSE, UNKNOWN, UNSET'''
     
-def setDiagramState(diagid,state):
+def setDiagramState(diagId,state):
     '''Set the state of the specified diagram'''
 
 def setState(diagId, blockName, state):
