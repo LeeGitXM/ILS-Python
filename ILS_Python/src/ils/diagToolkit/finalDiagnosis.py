@@ -59,9 +59,9 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     
     # Insert an entry into the diagnosis queue
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
-        "RecommendationStatus, UUID, DiagramUUID, ManualMove, ManualMoveValue, RecommendationMultiplier) "\
-        "values (%i, 'Active', getdate(), '%s', '%s', 'NONE-MADE', '%s', '%s', 0, 0.0, 1.0)" \
-        % (finalDiagnosisId, grade, textRecommendation, UUID, diagramUUID)
+        "RecommendationStatus, ManualMove, ManualMoveValue, RecommendationMultiplier) "\
+        "values (%i, 'Active', getdate(), '%s', '%s', 'NONE-MADE', 0, 0.0, 1.0)" \
+        % (finalDiagnosisId, grade, textRecommendation)
     logSQL.trace(SQL)
     
     try:

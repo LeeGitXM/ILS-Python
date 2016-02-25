@@ -6,6 +6,7 @@ Created on Sep 9, 2014
 
 import system, string
 log = system.util.getLogger("com.ils.diagToolkit")
+WAIT_FOR_MORE_DATA="Wait For Data"
 
 def initialize(rootContainer):
     print "In ils.diagToolkit.setpointSpreadsheet.initialize()..."
@@ -252,14 +253,20 @@ def recalcCallback(event):
 # FYI - the download callback is in its own module.
 #
 
-# This is called from the WAIT button on the setpoint spreadsheet
+# This is called from the WAIT button on the set-point spreadsheet
 def waitCallback(event):
+    print "Processing a WAIT-FOR-MORE-DATA..."
     rootContainer=event.source.parent
-    
-    system.gui.messageBox("The WAIT functionality has not been implemented!")
+
+    from ils.common.config import getDatabaseClient, getTagProviderClient
+    db=getDatabaseClient()
+    tagProvider=getTagProviderClient()
+    repeater=rootContainer.getComponent("Template Repeater")
+    ds = repeater.templateParams
+    postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=WAIT_FOR_MORE_DATA, recommendationStatus=WAIT_FOR_MORE_DATA)
 
 
-# This is called from the NO DOWNLOAD button on the setpoint spreadsheet
+# This is called from the NO DOWNLOAD button on the set-point spreadsheet
 def noDownloadCallback(event):
     print "Processing a NO-DOWNLOAD..."
     rootContainer=event.source.parent
@@ -271,7 +278,8 @@ def noDownloadCallback(event):
     ds = repeater.templateParams
     postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
 
-# This is called when we do a download or a no download.
+# This is called when we do a download, no download, or Wait-For-More-Data.
+# Use the action message to determine which button was pressed and exactly how much processing to do.
 # Reset the database tables and the BLT diagrams for every application that is active.
 # We do not consider individual outputs that the operator may have chosen to not download.   
 def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, recommendationStatus):
@@ -316,7 +324,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
                         if rec["FamilyName"] not in families:
                             families.append(rec["FamilyName"])
 
-    resetApplication(application, families, finalDiagnosisNames, quantOutputs, actionMessage, recommendationStatus, db)
+    resetApplication(post, application, families, finalDiagnosisNames, quantOutputs, actionMessage, recommendationStatus, db)
     print "...done post action processing!"
     
     # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
@@ -328,30 +336,30 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     payload={"post": post, "database": db, "provider": tagProvider}
     system.util.sendMessage(projectName, "recalc", payload, "G")
 
-def resetApplication(application, families, finalDiagnosisNames, quantOutputs, actionMessage, recommendationStatus, database):
+def resetApplication(post, application, families, finalDiagnosisNames, quantOutputs, actionMessage, recommendationStatus, database):
     log.info("Resetting application %s" % (application))
     log.trace("  Families: %s" % (str(families)))
     log.trace("  Final Diagnosis: %s" % (str(finalDiagnosisNames)))
     log.trace("  Quant Outputs: %s" % (str(quantOutputs)))
 
     # Post a message to the applications queue documenting what we are doing to the active families    
-    postSetpointSpreadsheetActionMessage(application, families, actionMessage, database)
+    postSetpointSpreadsheetActionMessage(post, families, actionMessage, database)
 
     # Perform all of the database updates necessary to update the affected FDs, 
     # Quant Outputs, recommendations, and diagnosis entries.
 
-    resetOutputs(quantOutputs, log, database)
-    resetRecommendations(quantOutputs, log, database)
-    resetFinalDiagnosis(application, log, database)
-    resetDiagnosisEntry(application, recommendationStatus, log, database)
+    resetOutputs(quantOutputs, actionMessage, log, database)
+    resetRecommendations(quantOutputs, actionMessage, log, database)
+    resetFinalDiagnosis(application, actionMessage, log, database)
+    resetDiagnosisEntry(application, actionMessage, recommendationStatus, log, database)
                 
     # Reset the BLT blocks - this varies slightly depending on the action
-    resetDiagram(finalDiagnosisNames, database)
+    resetDiagram(finalDiagnosisNames, actionMessage, database)
 
 
-def postSetpointSpreadsheetActionMessage(application, families, actionMessage, database):
-    from ils.queue.commons import getQueueForDiagnosticApplication
-    queueKey=getQueueForDiagnosticApplication(application, database)
+def postSetpointSpreadsheetActionMessage(post, families, actionMessage, database):
+    from ils.queue.commons import getQueueForPost
+    queueKey=getQueueForPost(post, database)
 
     delimiter=""
     msg="%s was selected for: " % (actionMessage)
@@ -365,7 +373,7 @@ def postSetpointSpreadsheetActionMessage(application, families, actionMessage, d
     
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
 # and is the first step in evaluating the active FDs and calculating new recommendations.
-def resetOutputs(quantOutputs, log, database):
+def resetOutputs(quantOutputs, actionMessage, log, database):
     log.info("Resetting QuantOutputs: %s" % (str(quantOutputs)))
     rows=0
     for quantOutput in quantOutputs:
@@ -379,7 +387,7 @@ def resetOutputs(quantOutputs, log, database):
 
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
 # and is the first step in evaluating the active FDs and calculating new recommendations.
-def resetRecommendations(quantOutputs, log, database):
+def resetRecommendations(quantOutputs, actionMessage, log, database):
     log.info("Deleting recommendations for %s" % (str(quantOutputs)))
     rows=0
     for quantOutput in quantOutputs:
@@ -393,19 +401,25 @@ def resetRecommendations(quantOutputs, log, database):
         rows+=cnt
     log.trace("Deleted %i recommendations..." % (rows))
 
-def resetFinalDiagnosis(applicationName, log, database):
+def resetFinalDiagnosis(applicationName, actionMessage, log, database):
     log.info("Resetting Final Diagnosis for application %s" % (applicationName))
-    SQL = "update DtFinalDiagnosis set Active = 0 "\
-        " where active = 1 and FamilyId in "\
+    
+    # if we are processing a wait-for-more-data then do not update the timeOfMostRecentRecommendationImplementation
+    if actionMessage == WAIT_FOR_MORE_DATA:
+        SQL = "update DtFinalDiagnosis set Active = 0 "
+    else:
+        SQL = "update DtFinalDiagnosis set Active = 0, TimeOfMostRecentRecommendationImplementation = getdate() "
+
+    SQL = "%s where active = 1 and FamilyId in "\
         " (select F.familyId "\
         " from DtFamily F, DtApplication A "\
         " where F.ApplicationId = A.ApplicationId "\
-        " and A.ApplicationName = '%s')" % (applicationName)
+        " and A.ApplicationName = '%s')" % (SQL, applicationName)
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     log.trace("Updated %i final diagnosis..." % (rows))
 
-def resetDiagnosisEntry(applicationName, recommendationStatus, log, database):
+def resetDiagnosisEntry(applicationName, actionMessage, recommendationStatus, log, database):
     log.info("Resetting Diagnosis Entries for application %s" % (applicationName))
     SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
         " where status = 'Active' and FinalDiagnosisId in "\
@@ -419,12 +433,13 @@ def resetDiagnosisEntry(applicationName, recommendationStatus, log, database):
     log.trace("Updated %i diagnosis entries..." % (rows))
 
 # Reset the BLT diagram in response to a Wait, No-Download, or a Download
-def resetDiagram(finalDiagnosisNames, database):
+def resetDiagram(finalDiagnosisNames, actionMessage, database):
 #    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     import system.ils.blt.diagram as diagram
+    print "Resetting BLT diagrams..."
     
     for finalDiagnosisName in finalDiagnosisNames:
-        print "Resetting final diagnosis: ", finalDiagnosisName
+        print "Resetting final diagnosis: %s for a %s" % (finalDiagnosisName, actionMessage)
         
         SQL = "select DiagramUUID, UUID from DtFinalDiagnosis "\
             "where FinalDiagnosisName = '%s' " % (finalDiagnosisName)
@@ -436,47 +451,45 @@ def resetDiagram(finalDiagnosisNames, database):
             
             print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(fdUUID))
             
+            if actionMessage == WAIT_FOR_MORE_DATA:
+                print "Setting the watermark"
+                system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
+            
+            print "   ... Resetting the final diagnosis: %s  %s..." % (finalDiagnosisName, diagramUUID)
+            system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
+                        
             print "Fetching upstream blocks for diagram <%s> - final diagnosis <%s>..." % (str(diagramUUID), finalDiagnosisName)
 
             if diagramUUID != None and fdUUID != None:
                 blocks=diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
                 print "Found blocks: ", blocks
-#    sqcInfo=[]
+                
                 for block in blocks:
-                    print "Found a <%s> block..." % (block.getClassName())
-                    if block.getClassName() == "com.ils.block.SQC":
-                        blockId=block.getIdString()
-                        blockName=block.getName()
-                        print "   ... found a SQC block named: %s  %s  %s..." % (blockName,diagramUUID, blockId)
-                        system.ils.blt.diagram.resetBlock(diagramUUID, blockId)
+                    blockId=block.getIdString()
+                    blockName=block.getName()
+                    blockClass=block.getClassName()
+                    
+                    print "Found a <%s> block..." % (blockClass)
+                    if actionMessage == WAIT_FOR_MORE_DATA:
+                        if blockClass == "com.ils.block.LogicFilter":
+                            print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, blockId)
+                            system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
+                        elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
+                                "com.ils.block.TrendDetector"]:
+                            print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
+                            system.ils.blt.diagram.setState(diagramUUID, blockName, "Unknown")
+                    else:
+                        if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
+                                "com.ils.block.TrendDetector", "com.ils.block.LogicFilter"]:
+                            print "   ... resetting a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
+                            system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
+
+                    # Here are the actions that are the same for all of the actions:
+                    if blockClass == "com.ils.block.Inhibitor":
+                            print "   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId)
+                            system.ils.blt.diagram.sendSignal(diagramUUID, blockName,"INHIBIT","")
                         
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
 
-                
-            # First get block properties
-#            sampleSize=diagram.getPropertyValue(diagramId, blockId, 'SampleSize')
-#            numberOfStandardDeviations=diagram.getPropertyValue(diagramId, blockId, 'NumberOfStandardDeviations')
-                
-            # now the state
-#           state=diagram.getBlockState(diagramId, blockName)
-                
-            # now get some block internals
-#            attributes = block.getAttributes()
-    #            print "Attributes: ", attributes
-#            target=attributes.get('Mean (target)')
-#            standardDeviation=attributes.get('StandardDeviation')
-#            limitType=attributes.get('Limit type')
-                
-#            sqcDictionary = {
-#                                "target": target,
-#                                "standardDeviation": standardDeviation,
-#                                "limitType": str(limitType),
-#                                "sampleSize": sampleSize,
-#                                "minimumOutOfRange": 1,
-#                                "numberOfStandardDeviations": numberOfStandardDeviations,
-#                                "state": state
-#                                }
-#            sqcInfo.append(sqcDictionary)
-#            print sqcDictionary
 
