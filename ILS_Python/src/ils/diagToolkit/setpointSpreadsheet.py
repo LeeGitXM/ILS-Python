@@ -354,7 +354,10 @@ def resetApplication(post, application, families, finalDiagnosisNames, quantOutp
     resetDiagnosisEntry(application, actionMessage, recommendationStatus, log, database)
                 
     # Reset the BLT blocks - this varies slightly depending on the action
-    resetDiagram(finalDiagnosisNames, actionMessage, database)
+    if actionMessage == WAIT_FOR_MORE_DATA:
+        partialResetDiagram(finalDiagnosisNames, database)
+    else:
+        resetDiagram(finalDiagnosisNames, database)
 
 
 def postSetpointSpreadsheetActionMessage(post, families, actionMessage, database):
@@ -432,14 +435,14 @@ def resetDiagnosisEntry(applicationName, actionMessage, recommendationStatus, lo
     rows=system.db.runUpdateQuery(SQL, database)
     log.trace("Updated %i diagnosis entries..." % (rows))
 
-# Reset the BLT diagram in response to a Wait, No-Download, or a Download
-def resetDiagram(finalDiagnosisNames, actionMessage, database):
+# Reset the BLT diagram in response to a No-Download or Download
+def resetDiagram(finalDiagnosisNames, database):
 #    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     import system.ils.blt.diagram as diagram
     print "Resetting BLT diagrams..."
     
     for finalDiagnosisName in finalDiagnosisNames:
-        print "Resetting final diagnosis: %s for a %s" % (finalDiagnosisName, actionMessage)
+        print "Resetting final diagnosis: %s" % (finalDiagnosisName)
         
         SQL = "select DiagramUUID, UUID from DtFinalDiagnosis "\
             "where FinalDiagnosisName = '%s' " % (finalDiagnosisName)
@@ -451,10 +454,6 @@ def resetDiagram(finalDiagnosisNames, actionMessage, database):
             
             print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(fdUUID))
             
-            if actionMessage == WAIT_FOR_MORE_DATA:
-                print "Setting the watermark"
-                system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
-            
             print "   ... Resetting the final diagnosis: %s  %s..." % (finalDiagnosisName, diagramUUID)
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
                         
@@ -462,33 +461,87 @@ def resetDiagram(finalDiagnosisNames, actionMessage, database):
 
             if diagramUUID != None and fdUUID != None:
                 blocks=diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
-                print "Found blocks: ", blocks
-                
+
                 for block in blocks:
                     blockId=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
                     
                     print "Found a <%s> block..." % (blockClass)
-                    if actionMessage == WAIT_FOR_MORE_DATA:
-                        if blockClass == "com.ils.block.LogicFilter":
-                            print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, blockId)
-                            system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
-                        elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
-                                "com.ils.block.TrendDetector"]:
-                            print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
-                            system.ils.blt.diagram.setState(diagramUUID, blockName, "Unknown")
-                    else:
-                        if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
-                                "com.ils.block.TrendDetector", "com.ils.block.LogicFilter"]:
-                            print "   ... resetting a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
-                            system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
 
-                    # Here are the actions that are the same for all of the actions:
+                    if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
+                                "com.ils.block.TrendDetector", "com.ils.block.LogicFilter"]:
+                        print "   ... resetting a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
+                        system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
+
                     if blockClass == "com.ils.block.Inhibitor":
                             print "   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId)
                             system.ils.blt.diagram.sendSignal(diagramUUID, blockName,"INHIBIT","")
                         
+            else:
+                log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
+
+
+# Reset the BLT diagram in response to a Wait-For-More-Data
+def partialResetDiagram(finalDiagnosisNames, database):
+    print "Performing a *partial* reset of the BLT diagrams..."
+    
+    for finalDiagnosisName in finalDiagnosisNames:
+        print "Resetting final diagnosis: %s" % (finalDiagnosisName)
+        
+        SQL = "select DiagramUUID, UUID from DtFinalDiagnosis "\
+            "where FinalDiagnosisName = '%s' " % (finalDiagnosisName)
+        pds = system.db.runQuery(SQL, database)
+        
+        for record in pds:
+            diagramUUID=record["DiagramUUID"]
+            fdUUID=record["UUID"]
+            
+            print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(fdUUID))
+            
+            print "Setting the watermark"
+            system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
+            
+            print "   ... Resetting the final diagnosis: %s  %s..." % (finalDiagnosisName, diagramUUID)
+            system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
+                        
+            print "Fetching upstream blocks for diagram <%s> - final diagnosis <%s>..." % (str(diagramUUID), finalDiagnosisName)
+
+            downstreamBlocks=[]
+            if diagramUUID != None and fdUUID != None:
+                blocks=system.ils.blt.diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
+
+                for block in blocks:
+                    blockId=block.getIdString()
+                    blockName=block.getName()
+                    blockClass=block.getClassName()
+                    
+                    print "Found a <%s> block..." % (blockClass)
+
+                    # I'm not exactly sure why we choose to do a full reset on the logic filter block, but the 
+                    # reason from G2 was to allow high-frequency data to flow through the diagrams, and possibly
+                    # trigger other diagnosis, but the diagnosis connected to this logic-filter will effectively
+                    # be inhibited from firing based on the configuration of the logic filter. 
+                    if blockClass == "com.ils.block.LogicFilter":
+                        print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, blockId)
+                        system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
+                    elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
+                            "com.ils.block.TrendDetector"]:
+                        print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
+                        system.ils.blt.diagram.setBlockState(diagramUUID, blockName, "UNKNOWN")
+                        # We do NOT want tosend a signal to the block to evaluate in order to get the signal 
+                        # to propagate because the EVALUATE signal will cause the block to reevaluate the history
+                        # buffer and reach the same conclusion that we just cleared.
+                        
+                        tList=system.ils.blt.diagram.listBlocksDownstreamOf(diagramUUID, blockName)
+                        for tBlock in tList:
+                            tBlockName=tBlock.getName()
+                            if tBlockName not in downstreamBlocks and tBlockName != finalDiagnosisName:
+                                downstreamBlocks.append(tBlockName)
+                
+                print "The blocks between the observations and the final diagnosis that need to be reset are: ", downstreamBlocks
+                for blockName in downstreamBlocks:
+                    system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
 

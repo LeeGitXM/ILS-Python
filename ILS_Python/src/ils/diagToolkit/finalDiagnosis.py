@@ -52,16 +52,20 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     if unit == None:
         log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (application, family, finalDiagnosis))
         return
-
+    
+    finalDiagnosisName=record.get('FinalDiagnosisName','Unknown Final Diagnosis')
+    
     grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
     print "The grade is: ", grade
-    textRecommendation = record.get('TextRecommendation', 'Unknown Text')
+    
+    txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID)
+    print "The text of the diagnosis entry is: ", txt
     
     # Insert an entry into the diagnosis queue
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, ManualMove, ManualMoveValue, RecommendationMultiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', 'NONE-MADE', 0, 0.0, 1.0)" \
-        % (finalDiagnosisId, grade, textRecommendation)
+        % (finalDiagnosisId, grade, txt)
     logSQL.trace(SQL)
     
     try:
@@ -79,7 +83,6 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
         system.db.runUpdateQuery(SQL, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
-    
 
     log.info("Starting to manage diagnosis...")
     notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
@@ -89,6 +92,10 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     # This runs in the gateway, but it should work 
     projectName = system.util.getProjectName()
     notifyClients(projectName, post, notificationText)
+
+def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
+    txt = "%s is TRUE because I have absolutely no clue why..." % (finalDiagnosisName)
+    return txt
     
 # Clear the final diagnosis (make the status = 'InActive') 
 def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provider=""):
@@ -149,27 +156,47 @@ def recalcMessageHandler(payload):
 
     
 # This is based on the original G2 procedure outout-msg-core()
-# I think this updates the diagnosis entry with the results of the recommendation.
-def updateOutputMessage(finalDiagnosisId, diagnosisEntryId, textRecommendation, recommendations, quantOutputs, database):
+# This inserts a message into the recommendation queue which is accessed from the "M" button
+# on the common console.
+def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database):
+    print "In postRecommendationMessage(), the recommendations are: %s" % (str(recommendations))
+
+    fdTextRecommendation = fetchTextRecommendation(finalDiagnosisId, database)
+    textRecommendation = "The %s has detected %s. %s." % (application, finalDiagnosis, fdTextRecommendation)
 
     if len(recommendations) == 0:
         textRecommendation = textRecommendation + "\nNo Outputs Calculated"
     else:
         textRecommendation = textRecommendation + "\nOutputs are:"
-        
+    
     for recommendation in recommendations:
         autoOrManual=recommendation.get('AutoOrManual', None)
         outputName = recommendation.get('QuantOutput','')
+        
+        SQL = "Select MinimumIncrement from DtQuantOutput QO, DtRecommendationDefinition RD "\
+            " where QO.QuantOutputId = RD.QuantOutputId "\
+            " and QO.QuantOutputName = '%s' "\
+            " and RD.FinalDiagnosisId = %s" % (outputName, str(finalDiagnosisId))
+        minimumIncrement=system.db.runScalarQuery(SQL, database)
+
         if autoOrManual == 'Auto':
             val = recommendation.get('AutoRecommendation', None)
-            textRecommendation = "%s\n%s = %s" % (textRecommendation, outputName, str(val))
-            
-        elif autoOrManual == 'Manual':
-            textRecommendation = "%s\nManual move for %s = %s" % (textRecommendation, outputName, str(val))
+            textRecommendation = "%s\n%s = %s (min output = %f)" % (textRecommendation, outputName, str(val), minimumIncrement)
 
-    SQL = "update DtDiagnosisEntry set TextRecommendation = '%s' where DiagnosisEntryId = %i" % (textRecommendation, diagnosisEntryId)
-    system.db.runUpdateQuery(SQL, database)
+        elif autoOrManual == 'Manual':
+            textRecommendation = "%s\nManual move for %s = %s (min output = %f)" % (textRecommendation, outputName, str(val), minimumIncrement)
+
+    from ils.queue.message import insert
+    insert("RECOMMENDATIONS", "Info", textRecommendation, database)
     return textRecommendation
+
+# Fetch the text recommendation for a final diagnosis from the database.  For FDs that have 
+# static text this is easy, but we might need to call a callback that will return dynamic text.
+#TODO check if we need to call a callback.
+def fetchTextRecommendation(finalDiagnosisId, database):
+    SQL = "select textRecommendation from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId)) 
+    txt=system.db.runScalarQuery(SQL, database)
+    return txt
 
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
 def manage(application, recalcRequested=False, database="", provider=""):
@@ -469,11 +496,11 @@ def manage(application, recalcRequested=False, database="", provider=""):
         quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
         
         from ils.diagToolkit.recommendation import makeRecommendation
-        textRecommendation, recommendations, recommendationStatus = makeRecommendation(
+        recommendations, recommendationStatus = makeRecommendation(
                 record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
                 record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
-        
-        textRecommendation = updateOutputMessage(finalDiagnosisId, diagnosisEntryId, textRecommendation, recommendations, quantOutputs, database)
+
+        textRecommendation = postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
         print "-----------------"
         print "Text Recommendation: ", textRecommendation
         print "Recommendations: ", recommendations

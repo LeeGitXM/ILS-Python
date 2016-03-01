@@ -28,10 +28,9 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'Posted' where DiagnosisEntryId = %i " % (diagnosisEntryId)
         logSQL.trace(SQL)
         system.db.runUpdateQuery(SQL, database)
-            
-        textRecommendation="A constant"
+
         recommendationList=[]
-        return textRecommendation, recommendationList, "SUCCESS"
+        return recommendationList, "SUCCESS"
 
     # If they specify shared or project scope, then we don't need to do this
     if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
@@ -46,21 +45,28 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         exec("from %s import %s" % (package,module))
 
     try:
-        textRecommendation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisId,provider,database)
+        calculationText, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisId,provider,database)
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
         log.error("Caught an exception calling calculation method named %s... \n%s" % (calculationMethod, errorTxt) )
-        return "", [], "ERROR"
+        return [], "ERROR"
    
     else:
         if len(rawRecommendationList) == 0:
-            return textRecommendation, [], "NO-RECOMMENDATIONS"
+            return [], "NO-RECOMMENDATIONS"
         else:
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'REC-Made' where DiagnosisEntryId = %i " % (diagnosisEntryId)
             logSQL.trace(SQL)
             system.db.runUpdateQuery(SQL, database)
-        
+
+            # Insert text returned by the calculation method into the application Queue
+            from ils.queue.commons import getQueueForDiagnosticApplication
+            applicationQueue = getQueueForDiagnosticApplication(application, database)
+            
+            from ils.queue.message import insert
+            insert(applicationQueue, "INFO", calculationText, database)
+
             recommendationList=[]
             log.trace("  The recommendations returned from the calculation method are: ")
             for recommendation in rawRecommendationList:
@@ -81,7 +87,7 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
                     del recommendation['Value']
                     recommendationList.append(recommendation)
 
-    return textRecommendation, recommendationList, "SUCCESS"
+    return recommendationList, "SUCCESS"
 
 # Insert a recommendation into the database
 def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, database):
