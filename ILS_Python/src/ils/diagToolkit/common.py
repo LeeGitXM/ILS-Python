@@ -129,7 +129,8 @@ def fetchFamilyId(familyName, database=""):
 
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
-    SQL = "select U.UnitName, FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FamilyId, FD.FinalDiagnosisPriority, FD.CalculationMethod, "\
+    SQL = "select U.UnitName, FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FamilyId, FD.FinalDiagnosisPriority, "\
+        " FD.CalculationMethod, FD.UUID, FD.DiagramUUID, "\
         " FD.PostTextRecommendation, FD.TextRecommendationCallback, FD.RefreshRate, FD.TextRecommendation "\
         " from TkUnit U, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
         " where U.UnitId = A.UnitId and A.ApplicationId = F.ApplicationId "\
