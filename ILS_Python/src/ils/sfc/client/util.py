@@ -145,3 +145,17 @@ def sendMessageToGateway(project, handler, payload):
     # print 'sending msg', handler
     sendMessage(project, 'sfcMessage', payload, "G")
     
+def getIndexNames():
+    results = system.db.runQuery('select KeyName from SfcRecipeDataKeyMaster', getDatabase())
+    names = []
+    names.append(None)
+    for row in results:
+        names.append(row[0])
+    return names
+
+def getKeySize(keyName):
+    '''Get the individual key values for the given key index'''
+    import system
+    sql = "select count(KeyValue) from SfcRecipeDataKeyMaster master, SfcRecipeDataKeyDetail detail where \
+        master.KeyName = '%s' and detail.KeyId = master.KeyId order by KeyIndex asc" % (keyName)
+    return system.db.runScalarQuery(sql, getDatabase())

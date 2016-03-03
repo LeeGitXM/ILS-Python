@@ -23,9 +23,14 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
     import system.tag
     from ils.sfc.common.util import isEmpty
+    from ils.sfc.gateway.recipe import getIndexedValue
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
-    qv = system.tag.read(fullTagPath)
-    value = qv.value
+    if fullTagPath.index('(') != -1:
+        database = getDatabaseName(chartProperties)
+        value = getIndexedValue(fullTagPath, database)
+    else:
+        qv = system.tag.read(fullTagPath)
+        value = qv.value
     # we're not doing unit conversion here, but if there happens to be a time
     # unit then we want to do the isolation mode time scaling:
     if isValueKey(valuePath):
@@ -47,10 +52,15 @@ def s88GetType(chartProperties, stepProperties, valuePath, location):
 def s88Set(chartProperties, stepProperties, valuePath, value, location):
     '''Set the given recipe data's value'''
     import system.tag
+    from ils.sfc.gateway.recipe import setIndexedValue
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
     try:
-        system.tag.writeSynchronous(fullTagPath, value)
-        # print "ils.sfc.api.s88Set: Write to ",fullTagPath
+        if fullTagPath.index('(') != -1:
+            database = getDatabaseName(chartProperties)
+            setIndexedValue(fullTagPath, value, database)
+        else:
+            system.tag.writeSynchronous(fullTagPath, value)
+            # print "ils.sfc.api.s88Set: Write to ",fullTagPath
     except:
         chartLogger = getChartLogger(chartProperties)
         chartLogger.error("ils.sfc.api.s88Set: Failed to write to recipe data tag %s" % (fullTagPath))
