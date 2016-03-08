@@ -56,7 +56,7 @@ def s88Set(chartProperties, stepProperties, valuePath, value, location):
     from ils.sfc.gateway.recipe import setIndexedValue
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
     try:
-        if fullTagPath.index('(') != -1:
+        if fullTagPath.find('(') != -1:
             database = getDatabaseName(chartProperties)
             setIndexedValue(fullTagPath, value, database)
         else:
