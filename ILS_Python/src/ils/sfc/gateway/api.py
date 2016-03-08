@@ -25,7 +25,8 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.recipe import getIndexedValue
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
-    if fullTagPath.index('(') != -1:
+    print fullTagPath
+    if fullTagPath.find('(') != -1:
         database = getDatabaseName(chartProperties)
         value = getIndexedValue(fullTagPath, database)
     else:
