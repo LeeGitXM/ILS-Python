@@ -71,7 +71,7 @@ def fetchLimits(database = ""):
             upperSQCLimit, lowerSQCLimit=readSQCLimitsFromDCS(record)
             
             if oldLimit == None or oldLimit["UpperSQCLimit"] != upperSQCLimit or oldLimit["LowerSQCLimit"] != lowerSQCLimit:
-                print "A DCS SQC limit has changed - recalculate the target & standard deviation"
+                log.trace("A DCS SQC limit has changed - recalculate the target & standard deviation")
                 target, standardDeviation, lowerValidityLimit, upperValidityLimit = updateSQCLimits(record["ValueName"], record["UnitName"], "SQC", record["LimitId"], upperSQCLimit, lowerSQCLimit, database)
             else:
                 target=0.0
@@ -136,7 +136,7 @@ def fetchLimits(database = ""):
         else:
             log.error("Unexpected limit type: <%s> for %s" % (limitType, valueName))
 
-        print "Packed a dictionary for %s - %s: " % (valueName, str(d))
+        log.trace("Packed a dictionary for %s - %s: " % (valueName, str(d)))
         return d
     #-----------------------------------------------------
     # Update the limit UDT (tags) with the new limits 
@@ -145,7 +145,7 @@ def fetchLimits(database = ""):
         def writeLimit(providerName, unitName, valueName, limitType, limitValue):
             if limitValue != None:
                 tagName="[%s]LabData/%s/%s/%s" % (providerName, unitName, valueName, limitType)
-                print "Writing <%s> to %s" % (limitValue, tagName)
+                log.trace("Writing <%s> to %s" % (limitValue, tagName))
                 result=system.tag.write(tagName, limitValue)
                 if result == 0:
                     log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
@@ -177,7 +177,7 @@ def fetchLimits(database = ""):
         lowerItemId=record["OPCLowerItemId"]
         log.trace("Fetching DCS limits for %s from %s (upper: %s, lower: %s)" % (valueName, serverName, upperItemId, lowerItemId))
         vals=system.opc.readValues(serverName, [upperItemId, lowerItemId] )
-        print "Read values: ", vals
+        log.trace("Read SQC limit values from the DCS: %s" % (str(vals)))
                 
         qv=vals[0]
         if qv.quality.isGood():
@@ -194,10 +194,11 @@ def fetchLimits(database = ""):
         return upperSQCLimit, lowerSQCLimit
     #------------------------------------------
         
-    print "The old limits are:", limits
+    
     maxStandardDeviations = 3.0
     standardDeviationsToValidityLimits = system.tag.read("Configuration/LabData/standardDeviationsToValidityLimits").value
     log.trace("Fetching new Limits...")
+    log.trace("The old limits are: %s" % (str(limits)))
     SQL = "select * from LtLimitView"
     sqlLog.trace(SQL)
     pds = system.db.runQuery(SQL, database)
@@ -215,8 +216,8 @@ def fetchLimits(database = ""):
                 if oldLimit["UpperSQCLimit"] != upperSQCLimit or \
                     oldLimit["LowerSQCLimit"] != lowerSQCLimit:
 
-                    print "An existing SQC limit has changed"
-                    print "Old:", oldLimit
+                    log.trace("An existing SQC limit has changed")
+                    log.trace("Old: %s" % (str(oldLimit)))
 
                     oldLimit["UpperValidityLimit"]=upperValidityLimit
                     oldLimit["LowerValidityLimit"]=lowerValidityLimit
@@ -227,28 +228,25 @@ def fetchLimits(database = ""):
                     updateLimitTags(oldLimit)
                     limits[valueId]=oldLimit
                 else:
-                    print "No change to an existing SQC limit"
+                    log.trace("No change to an existing SQC limit")
         else:
-            print "Adding a new limit to the limit data structure"
+            log.trace("Adding a new limit to the limit data structure")
             d=packLimit(record)
             updateLimitTags(d)
 
             # Now add the dictionary to the big permanent dictionary
             limits[valueId]=d
 
-    print "The new Limit dictionary is: ", limits
+    log.trace("The new Limit dictionary is: %s" % (str(limits)))
     return limits
 
 #
 def parseRecipeFamilyFromGradeTagPath(tagPath):
-    print tagPath
     i=tagPath.find("Site/") + 5
     recipeFamily=tagPath[i:]
-    print recipeFamily
     
     i=recipeFamily.find("/")
     recipeFamily=recipeFamily[:i]
-    print recipeFamily
     return recipeFamily
 
 
