@@ -60,7 +60,7 @@ def createTags(tagProvider):
     createConfigurationTags(ds, log)
 
 
-def restoreHistory(tagProvider, daysToRestore=7):
+def restoreHistory(tagProvider, historyProvider, daysToRestore=7):
     # This is run from a project startup script, so it should have the notion of a default database
     database = ""
     
@@ -70,7 +70,7 @@ def restoreHistory(tagProvider, daysToRestore=7):
         log.error("Unable to restore lab data history because the HDA server is unavailable!")
         return
     
-    restoreValueHistory(tagProvider, daysToRestore, database)
+    restoreValueHistory(tagProvider, historyProvider, daysToRestore, database)
     restoreSelectorHistory(tagProvider, daysToRestore, database)
 
 def waitForHDAInterfaces(delay=5, iterations=20, database=""):
@@ -94,12 +94,17 @@ def waitForHDAInterfaces(delay=5, iterations=20, database=""):
 
     return allAvailable
 
-
-def restoreValueHistory(tagProvider, daysToRestore=7, database=""):
+# When restoring a number of values for a parameter, the last value will be written to the 
+# lab data tag so that it will propagate through to diagnostic.  Because this propagates values
+# to tags this should be called after lab data selectors have been configured.  Therefore, 
+# this is not automatically called as part of the lab data modules initialization but rather must
+# be called from the site's site specific startup module.
+def restoreValueHistory(tagProvider, historyProvider, daysToRestore=7, database=""):
     log.info("Restoring lab data value history...")
     
     tags=[]
     tagValues=[]
+    gradeHistory={}
 
     # Calculate the start and end dates that will be used if no data is found
     endDate = util.getDate()
@@ -149,11 +154,12 @@ def restoreValueHistory(tagProvider, daysToRestore=7, database=""):
                         rawValue=qv.value
                         sampleTime=qv.timestamp
                         quality=qv.quality
+                        grade, gradeHistory=getGradeForHistoricLabValue(gradeHistory, unitName, daysToRestore, sampleTime, historyProvider) 
                         log.trace("   %s : %s : %s" % (str(rawValue), str(sampleTime), str(quality)))
                         if quality.isGood():
                             log.trace("      ...inserting...")
-                            SQL = "insert into LtHistory (ValueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, getdate())"
-                            lastValueId=system.db.runPrepUpdate(SQL, [valueId, rawValue, sampleTime],getKey=True)
+                            SQL = "insert into LtHistory (ValueId, RawValue, SampleTime, ReportTime, Grade) values (?, ?, ?, getdate(), ?)"
+                            lastValueId=system.db.runPrepUpdate(SQL, [valueId, rawValue, sampleTime, grade],getKey=True)
                             rows = rows + 1
                     log.info("   ...restored %i rows" % (rows))
                 except:
@@ -178,6 +184,36 @@ def restoreValueHistory(tagProvider, daysToRestore=7, database=""):
     
     system.tag.writeAll(tags, tagValues)
 
+def getGradeForHistoricLabValue(gradeHistory, unitName, daysToRestore, sampleTime, historyProvider):
+    import datetime
+    ds=gradeHistory.get("unitName", None)
+    if ds==None:
+        log.trace("Fetching grade history for unit %s at %s..." % (unitName, str(sampleTime)))
+        tagPath="[%s]Site/%s/Grade/grade" % (historyProvider, unitName)
+        endTime = datetime.datetime.now()
+        rangeHours = -1 * 24 * daysToRestore
+        ds = system.tag.queryTagHistory(
+                paths=[tagPath],
+                endTime=endTime, 
+                rangeHours=rangeHours, 
+                aggregationMode="LastValue",
+                noInterpolation=True,
+                includeBoundingValue=False
+                )
+        gradeHistory[unitName]=ds
+    
+    lastGrade=None
+    pds=system.dataset.toPyDataSet(ds)
+    for record in pds:
+        historyTime=record[0]
+        grade=record[1]
+        if sampleTime <= historyTime:
+            log.trace("...found grade %s" % (str(grade)))
+            return lastGrade, gradeHistory
+        lastGrade=grade
+        
+    log.warn("-- Did not find a grade for unit %s at %s --" % (unitName, str(sampleTime)))
+    return lastGrade, gradeHistory
 
 # Restoring the history to selectors uses the data we just restored to the values.  
 # In other words, we don't use HDA to restore selector history - we use the history that we have already
