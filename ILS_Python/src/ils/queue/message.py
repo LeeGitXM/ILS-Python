@@ -4,6 +4,7 @@ Created on Sep 9, 2014
 @author: ILS
 '''
 import  system, string
+from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
 
 # Expected status are Info, Warning, or Error
 def insert(queueKey, status, message, db = ''):
@@ -13,6 +14,7 @@ def insert(queueKey, status, message, db = ''):
     SQL = "select statusId from QueueMessageStatus where MessageStatus = '%s'" % (status)
     statusId = system.db.runScalarQuery(SQL, db)
     
+    message=message[:QUEUE_DETAIL_MESSAGE_LENGTH - 2]
     SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%s, getdate(), %s, '%s')" % (str(queueId), str(statusId), message)
 
     system.db.runUpdateQuery(SQL, db)
@@ -69,8 +71,6 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
 
         filepath = string.replace(filepath, '*', theDate)
         print "The new filename is: ", filepath
-
-
 
     SQL = queueSQL(queueKey, useCheckpoint, "ASC", db)
     pds = system.db.runQuery(SQL, db)
