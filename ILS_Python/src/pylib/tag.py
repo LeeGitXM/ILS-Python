@@ -21,12 +21,12 @@ def setStringValue(common,provider,tpath,text):
 	print "setStringValue: ",path,"=",text
 	
 # Explicitly set the value of a tag that is a Date data type.
-# The value is a text of the form "YYYY/MM/dd hh:mm:ss"
+# The value is a text of the form "YYYY/MM/dd HH:mm:ss"
 def setDateValue(common,provider,tpath,text):
 	import java.text.SimpleDateFormat as SimpleDateFormat
 	import system
 	
-	parser = SimpleDateFormat('yyyy/MM/dd hh:mm:ss')
+	parser = SimpleDateFormat('yyyy/MM/dd HH:mm:ss')
 	date = parser.parse(text)
 	# Convert to the proper provider
 	path = "["+provider+"]"+tpath
