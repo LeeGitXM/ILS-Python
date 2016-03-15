@@ -8,7 +8,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, \
     getControlPanelId, createWindowRecord, createSaveDataRecord
     from system.ils.sfc.common.Constants import COMPUTER, SERVER, FILENAME, BUTTON_LABEL, \
-    POSITION, SCALE, WINDOW_TITLE, PRINT_FILE, VIEW_FILE
+    POSITION, SCALE, WINDOW_TITLE, PRINT_FILE, VIEW_FILE, SHOW_PRINT_DIALOG
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName
     from ils.sfc.common.util import readFile, isEmpty
     # extract property values
@@ -33,11 +33,10 @@ def activate(scopeContext, stepProperties, deactivate):
         else:
             text = ''
         printFile = getStepProperty(stepProperties, PRINT_FILE) 
+        showPrintDialog = getStepProperty(stepProperties, SHOW_PRINT_DIALOG) 
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 
-        print 'b4 createWindowRecord'      
         windowId = createWindowRecord(controlPanelId, 'SFC/SaveData', buttonLabel, position, scale, title, database)
-        print 'b4 createSaveDataRecord'
-        createSaveDataRecord(windowId, text, fileName, computer, printFile, viewFile, database)
+        createSaveDataRecord(windowId, text, fileName, computer, printFile, showPrintDialog, viewFile, database)
   
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in printFile.py', chartLogger)
