@@ -90,18 +90,19 @@ def recipeDataTagExists(provider, path):
     fullPath = getRecipeDataTagPath(provider, path)
     return system.tag.exists(fullPath)
 
-def cleanupRecipeData(provider, chartPath, stepNames):
+def cleanupRecipeData(provider, chartPath, sfcStepPaths):
     '''remove any recipe data for the given chart that does not 
     belong to one of the supplied step names. This handles
     cleaning up recipe data for deleted steps and charts. '''
+    from system.util import getLogger
     chartRdFolder = getRecipeDataTagPath(provider, chartPath)
+    logger = getLogger(chartPath)
     tagInfos = system.tag.browseTags(chartRdFolder)
+    logger.warnf('checking for orphaned recipe data tag in %s', chartRdFolder)
     for tagInfo in tagInfos:
-        tagName = tagInfo.name
-        if not tagName in stepNames:
-            print tagName, 'not in chart', tagInfo.fullPath
-            # system.tag.removeTag(tagInfo.fullPath)
-        else:
-            print tagName, 'OK'
+        tagStepPath = tagInfo.name
+        if not tagStepPath in sfcStepPaths:
+            logger.warnf('removing orphaned recipe data tags for step %s', tagStepPath)
+            system.tag.removeTag(tagInfo.fullPath)
 
    
