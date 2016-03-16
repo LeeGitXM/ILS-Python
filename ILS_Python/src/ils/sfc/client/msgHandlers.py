@@ -14,10 +14,16 @@ def sfcOpenWindow(payload):
     openDbWindow(windowId)
 
 def sfcCloseWindow(payload):
-    from ils.sfc.common.constants import WINDOW_ID
-    from ils.sfc.client.windowUtil import closeDbWindow
-    windowId = payload[WINDOW_ID]
-    closeDbWindow(windowId)
+    from ils.sfc.common.constants import WINDOW
+    from ils.sfc.client.windowUtil import closeDbWindow, getWindowId
+    import system.gui, system.nav
+    windowPath = payload[WINDOW]
+    window = system.gui.findWindow(windowPath)
+    windowId = getWindowId(window)
+    if windowId != None:
+        closeDbWindow(windowId)
+    else:
+        system.nav.closeWindow(windowPath)
 
 def sfcShowQueue(payload):
     queueKey=payload['queueKey']
