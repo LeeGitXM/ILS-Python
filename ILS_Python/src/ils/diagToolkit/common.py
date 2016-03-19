@@ -96,7 +96,6 @@ def fetchActiveOutputsForPost(post, database=""):
         " and QO.Active = 1"\
         " order by A.ApplicationName, QO.QuantOutputName"  % (post)
     log.trace(SQL)
-    print "Using database: ", database
     pds = system.db.runQuery(SQL, database)
     return pds
 

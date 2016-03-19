@@ -44,7 +44,7 @@ def handleNotification(payload):
             return
     
     # We didn't find an open setpoint spreadsheet, so check if this client is interested in the console
-    print "Checking for a mating console window..."
+    print "Checking for a matching console window..."
     for window in windows:
         windowPath=window.getPath()
         rootContainer=window.rootContainer

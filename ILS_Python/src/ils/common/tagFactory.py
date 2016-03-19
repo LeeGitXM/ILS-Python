@@ -3,8 +3,7 @@ Created on Feb 2, 2015
 
 @author: Pete
 '''
-import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+import system
 
 def createConfigurationTags(ds, log):
     log.info("Creating configuration tags...")
