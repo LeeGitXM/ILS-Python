@@ -75,12 +75,12 @@ def deleteRecipeDataTag(provider, tagPath):
 def getRecipeData(provider, path): 
     fullPath = getRecipeDataTagPath(provider, path)
     qv = system.tag.read(fullPath)
-    #print 'get', fullPath, qv.value, 'quality', qv.quality
+    # print 'get', fullPath, qv.value, 'quality', qv.quality
     return qv.value
     
 def setRecipeData(provider, path, value, synchronous):
     fullPath = getRecipeDataTagPath(provider, path)
-    #print 'set', fullPath, value
+    print 'set', fullPath, value
     if synchronous:
         system.tag.writeSynchronous(fullPath, value)
     else:
