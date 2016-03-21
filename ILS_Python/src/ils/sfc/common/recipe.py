@@ -80,7 +80,7 @@ def getRecipeData(provider, path):
     
 def setRecipeData(provider, path, value, synchronous):
     fullPath = getRecipeDataTagPath(provider, path)
-    print 'set', fullPath, value
+    # print 'set', fullPath, value
     if synchronous:
         system.tag.writeSynchronous(fullPath, value)
     else:

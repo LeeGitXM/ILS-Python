@@ -147,7 +147,7 @@ def parseIndices(indexedPath, database):
     else:
         rowKey = indexedPath[lbracket+1:rbracket].strip()  
         colKey = None
-    print 'tagPath', tagPath, 'rowKey', rowKey, 'colKey', colKey
+    # print 'tagPath', tagPath, 'rowKey', rowKey, 'colKey', colKey
     
     if isInt(rowKey):
         rowIndex = int(rowKey)
