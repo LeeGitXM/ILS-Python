@@ -37,4 +37,5 @@ def removeControlPanelRecord(controlPanelId, database):
     cleanupWindows(controlPanelId, database)
     system.db.runUpdateQuery("delete from SfcControlPanel where controlPanelId = '%s'" % (controlPanelId), database)
     
-
+def isSfcWindow(windowPath):
+    return windowPath.startswith('Sfc')
