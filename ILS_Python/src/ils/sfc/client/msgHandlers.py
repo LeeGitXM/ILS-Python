@@ -19,8 +19,14 @@ def sfcOpenOrdinaryWindow(payload):
     import system.nav
     windowPath = payload[WINDOW]
     system.nav.openWindowInstance(windowPath)
-                                  
+
 def sfcCloseWindow(payload):
+    from ils.sfc.common.constants import WINDOW_ID
+    from ils.sfc.client.windowUtil import closeDbWindow, getOpenWindow
+    windowId = payload[WINDOW_ID]
+    closeDbWindow(windowId)
+                                              
+def sfcCloseWindowByName(payload):
     from ils.sfc.common.constants import WINDOW
     from ils.sfc.common.windowUtil import isSfcWindow
     from ils.sfc.client.windowUtil import closeDbWindow, getWindowId
