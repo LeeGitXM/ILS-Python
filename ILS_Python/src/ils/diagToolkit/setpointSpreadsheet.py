@@ -11,6 +11,7 @@ WAIT_FOR_MORE_DATA="Wait For Data"
 def initialize(rootContainer):
     print "In ils.diagToolkit.setpointSpreadsheet.initialize()..."
 
+    rootContainer.initializationComplete = False
     database=system.tag.read("[Client]Database").value
     print "The database is: ", database
     
@@ -21,10 +22,10 @@ def initialize(rootContainer):
     pds = fetchActiveOutputsForPost(post, database)
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
-    header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','recommendation','finalSetpoint','status','downloadStatus']
+    header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus']
     rows=[]
     # The data types for the column is set from the first row, so I need to put floats where I want floats, even though they don't show up for the header
-    row = ['header',0,0,0,'Action',0,'','Outputs','',1.2,1.2,1.2,'','']
+    row = ['header',0,0,0,'Action',0,'','Outputs','',1.2,False,1.2,1.2,'','']
     rows.append(row)
     
     application = ""
@@ -39,7 +40,7 @@ def initialize(rootContainer):
             minChangeBoundCounter = 0
              
             application = record['ApplicationName']
-            applicationRow = ['app',i,0,0,'Active',0,application,'','',0,0,0,'','']
+            applicationRow = ['app',i,0,0,'Active',0,application,'','',0,False,0,0,'','']
             print "App row: ", applicationRow
             rows.append(applicationRow)
             i = i + 1
@@ -60,9 +61,9 @@ def initialize(rootContainer):
             statusMessage='<HTML>CLAMPED<br>(Min Change)'
             minChangeBoundCount = minChangeBoundCounter + 1
             if minChangeBoundCount == 1:
-                applicationRow[12]="%i output < minimum change" % (minChangeBoundCount)
+                applicationRow[13]="%i output < minimum change" % (minChangeBoundCount)
             else:
-                applicationRow[12]="%i outputs < minimum change" % (minChangeBoundCount)
+                applicationRow[13]="%i outputs < minimum change" % (minChangeBoundCount)
             rows[applicationRowNumber]=applicationRow
         else:
             statusMessage=''
@@ -73,7 +74,7 @@ def initialize(rootContainer):
         # If the recommended change is insignificant (< the minimum change) then don't display it, but we do 
         # want to update the status field of the Application line
         if outputLimitedStatus != 'Minimum Change Bound':
-            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
+            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
             print "Output Row: ", row
             rows.append(row)
             i = i + 1
@@ -83,6 +84,15 @@ def initialize(rootContainer):
     repeater.templateParams=ds
     repeater.selectedRow = -1
 
+    #----------------------------------------------------------
+    def initializationComplete(rootContainer=rootContainer):
+        print "Setting initializationComplete to TRUE"
+        rootContainer.initializationComplete = True
+    #----------------------------------------------------------
+
+    print "Invoking later..."
+    system.util.invokeLater(initializationComplete, 1000)
+    
 
 def writeFileCallback(rootContainer):
     print "In writeFileCallback()..."
@@ -94,23 +104,23 @@ def writeFileCallback(rootContainer):
 # the same format as the old platform, we need to query the database and get the data that was used to build the spreadsheet.
 def writeFile(rootContainer, filepath):
     print "In writeFile() to ", filepath
-    console = rootContainer.console
+    post = rootContainer.post
 
     exists=system.file.fileExists(filepath)
     if not(exists):
         print "Write some sort of new file header"
 
     from ils.diagToolkit.common import fetchApplicationsForPost
-    applicationPDS = fetchApplicationsForPost(console)
+    applicationPDS = fetchApplicationsForPost(post)
     for applicationRecord in applicationPDS:
-        application=applicationRecord['Application']
+        application=applicationRecord['ApplicationName']
         system.file.writeFile(filepath, "    Application: %s\n" % (application), True)
         
         from ils.diagToolkit.common import fetchActiveDiagnosis
         finalDiagnosisPDS=fetchActiveDiagnosis(application)
         for finalDiagnosisRecord in finalDiagnosisPDS:
-            family=finalDiagnosisRecord['Family']
-            finalDiagnosis=finalDiagnosisRecord['FinalDiagnosis']
+            family=finalDiagnosisRecord['FamilyName']
+            finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
             finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
             recommendationMultiplier=finalDiagnosisRecord['RecommendationMultiplier']
             recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
@@ -162,7 +172,7 @@ def detailsCallback(rootContainer):
     
     # Get the quant output for the row
     ds = repeater.templateParams
-    quantOutputId=ds.getValueAt(selectedRow, 'id')
+    quantOutputId=ds.getValueAt(selectedRow, 'qoid')
     
     system.nav.openWindow('DiagToolkit/Recommendation Map', {'quantOutputId' : quantOutputId})
     system.nav.centerWindow('DiagToolkit/Recommendation Map')
@@ -181,7 +191,7 @@ def statusCallback(event):
     
     # Get the quant output for the row
     ds = repeater.templateParams
-    quantOutputId=ds.getValueAt(row, 'id')
+    quantOutputId=ds.getValueAt(row, 'qoid')
 
     # Fetch everything about the quant output from the database
     from ils.diagToolkit.common import fetchQuantOutput
@@ -276,20 +286,41 @@ def noDownloadCallback(event):
     tagProvider=getTagProviderClient()
     repeater=rootContainer.getComponent("Template Repeater")
     ds = repeater.templateParams
-    postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
+    allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
+    
+    # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
+    if allApplicationsProcessed:
+        system.nav.closeParentWindow(event)
 
-# This is called when we do a download, no download, or Wait-For-More-Data.
+# This is called when we do a "No Download" or "Wait For More Data".
 # Use the action message to determine which button was pressed and exactly how much processing to do.
 # Reset the database tables and the BLT diagrams for every application that is active.
 # We do not consider individual outputs that the operator may have chosen to not download.   
 def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, recommendationStatus):
+    
+    #--------------
+    def resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db):
+        if len(finalDiagnosisIds) == 0:
+            print "...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones..."
+            from ils.diagToolkit.common import fetchActiveDiagnosis
+            pds = fetchActiveDiagnosis(application, db)
+            finalDiagnosisIds=[]
+            for record in pds:
+                finalDiagnosisIds.append(record["FinalDiagnosisId"])
+
+        quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
+
+        resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db)
+    #-------------
+    from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
     print "...performing generic post callback cleanup..." 
+    allApplicationsProcessed=True
     post=rootContainer.post
     applicationActive=False
     application=""
     families=[]
-    finalDiagnosisNames=[]
-    quantOutputs=[]
+    finalDiagnosisIds=[]
+    quantOutputIds=[]
     
     for row in range(ds.rowCount):
         rowType=ds.getValueAt(row, "type")
@@ -299,32 +330,33 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
 
             if string.upper(command) == 'ACTIVE':
                 if application != "":
-                    resetApplication(application, families, finalDiagnosisNames, quantOutputs, actionMessage, recommendationStatus, db)
+                    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db)
 
                 families=[]
-                finalDiagnosisNames=[]
-                quantOutputs=[]
+                finalDiagnosisIds=[]
+                quantOutputIds=[]
                 
                 applicationActive=True
                 application=ds.getValueAt(row, "application")
             else:
                 applicationActive=False
+                allApplicationsProcessed=False
 
         elif string.upper(rowType) == "ROW":
             if applicationActive:
-                quantOutput=ds.getValueAt(row, "output")
-                if quantOutput not in quantOutputs:
-                    quantOutputs.append(quantOutput)
+                quantOutputId=ds.getValueAt(row, "qoId")
+                if quantOutputId not in quantOutputIds:
+                    quantOutputIds.append(quantOutputId)
                     
                     from ils.diagToolkit.common import fetchActiveFinalDiagnosisForAnOutput
-                    pds=fetchActiveFinalDiagnosisForAnOutput(application, quantOutput, db)
+                    pds=fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, db)
                     for rec in pds:
-                        if rec["FinalDiagnosisName"] not in finalDiagnosisNames:
-                            finalDiagnosisNames.append(rec["FinalDiagnosisName"])
+                        if rec["FinalDiagnosisId"] not in finalDiagnosisIds:
+                            finalDiagnosisIds.append(rec["FinalDiagnosisId"])
                         if rec["FamilyName"] not in families:
                             families.append(rec["FamilyName"])
 
-    resetApplication(post, application, families, finalDiagnosisNames, quantOutputs, actionMessage, recommendationStatus, db)
+    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db)
     print "...done post action processing!"
     
     # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
@@ -335,12 +367,13 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     projectName=system.util.getProjectName()
     payload={"post": post, "database": db, "provider": tagProvider}
     system.util.sendMessage(projectName, "recalc", payload, "G")
+    return allApplicationsProcessed
 
-def resetApplication(post, application, families, finalDiagnosisNames, quantOutputs, actionMessage, recommendationStatus, database):
+def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database):
     log.info("Resetting application %s" % (application))
     log.trace("  Families: %s" % (str(families)))
-    log.trace("  Final Diagnosis: %s" % (str(finalDiagnosisNames)))
-    log.trace("  Quant Outputs: %s" % (str(quantOutputs)))
+    log.trace("  Final Diagnosis Ids: %s" % (str(finalDiagnosisIds)))
+    log.trace("  Quant Output Ids: %s" % (str(quantOutputIds)))
 
     # Post a message to the applications queue documenting what we are doing to the active families    
     postSetpointSpreadsheetActionMessage(post, families, actionMessage, database)
@@ -348,16 +381,16 @@ def resetApplication(post, application, families, finalDiagnosisNames, quantOutp
     # Perform all of the database updates necessary to update the affected FDs, 
     # Quant Outputs, recommendations, and diagnosis entries.
 
-    resetOutputs(quantOutputs, actionMessage, log, database)
-    resetRecommendations(quantOutputs, actionMessage, log, database)
+    resetOutputs(quantOutputIds, actionMessage, log, database)
+    resetRecommendations(quantOutputIds, actionMessage, log, database)
     resetFinalDiagnosis(application, actionMessage, log, database)
     resetDiagnosisEntry(application, actionMessage, recommendationStatus, log, database)
                 
     # Reset the BLT blocks - this varies slightly depending on the action
     if actionMessage == WAIT_FOR_MORE_DATA:
-        partialResetDiagram(finalDiagnosisNames, database)
+        partialResetDiagram(finalDiagnosisIds, database)
     else:
-        resetDiagram(finalDiagnosisNames, database)
+        resetDiagram(finalDiagnosisIds, database)
 
 
 def postSetpointSpreadsheetActionMessage(post, families, actionMessage, database):
@@ -376,12 +409,12 @@ def postSetpointSpreadsheetActionMessage(post, families, actionMessage, database
     
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
 # and is the first step in evaluating the active FDs and calculating new recommendations.
-def resetOutputs(quantOutputs, actionMessage, log, database):
-    log.info("Resetting QuantOutputs: %s" % (str(quantOutputs)))
+def resetOutputs(quantOutputIds, actionMessage, log, database):
+    log.info("Resetting QuantOutputIds: %s" % (str(quantOutputIds)))
     rows=0
-    for quantOutput in quantOutputs:
+    for quantOutputId in quantOutputIds:
         SQL = "update DtQuantOutput " \
-            " set Active = 0 where QuantOutputName = '%s'" % (quantOutput)
+            " set Active = 0 where QuantOutputId = %s" % (str(quantOutputId))
         log.trace(SQL)
         cnt=system.db.runUpdateQuery(SQL, database)
         rows+=cnt
@@ -390,15 +423,15 @@ def resetOutputs(quantOutputs, actionMessage, log, database):
 
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
 # and is the first step in evaluating the active FDs and calculating new recommendations.
-def resetRecommendations(quantOutputs, actionMessage, log, database):
-    log.info("Deleting recommendations for %s" % (str(quantOutputs)))
+def resetRecommendations(quantOutputIds, actionMessage, log, database):
+    log.info("Deleting recommendations for %s" % (str(quantOutputIds)))
     rows=0
-    for quantOutput in quantOutputs:
+    for quantOutputId in quantOutputIds:
         SQL = "delete from DtRecommendation " \
             " where RecommendationDefinitionId in (select RD.RecommendationDefinitionId "\
             " from DtRecommendationDefinition RD, DtQuantOutput QO"\
             " where RD.QuantOutputId = QO.QuantOutputId "\
-            " and QO.QuantOutputName = '%s')" % (quantOutput)
+            " and QO.QuantOutputId = %s)" % (str(quantOutputId))
         log.trace(SQL)
         cnt=system.db.runUpdateQuery(SQL, database)
         rows+=cnt
@@ -436,19 +469,20 @@ def resetDiagnosisEntry(applicationName, actionMessage, recommendationStatus, lo
     log.trace("Updated %i diagnosis entries..." % (rows))
 
 # Reset the BLT diagram in response to a No-Download or Download
-def resetDiagram(finalDiagnosisNames, database):
+def resetDiagram(finalDiagnosisIds, database):
 #    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     import system.ils.blt.diagram as diagram
     print "Resetting BLT diagrams..."
     
-    for finalDiagnosisName in finalDiagnosisNames:
-        print "Resetting final diagnosis: %s" % (finalDiagnosisName)
+    for finalDiagnosisId in finalDiagnosisIds:
+        print "Resetting final diagnosis Id: %s" % (str(finalDiagnosisId))
         
-        SQL = "select DiagramUUID, UUID from DtFinalDiagnosis "\
-            "where FinalDiagnosisName = '%s' " % (finalDiagnosisName)
+        SQL = "select FinalDiagnosisName, DiagramUUID, UUID from DtFinalDiagnosis "\
+            "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
         pds = system.db.runQuery(SQL, database)
         
         for record in pds:
+            finalDiagnosisName=record["FinalDiagnosisName"]
             diagramUUID=record["DiagramUUID"]
             fdUUID=record["UUID"]
             
@@ -483,17 +517,18 @@ def resetDiagram(finalDiagnosisNames, database):
 
 
 # Reset the BLT diagram in response to a Wait-For-More-Data
-def partialResetDiagram(finalDiagnosisNames, database):
+def partialResetDiagram(finalDiagnosisIds, database):
     print "Performing a *partial* reset of the BLT diagrams..."
     
-    for finalDiagnosisName in finalDiagnosisNames:
-        print "Resetting final diagnosis: %s" % (finalDiagnosisName)
+    for finalDiagnosisId in finalDiagnosisIds:
+        print "Resetting final diagnosis Id: %s" % (str(finalDiagnosisId))
         
-        SQL = "select DiagramUUID, UUID from DtFinalDiagnosis "\
-            "where FinalDiagnosisName = '%s' " % (finalDiagnosisName)
+        SQL = "select FinalDiagnosisName, DiagramUUID, UUID from DtFinalDiagnosis "\
+            "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
         pds = system.db.runQuery(SQL, database)
         
         for record in pds:
+            finalDiagnosisName=record["FinalDiagnosisName"]
             diagramUUID=record["DiagramUUID"]
             fdUUID=record["UUID"]
             
@@ -545,4 +580,44 @@ def partialResetDiagram(finalDiagnosisNames, database):
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
 
-
+def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, newValue):
+    # I'm not sure if this will work out, but it would be nice to validate the manual entry and provide some 
+    # feedback back to the operator
+    valid=True
+    txt=""
+    
+    from ils.common.config import getDatabaseClient
+    database=getDatabaseClient()
+    
+    from ils.common.config import getTagProviderClient
+    tagProvider=getTagProviderClient() 
+    
+    SQL = "update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %f "\
+        "where QuantOutputId = %i" % (newValue, quantOutputId)
+    print SQL
+    system.db.runUpdateQuery(SQL, database)
+    
+    # Now check the bounds - fetch everything about the quant output first
+    from ils.diagToolkit.common import fetchQuantOutput
+    quantOutputs = fetchQuantOutput(quantOutputId, database)
+    if len(quantOutputs) != 1:
+        system.gui.errorBox("Unable to fetch quant output with id: %s" % (str(quantOutputId)))
+        return
+    
+    record=quantOutputs[0]
+    from ils.diagToolkit.common import convertOutputRecordToDictionary
+    quantOutput=convertOutputRecordToDictionary(record)
+    print "Before: ", quantOutput
+    
+    from ils.diagToolkit.finalDiagnosis import checkBounds
+    quantOutput = checkBounds(quantOutput, database, tagProvider)
+    
+    print "After: ", quantOutput
+    
+    from ils.diagToolkit.finalDiagnosis import updateQuantOutput
+    updateQuantOutput(quantOutput, database, tagProvider)
+    
+    # Now refresh the screen
+    initialize(rootContainer)
+    
+    return valid, txt

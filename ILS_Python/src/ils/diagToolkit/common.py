@@ -63,8 +63,8 @@ def fetchActiveFamilies(applicationName, database=""):
 # Look up the final diagnosis and family given an application and a quantoutput.
 # I'm not sure that I need the application here because there is a unique index on the quant output
 # name - which I'm not sure is correct - so if we ever remove that unique index then this will still work.
-def fetchActiveFinalDiagnosisForAnOutput(application, quantOutput, database=""):
-    SQL = "select FD.FinalDiagnosisName, F.FamilyName "\
+def fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, database=""):
+    SQL = "select FD.FinalDiagnosisName, FD.FinalDiagnosisId, F.FamilyName "\
         " from DtFinalDiagnosis FD, DtFamily F, DtApplication A, DtQuantOutput QO, DtRecommendationDefinition RD "\
         " where A.ApplicationId = F.ApplicationId "\
         " and FD.FamilyId = F.FamilyId "\
@@ -74,7 +74,7 @@ def fetchActiveFinalDiagnosisForAnOutput(application, quantOutput, database=""):
         " and RD.quantOutputId = QO.QuantOutputId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and FD.Active = 1 "\
-        " and QO.QuantOutputName = '%s' " % (application, quantOutput)
+        " and QO.QuantOutputId = %s " % (application, str(quantOutputId))
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -186,28 +186,30 @@ def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisNam
     pds = system.db.runQuery(SQL, database)
     outputList = []
     for record in pds:
-        output = {}
-        output['QuantOutputId'] = record['QuantOutputId']
-        output['QuantOutput'] = str(record['QuantOutputName'])
-        output['TagPath'] = str(record['TagPath'])
-        output['MostNegativeIncrement'] = record['MostNegativeIncrement']
-        output['MostPositiveIncrement'] = record['MostPositiveIncrement']
-        output['MinimumIncrement'] = record['MinimumIncrement']
-        output['SetpointHighLimit'] = record['SetpointHighLimit']
-        output['SetpointLowLimit'] = record['SetpointLowLimit']
-        output['FeedbackMethod'] = record['FeedbackMethod']
-        output['OutputLimitedStatus'] = record['OutputLimitedStatus']
-        output['OutputLimited'] = record['OutputLimited']
-        output['OutputPercent'] = record['OutputPercent']
-        output['IncrementalOutput'] = record['IncrementalOutput']
-        output['FeedbackOutput'] = record['FeedbackOutput']
-        output['FeedbackOutputManual'] = record['FeedbackOutputManual']
-        output['FeedbackOutputConditioned'] = record['FeedbackOutputConditioned']
-        output['ManualOverride'] = record['ManualOverride']
-        
+        output=convertOutputRecordToDictionary(record)       
         outputList.append(output)
     return pds, outputList
 
+def convertOutputRecordToDictionary(record):
+    output = {}
+    output['QuantOutputId'] = record['QuantOutputId']
+    output['QuantOutput'] = str(record['QuantOutputName'])
+    output['TagPath'] = str(record['TagPath'])
+    output['MostNegativeIncrement'] = record['MostNegativeIncrement']
+    output['MostPositiveIncrement'] = record['MostPositiveIncrement']
+    output['MinimumIncrement'] = record['MinimumIncrement']
+    output['SetpointHighLimit'] = record['SetpointHighLimit']
+    output['SetpointLowLimit'] = record['SetpointLowLimit']
+    output['FeedbackMethod'] = record['FeedbackMethod']
+    output['OutputLimitedStatus'] = record['OutputLimitedStatus']
+    output['OutputLimited'] = record['OutputLimited']
+    output['OutputPercent'] = record['OutputPercent']
+    output['IncrementalOutput'] = record['IncrementalOutput']
+    output['FeedbackOutput'] = record['FeedbackOutput']
+    output['FeedbackOutputManual'] = record['FeedbackOutputManual']
+    output['FeedbackOutputConditioned'] = record['FeedbackOutputConditioned']
+    output['ManualOverride'] = record['ManualOverride']
+    return output
 
 # Fetch the SQC blocks that led to a Final Diagnosis becoming true.
 # We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
@@ -218,15 +220,31 @@ def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis, database=""):
     sqcRootCause=[]
     return sqcRootCause
 
+def fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds, database=""):
+    from ils.common.database import idListToString
+    idString=idListToString(finalDiagnosisIds)
+    
+    SQL = "select distinct QuantOutputId "\
+        " from DtRecommendationDefinition "\
+        " where FinalDiagnosisId in ( %s ) " % (idString)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    
+    quantOutputIds=[]
+    for record in pds:
+        quantOutputIds.append(record["QuantOutputId"])
+        
+    return quantOutputIds
 
 #
 def fetchQuantOutput(quantOutputId, database=""):
     SQL = "select QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
         " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId, QO.MostNegativeIncrement, "\
-        " QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, QO.SetpointLowLimit "\
-        " from DtQuantOutput QO "\
-        " where QO.QuantOutputId = %i "  % (quantOutputId)
+        " QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, QO.SetpointLowLimit, L.LookupName FeedbackMethod "\
+        " from DtQuantOutput QO, Lookup L "\
+        " where QO.QuantOutputId = %i "\
+        " and QO.FeedbackMethodId = L.LookupId"  % (quantOutputId)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -242,9 +260,6 @@ def fetchPostForApplication(application, database=""):
     log.trace(SQL)
     post = system.db.runScalarQuery(SQL, database)
     return post
-
-
-
 
 
 def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
@@ -269,4 +284,4 @@ def updateFamilyPriority(familyName, familyPriority, database=""):
     SQL = "update DtFamily set FamilyPriority = %i where FamilyName = '%s'" % (familyPriority, familyName)
     log.trace(SQL)
     rows = system.db.runUpdateQuery(SQL, database)
-    print "Updated %i rows" % (rows)
+    log.trace("Updated %i rows" % (rows))

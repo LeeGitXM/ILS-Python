@@ -85,16 +85,22 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
     log.info("Starting to manage diagnosis...")
-    notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
+    notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
     
-    post=fetchPostForApplication(application)
-    # This runs in the gateway, but it should work 
-    projectName = system.util.getProjectName()
-    notifyClients(projectName, post, notificationText)
+    if activeOutputs > 0:
+        post=fetchPostForApplication(application)
+        # This runs in the gateway, but it should work 
+        projectName = system.util.getProjectName()
+        notifyClients(projectName, post, notificationText)
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
-    txt = "%s is TRUE because I have absolutely no clue why..." % (finalDiagnosisName)
+    print "Mining explanation for %s - <%s> <%s>" % (finalDiagnosisName, str(diagramUUID), str(UUID)) 
+    try:
+        explanation=system.ils.blt.diagram.getExplanation(diagramUUID, UUID)
+        txt = "%s is TRUE because %s" % (finalDiagnosisName, explanation)
+    except:
+        txt = "%s is TRUE for an unknown reason (explanation mining failed)" % (finalDiagnosisName)
     return txt
     
 # Clear the final diagnosis (make the status = 'InActive') 
@@ -121,19 +127,20 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
     print "Cleared %i final diagnosis" % (rows)
     
     print "Starting to manage as a result of a cleared Final Diagnosis..."
-    notificationText=manage(application, recalcRequested=False, database=database, provider=provider)
+    notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
     print "...back from manage!"
     
-    # This runs in the gateway, but it should work 
-    projectName = system.util.getProjectName()
-    SQL = "select post "\
-        "from TkPost P, TkUnit U, DtApplication A "\
-        "where A.UnitId = U.UnitId "\
-        "and U.PostId = P.postId "\
-        "and A.ApplicationName = '%s'" % (application)
-    post = system.db.runScalarQuery(SQL, database)
-    print "The post is: ", post
-    notifyClients(projectName, post, notificationText)
+    if activeOutputs:
+        # This runs in the gateway, but it should work 
+        projectName = system.util.getProjectName()
+        SQL = "select post "\
+            "from TkPost P, TkUnit U, DtApplication A "\
+            "where A.UnitId = U.UnitId "\
+            "and U.PostId = P.postId "\
+            "and A.ApplicationName = '%s'" % (application)
+        post = system.db.runScalarQuery(SQL, database)
+        print "The post is: ", post
+        notifyClients(projectName, post, notificationText)
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -147,12 +154,16 @@ def recalcMessageHandler(payload):
     from ils.diagToolkit.common import fetchApplicationsForPost
     pds=fetchApplicationsForPost(post, database)
 
+    needToNotifyClients=False
     for record in pds:
         applicationName=record["ApplicationName"]
-        manage(applicationName, recalcRequested=True, database=database, provider=provider)
-
-    # Send a message to every client monitoring this post that the spreadsheet should be updated.
-    notifyClients(project, post)
+        txt,activeOutputs=manage(applicationName, recalcRequested=True, database=database, provider=provider)
+        if activeOutputs:
+            needToNotifyClients=True
+            
+    if needToNotifyClients:
+        # Send a message to every client monitoring this post that the spreadsheet should be updated.
+        notifyClients(project, post)
 
     
 # This is based on the original G2 procedure outout-msg-core()
@@ -205,7 +216,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     #---------------------------------------------------------------------
     # Merge the list of output dictionaries for a final diagnosis into the list of all outputs
     def mergeOutputs(quantOutputs, fdQuantOutputs):
- #       log.trace("Merging outputs %s into %s" % (str(fdQuantOutputs), str(quantOutputs)))
+#        log.trace("Merging outputs %s into %s" % (str(fdQuantOutputs), str(quantOutputs)))
         for fdQuantOutput in fdQuantOutputs:
             fdId = fdQuantOutput.get('QuantOutputId', -1)
             found = False
@@ -262,7 +273,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     def resetOutputs(applicationName, log, database):
         log.info("Resetting QuantOutputs for %s" % (applicationName))
         SQL = "update DtQuantOutput " \
-            " set Active = 0 where ApplicationId in (select ApplicationId "\
+            " set Active = 0, FeedbackOutputManual = 0.0, ManualOverride = 0 where ApplicationId in (select ApplicationId "\
             " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
@@ -434,7 +445,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     if len(pds) == 0:
         log.info("Exiting the diagnosis manager because there are no active diagnosis for %s!" % (application))
         # TODO we may need to clear something
-        return ""
+        return "", 0
 
     log.trace("The active diagnosis are: ")
     for record in pds:
@@ -463,7 +474,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     
     if not(changed) and not(recalcRequested):
         log.trace("There has been no change in the most important diagnosis, nothing new to manage, so exiting!")
-        return ""
+        return "", 0
 
     # There has been a change in what the most important diagnosis is so set the active flag
     if recalcRequested:
@@ -513,14 +524,14 @@ def manage(application, recalcRequested=False, database="", provider=""):
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'ERROR' where DiagnosisEntryId = %i " % (diagnosisEntryId)
             logSQL.trace(SQL)
             system.db.runUpdateQuery(SQL, database)
-            return "Error"
+            return "Error", 0
         elif recommendationStatus == "NO-RECOMMENDATIONS":
             log.warn("No recommendations were made")
             diagnosisEntryId=record['DiagnosisEntryId']
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'No-Recs' where DiagnosisEntryId = %i " % (diagnosisEntryId)
             logSQL.trace(SQL)
             system.db.runUpdateQuery(SQL, database)
-            return "None Made"
+            return "None Made", 0
         
         quantOutputs = mergeRecommendations(quantOutputs, recommendations)
         print "-----------------"
@@ -553,8 +564,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
     for quantOutput in finalQuantOutputs:
         updateQuantOutput(quantOutput, database, provider)
         
-    log.info("Finished managing recommendations")
-    return notificationText
+    log.info("Finished managing recommendations - there are %i significant Quant Outputs" % (len(finalQuantOutputs)))
+    
+    return notificationText, len(finalQuantOutputs)
 
 # Check that recommendation against the bounds configured for the output
 def checkBounds(quantOutput, database, provider):
@@ -563,6 +575,8 @@ def checkBounds(quantOutput, database, provider):
     
     # The feedbackOutput can be incremental or absolute
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
+    feedbackOutputManual = quantOutput.get('FeedbackOutputManual', 0.0)
+    manualOverride = quantOutput.get('ManualOverride', False)
     incrementalOutput=quantOutput.get('IncrementalOutput')
     mostNegativeIncrement = quantOutput.get('MostNegativeIncrement', -1000.0)
     mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
@@ -590,6 +604,11 @@ def checkBounds(quantOutput, database, provider):
     if not(incrementalOutput):
         log.trace("      ...calculating an incremental change for an absolute recommendation...")
         feedbackOutput = feedbackOutput - qv.value
+
+    # If the operator manually change the recommendation then use it - manual overrides are always incremental
+    if manualOverride:
+        feedbackOutput = feedbackOutputManual
+        log.trace("      ...using *manual* value: %f ..." % (feedbackOutput))
 
     # Compare the recommendation to the **incremental** limits
     log.trace("      ...comparing the feedback output (%f) to most positive increment (%f) and most negative increment (%f)..." % (feedbackOutput, mostPositiveIncrement, mostNegativeIncrement))
@@ -701,7 +720,7 @@ def calculateVectorClamps(quantOutputs, provider):
         log.trace("No outputs are clamped, therefore there is not a vector clamp")
         return quantOutputs, ""
 
-    log.trace("All outputs will be clamped at %f" % (minOutputRatio))
+    log.trace("All outputs will be clamped at %f pct" % (minOutputRatio))
 
     finalQuantOutputs = []
     txt = "The most bound output is %s, %.0f%% of the total recommendation of %.4f, which equals %.4f, will be implemented." % \
@@ -753,7 +772,12 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     outputLimited = quantOutput.get('OutputLimited', False)
     outputLimited = toBool(outputLimited)
     outputPercent = quantOutput.get('OutputPercent', 0.0)
+    manualOverride = quantOutput.get('ManualOverride', False)
+    manualOverride = toBool(manualOverride)
+    feedbackOutputManual = quantOutput.get('FeedbackOutputManual', 0.0)
     
+    print "Manual Override: ", manualOverride
+
     # The current setpoint was read when we checked the bounds.
     isGood = quantOutput.get('CurrentValueIsGood',False)
     if not(isGood):
@@ -766,25 +790,32 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     currentSetpoint=quantOutput.get('CurrentValue',None)
     log.trace("     ...using current setpoint value: %s" % (str(currentSetpoint)))
     
-
-    # The recommendation may be absolute or incremental, but we always display incremental    
-    incrementalOutput=quantOutput.get('IncrementalOutput')
-    if incrementalOutput:
-        finalSetpoint=currentSetpoint+feedbackOutputConditioned
-        displayedRecommendation=feedbackOutputConditioned
+    if manualOverride:
+        # Manual values are always incremental
+        print "Using Manual"
+        log.trace("     ...using the validated manually entered value... ")
+        finalSetpoint = currentSetpoint + feedbackOutputConditioned
+        displayedRecommendation = feedbackOutputConditioned
     else:
-        finalSetpoint=feedbackOutputConditioned
-        displayedRecommendation=finalSetpoint-currentSetpoint
+        print "Using AUTO"
+        # The recommendation may be absolute or incremental, but we always display incremental    
+        incrementalOutput=quantOutput.get('IncrementalOutput')
+        if incrementalOutput:
+            finalSetpoint = currentSetpoint + feedbackOutputConditioned
+            displayedRecommendation = feedbackOutputConditioned
+        else:
+            finalSetpoint = feedbackOutputConditioned
+            displayedRecommendation = finalSetpoint-currentSetpoint
 
     log.trace("   ...the final setpoint is %f, the displayed recommendation is %f" % (finalSetpoint, displayedRecommendation))
 
     # Active is hard-coded to True here because these are the final active quantOutputs
     SQL = "update DtQuantOutput set FeedbackOutput = %s, OutputLimitedStatus = '%s', OutputLimited = %i, "\
-        " OutputPercent = %s, FeedbackOutputManual = 0.0, FeedbackOutputConditioned = %s, "\
-        " ManualOverride = 0, Active = 1, CurrentSetpoint = %s, FinalSetpoint = %s, DisplayedRecommendation = %s "\
+        " OutputPercent = %s, FeedbackOutputManual = %s, FeedbackOutputConditioned = %s, "\
+        " ManualOverride = %i, Active = 1, CurrentSetpoint = %s, FinalSetpoint = %s, DisplayedRecommendation = %s "\
         " where QuantOutputId = %i "\
-        % (str(feedbackOutput), outputLimitedStatus, outputLimited, str(outputPercent), str(feedbackOutputConditioned), \
-           str(currentSetpoint), str(finalSetpoint), str(displayedRecommendation), quantOutputId)
+        % (str(feedbackOutput), outputLimitedStatus, outputLimited, str(outputPercent), str(feedbackOutputManual), str(feedbackOutputConditioned), \
+           manualOverride, str(currentSetpoint), str(finalSetpoint), str(displayedRecommendation), quantOutputId)
     logSQL.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
     

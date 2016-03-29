@@ -182,7 +182,7 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
     
     if string.upper(calculationMethod) == "CONSTANT":
         print "Bypassing calculations for a CONSTANT calculation method!"
-        return
+        return "", []
 
     # If they specify shared or project scope, then we don't need to do this
     if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
@@ -203,4 +203,10 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
     else:
         print "Recommendations: ", rawRecommendationList
 
-    return rawRecommendationList
+    return textRecommendation, rawRecommendationList
+
+def postApplicationMessage(applicationName, status, message, log):
+    queueId = system.db.runScalarQuery("select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName))
+    from ils.queue.message import _insert
+    _insert(queueId, status, message)
+    log.trace(message)
