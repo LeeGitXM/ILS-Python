@@ -39,8 +39,8 @@ def findBracketedScopeReference(string):
      '''
     lbIndex = string.find('{')
     rbIndex = string.find('}')
-    colonIndex = string.find(':', lbIndex)
-    if lbIndex != -1 and rbIndex != -1 and colonIndex != -1 and rbIndex > colonIndex:
+    firstDotIndex = string.find('.', lbIndex)
+    if lbIndex != -1 and rbIndex != -1 and firstDotIndex != -1 and rbIndex > firstDotIndex:
         return string[lbIndex : rbIndex+1]
     else:
         return None
