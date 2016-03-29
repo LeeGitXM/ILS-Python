@@ -27,9 +27,9 @@ def parseBracketedScopeReference(bracketedRef):
     Break a bracked reference into location and key--e.g. {local:selected-emp.val} gets
     broken into 'local' and 'selected-emp.val'
     '''   
-    colonIndex = bracketedRef.index(':')
-    location = bracketedRef[1 : colonIndex].strip()
-    key = bracketedRef[colonIndex + 1 : len(bracketedRef) - 1].strip()
+    firstDotIndex = bracketedRef.index('.')
+    location = bracketedRef[1 : firstDotIndex].strip()
+    key = bracketedRef[firstDotIndex + 1 : len(bracketedRef) - 1].strip()
     return location, key
 
 def findBracketedScopeReference(string):
