@@ -13,11 +13,26 @@ def sfcOpenWindow(payload):
     windowId = payload[WINDOW_ID]
     openDbWindow(windowId)
 
+def sfcOpenOrdinaryWindow(payload):
+    '''Open a plain Vision window that doesn't have all the special SFC window stuff'''
+    from ils.sfc.common.constants import WINDOW
+    import system.nav
+    windowPath = payload[WINDOW]
+    system.nav.openWindowInstance(windowPath)
+                                  
 def sfcCloseWindow(payload):
-    from ils.sfc.common.constants import WINDOW_ID
-    from ils.sfc.client.windowUtil import closeDbWindow
-    windowId = payload[WINDOW_ID]
-    closeDbWindow(windowId)
+    from ils.sfc.common.constants import WINDOW
+    from ils.sfc.common.windowUtil import isSfcWindow
+    from ils.sfc.client.windowUtil import closeDbWindow, getWindowId
+    import system.gui, system.nav
+    windowPath = payload[WINDOW]
+    windows = system.gui.findWindow(windowPath)
+    for window in windows:
+        if isSfcWindow(windowPath):
+            windowId = getWindowId(window)
+            closeDbWindow(windowId)
+        else:
+            system.nav.closeWindow(window)
 
 def sfcShowQueue(payload):
     queueKey=payload['queueKey']
