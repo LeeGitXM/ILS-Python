@@ -49,3 +49,14 @@ def lookup(lookupType, key):
     SQL = "select LookupId from Lookup where LookupTypeCode = '%s' and LookupName = '%s'" % (lookupType, key)
     lookupId=system.db.runScalarQuery(SQL)
     return lookupId 
+
+# This is useful when using the " IN " clause in a select statement
+# This is meant for ids (or any integer because string would need to be surrounded by single quotes. 
+def idListToString(aList):
+    aString=""
+    for aVal in aList:
+        if aString == "":
+            aString="%s" % (str(aVal))
+        else:
+            aString="%s,%s" % (aString, str(aVal))
+    return aString

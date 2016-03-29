@@ -10,7 +10,12 @@ from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
 def insert(queueKey, status, message, db = ''):
     from ils.queue.commons import getQueueId
     queueId = getQueueId(queueKey, db)
+    
+    _insert(queueId, status, message, db)
 
+
+# Expected status are Info, Warning, or Error
+def _insert(queueId, status, message, db = ''):
     SQL = "select statusId from QueueMessageStatus where MessageStatus = '%s'" % (status)
     statusId = system.db.runScalarQuery(SQL, db)
     

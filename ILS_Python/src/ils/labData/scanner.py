@@ -208,6 +208,8 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
         dataDictionary[triggerValueName]={'valueName': triggerValueName, 
                                    'valueId': triggerValueId, 
                                    'rawValue': rawValue,
+                                   'sampleTime': sampleTime,
+                                   'reportTime': reportTime,
                                    'trigger': True}
                             
         relatedDataList=d.get("relatedData", [])
@@ -215,13 +217,14 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
             relatedValueName=relatedData.get("relatedValueName","")
             relatedValueId=relatedData.get("relatedValueId",-1)
             
-            SQL = "select RawValue, SampleTime from LtHistory H, LtValue V "\
+            SQL = "select RawValue, SampleTime, ReportTime from LtHistory H, LtValue V "\
                 " where V.ValueId = %s and V.LastHistoryId = H.HistoryId" % (str(relatedValueId))
             pds=system.db.runQuery(SQL, database)
             if len(pds) == 1:
                 record=pds[0]
                 rv=record["RawValue"]
                 st=record["SampleTime"]
+                rt=record["ReportTime"]
                 derivedLog.trace("      found %f at %s for related data named: %s" % (rv, str(st), relatedValueName))
                 
                 if st >= sampleTimeWindowStart and st <= sampleTimeWindowEnd:
@@ -230,6 +233,8 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                     dataDictionary[relatedValueName]={'valueName': relatedValueName, 
                                             'valueId':relatedValueId, 
                                             'rawValue': rv,
+                                            'sampleTime': st,
+                                            'reportTime': rt,
                                             'trigger': False}
                     
                 else:
