@@ -36,6 +36,12 @@ def getRecipeDataTagPath(provider, path):
         path = path.replace(".", "/")
     return getRecipeDataTagPrefix(provider) + path 
 
+def createGroupPropertyTag(provider, folder, rdName):    
+    '''for creating simple string members of Groups'''
+    fullFolder = getRecipeDataTagPath(provider, folder)
+    print 'creating group property', rdName, 'in', fullFolder
+    system.tag.addTag(parentPath=fullFolder, name=rdName, tagType = 'MEMORY', dataType='String')
+
 def createRecipeDataTag(provider, folder, rdName, rdType, valueType):    
     fullFolder = getRecipeDataTagPath(provider, folder)
     print 'creating', rdType, rdName, valueType, 'in', fullFolder
