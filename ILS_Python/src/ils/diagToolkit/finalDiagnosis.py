@@ -192,10 +192,10 @@ def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, dia
 
         if autoOrManual == 'Auto':
             val = recommendation.get('AutoRecommendation', None)
-            textRecommendation = "%s\n%s = %s (min output = %f)" % (textRecommendation, outputName, str(val), minimumIncrement)
+            textRecommendation = "%s\n%s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
 
         elif autoOrManual == 'Manual':
-            textRecommendation = "%s\nManual move for %s = %s (min output = %f)" % (textRecommendation, outputName, str(val), minimumIncrement)
+            textRecommendation = "%s\nManual move for %s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
 
     from ils.queue.message import insert
     insert("RECOMMENDATIONS", "Info", textRecommendation, database)
