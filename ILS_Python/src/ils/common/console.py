@@ -27,6 +27,11 @@ def startup():
         window=system.nav.openWindow(windowName)
         system.nav.centerWindow(window)
 
+    # I need some window open in order to remove the menu until Chuck can tell me how to get the menubar when there isn't a window
+    if window == None:
+        window=system.nav.openWindow("Admin/Versions")
+        system.nav.centerWindow(window)
+        
     # The way this is designed right now, it will only remove unwanted consoles if the user is an operator
     # (If it isn't an operator then there isn't a window, so I'd need to figure out how to get the menubar 
     # without a window.)
