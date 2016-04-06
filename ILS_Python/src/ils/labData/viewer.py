@@ -10,7 +10,7 @@ from com.sun.org.apache.xalan.internal import templates
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
 # but not multiple screens showing the same table.
 def launcher(displayTableTitle):
-    print "Launching..."
+    print "In labData.viewer.Launching..."
 
     # Check to see if this lab table is already open
     windowName = 'Lab Data/Lab Data Viewer'
@@ -33,7 +33,7 @@ def launcher(displayTableTitle):
 # this page.  There is really only one component on this window - the template repeater.
 # Once the repeater is configured, each component in the repeater knows how to configure itself.
 def internalFrameActivated(rootContainer):
-    print "In internalFrameActivated()"
+    print "In labData.viewer.internalFrameActivated()"
      
     displayTableTitle = rootContainer.displayTableTitle
     print "The table being displayed is: ", displayTableTitle
@@ -51,11 +51,12 @@ def internalFrameActivated(rootContainer):
     repeater=rootContainer.getComponent("Template Repeater")
     repeater.templateParams=pds
 
+    print "...leaving internalFrameActivated()!"
 
 #  This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
 def configureLabDatumTable(container):
     username = system.security.getUsername()
-    print "Checking for lab data viewed by ", username
+    print "In labData.viewer.configureLabDatumTable(), checking for lab data viewed by ", username
     valueName=container.LabValueName
     valueDescription=container.Description
     displayDecimals=container.DisplayDecimals
@@ -64,15 +65,15 @@ def configureLabDatumTable(container):
     from ils.labData.common import fetchValueId
     valueId = fetchValueId(valueName)
         
-    SQL = "select top 13 RawValue as '%s', SampleTime, HistoryId "\
+    SQL = "select top 13 RawValue as '%s', SampleTime, ReportTime, HistoryId "\
         " from LtHistory "\
         " where ValueId = %i "\
         " order by SampleTime desc" % (valueName, valueId)
     print SQL
     pds = system.db.runQuery(SQL)
     
-    SQL = "Select HistoryId from LtValueViewed where ValueId = %i and Username = '%s'" % (valueId, username)
-    lastHistoryIdViewed = system.db.runScalarQuery(SQL)
+    SQL = "Select ViewTime from LtValueViewed where ValueId = %i and Username = '%s'" % (valueId, username)
+    lastViewedTime = system.db.runScalarQuery(SQL)
 
     header = [str(valueDescription), 'seen', 'historyId']
     print "Fetched ", len(pds), " rows, the header is ", header
@@ -81,6 +82,7 @@ def configureLabDatumTable(container):
     newestHistoryId=-1
     for record in pds:
         historyId = record['HistoryId']
+        reportTime = record['ReportTime']
         
         if newestHistoryId == -1:
             container.NewestHistoryId=historyId
@@ -105,7 +107,7 @@ def configureLabDatumTable(container):
         myDateString=system.db.dateFormat(record["SampleTime"], "HH:mm MM/d")
         val = "%s at %s" % (val, myDateString)
         
-        if historyId > lastHistoryIdViewed:
+        if lastViewedTime == None or reportTime > lastViewedTime:
             seen = 0
         else:
             seen = 1
@@ -150,6 +152,7 @@ def getTemplates(repeater, templateName):
 # The original implementation looked at the last value id for the value and then updated that value for the user as having been seen,
 # but somehow that didn't work for Mike and he had rows in the middle that were red, so somehow things came in in some strange order.
 def setSeen(rootContainer):
+    print "In labData.viewer.setSeen()..."
     username = system.security.getUsername()
     
     repeater=rootContainer.getComponent("Template Repeater")
@@ -161,41 +164,23 @@ def setSeen(rootContainer):
         print "Processing values that have been seen for %s - %i by %s" % (valueName, valueId, username)
         
         # Get the id that is stored for this user and this value.
-        SQL = "select HistoryId from LtValueViewed where ValueId = %i and username = '%s' " % (valueId, username)
-        lastHistoryId = system.db.runScalarQuery(SQL)
-        if lastHistoryId == None:
-            lastHistoryId = -1
-
-        print "  ...the id of the last value seen is %i..." % (lastHistoryId)
-        # Get the dataset from the property of the container (not from the table in the template)        
-        ds = template.getPropertyValue("data")
-
-        # Now iterate through the dataset looking for measurements whose id is greater than the id that is stored in the database.
-        update = False
-        for row in range(ds.rowCount):
-            seen = ds.getValueAt(row,'seen')
-            historyId = ds.getValueAt(row, 'historyId')
-#            print seen, " -> ", historyId
-            if historyId > lastHistoryId:
-                lastHistoryId = historyId
-                update = True
+        SQL = "update LtValueViewed set ViewTime = getdate() where ValueId = %i and username = '%s' " % (valueId, username)
+        print SQL
+        rows = system.db.runUpdateQuery(SQL)
         
-        # If we found an id that is greater than the last one I've recorded then update the database
-        if update:
-            print "There is a lab datum that needs to be marked as seen"
-            SQL = "update LtValueViewed set HistoryId = %i where ValueId = %i and username = '%s'" % (lastHistoryId, valueId, username)
+        if rows == 0:
+            # If no rows were updated then do an insert
+            SQL = "insert into LtValueViewed (ValueId, UserName, ViewTime) values (%i, '%s', getdate())" % (valueId, username)
+            print SQL
             rows = system.db.runUpdateQuery(SQL)
-            if rows == 0:
-                print "...inserting a row since none existed..."
-                SQL = "insert into LtValueViewed (HistoryId, ValueId, Username) values(%i, %i, '%s')" % (lastHistoryId, valueId, username)
-                rows = system.db.runUpdateQuery(SQL)
+            print "Inserted %i rows into LtValueViewed"
 
 
 # This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
 # This is ALWAYS run from a client.  For now, the "Get History" button appears on every lab data table, regardless of its source,
 # even though it can only work for data that comes from PHD.  It can't work for DCS data, selectors, or derived values.
 def fetchHistory(container):
-    print "Fetching history looking for missing data..."
+    print "In labData.viewer.fetchHistory(), fetching history looking for missing data..."
     valueName=container.LabValueName
     valueId=container.ValueId
     

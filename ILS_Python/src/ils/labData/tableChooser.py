@@ -6,7 +6,7 @@ Created on Mar 25, 2015
 import system
 
 def internalFrameOpened(rootContainer):
-    print "In internalFrameOpened()"
+    print "In labData.tableChooser.internalFrameOpened()..."
     
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
     SQL = "select post from TkPost order by post"
@@ -20,22 +20,22 @@ def internalFrameOpened(rootContainer):
 
 # update the list of display tables that are appropriate for the selected console
 def internalFrameActivated(rootContainer):
-    print "In internalFrameActivated()"
+    print "In In labData.tableChooser.internalFrameActivated()"
     populateRepeater(rootContainer)
     animatePageTabs(rootContainer)
 
 def newPostSelected(rootContainer):
-    print "In newPostSelected()"
+    print "In In labData.tableChooser.newPostSelected()"
     setNumberOfPages(rootContainer)
     populateRepeater(rootContainer)
 
 def newPageSelected(rootContainer):
-    print "In newConsoleSelected()"
+    print "In In labData.tableChooser.newConsoleSelected()"
     populateRepeater(rootContainer)
 
 # Fetch the number of pages of lab data tables for the console and set up the tab strip    
 def setNumberOfPages(rootContainer):
-    print "In setNumberOfPages"
+    print "In In labData.tableChooser.setNumberOfPages"
     selectedPost = rootContainer.selectedPost
     
     if selectedPost == "" or selectedPost == None:
@@ -62,7 +62,7 @@ def animatePageTabs(rootContainer):
     if numberOfPages <= 1:
         return
     
-    print "In animatePageTabs"
+    print "In In labData.tableChooser.animatePageTabs"
     selectedPost = rootContainer.selectedPost
     for selectedPage in range(1, numberOfPages+1):
         print "Checking Page ", selectedPage
@@ -104,7 +104,7 @@ def animatePageTabs(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    print "In populateTablesForConsole"
+    print "In In labData.tableChooser.populateTablesForConsole"
     selectedPost = rootContainer.selectedPost
     selectedPage = rootContainer.selectedPage
     SQL = "Select DisplayTableTitle "\
@@ -131,7 +131,8 @@ def populateRepeater(rootContainer):
     rootContainer.displayTableTitles = ds
 
 def checkForNewData(displayTableTitle):
-    print " ---- Checking ---- ", displayTableTitle
+    print "In labData.tableChooser.checkForNewData()..."
+    print " ---- Checking Table: ", displayTableTitle
     newData = False
 
     username = system.security.getUsername()
@@ -148,28 +149,31 @@ def checkForNewData(displayTableTitle):
     for record in pds:
         valueId = record["ValueId"]
         valueName = record["ValueName"]
-        SQL = "select LastHistoryId "\
-            " from LtValue "\
+        
+        # Fetch the newest report time
+        SQL = "select max(ReportTime) "\
+            " from LtHistory "\
             " where ValueId = %i " % (valueId)
         print SQL
-        lastHistoryId = system.db.runScalarQuery(SQL)
-        print "The last history id for %s is %s" % (valueName, str(lastHistoryId))  
+        mostRecentReportTime = system.db.runScalarQuery(SQL)
+        print "The most recent report time for %s is %s" % (valueName, str(mostRecentReportTime))  
         
-        if lastHistoryId != None and lastHistoryId != -1:
-            SQL = "select HistoryId "\
+        if mostRecentReportTime != None:
+            SQL = "select viewTime "\
                 " from LtValueViewed "\
                 " where ValueId = %i "\
                 " and username = '%s' " % (valueId, username)
             print SQL
-            lastViewedHistoryId = system.db.runScalarQuery(SQL)
-            print "   ...and the lastViewedId is: %s" % (str(lastViewedHistoryId))
-            if lastHistoryId > lastViewedHistoryId:
+            lastViewedTime = system.db.runScalarQuery(SQL)
+            print "   ...and the last Viewed time is: %s" % (str(lastViewedTime))
+            if lastViewedTime == None or mostRecentReportTime > lastViewedTime:
                 newData = True
-                print "There IS new data..."
+                print "   ---There IS new data---"
         
     return newData
 
 def configureTabStrip(rootContainer, numPages):
+    print "In labData.tableChooser.configureTabStrip()..."
     tabStrip=rootContainer.getComponent("Tab Strip")
 
     header=["NAME","DISPLAY_NAME","HOVER_COLOR","SELECTED_IMAGE_PATH","SELECTED_IMAGE_HORIZONTAL_ALIGNMENT","SELECTED_IMAGE_VERTICAL_ALIGNMENT","SELECTED_FOREGROUND_COLOR","SELECTED_BACKGROUND_COLOR","SELECTED_FONT","SELECTED_GRADIENT_START_COLOR","SELECTED_GRADIENT_END_COLOR","UNSELECTED_IMAGE_PATH","UNSELECTED_IMAGE_HORIZONTAL_ALIGNMENT","UNSELECTED_IMAGE_VERTICAL_ALIGNMENT","UNSELECTED_FOREGROUND_COLOR","UNSELECTED_BACKGROUND_COLOR","UNSELECTED_FONT","UNSELECTED_GRADIENT_START_COLOR","UNSELECTED_GRADIENT_END_COLOR","USE_SELECTED_GRADIENT","USE_UNSELECTED_GRADIENT","MOUSEOVER_TEXT"]
