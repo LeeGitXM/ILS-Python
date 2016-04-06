@@ -13,7 +13,7 @@ def activate(scopeContext, stepProperties, deactivate):
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
         project = getProject(chartScope)
-        sendMessageToClient(project, 'sfcCloseWindow', payload)
+        sendMessageToClient(project, 'sfcCloseWindowByName', payload)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in closeWindow.py', chartLogger)
     finally:

@@ -3,7 +3,7 @@ Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, choices='', lowLimit=None, highLimit=None):
+def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, choices=None, lowLimit=None, highLimit=None):
     '''
     Action for java InputStep
     Get an response from the user; block until a
