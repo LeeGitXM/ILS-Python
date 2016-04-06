@@ -24,10 +24,16 @@ def configureChart(rootContainer):
     sqcDiagnosisName=rootContainer.sqcDiagnosisName
     sqcDiagnosisId=rootContainer.blockId
     
+    if sqcDiagnosisId == None or sqcDiagnosisId == "NULL":
+        system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
+        clearChart(rootContainer)
+        return
+    
     chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
     print "Chart Info: ", chartInfo
     if chartInfo == None:
-        system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
+        system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named <%s> with id <%s>" % (sqcDiagnosisName, str(sqcDiagnosisId)))
+        clearChart(rootContainer)
         return
     
     unitName, labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
@@ -129,6 +135,20 @@ def configureChart(rootContainer):
     # Configure the where clause of the database pens which should drive the update of the chart
     configureChartValuePen(rootContainer, unitName, labValueName)
 
+def clearChart(rootContainer):
+    print "Clearing the chart..."
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
+    
+    rootContainer.lowerLimit1 = 0
+    rootContainer.lowerLimit2 = 0
+    rootContainer.standardDeviation = 0
+    rootContainer.target = 0
+    rootContainer.upperLimit1 = 0
+    rootContainer.upperLimit2 = 0
+    rootContainer.violatedRules = system.dataset.toDataSet(["Rules"], [])
+    rootContainer.sqcInfo = system.dataset.toDataSet(["Limit","Value"], [])
+    
+
 # This sets the target and limit values of a chart.  This is called when any of the limits that
 # are properties of the window change and this updates the chart.
 def configureChartValuePen(rootContainer, unitName, labValueName):
@@ -192,13 +212,14 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
         print "Unable to locate the diagram for block with id: ", sqcDiagnosisId
         return None
 
-    diagramId=diagramDescriptor.getId()
-    
+    diagramId=diagramDescriptor.getId() 
     print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
-    #Now get the SQC observation blocks
+
+    # Now get the SQC observation blocks
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
-#    print "Found blocks: ", blocks
+    print "...found %i upstream blocks..." % (len(blocks))
+
     sqcInfo=[]
     for block in blocks:
 #        print "Found a %s block..." % (block.getClassName())
