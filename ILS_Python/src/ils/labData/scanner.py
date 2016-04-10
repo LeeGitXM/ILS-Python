@@ -545,31 +545,34 @@ def handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, write
 def storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database):
     log.trace("Storing %s - %s - %s - %s ..." % (valueName, str(valueId), str(rawValue), str(sampleTime)))
 
-    # Try to read the current grade
-    tagPath="[%s]Site/%s/Grade/grade" % (tagProvider, unitName)
+    from ils.common.grade import getGradeForUnit
+    grade=getGradeForUnit(unitName, tagProvider)
+    insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database)
 
-    exists=system.tag.exists(tagPath)
-    if exists:
-        grade=system.tag.read(tagPath)
-        if grade.quality.isGood():
-            grade=grade.value
-        else:
-            log.warn("Grade tag (%s) quality is bad!" % (tagPath))
-            grade=None
-    else:
-        log.warn("Grade tag (%s) does not exist" % (tagPath))
-        grade=None
+
+# This should be the only place anywhere that inserts into the LtHistory table.
+def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database=""):
+    success = True  # If the row already exists then consider it a success
+    insertedRows = 0
     
-    try:
-        # Step 1 - Insert the value into the lab history table.
-        SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (?, ?, ?, ?, getdate())"
-        historyId = system.db.runPrepUpdate(SQL, [valueId, rawValue, grade, sampleTime], database, getKey=1)
-        
-        # Step 2 - Update LtValue with the id of the latest history value
-        SQL = "update LtValue set LastHistoryId = %i where valueId = %i" % (historyId, valueId)
-        system.db.runUpdateQuery(SQL, database)
-    except:
-        log.warn("Warning: Insert into LtHistory failed for %s, %s at %s, probably due to a unique key violation" % (valueName, str(rawValue), str(sampleTime)))
+    sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
+    SQL = "select count(*) from LtHistory where valueId = %i and RawValue = %s and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
+    rows = system.db.runScalarQuery(SQL, database)
+    if rows == 0:
+        try:
+            # Step 1 - Insert the value into the lab history table.
+            SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (%i, %s, '%s', '%s', getdate())" % (valueId, str(rawValue), grade, sampleTime)
+            historyId = system.db.runUpdateQuery(SQL, database, getKey=1)
+            
+            # Step 2 - Update LtValue with the id of the latest history value
+            SQL = "update LtValue set LastHistoryId = %i where valueId = %i" % (historyId, valueId)
+            system.db.runUpdateQuery(SQL, database)
+            success = True
+            insertedRows = 1
+        except:
+            log.error("Failed to insert into a lab value for %s, %s at %s" % (valueName, str(rawValue), str(sampleTime)))
+            success = False
+    return success, insertedRows
 
 # This is called by a selector tag change script.  There is a listener on the SampleTime and on the value.  They both call this handler.
 # When a measurement is received from the lab system the sampleTime tag and the value tag are updated almost atomically.  That action

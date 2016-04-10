@@ -5,7 +5,6 @@ Created on Mar 29, 2015
 '''
 import system
 import ils.common.util as util
-from com.sun.org.apache.xalan.internal import templates
 
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
 # but not multiple screens showing the same table.
@@ -176,17 +175,15 @@ def setSeen(rootContainer):
             print "Inserted %i rows into LtValueViewed"
 
 
-# This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
 # This is ALWAYS run from a client.  For now, the "Get History" button appears on every lab data table, regardless of its source,
 # even though it can only work for data that comes from PHD.  It can't work for DCS data, selectors, or derived values.
 def fetchHistory(container):
-    print "In labData.viewer.fetchHistory(), fetching history looking for missing data..."
     valueName=container.LabValueName
     valueId=container.ValueId
     
-    print "Configuring the Lab Datum Viewer table for %s - %i" % (valueName, valueId)
+    print "In labData.viewer.fetchHistory(), fetching missing data for %s - %i" % (valueName, valueId)
     
-    SQL = "Select InterfaceName, ItemId from LtPHDValueView where ValueId = %i" % (valueId)
+    SQL = "Select InterfaceName, ItemId, UnitName from LtPHDValueView where ValueId = %i" % (valueId)
     pds = system.db.runQuery(SQL)
     
     if len(pds) == 0:
@@ -197,6 +194,7 @@ def fetchHistory(container):
     
     hdaInterface=pds[0]["InterfaceName"]
     itemId=pds[0]["ItemId"]
+    unitName=pds[0]["UnitName"]
     maxValues=0
     boundingValues=0
     
@@ -229,10 +227,11 @@ def fetchHistory(container):
         system.gui.warningBox("No data was found for %s" % (itemId))
         return
     
-    system.db.runUpdateQuery("SET IDENTITY_INSERT LtHistory ON")
-    
-    historyId = system.db.runScalarQuery("select min(HistoryId) from LtHistory")
-    print "The minimum history id is: %i", historyId
+    # Use the current grade for all of the missing values
+    from ils.common.config import getTagProviderClient
+    tagProvider = getTagProviderClient()
+    from ils.common.grade import getGradeForUnit
+    grade=getGradeForUnit(unitName, tagProvider)
 
     # We found some data so now process it - we found data, but that doesn't mean it is new!
     rows=0
@@ -241,26 +240,20 @@ def fetchHistory(container):
         rawValue = qv.value
         quality = qv.quality
 
-        # Only process Good values
+        # Only process good values
         if quality.isGood():
-            
+            # Before we insert it, see if it already exists
             SQL = "select HistoryId from LtHistory where ValueId = ? and RawValue = ? and SampleTime = ?"
             pds = system.db.runPrepQuery(SQL, [valueId, rawValue, sampleTime]) 
             if len(pds) == 0:
-                print "*** NEED TO INSERT A MISSING VALUE: ", valueName, itemId, rawValue, sampleTime, quality
+                print "...Inserting a missing value: ", valueName, itemId, rawValue, sampleTime
                 
                 # Insert the value into the lab history table.
-                historyId = historyId - 1
-                SQL = "insert into LtHistory (historyId, valueId, RawValue, SampleTime, ReportTime) values (?, ?, ?, ?, getdate())"
-                system.db.runPrepUpdate(SQL, [historyId, valueId, rawValue, sampleTime])
-                print "    Inserted value with history id: ", historyId 
-                rows = rows + 1
-#        # Step 2 - Update LtValue with the id of the latest history value
-#        SQL = "update LtValue set LastHistoryId = %i where valueId = %i" % (historyId, valueId)
-#        system.db.runUpdateQuery(SQL, database)
+                from ils.labData.scanner import insertHistoryValue
+                success,insertedRows = insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade)    
+                if success:
+                    rows = rows + insertedRows
 
-    system.db.runUpdateQuery("SET IDENTITY_INSERT LtHistory OFF")
-    
     if rows == 0:
         system.gui.messageBox("No new data was found!")
     else:

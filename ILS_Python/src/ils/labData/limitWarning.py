@@ -5,6 +5,7 @@ Created on Aug 1, 2015
 '''
 import system
 from ils.labData.common import postMessage
+from ils.common.ocAlert import sendAlert
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.labData.limits")
 
@@ -48,13 +49,13 @@ def notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue
     
     topMessage = "Sample value failed validity testing." 
     bottomMessage = "Result sample is " + valueName
+    mainMessage = ""
     buttonLabel = "Acknowledge"
     callback = "ils.labData.limitWarning.validityLimitActionLauncher"
     timeoutEnabled = True
     timeoutSeconds = 20
 
-    from ils.common.ocAlert import sendAlert
-    sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
+    sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
     return foundConsole
 
 # This is a callback from the Acknowledge button in the middle of the loud workspace.
@@ -104,13 +105,13 @@ def notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, s
     
     topMessage = "Sample value failed validity testing." 
     bottomMessage = "Result sample is " + valueName
+    mainMessage = ""
     buttonLabel = "Acknowledge"
     callback = "ils.labData.limitWarning.validityLimitActionLauncher"
     timeoutEnabled = True
     timeoutSeconds = 20
 
-    from ils.common.ocAlert import sendAlert
-    sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
+    sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
     return foundConsole
 
 
@@ -162,13 +163,13 @@ def notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sa
     
     topMessage = "Sample value failed release limit validation." 
     bottomMessage = "Result sample is " + valueName
+    mainMessage = ""
     buttonLabel = "Acknowledge"
     callback = "ils.labData.limitWarning.releaseLimitActionLauncher"
     timeoutEnabled = True
     timeoutSeconds = 20
 
-    from ils.common.ocAlert import sendAlert
-    sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
+    sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
     return foundConsole
 
 # This is a callback from the Acknowledge button in the middle of the loud workspace.
