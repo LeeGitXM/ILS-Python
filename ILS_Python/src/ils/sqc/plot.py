@@ -256,7 +256,11 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
         
     return sqcInfo
 
-
+# It sounds easy but it takes a lot of work to get the name of the lab value tag for the SQC chart.
+# We start with the SQC diagnosis, because that is the entry point for SQC plotting.  The we go 
+# upstream to find a labdata entry block.  Then from that we need to extract the name of the tag
+# bound to the value tag path property.  We do some work to strip things off to end up with the 
+# lab data name.
 def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
     import system.ils.blt.diagram as diagram
     
@@ -288,20 +292,8 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
             
             # First get block properties
             
-            #********************
-            # 2/8/2016
-            # Chuck is adding a new scripting function getPropertyBinding which should give me the tagpath rathe rthan the value.
-            #********************
-            
             valueTagPath=diagram.getPropertyBinding(diagramId, blockId, 'ValueTagPath')
-            print "valueTagPath: ", valueTagPath
-            
-            # TODO - This was returning the value of the tag and I want the name of the tag
-            print "*****************************************"
-            print "* Have C9-LAB-DATA hard coded here      *"
-            print "*****************************************"
-            valueTagPath="[XOM]LabData/RLA3/C9-LAB-DATA/value"
-            
+
             # Strip off the trailing "/value"
             if valueTagPath.endswith("/value"):
                 valueTagPath=valueTagPath[:len(valueTagPath) - 6]
@@ -310,13 +302,8 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
             
             # Now strip off everything (provider and path from the left up to the last "/"
             valueTagPath=valueTagPath[valueTagPath.find("]")+1:]
-            print valueTagPath
             unitName=valueTagPath[valueTagPath.find("/")+1:valueTagPath.rfind("/")]
             labValueName=valueTagPath[valueTagPath.rfind("/")+1:]
-            
-            # now get some block internals
-#            attributes = block.getAttributes()
-#            print "Attributes: ", attributes
     
     print "Found unit: <%s> - lab value: <%s>" % (unitName, labValueName)
     return unitName, labValueName
