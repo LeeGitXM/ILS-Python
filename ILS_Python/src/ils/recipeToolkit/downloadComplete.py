@@ -72,8 +72,8 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
         (automatedOrManual, recipeKey, grade, str(version), gradeChangeOrMidRun, successes, failures)
 
     # Insert a message into the log book queue that we are starting a manual download
-    from ils.queue.log import insert
-    insert(txt, database)
+    from ils.common.operatorLogbook import insert
+    insert(recipeKey, txt, database)
 
     # Update the Master down table
     from ils.recipeToolkit.log import updateLogMaster

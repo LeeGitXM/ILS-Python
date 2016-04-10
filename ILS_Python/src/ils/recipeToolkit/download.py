@@ -138,8 +138,8 @@ def downloadCallback(rootContainer):
     grade = rootContainer.grade
     version = rootContainer.version
     message = "Starting MANUAL download of %s - %s for %s" % (str(grade), str(version), str(familyName))
-    from ils.queue.log import insert
-    insert(message)
+    from ils.common.operatorLogbook import insert
+    insert(familyName, message)
 
     download(rootContainer)
 
