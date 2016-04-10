@@ -6,7 +6,8 @@ Created on Mar 31, 2015
 
 import system, string, sys, traceback
 
-def sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
+def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
+              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
 
     if callbackPayloadDictionary == None:
         callbackPayloadDataset = None
@@ -18,6 +19,7 @@ def sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback=No
         "post": post,
         "topMessage": topMessage, 
         "bottomMessage": bottomMessage, 
+        "mainMessage": mainMessage,
         "buttonLabel": buttonLabel,
         "callback": callback,
         "callbackPayloadDataset": callbackPayloadDataset,

@@ -4,11 +4,25 @@ Created on Aug 2, 2015
 @author: Pete
 '''
 
-# This should be defined - I'd like to be able to generically find a grade for a post or for a unit.
-# It seems lie we should have a site/UNIT folder and in it have a grade tag...
-# It would be nice if we could come up with a generic scheme...
-# Something should be passed into this.
-def get():
-    grade = "unknown"
-    print "Getting the grade"
+import system
+log = system.util.getLogger("com.ils.common")
+
+# Read the current grade for a unit.  The works becasue we adhere to the convention of a grade UDT inside 
+# a unit folder in the in the site folder.
+def getGradeForUnit(unitName, tagProvider):
+    # Try to read the current grade
+    tagPath="[%s]Site/%s/Grade/grade" % (tagProvider, unitName)
+
+    exists=system.tag.exists(tagPath)
+    if exists:
+        grade=system.tag.read(tagPath)
+        if grade.quality.isGood():
+            grade=grade.value
+        else:
+            log.error("Grade tag (%s) quality is bad!" % (tagPath))
+            grade=None
+    else:
+        log.error("Grade tag (%s) does not exist" % (tagPath))
+        grade=None
+    
     return grade

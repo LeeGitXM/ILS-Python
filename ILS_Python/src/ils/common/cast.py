@@ -21,3 +21,7 @@ def toBit(txt):
         val = 0
 
     return val
+
+def qvDatasetToList(ds):
+    aList=[]
+    return aList
