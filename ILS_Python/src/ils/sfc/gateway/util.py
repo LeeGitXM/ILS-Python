@@ -245,6 +245,11 @@ def getControlPanelId(chartScope):
     topScope = getTopLevelProperties(chartScope)
     return topScope.get(CONTROL_PANEL_ID,None)
 
+def getOriginator(chartScope):
+    from ils.sfc.common.constants import ORIGINATOR
+    topScope = getTopLevelProperties(chartScope)
+    return topScope.get(ORIGINATOR,None)
+
 def getTimeoutTime(chartScope, stepProperties):
     '''For steps that time out, get the time in epoch seconds when the timeout expires.
        Take the isolation mode time factor into account'''

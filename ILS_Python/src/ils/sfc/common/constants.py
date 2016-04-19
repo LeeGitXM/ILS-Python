@@ -82,6 +82,7 @@ MULTIPLE = "multiple"
 NAME = "name"
 NUMBER_OF_TIMEOUTS = "numberOfTimeouts"
 OK = 'Ok'
+ORIGINATOR = 'originator'
 PARENT = 'parent'
 POSITION = 'position'
 POST_TO_QUEUE = "postToQueue"

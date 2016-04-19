@@ -66,8 +66,7 @@ def controlPanelOpen(controlPanelId):
     for controlPanel in controlPanels:
         if controlPanel.getRootContainer().controlPanelId == controlPanelId:
             return True
-        else:
-            return False
+    return False
 
 def getOpenWindowByPath(path):
     '''Get the open window with the given path, or None if there isnt one'''
@@ -112,7 +111,6 @@ def openDbWindow(windowId):
     originator = pyWindowData[0]['originator']
     if not controlPanelOpen(controlPanelId) and (originator != system.security.getUsername()):
         # this client should not see windows from this run
-        print "don't display the window because there isn't a control panel"
         return
     
     windowType = pyWindowData[0]['type']

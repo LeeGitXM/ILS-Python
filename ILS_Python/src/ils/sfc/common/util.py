@@ -6,11 +6,13 @@ Created on Nov 3, 2014
 import system
 
 def startChart(chartPath, controlPanelId, project, originator, isolationMode):
-    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, PROJECT
+    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, \
+        PROJECT, ORIGINATOR
     initialChartParams = dict()
     initialChartParams[PROJECT] = project
     initialChartParams[ISOLATION_MODE] = isolationMode
     initialChartParams[CONTROL_PANEL_ID] = controlPanelId
+    initialChartParams[ORIGINATOR] = originator
     runId = system.sfc.startChart(chartPath, initialChartParams)
     if isolationMode:
         isolationFlag = 1

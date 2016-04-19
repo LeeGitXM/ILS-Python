@@ -15,9 +15,17 @@ def sfcOpenWindow(payload):
 
 def sfcOpenOrdinaryWindow(payload):
     '''Open a plain Vision window that doesn't have all the special SFC window stuff'''
-    from ils.sfc.common.constants import WINDOW
+    from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_ID, ORIGINATOR
+    from ils.sfc.client.windowUtil import controlPanelOpen
     import system.nav
     windowPath = payload[WINDOW]
+    controlPanelId = payload[CONTROL_PANEL_ID]
+    originator = payload[ORIGINATOR]
+    controlPanelOpen = controlPanelOpen(controlPanelId)
+    print 'controlPanelOpen', controlPanelOpen, 'originator', originator
+    if not controlPanelOpen and (originator != system.security.getUsername()):
+        # this client should not see windows from this run
+        return
     system.nav.openWindowInstance(windowPath)
 
 def sfcCloseWindow(payload):
