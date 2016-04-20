@@ -88,7 +88,7 @@ def handleNotification(payload):
                          "callback": callback,
                          "callbackPayloadDataset": callbackPayloadDataset,
                          "mainMessage": "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button",
-                         "timeoutEnabled": True,
+                         "timeoutEnabled": False,
                          "timeoutSeconds": 300
                          }
 

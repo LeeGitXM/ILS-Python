@@ -100,7 +100,7 @@ def createTags(rootContainer):
             print "Item Id: ", itemId
             
             itemId = itemIdPrefix + itemId
-            serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
+            serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
             path = rootFolder + "/" + folder
             
             print folder, outputName, itemId, serverName
@@ -151,7 +151,7 @@ def createTags(rootContainer):
                     print "Output Disposability: ", windupItemId
 #                    windupItemId = ds.getValueAt(row, "output-disposability-item-id")
                     createPKSController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
-                                        serverName, scanClass, outputNames)
+                                        serverName, scanClass, permissiveScanClass, outputNames)
                     status = "Created"                
                 elif className == "OPC-PKS-ACE-CONTROLLER":
                     modeItemId = ds.getValueAt(row, "mode-item-id")
@@ -162,7 +162,7 @@ def createTags(rootContainer):
                     print "Output Disposability: ", windupItemId
 #                    windupItemId = ds.getValueAt(row, "output-disposability-item-id")
                     createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
-                                        serverName, scanClass, outputNames)
+                                        serverName, scanClass, permissiveScanClass, outputNames)
                     status = "Created"
                 else:
                     print "Undefined class: ", className
@@ -224,7 +224,7 @@ def createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, ser
 
 
 def createPKSController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
-                        serverName, scanClass, names):
+                        serverName, scanClass, permissiveScanClass, names):
     UDTType='Controllers/PKS Controller'
 
     print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, scanClass, serverName)
@@ -232,7 +232,7 @@ def createPKSController(parentPath, outputName, itemId, modeItemId, permissiveIt
     # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
     system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
-                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass, "spItemId":spItemId,
                                 "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                                 "windupItemId":windupItemId,
                                 "alternateNames": names},
@@ -240,7 +240,7 @@ def createPKSController(parentPath, outputName, itemId, modeItemId, permissiveIt
             
 
 def createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
-                        serverName, scanClass, names):
+                        serverName, scanClass, permissiveScanClass, names):
     UDTType='Controllers/PKS ACE Controller'
 
     print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, scanClass, serverName)
@@ -248,8 +248,8 @@ def createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiv
     # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
     system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
-                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
-                                "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives": permissiveScanClass,
+                                "spItemId":spItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                                 "windupItemId":windupItemId,
                                 "alternateNames": names},
                         overrides={"op": {"Enabled":"false"}})

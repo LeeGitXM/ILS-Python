@@ -5,7 +5,7 @@ Created on Sep 19, 2014
 '''
 
 import system
-log = system.util.getLogger("com.ils.SQL.diagToolkit")
+log = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 # This gets called at the beginning of each recommendation management cycle.  It clears all of the dynamic attributes of 
 # a Quant Output.  
@@ -29,14 +29,14 @@ def clearQuantOutputRecommendations(application, database=""):
 # low numbers are higher priority than high numbers. 
 def fetchActiveDiagnosis(applicationName, database=""):
     SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
-        " DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
+        " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
         " DE.RecommendationErrorText "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and DE.Status = 'Active' " \
-        " and not (FD.CalculationMethod != 'Constant' and (DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
+        " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.ApplicationName = '%s'"\
         " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
     log.trace(SQL)

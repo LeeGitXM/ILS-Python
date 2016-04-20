@@ -449,8 +449,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     log.trace("The active diagnosis are: ")
     for record in pds:
-        log.trace("  Family: %s, Final Diagnosis: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s" % 
-                  (record["FamilyName"], record["FinalDiagnosisName"], str(record["FamilyPriority"]), 
+        log.trace("  Family: %s, Final Diagnosis: %s, Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s" % 
+                  (record["FamilyName"], record["FinalDiagnosisName"], str(record["Constant"]), str(record["FamilyPriority"]), 
                    str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"]) ))
     
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
@@ -465,8 +465,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # Calculate the recommendations for each final diagnosis
     log.trace("The families / final diagnosis with the highest priorities are: ")
     for record in list2:
-        log.trace("  Family: %s, Final Diagnosis: %s (%i), Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s" % 
-                  (record["FamilyName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], 
+        log.trace("  Family: %s, Final Diagnosis: %s (%i), Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s" % 
+                  (record["FamilyName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], str(record["Constant"]), 
                    str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"])))
     
     log.trace("Checking if there has been a change in the highest priority final diagnosis...")
@@ -499,44 +499,46 @@ def manage(application, recalcRequested=False, database="", provider=""):
         finalDiagnosis = record['FinalDiagnosisName']
         finalDiagnosisId = record['FinalDiagnosisId']
         diagnosisEntryId = record["DiagnosisEntryId"]
-        log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i)" % (application, family, finalDiagnosis, finalDiagnosisId))
+        constantFD = record["Constant"]
+        log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i), Constant: %s" % (application, family, finalDiagnosis, finalDiagnosisId, str(constantFD)))
         
-        # Fetch all of the quant outputs for the final diagnosis
-        from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
-        pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis, database)
-        quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
-        
-        from ils.diagToolkit.recommendation import makeRecommendation
-        recommendations, recommendationStatus = makeRecommendation(
-                record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
-                record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
-
-        textRecommendation = postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
-        print "-----------------"
-        print "Text Recommendation: ", textRecommendation
-        print "Recommendations: ", recommendations
-        print "Status: ", recommendationStatus
-        print "-----------------"
-        
-        if recommendationStatus == "ERROR":
-            log.error("The calculation method had an error")
-            diagnosisEntryId=record['DiagnosisEntryId']
-            SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'ERROR' where DiagnosisEntryId = %i " % (diagnosisEntryId)
-            logSQL.trace(SQL)
-            system.db.runUpdateQuery(SQL, database)
-            return "Error", 0
-        elif recommendationStatus == "NO-RECOMMENDATIONS":
-            log.warn("No recommendations were made")
-            diagnosisEntryId=record['DiagnosisEntryId']
-            SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'No-Recs' where DiagnosisEntryId = %i " % (diagnosisEntryId)
-            logSQL.trace(SQL)
-            system.db.runUpdateQuery(SQL, database)
-            return "None Made", 0
-        
-        quantOutputs = mergeRecommendations(quantOutputs, recommendations)
-        print "-----------------"
-        print "Quant Outputs: ", quantOutputs
-        print "-----------------"
+        if not(constantFD):
+            # Fetch all of the quant outputs for the final diagnosis
+            from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
+            pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis, database)
+            quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
+            
+            from ils.diagToolkit.recommendation import makeRecommendation
+            recommendations, recommendationStatus = makeRecommendation(
+                    record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
+                    record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
+    
+            textRecommendation = postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
+            print "-----------------"
+            print "Text Recommendation: ", textRecommendation
+            print "Recommendations: ", recommendations
+            print "Status: ", recommendationStatus
+            print "-----------------"
+            
+            if recommendationStatus == "ERROR":
+                log.error("The calculation method had an error")
+                diagnosisEntryId=record['DiagnosisEntryId']
+                SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'ERROR' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+                logSQL.trace(SQL)
+                system.db.runUpdateQuery(SQL, database)
+                return "Error", 0
+            elif recommendationStatus == "NO-RECOMMENDATIONS":
+                log.warn("No recommendations were made")
+                diagnosisEntryId=record['DiagnosisEntryId']
+                SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'No-Recs' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+                logSQL.trace(SQL)
+                system.db.runUpdateQuery(SQL, database)
+                return "None Made", 0
+            
+            quantOutputs = mergeRecommendations(quantOutputs, recommendations)
+            print "-----------------"
+            print "Quant Outputs: ", quantOutputs
+            print "-----------------"
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")
     finalQuantOutputs = []

@@ -531,7 +531,7 @@ def createFloatOutput(container):
         itemId = ds.getValueAt(row, "item-id")
         itemId = itemIdPrefix + itemId
         gsiInterface = ds.getValueAt(row, "opc-server")
-        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
+        serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
         path = "DiagnosticToolkit/" + application
         
         print application, outputName, itemId, serverName
@@ -578,7 +578,7 @@ def createPKSController(container):
         modeItemId = itemIdPrefix + ds.getValueAt(row, "mode-item-id")
 
         gsiInterface = ds.getValueAt(row, "opc-server")
-        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
+        serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
         path = "DiagnosticToolkit/" + application
         
         parentPath = '[' + provider + ']' + path    
@@ -591,7 +591,7 @@ def createPKSController(container):
             # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
-                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass, "spItemId":spItemId,
                                 "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                                 "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId,
                                 "alternateNames": names},
@@ -627,7 +627,7 @@ def createPKSACEController(container):
         processingCommandItemId = itemIdPrefix + ds.getValueAt(row, "processing-cmd-item-id")
         
         gsiInterface = ds.getValueAt(row, "opc-server")
-        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
+        serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
         path = "DiagnosticToolkit/" + application
        
         parentPath = '[' + provider + ']' + path    
@@ -638,8 +638,8 @@ def createPKSACEController(container):
             print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, tagPath, spItemId, scanClass, serverName)
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
-                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "spItemId":spItemId,
-                            "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass, 
+                            "spItemId":spItemId, "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                             "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId, 
                             "processingCommandItemId": processingCommandItemId, "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})

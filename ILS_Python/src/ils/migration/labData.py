@@ -278,7 +278,7 @@ def insertLocalLabValue(labData, valueId, site):
     if interfaceName == None:
         SQL = "insert into LtLocalValue (ValueId) values (%s)" % (str(valueId))
     else:
-        serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+        serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
     
         if writeLocationId < 0:
             print "Unable to find interface: %s for site: %s in the InterfaceTransalation table!" % (interfaceName, site)
@@ -316,7 +316,7 @@ def insertDCSLabValue(labData, valueId, site):
         if interfaceName == None:
             SQL = "insert into LtDCSValue (ValueId) values (%s)" % (str(valueId))
         else:
-            serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+            serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
             if writeLocationId < 0:
                 print "Unable to find interface: %s for site: %s in the InterfaceTransalation table!" % (interfaceName, site)
                 SQL = "insert into LtDCSValue (ValueId) values (%s)" % (str(valueId))
@@ -359,7 +359,7 @@ def insertDerivedLabValue(labData, valueId, site):
     for result in labData.findall('phdResultTag'):
         resultItemId = result.get("item-id")
         interfaceName=result.get("interface-name")
-        serverName, scanClass, resultWriteLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+        serverName, scanClass, permissiveScanClass, resultWriteLocationId = lookupOPCServerAndScanClass(site, interfaceName)
 
     SQL = "insert into LtDerivedValue (ValueId, TriggerValueId, callback, ResultItemId, ResultWriteLocationId, SampleTimeTolerance, NewSampleWaitTime) "\
         " values (%s, %s, '%s', '%s', %s, 5, 45)" % (str(valueId), str(triggerValueId), callback, resultItemId, str(resultWriteLocationId))
@@ -603,7 +603,7 @@ def createTags(rootContainer):
             serverName = "UNKNOWN"
             scanClass = "UNKNOWN"
         else:
-            serverName, scanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+            serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
         
         path = "LabData/" + unitName + "/DCS-Lab-Values"
         parentPath = '[' + provider + ']' + path    

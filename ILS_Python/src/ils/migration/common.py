@@ -6,7 +6,7 @@ Created on Mar 12, 2015
 import system
 
 def lookupOPCServerAndScanClass(site, gsiInterface):
-    SQL = "select newServerName, newScanClass from InterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
+    SQL = "select newServerName, newScanClass, newPermissiveScanClass from InterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
     pds = system.db.runQuery(SQL, "XOMMigration")
     if len(pds) != 1:
         print "Error looking up GSI interface <%s> in the InterfaceTranslation table" % (gsiInterface)
@@ -14,6 +14,7 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
     record = pds[0]
     serverName=record["newServerName"]
     scanClass=record["newScanClass"]
+    permissiveScanClass=record["newPermissiveScanClass"]
     
     # Now lookup the id of this interface in the RtWriteLocation table
     
@@ -26,7 +27,7 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
         record = pds[0]
         writeLocationId=record["WriteLocationId"]
     
-    return serverName, scanClass, writeLocationId
+    return serverName, scanClass, permissiveScanClass, writeLocationId
 
 def lookupHDAServer(site, gsiInterface):
     # Translate from the G2 interface name to the Ignition Interface name

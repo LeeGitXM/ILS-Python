@@ -120,8 +120,7 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
     return okToDownload
 
 def serviceDownload(repeater, ds, tagProvider):
-    # iterate through each row of the dataset that is marked to go and make sure the controller is reachable
-    # and that the setpoint is legal
+    # iterate through each row of the dataset that is marked to go and download it.
     log.info("Starting to download...")
  
     for row in range(ds.rowCount):
@@ -135,5 +134,14 @@ def serviceDownload(repeater, ds, tagProvider):
                 tagPath="[%s]%s" % (tagProvider, tag)
                 
                 print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
-                write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
+                success, errorMessage = write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
+                
+                if success:
+                    ds = system.dataset.setValue(ds, row, "downloadStatus", "Success")
+                    print "The write was successful"
+                else:
+                    print "The write FAILED because: ", errorMessage
+                    ds = system.dataset.setValue(ds, row, "downloadStatus", "Error")
+    
+    repeater.templateParams=ds
     return
