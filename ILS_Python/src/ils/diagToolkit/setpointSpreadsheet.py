@@ -37,7 +37,7 @@ def initialize(rootContainer):
             # Remember the row number of the application because we will need to update the status if we encounter
             # any minimum change bound outputs
             applicationRowNumber = i
-            minChangeBoundCounter = 0
+            minChangeBoundCount = 0
              
             application = record['ApplicationName']
             applicationRow = ['app',i,0,0,'Active',0,application,'','',0,False,0,0,'','']
@@ -59,7 +59,7 @@ def initialize(rootContainer):
             statusMessage='<HTML>CLAMPED<br>(Vector)'
         elif outputLimitedStatus == 'Minimum Change Bound':
             statusMessage='<HTML>CLAMPED<br>(Min Change)'
-            minChangeBoundCount = minChangeBoundCounter + 1
+            minChangeBoundCount = minChangeBoundCount + 1
             if minChangeBoundCount == 1:
                 applicationRow[13]="%i output < minimum change" % (minChangeBoundCount)
             else:
@@ -308,6 +308,11 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
             for record in pds:
                 finalDiagnosisIds.append(record["FinalDiagnosisId"])
 
+        print "Resetting: "
+        print "  Application: ", application
+        print "  Families:    ", families
+        print "  FDs:         ", finalDiagnosisIds
+        
         quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
 
         resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db)
@@ -383,8 +388,8 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
 
     resetOutputs(quantOutputIds, actionMessage, log, database)
     resetRecommendations(quantOutputIds, actionMessage, log, database)
-    resetFinalDiagnosis(application, actionMessage, log, database)
-    resetDiagnosisEntry(application, actionMessage, recommendationStatus, log, database)
+    resetFinalDiagnosis(application, actionMessage, finalDiagnosisIds, log, database)
+    resetDiagnosisEntry(application, actionMessage, finalDiagnosisIds, recommendationStatus, log, database)
                 
     # Reset the BLT blocks - this varies slightly depending on the action
     if actionMessage == WAIT_FOR_MORE_DATA:
@@ -437,36 +442,52 @@ def resetRecommendations(quantOutputIds, actionMessage, log, database):
         rows+=cnt
     log.trace("Deleted %i recommendations..." % (rows))
 
-def resetFinalDiagnosis(applicationName, actionMessage, log, database):
+def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, database):
     log.info("Resetting Final Diagnosis for application %s" % (applicationName))
+
+    totalRows = 0    
+    for finalDiagnosisId in finalDiagnosisIds:
+        # if we are processing a wait-for-more-data then do not update the timeOfMostRecentRecommendationImplementation
+        if actionMessage == WAIT_FOR_MORE_DATA:
+            SQL = "update DtFinalDiagnosis set Active = 0 "
+        else:
+            SQL = "update DtFinalDiagnosis set Active = 0, TimeOfMostRecentRecommendationImplementation = getdate() "
     
-    # if we are processing a wait-for-more-data then do not update the timeOfMostRecentRecommendationImplementation
-    if actionMessage == WAIT_FOR_MORE_DATA:
-        SQL = "update DtFinalDiagnosis set Active = 0 "
-    else:
-        SQL = "update DtFinalDiagnosis set Active = 0, TimeOfMostRecentRecommendationImplementation = getdate() "
+    #    SQL = "%s where active = 1 and FamilyId in "\
+    #        " (select F.familyId "\
+    #        " from DtFamily F, DtApplication A "\
+    #        " where F.ApplicationId = A.ApplicationId "\
+    #        " and A.ApplicationName = '%s')" % (SQL, applicationName)
+    
+        SQL = "%s where FinalDiagnosisId = %s" % (SQL, str(finalDiagnosisId))
+        
+        log.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        totalRows = totalRows + rows
+        
+    log.trace("Updated %i records for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
 
-    SQL = "%s where active = 1 and FamilyId in "\
-        " (select F.familyId "\
-        " from DtFamily F, DtApplication A "\
-        " where F.ApplicationId = A.ApplicationId "\
-        " and A.ApplicationName = '%s')" % (SQL, applicationName)
-    log.trace(SQL)
-    rows=system.db.runUpdateQuery(SQL, database)
-    log.trace("Updated %i final diagnosis..." % (rows))
-
-def resetDiagnosisEntry(applicationName, actionMessage, recommendationStatus, log, database):
-    log.info("Resetting Diagnosis Entries for application %s" % (applicationName))
-    SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
-        " where status = 'Active' and FinalDiagnosisId in "\
-        " (select FD.FinalDiagnosisId "\
-        " from DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
-        " where FD.FamilyId = F.FamilyId "\
-        " and F.ApplicationId = A.ApplicationId "\
-        " and A.ApplicationName = '%s')" % (recommendationStatus, applicationName)
-    log.trace(SQL)
-    rows=system.db.runUpdateQuery(SQL, database)
-    log.trace("Updated %i diagnosis entries..." % (rows))
+def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recommendationStatus, log, database):
+    log.info("Resetting Diagnosis Entries for application %s with final diagnosis %s" % (applicationName, str(finalDiagnosisIds)))
+    
+    totalRows=0
+    for finalDiagnosisId in finalDiagnosisIds:
+#        SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
+#            " where status = 'Active' and FinalDiagnosisId in "\
+#            " (select FD.FinalDiagnosisId "\
+#            " from DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
+#            " where FD.FamilyId = F.FamilyId "\
+#            " and F.ApplicationId = A.ApplicationId "\
+#            " and A.ApplicationName = '%s')" % (recommendationStatus, applicationName)
+         
+        SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
+            " where status = 'Active' and FinalDiagnosisId = %s " % (recommendationStatus, str(finalDiagnosisId))   
+            
+        log.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        totalRows=totalRows + rows
+        
+    log.trace("Updated %i diagnosis entries for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
 
 # Reset the BLT diagram in response to a No-Download or Download
 def resetDiagram(finalDiagnosisIds, database):
@@ -494,7 +515,7 @@ def resetDiagram(finalDiagnosisIds, database):
             print "Fetching upstream blocks for diagram <%s> - final diagnosis <%s>..." % (str(diagramUUID), finalDiagnosisName)
 
             if diagramUUID != None and fdUUID != None:
-                blocks=diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
+                blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
                 for block in blocks:
                     blockId=block.getIdString()
@@ -544,7 +565,7 @@ def partialResetDiagram(finalDiagnosisIds, database):
 
             downstreamBlocks=[]
             if diagramUUID != None and fdUUID != None:
-                blocks=system.ils.blt.diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
+                blocks=system.ils.blt.diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
                 for block in blocks:
                     blockId=block.getIdString()
