@@ -7,14 +7,16 @@ Created on Sep 9, 2014
 import sys, system, string, traceback
 #import project, shared
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.constants.constants import QUEUE_INFO, QUEUE_ERROR
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
+AUTO_NO_DOWNLOAD="Auto No-Download"
 
 def notifyConsole():
     print "Waking up the console"
 
 # This is a replacement to em-quant-recommend-gda
-def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
+def makeRecommendation(application, family, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
     SQL = "select CalculationMethod "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
@@ -45,15 +47,31 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
         exec("from %s import %s" % (package,module))
 
     try:
-        calculationText, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisId,provider,database)
+        calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
         log.error("Caught an exception calling calculation method named %s... \n%s" % (calculationMethod, errorTxt) )
         return [], "ERROR"
-   
+
     else:
-        if len(rawRecommendationList) == 0:
+        log.trace("Received recommendations: %s" % (str(rawRecommendationList)))
+        # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
+        log.trace("Screen for no-change recommendations...") 
+        screenedRecommendationList=[]
+        for recommendation in rawRecommendationList:
+            if recommendation.get("Value",0.0) == 0.0:
+                log.trace("...removing a no change recommendation: %s" % (str(recommendation)))
+            else:
+                screenedRecommendationList.append(recommendation)
+
+        if len(screenedRecommendationList) == 0:
+            log.trace("Performing an automatic NO-DOWNLOAD because there are no recommendations...") 
+            from ils.diagToolkit.common import fetchPostForApplication
+            post=fetchPostForApplication(application, database)
+            
+            from ils.diagToolkit.setpointSpreadsheet import resetApplication
+            resetApplication(post=post, application=application, families=[], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database)
             return [], "NO-RECOMMENDATIONS"
         else:
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'REC-Made' where DiagnosisEntryId = %i " % (diagnosisEntryId)
@@ -65,11 +83,16 @@ def makeRecommendation(application, family, finalDiagnosis, finalDiagnosisId, di
             applicationQueue = getQueueForDiagnosticApplication(application, database)
             
             from ils.queue.message import insert
-            insert(applicationQueue, "INFO", calculationText, database)
+            if calculationSuccess:
+                messageLevel = QUEUE_INFO
+            else:
+                messageLevel = QUEUE_ERROR
+            insert(applicationQueue, messageLevel, explanation, database)
+            log.trace("Explanation: %s - %s" % (messageLevel, explanation))
 
             recommendationList=[]
             log.trace("  The recommendations returned from the calculation method are: ")
-            for recommendation in rawRecommendationList:
+            for recommendation in screenedRecommendationList:
                 # Validate that there is a 'QuantOutput' key and a 'Value' Key
                 quantOutput = recommendation.get('QuantOutput', None)
                 if quantOutput == None:
@@ -177,12 +200,15 @@ def calculateFinalRecommendation(quantOutput):
     return quantOutput
 
 def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):
-
-    print "Testing %s - %s" % (finalDiagnosisName, calculationMethod)
+    print "*** In recommendation.test() ***"
+    # We could fetch the actual finalDiagnosis Id from the database, but for now I don't think anyone uses it...
+    finalDiagnosisId = -1
     
-    if string.upper(calculationMethod) == "CONSTANT":
-        print "Bypassing calculations for a CONSTANT calculation method!"
-        return "", []
+    print "Testing %s - %s" % (finalDiagnosisName, calculationMethod)
+
+#    if string.upper(calculationMethod) == "CONSTANT":
+#        print "Bypassing calculations for a CONSTANT calculation method!"
+#        return "", []
 
     # If they specify shared or project scope, then we don't need to do this
     if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
@@ -196,14 +222,14 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
         exec("import %s" % (package))
         exec("from %s import %s" % (package,module))
 
-    textRecommendation, rawRecommendationList = eval(calculationMethod)(applicationName,finalDiagnosisName,provider,database)
+    status, explanation, rawRecommendationList = eval(calculationMethod)(applicationName,finalDiagnosisName, finalDiagnosisId, provider,database)
 
     if len(rawRecommendationList) == 0:
         print "NO-RECOMMENDATIONS were returned!"
     else:
         print "Recommendations: ", rawRecommendationList
 
-    return textRecommendation, rawRecommendationList
+    return status, explanation, rawRecommendationList
 
 def postApplicationMessage(applicationName, status, message, log):
     queueId = system.db.runScalarQuery("select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName))
