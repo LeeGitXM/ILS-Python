@@ -37,7 +37,7 @@ def valueChanged(tagPath, currentValue, initialChange):
         log.warn("%s quality is %s - value will not be propagated!" % (tagPath, currentValue.quality))
         return
     
-    # I'm not sure if we want to ignore this on startup or not - but this does eliminate the module loading werror that IA is working
+    # I'm not sure if we want to ignore this on startup or not - but this does eliminate the module loading error that IA is working
     # where BLT is not loaded when this gets called on startup.
     # This didn't seem to work anyway
 #    if initialChange:
@@ -48,7 +48,9 @@ def valueChanged(tagPath, currentValue, initialChange):
     try:
         tagVal = float(currentValue.value)
     except:
-        log.warn("The new value <%s> for <%s> is not numeric and cannot be processed" % (str(currentValue.value), tagPath))
+        # Silently ignore nulls
+        if not (currentValue.value == None):
+            log.warn("The new value <%s> for <%s> is not numeric and cannot be processed" % (str(currentValue.value), tagPath))
         return
     
     # The first step is to get the tag name out of the full tag name.  This should end in either rawValue or manualRawValue    
