@@ -23,7 +23,7 @@ def getHandler():
     '''Return a python request handler'''
 
 # I don't think this is correct...
-def getPropertyValue(diagId, blockId, property):
+def getPropertyValue(diagId, blockId, prop):
     '''Get the diagram serializable block state descriptor'''
     
 def getRequestHandler():
@@ -33,18 +33,48 @@ def getToolkitProperty(name):
     return name
 
 def listBlocksUpstreamOf(diagId, blockName):
-    '''Get a list of serializable block state descriptors of the upstream blocks'''
+    '''Return a list of serializable block state descriptors of the upstream blocks'''
 
 def listBlocksDownstreamOf(diagId, blockName):
-    '''Get a list of serializable block state descriptors of the downstream blocks'''
+    '''Return a list of serializable block state descriptors of the downstream blocks'''
 
+def listBlocksForTag(tagpath):
+    '''Return a list of serializable block state descriptors that reference the specified tag'''
+
+def listBlocksGloballyDownstreamOf(diagramId,blockName):
+    '''Return a list of serializable block state descriptors of blocks downstream on this and connected diagrams'''  
+
+def listBlocksGloballyUpstreamOf(diagramId,blockName):
+    '''Return a list of serializable block state descriptors of blocks upstream on this and connected diagrams'''  
+    
+def listDiagramBlocksOfClass(diagramId,className):
+     '''Return a list of serializable block state descriptors of blocks in this diagram that belong to the specified class''' 
+    
+def listBlocksInDiagram(diagramId):
+    '''Return a list of serializable block state descriptors that reference blocks the specified diagram'''
+  
+def listSinksForSource(diagramId,blockName):
+    '''Return a list of serializable block state descriptors corresponding to sinks associated with the named source'''
+    
+def listSourcesForSink(diagramId,blockName):
+    '''Return a list of serializable block state descriptors corresponding to source associated with the named sink'''
+
+def pathForBlock(diagid,bname):
+     '''Return a nav-tree path for the named block '''
+         
 def resetBlock(diagId, blockName):
     '''Reset the specified block'''
      
 def resetDiagram(diagid):
     '''Reset the specified diagram'''
 
+def sendLocalSignal(diagid,command,message,arg):
+    '''Send a signal to the named block on the specified diagram'''
+    
 def sendSignal(diagId, blockName, signal, message):
+    '''Send a signal to the named block on the specified diagram'''
+
+def sendTimestampedSignal(diagid,command,message,arg,ts):
     '''Send a signal to the named block on the specified diagram'''
 
 def setBlockState(diagId, blockName, blockState):

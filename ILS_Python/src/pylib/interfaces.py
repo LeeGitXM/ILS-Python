@@ -9,23 +9,49 @@ def listBlocksDownstreamOf(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksDownstreamOf(diagid,blockName)
-	#print "==================== blocksDownstreamOf ",blockName," =============="
+	print "==================== listBlocksDownstreamOf ",blockName," =============="
 	lst = []
 	for block in blocks:
-		#print block.getName()
+		print block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
-
+	
+# Return a list of names of blocks that are downstream of the 
+# specified block - on the same and linked diagrams
+def listBlocksGloballyDownstreamOf(common,dpath,blockName):
+	diagid = getDiagram(dpath).getSelf().toString()
+	# blocks is a list of SerializableBlockStateDescriptor
+	blocks = script.listBlocksGloballyDownstreamOf(diagid,blockName)
+	print "==================== listBlocksGloballyDownstreamOf ",blockName,"=============="
+	lst = []
+	for block in blocks:
+		print block.getName()
+		lst.append(block.getName())
+	common['result'] = lst 
+	
+# Return a list of names of blocks that are upstream of the 
+# specified block - on the same and linked diagrams
+def listBlocksGloballyUpstreamOf(common,dpath,blockName):
+	diagid = getDiagram(dpath).getSelf().toString()
+	# blocks is a list of SerializableBlockStateDescriptor
+	blocks = script.listBlocksGloballyUpstreamOf(diagid,blockName)
+	print "==================== listBlocksGloballyUpstreamOf ",blockName,"=============="
+	lst = []
+	for block in blocks:
+		print block.getName()
+		lst.append(block.getName())
+	common['result'] = lst 
+	
 # Return a list of names of blocks that are downstream of the 
 # specified block - and in the same diagram
 def listBlocksUpstreamOf(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksUpstreamOf(diagid,blockName)
-	#print "==================== blocksUpstreamOf ",blockName,"=============="
+	print "==================== listBlocksUpstreamOf ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		#print block.getName()
+		print block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 
@@ -36,9 +62,9 @@ def listBlocksOfClassUpstream(common,dpath,blockName,classname):
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksUpstreamOf(diagid,blockName)
 	lst = []
-	#print "==================== listBlocksOfClassUpstream ",blockName,"=============="
+	print "==================== listBlocksOfClassUpstream ",blockName,"=============="
 	for block in blocks:
-		#print block.getName()," is ",block.getClassName()
+		print block.getName()," is ",block.getClassName()
 		if block.getClassName()==classname:
 			lst.append(block.getName())
 	common['result'] = lst 
@@ -50,9 +76,9 @@ def listBlocksOfClassDownstream(common,dpath,blockName,classname):
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksDownstreamOf(diagid,blockName)
 	lst = []
-	#print "==================== listBlocksOfClassDownstream ",blockName,"=============="
+	print "==================== listBlocksOfClassDownstream ",blockName,"=============="
 	for block in blocks:
-		#print block.getName()," is ",block.getClassName()
+		print block.getName()," is ",block.getClassName()
 		if block.getClassName()==classname:
 			lst.append(block.getName())
 	common['result'] = lst 
@@ -83,10 +109,10 @@ def listBlocksInDiagram(common,dpath):
 def listBlocksForTag(common,tagpath):
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listBlocksForTag(tagpath)
-	#print "==================== blocksForTag ",tagpath,"=============="
+	print "==================== listBlocksForTag ",tagpath,"=============="
 	lst = []
 	for block in blocks:
-		#print block.getName()
+		print block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 
