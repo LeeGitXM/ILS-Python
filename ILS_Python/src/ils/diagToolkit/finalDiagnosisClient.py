@@ -25,6 +25,7 @@ def handleNotification(payload):
     
     post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
+    numOutputs=payload.get('numOutputs', 1)
 
     windows = system.gui.getOpenedWindows()
     
@@ -59,16 +60,25 @@ def handleNotification(payload):
                 if notificationText != "":
                     system.gui.messageBox(notificationText)
                 
+                if numOutputs == 0:
+                    print "Closing an OC alert that has not been answered because the recommendations have been cleared"
+                    system.nav.closeWindow(windowPath)
                 return
     
-    # We didn't find an open setpoint spreadsheet, so check if this client is interested in the console
+    # We didn't find an open setpoint spreadsheet, so if there are outputs check if this client is interested in the console
     print "Checking for a matching console window..."
     for window in windows:
         windowPath=window.getPath()
         rootContainer=window.rootContainer
         windowPost=rootContainer.getPropertyValue("post")
         if post == windowPost:
-            print "Found an interested console window - post the loud workspace"
+            print "Found an interested console window..."
+
+            if numOutputs == 0:
+                print "Skipping the load workspace posting because the spreadsheet would be empty..."
+                return
+            
+            print "Posting the loud workspace..."
             
             # We don't want to open the setpoint spreadsheet immediately, rather we want to post an OC Alert,
             # the load workspace, which will get their attention.  We are already on the client that is 

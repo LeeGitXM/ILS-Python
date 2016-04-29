@@ -570,7 +570,7 @@ def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database
             success = True
             insertedRows = 1
         except:
-            log.error("Failed to insert into a lab value for %s, %s at %s" % (valueName, str(rawValue), str(sampleTime)))
+            log.error("Failed to insert into a lab value for %s-%i, %s at %s, grade: %s" % (valueName, valueId, str(rawValue), str(sampleTime), str(grade)))
             success = False
     return success, insertedRows
 

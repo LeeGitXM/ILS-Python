@@ -371,8 +371,14 @@ def insertFinalDiagnosis(container):
         
         autoTranslatedCalculationMethod=ds.getValueAt(row, "new-recommendation-calculation-method")
         calculationMethod=ds.getValueAt(row, "recommendation-calculation-method")
-        calculationMethod=lookupTranslatedName("CalculationMethod", calculationMethod, autoTranslatedCalculationMethod)
-            
+        
+        if string.upper(calculationMethod) == "CONSTANT":
+            calculationMethod=""
+            constant=1
+        else:
+            calculationMethod=lookupTranslatedName("CalculationMethod", calculationMethod, autoTranslatedCalculationMethod)
+            constant=0
+
         trapInsignificantRecommendations=ds.getValueAt(row, "trap-insignificant-recommendation-conditions")
         if trapInsignificantRecommendations == "TRUE":
             trapInsignificantRecommendations=1
@@ -391,10 +397,10 @@ def insertFinalDiagnosis(container):
             
         if familyId >= 0:
             SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, FamilyId, Explanation, "\
-                "FinalDiagnosisPriority, CalculationMethod, TrapInsignificantRecommendations, "\
+                "FinalDiagnosisPriority, Constant, CalculationMethod, TrapInsignificantRecommendations, "\
                 "PostTextRecommendation, TextRecommendation, TextRecommendationCallback, RefreshRate) "\
-                "values ('%s', %s, '%s', %s, '%s', %s, %s, '%s', '%s', %s)" % \
-                 (finalDiagnosis, str(familyId), explanation, str(priority), calculationMethod, 
+                "values ('%s', %s, '%s', %s, %i, '%s', %s, %s, '%s', '%s', %s)" % \
+                 (finalDiagnosis, str(familyId), explanation, str(priority), constant, calculationMethod, 
                  trapInsignificantRecommendations, postTextRecommendation, textRecommendation,
                  textRecommendationCallback, refreshRate)
             print SQL

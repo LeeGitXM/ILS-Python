@@ -10,17 +10,18 @@ Created on Sep 12, 2014
 
 import system, string
 from ils.diagToolkit.common import fetchPostForApplication
+from ils.constants.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED
 
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
-def notifyClients(project, post, notificationText=""):
+def notifyClients(project, post, notificationText="", numOutputs=0):
     log.trace("Notifying %s-%s client to open/update the setpoint spreadsheet..." % (project, post))
     log.trace("   ...notification text: <%s>" % (notificationText))
     system.util.sendMessage(project=project, messageHandler="consoleManager", 
-                            payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText}, scope="C")
+                            payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}, scope="C")
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -64,8 +65,8 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     # Insert an entry into the diagnosis queue
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, ManualMove, ManualMoveValue, RecommendationMultiplier) "\
-        "values (%i, 'Active', getdate(), '%s', '%s', 'NONE-MADE', 0, 0.0, 1.0)" \
-        % (finalDiagnosisId, grade, txt)
+        "values (%i, 'Active', getdate(), '%s', '%s', '%s', 0, 0.0, 1.0)" \
+        % (finalDiagnosisId, grade, txt, RECOMMENDATION_NONE_MADE)
     logSQL.trace(SQL)
     
     try:
@@ -88,11 +89,11 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
     
-    if activeOutputs > 0:
-        post=fetchPostForApplication(application)
-        # This runs in the gateway, but it should work 
-        projectName = system.util.getProjectName()
-        notifyClients(projectName, post, notificationText)
+    post=fetchPostForApplication(application)
+    # This runs in the gateway, but it should work 
+    projectName = system.util.getProjectName()
+    notifyClients(projectName, post, notificationText, activeOutputs)
+
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
     print "Mining explanation for %s - <%s> <%s>" % (finalDiagnosisName, str(diagramUUID), str(UUID)) 
@@ -105,7 +106,7 @@ def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
     
 # Clear the final diagnosis (make the status = 'InActive') 
 def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provider=""):
-    print "Clearing*..."
+    log.info("Clearing the diagnosis entry for %s - %s - %s..." % (application, family, finalDiagnosis))
 
     from ils.diagToolkit.common import fetchFinalDiagnosis
     record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
@@ -114,56 +115,54 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
         log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
         return    
 
+    # If there was a recommendation, then rescind it
+    SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s' where FinalDiagnosisId = %i and Status = 'Active'" % (RECOMMENDATION_RESCINDED, finalDiagnosisId)
+    logSQL.trace(SQL)
+    rows = system.db.runUpdateQuery(SQL, database)
+    log.trace("Cleared %i diagnosis entries" % (rows))
+
     # Set the state of the diagnosis entry to InActive
     SQL = "update DtDiagnosisEntry set Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
     logSQL.trace(SQL)
     rows = system.db.runUpdateQuery(SQL, database)
-    print "Cleared %i diagnosis entries" % (rows)
+    log.trace("Cleared %i diagnosis entries" % (rows))
     
     # Set the state of the Final Diagnosis to InActive
     SQL = "update DtFinalDiagnosis set Active = 0 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     logSQL.trace(SQL)
     rows = system.db.runUpdateQuery(SQL, database)
-    print "Cleared %i final diagnosis" % (rows)
+    log.trace("Cleared %i final diagnosis" % (rows))
     
-    print "Starting to manage as a result of a cleared Final Diagnosis..."
+    log.trace("Starting to manage as a result of a cleared Final Diagnosis...")
     notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
-    print "...back from manage!"
-    
-    if activeOutputs:
-        # This runs in the gateway, but it should work 
-        projectName = system.util.getProjectName()
-        SQL = "select post "\
-            "from TkPost P, TkUnit U, DtApplication A "\
-            "where A.UnitId = U.UnitId "\
-            "and U.PostId = P.postId "\
-            "and A.ApplicationName = '%s'" % (application)
-        post = system.db.runScalarQuery(SQL, database)
-        print "The post is: ", post
-        notifyClients(projectName, post, notificationText)
+    log.trace("...back from manage due to a cleared final diagnosis!")
+ 
+    # Update the setpoint spreadsheet
+    post=fetchPostForApplication(application)
+    log.trace("Sending update notification to post %s" % (post))
+    projectName = system.util.getProjectName()
+    notifyClients(projectName, post, notificationText, activeOutputs)
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def recalcMessageHandler(payload):
     post=payload["post"]
     project=system.util.getProjectName()
-    log.info("Handling message to manage an recommendations for post %s" % (post))
+    log.info("Handling recalc message for post %s" % (post))
     database=payload["database"]
     provider=payload["provider"]
 
     from ils.diagToolkit.common import fetchApplicationsForPost
     pds=fetchApplicationsForPost(post, database)
 
-    needToNotifyClients=False
+#    needToNotifyClients=False
+    totalActiveOutputs=0
     for record in pds:
         applicationName=record["ApplicationName"]
         txt,activeOutputs=manage(applicationName, recalcRequested=True, database=database, provider=provider)
-        if activeOutputs:
-            needToNotifyClients=True
-            
-    if needToNotifyClients:
-        # Send a message to every client monitoring this post that the spreadsheet should be updated.
-        notifyClients(project, post)
+        totalActiveOutputs = totalActiveOutputs + activeOutputs
+        
+    notifyClients(project, post, "", totalActiveOutputs)
 
     
 # This is based on the original G2 procedure outout-msg-core()
@@ -255,7 +254,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
     # and is the first step in evaluating the active FDs and calculating new recommendations.
     def resetRecommendations(applicationName, log, database):
-        log.info("Deleting recommendations for %s" % (applicationName))
+        log.trace("Deleting recommendations for %s" % (applicationName))
         SQL = "delete from DtRecommendation " \
             " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
             " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
@@ -268,10 +267,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
         log.trace("Deleted %i recommendations..." % (rows))
 
     #----------------------------------------------------------------------------
-    # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
-    # and is the first step in evaluating the active FDs and calculating new recommendations.
-    def resetOutputs(applicationName, log, database):
-        log.info("Resetting QuantOutputs for %s" % (applicationName))
+    # Delete the quant outputs for an applicatuon.
+    def resetOutputs(applicationName, database):
+        log.trace("Resetting QuantOutputs for %s" % (applicationName))
         SQL = "update DtQuantOutput " \
             " set Active = 0, FeedbackOutputManual = 0.0, ManualOverride = 0 where ApplicationId in (select ApplicationId "\
             " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
@@ -402,19 +400,66 @@ def manage(application, recalcRequested=False, database="", provider=""):
             log.trace("   ...rescinding recommendations for final diagnosis id: %i..." % (fdId))
             SQL = "delete from DtRecommendation where DiagnosisEntryId in "\
                 " (select DiagnosisEntryId from DtDiagnosisEntry "\
-                " where Status = 'Active' and RecommendationStatus = 'REC-Made' "\
-                " and FinalDiagnosisId = %i)" % (fdId)
+                " where Status = 'Active' and RecommendationStatus = '%s' "\
+                " and FinalDiagnosisId = %i)" % (RECOMMENDATION_REC_MADE, fdId)
             logSQL.trace(SQL)
             rows=system.db.runUpdateQuery(SQL, database)
             log.trace("      deleted %i recommendations..." % (rows))
 
-            SQL = "update DtDiagnosisEntry set RecommendationStatus = 'Rescinded'"\
-                "where Status = 'Active' and RecommendationStatus = 'REC-Made' "\
-                " and FinalDiagnosisId = %i" % (fdId)
+            SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s'"\
+                "where Status = 'Active' and RecommendationStatus = '%s' "\
+                " and FinalDiagnosisId = %i" % (RECOMMENDATION_RESCINDED, RECOMMENDATION_REC_MADE, fdId)
             logSQL.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, database)
             log.trace("      updated %i diagnosis entries..." % (rows))
-    
+
+    #-------------------------------------------------------------------
+    def rescindActiveDiagnosis(application, database):
+        log.trace("...rescinding active diagnosis and deleting recommendations for application %s..." % (application))
+
+        SQL = "select A.ApplicationName, R.RecommendationId "\
+            "from DtRecommendation R, DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+              " where R.DiagnosisEntryId = DE.DiagnosisEntryId and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
+              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId "
+        
+        pds = system.db.runQuery(SQL, database)
+        totalRows=0
+        for record in pds:
+            recommendationId=record["RecommendationId"]
+            applicationName=record["ApplicationName"]
+            print "Checking: ", recommendationId, applicationName
+            if application == applicationName:
+                print "* delete it*"
+                SQL = "delete from DtRecommendation where RecommendationId = %i" % (recommendationId)
+                rows=system.db.runUpdateQuery(SQL)
+                totalRows=totalRows+rows
+        print "     Deleting %i recommendations..." % (totalRows)
+        
+#        SQL = "delete from DtRecommendation where DiagnosisEntryId in "\
+#              " (select DE.DiagnosisEntryId from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+#              " where DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
+#              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId "\
+#              " and A.ApplicationName = '%s')" % (application)
+#        logSQL.trace(SQL)
+#        rows=system.db.runUpdateQuery(SQL, database)
+#        log.trace("      deleted %i recommendations..." % (rows))
+
+        # Update the Quant Outputs 
+        log.trace("...resetting the QuantOutput active flag for %s..." % (application))
+        resetOutputs(application, database)
+
+        SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s'"\
+            "where Status = 'Active' and RecommendationStatus = '%s' "\
+            " and FinalDiagnosisId in (select FD.FinalDiagnosisId "\
+            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
+            "where DE.Status = 'Active' and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
+            " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId "\
+            " and A.ApplicationName = '%s')" % (RECOMMENDATION_RESCINDED, RECOMMENDATION_REC_MADE, application)
+        logSQL.trace(SQL)
+        rows = system.db.runUpdateQuery(SQL, database)
+        log.trace("      rescinded %i diagnosis entries..." % (rows))
+
+
     #----------------------------------------------------------------------
     def setDiagnosisEntryErrorStatus(alist, database):
         log.trace("Updating the diagnosis entries to indicate an error...")
@@ -426,7 +471,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
             if finalDiagnosisId not in ids:
                 log.trace("   ...setting error status for active diagnosis entries for final diagnosis: %s..." % (finalDiagnosis))
                 ids.append(finalDiagnosisId)
-                SQL = "update dtDiagnosisEntry set RecommendationStatus = 'ERROR' where FinalDiagnosisId = %i and status = 'Active'" % (finalDiagnosisId)
+                SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s' where FinalDiagnosisId = %i and status = 'Active'" % (RECOMMENDATION_ERROR, finalDiagnosisId)
                 logSQL.trace(SQL)
                 rows=system.db.runUpdateQuery(SQL, database)
                 log.trace("      updated %i rows!" % (rows))
@@ -444,6 +489,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # If there are no active diagnosis then there is nothing to manage
     if len(pds) == 0:
         log.info("Exiting the diagnosis manager because there are no active diagnosis for %s!" % (application))
+        rescindActiveDiagnosis(application, database)
         # TODO we may need to clear something
         return "", 0
 
@@ -486,7 +532,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     resetRecommendations(application, log, database)
     
     log.trace("...resetting the QuantOutput active flag for %s..." % (application))
-    resetOutputs(application, log, database)
+    resetOutputs(application, database)
     
     rescindLowPriorityDiagnosis(lowPriorityList, database)
     setActiveDiagnosisFlag(list2, database)
@@ -502,7 +548,13 @@ def manage(application, recalcRequested=False, database="", provider=""):
         constantFD = record["Constant"]
         log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i), Constant: %s" % (application, family, finalDiagnosis, finalDiagnosisId, str(constantFD)))
         
-        if not(constantFD):
+        if constantFD:
+            # Update the Diagnosis Entry status to be posted
+            log.trace("Setting diagnosis entry recommendation status to POSTED for a contant FD")
+            SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i" % (RECOMMENDATION_POSTED, diagnosisEntryId)
+            system.db.runUpdateQuery(SQL)
+            
+        else:
             # Fetch all of the quant outputs for the final diagnosis
             from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
             pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis, database)
@@ -523,14 +575,14 @@ def manage(application, recalcRequested=False, database="", provider=""):
             if recommendationStatus == "ERROR":
                 log.error("The calculation method had an error")
                 diagnosisEntryId=record['DiagnosisEntryId']
-                SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'ERROR' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+                SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_ERROR, diagnosisEntryId)
                 logSQL.trace(SQL)
                 system.db.runUpdateQuery(SQL, database)
                 return "Error", 0
             elif recommendationStatus == "NO-RECOMMENDATIONS":
                 log.warn("No recommendations were made")
                 diagnosisEntryId=record['DiagnosisEntryId']
-                SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'No-Recs' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+                SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_NONE_MADE, diagnosisEntryId)
                 logSQL.trace(SQL)
                 system.db.runUpdateQuery(SQL, database)
                 return "None Made", 0

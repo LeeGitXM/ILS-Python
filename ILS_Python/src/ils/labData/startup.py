@@ -168,7 +168,7 @@ def restoreValueHistory(tagProvider, historyProvider, daysToRestore=7, database=
                         from ils.labData.scanner import insertHistoryValue
                         success,insertedRows=insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database)
                         if success:
-                            log.info("     ...inserted %s : %s" % (str(rawValue), str(sampleTime)))
+                            log.info("     ...inserted %s : %s (Grade: %s)" % (str(rawValue), str(sampleTime), str(grade)))
                             rows=rows+insertedRows
                             
                 log.info("   ...restored %i rows" % (rows))
@@ -225,7 +225,7 @@ def getGradeForHistoricLabValue(gradeHistory, unitName, sampleTime):
         grade=record[1]
         if sampleTime <= historyTime:
             log.trace("...found grade %s" % (str(grade)))
-            return lastGrade, gradeHistory
+            return lastGrade
         lastGrade=grade
         
     log.warn("-- Did not find a grade for unit %s at %s --" % (unitName, str(sampleTime)))

@@ -8,26 +8,34 @@ import sys, system, string, traceback
 #import project, shared
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.constants.constants import QUEUE_INFO, QUEUE_ERROR
+from ils.constants.constants import RECOMMENDATION_REC_MADE, RECOMMENDATION_POSTED
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 AUTO_NO_DOWNLOAD="Auto No-Download"
+
 
 def notifyConsole():
     print "Waking up the console"
 
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, family, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
-    SQL = "select CalculationMethod "\
+    print "**********In makeRecommendation *********"
+    SQL = "select Constant, CalculationMethod "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
     logSQL.trace(SQL)
-    calculationMethod = system.db.runScalarQuery(SQL, database)
-    log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s, database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, database, provider))
+    pds = system.db.runQuery(SQL, database)
+    record=pds[0]
+    calculationMethod = record["CalculationMethod"]
+    constant = record["Constant"]
+    log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s, Constant=%s, database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, constant, database, provider))
     
-    if string.upper(calculationMethod) == "CONSTANT":
-        log.trace("Detected a CONSTANT calculation method")
+    # If the FD is constant, then it shouldn't get this far becaus ethere really isn't a recommendation to make, so this code should never get exercised.
+    if constant == True:
+        print "The FD IS a CONSTANT"
+        log.trace("Detected a CONSTANT Final Diagnosis")
         
-        SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'Posted' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+        SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_POSTED, diagnosisEntryId)
         logSQL.trace(SQL)
         system.db.runUpdateQuery(SQL, database)
 
@@ -47,7 +55,9 @@ def makeRecommendation(application, family, finalDiagnosisName, finalDiagnosisId
         exec("from %s import %s" % (package,module))
 
     try:
+        print "Calling..."
         calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
+        print "...back!"
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
@@ -74,7 +84,7 @@ def makeRecommendation(application, family, finalDiagnosisName, finalDiagnosisId
             resetApplication(post=post, application=application, families=[], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database)
             return [], "NO-RECOMMENDATIONS"
         else:
-            SQL = "Update DtDiagnosisEntry set RecommendationStatus = 'REC-Made' where DiagnosisEntryId = %i " % (diagnosisEntryId)
+            SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
             logSQL.trace(SQL)
             system.db.runUpdateQuery(SQL, database)
 
