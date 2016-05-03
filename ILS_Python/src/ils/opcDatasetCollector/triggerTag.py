@@ -21,7 +21,11 @@ def setValues(udtTagPath):
     alignWindowMinutes = system.tag.read(udtTagPath + "/Align Window Minutes").value
     # Read the trigger tag first, need the timestamp for comparison
     triggerTagPath = system.tag.read(udtTagPath + "/Trigger Tagpath").value  # This is the Trigger Tag path
-    # Don't need to check if tag exists because would not get nto code if it did not exist
+    # Don't need to check if tag exists because would not get into code if it did not exist -- << Not true
+    if triggerTagPath==None:
+        logger.warnf("opcDatasetCollector: Null trigger tagpath: for %s", str(udtTagPath))
+        return
+    
     logger.tracef("Trigger Tagpath: %s", triggerTagPath)
     triggerTagQv = system.tag.read(triggerTagPath)
     # Read maximum # of rows to read
