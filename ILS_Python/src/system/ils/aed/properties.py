@@ -7,7 +7,7 @@ def getFromAddress():
     return "home"
 def getReportServerAddress():
     return "Milwaukee"
-def getResourceManager(name, path):
+def getResourceManager():
     return "mgr"
 def getResourcePath():
     return ""
