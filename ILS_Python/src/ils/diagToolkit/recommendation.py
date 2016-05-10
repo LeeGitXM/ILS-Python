@@ -8,17 +8,16 @@ import sys, system, string, traceback
 #import project, shared
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.constants.constants import QUEUE_INFO, QUEUE_ERROR
-from ils.constants.constants import RECOMMENDATION_REC_MADE, RECOMMENDATION_POSTED
+from ils.constants.constants import RECOMMENDATION_REC_MADE, RECOMMENDATION_NONE_MADE, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
-AUTO_NO_DOWNLOAD="Auto No-Download"
 
 
 def notifyConsole():
     print "Waking up the console"
 
 # This is a replacement to em-quant-recommend-gda
-def makeRecommendation(application, family, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
+def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
     print "**********In makeRecommendation *********"
     SQL = "select Constant, CalculationMethod "\
         "from DtFinalDiagnosis "\
@@ -66,7 +65,9 @@ def makeRecommendation(application, family, finalDiagnosisName, finalDiagnosisId
 
     else:
         log.trace("Received recommendations: %s" % (str(rawRecommendationList)))
+        
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
+        # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
         log.trace("Screen for no-change recommendations...") 
         screenedRecommendationList=[]
         for recommendation in rawRecommendationList:
@@ -76,13 +77,13 @@ def makeRecommendation(application, family, finalDiagnosisName, finalDiagnosisId
                 screenedRecommendationList.append(recommendation)
 
         if len(screenedRecommendationList) == 0:
-            log.trace("Performing an automatic NO-DOWNLOAD because there are no recommendations...") 
+            log.trace("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
             from ils.diagToolkit.common import fetchPostForApplication
             post=fetchPostForApplication(application, database)
             
             from ils.diagToolkit.setpointSpreadsheet import resetApplication
-            resetApplication(post=post, application=application, families=[], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database)
-            return [], "NO-RECOMMENDATIONS"
+            resetApplication(post=post, application=application, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database)
+            return [], RECOMMENDATION_NONE_MADE
         else:
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
             logSQL.trace(SQL)
@@ -235,7 +236,7 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
     status, explanation, rawRecommendationList = eval(calculationMethod)(applicationName,finalDiagnosisName, finalDiagnosisId, provider,database)
 
     if len(rawRecommendationList) == 0:
-        print "NO-RECOMMENDATIONS were returned!"
+        print "No rec_ommendations were returned!"
     else:
         print "Recommendations: ", rawRecommendationList
 

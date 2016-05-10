@@ -9,7 +9,7 @@ log = system.util.getLogger("com.ils.diagToolkit")
 WAIT_FOR_MORE_DATA="Wait For Data"
 
 def initialize(rootContainer):
-    print "In ils.diagToolkit.setpointSpreadsheet.initialize()..."
+    print "In %s.initialize()..." % (__name__)
 
     rootContainer.initializationComplete = False
     database=system.tag.read("[Client]Database").value
@@ -173,8 +173,9 @@ def detailsCallback(rootContainer):
     # Get the quant output for the row
     ds = repeater.templateParams
     quantOutputId=ds.getValueAt(selectedRow, 'qoid')
+    quantOutputName=ds.getValueAt(selectedRow, 'output')
     
-    system.nav.openWindow('DiagToolkit/Recommendation Map', {'quantOutputId' : quantOutputId})
+    system.nav.openWindowInstance('DiagToolkit/Recommendation Map', {'quantOutputName' : quantOutputName})
     system.nav.centerWindow('DiagToolkit/Recommendation Map')
 
 # This is called when the operator selects a cell in the "Status" column
@@ -375,13 +376,13 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     return allApplicationsProcessed
 
 def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database):
-    log.info("Resetting application %s" % (application))
+    log.info("In %s resetting application %s because %s - %s" % (__name__, application, actionMessage, recommendationStatus))
     log.trace("  Families: %s" % (str(families)))
     log.trace("  Final Diagnosis Ids: %s" % (str(finalDiagnosisIds)))
     log.trace("  Quant Output Ids: %s" % (str(quantOutputIds)))
 
     # Post a message to the applications queue documenting what we are doing to the active families    
-    postSetpointSpreadsheetActionMessage(post, families, actionMessage, database)
+    postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, database)
 
     # Perform all of the database updates necessary to update the affected FDs, 
     # Quant Outputs, recommendations, and diagnosis entries.
@@ -398,7 +399,7 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
         resetDiagram(finalDiagnosisIds, database)
 
 
-def postSetpointSpreadsheetActionMessage(post, families, actionMessage, database):
+def postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, database):
     from ils.queue.commons import getQueueForPost
     queueKey=getQueueForPost(post, database)
 

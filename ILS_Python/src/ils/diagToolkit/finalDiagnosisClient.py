@@ -4,6 +4,7 @@ Created on Jun 30, 2015
 @author: Pete
 '''
 import system
+from ils.constants.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
 
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
@@ -21,7 +22,7 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
 # is open.  (This depends on a reliable policy for keeping the console displayed)
 def handleNotification(payload):
     print "-----------------------"
-    print "Handling a notification", payload
+    print "In %s.handleNotification with %s" % (__name__, str(payload))
     
     post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
@@ -39,13 +40,19 @@ def handleNotification(payload):
         if pos >= 0:
             print "...found an open spreadsheet - skipping the OC alert"
             rootContainer=window.rootContainer
+            
+            # This should trigger the spreadsheet to refresh
             rootContainer.refresh=True
             
             # If there is some notification text then display it immediately since we already have
             # the operator's attention.  One type of notification text is vector clamp advice.
-            if notificationText != "":
+            if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
                 system.gui.messageBox(notificationText)
-                
+            
+            if numOutputs == 0:
+                print "Closing an open setpoint spreadsheet because there are no outputs!"
+                system.nav.closeWindow(windowPath)
+
             return
 
         pos = windowPath.find('OC Alert')
@@ -57,7 +64,7 @@ def handleNotification(payload):
                 
                 # If there is some notification text then display it immediately since we already have
                 # the operator's attention.  One type of notification text is vector clamp advice.
-                if notificationText != "":
+                if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
                     system.gui.messageBox(notificationText)
                 
                 if numOutputs == 0:

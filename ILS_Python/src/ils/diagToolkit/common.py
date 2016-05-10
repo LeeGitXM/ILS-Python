@@ -221,18 +221,20 @@ def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis, database=""):
     return sqcRootCause
 
 def fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds, database=""):
-    from ils.common.database import idListToString
-    idString=idListToString(finalDiagnosisIds)
-    
-    SQL = "select distinct QuantOutputId "\
-        " from DtRecommendationDefinition "\
-        " where FinalDiagnosisId in ( %s ) " % (idString)
-    log.trace(SQL)
-    pds = system.db.runQuery(SQL, database)
-    
     quantOutputIds=[]
-    for record in pds:
-        quantOutputIds.append(record["QuantOutputId"])
+    if len(finalDiagnosisIds) > 0:
+        from ils.common.database import idListToString
+        idString=idListToString(finalDiagnosisIds)
+    
+        SQL = "select distinct QuantOutputId "\
+            " from DtRecommendationDefinition "\
+            " where FinalDiagnosisId in ( %s ) " % (idString)
+        log.trace(SQL)
+        pds = system.db.runQuery(SQL, database)
+        
+        quantOutputIds=[]
+        for record in pds:
+            quantOutputIds.append(record["QuantOutputId"])
         
     return quantOutputIds
 
