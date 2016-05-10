@@ -152,4 +152,43 @@ def updateView(rootContainer):
     SQL = queueSQL(queueKey, useCheckpoint, "DESC")
     pds = system.db.runQuery(SQL)
     table.data = pds
+
+def initializeSuperView(rootContainer):
+    listWidget = rootContainer.getComponent('List')
+    listWidget.selectedIndex = -1
+
+    table = rootContainer.getComponent("Power Table")
+    for messageStatus in ['Info', 'Warning', 'Error']:
+        SQL = "select color from QueueMessageStatus where messageStatus = '%s'" % (messageStatus)
+        color = system.db.runScalarQuery(SQL)
+        
+        if messageStatus == 'Info':
+            table.setPropertyValue('infoColor', color)
+        elif messageStatus == 'Warning':
+            table.setPropertyValue('warningColor', color)
+        elif messageStatus == 'Error':
+            table.setPropertyValue('errorColor', color)
+
+def updateSuperView(rootContainer):
+    listWidget = rootContainer.getComponent('List')
+    table = rootContainer.getComponent('Power Table')
+    
+    startDate = rootContainer.getComponent('Start Date').date
+    endDate = rootContainer.getComponent('End Date').date
+    
+    queueKeys=listWidget.getSelectedValues()
+    queueKeys="','".join(map(str,queueKeys))
+    
+    SQL = "select Timestamp, M.QueueKey, MessageStatus as Status, Message "\
+        " from QueueDetail D, QueueMaster M, QueueMessageStatus QMS " \
+        " where M.QueueKey in ('%s') "\
+        " and M.QueueId = D.QueueId "\
+        " and D.StatusId = QMS.StatusId " \
+        " and Timestamp > ? and Timestamp < ?" \
+        " order by Timestamp DESC" % (queueKeys)
+            
+    print SQL
+    
+    pds = system.db.runPrepQuery(SQL, [startDate, endDate])
+    table.data = pds
     
