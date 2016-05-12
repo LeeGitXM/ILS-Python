@@ -52,7 +52,7 @@ def activate(scopeContext, stepProperties, deactivate):
             else:
                 handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
                 delay = 0
-                
+            print 'delay', delay
             delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
             delaySeconds = getDelaySeconds(delay, delayUnit)
             unscaledDelaySeconds=delaySeconds

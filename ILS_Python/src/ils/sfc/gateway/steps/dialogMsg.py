@@ -27,11 +27,13 @@ def activate(scopeContext, stepProperties, deactivate):
     try:
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
+        ackRequired =  getStepProperty(stepProperties, ACK_REQUIRED)
         
         if not waitingForReply:
-            ackRequired =  getStepProperty(stepProperties, ACK_REQUIRED)
             if ackRequired:
                 stepScope[WAITING_FOR_REPLY] = True
+            else:
+                workDone = True
             # window common properties:
             database = getDatabaseName(chartScope)
             controlPanelId = getControlPanelId(chartScope)
@@ -75,7 +77,10 @@ def activate(scopeContext, stepProperties, deactivate):
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in dialogMsg.py', chartLogger)
         workDone = True
     finally:
-        if workDone:
+        # only close the window if we have been waiting for an acknowledgement;
+        # otherwise let the chart continue and we will asynchronously get a closeWindow
+        # message when the user presses the OK button on the dialog
+        if workDone and ackRequired:
             cleanup(chartScope, stepScope)
         return workDone
    
