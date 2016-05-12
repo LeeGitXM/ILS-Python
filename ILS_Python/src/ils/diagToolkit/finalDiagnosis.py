@@ -10,8 +10,8 @@ Created on Sep 12, 2014
 
 import system, string
 from ils.diagToolkit.common import fetchPostForApplication
-from ils.constants.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED
-
+from ils.diagToolkit.setpointSpreadsheet import resetApplication
+from ils.constants.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
@@ -461,8 +461,11 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
 
     #----------------------------------------------------------------------
+    # Is this needed / called??? Why not just call reset application??
     def setDiagnosisEntryErrorStatus(alist, database):
+        log.trace(">>>>>>>>>>>><<<<<<<<<<<")
         log.trace("Updating the diagnosis entries to indicate an error...")
+        log.trace(">>>>>>>>>>>>><<<<<<<<<<<<")
         # First clear all of the active flags in 
         ids = []   # A list of quantOutput dictionaries
         for record in alist:
@@ -471,12 +474,21 @@ def manage(application, recalcRequested=False, database="", provider=""):
             if finalDiagnosisId not in ids:
                 log.trace("   ...setting error status for active diagnosis entries for final diagnosis: %s..." % (finalDiagnosis))
                 ids.append(finalDiagnosisId)
-                SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s' where FinalDiagnosisId = %i and status = 'Active'" % (RECOMMENDATION_ERROR, finalDiagnosisId)
-                logSQL.trace(SQL)
-                rows=system.db.runUpdateQuery(SQL, database)
-                log.trace("      updated %i rows!" % (rows))
-    
-          
+                _setDiagnosisEntryErrorStatus(finalDiagnosisId, database)
+
+    # Update the diagnosis entry and the final diagnosis for an unexpected error.
+    def _setDiagnosisEntryErrorStatus(finalDiagnosisId, database):
+        
+        log.trace("   ...setting error status for active diagnosis entries for final diagnosis: %i..." % (finalDiagnosisId))
+        SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s', status = 'Inactive' where FinalDiagnosisId = %i and status = 'Active'" % (RECOMMENDATION_ERROR, finalDiagnosisId)
+        logSQL.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        log.trace("      ...updated %i diagnosis entries!" % (rows))
+                
+        SQL = "update DtFinalDiagnosis set Active = 0 where FinalDiagnosisId = %i" % (finalDiagnosisId)
+        logSQL.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        log.trace("      ...updated %i final diagnosis!" % (rows))
     #--------------------------------------------------------------------
     # This is the start of manage()
     
@@ -540,14 +552,15 @@ def manage(application, recalcRequested=False, database="", provider=""):
     log.info("--- Calculating recommendations ---")
     quantOutputs = []   # A list of quantOutput dictionaries
     for record in list2:
-        application = record['ApplicationName']
-        family = record['FamilyName']
-        finalDiagnosis = record['FinalDiagnosisName']
+        applicationName = record['ApplicationName']
+        post=fetchPostForApplication(applicationName, database)
+        familyName = record['FamilyName']
+        finalDiagnosisName = record['FinalDiagnosisName']
         finalDiagnosisId = record['FinalDiagnosisId']
         diagnosisEntryId = record["DiagnosisEntryId"]
         constantFD = record["Constant"]
-        log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i), Constant: %s" % (application, family, finalDiagnosis, finalDiagnosisId, str(constantFD)))
-        
+        log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i), Constant: %s" % (applicationName, familyName, finalDiagnosisName, finalDiagnosisId, str(constantFD)))
+
         if constantFD:
             # Update the Diagnosis Entry status to be posted
             log.trace("Setting diagnosis entry recommendation status to POSTED for a contant FD")
@@ -557,15 +570,15 @@ def manage(application, recalcRequested=False, database="", provider=""):
         else:
             # Fetch all of the quant outputs for the final diagnosis
             from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
-            pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis, database)
+            pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
             quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
             
             from ils.diagToolkit.recommendation import makeRecommendation
             recommendations, recommendationStatus = makeRecommendation(
-                    record['ApplicationName'], record['FamilyName'], record['FinalDiagnosisName'], 
+                    applicationName, familyName, finalDiagnosisName, 
                     record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
     
-            textRecommendation = postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
+            textRecommendation = postRecommendationMessage(applicationName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
             print "-----------------"
             print "Text Recommendation: ", textRecommendation
             print "Recommendations: ", recommendations
@@ -574,19 +587,21 @@ def manage(application, recalcRequested=False, database="", provider=""):
             
             if recommendationStatus == "ERROR":
                 log.error("The calculation method had an error")
-                diagnosisEntryId=record['DiagnosisEntryId']
-                SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_ERROR, diagnosisEntryId)
-                logSQL.trace(SQL)
-                system.db.runUpdateQuery(SQL, database)
+                finalDiagnosisId=record['FinalDiagnosisId']
+
+                # Not sure if I need to reset the quant outputs here...
+                resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
+                                 actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database)
+
                 return "Error", 0
-            elif recommendationStatus == "NO-RECOMMENDATIONS":
+            elif recommendationStatus == RECOMMENDATION_NONE_MADE:
                 log.warn("No recommendations were made")
                 diagnosisEntryId=record['DiagnosisEntryId']
                 SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_NONE_MADE, diagnosisEntryId)
                 logSQL.trace(SQL)
                 system.db.runUpdateQuery(SQL, database)
                 return "None Made", 0
-            
+
             quantOutputs = mergeRecommendations(quantOutputs, recommendations)
             print "-----------------"
             print "Quant Outputs: ", quantOutputs
@@ -594,20 +609,33 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")
     finalQuantOutputs = []
+    numSignificantRecommendations = 0
     for quantOutput in quantOutputs:
         from ils.diagToolkit.recommendation import calculateFinalRecommendation
+        quantOutputName = quantOutput.get("QuantOutput", "Unknown")
         quantOutput = calculateFinalRecommendation(quantOutput)
         if quantOutput == None:
             # The case where a FD has 5 quant outputs defined but there are only recommendations to change 3 of them is not an error
             pass
         else:
-            quantOutput = checkBounds(quantOutput, database, provider)
+            quantOutput, madeSignificantRecommendation = checkBounds(quantOutput, database, provider)
+            if madeSignificantRecommendation:
+                numSignificantRecommendations=numSignificantRecommendations + 1
+                
             if quantOutput == None:
                 # If there was an error checking bounds, specifically if the current value could not be read, the we can't make any valid recommendations
                 # Remember that the change is really a vector, and if we lose one dimension then we will twist the plant.
-                finalQuantOutputs = []
-                setDiagnosisEntryErrorStatus(list2, database)
-                break
+#                finalQuantOutputs = []
+#                setDiagnosisEntryErrorStatus(list2, database)
+                log.trace("Performing an automatic NO-DOWNLOAD because there was an error reading current values during bounds checking for %s..." % (quantOutputName)) 
+                resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], 
+                         quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database)
+                notificationText = RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS
+
+                
+                # I just added this - 5/9/16, this used to continue on.
+                return RECOMMENDATION_ERROR, 0
+                # break
          
             finalQuantOutputs.append(quantOutput)
 
@@ -615,18 +643,29 @@ def manage(application, recalcRequested=False, database="", provider=""):
     
     # Store the results in the database
     log.trace("Done managing, the final outputs are: %s" % (str(finalQuantOutputs)))
+    quantOutputIds=[]
     for quantOutput in finalQuantOutputs:
+        quantOutputIds.append(quantOutput.get("QuantOutputId", -1))
         updateQuantOutput(quantOutput, database, provider)
         
-    log.info("Finished managing recommendations - there are %i significant Quant Outputs" % (len(finalQuantOutputs)))
+    if constantFD:
+        print " --- handling a constant final diagnosis (by doing nothing) ---"
+    elif numSignificantRecommendations == 0:
+        print "There are no significant recommendations"
+        log.trace("Performing an automatic NO-DOWNLOAD because there are no significant recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
+        resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], 
+                         quantOutputIds=quantOutputIds, actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database)
+        notificationText = RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS
+    else:
+        log.info("Finished managing recommendations - there are %i significant Quant Outputs (There are %i quantOutputs)" % (numSignificantRecommendations, len(finalQuantOutputs)))
     
-    return notificationText, len(finalQuantOutputs)
+    return notificationText, numSignificantRecommendations
 
 # Check that recommendation against the bounds configured for the output
 def checkBounds(quantOutput, database, provider):
 
     log.trace("   ...checking Bounds...")
-    
+    madeSignificantRecommendation=True
     # The feedbackOutput can be incremental or absolute
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
     feedbackOutputManual = quantOutput.get('FeedbackOutputManual', 0.0)
@@ -649,7 +688,8 @@ def checkBounds(quantOutput, database, provider):
 #        quantOutput['CurrentValueIsGood'] = False
 #        quantOutput['OutputLimited'] = False
 #        quantOutput['OutputLimitedStatus'] = 'Not Bound'
-        return None
+        madeSignificantRecommendation=False
+        return None, madeSignificantRecommendation
 
     quantOutput['CurrentValue'] = qv.value
     quantOutput['CurrentValueIsGood'] = True
@@ -707,6 +747,7 @@ def checkBounds(quantOutput, database, provider):
         quantOutput['OutputLimitedStatus'] = 'Minimum Change Bound'
         feedbackOutputConditioned=0.0
         quantOutput['FeedbackOutputConditioned']=feedbackOutputConditioned
+        madeSignificantRecommendation=False
 
     finalIncrementalValue = feedbackOutputConditioned
     
@@ -736,13 +777,19 @@ def checkBounds(quantOutput, database, provider):
     log.trace("                       Output limited: %s" % (str(quantOutput['OutputLimited'])))
     log.trace("                Output limited status: %s" % (quantOutput['OutputLimitedStatus']))
     log.trace("                       Output percent: %f" % (quantOutput['OutputPercent']))
-    return quantOutput
+    return quantOutput, madeSignificantRecommendation
 
 def calculateVectorClamps(quantOutputs, provider):
     log.trace("Checking vector clamping with tag provider: %s..." % (provider))
     tagName="[%s]Configuration/DiagnosticToolkit/vectorClampMode" % (provider)
-    qv=system.tag.read(tagName)
-    vectorClampMode = string.upper(qv.value)
+    
+    tagExists=system.tag.exists(tagName)
+    if tagExists:
+        qv=system.tag.read(tagName)
+        vectorClampMode = string.upper(qv.value)
+    else:
+        vectorClampMode = "DISABLED"
+        log.error("Unable to read vector clamp configuration from %s because it does not exist - setting clamp mode to DISABLED" % (tagName))
     
     if vectorClampMode == "DISABLED":
         log.trace("...Vector Clamps are NOT enabled")

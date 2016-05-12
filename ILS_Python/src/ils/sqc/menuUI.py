@@ -49,10 +49,13 @@ def populateRepeater(rootContainer):
     repeater.templateParams=ds
 
 def openSQCPlot(event):
-    sqcWindowPath='SQC/SQC Plot'
     sqcDiagnosisName = event.source.text
     blockId = event.source.BlockId
+    openSQCPlotForSQCDiagnosis(sqcDiagnosisName, blockId)
 
+
+def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, blockId):
+    sqcWindowPath='SQC/SQC Plot'
     print "The user selected %s - %s " % (sqcDiagnosisName, blockId)
     
     # If this is the first SQC plot open it at full size and centered, if it is the nth plot
