@@ -693,6 +693,7 @@ def checkBounds(quantOutput, database, provider):
 
     quantOutput['CurrentValue'] = qv.value
     quantOutput['CurrentValueIsGood'] = True
+    log.trace("   ...the current value is: %s" % (str(qv.value)))
 
     # If the recommendation was absolute, then convert it to incremental for the may be absolute or incremental, but we always display incremental    
     if not(incrementalOutput):

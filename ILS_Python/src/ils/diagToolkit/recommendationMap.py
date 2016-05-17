@@ -71,22 +71,25 @@ def updateSqcFlag(diagnoses):
     for row in range(diagnoses.rowCount):
         finalDiagnosisName = diagnoses.getValueAt(row, "Name")
         print " "
-        print "  %s:" % (finalDiagnosisName)
+        print "  FD Name: %s:" % (finalDiagnosisName)
         diagramUUID = diagnoses.getValueAt(row, "DiagramUUID")
+        print "  Diagram UUID: %s" % (str(diagramUUID))
         
-        # Get the upstream blocks
-        blocks=diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
-        print "...found %i upstream blocks..." % (len(blocks))
-
-        for block in blocks:
-            print "Found a %s block..." % (block.getClassName())
-            if block.getClassName() == "xom.block.sqcdiagnosis.SQCDiagnosis":
-                print "   ... found a SQC diagnosis..."
-                blockId=block.getIdString()
-                blockName=block.getName()
-                diagnoses=system.dataset.setValue(diagnoses, row, "hasSQC", True)
-                diagnoses=system.dataset.setValue(diagnoses, row, "SqcUUID", blockId)
-                diagnoses=system.dataset.setValue(diagnoses, row, "SqcName", blockName)
+        if diagramUUID != None: 
+            # Get the upstream blocks
+            blocks=diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
+            print "Found upstream blocks: ", str(blocks)
+            print "...found %i upstream blocks..." % (len(blocks))
+    
+            for block in blocks:
+                print "Found a %s block..." % (block.getClassName())
+                if block.getClassName() == "xom.block.sqcdiagnosis.SQCDiagnosis":
+                    print "   ... found a SQC diagnosis..."
+                    blockId=block.getIdString()
+                    blockName=block.getName()
+                    diagnoses=system.dataset.setValue(diagnoses, row, "hasSQC", True)
+                    diagnoses=system.dataset.setValue(diagnoses, row, "SqcUUID", blockId)
+                    diagnoses=system.dataset.setValue(diagnoses, row, "SqcName", blockName)
 
     return diagnoses
 
@@ -346,7 +349,7 @@ def manualRecommendation(theMap, recommendationIdx):
 # Quant Output callbacks
 #--------------------------
 def hideOutput(theMap, outputIdx):
-    print "In hideOutput..."
+    print "In hideOutput, the index is %i..." % (outputIdx)
 
     outputDs = theMap.outputs
     outputDs = system.dataset.deleteRow(outputDs, outputIdx)
@@ -362,7 +365,7 @@ def hideOutput(theMap, outputIdx):
 
 def expandOutput(theMap, outputIdx):
     db = ""
-    print "In expandOutput..."
+    print "In expandOutput, the index is %i..." % (outputIdx)
 
     quantOutputName = getOutputName(theMap, outputIdx)    
     diagnosesDS = fetchDiagnosisForQuantOutput(quantOutputName, db)

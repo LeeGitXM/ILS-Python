@@ -22,10 +22,10 @@ def initialize(rootContainer):
     pds = fetchActiveOutputsForPost(post, database)
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
-    header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus']
+    header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus','numberFormat']
     rows=[]
     # The data types for the column is set from the first row, so I need to put floats where I want floats, even though they don't show up for the header
-    row = ['header',0,0,0,'Action',0,'','Outputs','',1.2,False,1.2,1.2,'','']
+    row = ['header',0,0,0,'Action',0,'','Outputs','',1.2,False,1.2,1.2,'','','']
     rows.append(row)
     
     application = ""
@@ -40,7 +40,7 @@ def initialize(rootContainer):
             minChangeBoundCount = 0
              
             application = record['ApplicationName']
-            applicationRow = ['app',i,0,0,'Active',0,application,'','',0,False,0,0,'','']
+            applicationRow = ['app',i,0,0,'Active',0,application,'','',0,False,0,0,'','','']
             print "App row: ", applicationRow
             rows.append(applicationRow)
             i = i + 1
@@ -74,7 +74,12 @@ def initialize(rootContainer):
         # If the recommended change is insignificant (< the minimum change) then don't display it, but we do 
         # want to update the status field of the Application line
         if outputLimitedStatus != 'Minimum Change Bound':
-            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'']
+            # Determine the number format dynamically by reading the number format of the tag
+            tagPath = record["TagPath"]
+            numberPattern= system.tag.read(tagPath + ".FormatString").value
+            
+            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],
+                   record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'',numberPattern]
             print "Output Row: ", row
             rows.append(row)
             i = i + 1
