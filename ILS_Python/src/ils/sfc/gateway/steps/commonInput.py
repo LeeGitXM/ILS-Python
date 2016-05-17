@@ -22,7 +22,6 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
-    
     if deactivate:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope)

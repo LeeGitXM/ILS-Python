@@ -9,10 +9,12 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.gateway.api import cancelChart, addControlPanelMessage, getChartLogger
     from ils.sfc.gateway.util import handleUnexpectedGatewayError
     try:
+        print 'cancel.py', deactivate
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        cancelChart(chartScope)
-        addControlPanelMessage(chartScope, "Chart canceled", False)
+        if not deactivate:
+            cancelChart(chartScope)
+            addControlPanelMessage(chartScope, "Chart canceled", False)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in cancel.py', chartLogger)
     finally:

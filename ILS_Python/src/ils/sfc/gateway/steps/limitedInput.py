@@ -14,4 +14,4 @@ def activate(scopeContext, stepProperties, deactivate):
     from system.ils.sfc.common.Constants import MINIMUM_VALUE, MAXIMUM_VALUE
     minValue = getStepProperty(stepProperties, MINIMUM_VALUE)
     maxValue = getStepProperty(stepProperties, MAXIMUM_VALUE) 
-    commonInput.activate(scopeContext, stepProperties, buttonLabel, 'SFC/Input', '', minValue, maxValue)
+    return commonInput.activate(scopeContext, stepProperties, deactivate, buttonLabel, 'SFC/Input', None, minValue, maxValue)
