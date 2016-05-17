@@ -8,11 +8,13 @@ def activate(scopeContext, stepProperties, deactivate):
     ''' Pause the chart execution'''
     from ils.sfc.gateway.api import pauseChart, addControlPanelMessage, getChartLogger
     from ils.sfc.gateway.util import handleUnexpectedGatewayError
+    chartScope = scopeContext.getChartScope()
+    chartLogger = getChartLogger(chartScope)
     try:
-        chartScope = scopeContext.getChartScope()
-        chartLogger = getChartLogger(chartScope)
-        pauseChart(chartScope)
-        addControlPanelMessage(chartScope, "Chart paused", False)
+        if not deactivate:
+            chartLogger = getChartLogger(chartScope)
+            pauseChart(chartScope)
+            addControlPanelMessage(chartScope, "Chart paused", False)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in pause.py', chartLogger)
     finally:
