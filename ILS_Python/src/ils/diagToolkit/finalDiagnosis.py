@@ -684,10 +684,15 @@ def checkBounds(quantOutput, database, provider):
         # Make this quant-output inactive since we can't make an intelligent recommendation without the current setpoint;
         # moreover, we don't want t to make any recommendations related to this problem / FD
         # Note: I'm not sure how to sort out this output from a situation where multiple FDs may be active - but I think that is rare
-#        quantOutput['CurrentValue'] = None
-#        quantOutput['CurrentValueIsGood'] = False
-#        quantOutput['OutputLimited'] = False
-#        quantOutput['OutputLimitedStatus'] = 'Not Bound'
+        madeSignificantRecommendation=False
+        return None, madeSignificantRecommendation
+
+    # This tests the somewhat rare (hopefully) where the tag quality is good but the value isn't.  I'm not sure if this is 
+    # possible with OPC tags in production, but it is with memory tags in isolation, we can have a good tag with a value of None.
+    # There is no "default value" that can be used for a tag that has a value of None - and we don't want to process other outputs
+    # for the same FD - this effectively invalidates all of the recommendations for this problem.
+    if qv.value == None:
+        log.error("Error reading the current setpoint from (%s), the value is: (%s)" % (tagpath, str(qv.value)))
         madeSignificantRecommendation=False
         return None, madeSignificantRecommendation
 
