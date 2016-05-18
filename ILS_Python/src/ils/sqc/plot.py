@@ -3,7 +3,7 @@ Created on Dec 10, 2015
 
 @author: Pete
 '''
-import system, string
+import system, string, math
 log = system.util.getLogger("com.ils.sqc.plot")
 
 def internalFrameOpened(rootContainer):
@@ -29,6 +29,7 @@ def configureChart(rootContainer):
         clearChart(rootContainer)
         return
     
+    lastResetTime = fetchLastResetTime(sqcDiagnosisId)
     chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
     print "Chart Info: ", chartInfo
     if chartInfo == None:
@@ -45,6 +46,7 @@ def configureChart(rootContainer):
     lowLimits=[]
     violatedRules=[]
     print "Determining violated rules..."
+    maxSampleSize = -1
     for info in chartInfo:
         print "Info: ", info
         if info['limitType'] == 'HIGH' and abs(float(str(info['numberOfStandardDeviations']))) >= 0.5:
@@ -57,8 +59,12 @@ def configureChart(rootContainer):
             rule="%s %s of %s" % (info["limitType"], str(info["minimumOutOfRange"]), str(info["sampleSize"]))
             violatedRules.append([rule])
 
+        sampleSize=int(str(info['sampleSize']))
+        if sampleSize > maxSampleSize:
+            maxSampleSize = sampleSize
+            
     print "...violated Rules: ", violatedRules
-    
+    print "...the maximum sample size is: ", maxSampleSize
     # Create a dataset from the violated rules and put it in the rootContainer which will drive the table of violated rules
     ds=system.dataset.toDataSet(["rule"], violatedRules)
     rootContainer.violatedRules=ds
@@ -129,11 +135,54 @@ def configureChart(rootContainer):
     rootContainer.standardDeviation=standardDeviation
     rootContainer.yAxisAutoScaling=True
     
+    # Using the number of points that are required, by looking at the n of m configuration of each block, fetch the actual lab data 
+    # results and see how har back we need to go to get that number of points.  Some data is arrives hourly, others every 4 hours, etc.
+    showLastnHours=determineTimeScale(unitName, labValueName, maxSampleSize)
+    rootContainer.showLastnHours = showLastnHours
     # Now set the auto Y-axis limits - this will be called automatically from a property change script
     calculateLimitsFromTargetAndSigma(rootContainer)
     
     # Configure the where clause of the database pens which should drive the update of the chart
-    configureChartValuePen(rootContainer, unitName, labValueName)
+    configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime)
+
+
+def fetchLastResetTime(sqcDiagnosisId):
+    SQL = "select LastResetTime from DtSQCDiagnosis where BlockId = '%s'" % (sqcDiagnosisId)
+    print SQL
+    lastResetTime = system.db.runScalarQuery(SQL)
+    print "The last reset time was: %s" % (str(lastResetTime))
+    return lastResetTime
+
+# Return the number of hours that are required to obtain the required # of points
+def determineTimeScale(unitName, labValueName, maxSampleSize):
+    print "...determining how much time is required to display %i points for %s..." % (maxSampleSize, labValueName) 
+    # It is important to not bring back the entire database, so limit the query by sample time
+    from java.util import Calendar
+    from java.util import Date
+    nowTime = Date()
+    cal = Calendar.getInstance()
+    cal.setTime(nowTime)
+    cal.add(Calendar.HOUR, -14 * 24)
+    queryStartDate = cal.getTime()
+    quertStartDateTxt=system.db.dateFormat(queryStartDate, "yyyy-MM-dd H:mm:ss")
+    
+    SQL = "select SampleTime, RawValue from LtValueView "\
+        " where UnitName = '%s' and ValueName = '%s' and SampleTime > '%s' "\
+        " order by SampleTime DESC " % (unitName, labValueName, quertStartDateTxt)
+
+    pds = system.db.runQuery(SQL)
+    
+    i = 0
+    for record in pds:
+        if i >= maxSampleSize - 1:
+            sampleTime = record["SampleTime"]
+            deltaTime = nowTime.getTime() - sampleTime.getTime()
+            numHours = math.ceil(deltaTime / (60.0 * 60.0 * 1000.0))
+            print "The required hours is: ", numHours
+            return numHours
+        i = i + 1
+    print "RAN OUT OF POINTS - RETURNING DEFAULT"
+    return 24 * 7
 
 def clearChart(rootContainer):
     print "Clearing the chart..."
@@ -151,12 +200,19 @@ def clearChart(rootContainer):
 
 # This sets the target and limit values of a chart.  This is called when any of the limits that
 # are properties of the window change and this updates the chart.
-def configureChartValuePen(rootContainer, unitName, labValueName):
-    print "Updating the value database pen for %s..." % (labValueName)
+def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime):
+    print "...configuring the where clause of the value pens for %s..." % (labValueName)
+    lastResetTime=system.db.dateFormat(lastResetTime, "yyyy-MM-dd H:mm:ss")
     chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.pens
-    whereClause = "UnitName = '%s' and ValueName = '%s'" % (unitName, labValueName)
+    
+    whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime > '%s'" % (unitName, labValueName, lastResetTime)
+    print whereClause
     ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
+
+    whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime < '%s'" % (unitName, labValueName, lastResetTime)
+    print whereClause
+    ds = system.dataset.setValue(ds, 1, "WHERE_CLAUSE", whereClause)
     chart.pens = ds
 
 
