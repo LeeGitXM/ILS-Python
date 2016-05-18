@@ -7,12 +7,14 @@ import system
 
 def startChart(chartPath, controlPanelId, project, originator, isolationMode):
     from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, \
-        PROJECT, ORIGINATOR
+        PROJECT, ORIGINATOR, MESSAGE_QUEUE
+    from system.ils.sfc.common.Constants import DEFAULT_MESSAGE_QUEUE
     initialChartParams = dict()
     initialChartParams[PROJECT] = project
     initialChartParams[ISOLATION_MODE] = isolationMode
     initialChartParams[CONTROL_PANEL_ID] = controlPanelId
     initialChartParams[ORIGINATOR] = originator
+    initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
     runId = system.sfc.startChart(chartPath, initialChartParams)
     if isolationMode:
         isolationFlag = 1

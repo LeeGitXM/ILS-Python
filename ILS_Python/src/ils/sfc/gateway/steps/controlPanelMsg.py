@@ -54,7 +54,7 @@ def activate(scopeContext, stepProperties, deactivate):
             if ackTime != None:
                 stepScope[TIMED_OUT] = False
                 workDone = True
-            elif time.time() > timeoutTime:
+            elif timeoutTime != None and time.time() > timeoutTime:
                 stepScope[TIMED_OUT] = True
                 timeOutControlPanelMessageAck(msgId, database)
                 workDone = True
