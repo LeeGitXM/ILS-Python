@@ -38,7 +38,7 @@ def listBlocksGloballyUpstreamOf(common,dpath,blockName):
 	print "==================== listBlocksGloballyUpstreamOf ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		print block.getAttributes().get("parent"),block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 	
