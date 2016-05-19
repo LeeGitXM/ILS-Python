@@ -12,7 +12,7 @@ def listBlocksDownstreamOf(common,dpath,blockName):
 	print "==================== listBlocksDownstreamOf ",blockName," =============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		print block.getAttributes().get("parent"),block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 	
@@ -25,7 +25,7 @@ def listBlocksGloballyDownstreamOf(common,dpath,blockName):
 	print "==================== listBlocksGloballyDownstreamOf ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		print block.getAttributes().get("parent"),block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 	
@@ -38,7 +38,7 @@ def listBlocksGloballyUpstreamOf(common,dpath,blockName):
 	print "==================== listBlocksGloballyUpstreamOf ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		print block.getName()
+		print block.getAttributes().get("parent"),block.getName()
 		lst.append(block.getName())
 	common['result'] = lst 
 	

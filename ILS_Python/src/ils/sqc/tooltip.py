@@ -73,16 +73,9 @@ class LimitTooltipGenerator(labels.XYToolTipGenerator):
         html = html+"%s: %0.2f"%(labels[series], val)
         
         return html
-        
-def getRootContainerOLD(component):
-    if component==None:
-        return None
-    elif component.name == "Root Container":
-        return component
-    else:
-        return getRootContainer(component.parent)
 
 def setShape(renderer):
     print "Setting the renderer shape"
     renderer.setSeriesShape(0,Ellipse(-6,-6,12,12))
+    renderer.setSeriesShape(1,Ellipse(-6,-6,12,12))
     

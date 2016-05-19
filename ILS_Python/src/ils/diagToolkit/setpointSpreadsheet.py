@@ -5,6 +5,7 @@ Created on Sep 9, 2014
 '''
 
 import system, string
+from ils.sfc.common.constants import SQL
 log = system.util.getLogger("com.ils.diagToolkit")
 WAIT_FOR_MORE_DATA="Wait For Data"
 
@@ -523,21 +524,32 @@ def resetDiagram(finalDiagnosisIds, database):
             if diagramUUID != None and fdUUID != None:
                 blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
+#TODO These blocks may have crossed over boundaries onto other diagrams, so I can't keep feeding the same diagramUUID
+# along with the block UUIDs.  Need a way to call a getParentUUID() method for a block.
+
                 for block in blocks:
                     blockId=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
+                    parentUUID=block.getAttributes().get("parent")
                     
-                    print "Found a <%s> block..." % (blockClass)
+                    print "Found a <%s> block named %s..." % (blockClass, blockName)
 
                     if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
                                 "com.ils.block.TrendDetector", "com.ils.block.LogicFilter"]:
-                        print "   ... resetting a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
-                        system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
+                        print "   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID)
+                        system.ils.blt.diagram.resetBlock(parentUUID, blockName)
+                        
+                    if blockClass == "xom.block.sqcdiagnosis.SQCDiagnosis":
+                        print "Setting the lastResetTime for SQC diagnosis named: %s" % (blockName)
+                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where BlockId = '%s'" % (blockId)
+                        print SQL
+                        rows = system.db.runUpdateQuery(SQL, database)
+                        print "Updated %i rows" % (rows)
 
                     if blockClass == "com.ils.block.Inhibitor":
                             print "   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId)
-                            system.ils.blt.diagram.sendSignal(diagramUUID, blockName,"INHIBIT","")
+                            system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
                         
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
