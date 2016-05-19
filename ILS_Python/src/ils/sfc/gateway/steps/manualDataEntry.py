@@ -38,6 +38,7 @@ def activate(scopeContext, stepProperties, deactivate):
             if autoMode == AUTOMATIC:
                 for row in config.rows:
                     s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
+                workDone = True
             else:
                 stepScope[WAITING_FOR_REPLY] = True
                 timeoutTime = getTimeoutTime(chartScope, stepProperties)
