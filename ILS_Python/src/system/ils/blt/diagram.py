@@ -7,6 +7,9 @@
 def clearWatermark(diagId):
     '''Clear the watermark from the diagram'''
     
+def getBlockId(diagramId, blockName):
+    '''Get the ID of a block'''
+
 def getBlockState(diagramId, blockName):
     '''Get the internal state of a block'''
 
@@ -32,6 +35,9 @@ def getRequestHandler():
 def getToolkitProperty(name):
     return name
 
+def listBlocksConnectedAtPort(diagId, blockId,port):
+    '''Return a list of serializable block state descriptors connected to the named port'''
+    
 def listBlocksUpstreamOf(diagId, blockName):
     '''Return a list of serializable block state descriptors of the upstream blocks'''
 
@@ -64,7 +70,10 @@ def pathForBlock(diagid,bname):
          
 def resetBlock(diagId, blockName):
     '''Reset the specified block'''
-     
+
+def restartBlock(diagId, blockName):
+    '''Reset the specified block'''
+       
 def resetDiagram(diagid):
     '''Reset the specified diagram'''
 

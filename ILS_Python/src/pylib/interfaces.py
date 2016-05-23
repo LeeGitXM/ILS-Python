@@ -5,6 +5,20 @@ import system.ils.blt.diagram as script
 
 # Return a list of name of blocks that are downstream of the 
 # specified block - and in the same diagram
+def listBlocksConnectedAtPort(common,dpath,blockName,port):
+	diagid = getDiagram(dpath).getSelf().toString()
+	blockId  = script.getBlockId(diagid,blockName)
+	# blocks is a list of SerializableBlockStateDescriptor
+	blocks = script.listBlocksConnectedAtPort(diagid,blockId,port)
+	print "==================== listBlocksConnectedAtPort ",port," =============="
+	lst = []
+	for block in blocks:
+		print block.getAttributes().get("parent"),block.getName()
+		lst.append(block.getName())
+	common['result'] = lst 
+	
+# Return a list of name of blocks that are downstream of the 
+# specified block - and in the same diagram
 def listBlocksDownstreamOf(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
