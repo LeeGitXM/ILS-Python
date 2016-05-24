@@ -9,7 +9,7 @@ def activate(scopeContext, stepProperties, deactivate):
         getControlPanelId, hasStepProperty, getStepProperty,  handleUnexpectedGatewayError
     from ils.sfc.gateway.api import s88Set, getDatabaseName, getChartLogger
     from ils.sfc.common.util import isEmpty 
-    from system.ils.sfc.common.Constants import AUTO_MODE, AUTOMATIC, \
+    from system.ils.sfc.common.Constants import \
     PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE
     from ils.sfc.common.constants import PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, BUTTON_LABEL, \
         POSITION, SCALE, WINDOW_TITLE, BUTTON_KEY_LOCATION, BUTTON_KEY
@@ -31,10 +31,6 @@ def activate(scopeContext, stepProperties, deactivate):
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
         if not waitingForReply:
-            autoMode = getStepProperty(stepProperties, AUTO_MODE) 
-            if autoMode == AUTOMATIC:   
-                # nothing to do? why even have autoMode ?
-                return           
             stepScope[WAITING_FOR_REPLY] = True
             timeoutTime = getTimeoutTime(chartScope, stepProperties)
             stepScope[TIMEOUT_TIME] = timeoutTime
