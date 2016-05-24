@@ -22,6 +22,8 @@ def toBit(txt):
 
     return val
 
-def qvDatasetToList(ds):
+def tagHistoryDatasetToList(ds, idx):
     aList=[]
+    for row in range(ds.rowCount):
+        aList.append(ds.getValueAt(row,idx))
     return aList
