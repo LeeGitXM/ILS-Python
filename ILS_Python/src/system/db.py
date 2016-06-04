@@ -10,19 +10,29 @@ def beginTransaction(SQL):
 def closeTransaction(tx):
     return True
 
+# Returns a procedure call context
+def createSProcCall(procname):
+    pass
+
 def commitTransaction(tx):
     return True
 
 def dateFormat(timestamp, format):
     return True
 
+# Returns a result set
+def execSProcCall(context):
+    pass
+
 def getConnectionInfo(dbName):
     pass
 
 def getConnections():
     pass
+
 def refresh(component,name):
     pass
+
 def rollbackTransaction(tx):
     return True
 
