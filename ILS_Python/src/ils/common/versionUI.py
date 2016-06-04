@@ -29,6 +29,11 @@ def internalFrameActivated(rootContainer):
     rootContainer.LabDataToolkitVersion=version
     rootContainer.LabDataToolkitReleaseDate=releaseDate
     
+    import ils.sqc.version as sqc 
+    version, releaseDate = sqc.version()
+    rootContainer.SQCVersion=version
+    rootContainer.SQCReleaseDate=releaseDate
+    
     import ils.recipeToolkit.version as recipe 
     version, releaseDate = recipe.version()
     rootContainer.RecipeToolkitVersion=version

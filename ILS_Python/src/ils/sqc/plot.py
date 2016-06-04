@@ -198,21 +198,41 @@ def clearChart(rootContainer):
     rootContainer.sqcInfo = system.dataset.toDataSet(["Limit","Value"], [])
     
 
-# This sets the target and limit values of a chart.  This is called when any of the limits that
-# are properties of the window change and this updates the chart.
+# This sets the where clause of the two DB pens, that stor ethe actual data values.  It also sets the colors of the pens from the 
+# configuration tags..
 def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime):
     print "...configuring the where clause of the value pens for %s..." % (labValueName)
-    lastResetTime=system.db.dateFormat(lastResetTime, "yyyy-MM-dd H:mm:ss")
+    
     chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.pens
     
-    whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime > '%s'" % (unitName, labValueName, lastResetTime)
-    print whereClause
-    ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
+    print "The color for fresh data is: ", ds.getValueAt(0, "COLOR")
 
-    whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime < '%s'" % (unitName, labValueName, lastResetTime)
-    print whereClause
-    ds = system.dataset.setValue(ds, 1, "WHERE_CLAUSE", whereClause)
+    freshColor = system.tag.read("/Configuration/LabData/sqcPlotFreshDataColor").value
+    staleColor = system.tag.read("/Configuration/LabData/sqcPlotStaleDataColor").value
+    
+    # Set the color of the current and stale data pens
+    ds = system.dataset.setValue(ds, 0, "COLOR", freshColor)
+    ds = system.dataset.setValue(ds, 1, "COLOR", staleColor)
+    
+    if lastResetTime == None:
+        whereClause = "UnitName = '%s' and ValueName = '%s'" % (unitName, labValueName)
+        print whereClause
+        ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
+        
+        # The second pen is for data that came in before the reset time, since we don't have a reset time we want to disable this pen.   
+        ds = system.dataset.setValue(ds, 1, "ENABLED", False)
+    else:
+        lastResetTime=system.db.dateFormat(lastResetTime, "yyyy-MM-dd H:mm:ss")    
+        whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime > '%s'" % (unitName, labValueName, lastResetTime)
+        print whereClause
+        ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
+    
+        whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime < '%s'" % (unitName, labValueName, lastResetTime)
+        print whereClause
+        ds = system.dataset.setValue(ds, 1, "WHERE_CLAUSE", whereClause)
+        ds = system.dataset.setValue(ds, 1, "ENABLED", True)
+    
     chart.pens = ds
 
 

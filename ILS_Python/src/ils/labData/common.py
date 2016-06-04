@@ -51,35 +51,21 @@ def getDatabaseForTag(tagPath):
         
     return database
 
-# The timeout here is in seconds, the default time to wait is 1 minute, the refresh interval is always 1 second.
-def waitForConsistency(tag1, tag2, timeout=60):
-    cal = Calendar.getInstance()
-    now = Date()
-    cal.setTime(now)
-    cal.add(Calendar.SECOND, timeout)
-    endTime = cal.getTime()
-        
-    consistent=checkConsistency(tag1, tag2)
+def queryLabHistoryValues(valueName, startDate, endDate, database = ""):
+    print "Fetching lab history for %s..." % (valueName)
     
-    while not(consistent):
-        time.sleep(1)
-        consistent=checkConsistency(tag1, tag2)
-        
-        # check if we have exceeded the timeout
-        now = Date()
-        if now > endTime and not(consistent):
-            return "Timeout"
-
-    return "Consistent"
-
-def checkConsistency(tag1, tag2):
-    vals=system.tag.readAll([tag1, tag2])
-    qv1=vals[0]
-    qv2=vals[1]
+    SQL = "select RawValue from LtHistory H, LtValue V "\
+        " where V.ValueName = '%s' "\
+        " and H.valueId = V.ValueId "\
+        " and SampleTime > ? "\
+        " and SampleTime < ? " % (valueName)
     
-    if qv2.timestamp >= qv1.timestamp:
-        consistent=True
-    else:
-        consistent=False
+    records = system.db.runPrepQuery(SQL, [startDate, endDate], database)
     
-    return consistent    
+    vals=[]
+    for record in records:
+        vals.append(record["RawValue"])
+    
+    print "Returning values: ", vals
+    
+    return vals

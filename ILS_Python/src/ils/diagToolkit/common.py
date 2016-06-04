@@ -4,8 +4,105 @@ Created on Sep 19, 2014
 @author: Pete
 '''
 
-import system
+import system, time
+from java.util import Date, Calendar
 log = system.util.getLogger("com.ils.diagToolkit.SQL")
+
+# Check if the timestamps of two tags are consistent.  
+# This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
+def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeout=10):
+    log = system.util.getLogger("com.ils.diagToolkit")
+    startTime = Date().getTime()
+    isConsistent = False
+    log.trace("Checking if %s and %s are consistent..." % (tagPath1, tagPath2))
+    while isConsistent == False and ((Date().getTime() - startTime) / 1000) < timeout:
+        log.trace("Checking consistency...")
+        vals = system.tag.readAll([tagPath1, tagPath2])
+        timestamp1 = vals[0].timestamp
+        cal1 = Calendar.getInstance()
+        cal1.setTime(timestamp1)
+        
+        timestamp2 = vals[1].timestamp
+        cal2 = Calendar.getInstance()
+        cal2.setTime(timestamp2)
+
+        if abs(cal1.getTimeInMillis() - cal2.getTimeInMillis()) < tolerance * 1000:
+            log.trace("%s and %s are consistent!" % (tagPath1, tagPath2))
+            isConsistent = True
+            return isConsistent
+        
+        time.sleep(recheckInterval)
+
+    log.trace("** %s and %s are NOT consistent **" % (tagPath1, tagPath2))
+    return isConsistent
+
+# Check if the timestamp of the tag is less than a certain tolerance older then theTime, or the current time if theTime 
+# is omitted.  This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
+def checkFreshness(tagPath, theTime="now", tolerance=5, recheckInterval=1.0, timeout=10):
+    log = system.util.getLogger("com.ils.diagToolkit")
+    startTime = Date().getTime()
+    isFresh = False
+    log.trace("Checking if %s is fresh..." % (tagPath))
+    while isFresh == False and ((Date().getTime() - startTime) / 1000) < timeout:
+        log.trace("Checking freshness...")
+        qv = system.tag.read(tagPath)
+        timestamp = qv.timestamp
+        cal1 = Calendar.getInstance()
+        cal1.setTime(timestamp)
+
+        cal2 = Calendar.getInstance()
+        if theTime == "now" or theTime == None:
+            cal2.setTime(Date())
+        else:
+            cal2.setTime(theTime)
+
+        if abs(cal1.getTimeInMillis()) > cal2.getTimeInMillis() - tolerance * 1000:
+            log.trace("%s is now fresh!" % (tagPath))
+            isFresh = True
+            return isFresh
+
+        time.sleep(recheckInterval)
+
+    log.trace("** %s is NOT fresh **" % (tagPath))
+    return isFresh
+
+
+# Check that tag1 is fresher than tag2.  
+# The timeout here is in seconds, the default time to wait is 1 minute.
+def checkFresher(tagPath1, tagPath2, recheckInterval=1.0, timeout=60):
+    log = system.util.getLogger("com.ils.diagToolkit")
+    startTime = Date().getTime()
+    isFresher = False
+    log.trace("Checking if %s is fresher than %s..." % (tagPath1, tagPath2))
+    while isFresher == False and ((Date().getTime() - startTime) / 1000) < timeout:
+        log.trace("Checking freshness...")
+        vals = system.tag.readAll([tagPath1, tagPath2])
+        timestamp1 = vals[0].timestamp
+        cal1 = Calendar.getInstance()
+        cal1.setTime(timestamp1)
+        
+        timestamp2 = vals[1].timestamp
+        cal2 = Calendar.getInstance()
+        cal2.setTime(timestamp2)
+        
+        if cal1.getTimeInMillis() > cal2.getTimeInMillis():
+            log.trace("%s is now fresher than %s!" % (tagPath1, tagPath2))
+            isFresher = True
+            return isFresher
+        
+        time.sleep(recheckInterval)
+
+    log.trace("** %s is NOT fresher than %s **" % (tagPath1, tagPath2))
+    return isFresher 
+
+# Fetch the time of the last recommendation, which should be the same as when the final diagnosis last became True
+def fetchDiagnosisActiveTime(finalDiagnosisId, database = ""):
+    SQL = "select LastRecommendationTime from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+    log.trace(SQL)
+    lastRecommendtaionTime = system.db.runScalarQuery(SQL, database)
+    log.trace("The last recommendation time is: %s" % (str(lastRecommendtaionTime)))
+    return lastRecommendtaionTime 
+
 
 # This gets called at the beginning of each recommendation management cycle.  It clears all of the dynamic attributes of 
 # a Quant Output.  
@@ -170,7 +267,7 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
 def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
     SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
         " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
-        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
@@ -209,6 +306,7 @@ def convertOutputRecordToDictionary(record):
     output['FeedbackOutputManual'] = record['FeedbackOutputManual']
     output['FeedbackOutputConditioned'] = record['FeedbackOutputConditioned']
     output['ManualOverride'] = record['ManualOverride']
+    output['IgnoreMinimumIncrement'] = record['IgnoreMinimumIncrement']    
     return output
 
 # Fetch the SQC blocks that led to a Final Diagnosis becoming true.
