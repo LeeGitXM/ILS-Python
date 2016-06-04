@@ -4,4 +4,4 @@ Created on Apr 28, 2015
 @author: Pete
 '''
 def version():
-    return "1.0 rc11", "April 8, 2016"
+    return "0.1r20", "June 4, 2016"

@@ -524,9 +524,6 @@ def resetDiagram(finalDiagnosisIds, database):
             if diagramUUID != None and fdUUID != None:
                 blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
-#TODO These blocks may have crossed over boundaries onto other diagrams, so I can't keep feeding the same diagramUUID
-# along with the block UUIDs.  Need a way to call a getParentUUID() method for a block.
-
                 for block in blocks:
                     blockId=block.getIdString()
                     blockName=block.getName()

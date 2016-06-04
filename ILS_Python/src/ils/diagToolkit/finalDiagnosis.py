@@ -44,6 +44,7 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     # Lookup the application Id
     from ils.diagToolkit.common import fetchFinalDiagnosis
     record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
+    
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
         log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
@@ -53,6 +54,9 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     if unit == None:
         log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (application, family, finalDiagnosis))
         return
+    
+    # Reset the flag that indicates that minimum change requirements should be ignored.
+    resetOutputLimits(finalDiagnosisId, database)
     
     finalDiagnosisName=record.get('FinalDiagnosisName','Unknown Final Diagnosis')
     
@@ -183,18 +187,29 @@ def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, dia
         autoOrManual=recommendation.get('AutoOrManual', None)
         outputName = recommendation.get('QuantOutput','')
         
-        SQL = "Select MinimumIncrement from DtQuantOutput QO, DtRecommendationDefinition RD "\
+        SQL = "Select MinimumIncrement, IgnoreMinimumIncrement from DtQuantOutput QO, DtRecommendationDefinition RD "\
             " where QO.QuantOutputId = RD.QuantOutputId "\
             " and QO.QuantOutputName = '%s' "\
             " and RD.FinalDiagnosisId = %s" % (outputName, str(finalDiagnosisId))
-        minimumIncrement=system.db.runScalarQuery(SQL, database)
+        pds=system.db.runQuery(SQL, database)
+        if len(pds) != 1:
+            return "Error fetching QuantOutput configuration: %s" % (SQL)
+        record = pds[0]
+        minimumIncrement=record["MinimumIncrement"]
+        ignoreMinimumIncrement=record["IgnoreMinimumIncrement"]
 
         if autoOrManual == 'Auto':
             val = recommendation.get('AutoRecommendation', None)
-            textRecommendation = "%s\n%s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
+            if ignoreMinimumIncrement:
+                textRecommendation = "%s\n%s = %s" % (textRecommendation, outputName, str(val))
+            else:
+                textRecommendation = "%s\n%s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
 
         elif autoOrManual == 'Manual':
-            textRecommendation = "%s\nManual move for %s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
+            if ignoreMinimumIncrement:
+                textRecommendation = "%s\nManual move for %s = %s" % (textRecommendation, outputName, str(val))
+            else:
+                textRecommendation = "%s\nManual move for %s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
 
     from ils.queue.message import insert
     insert("RECOMMENDATIONS", "Info", textRecommendation, database)
@@ -568,15 +583,17 @@ def manage(application, recalcRequested=False, database="", provider=""):
             system.db.runUpdateQuery(SQL)
             
         else:
-            # Fetch all of the quant outputs for the final diagnosis
-            from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
-            pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
-            quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
-            
+
             from ils.diagToolkit.recommendation import makeRecommendation
             recommendations, recommendationStatus = makeRecommendation(
                     applicationName, familyName, finalDiagnosisName, 
                     record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
+    
+            # Fetch all of the quant outputs for the final diagnosis
+            from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
+            pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
+            quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
+    
     
             textRecommendation = postRecommendationMessage(applicationName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
             print "-----------------"
@@ -747,7 +764,9 @@ def checkBounds(quantOutput, database, provider):
 
     # Now check the minimum increment requirement
     minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
-    if abs(feedbackOutputConditioned) < minimumIncrement:
+    ignoreMinimumIncrement = quantOutput.get('IgnoreMinimumIncrement', False)
+    print "Ignore Minimum Increment: ", ignoreMinimumIncrement
+    if not(ignoreMinimumIncrement) and abs(feedbackOutputConditioned) < minimumIncrement:
         log.trace("      ...the output IS Minimum change bound because the change (%f) is less then the minimum change amount (%f)..." % (feedbackOutputConditioned, minimumIncrement))
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Minimum Change Bound'
@@ -844,7 +863,8 @@ def calculateVectorClamps(quantOutputs, provider):
 
             # Now check if the new conditioned output is less than the minimum change amount
             minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
-            if abs(feedbackOutputConditioned) < minimumIncrement:
+            ignoreMinimumIncrement = quantOutput.get('IgnoreMinimumIncrement', False)
+            if not(ignoreMinimumIncrement) and abs(feedbackOutputConditioned) < minimumIncrement:
                 feedbackOutputConditioned = 0.0
                 outputPercent = 0.0
                 txt = "%s which is an insignificant value value and should be set to 0.0." % (txt)
@@ -925,4 +945,26 @@ def updateQuantOutput(quantOutput, database='', provider=''):
            manualOverride, str(currentSetpoint), str(finalSetpoint), str(displayedRecommendation), quantOutputId)
     logSQL.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
+
+# Set the flag for all of the outputs used by this FD to ignore the minimumIncrement specifications.  This MUST
+# be called in the FDs calculation method and only lasts until another FinalDiagnosis using the same QusantOutput becomes active 
+def bypassOutputLimits(finalDiagnosisId, database=""):
+    print "Bypassing output limits..."
+    rows = setOutputLimits(finalDiagnosisId, 1, database)
+    print "...bypassed %i rows!" % (rows)
     
+# Reset the flag that enforces the minimumIncrement specifications.  This is called for a FD every time it becomes active.
+def resetOutputLimits(finalDiagnosisId, database=""):
+    print "Resetting output limits..."
+    rows = setOutputLimits(finalDiagnosisId, 0, database)
+    print "...reset %i rows!" % (rows)
+
+def setOutputLimits(finalDiagnosisId, state, database=""):
+    SQL = "Update DtQuantOutput set IgnoreMinimumIncrement = %i "\
+        " where QuantOutputId in ("\
+        " select QuantOutputId "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD "\
+        " where FD.FinalDiagnosisId = %i "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId)" % (state, finalDiagnosisId)
+    rows = system.db.runUpdateQuery(SQL, database)
+    return rows

@@ -78,8 +78,17 @@ def valueChanged(tagPath, currentValue, initialChange):
     
     tags = [tagPathRoot + '/numberOfPoints', tagPathRoot + '/bufferIndex']
     vals=system.tag.readAll(tags)
+
     numberOfPoints = vals[0].value
     bufferIndex = vals[1].value
+        
+    if not( vals[0].quality.isGood() and numberOfPoints != None ):
+        log.error("The numberOfPoints tag is bad or has the value None")
+        return
+
+    if not( vals[1].quality.isGood() and bufferIndex != None ):
+        log.error("The bufferIndex is bad or has the value None")
+        return
 
     log.trace("Unit Parameter Id: %i - Number of points: %i - Buffer Index: %i" % (unitParameterId, numberOfPoints, bufferIndex))
     

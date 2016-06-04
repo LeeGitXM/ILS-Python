@@ -1,8 +1,7 @@
 '''
-Created on Dec 31, 2014
+Created on May 27, 2016
 
-@author: Pete
+@author: ils
 '''
-
 def version():
     return "0.1r20", "June 4, 2016"

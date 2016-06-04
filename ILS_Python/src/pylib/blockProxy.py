@@ -98,6 +98,11 @@ def getBlockState(common,dpath,blockName):
 def reset(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	script.resetBlock(diagid,blockName)
+	
+# Stop then start a block
+def restart(common,dpath,blockName):
+	diagid = getDiagram(dpath).getSelf().toString()
+	script.restartBlock(diagid,blockName)
 
 # -------------------------- Helper methods ----------------------
 # Return a ProcessDiagram at the specified path

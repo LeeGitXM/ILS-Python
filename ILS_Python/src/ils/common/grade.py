@@ -7,8 +7,8 @@ Created on Aug 2, 2015
 import system
 log = system.util.getLogger("com.ils.common")
 
-# Read the current grade for a unit.  The works becasue we adhere to the convention of a grade UDT inside 
-# a unit folder in the in the site folder.
+# Read the current grade for a unit.  The works because we adhere to the convention of a grade UDT inside 
+# a unit folder in the site folder.
 def getGradeForUnit(unitName, tagProvider):
     # Try to read the current grade
     tagPath="[%s]Site/%s/Grade/grade" % (tagProvider, unitName)
