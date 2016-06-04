@@ -38,5 +38,8 @@ def runQuery(SQL, database, tx):
 def runScalarQuery(SQL):
     return 6
 
+def runScalarPrepQuery(SQL):
+    return 6
+
 def runUpdateQuery(SQL):
     return True
