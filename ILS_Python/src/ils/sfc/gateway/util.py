@@ -97,33 +97,18 @@ def escapeSingleQuotes(msg):
     return msg.replace("'", "''")
 
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
+    from ils.sfc.common.util import logExceptionCause
     from ils.sfc.common.constants import MESSAGE
     from  ils.sfc.gateway.api import cancelChart, getProject
-    import sys
     '''
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue. Then cancel the chart.
     '''
-    try:
-        # try to get the cause
-        e = sys.exc_info()[1]
-        msg = msg + ": " + str(e)
-    except:
-        # no system error info I guess
-        pass
-    if logger != None:
-        logger.error(msg)
+    logExceptionCause(msg, logger)
     payload = dict()
     payload[MESSAGE] = msg
     project = getProject(chartScope)
     sendMessageToClient(project, 'sfcUnexpectedError', payload)
-    try:
-        import traceback
-#        traceback.print_tb(sys.last_traceback)
-        # This seems to print something more useful.... (Pete)
-        print traceback.format_exc()
-    except:
-        pass
     cancelChart(chartScope)
 
 def copyRowToDict(dbRows, rowNum, pdict, create):

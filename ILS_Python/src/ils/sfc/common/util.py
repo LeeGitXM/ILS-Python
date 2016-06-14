@@ -176,3 +176,41 @@ def chartIsRunning(chartPath):
             if not chartState.isTerminal():
                 return True
     return False
+
+def logExceptionCause(contextMsg, logger=None):
+    '''
+    Attempt to get a root cause message for the exception, and log/print it--
+    '''
+    import sys
+    exception = sys.exc_info()[1]    
+    fullMsg = contextMsg + ": " + str(exception)
+    
+    # Get a traceback as well:
+    tracebackMsg = None
+    try:
+        import traceback
+        tracebackMsg = traceback.format_exc()
+    except:
+        pass
+
+    javaCauseMsg = None    
+    # for Java exceptions, get the cause
+    try:
+        javaCauseMsg = exception.getCause().getMessage()
+    except:
+        # no cause
+        pass
+       
+    # Log or print the info:
+    if logger != None:
+        logger.error(fullMsg)
+        if javaCauseMsg != None:
+            logger.error(javaCauseMsg)
+        logger.error(tracebackMsg)
+    else:
+        print fullMsg
+        if javaCauseMsg != None:
+            print javaCauseMsg
+        print tracebackMsg
+ 
+   
