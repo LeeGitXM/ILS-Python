@@ -86,6 +86,11 @@ def getOpenWindow(windowId):
         if openWindowId == windowId:
             return window
     return None
+
+def shouldShowWindow(controlPanelId, originator):
+    '''return if a window from the chart with given control panel and originator should show in this client'''    
+    import system
+    return originator == system.security.getUsername() or controlPanelOpen(controlPanelId) 
        
 def openDbWindow(windowId):
     '''A generic helper method for message handlers to open a window in the 
@@ -109,8 +114,7 @@ def openDbWindow(windowId):
     
     controlPanelId = pyWindowData[0]['controlPanelId']
     originator = pyWindowData[0]['originator']
-    if not controlPanelOpen(controlPanelId) and (originator != system.security.getUsername()):
-        # this client should not see windows from this run
+    if not shouldShowWindow(controlPanelId, originator):
         return
     
     windowType = pyWindowData[0]['type']
