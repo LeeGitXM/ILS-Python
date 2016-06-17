@@ -60,8 +60,13 @@ def activate(scopeContext, stepProperties, deactivate):
                 stepScope[INITIALIZED]=True
                 stepScope["workDone"]=False
                 
-                # Clear and/or start the timer
-                handleTimer(chartScope, stepScope, stepProperties, logger)
+                # Check that the timer exists - it is mandatory!
+#                timer, timerAttribute = handleTimer(chartScope, stepScope, stepProperties, logger)
+#                print "Timer = <%s>, attribute = <%s>" % (str(timer), timerAttribute)
+#                if timer == None or timer == "":
+#                    handleUnexpectedGatewayError(chartScope, 'Timer not defined in monitorPV.py', logger)
+#                    complete = True
+#                    return complete
     
                 configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
                 config = getPVMonitorConfig(configJson)
@@ -117,6 +122,7 @@ def activate(scopeContext, stepProperties, deactivate):
                 stepScope[PERSISTENCE_PENDING] = False
                 stepScope[MAX_PERSISTENCE] = maxPersistence
                 
+                # This will clear and/or set the timer if the block is configured to do so 
                 handleTimer(chartScope, stepScope, stepProperties, logger)
             
             else:    
@@ -136,6 +142,13 @@ def activate(scopeContext, stepProperties, deactivate):
             
                 # Monitor for the specified period, possibly extended by persistence time
                 timerStart=getTimerStart(chartScope, stepScope, stepProperties)
+                
+                # It is possible that this block starts before some other block starts the timer
+                if timerStart == None:
+                    logger.trace("   ...waiting for the timer to start...")
+                    complete = False
+                    return complete
+                
                 elapsedMinutes = getElapsedMinutes(timerStart)
     
                 persistencePending = stepScope[PERSISTENCE_PENDING]
