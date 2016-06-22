@@ -55,7 +55,7 @@ def createTags(tagProvider):
     data.append([path, "communicationHealthy", "Boolean", "True"])
     data.append([path, "labDataWriteEnabled", "Boolean", "True"])
     data.append([path, "sqcPlotFreshDataColor", "String", "Green"])
-    data.append([path, "sqcPlotStaleDataColor", "String", "Grey"])
+    data.append([path, "sqcPlotStaleDataColor", "String", "Gray"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
