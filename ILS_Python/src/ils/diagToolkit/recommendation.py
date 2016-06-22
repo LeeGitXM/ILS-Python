@@ -18,7 +18,7 @@ def notifyConsole():
 
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
-    print "**********In makeRecommendation *********"
+    log.info("********** In %s *********" % (__name__))
     SQL = "select Constant, CalculationMethod "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
@@ -27,12 +27,12 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     record=pds[0]
     calculationMethod = record["CalculationMethod"]
     constant = record["Constant"]
-    log.trace("Making a recommendation for final diagnosis with id: %i using calculation method: %s, Constant=%s, database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, constant, database, provider))
+    log.info("Making a recommendation for final diagnosis with id: %i using calculation method: %s, Constant=%s, database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, constant, database, provider))
     
     # If the FD is constant, then it shouldn't get this far becaus ethere really isn't a recommendation to make, so this code should never get exercised.
     if constant == True:
         print "The FD IS a CONSTANT"
-        log.trace("Detected a CONSTANT Final Diagnosis")
+        log.info("Detected a CONSTANT Final Diagnosis")
         
         SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_POSTED, diagnosisEntryId)
         logSQL.trace(SQL)
@@ -49,7 +49,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         separator=string.rfind(packagemodule, ".")
         package = packagemodule[0:separator]
         module  = packagemodule[separator+1:]
-        log.trace("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
+        log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
         exec("import %s" % (package))
         exec("from %s import %s" % (package,module))
 
@@ -64,20 +64,20 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         return [], "ERROR"
 
     else:
-        log.trace("Received recommendations: %s" % (str(rawRecommendationList)))
+        log.info("Received recommendations: %s" % (str(rawRecommendationList)))
         
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
         # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
-        log.trace("Screen for no-change recommendations...") 
+        log.info("Screening for no-change recommendations...") 
         screenedRecommendationList=[]
         for recommendation in rawRecommendationList:
             if recommendation.get("Value",0.0) == 0.0:
-                log.trace("...removing a no change recommendation: %s" % (str(recommendation)))
+                log.info("...removing a no change recommendation: %s" % (str(recommendation)))
             else:
                 screenedRecommendationList.append(recommendation)
 
         if len(screenedRecommendationList) == 0:
-            log.trace("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
+            log.info("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
             from ils.diagToolkit.common import fetchPostForApplication
             post=fetchPostForApplication(application, database)
             
@@ -99,10 +99,10 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             else:
                 messageLevel = QUEUE_ERROR
             insert(applicationQueue, messageLevel, explanation, database)
-            log.trace("Explanation: %s - %s" % (messageLevel, explanation))
+            log.info("Explanation: %s - %s" % (messageLevel, explanation))
 
             recommendationList=[]
-            log.trace("  The recommendations returned from the calculation method are: ")
+            log.info("  The recommendations returned from the calculation method are: ")
             for recommendation in screenedRecommendationList:
                 # Validate that there is a 'QuantOutput' key and a 'Value' Key
                 quantOutput = recommendation.get('QuantOutput', None)
@@ -113,7 +113,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                     log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
     
                 if quantOutput != None and val != None:
-                    log.trace("      Output: %s - Value: %s" % (quantOutput, str(val)))
+                    log.info("      Output: %s - Value: %s" % (quantOutput, str(val)))
                     recommendation['AutoRecommendation']=val
                     recommendation['AutoOrManual']='Auto'
                     recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
@@ -141,13 +141,13 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
         "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
     logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
-    log.trace("      ...inserted recommendation id: %s for recommendation definition id: %i" % (recommendationId, recommendationDefinitionId))
+    log.info("      ...inserted recommendation id: %s for recommendation definition id: %i" % (recommendationId, recommendationDefinitionId))
     return recommendationId
 
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made
 # for that QuantOutput - in the case where multiple FDs are active and of equal priority and tough the same quantOutput.
 def calculateFinalRecommendation(quantOutput):
-    log.trace("Calculating the final recommendation for: %s " % (quantOutput))
+    log.info("Calculating the final recommendation for: %s " % (quantOutput))
 
     i = 0
     finalRecommendation = 0.0
@@ -161,18 +161,18 @@ def calculateFinalRecommendation(quantOutput):
         return None
         
     for recommendation in recommendations:
-        log.trace("  The raw recommendation is: %s" % (str(recommendation)))
+        log.info("  The raw recommendation is: %s" % (str(recommendation)))
             
         autoOrManual = string.upper(quantOutput.get("AutoOrManual", "Auto"))
         if autoOrManual == 'AUTO':
             recommendationValue = recommendation.get('AutoRecommendation', 0.0)
-            log.trace("   ...using the auto value: %f" % (recommendationValue))
+            log.info("   ...using the auto value: %f" % (recommendationValue))
         else:
             recommendationValue = recommendation.get('ManualRecommendation', 0.0)
-            log.trace("   ...using the manual value: %f" % (recommendationValue))
+            log.info("   ...using the manual value: %f" % (recommendationValue))
     
         feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
-        log.trace("   ...using feedback method %s to combine recommendations..." % (feedbackMethod))
+        log.info("   ...using feedback method %s to combine recommendations..." % (feedbackMethod))
 
         if feedbackMethod == 'MOST POSITIVE':
             if i == 0: 
@@ -207,7 +207,7 @@ def calculateFinalRecommendation(quantOutput):
     quantOutput['FeedbackOutput'] = finalRecommendation
     quantOutput['FeedbackOutputConditioned'] = finalRecommendation
 
-    log.trace("  The recommendation after combining multiple recommendations but before bounds checking) is: %f" % (finalRecommendation))
+    log.info("  The recommendation after combining multiple recommendations but before bounds checking) is: %f" % (finalRecommendation))
     return quantOutput
 
 def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):
@@ -246,4 +246,4 @@ def postApplicationMessage(applicationName, status, message, log):
     queueId = system.db.runScalarQuery("select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName))
     from ils.queue.message import _insert
     _insert(queueId, status, message)
-    log.trace(message)
+    log.info(message)
