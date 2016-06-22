@@ -15,9 +15,9 @@ def activate(scopeContext, stepProperties, deactivate):
     RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, RECIPE, SETPOINT, STEP_TIME,  STRATEGY, STATIC, TAG, \
     TARGET_VALUE, TIMEOUT, VALUE, WAIT 
 
-    from ils.sfc.common.constants import NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
-    PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
-    STEP_SUCCESS, STEP_FAILURE, SLEEP_INCREMENT, TIMED_OUT
+    from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
+        PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
+        STEP_SUCCESS, STEP_FAILURE, SLEEP_INCREMENT, TIMED_OUT
     from java.util import Date 
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getProviderName, getPVMonitorConfig
@@ -39,6 +39,9 @@ def activate(scopeContext, stepProperties, deactivate):
         stepScope = scopeContext.getStepScope()
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         
+        stepName = getStepProperty(stepProperties, NAME)
+        print "The step name is:", stepName
+        
         logger = getChartLogger(chartScope)
         logger.trace("In monitorPV.activate(), deactivate=%s..." % (str(deactivate)))
         
@@ -54,7 +57,7 @@ def activate(scopeContext, stepProperties, deactivate):
         
         else:
             if not initialized:
-                logger.trace("...initializing...")
+                logger.trace("...initializing PV Monitor step %s ..." % (stepName))
                 stepScope[NUMBER_OF_TIMEOUTS] = 0
                 stepScope[TIMED_OUT] = False
                 stepScope[INITIALIZED]=True
@@ -114,9 +117,8 @@ def activate(scopeContext, stepProperties, deactivate):
                         configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeLocation)           
                     
                     logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
-    
+
                 # Put the initialized config data back into step scope for the next iteration
-    
                 stepScope[PV_MONITOR_CONFIG] = config
                 stepScope[MONITOR_ACTIVE_COUNT] = monitorActiveCount
                 stepScope[PERSISTENCE_PENDING] = False
@@ -124,9 +126,14 @@ def activate(scopeContext, stepProperties, deactivate):
                 
                 # This will clear and/or set the timer if the block is configured to do so 
                 handleTimer(chartScope, stepScope, stepProperties, logger)
+
+                # If there are no rows configured to monitor, then the block is done, even though the block is probably misconfigured
+                if monitorActiveCount <= 0:
+                    logger.warn("PV Monitoring block is not configured to monitor anything")
+                    complete = True
             
             else:    
-                logger.trace("...starting to monitor...")
+                logger.trace("...monitoring step %s..." % (stepName))
                 
                 durationLocation = getStepProperty(stepProperties, DATA_LOCATION)
                 durationStrategy = getStepProperty(stepProperties, STRATEGY)
