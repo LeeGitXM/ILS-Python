@@ -5,7 +5,7 @@
 		<delete dir="${ignition.py.lib}/ils" />
 	</target>
 	
-	<target name="deploy" depends="clean" description="Install Python">
+	<target name="deploy" description="Install Python">
 		<echo message="Deploying python scripts to ${ignition.py.lib}" />
 		<copy todir="${ignition.py.lib}">
 			<fileset dir="${basedir}/src">

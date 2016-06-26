@@ -13,7 +13,7 @@ def internalFrameOpened(rootContainer):
     tabStrip = rootContainer.getComponent("Tab Strip")
     tabStrip.selectedTab="Plot"
     configureChart(rootContainer)
-
+    refreshChart(rootContainer)
 
 def internalFrameActivated(rootContainer):
     print "In internalFrameActivated()"
@@ -184,6 +184,12 @@ def determineTimeScale(unitName, labValueName, maxSampleSize):
     print "RAN OUT OF POINTS - RETURNING DEFAULT"
     return 24 * 7
 
+# The idea behind this is to somehow force a refresh, but I'm not sure how to do that.  system.db.refresh does not work
+def refreshChart(rootContainer):
+    print "Refreshing the chart..."
+    chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
+#    system.db.refresh(chart, "pens")
+
 def clearChart(rootContainer):
     print "Clearing the chart..."
     chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
@@ -205,8 +211,6 @@ def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime)
     
     chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.pens
-    
-    print "The color for fresh data is: ", ds.getValueAt(0, "COLOR")
 
     freshColor = system.tag.read("/Configuration/LabData/sqcPlotFreshDataColor").value
     staleColor = system.tag.read("/Configuration/LabData/sqcPlotStaleDataColor").value
@@ -217,19 +221,20 @@ def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime)
     
     if lastResetTime == None:
         whereClause = "UnitName = '%s' and ValueName = '%s'" % (unitName, labValueName)
-        print whereClause
+        print "  ...setting the where clause of the first pen: ", whereClause
         ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
         
-        # The second pen is for data that came in before the reset time, since we don't have a reset time we want to disable this pen.   
+        # The second pen is for data that came in before the reset time, since we don't have a reset time we want to disable this pen. 
+        print "  ...disabling the second pen because we do not have a reset time..."  
         ds = system.dataset.setValue(ds, 1, "ENABLED", False)
     else:
         lastResetTime=system.db.dateFormat(lastResetTime, "yyyy-MM-dd H:mm:ss")    
         whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime > '%s'" % (unitName, labValueName, lastResetTime)
-        print whereClause
+        print "  ...setting the where clause of the first pen: ", whereClause
         ds = system.dataset.setValue(ds, 0, "WHERE_CLAUSE", whereClause)
     
         whereClause = "UnitName = '%s' and ValueName = '%s' and SampleTime < '%s'" % (unitName, labValueName, lastResetTime)
-        print whereClause
+        print "  ...setting the where clause of the second pen: ", whereClause
         ds = system.dataset.setValue(ds, 1, "WHERE_CLAUSE", whereClause)
         ds = system.dataset.setValue(ds, 1, "ENABLED", True)
     
