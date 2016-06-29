@@ -21,18 +21,18 @@ def activate(scopeContext, stepProperties, deactivate):
     from java.util import Date 
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getProviderName, getPVMonitorConfig
-    from ils.sfc.gateway.downloads import handleTimer, getTimerStart, getElapsedMinutes
+    from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart, getElapsedMinutes
     from ils.sfc.gateway.recipe import RecipeData
     from ils.io.api import getMonitoredTagPath
-    
+
     # some local constants
     MONITOR_ACTIVE_COUNT = "monitorActiveCount"
     PERSISTENCE_PENDING = "persistencePending"
     INITIALIZED = "initialized"
     MAX_PERSISTENCE = "maxPersistence"
-    
+
     complete = False 
-    
+
     try:
         # general initialization:
         chartScope = scopeContext.getChartScope()
@@ -156,8 +156,8 @@ def activate(scopeContext, stepProperties, deactivate):
                     complete = False
                     return complete
                 
-                elapsedMinutes = getElapsedMinutes(timerStart)
-    
+                elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
+
                 persistencePending = stepScope[PERSISTENCE_PENDING]
                 monitorActiveCount = stepScope[MONITOR_ACTIVE_COUNT]
                 maxPersistence = stepScope[MAX_PERSISTENCE]

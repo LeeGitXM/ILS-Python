@@ -15,7 +15,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.common.util import formatTime
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getWriteOutputConfig
-    from ils.sfc.gateway.downloads import handleTimer, getTimerStart, getElapsedMinutes
+    from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart
     from ils.sfc.gateway.recipe import RecipeData
     from ils.sfc.gateway.downloads import writeValue
     from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
@@ -126,13 +126,13 @@ def activate(scopeContext, stepProperties, deactivate):
     else:
         logger.trace("...performing write output work...")
         try:
-            timerStart=getTimerStart(chartScope, stepScope, stepProperties)
+            elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
+            timerStart = getTimerStart(chartScope, stepScope, stepProperties)
             
-            if timerStart == None:
+            if elapsedMinutes <= 0.0:
                 logger.trace("The timer has not been started")
             else:
-                elapsedMinutes = getElapsedMinutes(timerStart)
-                logger.trace("   the timer start is: %s, the elapsed time is: %.2f" % (str(timerStart), elapsedMinutes))    
+                logger.trace("   the elapsed time is: %.2f" % (elapsedMinutes))    
                 immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
                 timedRows=stepScope.get(TIMED_ROWS,[])
                 finalRows=stepScope.get(FINAL_ROWS,[])
@@ -145,13 +145,14 @@ def activate(scopeContext, stepProperties, deactivate):
                     stepScope[TIMER_RUNNING]=True
 
                     # wait until the timer starts
-                    logger.trace("   the timer just started at: %s" % (str(timerStart)))
+                    logger.trace("   the timer just started... ")
                     
-                    # This is a strange little initialization that is done to initialize final writes in the bizzare case where ALL of the writes are final
+                    # This is a strange little initialization that is done to initialize final writes in the bizzare 
+                    # case where ALL of the writes are final
                     cal = Calendar.getInstance()
                     cal.setTime(timerStart)
                     absTiming = cal.getTime()
-                    timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
+                    timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
 
                     # Immediately after the timer starts running we need to calculate the absolute download time.            
                     for row in downloadRows:
@@ -172,7 +173,7 @@ def activate(scopeContext, stepProperties, deactivate):
                             cal.setTime(timerStart)
                             cal.add(Calendar.SECOND, int(row.timingMinutes * 60))
                             absTiming = cal.getTime()
-                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
+                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
                             row.outputRD.set(STEP_TIMESTAMP, timestamp)
                             row.outputRD.set(STEP_TIME, absTiming)
                         
@@ -181,7 +182,7 @@ def activate(scopeContext, stepProperties, deactivate):
                             cal = Calendar.getInstance()
                             cal.setTime(timerStart)
                             absTiming = cal.getTime()
-                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
+                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
                             row.outputRD.set(STEP_TIMESTAMP, timestamp)
                             row.outputRD.set(STEP_TIME, absTiming)
 
@@ -216,7 +217,7 @@ def activate(scopeContext, stepProperties, deactivate):
                     for row in finalRows:
                         logger.trace("   writing a final write for step %s" % (row.key))
                         absTiming = Date()
-                        timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy H:mm:ss a")
+                        timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
                         row.outputRD.set(STEP_TIMESTAMP, timestamp)
                         row.outputRD.set(STEP_TIME, absTiming)
 #                        row.outputRD.set("setpointStatus", "downloading")

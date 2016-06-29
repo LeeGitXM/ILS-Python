@@ -52,6 +52,9 @@ def activate(scopeContext, stepProperties, deactivate):
         timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
         timerTagPath = s88GetFullTagPath(chartScope, stepScope, timerKey, recipeLocation) + '/value'
         
+        #todo GET THE REAL TTAGPATH
+        timerTagPath = "[XOM]Sandbox/SFC Use Cases/Timer1/runTime"
+        
         SQL = "insert into SfcDownloadGUI (windowId, state, LastUpdated, timerTagPath) values ('%s', 'created', CURRENT_TIMESTAMP, '%s')" % (windowId, timerTagPath)
         system.db.runUpdateQuery(SQL, database)
         

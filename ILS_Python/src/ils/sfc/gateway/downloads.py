@@ -8,6 +8,7 @@ Created on Jun 18, 2015
 '''
 
 import system
+from java.util import Date, Calendar
 
 def handleTimerCommand(tagPath, previousValue, currentValue, initialChange, missedEvents):
     val = currentValue.value
@@ -19,24 +20,39 @@ def handleTimerCommand(tagPath, previousValue, currentValue, initialChange, miss
         system.tag.write(parentPath + "/runTime", 0.0)
     elif val == "run":
         print "Set the start time"
-        
+        startTime = Date().getTime()
+        system.tag.write(parentPath + "/startTime", startTime)
 #        system.tag.write(parentPath + "/startTime", now)
     elif val == "pause":
         print "PAUSE"
     elif val == "resume":
         print "resume"
+    elif val in ['stop', 'cancel']:
+        print "stop or cancel"
     else:
         print "Unsupported command: ", currentValue
 
-def updateTimers(tagProvider="[XOM]"):
-#    print "Updating Timers..."
-    browseTags = system.tag.browseTags(parentPath=tagProvider, udtParentType="SFC/Timer", recursive=True)
-#    print "Browse returned %i timers..." % (len(browseTags))
-    for browseTag in browseTags:
-        timerPath = browseTag.fullPath
-        state=system.tag.read(timerPath + "/state")
-#        if state == "run":
-#            print "RUNIT"
+# This is generally called every second, but it doesn't matter, it will calculate the elapsed time, in minutes since it was last called.
+def updateTimer(tagPath, previousValue, currentValue, initialChange, missedEvents):
+    parentPath = tagPath[:tagPath.rfind("/")]
+    qvs=system.tag.readAll([parentPath + "/state", parentPath + "/runTime"])
+    state = qvs[0]
+        
+    # If the timer is running then update the runtime by calculating the elapsed time since it was last updated or it started running.
+    # If the current state is resume, then the last state must have been paused.
+    if state.value in ["run", "resume"]:
+        runtime = qvs[1]
+        now = Date().getTime()
+
+        if state.timestamp > runtime.timestamp:
+#                print "The state was most recently changed"
+            elapsedMs = now - state.timestamp.getTime()
+        else:
+#                print "The runtime was most recently changed" 
+            elapsedMs = now - runtime.timestamp.getTime()
+#            print "The elapsed seconds is: ", str(elapsedMs / 1000.0)
+        system.tag.write(parentPath + "/runTime", runtime.value + elapsedMs / 1000.0 / 60.0)
+        
 
 def handleTimer(chartScope, stepScope, stepProperties, logger):
     '''perform the timer-related logic for a step'''
@@ -46,6 +62,9 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
     from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY, TIMER_SET, TIMER_CLEAR, DATA_ID
     from java.util import Date
     from ils.sfc.gateway.recipe import RecipeData, splitKey
+    
+    #TODO This can't be hardcoded
+    timerPath = "[XOM]Sandbox/SFC Use Cases/Timer1"
     
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
@@ -58,33 +77,56 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
     clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
     if clearTimer:
         logger.info("Clearing the download timer...")
-        timer.set(timerAttribute, None)
-        
+#        timer.set(timerAttribute, None)
+        system.tag.write(timerPath + "/state", "clear")
+                
     setTimer = getStepProperty(stepProperties, TIMER_SET)
     if setTimer:
         # print 'starting timer'
         logger.info("Setting the download timer...")
-        timer.set(timerAttribute, Date())
+#        timer.set(timerAttribute, Date())
+        system.tag.write(timerPath + "/state", "run")
 
     return timer, timerAttribute
 
+# Get the timer run time in minutes
+def getRunMinutes(chartScope, stepScope, stepProperties):
+    #TODO This can't be hardcoded
+    timerPath = "[XOM]Sandbox/SFC Use Cases/Timer1"
+    qv = system.tag.read(timerPath + "/runTime")
+    
+    if not(qv.quality.isGood()):
+        return 0.0
+    
+    return qv.value
+
 # The timer start time is read from a date time tag (recipe data)
+#TODO - this may be obsolete and/or needs to be reworked
 def getTimerStart(chartScope, stepScope, stepProperties):
     '''get the start time for a timer (will be None if cleared but not set)'''
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import s88Get
-    from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
-    timerKey = getStepProperty(stepProperties, TIMER_KEY)
-    timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
+    timerPath = "[XOM]Sandbox/SFC Use Cases/Timer1"
+    qv = system.tag.read(timerPath + "/startTime")
+    
+    if not(qv.quality.isGood()):
+        return None
+    
+    return qv.value
+    
+#    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
+#    from ils.sfc.gateway.api import s88Get
+#    from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY
+#    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
+#    timerKey = getStepProperty(stepProperties, TIMER_KEY)
+#    timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
     # print 'getting timer start'
     # do a sanity check on the timer start:
     #topChartStartTime = getTopChartStartTime(chartScope)
     #if timerStart != None and timerStart < topChartStartTime:
     #   handleUnexpectedGatewayError(chartScope, "download timer read before set or cleared; stale value")
     
-    return timerStart
+#    return timerStart
 
+#TODO - This may be obsolete
 # This returns the elapsed time in minutes from the given Java time (milliseconds sine the epoch)
 def getElapsedMinutes(startTime):
     from java.util import Date

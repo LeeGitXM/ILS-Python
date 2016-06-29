@@ -11,71 +11,26 @@ from ils.common.config import getDatabaseClient, getTagProviderClient
 # SfcDownloadGUITable database table with a record for each output recipe data that will be displayed in the 
 # GUI.  The Download GUI task really does no work - all it does is display information collected by the Write 
 # Output and PV monitoring tasks. 
-
-# Obsolete comments
-#Nothing else has been updated in the table about the state of each record.  What we need to do 
-# initially is populate the rest of the table.
  
 def internalFrameOpened(rootContainer):
     print "In monitorDownloads.internalFrameOpened()"
 
+    state, timerTagPath = fetchWindowInfo(windowId, database)
+    rootContainer.timerTagPath = timerTagPath
+
     update(rootContainer)
-#    configureTable(windowId, database)
-
-def cancelChart(event):
-    print "Cancelling..."
-    rootContainer = event.source.parent
-        
-    chartRunId = getChartRunId(rootContainer)
-    if chartRunId == None:
-        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
-        return
-
-    from system.sfc import cancelChart
-    cancelChart(chartRunId)
-
-def pauseChart(event):
-    print "Pausing..."
-    rootContainer = event.source.parent
-        
-    chartRunId = getChartRunId(rootContainer)
-    if chartRunId == None:
-        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
-        return
-
-    from system.sfc import pauseChart
-    pauseChart(chartRunId)
-
-def resumeChart(event):
-    print "Resuming..."
-    rootContainer = event.source.parent
-        
-    chartRunId = getChartRunId(rootContainer)
-    if chartRunId == None:
-        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
-        return
-    
-    from system.sfc import resumeChart
-    resumeChart(chartRunId)
-    
-def getChartRunId(rootContainer):
-    windowId = rootContainer.windowId
-    
-    SQL = "select chartRunId from sfcControlPanel CP, sfcWindow W "\
-        " where W.controlPanelId = CP.controlPanelId "\
-        " and W.windowId = '%s'" % (windowId)
-        
-    chartRunId = system.db.runScalarQuery(SQL)
-    return chartRunId
 
 def update(rootContainer):
     print "In monitorDownloads.update()"
 
     windowId = rootContainer.windowId
+    timerTagPath = rootContainer.timerTagPath
     database = getDatabaseClient()
     tagProvider = getTagProviderClient()
     
-    state, elapsedSeconds, startTime, timerTagPath = fetchWindowState(windowId, database)
+    state, secondsSinceLastUpdate = fetchWindowState(windowId, database)
+    
+    startTime = system.tag.read(timerTagPath + "/startTime").value
     
     if startTime == None:
         startTime = system.tag.read(timerTagPath).value
@@ -83,7 +38,7 @@ def update(rootContainer):
             updateStartTime(windowId, startTime, database)
         
     rootContainer.startTime = startTime
-    startTimeFormatted = system.db.dateFormat(startTime, "dd-MMM-yy H:mm:ss a")
+    startTimeFormatted = system.db.dateFormat(startTime, "dd-MMM-yy h:mm:ss a")
     
     if string.upper(state)  == "CREATED":
         initializeDatabaseTable(windowId, database, tagProvider)
@@ -93,7 +48,7 @@ def update(rootContainer):
         # If the database was just updated, then skip the update.  This is useful
         # if there are two or more client watching the same download GUI - they don't both need to do 
         # the work of reading tags and updating the database. 
-        if elapsedSeconds > 1.5:
+        if secondsSinceLastUpdate > 1.5:
             updateDatabaseTable(windowId, database)
             updateWindowState(windowId, database) 
     
@@ -108,29 +63,40 @@ def update(rootContainer):
     table=rootContainer.getComponent("table")
     table.data=ds
 
+def fetchWindowInfo(windowId, database):
+    print "...fetching the window info..."
+    
+    SQL = "select State, TimerTagPath "\
+        "from SfcDownloadGUI where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL, database)
+
+    state = pds[0]["State"]
+    timerTagPath = pds[0]["TimerTagPath"]
+    
+    print "...fetched State: %s, tagPath: %s" % (state, timerTagPath)
+    return state, timerTagPath
+
 def fetchWindowState(windowId, database):
     print "...fetching the window state..."
-    SQL = "select State, StartTime, TimerTagPath, DATEDIFF(second,LastUpdated,CURRENT_TIMESTAMP) ElapsedSeconds "\
+    SQL = "select State, DATEDIFF(second,LastUpdated,CURRENT_TIMESTAMP) SecondsSinceLastUpdate "\
         "from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
     state = pds[0]["State"]
-    elapsedSeconds = pds[0]["ElapsedSeconds"]
-    startTime = pds[0]["StartTime"]
-    timerTagPath = pds[0]["TimerTagPath"]
-    print "...fetched State: %s, Seconds since last update: %s" % (state, str(elapsedSeconds))
-    return state, elapsedSeconds, startTime, timerTagPath
+    secondsSinceLastUpdate = pds[0]["SecondsSinceLastUpdate"]
+    print "...fetched State: %s..." % (state)
+    return state, secondsSinceLastUpdate
 
 def updateWindowState(windowId, database):
     print "...updating the window state..."
     SQL = "update SfcDownloadGUI set state = 'updated', LastUpdated = CURRENT_TIMESTAMP where windowId = '%s'" % (windowId)
-    rows = system.db.runUpdateQuery(SQL, database)
+    system.db.runUpdateQuery(SQL, database)
     
 def updateStartTime(windowId, startTime, database):
     print "...updating the startTime..."
     startTime=system.db.dateFormat(startTime, "MM/dd/yyyy H:mm:ss")
     startTime="%s"%(startTime)
     SQL = "update SfcDownloadGUI set StartTime = '%s' where windowId = '%s'" % (startTime, windowId)
-    rows = system.db.runUpdateQuery(SQL, database)
+    system.db.runUpdateQuery(SQL, database)
 
 
 # Because download GUI works in conjunction with the writeOutput and PVMonitoring block, it is possible that 
@@ -256,4 +222,65 @@ def updateDatabaseTable(windowId, database):
              stepTimestamp, windowId, recipeDataPath)
 
         system.db.runUpdateQuery(SQL, database)
-   
+
+#---------------------------------------------------------------------------------------   
+# The following methods support the buttons on the download window
+#
+def cancelChart(event):
+    print "Cancelling..."
+    rootContainer = event.source.parent
+        
+    chartRunId = getChartRunId(rootContainer)
+    if chartRunId == None:
+        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
+        return
+
+    # This might be a temporary measure as we also need to honor the Pause / resume from the control panel
+    timerTagPath = rootContainer.timerTagPath
+    system.tag.write(timerTagPath + "/state", "stop")
+
+    from system.sfc import cancelChart
+    cancelChart(chartRunId)
+
+def pauseChart(event):
+    print "Pausing..."
+    rootContainer = event.source.parent
+        
+    chartRunId = getChartRunId(rootContainer)
+    if chartRunId == None:
+        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
+        return
+
+    # This might be a temporary measure as we also need to honor the Pause / resume from the control panel
+    timerTagPath = rootContainer.timerTagPath
+    system.tag.write(timerTagPath + "/state", "pause")
+    
+    from system.sfc import pauseChart
+    pauseChart(chartRunId)
+
+def resumeChart(event):
+    print "Resuming..."
+    rootContainer = event.source.parent
+        
+    chartRunId = getChartRunId(rootContainer)
+    if chartRunId == None:
+        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
+        return
+    
+    # This might be a temporary measure as we also need to honor the Pause / resume from the control panel
+    timerTagPath = rootContainer.timerTagPath
+    system.tag.write(timerTagPath + "/state", "resume")
+    
+    from system.sfc import resumeChart
+    resumeChart(chartRunId)
+    
+def getChartRunId(rootContainer):
+    windowId = rootContainer.windowId
+    
+    SQL = "select chartRunId from sfcControlPanel CP, sfcWindow W "\
+        " where W.controlPanelId = CP.controlPanelId "\
+        " and W.windowId = '%s'" % (windowId)
+        
+    chartRunId = system.db.runScalarQuery(SQL)
+    return chartRunId
+
