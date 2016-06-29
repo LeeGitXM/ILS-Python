@@ -320,6 +320,7 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
             attributes = block.getAttributes()
 #            print "Attributes: ", attributes
             target=attributes.get('Mean (target)')
+            minimumOutOfRange=attributes.get('Minimum Out of Range')
             standardDeviation=attributes.get('StandardDeviation')
             limitType=attributes.get('Limit type')
             
@@ -328,7 +329,7 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
                             "standardDeviation": standardDeviation,
                             "limitType": str(limitType),
                             "sampleSize": sampleSize,
-                            "minimumOutOfRange": 1,
+                            "minimumOutOfRange": minimumOutOfRange,
                             "numberOfStandardDeviations": numberOfStandardDeviations,
                             "state": state
                             }
