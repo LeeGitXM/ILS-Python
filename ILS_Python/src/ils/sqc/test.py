@@ -13,7 +13,7 @@ def internalFrameOpened(rootContainer):
     print "The database is: ", database
     
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
-    SQL = "select A.ApplicationName, F.FamilyName, SD.SQCDiagnosisName, SD.BlockId, ' ' Status "\
+    SQL = "select A.ApplicationName, F.FamilyName, SD.SQCDiagnosisName, SD.BlockId, SD.Status State, ' ' Status "\
         " from DtApplication A, DtFamily F, DtSQCDiagnosis SD "\
         " where F.FamilyId = SD.FamilyId "\
         " and A.ApplicationId = F.ApplicationId "\
