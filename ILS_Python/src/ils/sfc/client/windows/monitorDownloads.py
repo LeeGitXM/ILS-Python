@@ -45,7 +45,7 @@ def update(rootContainer):
         updateWindowState(windowId, database)    
     
     else:
-        # If the database was just updated, then skip the update.  This is useful
+        # If the database was just updated,  then skip the update.  This is useful
         # if there are two or more client watching the same download GUI - they don't both need to do 
         # the work of reading tags and updating the database. 
         if secondsSinceLastUpdate > 1.5:
