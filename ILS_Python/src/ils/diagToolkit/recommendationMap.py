@@ -76,8 +76,9 @@ def updateSqcFlag(diagnoses):
         print "  Diagram UUID: %s" % (str(diagramUUID))
         
         if diagramUUID != None: 
-            # Get the upstream blocks
-            blocks=diagram.listBlocksUpstreamOf(diagramUUID, finalDiagnosisName)
+            # Get the upstream blocks, make sure to jump connections
+            blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
+            
             print "Found upstream blocks: ", str(blocks)
             print "...found %i upstream blocks..." % (len(blocks))
     
