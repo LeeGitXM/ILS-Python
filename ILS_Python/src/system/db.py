@@ -3,6 +3,10 @@ Created on Aug 27, 2014
 
 @author: ILS
 '''
+DOUBLE="DOUBLE"
+INTEGER="INTEGER"
+TIMESTAMP="TIMESTAMP"
+VARCHAR="VARCHAR"
 
 def beginTransaction(SQL):
     return True

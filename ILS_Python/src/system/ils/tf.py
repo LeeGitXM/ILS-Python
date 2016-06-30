@@ -13,6 +13,11 @@ def deleteTag(provider,path):
     pass
 def executeSQL(SQL,database):
     pass
+def getProjectName():
+    return "project"
+def getUserName():
+    return "user"
+
 # Dataset has columns: "ColumnName","TagPath","DataType"
 def populateColumnTagMap(database,table,dataset):
     pass
