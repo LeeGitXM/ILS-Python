@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, deactivate, state):
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
         handleUnexpectedGatewayError, getDelaySeconds, sendOpenWindow
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
@@ -14,9 +14,11 @@ def activate(scopeContext, stepProperties, deactivate):
     from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
     RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, \
     BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
+    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
     import system.db
     import time
 
+    print "State: ", state
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)

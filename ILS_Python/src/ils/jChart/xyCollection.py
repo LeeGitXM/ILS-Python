@@ -58,3 +58,10 @@ def addPointToSeries(chart, plotIndex, seriesIndex, x, y):
     
     plot = getPlot(chart, plotIndex)
     plot.getDataset().getSeries(seriesIndex).add(x,y)
+
+# Add a single x,y data point to an existing series
+def addPointToAxisSeries(chart, plotIndex, axisIndex, seriesIndex, x, y):
+    from ils.jChart.common import getPlot
+    
+    plot = getPlot(chart, plotIndex)
+    plot.getDataset(axisIndex).getSeries(seriesIndex).add(x,y)
