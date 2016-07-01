@@ -124,7 +124,6 @@ STATIC = "static"
 STATUS = "status"
 STEP = 'step'
 STEP_PROPERTIES = 'stepProperties'
-STEP_NAME = 'stepName'
 STRATEGY = "strategy"
 SUM_FLOWS = 'sumFlows'
 TAG_PATH = 'tagPath'

@@ -85,6 +85,7 @@ def activate(scopeContext, stepProperties, deactivate):
         transferStepPropertiesToMessage(stepProperties, payload)
         project = getProject(chartScope)
         sendMessageToClient(project, 'sfcOpenWindow', payload)
+        print "Monitor Download payload: ", payload
         logger.trace("...leaving monitorDownload.activate()")      
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorDownload.py', logger)

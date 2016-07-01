@@ -9,6 +9,35 @@ Created on Jun 18, 2015
 
 import system
 
+def handleTimerCommand(tagPath, previousValue, currentValue, initialChange, missedEvents):
+    val = currentValue.value
+    print "Handling a change in command for: ", tagPath
+    parentPath = tagPath[:tagPath.rfind("/")]
+    print "The parent path is <%s>" % (parentPath)
+    if val == "clear":
+        print "Clear the run time"
+        system.tag.write(parentPath + "/runTime", 0.0)
+    elif val == "run":
+        print "Set the start time"
+        
+#        system.tag.write(parentPath + "/startTime", now)
+    elif val == "pause":
+        print "PAUSE"
+    elif val == "resume":
+        print "resume"
+    else:
+        print "Unsupported command: ", currentValue
+
+def updateTimers(tagProvider="[XOM]"):
+#    print "Updating Timers..."
+    browseTags = system.tag.browseTags(parentPath=tagProvider, udtParentType="SFC/Timer", recursive=True)
+#    print "Browse returned %i timers..." % (len(browseTags))
+    for browseTag in browseTags:
+        timerPath = browseTag.fullPath
+        state=system.tag.read(timerPath + "/state")
+#        if state == "run":
+#            print "RUNIT"
+
 def handleTimer(chartScope, stepScope, stepProperties, logger):
     '''perform the timer-related logic for a step'''
     from ils.sfc.gateway.api import s88Set, s88Get

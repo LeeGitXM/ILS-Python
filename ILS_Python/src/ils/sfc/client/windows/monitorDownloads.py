@@ -22,6 +22,52 @@ def internalFrameOpened(rootContainer):
     update(rootContainer)
 #    configureTable(windowId, database)
 
+def cancelChart(event):
+    print "Cancelling..."
+    rootContainer = event.source.parent
+        
+    chartRunId = getChartRunId(rootContainer)
+    if chartRunId == None:
+        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
+        return
+
+    from system.sfc import cancelChart
+    cancelChart(chartRunId)
+
+def pauseChart(event):
+    print "Pausing..."
+    rootContainer = event.source.parent
+        
+    chartRunId = getChartRunId(rootContainer)
+    if chartRunId == None:
+        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
+        return
+
+    from system.sfc import pauseChart
+    pauseChart(chartRunId)
+
+def resumeChart(event):
+    print "Resuming..."
+    rootContainer = event.source.parent
+        
+    chartRunId = getChartRunId(rootContainer)
+    if chartRunId == None:
+        system.gui.warningBox("Unable to locate a chartRunId, chart cannot be cancelled")
+        return
+    
+    from system.sfc import resumeChart
+    resumeChart(chartRunId)
+    
+def getChartRunId(rootContainer):
+    windowId = rootContainer.windowId
+    
+    SQL = "select chartRunId from sfcControlPanel CP, sfcWindow W "\
+        " where W.controlPanelId = CP.controlPanelId "\
+        " and W.windowId = '%s'" % (windowId)
+        
+    chartRunId = system.db.runScalarQuery(SQL)
+    return chartRunId
+
 def update(rootContainer):
     print "In monitorDownloads.update()"
 
