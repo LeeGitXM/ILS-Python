@@ -1,4 +1,4 @@
-# Copyright 2015. ILS Automation. All rights reserved.
+# Copyright 2015-2016. ILS Automation. All rights reserved.
 # Direct tag operations for use with the test framework
 
 # Read the timestamp of a tag and return as an integer

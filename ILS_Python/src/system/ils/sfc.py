@@ -3,23 +3,25 @@ Created on Nov 4, 2014
 
 @author: rforbes
 '''
+
+def activateStep(className, chartProperties, stepProperties):
+    pass
+def addRequestId((windowId, stepId)):
+    pass
+def chartState(chartId):
+    return "running"
 def clearRequestResponseMaps():
     pass
 def clearStepMonitor():
     pass
-def startStepMonitor():
+def debugChart(path, project, user, isolation):
     pass
-def stopStepMonitor():
+def dropboxGet():
+    pass
+def dropboxPut():
     pass
 def getResponse(id):
     pass
-
-def setResponse(payload):
-    pass
-
-def addRequestId((windowId, stepId)):
-    pass
-
 def getReviewData(chartScope, stepScope, configJson, addAdvice):
     pass
 
@@ -32,17 +34,15 @@ def getReviewFlowsConfig():
 def getReviewDataConfig():
     pass
 
-def activateStep(className, chartProperties, stepProperties):
-    pass
 
 def s88DataExists(chartProperties, stepProperties, ckey, location):
     pass
 
-#TODO: delete this
+# TODO: delete this
 def s88GetScope(chartProperties, stepProperties, location):
     pass
 
-#TODO: delete this
+# TODO: delete this
 def s88ScopeChanged(chartProperties, stepProperties):
     pass
 
@@ -70,11 +70,7 @@ def getMonitorDownloadsConfig(json):
 def getManualDataEntryConfig(json):
     pass
 
-def dropboxPut():
-    pass
 
-def dropboxGet():
-    pass
 
 def getRecipeDataTagPath(chartScope, stepScope, scopeId):
     pass
@@ -85,7 +81,12 @@ def parseValue(str):
 # Methods for unit tests
 def initializeTests(reportFile):
     '''clear out any old tests and establish the report file for the new tests'''
-    
+def setResponse(payload):
+    pass 
+def startStepMonitor():
+    pass
+def stopStepMonitor():
+    pass  
 def startTest(chartPath):
     '''start a test'''
     
@@ -124,7 +125,7 @@ def reportTests():
 def getMatchingCharts(regex):
     '''Get the chart paths that match the regex'''
     
-def watchChart(chartId,name):
+def watchChart(chartId, name):
     '''chart state event handler'''
 
 # new session stuff:
