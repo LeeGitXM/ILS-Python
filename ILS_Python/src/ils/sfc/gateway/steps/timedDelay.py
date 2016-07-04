@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate, state):
+def activate(scopeContext, stepProperties, state):
     from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
         handleUnexpectedGatewayError, getDelaySeconds, sendOpenWindow
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
@@ -23,7 +23,7 @@ def activate(scopeContext, stepProperties, deactivate, state):
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
 
-    if deactivate:
+    if state == DEACTIVATED:
         chartLogger.trace("Handling deactivate request for a TimedDelay block")
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope, stepProperties)
