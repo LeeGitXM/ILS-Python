@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, state):
     '''see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and 
     S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
@@ -14,6 +14,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from system.ils.sfc.common.Constants import CLASS, DATA_LOCATION, DOWNLOAD_STATUS, IMMEDIATE, KEY, MONITOR, MONITORING, \
     RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, RECIPE, SETPOINT, STEP_TIME,  STRATEGY, STATIC, TAG, \
     TARGET_VALUE, TIMEOUT, VALUE, WAIT 
+    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
 
     from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
         PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
@@ -21,7 +22,7 @@ def activate(scopeContext, stepProperties, deactivate):
     from java.util import Date 
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getProviderName, getPVMonitorConfig
-    from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart, getElapsedMinutes
+    from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart, getElapsedMinutes, pauseTimer, resumeTimer
     from ils.sfc.gateway.recipe import RecipeData
     from ils.io.api import getMonitoredTagPath
 
@@ -43,7 +44,7 @@ def activate(scopeContext, stepProperties, deactivate):
         print "The step name is:", stepName
         
         logger = getChartLogger(chartScope)
-        logger.trace("In monitorPV.activate(), deactivate=%s..." % (str(deactivate)))
+        logger.trace("In monitorPV.activate(), state=%s..." % (state))
         
         # Everything will have the same tag provider - check isolation mode and get the provider
         isolationMode = getIsolationMode(chartScope)
@@ -51,10 +52,15 @@ def activate(scopeContext, stepProperties, deactivate):
     
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
-        if deactivate:
+        if state == DEACTIVATED:
             logger.trace("*** A deactivate has been detected ***")
             complete=True
-        
+        elif state == PAUSED:
+            logger.trace("The PV Monitor was paused")
+            pauseTimer(chartScope, stepScope, stepProperties, logger)
+        elif state == RESUMED:
+            logger.trace("The PV Monitor was paused")
+            resumeTimer(chartScope, stepScope, stepProperties, logger)
         else:
             if not initialized:
                 logger.trace("...initializing PV Monitor step %s ..." % (stepName))

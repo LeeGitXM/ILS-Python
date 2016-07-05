@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):   
+def activate(scopeContext, stepProperties, state):   
     from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getProject, getChartLogger
     try:

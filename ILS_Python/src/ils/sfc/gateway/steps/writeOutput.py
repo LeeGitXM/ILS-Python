@@ -4,18 +4,19 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate): 
+def activate(scopeContext, stepProperties, state): 
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, \
     STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
+    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
     from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY
     import system, time
     from java.util import Date, Calendar
     from ils.sfc.common.util import formatTime
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getWriteOutputConfig
-    from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart
+    from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart, pauseTimer, resumeTimer
     from ils.sfc.gateway.recipe import RecipeData
     from ils.sfc.gateway.downloads import writeValue
     from ils.sfc.gateway.abstractSfcIO import AbstractSfcIO
@@ -36,14 +37,19 @@ def activate(scopeContext, stepProperties, deactivate):
     providerName = getProviderName(isolationMode)
         
     logger = getChartLogger(chartScope)
-    logger.trace("In writeOutput.activate() (deactivate: %s)..." % (deactivate))
+    logger.trace("In writeOutput.activate() (state: %s)..." % (state))
     
     # This does not initially exist in the step scope dictionary, so we will get a value of False
     initialized = stepScope.get(INITIALIZED, False)
-    if deactivate:
+    if state == DEACTIVATED:
         logger.trace("*** A deactivate has been detected ***")
         complete=True
-        
+    elif state == PAUSED:
+        logger.trace("The writeOutput was paused")
+        pauseTimer(chartScope, stepScope, stepProperties, logger)
+    elif state == RESUMED:
+        logger.trace("The writeOutput was paused")
+        resumeTimer(chartScope, stepScope, stepProperties, logger)
     elif not initialized:
         stepScope[INITIALIZED]=True
         logger.info("Initializing a Write Output block")

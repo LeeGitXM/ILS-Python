@@ -15,6 +15,8 @@ from ils.common.config import getDatabaseClient, getTagProviderClient
 def internalFrameOpened(rootContainer):
     print "In monitorDownloads.internalFrameOpened()"
 
+    database = getDatabaseClient()
+    windowId = rootContainer.windowId
     state, timerTagPath = fetchWindowInfo(windowId, database)
     rootContainer.timerTagPath = timerTagPath
 

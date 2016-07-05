@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, state):
     '''
     Action for java YesNoStep
     Get a yes/no response from the user; block until a
@@ -18,4 +18,4 @@ def activate(scopeContext, stepProperties, deactivate):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
     if isEmpty(buttonLabel):
         buttonLabel = 'Y/N'
-    return commonInput.activate(scopeContext, stepProperties, deactivate, buttonLabel, 'SFC/YesNo')
+    return commonInput.activate(scopeContext, stepProperties, state, buttonLabel, 'SFC/YesNo')

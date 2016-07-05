@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):  
+def activate(scopeContext, stepProperties, state):  
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, \
     getControlPanelId, createWindowRecord, createSaveDataRecord, sendOpenWindow, getStepId
     from system.ils.sfc.common.Constants import COMPUTER, SERVER, FILENAME, BUTTON_LABEL, \

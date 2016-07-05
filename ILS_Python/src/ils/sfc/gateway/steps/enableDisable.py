@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, state):
     from  system.ils.sfc.common.Constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL
     from ils.sfc.gateway.util import getStepProperty, getControlPanelId, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName

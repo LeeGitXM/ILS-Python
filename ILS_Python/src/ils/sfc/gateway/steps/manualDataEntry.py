@@ -4,9 +4,10 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):    
+def activate(scopeContext, stepProperties, state):    
     from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOMATIC, DATA, \
     BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS
+    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
     from system.ils.sfc import getManualDataEntryConfig 
     from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.util import getStepId, sendOpenWindow, createWindowRecord, \
@@ -22,7 +23,7 @@ def activate(scopeContext, stepProperties, deactivate):
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
 
-    if deactivate:
+    if state == DEACTIVATED or state == CANCELLED:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope)
         return False

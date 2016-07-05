@@ -4,13 +4,13 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):    
+def activate(scopeContext, stepProperties, state):    
     from ils.sfc.gateway.util import sendOpenWindow, getTimeoutTime, getStepId, createWindowRecord, \
         getControlPanelId, hasStepProperty, getStepProperty,  handleUnexpectedGatewayError
     from ils.sfc.gateway.api import s88Set, getDatabaseName, getChartLogger
     from ils.sfc.common.util import isEmpty 
-    from system.ils.sfc.common.Constants import \
-    PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE
+    from system.ils.sfc.common.Constants import PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE
+    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
     from ils.sfc.common.constants import PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, BUTTON_LABEL, \
         POSITION, SCALE, WINDOW_TITLE, BUTTON_KEY_LOCATION, BUTTON_KEY
     from system.ils.sfc import getReviewData
@@ -22,7 +22,7 @@ def activate(scopeContext, stepProperties, deactivate):
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
 
-    if deactivate:
+    if state == DEACTIVATED:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope)
         return False

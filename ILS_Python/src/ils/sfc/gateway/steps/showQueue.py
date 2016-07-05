@@ -4,7 +4,7 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, state):
     '''
     action for java ShowQueueStep
     send a message to the client to show the current message queue

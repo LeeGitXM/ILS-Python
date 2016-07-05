@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, state):
     import system.db
     from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
     from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError

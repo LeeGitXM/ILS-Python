@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, state):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import s88Get, getChartLogger
     from system.ils.sfc.common.Constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY, BUTTON_LABEL
@@ -27,4 +27,4 @@ def activate(scopeContext, stepProperties, deactivate):
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in selectInput.py', chartLogger)
         return True
     
-    return commonInput.activate(scopeContext, stepProperties, deactivate, buttonLabel, 'SFC/SelectInput', choices)
+    return commonInput.activate(scopeContext, stepProperties, state, buttonLabel, 'SFC/SelectInput', choices)

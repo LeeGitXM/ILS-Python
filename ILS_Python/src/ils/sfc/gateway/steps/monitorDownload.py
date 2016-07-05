@@ -7,7 +7,7 @@ Created on Dec 17, 2015
 import system
 from com.sun.rowset.internal import Row
 
-def activate(scopeContext, stepProperties, deactivate): 
+def activate(scopeContext, stepProperties, state): 
     from system.ils.sfc.common.Constants import BUTTON_LABEL, RECIPE_LOCATION, MONITOR_DOWNLOADS_CONFIG, DATA_ID, DOWNLOAD_STATUS, \
         WRITE_CONFIRMED, POSITION, SCALE, TIMER_KEY, WINDOW_TITLE, PROMPT, KEY
     from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID

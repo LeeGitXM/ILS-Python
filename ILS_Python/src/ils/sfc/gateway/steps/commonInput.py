@@ -3,7 +3,7 @@ Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, choices=None, lowLimit=None, highLimit=None):
+def activate(scopeContext, stepProperties, state, buttonLabel, windowType, choices=None, lowLimit=None, highLimit=None):
     '''
     Action for java InputStep
     Get an response from the user; block until a
@@ -14,15 +14,15 @@ def activate(scopeContext, stepProperties, deactivate, buttonLabel, windowType, 
         getStepId, dbStringForFloat, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName, getChartLogger
     from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT
-    from ils.sfc.common.constants import TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME,\
-    WINDOW_ID
+    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
+    from ils.sfc.common.constants import TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID 
     import system.util
     import system.db
 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
-    if deactivate:
+    if state == DEACTIVATED:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope)
         return False

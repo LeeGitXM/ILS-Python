@@ -7,27 +7,32 @@ Created on Jun 18, 2015
 @author: rforbes
 '''
 
-import system
+import system, time
 from java.util import Date, Calendar
+from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED, TAG_PATH, \
+    TIMER_STATE, TIMER_STATE_CANCEL, TIMER_STATE_CLEAR, TIMER_STATE_PAUSE, TIMER_STATE_RESUME, TIMER_STATE_RUN, TIMER_STATE_STOP, \
+    TIMER_LOCATION, TIMER_KEY, TIMER_SET, TIMER_CLEAR, TIMER_RUN_MINUTES, TIMER_START_TIME
 
+'''
+These methods make the timer UDT work.  They are called by a tag change script on the UDT or by a scripting function on the UDT
+'''
 def handleTimerCommand(tagPath, previousValue, currentValue, initialChange, missedEvents):
     val = currentValue.value
     print "Handling a change in command for: ", tagPath
     parentPath = tagPath[:tagPath.rfind("/")]
     print "The parent path is <%s>" % (parentPath)
-    if val == "clear":
+    if val == TIMER_STATE_CLEAR:
         print "Clear the run time"
         system.tag.write(parentPath + "/runTime", 0.0)
-    elif val == "run":
+    elif val == TIMER_STATE_RUN:
         print "Set the start time"
         startTime = Date().getTime()
         system.tag.write(parentPath + "/startTime", startTime)
-#        system.tag.write(parentPath + "/startTime", now)
-    elif val == "pause":
+    elif val == TIMER_STATE_PAUSE:
         print "PAUSE"
-    elif val == "resume":
+    elif val == TIMER_STATE_RESUME:
         print "resume"
-    elif val in ['stop', 'cancel']:
+    elif val in [TIMER_STATE_STOP, TIMER_STATE_CANCEL]:
         print "stop or cancel"
     else:
         print "Unsupported command: ", currentValue
@@ -40,7 +45,7 @@ def updateTimer(tagPath, previousValue, currentValue, initialChange, missedEvent
         
     # If the timer is running then update the runtime by calculating the elapsed time since it was last updated or it started running.
     # If the current state is resume, then the last state must have been paused.
-    if state.value in ["run", "resume"]:
+    if state.value in [TIMER_STATE_RUN, TIMER_STATE_RESUME]:
         runtime = qvs[1]
         now = Date().getTime()
 
@@ -52,19 +57,44 @@ def updateTimer(tagPath, previousValue, currentValue, initialChange, missedEvent
             elapsedMs = now - runtime.timestamp.getTime()
 #            print "The elapsed seconds is: ", str(elapsedMs / 1000.0)
         system.tag.write(parentPath + "/runTime", runtime.value + elapsedMs / 1000.0 / 60.0)
+
+'''
+These methods are called by steps that use a timer.  This is designed so that any step that is using a timer 
+can pause it.  It does not have to be the step that was designated to set (start) or clear the timer, those 
+steps may have finished.  Since individual steps cannot be paused, this should work.
+'''
+def pauseTimer(chartScope, stepScope, stepProperties, logger):
+    from ils.sfc.gateway.util import getStepProperty
+    from ils.sfc.gateway.recipe import RecipeData, splitKey
         
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+    timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
+    timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
+    timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
+    timerState = timer.get(TIMER_STATE)
+    print "The Timer state is: ", timerState
+    if timerState <> TIMER_STATE_PAUSE:
+        logger.info("Pausing the download timer...")
+        timer.set(TIMER_STATE, TIMER_STATE_PAUSE)
+
+def resumeTimer(chartScope, stepScope, stepProperties, logger):
+    from ils.sfc.gateway.util import getStepProperty
+    from ils.sfc.gateway.recipe import RecipeData, splitKey
+    
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+    timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
+    timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
+    timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
+    timerState = timer.get(TIMER_STATE)
+    print "The Timer state is: ", timerState
+    if timerState <> TIMER_STATE_RESUME:
+        logger.info("Resuming the download timer...")
+        timer.set(TIMER_STATE, TIMER_STATE_RESUME)
 
 def handleTimer(chartScope, stepScope, stepProperties, logger):
     '''perform the timer-related logic for a step'''
-    from ils.sfc.gateway.api import s88Set, s88Get
     from ils.sfc.gateway.util import getStepProperty
-    from ils.sfc.gateway.recipe import getSiblingKey
-    from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY, TIMER_SET, TIMER_CLEAR, DATA_ID
-    from java.util import Date
     from ils.sfc.gateway.recipe import RecipeData, splitKey
-    
-    #TODO This can't be hardcoded
-    timerPath = "[XOM]Sandbox/SFC Use Cases/Timer1"
     
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
@@ -72,61 +102,52 @@ def handleTimer(chartScope, stepScope, stepProperties, logger):
 #    print "The step properties are: ", stepProperties
     timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
     timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
+
     # Note: there may be no timer-clear property, in which case the
     # value is null which 
     clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
     if clearTimer:
         logger.info("Clearing the download timer...")
-#        timer.set(timerAttribute, None)
-        system.tag.write(timerPath + "/state", "clear")
-                
+        timer.set(TIMER_STATE, TIMER_STATE_CLEAR)
+
     setTimer = getStepProperty(stepProperties, TIMER_SET)
     if setTimer:
-        # print 'starting timer'
-        logger.info("Setting the download timer...")
-#        timer.set(timerAttribute, Date())
-        system.tag.write(timerPath + "/state", "run")
+        logger.info("Starting the download timer...")
+        print "Clearing..."
+        timer.set(TIMER_STATE, TIMER_STATE_CLEAR)
+        time.sleep(0.5)
+        print "Running..."
+        timer.set(TIMER_STATE, TIMER_STATE_RUN)
 
     return timer, timerAttribute
 
 # Get the timer run time in minutes
 def getRunMinutes(chartScope, stepScope, stepProperties):
-    #TODO This can't be hardcoded
-    timerPath = "[XOM]Sandbox/SFC Use Cases/Timer1"
-    qv = system.tag.read(timerPath + "/runTime")
+    from ils.sfc.gateway.recipe import RecipeData, splitKey
+    from ils.sfc.gateway.util import getStepProperty
     
-    if not(qv.quality.isGood()):
-        return 0.0
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+    timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
+    timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
+    timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
     
-    return qv.value
+    runMinutes = timer.get(TIMER_RUN_MINUTES)
+    
+    return runMinutes
 
+# Get the start time for a timer (will be None if cleared but not set)
 # The timer start time is read from a date time tag (recipe data)
-#TODO - this may be obsolete and/or needs to be reworked
 def getTimerStart(chartScope, stepScope, stepProperties):
-    '''get the start time for a timer (will be None if cleared but not set)'''
-    timerPath = "[XOM]Sandbox/SFC Use Cases/Timer1"
-    qv = system.tag.read(timerPath + "/startTime")
+    from ils.sfc.gateway.recipe import RecipeData, splitKey
+    from ils.sfc.gateway.util import getStepProperty
     
-    if not(qv.quality.isGood()):
-        return None
-    
-    return qv.value
-    
-#    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-#    from ils.sfc.gateway.api import s88Get
-#    from system.ils.sfc.common.Constants import TIMER_LOCATION, TIMER_KEY
-#    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
-#    timerKey = getStepProperty(stepProperties, TIMER_KEY)
-#    timerStart = s88Get(chartScope, stepScope, timerKey, timerLocation)
-    # print 'getting timer start'
-    # do a sanity check on the timer start:
-    #topChartStartTime = getTopChartStartTime(chartScope)
-    #if timerStart != None and timerStart < topChartStartTime:
-    #   handleUnexpectedGatewayError(chartScope, "download timer read before set or cleared; stale value")
-    
-#    return timerStart
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+    timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
+    timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
+    timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
+    startTime = timer.get(TIMER_START_TIME)
+    return startTime
 
-#TODO - This may be obsolete
 # This returns the elapsed time in minutes from the given Java time (milliseconds sine the epoch)
 def getElapsedMinutes(startTime):
     from java.util import Date

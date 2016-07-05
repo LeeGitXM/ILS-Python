@@ -4,10 +4,10 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, deactivate):
+def activate(scopeContext, stepProperties, state):
     import time
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getTimeoutTime, \
-    logStepDeactivated
+    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getTimeoutTime, logStepDeactivated
+    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
     from system.ils.sfc.common.Constants import MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, MESSAGE_ID, TIMED_OUT
     from ils.queue.message import insert
@@ -19,7 +19,7 @@ def activate(scopeContext, stepProperties, deactivate):
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
 
-    if deactivate:
+    if state == DEACTIVATED:
         # no cleanup is needed
         logStepDeactivated(chartScope, stepProperties)
         return False
