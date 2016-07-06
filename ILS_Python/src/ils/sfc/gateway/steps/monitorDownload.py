@@ -33,8 +33,6 @@ def activate(scopeContext, stepProperties, state):
         database = getDatabaseName(isolationMode)
         
         print "Using database: ", database
-    
-#        mgr = createMonitoringMgr(chartScope, stepScope, recipeLocation, timer, timerAttribute, monitorDownloadsConfig, logger, providerName)
         
         # Insert a window record into the database
         controlPanelId = getControlPanelId(chartScope)
@@ -50,10 +48,7 @@ def activate(scopeContext, stepProperties, state):
         print "Getting the full timer tagPath..."
         timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
         timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
-        timerTagPath = s88GetFullTagPath(chartScope, stepScope, timerKey, recipeLocation) + '/value'
-        
-        #todo GET THE REAL TTAGPATH
-        timerTagPath = "[XOM]Sandbox/SFC Use Cases/Timer1/runTime"
+        timerTagPath = s88GetFullTagPath(chartScope, stepScope, timerKey, recipeLocation)
         
         SQL = "insert into SfcDownloadGUI (windowId, state, LastUpdated, timerTagPath) values ('%s', 'created', CURRENT_TIMESTAMP, '%s')" % (windowId, timerTagPath)
         system.db.runUpdateQuery(SQL, database)

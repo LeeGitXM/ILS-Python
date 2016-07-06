@@ -27,6 +27,7 @@ def update(rootContainer):
 
     windowId = rootContainer.windowId
     timerTagPath = rootContainer.timerTagPath
+    print "The timer tag path is: ", timerTagPath
     database = getDatabaseClient()
     tagProvider = getTagProviderClient()
     

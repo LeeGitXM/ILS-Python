@@ -8,7 +8,7 @@ def activate(scopeContext, stepProperties, state):
     getTopChartRunId, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, s88Set
     from system.ils.sfc.common.Constants import COLLECT_DATA_CONFIG
-    from ils.sfc.common.util import substituteProvider
+    from ils.sfc.common.util import substituteHistoryProvider
     from system.util import jsonDecode
     import system.tag
  
@@ -23,17 +23,21 @@ def activate(scopeContext, stepProperties, state):
     
         # config.errorHandling
         for row in config['rows']:
-            tagPath = substituteProvider(chartScope, row['tagPath'])
             valueType = row['valueType']
-            logger.info("Collecting %s from %s" % (str(valueType), str(tagPath)))
+            
             if valueType == 'current':
                 try:
+                    tagPath=row['tagPath']
+                    logger.trace("Collecting %s from %s" % (str(valueType), str(tagPath)))
                     tagReadResult = system.tag.read(tagPath)
                     tagValue = tagReadResult.value
                     readOk = tagReadResult.quality.isGood()
                 except:
+                    logger.error("Error reading the current value for %s" % (tagPath))
                     readOk = False
             else:
+                tagPath = substituteHistoryProvider(chartScope, row['tagPath'])
+                logger.trace("Collecting %s from %s" % (str(valueType), str(tagPath)))
                 tagPaths = [tagPath]
                 if valueType == 'stdDeviation':
                     logger.trace("calling queryTagHistory() to fetch the dataset for calculating the standard deviation") 
@@ -58,7 +62,6 @@ def activate(scopeContext, stepProperties, state):
                         # ?? how do we tell if there was an error??
                         if tagValues.rowCount == 1:
                             tagValue = tagValues.getValueAt(0,1)
-                            print 'mode', mode, 'value', tagValue
                             logger.trace("Successfully returned: %s" )
                             readOk = True
                         else:
@@ -66,6 +69,7 @@ def activate(scopeContext, stepProperties, state):
                     except:
                         readOk = False
             if readOk:
+                logger.info("Tag Path: %s, Mode: %s => %d " % (tagPath, valueType, tagValue))
                 s88Set(chartScope, stepScope, row['recipeKey'], tagValue, row['location'])
             else:
                 # ?? should we write a None value to recipe data for abort/timeout cases ??

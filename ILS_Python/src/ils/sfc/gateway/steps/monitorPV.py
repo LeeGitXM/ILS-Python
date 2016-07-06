@@ -39,12 +39,9 @@ def activate(scopeContext, stepProperties, state):
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-        
         stepName = getStepProperty(stepProperties, NAME)
-        print "The step name is:", stepName
-        
         logger = getChartLogger(chartScope)
-        logger.trace("In monitorPV.activate(), state=%s..." % (state))
+        logger.trace("In monitorPV.activate(), step: %s, state: %s..." % (stepName, state))
         
         # Everything will have the same tag provider - check isolation mode and get the provider
         isolationMode = getIsolationMode(chartScope)
@@ -59,7 +56,7 @@ def activate(scopeContext, stepProperties, state):
             logger.trace("The PV Monitor was paused")
             pauseTimer(chartScope, stepScope, stepProperties, logger)
         elif state == RESUMED:
-            logger.trace("The PV Monitor was paused")
+            logger.trace("The PV Monitor was resumed")
             resumeTimer(chartScope, stepScope, stepProperties, logger)
         else:
             if not initialized:

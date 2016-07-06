@@ -81,6 +81,7 @@ MSG_QUEUE_WINDOW = 'Queue/Message Queue'
 MULTIPLE = "multiple"
 NAME = "name"
 NUMBER_OF_TIMEOUTS = "numberOfTimeouts"
+NUMBER_OF_ERRORS = 'numberOfErrors'
 OK = 'Ok'
 ORIGINATOR = 'originator'
 PARENT = 'parent'
