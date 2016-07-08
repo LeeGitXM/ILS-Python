@@ -367,12 +367,8 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         # Notify clients to update their setpoint spreadsheet
         from ils.diagToolkit.finalDiagnosis import notifyClients
         project = system.util.getProjectName()
-        print "A"
         rootContainer = theMap.parent
-        print "RoorContainer: ", rootContainer
-        print "B"
         post = rootContainer.getPropertyValue('post')
-        print "C"
         notifyClients(project, post, "", numOutputs)
         print "Done"
         
