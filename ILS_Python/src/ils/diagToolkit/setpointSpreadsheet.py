@@ -646,7 +646,7 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     print "Before: ", quantOutput
     
     from ils.diagToolkit.finalDiagnosis import checkBounds
-    quantOutput = checkBounds(quantOutput, database, tagProvider)
+    quantOutput, madeSignificantRecommendation = checkBounds(quantOutput, database, tagProvider)
     
     print "After: ", quantOutput
     
