@@ -14,7 +14,6 @@ def client():
     log.info("Initializing...")
 
 
-
 def gateway():
     # Create gateway loggers
     log = system.util.getLogger("com.ils.common")
@@ -34,6 +33,7 @@ def createTags(tagProvider, log):
     path = tagProvider + "Configuration/Common/"
 
     data.append([path, "writeEnabled", "Boolean", "True"])
+    data.append([path, "historyTagProvider", "String", "XOMHistory"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
