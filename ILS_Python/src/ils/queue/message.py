@@ -191,4 +191,11 @@ def updateSuperView(rootContainer):
     
     pds = system.db.runPrepQuery(SQL, [startDate, endDate])
     table.data = pds
+
+def messageDetail(txt):
+    windowName = 'Queue/Message Detail'
+
+    print "Opening a queue window..."
+    window=system.nav.openWindowInstance(windowName, {'txt': txt})
+    system.nav.centerWindow(window)
     
