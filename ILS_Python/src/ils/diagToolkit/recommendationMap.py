@@ -6,16 +6,20 @@ Created on Sep 9, 2014
 import system
 from uuid import UUID
 
-def build(rootContainer, db=""):
+def build(rootContainer):
     quantOutputName=rootContainer.quantOutputName
     print "Building a recommendation map for Quant Output: ", quantOutputName
 
+    # Get the production/isolation tag provider and database 
+    db=system.tag.read("[Client]Database").value
+    provider=system.tag.read("[Client]Tag Provider").value
+    
     theMap = rootContainer.getComponent("TheMap")
     diagnoses = fetchDiagnosisForQuantOutput(quantOutputName, db)
     diagnoses = updateSqcFlag(diagnoses)
     theMap.diagnoses=diagnoses
     
-    outputs=fetchQuantOutput(quantOutputName, db)
+    outputs=fetchQuantOutput(quantOutputName, db, provider)
     theMap.outputs=outputs
     
     recDefs=fetchRecDefs(diagnoses, outputs, db)
@@ -25,9 +29,9 @@ def build(rootContainer, db=""):
     theMap.recommendations=recommendations    
 
 
-def fetchQuantOutput(quantOutputName, db=""):
+def fetchQuantOutput(quantOutputName, db, provider):
     print "Fetching the quant output..."
-    SQL = "select QuantOutputName, TagPath, convert(decimal(10,4),CurrentSetpoint) as CurrentSetpoint, "\
+    SQL = "select QuantOutputName, TagPath, convert(decimal(10,4),CurrentSetpoint) as CurrentSetpoint, Active, "\
         " convert(decimal(10,4),FinalSetpoint) as FinalSetpoint, convert(decimal(10,4),DisplayedRecommendation) as DisplayedRecommendation "\
         " from DtQuantOutput "\
         " where QuantOutputName = '%s' "\
@@ -35,11 +39,23 @@ def fetchQuantOutput(quantOutputName, db=""):
     print SQL
     pds = system.db.runQuery(SQL, database=db)
     print "  ...fetched %i Quant Outputs..." % (len(pds))
-    
+
     headers=["Name","CurrentSetpoint","FinalSetpoint","Recommendation","Target"]
     data = []
     for record in pds:
-        data.append([record["QuantOutputName"],record["CurrentSetpoint"],record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
+        print "Active: ", record["Active"]
+        if record["Active"] in [1, True]:
+            data.append([record["QuantOutputName"],record["CurrentSetpoint"],record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
+        else:
+            print "Need to read current SP"
+            tagPath = '[' + provider + ']' + record['TagPath']
+            sp = system.tag.read(tagPath)
+            if sp.quality.isGood():
+                sp = sp.value
+            else:
+                sp = "Bad Value"
+            data.append([record["QuantOutputName"],sp,record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
+            
     ds = system.dataset.toDataSet(headers, data)
     return ds
 
@@ -79,11 +95,9 @@ def updateSqcFlag(diagnoses):
             # Get the upstream blocks, make sure to jump connections
             blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
             
-            print "Found upstream blocks: ", str(blocks)
             print "...found %i upstream blocks..." % (len(blocks))
     
             for block in blocks:
-                print "Found a %s block..." % (block.getClassName())
                 if block.getClassName() == "xom.block.sqcdiagnosis.SQCDiagnosis":
                     print "   ... found a SQC diagnosis..."
                     blockId=block.getIdString()
