@@ -54,9 +54,8 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         exec("from %s import %s" % (package,module))
 
     try:
-        print "Calling..."
         calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
-        print "...back!"
+        log.info("...back from the calculation method!")
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
@@ -64,7 +63,20 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         return [], "ERROR"
 
     else:
+        log.info("The calculation method returned explanation: %s" % (explanation))
         log.info("Received recommendations: %s" % (str(rawRecommendationList)))
+
+        # Insert text returned by the calculation method into the application Queue
+        from ils.queue.commons import getQueueForDiagnosticApplication
+        applicationQueue = getQueueForDiagnosticApplication(application, database)
+            
+        from ils.queue.message import insert
+        if calculationSuccess:
+            messageLevel = QUEUE_INFO
+        else:
+            messageLevel = QUEUE_ERROR
+        insert(applicationQueue, messageLevel, explanation, database)
+        log.info("Explanation: %s - %s" % (messageLevel, explanation))
         
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
         # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
@@ -88,18 +100,6 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
             logSQL.trace(SQL)
             system.db.runUpdateQuery(SQL, database)
-
-            # Insert text returned by the calculation method into the application Queue
-            from ils.queue.commons import getQueueForDiagnosticApplication
-            applicationQueue = getQueueForDiagnosticApplication(application, database)
-            
-            from ils.queue.message import insert
-            if calculationSuccess:
-                messageLevel = QUEUE_INFO
-            else:
-                messageLevel = QUEUE_ERROR
-            insert(applicationQueue, messageLevel, explanation, database)
-            log.info("Explanation: %s - %s" % (messageLevel, explanation))
 
             recommendationList=[]
             log.info("  The recommendations returned from the calculation method are: ")
