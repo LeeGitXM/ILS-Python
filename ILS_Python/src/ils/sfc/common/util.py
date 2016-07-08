@@ -49,8 +49,10 @@ def boolToBit(bool):
 def substituteHistoryProvider(chartProperties, tagPath):
     from ils.sfc.gateway.api import getProviderName
     '''alter the given tag path to reflect the isolation mode provider setting'''
-    #TODO get this from somewhere
-    historyProvider = 'XOMHistory'
+
+    # Get the history tag provider 
+    historyProvider=system.tag.read("Configuration/Common/historyTagProvider").value
+    
     rbIndex = tagPath.find(']')
     if rbIndex >= 0:
         return '[' + historyProvider + ']' + tagPath[rbIndex+1:len(tagPath)]

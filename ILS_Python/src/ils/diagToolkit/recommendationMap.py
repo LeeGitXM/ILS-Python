@@ -309,14 +309,38 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         print "Returning because the user pressed cancel or the recommendation was not changed"
         return 
 
-    # Process the multiplier - first update the map widget
-    ds = system.dataset.setValue(ds, finalDiagnosisIdx, "Multiplier", newMultiplier)
-    theMap.diagnoses = ds
-
-    SQL = "Update DtFinalDiagnosis set Multiplier = %s where FinalDiagnosisName = '%s'" % (newMultiplier, finalDiagnosisName)
-    print SQL
-    rows = system.db.runUpdateQuery(SQL, db)
-    print "Updated %i rows in Final Diagnosis" % (rows)
+    try:
+        # Process the multiplier - first update the map widget
+        ds = system.dataset.setValue(ds, finalDiagnosisIdx, "Multiplier", newMultiplier)
+        theMap.diagnoses = ds
+        print "Updated the diagnosis!"
+        
+        ds = theMap.recommendations
+        for row in range(ds.rowCount):
+            fdId = ds.getValueAt(row,"DiagnosisId")
+            if fdId == finalDiagnosisIdx:
+                ds = system.dataset.setValue(ds, row, "AutoOrManual", "Manual")
+                autoRecommendation  = ds.getValueAt(row,"Auto")
+                ds = system.dataset.setValue(ds, row, "Manual", autoRecommendation * float(newMultiplier))
+        theMap.recommendations = ds
+    
+        # Now update the database
+        SQL = "Update DtFinalDiagnosis set Multiplier = %s where FinalDiagnosisName = '%s'" % (newMultiplier, finalDiagnosisName)
+        print SQL
+        rows = system.db.runUpdateQuery(SQL, db)
+        print "Updated %i Final Diagnosis" % (rows)
+        
+        SQL = "Update DtRecommendation set AutoOrManual = 'Manual', ManualRecommendation = AutoRecommendation * %s "\
+            " where RecommendationDefinitionId in (select RecommendationDefinitionId "\
+            " from DtRecommendationDefinition RD, DtFinalDiagnosis FD "\
+            "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (newMultiplier, finalDiagnosisName)
+        print SQL
+        rows = system.db.runUpdateQuery(SQL, db)
+        print "Updated %i recommendations" % (rows)
+    except:
+        print "Caught an exception"
+        from ils.common.error import catch
+        catch()
 
 
 #--------------------------
