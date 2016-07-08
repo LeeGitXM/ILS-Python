@@ -168,6 +168,7 @@ def writeFile(rootContainer, filepath):
     print "Done!"
 
 def detailsCallback(rootContainer):
+    post = rootContainer.post
     repeater=rootContainer.getComponent("Template Repeater")
     
     # Check if there is a selected row (could be an app or a quant output
@@ -181,7 +182,7 @@ def detailsCallback(rootContainer):
     quantOutputId=ds.getValueAt(selectedRow, 'qoid')
     quantOutputName=ds.getValueAt(selectedRow, 'output')
     
-    system.nav.openWindowInstance('DiagToolkit/Recommendation Map', {'quantOutputName' : quantOutputName})
+    system.nav.openWindowInstance('DiagToolkit/Recommendation Map', {'quantOutputName': quantOutputName, 'post': post})
     system.nav.centerWindow('DiagToolkit/Recommendation Map')
 
 # This is called when the operator selects a cell in the "Status" column

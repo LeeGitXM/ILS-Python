@@ -194,7 +194,7 @@ def fetchRecommendations(diagnoses, outputs, recDefs, db):
     for record in pds:
         finalDiagnosisName = record["FinalDiagnosisName"]
         quantOutputName = record["QuantOutputName"]
-        recommendation = record["Recommendation"]
+        recommendation = record["AutoRecommendation"]
         manual = record["ManualRecommendation"]
         autoOrManual = record["AutoOrManual"]
         recommendationId = record["RecommendationId"]
@@ -242,7 +242,8 @@ def hideFinalDiagnosis(theMap, diagnosisIdx):
 
 def expandFinalDiagnosis(theMap, diagnosisIdx):
     print "In expandFinalDiagnosis..."
-    db = ""
+    # Get the production/isolation tag provider and database 
+    db=system.tag.read("[Client]Database").value
     finalDiagnosisName = getFinalDiagnosisName(theMap, diagnosisIdx)
     
     ds = theMap.outputs
@@ -295,8 +296,10 @@ def sqcPlot(theMap, finalDiagnosisIdx):
     openSQCPlotForSQCDiagnosis(sqcDiagnosisName, sqcBlockId)
 
 def changeMultiplier(theMap, finalDiagnosisIdx):
-    db = ""
     print "In changeMultiplier..."
+    
+    # Get the production/isolation database 
+    db=system.tag.read("[Client]Database").value
     
     ds = theMap.diagnoses
     multiplier = ds.getValueAt(finalDiagnosisIdx, "Multiplier")
@@ -330,13 +333,49 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         rows = system.db.runUpdateQuery(SQL, db)
         print "Updated %i Final Diagnosis" % (rows)
         
-        SQL = "Update DtRecommendation set AutoOrManual = 'Manual', ManualRecommendation = AutoRecommendation * %s "\
+        # Update each recommendation connected to the final diagnosis
+        SQL = "Update DtRecommendation set AutoOrManual = 'Manual', ManualRecommendation = AutoRecommendation * %s, "\
+            " Recommendation = AutoRecommendation * %s "\
             " where RecommendationDefinitionId in (select RecommendationDefinitionId "\
             " from DtRecommendationDefinition RD, DtFinalDiagnosis FD "\
-            "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (newMultiplier, finalDiagnosisName)
+            "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (newMultiplier, newMultiplier, finalDiagnosisName)
         print SQL
         rows = system.db.runUpdateQuery(SQL, db)
         print "Updated %i recommendations" % (rows)
+        
+        # Update the Total change for the quant output - remember that the output may be affected my multiple FDs
+        SQL = "select QuantOutputId from DtFinalDiagnosis FD, DtRecommendationDefinition RD "\
+            " where FD.FinalDiagnosisId = RD.FinalDiagnosisId and FinalDiagnosisName = '%s'" % finalDiagnosisName
+        pds = system.db.runQuery(SQL, db)
+        numOutputs = 0
+        for record in pds:
+            numOutputs = numOutputs + 1
+            print "Processing QuantOutput: ", record["QuantOutputId"]
+            SQL = "select sum(Recommendation) from DtRecommendation R, DtRecommendationDefinition RD "\
+                " where RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
+                " and RD.QuantOutputId = %s " % (record["QuantOutputId"])
+            recommendation = system.db.runScalarQuery(SQL)
+            print "The total recommendation is: ", recommendation
+            
+            SQL = "Update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %s, DisplayedRecommendation = %s, "\
+                " finalSetpoint = CurrentSetpoint + %s "\
+                " where QuantOutputId = %s" % (recommendation, recommendation, recommendation, record["QuantOutputId"])
+            print SQL
+            rows = system.db.runUpdateQuery(SQL, db)
+            print "Updated %i quant outputs" % (rows)
+        
+        # Notify clients to update their setpoint spreadsheet
+        from ils.diagToolkit.finalDiagnosis import notifyClients
+        project = system.util.getProjectName()
+        print "A"
+        rootContainer = theMap.parent
+        print "RoorContainer: ", rootContainer
+        print "B"
+        post = rootContainer.getPropertyValue('post')
+        print "C"
+        notifyClients(project, post, "", numOutputs)
+        print "Done"
+        
     except:
         print "Caught an exception"
         from ils.common.error import catch
@@ -347,9 +386,9 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
 # Recommendation callbacks
 #--------------------------
 def manualRecommendation(theMap, recommendationIdx):
-    db = ""
     print "In changeRecommendation..."
-    
+    # Get the production/isolation database 
+    db=system.tag.read("[Client]Database").value
     ds = theMap.recommendations
     manualRecommendation = ds.getValueAt(recommendationIdx, "Manual")
     autoRecommendation = ds.getValueAt(recommendationIdx, "Auto")
@@ -403,9 +442,10 @@ def hideOutput(theMap, outputIdx):
     theMap.recommendations = ds
 
 def expandOutput(theMap, outputIdx):
-    db = ""
     print "In expandOutput, the index is %i..." % (outputIdx)
-
+    # Get the production/isolation database 
+    db=system.tag.read("[Client]Database").value
+    
     quantOutputName = getOutputName(theMap, outputIdx)    
     diagnosesDS = fetchDiagnosisForQuantOutput(quantOutputName, db)
     
