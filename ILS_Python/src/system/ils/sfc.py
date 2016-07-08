@@ -64,6 +64,9 @@ def getPVMonitorConfig(json):
 def getWriteOutputConfig(json):
     pass
 
+def getConfirmControllersConfig(json):
+    pass
+
 def getMonitorDownloadsConfig(json):
     pass
 
