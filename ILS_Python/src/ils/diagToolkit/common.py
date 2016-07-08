@@ -341,7 +341,8 @@ def fetchQuantOutput(quantOutputId, database=""):
     SQL = "select QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
         " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId, QO.MostNegativeIncrement, "\
-        " QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, QO.SetpointLowLimit, L.LookupName FeedbackMethod "\
+        " QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, QO.SetpointLowLimit, L.LookupName FeedbackMethod, "\
+        " QO.IgnoreMinimumIncrement "\
         " from DtQuantOutput QO, Lookup L "\
         " where QO.QuantOutputId = %i "\
         " and QO.FeedbackMethodId = L.LookupId"  % (quantOutputId)
