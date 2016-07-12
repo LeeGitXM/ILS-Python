@@ -15,11 +15,17 @@ def getExecutionCycles(key):
 
 def getExecutionResults(key):
     return []
-def setAlarmFalseValues(lst):
+
+def setAlarmFalseValues(lst, project):
     pass
-def setAWSNormalValues(lst):
+
+def setAWSNormalValues(lst, project):
     pass
-def setModeAutoValues(lst):
+
+def setModeAutoValues(lst, project):
+    pass
+
+def setShiftStarts(lst, project):
     pass
 
 def startModelExecution(key):
