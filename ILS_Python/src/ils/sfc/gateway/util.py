@@ -375,3 +375,19 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     project = getProject(chartScope)
     sendMessageToClient(project, 'sfcUnexpectedError', payload)
     cancelChart(chartScope)
+
+    
+def notifyGatewayError(chartScope, msg, logger=None):
+    from ils.sfc.common.util import logExceptionCause
+    from ils.sfc.common.constants import MESSAGE, CONTROL_PANEL_ID, ORIGINATOR
+    from  ils.sfc.gateway.api import cancelChart, getProject
+    '''
+    Report an unexpected error so that it is visible to the operator
+    '''
+    fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
+    payload = dict()
+    payload[MESSAGE] = "%s\n%s\n%s" % (fullMsg, tracebackMsg, javaCauseMsg)
+    payload[CONTROL_PANEL_ID] = getControlPanelId(chartScope)
+    payload[ORIGINATOR] = getOriginator(chartScope)
+    project = getProject(chartScope)
+    sendMessageToClient(project, 'sfcUnexpectedError', payload)

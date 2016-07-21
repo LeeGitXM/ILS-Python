@@ -273,31 +273,27 @@ def writeRamp(controllerTagpath, val, rampTime, updateFrequency, valType, writeC
 # This is the equivalent of s88-confirm-controller-mode in the old system.
 # This is a method dispatcher to the method appropriate for the class of controller.
 # This is called from Python and runs in the client.
-def confirmControllerMode(tagpath, val, testForZero, checkPathToValve, valueType):
-    print "In io.api.confirmControllerMode(), checking %s" % (tagpath)
+# I used to trap errors here, but I think it is best to let errors pass up to a higher level where they can be dealt 
+# with better (7/20/16_
+def confirmControllerMode(tagpath, val, testForZero, checkPathToValve, valueType, logger):
+    logger.trace("In %s, checking %s" % (__name__, tagpath))
 
     controllerUDTType, controllerTagpath=getOuterUDT(tagpath)
     
     if controllerUDTType == None:
-        print "The target is not a controller so assume it is reachable"
+        logger.trace("The target is not a controller so assume it is reachable")
         return True, "The target is not a Controller"
 
-    print "The UDT is: %s\nThe path to the UDT is: %s" % (controllerUDTType, controllerTagpath)
+    logger.trace("The UDT is: %s, the path to the UDT is: %s" % (controllerUDTType, controllerTagpath))
     # Get the name of the Python class that corresponds to this UDT.
     pythonClass = system.tag.read(controllerTagpath + "/pythonClass").value
     pythonClass = pythonClass.lower() + "." + pythonClass
 
     # Dynamically create an object (that won't live very long) and then call its reset method
-    try:
-        cmd = "ils.io." + pythonClass + "('" + controllerTagpath + "')"
-        print "Command: ", cmd
-        controller = eval(cmd)
-        success, errorMessage = controller.confirmControllerMode(val, testForZero, checkPathToValve, valueType)
-
-    except:
-        success = False
-        errorMessage = "ERROR checking controller configuration to %s, a <%s> (%s)" % (controllerTagpath, pythonClass, traceback.format_exc()) 
-        log.error(errorMessage)  
+    cmd = "ils.io." + pythonClass + "('" + controllerTagpath + "')"
+    logger.trace("Command: %s" % (cmd))
+    controller = eval(cmd)
+    success, errorMessage = controller.confirmControllerMode(val, testForZero, checkPathToValve, valueType)
 
     return success, errorMessage
 

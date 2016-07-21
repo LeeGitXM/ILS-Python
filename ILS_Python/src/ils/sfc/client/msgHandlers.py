@@ -2,14 +2,18 @@
 All SFC Client Message Handlers
 '''
 def sfcUnexpectedError(payload):
+    print "In %s" % (__name__)
     from ils.sfc.common.util import handleUnexpectedClientError
     from ils.sfc.common.constants import MESSAGE, CONTROL_PANEL_ID, ORIGINATOR
     from ils.sfc.client.windowUtil import shouldShowWindow
     msg = payload.get(MESSAGE, '<no message>')
     controlPanelId = payload[CONTROL_PANEL_ID]
     originator = payload[ORIGINATOR]
+    print "Checking if we should show..."
     if not shouldShowWindow(controlPanelId, originator):
+        print " ** Don't Show **"
         return
+    print "Show it!"
     handleUnexpectedClientError(msg)
 
 def sfcOpenWindow(payload):

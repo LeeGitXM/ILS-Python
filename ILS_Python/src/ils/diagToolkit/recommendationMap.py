@@ -7,7 +7,7 @@ import system
 from uuid import UUID
 
 def build(rootContainer):
-    quantOutputName=rootContainer.quantOutputName
+    quantOutputName=rootContainer.getPropertyValue("quantOutputName")
     print "Building a recommendation map for Quant Output: ", quantOutputName
 
     # Get the production/isolation tag provider and database 
@@ -297,7 +297,9 @@ def sqcPlot(theMap, finalDiagnosisIdx):
 
 def changeMultiplier(theMap, finalDiagnosisIdx):
     print "In changeMultiplier..."
-    
+    project = system.util.getProjectName()
+    rootContainer = theMap.parent
+        
     # Get the production/isolation database 
     db=system.tag.read("[Client]Database").value
     
@@ -313,21 +315,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         return 
 
     try:
-        # Process the multiplier - first update the map widget
-        ds = system.dataset.setValue(ds, finalDiagnosisIdx, "Multiplier", newMultiplier)
-        theMap.diagnoses = ds
-        print "Updated the diagnosis!"
-        
-        ds = theMap.recommendations
-        for row in range(ds.rowCount):
-            fdId = ds.getValueAt(row,"DiagnosisId")
-            if fdId == finalDiagnosisIdx:
-                ds = system.dataset.setValue(ds, row, "AutoOrManual", "Manual")
-                autoRecommendation  = ds.getValueAt(row,"Auto")
-                ds = system.dataset.setValue(ds, row, "Manual", autoRecommendation * float(newMultiplier))
-        theMap.recommendations = ds
-    
-        # Now update the database
+        # First  update the database
         SQL = "Update DtFinalDiagnosis set Multiplier = %s where FinalDiagnosisName = '%s'" % (newMultiplier, finalDiagnosisName)
         print SQL
         rows = system.db.runUpdateQuery(SQL, db)
@@ -364,12 +352,16 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
             rows = system.db.runUpdateQuery(SQL, db)
             print "Updated %i quant outputs" % (rows)
         
+        # Now update the map widget
+#        update(rootContainer)
+        
         # Notify clients to update their setpoint spreadsheet
-        from ils.diagToolkit.finalDiagnosis import notifyClients
-        project = system.util.getProjectName()
-        rootContainer = theMap.parent
         post = rootContainer.getPropertyValue('post')
-        notifyClients(project, post, "", numOutputs)
+        
+        from ils.diagToolkit.finalDiagnosis import notifyClients
+        notifyClients(project, post, "", numOutputs)        
+        
+        notifyRecommendationMapClients(project, post)
         print "Done"
         
     except:
@@ -377,7 +369,85 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         from ils.common.error import catch
         catch()
 
+# Send a message to clients to update any open recommendation maps.
+def notifyRecommendationMapClients(project, post):
+    print "Notifying %s-%s client to update their recommendation map..." % (project, post)
+    system.util.sendMessage(project=project, messageHandler="consoleManager", 
+                            payload={'type':'recommendationMap', 'post':post}, scope="C")
 
+
+def handleNotification(payload):
+    print "Handling a Recommendation Map update message"
+    
+    windows = system.gui.getOpenedWindows()
+    
+    # check if the recommendation map is already open.
+    print "Checking to see if there is an open recommendation map..."
+    for window in windows:
+        windowPath=window.getPath()
+        
+        pos = windowPath.find('Recommendation Map')
+        if pos >= 0:
+            print "...found an open recommendation map"
+            rootContainer=window.rootContainer
+            update(rootContainer)
+
+
+def update(rootContainer):
+    print "Updating a recommendation map..."
+    theMap = rootContainer.getComponent("TheMap")
+    db=system.tag.read("[Client]Database").value
+    
+    # Update the recommendations Dataset
+    ds = theMap.recommendations
+    for row in range(ds.rowCount):
+        recommendationId = ds.getValueAt(row, "RecommendationId")
+        SQL = "select AutoRecommendation, ManualRecommendation, AutoOrManual from DtRecommendation "\
+            "where RecommendationId = %s" % (recommendationId)
+        pds = system.db.runQuery(SQL, db)
+        if len(pds) == 1:
+            record = pds[0]
+            auto = record["AutoRecommendation"]
+            manual = record["ManualRecommendation"]
+            autoOrManual = record["AutoOrManual"]
+            ds = system.dataset.setValue(ds, row, "Auto", auto)
+            ds = system.dataset.setValue(ds, row, "Manual", manual)
+            ds = system.dataset.setValue(ds, row, "AutoOrManual", autoOrManual)
+    theMap.recommendations = ds
+    
+    # Update the Outputs Dataset
+    ds = theMap.outputs
+    for row in range(ds.rowCount):
+        quantOutputName = ds.getValueAt(row, "Name")
+
+        SQL = "select convert(decimal(10,4), CurrentSetpoint) as CurrentSetpoint, "\
+            "convert(decimal(10,4), FinalSetpoint) as FinalSetpoint, "\
+            "convert(decimal(10,4), DisplayedRecommendation) as DisplayedRecommendation from DtQuantOutput "\
+            "where QuantOutputName = '%s' " % (quantOutputName)
+        pds = system.db.runQuery(SQL, db)
+        if len(pds) == 1:
+            record = pds[0]
+            currentSetpoint = record["CurrentSetpoint"]
+            finalSetpoint = record["FinalSetpoint"]
+            recommendation = record["DisplayedRecommendation"]
+            ds = system.dataset.setValue(ds, row, "CurrentSetpoint", currentSetpoint)
+            ds = system.dataset.setValue(ds, row, "FinalSetpoint", finalSetpoint)
+            ds = system.dataset.setValue(ds, row, "Recommendation", recommendation)
+    theMap.outputs = ds
+    
+    # Update the Final Diagnosis Dataset
+    ds = theMap.diagnoses
+    for row in range(ds.rowCount):
+        finalDiagnosisName = ds.getValueAt(row, "Name")
+
+        SQL = "select Multiplier from DtFinalDiagnosis where FinalDiagnosisName = '%s' " % (finalDiagnosisName)
+        pds = system.db.runQuery(SQL, db)
+        if len(pds) == 1:
+            record = pds[0]
+            multiplier = record["Multiplier"]
+            ds = system.dataset.setValue(ds, row, "Multiplier", multiplier)
+    theMap.diagnoses = ds
+    
 #--------------------------
 # Recommendation callbacks
 #--------------------------

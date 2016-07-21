@@ -55,7 +55,7 @@ class PKSController(controller.Controller):
             tagRoot = self.path + '/mode'
         else:
             log.error("Unexpected value Type: <%s>" % (valueType))
-            return False, "Unexpected value Type: <%s>" % (valueType)
+            raise Exception("Unexpected value Type: <%s>" % (valueType))
 
         # Check the basic configuration of the tag we are trying to write to.
         success, errorMessage = self.checkConfig(tagRoot + "/value")
@@ -175,28 +175,27 @@ class PKSController(controller.Controller):
     # Check if a controller is in the appropriate mode for writing to.  This does not attempt to change the 
     # mode of the controller.  Return True if the controller is in the correct mode for writing.
     # This is equivalent to s88-confirm-controller-mode in the old system. 
-    def confirmControllerMode(self, newVal, testForZero, checkPathToValve, valueType):
+    def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
         success = True
         errorMessage = ""
         
-        log.trace("Checking the configuration of PKS controller %s for writing %s to %s" % (self.path, str(newVal), valueType))
+        log.trace("In %s checking the configuration of PKS controller %s for writing %s to %s" % (__name__, self.path, str(newVal), outputType))
         
         # Determine which tag in the controller we are seeking to write to
-        if string.upper(valueType) in ["SP", "SETPOINT"]:
+        if string.upper(outputType) in ["SP", "SETPOINT"]:
             tagRoot = self.path + '/sp'
-        elif string.upper(valueType) in ["OP", "OUTPUT"]:
+        elif string.upper(outputType) in ["OP", "OUTPUT"]:
             tagRoot = self.path + '/op'
         else:
-            log.error("Unexpected valType: <%s>" % (valueType))
-            return False, "Unexpected value type: <%s>" % (valueType)
+            raise Exception("Unexpected value Type: <%s> for a PKS controller %s" % (outputType, self.path))
 
         # Read the current values of all of the tags we need to consider to determine if the configuration is valid.
         currentValue = system.tag.read(tagRoot + '/value')
 
         # Check the quality of the tags to make sure we can trust their values
         if str(currentValue.quality) != 'Good': 
-            log.info("checkConfig failed for %s because the %s quality is %s" % (self.path, valueType, str(currentValue.quality)))
-            return False, "The %s quality is %s" % (valueType, str(currentValue.quality))
+            log.warn("checkConfig failed for %s because the %s quality is %s" % (self.path, outputType, str(currentValue.quality)))
+            return False, "The %s quality is %s" % (outputType, str(currentValue.quality))
 
         # The quality is good so not get the values in a convenient form
         currentValue = float(currentValue.value)
@@ -206,7 +205,7 @@ class PKSController(controller.Controller):
         mode = system.tag.read(self.path + '/mode/value')
         
         if str(mode.quality) != 'Good': 
-            log.info("checkConfig failed for %s because the mode quality is %s" % (self.path, str(mode.quality)))
+            log.warn("checkConfig failed for %s because the mode quality is %s" % (self.path, str(mode.quality)))
             return False, "The mode quality is %s" % (str(mode.quality))
         
         mode = string.strip(mode.value)
@@ -217,22 +216,22 @@ class PKSController(controller.Controller):
         
         # Check the quality of the tags to make sure we can trust their values
         if str(outputDisposability.quality) != 'Good': 
-            log.info("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
+            log.warn("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
             return False, "The outputDisposability quality is %s" % (str(outputDisposability.quality))
 
         outputDisposability = string.strip(outputDisposability.value)        
 
-        log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, valueType, str(currentValue), outputDisposability, mode))
+        log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, outputType, str(currentValue), outputDisposability, mode))
 
         # For outputs check that the mode is MANUAL - no other test is required
-        if string.upper(valueType) in ["OP", "OUTPUT"]:
+        if string.upper(outputType) in ["OP", "OUTPUT"]:
             if string.upper(mode) != 'MAN':
                 success = False
                 errorMessage = "%s is not in manual (mode is actually %s)" % (self.path, mode)
         
         # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is 
         # optional 
-        elif string.upper(valueType) in ["SP", "SETPOINT"]:
+        elif string.upper(outputType) in ["SP", "SETPOINT"]:
             if string.upper(outputDisposability) == 'HILO' and checkPathToValve:
                 success = False
                 errorMessage = "%s has no path to valve" % (self.path)

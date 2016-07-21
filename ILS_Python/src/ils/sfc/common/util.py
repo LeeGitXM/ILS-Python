@@ -226,4 +226,4 @@ def logExceptionCause(contextMsg, logger=None):
             print javaCauseMsg
         print tracebackMsg
  
-   
+    return fullMsg, tracebackMsg, javaCauseMsg

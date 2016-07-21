@@ -144,6 +144,5 @@ def sendCloseWindow(window, table):
 
 def openErrorPopup(msg):
     import system.nav
-    window = system.nav.openWindow('SFC/ErrorPopup')
-    textArea = window.getRootContainer().getComponent("textArea")
-    textArea.text = msg
+    window = system.nav.openWindowInstance('SFC/ErrorPopup', {"message": msg})
+    system.nav.centerWindow(window)

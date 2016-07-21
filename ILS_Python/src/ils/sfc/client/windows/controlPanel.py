@@ -6,6 +6,7 @@ Created on Dec 9, 2015
 from system.gui import getParentWindow
 
 controlPanelWindowPath = 'SFC/ControlPanel'
+errorPopupWindowPath = 'SFC/ErrorPopup'
 sfcWindowPrefix = 'SFC/'
 
 def openControlPanel(controlPanelId, startImmediately):
@@ -77,13 +78,13 @@ def reset(event):
     closeAllPopups()
 
 def closeAllPopups():
-    '''close all popup windows, except for control panels.
+    '''close all popup windows, except for control panels and error Popup (we usually cancel the chart on the first error).
        CAUTION: this will close ALL popups, for all charts!!!'''
     import system.gui, system.nav
     from ils.sfc.client.windowUtil import getWindowPath
     for window in system.gui.getOpenedWindows():
         windowPath = getWindowPath(window)
-        if windowPath.startswith(sfcWindowPrefix) and windowPath != controlPanelWindowPath:
+        if windowPath.startswith(sfcWindowPrefix) and windowPath != controlPanelWindowPath and windowPath != errorPopupWindowPath:
             system.nav.closeWindow(window)
        
 def resetDb(controlPanelId):
