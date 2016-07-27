@@ -70,10 +70,12 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
         "RecommendationStatus, ManualMove, ManualMoveValue, RecommendationMultiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', '%s', 0, 0.0, 1.0)" \
         % (finalDiagnosisId, grade, txt, RECOMMENDATION_NONE_MADE)
+    SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     logSQL.trace(SQL)
     
     try:
         system.db.runUpdateQuery(SQL, database)
+        system.db.runUpdateQuery(SQL2, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
@@ -131,7 +133,7 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
     log.info("...cleared %i diagnosis entries" % (rows))
     
     # Set the state of the Final Diagnosis to InActive
-    SQL = "update DtFinalDiagnosis set Active = 0 where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    SQL = "update DtFinalDiagnosis set State = 0, Active = 0 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     logSQL.trace(SQL)
     rows = system.db.runUpdateQuery(SQL, database)
     log.info("...cleared %i final diagnosis" % (rows))
