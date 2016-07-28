@@ -505,11 +505,26 @@ def manage(application, recalcRequested=False, database="", provider=""):
         logSQL.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         log.info("      ...updated %i final diagnosis!" % (rows))
+    
+    def resetMultipliers(application):
+        log.info("Resetting the multipliers...")
+        SQL = "UPDATE DtFinalDiagnosis "\
+            " SET Multiplier = 1.0 "\
+            " WHERE FamilyId in (select F.familyId "\
+            " from DtFamily F, DtApplication A "\
+            " where F.ApplicationId = A.ApplicationId "\
+            " and A.ApplicationName = 'TESTAPP1')"
+        rows = system.db.runUpdateQuery(SQL)
+        log.info("...reset %i final diagnosis" % (rows))
+        
     #--------------------------------------------------------------------
     # This is the start of manage()
     
     # Fetch the list of final diagnosis that were most important the last time we managed
     oldList=fetchPreviousHighestPriorityDiagnosis(application, database)
+    
+    if recalcRequested:
+        resetMultipliers(application)
          
     from ils.diagToolkit.common import fetchActiveDiagnosis
     pds = fetchActiveDiagnosis(application, database)
