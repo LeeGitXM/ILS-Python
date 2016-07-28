@@ -251,25 +251,8 @@ def recalcCallback(event):
     print "Sending a message to manage applications for post: %s (database: %s)" % (post, database)
     projectName=system.util.getProjectName()
     payload={"post": post, "database": database, "provider": tagProvider}
-    system.util.sendMessage(projectName, "recalc", payload, "G")
+    system.util.sendMessage(projectName, "recalc", payload, "G")  
 
-    print "Need to do something to update the spreadsheet..."
-    # A recalculation happens in the gateway, so I', not sure how I can know when it is done...
-    
-#    from ils.diagToolkit.common import fetchApplicationsForPost
-#    pds=fetchApplicationsForPost(post, database)
-
-#    from ils.diagToolkit.finalDiagnosis import manage
-#    for record in pds:
-#        applicationName=record["ApplicationName"]
-#        manage(applicationName)
-
-    # Now update the UI
-#    initialize(rootContainer)
-
-#
-# FYI - the download callback is in its own module.
-#
 
 # This is called from the WAIT button on the set-point spreadsheet
 def waitCallback(event):
@@ -461,12 +444,6 @@ def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, 
         else:
             SQL = "update DtFinalDiagnosis set Active = 0, TimeOfMostRecentRecommendationImplementation = getdate() "
     
-    #    SQL = "%s where active = 1 and FamilyId in "\
-    #        " (select F.familyId "\
-    #        " from DtFamily F, DtApplication A "\
-    #        " where F.ApplicationId = A.ApplicationId "\
-    #        " and A.ApplicationName = '%s')" % (SQL, applicationName)
-    
         SQL = "%s where FinalDiagnosisId = %s" % (SQL, str(finalDiagnosisId))
         
         log.trace(SQL)
@@ -480,14 +457,6 @@ def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recom
     
     totalRows=0
     for finalDiagnosisId in finalDiagnosisIds:
-#        SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
-#            " where status = 'Active' and FinalDiagnosisId in "\
-#            " (select FD.FinalDiagnosisId "\
-#            " from DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
-#            " where FD.FamilyId = F.FamilyId "\
-#            " and F.ApplicationId = A.ApplicationId "\
-#            " and A.ApplicationName = '%s')" % (recommendationStatus, applicationName)
-         
         SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
             " where status = 'Active' and FinalDiagnosisId = %s " % (recommendationStatus, str(finalDiagnosisId))   
             
