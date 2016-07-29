@@ -7,19 +7,20 @@ import system
 from uuid import UUID
 
 def build(rootContainer):
+    applicationName=rootContainer.getPropertyValue("applicationName")
     quantOutputName=rootContainer.getPropertyValue("quantOutputName")
-    print "Building a recommendation map for Quant Output: ", quantOutputName
+    print "Building a recommendation map for Quant Output: %s/%s" % (applicationName, quantOutputName)
 
     # Get the production/isolation tag provider and database 
     db=system.tag.read("[Client]Database").value
     provider=system.tag.read("[Client]Tag Provider").value
     
     theMap = rootContainer.getComponent("TheMap")
-    diagnoses = fetchDiagnosisForQuantOutput(quantOutputName, db)
+    diagnoses = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db)
     diagnoses = updateSqcFlag(diagnoses)
     theMap.diagnoses=diagnoses
     
-    outputs=fetchQuantOutput(quantOutputName, db, provider)
+    outputs=fetchQuantOutput(applicationName, quantOutputName, db, provider)
     theMap.outputs=outputs
     
     recDefs=fetchRecDefs(diagnoses, outputs, db)
@@ -29,13 +30,15 @@ def build(rootContainer):
     theMap.recommendations=recommendations    
 
 
-def fetchQuantOutput(quantOutputName, db, provider):
+def fetchQuantOutput(applicationName, quantOutputName, db, provider):
     print "Fetching the quant output..."
     SQL = "select QuantOutputName, TagPath, convert(decimal(10,4),CurrentSetpoint) as CurrentSetpoint, Active, "\
         " convert(decimal(10,4),FinalSetpoint) as FinalSetpoint, convert(decimal(10,4),DisplayedRecommendation) as DisplayedRecommendation "\
-        " from DtQuantOutput "\
-        " where QuantOutputName = '%s' "\
-        " order by QuantOutputName" % (quantOutputName)
+        " from DtQuantOutput QO, DtApplication A "\
+        " where QO.QuantOutputName = '%s' "\
+        " and QO.ApplicationId = A.ApplicationId"\
+        " and A.ApplicationName = '%s' "\
+        " order by QO.QuantOutputName" % (quantOutputName, applicationName)
     print SQL
     pds = system.db.runQuery(SQL, database=db)
     print "  ...fetched %i Quant Outputs..." % (len(pds))
@@ -59,14 +62,17 @@ def fetchQuantOutput(quantOutputName, db, provider):
     ds = system.dataset.toDataSet(headers, data)
     return ds
 
-def fetchDiagnosisForQuantOutput(quantOutputName, db=""):
+def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     print "Fetching Final Diagnosis..."
     SQL = "select FD.FinalDiagnosisName, convert(decimal(10,2),FD.Multiplier) as Multiplier, FD.UUID, FD.DiagramUUID "\
-        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtFamily F, DtApplication A "\
         " where FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
         " and QO.QuantOutputName = '%s' "\
-        " order by FinalDiagnosisName" % (quantOutputName)
+        " and FD.FamilyId = F.FamilyId "\
+        " and F.applicationId = A.applicationId "\
+        " and A.ApplicationName = '%s' "\
+        " order by FinalDiagnosisName" % (quantOutputName, applicationName)
     print SQL
     pds = system.db.runQuery(SQL, database=db)
     print "  ...fetched %i Final Diagnoses..." % (len(pds))
@@ -331,36 +337,38 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         rows = system.db.runUpdateQuery(SQL, db)
         print "Updated %i recommendations" % (rows)
         
-        # Update the Total change for the quant output - remember that the output may be affected my multiple FDs
-        SQL = "select QuantOutputId from DtFinalDiagnosis FD, DtRecommendationDefinition RD "\
-            " where FD.FinalDiagnosisId = RD.FinalDiagnosisId and FinalDiagnosisName = '%s'" % finalDiagnosisName
-        pds = system.db.runQuery(SQL, db)
-        numOutputs = 0
-        for record in pds:
-            numOutputs = numOutputs + 1
-            print "Processing QuantOutput: ", record["QuantOutputId"]
-            SQL = "select sum(Recommendation) from DtRecommendation R, DtRecommendationDefinition RD "\
-                " where RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
-                " and RD.QuantOutputId = %s " % (record["QuantOutputId"])
-            recommendation = system.db.runScalarQuery(SQL)
-            print "The total recommendation is: ", recommendation
-            
-            SQL = "Update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %s, DisplayedRecommendation = %s, "\
-                " finalSetpoint = CurrentSetpoint + %s "\
-                " where QuantOutputId = %s" % (recommendation, recommendation, recommendation, record["QuantOutputId"])
-            print SQL
-            rows = system.db.runUpdateQuery(SQL, db)
-            print "Updated %i quant outputs" % (rows)
-        
-        # Now update the map widget
-#        update(rootContainer)
+        # If there are no current recommendations then why did the user change the multiplier?  It doesn't make any sense, but 
+        # regardless the outputs don't need to be updated.
+        if rows > 0:
+            # Update the Total change for the quant output - remember that the output may be affected my multiple FDs
+            SQL = "select QuantOutputId from DtFinalDiagnosis FD, DtRecommendationDefinition RD "\
+                " where FD.FinalDiagnosisId = RD.FinalDiagnosisId and FinalDiagnosisName = '%s'" % finalDiagnosisName
+            pds = system.db.runQuery(SQL, db)
+            numOutputs = 0
+            for record in pds:
+                numOutputs = numOutputs + 1
+                print "Processing QuantOutput: ", record["QuantOutputId"]
+                SQL = "select sum(Recommendation) from DtRecommendation R, DtRecommendationDefinition RD "\
+                    " where RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
+                    " and RD.QuantOutputId = %s " % (record["QuantOutputId"])
+                recommendation = system.db.runScalarQuery(SQL)
+                print "The total recommendation is: ", recommendation
+                
+                SQL = "Update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %s, DisplayedRecommendation = %s, "\
+                    " finalSetpoint = CurrentSetpoint + %s "\
+                    " where QuantOutputId = %s" % (recommendation, recommendation, recommendation, record["QuantOutputId"])
+                print SQL
+                rows = system.db.runUpdateQuery(SQL, db)
+                print "Updated %i quant outputs" % (rows)
+
         
         # Notify clients to update their setpoint spreadsheet
         post = rootContainer.getPropertyValue('post')
         
         from ils.diagToolkit.finalDiagnosis import notifyClients
         notifyClients(project, post, "", numOutputs)        
-        
+
+        # Make sure ALL map clients are updated, even ones on other windows        
         notifyRecommendationMapClients(project, post)
         print "Done"
         
@@ -372,12 +380,11 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
 # Send a message to clients to update any open recommendation maps.
 def notifyRecommendationMapClients(project, post):
     print "Notifying %s-%s client to update their recommendation map..." % (project, post)
-    system.util.sendMessage(project=project, messageHandler="consoleManager", 
-                            payload={'type':'recommendationMap', 'post':post}, scope="C")
+    system.util.sendMessage(project=project, messageHandler="consoleManager", payload={'type':'recommendationMap', 'post':post}, scope="C")
 
 
 def handleNotification(payload):
-    print "Handling a Recommendation Map update message"
+    print "In %s handling a Recommendation Map update message" % (__name__)
     
     windows = system.gui.getOpenedWindows()
     
@@ -393,15 +400,20 @@ def handleNotification(payload):
             update(rootContainer)
 
 
+# This is called in response to something being updated, either a recalc happened (possibly on a different client,
+# or a new diagnosis was made.
+ 
 def update(rootContainer):
     print "Updating a recommendation map..."
     theMap = rootContainer.getComponent("TheMap")
     db=system.tag.read("[Client]Database").value
     
     # Update the recommendations Dataset
+    '''
     ds = theMap.recommendations
     for row in range(ds.rowCount):
         recommendationId = ds.getValueAt(row, "RecommendationId")
+        print "Row: %i, RecommendationId: %s" % (row, str(recommendationId))
         SQL = "select AutoRecommendation, ManualRecommendation, AutoOrManual from DtRecommendation "\
             "where RecommendationId = %s" % (recommendationId)
         pds = system.db.runQuery(SQL, db)
@@ -410,10 +422,13 @@ def update(rootContainer):
             auto = record["AutoRecommendation"]
             manual = record["ManualRecommendation"]
             autoOrManual = record["AutoOrManual"]
+            print "Updating recommendation - id: %s, Auto: %s, Manual: %s, A/M: %s" % (str(recommendationId), str(auto), str(manual), str(autoOrManual))
             ds = system.dataset.setValue(ds, row, "Auto", auto)
             ds = system.dataset.setValue(ds, row, "Manual", manual)
             ds = system.dataset.setValue(ds, row, "AutoOrManual", autoOrManual)
     theMap.recommendations = ds
+    '''
+    
     
     # Update the Outputs Dataset
     ds = theMap.outputs
@@ -447,6 +462,11 @@ def update(rootContainer):
             multiplier = record["Multiplier"]
             ds = system.dataset.setValue(ds, row, "Multiplier", multiplier)
     theMap.diagnoses = ds
+    
+    recDefs=theMap.connections
+    recommendations, recDefs=fetchRecommendations(theMap.diagnoses, theMap.outputs, recDefs, db)
+    theMap.connections=recDefs
+    theMap.recommendations=recommendations
     
 #--------------------------
 # Recommendation callbacks
@@ -512,31 +532,38 @@ def expandOutput(theMap, outputIdx):
     # Get the production/isolation database 
     db=system.tag.read("[Client]Database").value
     
-    quantOutputName = getOutputName(theMap, outputIdx)    
+    quantOutputName = getOutputName(theMap, outputIdx)
+    print "...expanding %s..." % (quantOutputName) 
     diagnosesDS = fetchDiagnosisForQuantOutput(quantOutputName, db)
-    
     ds = theMap.diagnoses
     
     addedDiagnosis = False
-    for diagnosisRow in range(0, diagnosesDS.rowCount, 1):
+    for diagnosisRow in range(0, diagnosesDS.rowCount):
+        print "Checking diagnosis idx: ", diagnosisRow
         finalDiagnosisName = diagnosesDS.getValueAt(diagnosisRow, "Name")
+        print "  ...fetched %s (record %i)..." % (finalDiagnosisName, diagnosisRow)
         
         foundFinalDiagnosis = False
-        for row in range(0, ds.rowCount, 1):
+        for row in range(0, ds.rowCount):
             print "checking row: ", row
             if finalDiagnosisName == ds.getValueAt(row, "Name"):
                 foundFinalDiagnosis = True
+                print "     --- found an existing diagnosis ---"
         
         # If this output wasn't found, then add it at the end 
         if not(foundFinalDiagnosis):
+            print "     adding a new final diagnosis"
             addedDiagnosis = True
             multiplier = diagnosesDS.getValueAt(diagnosisRow, "Multiplier")
             blockUUID = diagnosesDS.getValueAt(diagnosisRow, "UUID")
             diagramUUID = diagnosesDS.getValueAt(diagnosisRow, "DiagramUUID")
+            hasSQC = False
             sqcUUID = None
             sqcName = None
-            ds=system.dataset.addRow(ds,[finalDiagnosisName, finalDiagnosisName, multiplier, blockUUID, diagramUUID, sqcUUID, sqcName])
-
+            print "Adding"
+            ds=system.dataset.addRow(ds,[finalDiagnosisName, finalDiagnosisName, multiplier, hasSQC, blockUUID, diagramUUID, sqcUUID, sqcName])
+            print "Done Adding"
+            
     if addedDiagnosis:
         print "at least one Final Diagnosis was added..."
         diagnoses = system.dataset.sort(ds, "Name")
