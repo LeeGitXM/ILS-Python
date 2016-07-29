@@ -18,9 +18,14 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
 def notifyClients(project, post, notificationText="", numOutputs=0):
-    log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, notification text: <%s>..." % (project, post, notificationText))
+    log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, numOutputs: <%s>..." % (project, post, str(numOutputs)))
     system.util.sendMessage(project=project, messageHandler="consoleManager", 
                             payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}, scope="C")
+
+    # If we are going to notify client to update their spreadsheet then maybe they should also update their recommendation maps...    
+    from ils.diagToolkit.recommendationMap import notifyRecommendationMapClients
+    notifyRecommendationMapClients(project, post)
+
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -94,10 +99,12 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
     
-    post=fetchPostForApplication(application)
-    # This runs in the gateway, but it should work 
-    projectName = system.util.getProjectName()
-    notifyClients(projectName, post, notificationText, activeOutputs)
+    # The activeOutputs can onlt be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
+    # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
+    if activeOutputs > 0:
+        post=fetchPostForApplication(application)
+        projectName = system.util.getProjectName()
+        notifyClients(projectName, post, notificationText, activeOutputs)
 
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
