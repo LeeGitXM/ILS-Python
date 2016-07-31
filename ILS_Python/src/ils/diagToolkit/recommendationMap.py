@@ -328,11 +328,19 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         print "Updated %i Final Diagnosis" % (rows)
         
         # Update each recommendation connected to the final diagnosis
-        SQL = "Update DtRecommendation set AutoOrManual = 'Manual', ManualRecommendation = AutoRecommendation * %s, "\
-            " Recommendation = AutoRecommendation * %s "\
-            " where RecommendationDefinitionId in (select RecommendationDefinitionId "\
-            " from DtRecommendationDefinition RD, DtFinalDiagnosis FD "\
-            "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (newMultiplier, newMultiplier, finalDiagnosisName)
+        if float(newMultiplier) == 1.0:
+            print "Updating the recommendations to 'AUTO' because a multiplier of 1.0 was detected!"
+            SQL = "Update DtRecommendation set AutoOrManual = 'Auto', ManualRecommendation = NULL, "\
+                " Recommendation = AutoRecommendation "\
+                " where RecommendationDefinitionId in (select RecommendationDefinitionId "\
+                " from DtRecommendationDefinition RD, DtFinalDiagnosis FD "\
+                "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (finalDiagnosisName)
+        else: 
+            SQL = "Update DtRecommendation set AutoOrManual = 'Manual', ManualRecommendation = AutoRecommendation * %s, "\
+                " Recommendation = AutoRecommendation * %s "\
+                " where RecommendationDefinitionId in (select RecommendationDefinitionId "\
+                " from DtRecommendationDefinition RD, DtFinalDiagnosis FD "\
+                "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (newMultiplier, newMultiplier, finalDiagnosisName)
         print SQL
         rows = system.db.runUpdateQuery(SQL, db)
         print "Updated %i recommendations" % (rows)
@@ -354,9 +362,14 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
                 recommendation = system.db.runScalarQuery(SQL)
                 print "The total recommendation is: ", recommendation
                 
-                SQL = "Update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %s, DisplayedRecommendation = %s, "\
-                    " finalSetpoint = CurrentSetpoint + %s "\
-                    " where QuantOutputId = %s" % (recommendation, recommendation, recommendation, record["QuantOutputId"])
+                if float(newMultiplier) == 1.0:
+                    SQL = "Update DtQuantOutput set ManualOverride = 0, FeedbackOutputManual = 0, DisplayedRecommendation = %s, "\
+                        " finalSetpoint = CurrentSetpoint + %s "\
+                        " where QuantOutputId = %s" % (recommendation, recommendation, record["QuantOutputId"])
+                else:
+                    SQL = "Update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %s, DisplayedRecommendation = %s, "\
+                        " finalSetpoint = CurrentSetpoint + %s "\
+                        " where QuantOutputId = %s" % (recommendation, recommendation, recommendation, record["QuantOutputId"])
                 print SQL
                 rows = system.db.runUpdateQuery(SQL, db)
                 print "Updated %i quant outputs" % (rows)
