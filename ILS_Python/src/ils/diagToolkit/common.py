@@ -127,7 +127,7 @@ def clearQuantOutputRecommendations(application, database=""):
 def fetchActiveDiagnosis(applicationName, database=""):
     SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
-        " DE.RecommendationErrorText "\
+        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.TextRecommendationCallback, FD.TextRecommendation "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
@@ -176,7 +176,6 @@ def fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, database=""
     pds = system.db.runQuery(SQL, database)
     return pds
 
-
 def fetchActiveOutputsForPost(post, database=""):
     SQL = "select distinct A.ApplicationName, "\
         " QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
@@ -192,6 +191,20 @@ def fetchActiveOutputsForPost(post, database=""):
         " and P.Post = '%s' "\
         " and QO.Active = 1"\
         " order by A.ApplicationName, QO.QuantOutputName"  % (post)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+def fetchActiveTextRecommendationsForPost(post, database=""):
+    SQL = "select distinct TR.TextRecommendation"\
+        " from TkPost P, TkUnit U, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE, DtTextRecommendation TR "\
+        " where P.PostId = U.PostId "\
+        " and U.UnitId = A.UnitId "\
+        " and A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+        " and DE.DiagnosisEntryId = TR.DiagnosisEntryId "\
+        " and P.Post = '%s' "  % (post)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -222,6 +235,13 @@ def fetchFamilyId(familyName, database=""):
     familyId = system.db.runScalarQuery(SQL, database)
     return familyId
 
+# Look up the final diagnosis id given the application, family, and final Diagnosis names
+def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
+    SQL = "select DiagramUUID "\
+        " from DtFinalDiagnosis "\
+        " where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    diagramUUID = system.db.runScalarQuery(SQL, database)
+    return diagramUUID
 
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):

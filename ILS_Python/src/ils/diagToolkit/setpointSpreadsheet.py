@@ -181,8 +181,9 @@ def detailsCallback(rootContainer):
     ds = repeater.templateParams
     quantOutputId=ds.getValueAt(selectedRow, 'qoid')
     quantOutputName=ds.getValueAt(selectedRow, 'output')
+    applicationName= ds.getValueAt(selectedRow, 'application')
     
-    system.nav.openWindowInstance('DiagToolkit/Recommendation Map', {'quantOutputName': quantOutputName, 'post': post})
+    system.nav.openWindowInstance('DiagToolkit/Recommendation Map', {'applicationName': applicationName, 'quantOutputName': quantOutputName, 'post': post})
     system.nav.centerWindow('DiagToolkit/Recommendation Map')
 
 # This is called when the operator selects a cell in the "Status" column
@@ -276,12 +277,31 @@ def noDownloadCallback(event):
     db=getDatabaseClient()
     tagProvider=getTagProviderClient()
     repeater=rootContainer.getComponent("Template Repeater")
-    ds = repeater.templateParams
-    allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
     
-    # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
-    if allApplicationsProcessed:
-        system.nav.closeParentWindow(event)
+    activeApplication = isThereAnActiveApplication(repeater)
+    if activeApplication:
+        ds = repeater.templateParams
+        allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
+    
+        # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
+        if allApplicationsProcessed:
+            system.nav.closeParentWindow(event)
+
+def isThereAnActiveApplication(repeater):
+    ds = repeater.templateParams
+    
+    active = False
+    for row in range(ds.rowCount):
+        rowType=ds.getValueAt(row, "type")
+
+        if string.upper(rowType) == "APP":
+            command=ds.getValueAt(row, "command")
+
+            if string.upper(command) == 'ACTIVE':
+                active = True
+
+    print "Active Application: ", active
+    return active
 
 # This is called when we do a "No Download" or "Wait For More Data".
 # Use the action message to determine which button was pressed and exactly how much processing to do.
@@ -290,7 +310,7 @@ def noDownloadCallback(event):
 def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, recommendationStatus):
     
     #--------------
-    def resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db):
+    def resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider):
         if len(finalDiagnosisIds) == 0:
             print "...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones..."
             from ils.diagToolkit.common import fetchActiveDiagnosis
@@ -306,7 +326,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
         
         quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
 
-        resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db)
+        resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
     #-------------
     from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
     print "...performing generic post callback cleanup..." 
@@ -326,7 +346,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
 
             if string.upper(command) == 'ACTIVE':
                 if application != "":
-                    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db)
+                    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
 
                 families=[]
                 finalDiagnosisIds=[]
@@ -352,7 +372,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
                         if rec["FamilyName"] not in families:
                             families.append(rec["FamilyName"])
 
-    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db)
+    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
     print "...done post action processing!"
     
     # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
@@ -365,7 +385,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     system.util.sendMessage(projectName, "recalc", payload, "G")
     return allApplicationsProcessed
 
-def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database):
+def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database, provider):
     log.info("In %s resetting application %s because %s - %s" % (__name__, application, actionMessage, recommendationStatus))
     log.trace("  Families: %s" % (str(families)))
     log.trace("  Final Diagnosis Ids: %s" % (str(finalDiagnosisIds)))
@@ -379,7 +399,7 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
 
     resetOutputs(quantOutputIds, actionMessage, log, database)
     resetRecommendations(quantOutputIds, actionMessage, log, database)
-    resetFinalDiagnosis(application, actionMessage, finalDiagnosisIds, log, database)
+    resetFinalDiagnosis(application, actionMessage, finalDiagnosisIds, log, database, provider)
     resetDiagnosisEntry(application, actionMessage, finalDiagnosisIds, recommendationStatus, log, database)
                 
     # Reset the BLT blocks - this varies slightly depending on the action
@@ -433,7 +453,7 @@ def resetRecommendations(quantOutputIds, actionMessage, log, database):
         rows+=cnt
     log.trace("Deleted %i recommendations..." % (rows))
 
-def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, database):
+def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, database, provider):
     log.info("Resetting Final Diagnosis for application %s" % (applicationName))
 
     totalRows = 0    
@@ -446,11 +466,48 @@ def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, 
     
         SQL = "%s where FinalDiagnosisId = %s" % (SQL, str(finalDiagnosisId))
         
+        performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider)
+
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         totalRows = totalRows + rows
         
     log.trace("Updated %i records for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
+
+
+def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider):
+    import sys, traceback
+    print "Checking for special actions for final Diagnosis: %i" % (finalDiagnosisId)
+    SQL = "select SpecialPostProcessingCallback from DtFinalDiagnosis where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    callback = system.db.runScalarQuery(SQL, database)
+    print "The callback is <%s>" % (callback)
+
+    if callback <> None:
+        print "There IS a callback!"
+
+        # If they specify shared or project scope, then we don't need to do this
+        if not(string.find(callback, "project") == 0 or string.find(callback, "shared") == 0):
+            # The method contains a full python path, including the method name
+            separator=string.rfind(callback, ".")
+            packagemodule=callback[0:separator]
+            separator=string.rfind(packagemodule, ".")
+            package = packagemodule[0:separator]
+            module  = packagemodule[separator+1:]
+            log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
+            exec("import %s" % (package))
+            exec("from %s import %s" % (package,module))
+    
+        try:
+            eval(callback)(applicationName, actionMessage, finalDiagnosisId, provider, database)
+            log.info("...back from the special post processing callback!")
+        except:
+            errorType,value,trace = sys.exc_info()
+            errorTxt = traceback.format_exception(errorType, value, trace, 500)
+            log.error("Caught an exception calling the special post processing callback named %s... \n%s" % (callback, errorTxt) )
+    
+        else:
+            log.info("The special post processing callback completed successfully!")
+    
 
 def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recommendationStatus, log, database):
     log.info("Resetting Diagnosis Entries for application %s with final diagnosis %s" % (applicationName, str(finalDiagnosisIds)))
@@ -466,7 +523,7 @@ def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recom
         
     log.trace("Updated %i diagnosis entries for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
 
-# Reset the BLT diagram in response to a No-Download or Download
+# Reset the BLT diagram in response to a No-Download or Download.  This runs in the client in response to an operator action.
 def resetDiagram(finalDiagnosisIds, database):
 #    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     import system.ils.blt.diagram as diagram
@@ -503,7 +560,7 @@ def resetDiagram(finalDiagnosisIds, database):
                     print "Found a <%s> block named %s..." % (blockClass, blockName)
 
                     if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
-                                "com.ils.block.TrendDetector", "com.ils.block.LogicFilter"]:
+                                "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse"]:
                         print "   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID)
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
                         
@@ -627,3 +684,44 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     initialize(rootContainer)
     
     return valid, txt
+
+# This is called when the operator acknowledges a text alert.  It should effectively do a NO Download on the
+# application.  This is called from the ACK button on the loud workspace.
+def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, db, provider):
+    from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
+    print "... in %s performing Text Recommendation acknowledgement..." % (__name__)
+    
+    actionMessage="No Download"
+    recommendationStatus="No Download"
+
+    families=[]
+    
+    from ils.diagToolkit.common import fetchActiveDiagnosis
+    pds = fetchActiveDiagnosis(application, db)
+    finalDiagnosisIds=[]
+    for record in pds:
+        finalDiagnosisIds.append(record["FinalDiagnosisId"])
+
+    print "Resetting: "
+    print "  Application: ", application
+    print "  Families:    ", families
+    print "  FDs:         ", finalDiagnosisIds
+        
+    quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
+
+    resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, provider)
+
+    SQL = "delete from DtTextRecommendation where DiagnosisEntryId = %i" % (diagnosisEntryId)
+    rows = system.db.runUpdateQuery(SQL, database=db)
+    print "...deleted %i text recommendations..." % (rows)
+
+    print "...done acknowledging text recommendation!"
+    
+    # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
+    # that may be displayed on multiple clients.  This callback is running in a client, if I just call 
+    # initialize it will just update this client.  Because the database and blocks have been reset,
+    # I should be able to call recalc in the gateway which will notify client to update the spreadsheet
+    print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
+    projectName=system.util.getProjectName()
+    payload={"post": post, "database": db, "provider": provider}
+    system.util.sendMessage(projectName, "recalc", payload, "G")

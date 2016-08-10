@@ -5,7 +5,7 @@ Created on Mar 18, 2016
 '''
 import system
 
-# This is called from a timer embedded in the Setpoint Spreadsheet Button on the console.
+# This is called from a timer embedded in the Setpoint Spreadsheet Button on the console window.
 # It does a quick little query to see if there are any active outputs for this console .
 # If there are then it sets the "active" state of the template to True which in turn is 
 # used to animate the color of the arrow. The user can launch the setpoint spreadsheet 
@@ -19,7 +19,12 @@ def checkRecommendationState(buttonContainer):
     pds = fetchActiveOutputsForPost(post, database)
     
     if len(pds) == 0:
-        state=False
+        from ils.diagToolkit.common import fetchActiveTextRecommendationsForPost
+        pds = fetchActiveTextRecommendationsForPost(post, database)
+        if len(pds) == 0:
+            state=False
+        else:
+            state = True
     else:
         state=True
     

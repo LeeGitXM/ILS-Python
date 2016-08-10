@@ -42,7 +42,6 @@ def downloadCallback(rootContainer):
     
     serviceDownload(repeater, ds, tagProvider)
 
-    insertPostMessage(post, "Info", "This is a test")
 
 # This looks at the data in the setpoint spreadsheet and basically looks for at least one row that is set to GO
 def bookkeeping(ds):
@@ -102,7 +101,7 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                         # I'm calling a generic I/O API here which is shared with S88.  S88 can write to the OP of a controller, but I think that 
                         # the diag toolkit can only write to the SP of a controller.  (The G2 version just used stand-alone GSI variables, so it 
                         # was not obvious if we were writing to the SP or the OP, but I think we always wrote to the SP.
-                        reachable,msg=confirmControllerMode(tagPath, newSetpoint, testForZero=False, checkPathToValve=True, valueType="SP")
+                        reachable,msg=confirmControllerMode(tagPath, newSetpoint, testForZero=False, checkPathToValve=True, valueType="SP", logger=log)
 
                         if not(reachable):
                             okToDownload=False

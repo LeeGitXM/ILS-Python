@@ -11,7 +11,8 @@ Created on Sep 12, 2014
 import system, string
 from ils.diagToolkit.common import fetchPostForApplication
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
-from ils.constants.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
+from ils.constants.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
+    RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD, RECOMMENDATION_TEXT_POSTED
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
@@ -20,12 +21,19 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 def notifyClients(project, post, notificationText="", numOutputs=0):
     log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, numOutputs: <%s>..." % (project, post, str(numOutputs)))
     system.util.sendMessage(project=project, messageHandler="consoleManager", 
-                            payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}, scope="C")
+        payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}, scope="C")
 
     # If we are going to notify client to update their spreadsheet then maybe they should also update their recommendation maps...    
     from ils.diagToolkit.recommendationMap import notifyRecommendationMapClients
     notifyRecommendationMapClients(project, post)
 
+# Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
+# console and the spreadsheet isn't displayed.
+def notifyClientsOfTextRecommendation(project, post, application, notificationText, diagnosisEntryId, database, provider):
+    log.info("Notifying %s-%s-%s client of a Text Recommendation..." % (project, post, application))
+    system.util.sendMessage(project=project, messageHandler="consoleManager", 
+        payload={'type':'textRecommendation', 'post':post, 'application':application, 'notificationText':notificationText, 
+                 'diagnosisEntryId':diagnosisEntryId, 'database':database, 'provider':provider}, scope="C")
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -99,11 +107,11 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
     
-    # The activeOutputs can onlt be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
+    # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
     # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
+    post=fetchPostForApplication(application)
+    projectName = system.util.getProjectName()
     if activeOutputs > 0:
-        post=fetchPostForApplication(application)
-        projectName = system.util.getProjectName()
         notifyClients(projectName, post, notificationText, activeOutputs)
 
 
@@ -597,43 +605,63 @@ def manage(application, recalcRequested=False, database="", provider=""):
         finalDiagnosisId = record['FinalDiagnosisId']
         diagnosisEntryId = record["DiagnosisEntryId"]
         constantFD = record["Constant"]
+        postTextRecommendation = record["PostTextRecommendation"]
+        textRecommendationCallback = record["TextRecommendationCallback"]
+        textRecommendation = record["TextRecommendation"]
+        
         log.info("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i), Constant: %s" % (applicationName, familyName, finalDiagnosisName, finalDiagnosisId, str(constantFD)))
+
+        # There could be multiple Final Diagnosis that are of equal priority, so we can't just bail if the first one is constant or a text recommendation
 
         if constantFD:
             # Update the Diagnosis Entry status to be posted
             log.info("Setting diagnosis entry recommendation status to POSTED for a contant FD")
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i" % (RECOMMENDATION_POSTED, diagnosisEntryId)
             system.db.runUpdateQuery(SQL)
+        
+        elif postTextRecommendation:
+            log.info(">>>> Making a text recommendation <<<<")
+            SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i" % (RECOMMENDATION_TEXT_POSTED, diagnosisEntryId)
+            system.db.runUpdateQuery(SQL)
             
-        else:
+            from ils.diagToolkit.recommendation import makeTextRecommendation
+            textRecommendation = makeTextRecommendation(textRecommendationCallback, textRecommendation, application, finalDiagnosisName, finalDiagnosisId, provider, database)
+            
+            # Insert the text of the recommendation into a special table just for text recommendations so that we have a place to store it in case
+            # the operator isn't connected or he loses his connection.
+            SQL = "Insert into DttextRecommendation (DiagnosisEntryId, TextRecommendation) values (%i, '%s')" % (diagnosisEntryId, textRecommendation)
+            system.db.runUpdateQuery(SQL, database=database)
 
+            projectName = system.util.getProjectName()
+            notifyClientsOfTextRecommendation(projectName, post, application, textRecommendation, diagnosisEntryId, database, provider)
+
+        else:
             from ils.diagToolkit.recommendation import makeRecommendation
             recommendations, recommendationStatus = makeRecommendation(
-                    applicationName, familyName, finalDiagnosisName, 
-                    record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
-    
+                        applicationName, familyName, finalDiagnosisName, 
+                        record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
+        
             # Fetch all of the quant outputs for the final diagnosis
             from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
             pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
             quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
-    
-    
+        
+        
             textRecommendation = postRecommendationMessage(applicationName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
             print "-----------------"
             print "Text Recommendation: ", textRecommendation
             print "Recommendations: ", recommendations
             print "Status: ", recommendationStatus
             print "-----------------"
-            
+                
             if recommendationStatus == "ERROR":
                 log.error("The calculation method had an error")
                 finalDiagnosisId=record['FinalDiagnosisId']
-
                 # Not sure if I need to reset the quant outputs here...
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
-                                 actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database)
-
+                                     actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
                 return "Error", 0
+    
             elif recommendationStatus == RECOMMENDATION_NONE_MADE:
                 log.warn("No recommendations were made")
                 diagnosisEntryId=record['DiagnosisEntryId']
@@ -641,7 +669,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 logSQL.trace(SQL)
                 system.db.runUpdateQuery(SQL, database)
                 return "None Made", 0
-
+    
             quantOutputs = mergeRecommendations(quantOutputs, recommendations)
             print "-----------------"
             print "Quant Outputs: ", quantOutputs
@@ -669,13 +697,10 @@ def manage(application, recalcRequested=False, database="", provider=""):
 #                setDiagnosisEntryErrorStatus(list2, database)
                 log.info("Performing an automatic NO-DOWNLOAD because there was an error reading current values during bounds checking for %s..." % (quantOutputName)) 
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], 
-                         quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database)
-                notificationText = RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS
+                         quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
 
-                
                 # I just added this - 5/9/16, this used to continue on.
                 return RECOMMENDATION_ERROR, 0
-                # break
          
             finalQuantOutputs.append(quantOutput)
 
@@ -690,10 +715,13 @@ def manage(application, recalcRequested=False, database="", provider=""):
         
     if constantFD:
         log.info(" --- handling a constant final diagnosis (by doing nothing) ---")
+    elif postTextRecommendation:
+        log.info(" --- handling a text recommendation (by doing nothing) ---")
     elif numSignificantRecommendations == 0:
         log.info("There are no significant recommendations - Performing an automatic NO-DOWNLOAD because there are no significant recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
         resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], 
-                         quantOutputIds=quantOutputIds, actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database)
+                         quantOutputIds=quantOutputIds, actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, 
+                         database=database, provider=provider)
         notificationText = RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS
     else:
         log.info("Finished managing recommendations - there are %i significant Quant Outputs (There are %i quantOutputs)" % (numSignificantRecommendations, len(finalQuantOutputs)))

@@ -37,13 +37,17 @@ def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):
         window.setSize(int(width * scale), int(height * scale))
 
 #
-def positionWindow(window, mode, scale):
+def positionWindow(window, mode, scale=1.0):
+    print "Positioning the window to: ", mode
     mainWindow = window.parent
     mainWidth = mainWindow.getWidth()
     mainHeight = mainWindow.getHeight()
+    print "Main window is %i X %i (Width X Height)" % (mainWidth, mainHeight)
     width = window.getWidth()
     height = window.getHeight()
+    print "This window is %i X %i (Width X Height)" % (width, height)
     xOffset,yOffset=getDockOffset()
+    print "Dock Offset is (%i, %i)" % (xOffset,yOffset)
 
     if mode == 'UPPER-LEFT':
         window.setLocation(xOffset, 0)

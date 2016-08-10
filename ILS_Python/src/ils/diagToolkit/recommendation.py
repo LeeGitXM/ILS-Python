@@ -16,10 +16,46 @@ logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 def notifyConsole():
     print "Waking up the console"
 
+# Make a dynamix text recommendation
+def makeTextRecommendation(textRecommendationCallback, textRecommendation, application, finalDiagnosisName, finalDiagnosisId, provider, database):
+#application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
+    log.info("********** In %s *********" % (__name__))
+    
+    if textRecommendationCallback == None or textRecommendationCallback == "":
+        return textRecommendation
+    
+    # There is a custom callback to generate a dynamic text recommendation
+    if not(string.find(textRecommendationCallback, "project") == 0 or string.find(textRecommendationCallback, "shared") == 0):
+        # The method contains a full python path, including the method name
+        separator=string.rfind(textRecommendationCallback, ".")
+        packagemodule=textRecommendationCallback[0:separator]
+        separator=string.rfind(packagemodule, ".")
+        package = packagemodule[0:separator]
+        module  = packagemodule[separator+1:]
+        log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
+        exec("import %s" % (package))
+        exec("from %s import %s" % (package,module))
+    
+    try:
+        calculationSuccess, dynamicText = eval(textRecommendationCallback)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
+        log.info("...back from the calculation method!")
+    except:
+        errorType,value,trace = sys.exc_info()
+        errorTxt = traceback.format_exception(errorType, value, trace, 500)
+        postApplicationMessage(application, QUEUE_ERROR, "Caught an exception calling the text recommendation calculation method named %s... \n%s" % (textRecommendationCallback, errorTxt), log)
+        return textRecommendation
+    
+    else:
+        log.info("The calculation method returned explanation: %s" % (dynamicText))
+    
+
+    txt = "%s%s" % (textRecommendation, dynamicText)
+    return txt
+
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
     log.info("********** In %s *********" % (__name__))
-    SQL = "select Constant, CalculationMethod "\
+    SQL = "select Constant, CalculationMethod, TextRecommendation "\
         "from DtFinalDiagnosis "\
         "where FinalDiagnosisId = %s " % (finalDiagnosisId)
     logSQL.trace(SQL)
@@ -27,8 +63,11 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     record=pds[0]
     calculationMethod = record["CalculationMethod"]
     constant = record["Constant"]
-    log.info("Making a recommendation for final diagnosis with id: %i using calculation method: %s, Constant=%s, database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, constant, database, provider))
+    textRecommendation = record["TextRecommendation"]
     
+    log.info("Making a recommendation for final diagnosis with id: %i using calculation method: <%s>, Constant=<%s>, \
+        database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, str(constant), database, provider))
+
     # If the FD is constant, then it shouldn't get this far becaus ethere really isn't a recommendation to make, so this code should never get exercised.
     if constant == True:
         print "The FD IS a CONSTANT"
@@ -52,7 +91,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
         exec("import %s" % (package))
         exec("from %s import %s" % (package,module))
-
+    
     try:
         calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
         log.info("...back from the calculation method!")
@@ -61,23 +100,24 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
         log.error("Caught an exception calling calculation method named %s... \n%s" % (calculationMethod, errorTxt) )
         return [], "ERROR"
-
+    
     else:
         log.info("The calculation method returned explanation: %s" % (explanation))
         log.info("Received recommendations: %s" % (str(rawRecommendationList)))
-
+    
         # Insert text returned by the calculation method into the application Queue
-        from ils.queue.commons import getQueueForDiagnosticApplication
-        applicationQueue = getQueueForDiagnosticApplication(application, database)
-            
-        from ils.queue.message import insert
         if calculationSuccess:
             messageLevel = QUEUE_INFO
         else:
             messageLevel = QUEUE_ERROR
-        insert(applicationQueue, messageLevel, explanation, database)
-        log.info("Explanation: %s - %s" % (messageLevel, explanation))
-        
+    
+        if textRecommendation == "":
+            txt = explanation
+        else:
+            txt = "%s  %s" % (textRecommendation, explanation)
+    
+        postApplicationMessage(application, messageLevel, txt, log)
+            
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
         # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
         log.info("Screening for no-change recommendations...") 
@@ -87,20 +127,20 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                 log.info("...removing a no change recommendation: %s" % (str(recommendation)))
             else:
                 screenedRecommendationList.append(recommendation)
-
+    
         if len(screenedRecommendationList) == 0:
             log.info("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
             from ils.diagToolkit.common import fetchPostForApplication
             post=fetchPostForApplication(application, database)
-            
+                
             from ils.diagToolkit.setpointSpreadsheet import resetApplication
-            resetApplication(post=post, application=application, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database)
+            resetApplication(post=post, application=application, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database, provider=provider)
             return [], RECOMMENDATION_NONE_MADE
         else:
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
             logSQL.trace(SQL)
             system.db.runUpdateQuery(SQL, database)
-
+    
             recommendationList=[]
             log.info("  The recommendations returned from the calculation method are: ")
             for recommendation in screenedRecommendationList:
@@ -111,7 +151,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                 val = recommendation.get('Value', None)
                 if val == None:
                     log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
-    
+        
                 if quantOutput != None and val != None:
                     log.info("      Output: %s - Value: %s" % (quantOutput, str(val)))
                     recommendation['AutoRecommendation']=val
@@ -213,9 +253,11 @@ def calculateFinalRecommendation(quantOutput):
 def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):
     print "*** In recommendation.test() ***"
     # We could fetch the actual finalDiagnosis Id from the database, but for now I don't think anyone uses it...
-    finalDiagnosisId = -1
+    from ils.diagToolkit.common import fetchFinalDiagnosis
+    fdDict=fetchFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
+    finalDiagnosisId = fdDict.get("FinalDiagnosisId")
     
-    print "Testing %s - %s" % (finalDiagnosisName, calculationMethod)
+    print "Testing %s (%i) - %s" % (finalDiagnosisName, finalDiagnosisId, calculationMethod)
 
 #    if string.upper(calculationMethod) == "CONSTANT":
 #        print "Bypassing calculations for a CONSTANT calculation method!"
@@ -246,4 +288,4 @@ def postApplicationMessage(applicationName, status, message, log):
     queueId = system.db.runScalarQuery("select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName))
     from ils.queue.message import _insert
     _insert(queueId, status, message)
-    log.info(message)
+    log.info("%s - %s" % (status,message))

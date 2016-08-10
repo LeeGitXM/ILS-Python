@@ -82,7 +82,7 @@ class TDCController(controller.Controller):
                 success = False
                 errorMessage = "%s has no path to valve" % (self.path)
         
-            if string.upper(mode) <<> 'AUTO':
+            if string.upper(mode) <> 'AUTO':
                 success = False
                 errorMessage = "%s %s is not in automatic (mode is actually %s)" % (errorMessage, self.path, mode)
             
