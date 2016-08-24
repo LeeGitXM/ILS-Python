@@ -4,9 +4,6 @@ Created on Aug 28, 2014
 @author: ILS
 '''
 
-def toDataSet(header, rows):
-    pass
-
 def addRow():
     pass
 
@@ -25,8 +22,11 @@ def setValue(dataset, row, columnIndexOrName, val):
 def sort(dataset, key, order="Asc"):
     return dataset
 
-def toCSV(ds, True, False, False):
+def toCSV(ds, flag1, flag2, flag3):
     return ""
+
+def toDataSet(header, rows):
+    pass
 
 def toPyDataSet(dataset):
     return True
