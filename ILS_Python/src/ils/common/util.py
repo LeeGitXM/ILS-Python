@@ -50,6 +50,25 @@ def formatDateTime(theDate, format = 'MM/dd/yy HH:mm'):
     theDate = system.db.dateFormat(theDate, format)
     return theDate
 
+'''
+Simulate a word wrap by converting a text string to HTML and inserting <br> tokens into the 
+text string at the requested line length
+'''
+def formatHTML(txt, lineLength):
+    tokens = txt.split(" ")
+    txt = ""
+    line = ""
+    for token in tokens:
+        line = "%s%s " % (line, token)
+        if len(line) > lineLength:
+            if txt == "":
+                txt = line
+            else:
+                txt = "%s<br>%s" % (txt, line)
+            line = ""
+    txt = "<HTML>%s<br>%s" % (txt, line)
+    return txt
+
 
 # Returns the m and b constants from the equation y = mx + b
 def equationOfLine(x1, y1, x2, y2):

@@ -17,7 +17,7 @@ def notifyConsole():
     print "Waking up the console"
 
 # Make a dynamix text recommendation
-def makeTextRecommendation(textRecommendationCallback, textRecommendation, application, finalDiagnosisName, finalDiagnosisId, provider, database):
+def makeTextRecommendation_DELETE_ME(textRecommendationCallback, textRecommendation, application, finalDiagnosisName, finalDiagnosisId, provider, database):
 #application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
     log.info("********** In %s *********" % (__name__))
     
@@ -53,23 +53,15 @@ def makeTextRecommendation(textRecommendationCallback, textRecommendation, appli
     return txt
 
 # This is a replacement to em-quant-recommend-gda
-def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
+def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, constantFD, calculationMethod, 
+                       postTextRecommendation, textRecommendation, database="", provider=""):
     log.info("********** In %s *********" % (__name__))
-    SQL = "select Constant, CalculationMethod, TextRecommendation "\
-        "from DtFinalDiagnosis "\
-        "where FinalDiagnosisId = %s " % (finalDiagnosisId)
-    logSQL.trace(SQL)
-    pds = system.db.runQuery(SQL, database)
-    record=pds[0]
-    calculationMethod = record["CalculationMethod"]
-    constant = record["Constant"]
-    textRecommendation = record["TextRecommendation"]
-    
-    log.info("Making a recommendation for final diagnosis with id: %i using calculation method: <%s>, Constant=<%s>, \
-        database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, str(constant), database, provider))
 
-    # If the FD is constant, then it shouldn't get this far becaus ethere really isn't a recommendation to make, so this code should never get exercised.
-    if constant == True:
+    log.info("Making a recommendation for final diagnosis with id: %i using calculation method: <%s>, Constant=<%s>, \
+        database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, str(constantFD), database, provider))
+
+    # If the FD is constant, then it shouldn't get this far because there really isn't a recommendation to make, so this code should never get exercised.
+    if constantFD == True:
         print "The FD IS a CONSTANT"
         log.info("Detected a CONSTANT Final Diagnosis")
         
@@ -78,7 +70,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         system.db.runUpdateQuery(SQL, database)
 
         recommendationList=[]
-        return recommendationList, "SUCCESS"
+        return recommendationList, "", "SUCCESS"
 
     # If they specify shared or project scope, then we don't need to do this
     if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
@@ -99,7 +91,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
         log.error("Caught an exception calling calculation method named %s... \n%s" % (calculationMethod, errorTxt) )
-        return [], "ERROR"
+        return [], "", "ERROR"
     
     else:
         log.info("The calculation method returned explanation: %s" % (explanation))
@@ -111,13 +103,11 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         else:
             messageLevel = QUEUE_ERROR
     
-        if textRecommendation == "":
-            txt = explanation
-        else:
-            txt = "%s  %s" % (textRecommendation, explanation)
+        if textRecommendation != "":
+            explanation = "%s  %s" % (textRecommendation, explanation)
     
-        postApplicationMessage(application, messageLevel, txt, log)
-            
+        postApplicationMessage(application, messageLevel, explanation, log)
+
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
         # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
         log.info("Screening for no-change recommendations...") 
@@ -127,15 +117,16 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                 log.info("...removing a no change recommendation: %s" % (str(recommendation)))
             else:
                 screenedRecommendationList.append(recommendation)
-    
-        if len(screenedRecommendationList) == 0:
+
+        # If the FD is a text recommendation then the FD will be cleared when the loud workspace is acknowledged!
+        if not(postTextRecommendation) and len(screenedRecommendationList) == 0:
             log.info("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
             from ils.diagToolkit.common import fetchPostForApplication
             post=fetchPostForApplication(application, database)
                 
             from ils.diagToolkit.setpointSpreadsheet import resetApplication
             resetApplication(post=post, application=application, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database, provider=provider)
-            return [], RECOMMENDATION_NONE_MADE
+            return [], "", RECOMMENDATION_NONE_MADE
         else:
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
             logSQL.trace(SQL)
@@ -161,7 +152,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                     del recommendation['Value']
                     recommendationList.append(recommendation)
 
-    return recommendationList, "SUCCESS"
+    return recommendationList, explanation, "SUCCESS"
 
 # Insert a recommendation into the database
 def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, database):

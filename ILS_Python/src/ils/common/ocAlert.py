@@ -65,7 +65,7 @@ def handleMessage(payload):
 # This is called from the button smack in the middle of the screen 
 # This runs in the client, so don't bother with loggers, just print debug messages...
 def buttonHandler(event):
-    print "In the button handler..."
+    print "In %s..." % (__name__)
     rootContainer = event.source.parent
     callback=rootContainer.callback
     
@@ -95,7 +95,7 @@ def buttonHandler(event):
         exec("from %s import %s" % (package,module))
         
     try:
-        print "Calling validation procedure %s..." % (callback)
+        print "Calling custom callback procedure %s..." % (callback)
         eval(callback)(event, payload)
         print "   ...back from the callback!"
                 

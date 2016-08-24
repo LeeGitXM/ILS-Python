@@ -16,19 +16,56 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
 
 
 # This is called when the press the Setpoint Spreadsheet Button on a console.  This needs to check if we should show the setpoint
-# spreadsheet, with numeric recommendations, or the loud workspace with text recommendations.
+# spreadsheet, with numeric recommendations or the loud workspace with text recommendations.
 def openSetpointSpreadsheetCallback(post):
     print "Checking what to open..."
-    window = system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'post' : post})
-    system.nav.centerWindow(window)
+
+    from ils.common.config import getDatabaseClient
+    database=getDatabaseClient()
+    
+    from ils.common.config import getTagProviderClient
+    provider=getTagProviderClient()
+            
+    # Check if there is a text recommendation for this post
+    from ils.diagToolkit.common import fetchActiveTextRecommendationsForPost
+    pds = fetchActiveTextRecommendationsForPost(post)
+    if len(pds) > 0:
+        print "There are %i text recommendation(s)..." % (len(pds))
+        for record in pds:
+            notificationText = record["TextRecommendation"]
+            callback = record["PostProcessingCallback"]
+            application = record["ApplicationName"]
+            diagnosisEntryId = record["DiagnosisEntryId"]
+            
+            # Now display the text recommendation
+            system.gui.messageBox(notificationText, "Text Recommendation")
+        
+            # Once the text recommendation is acknowledged proceed to perform the standard resets
+            print "Proceeding to acknowledge the text recommendation..."    
+            from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
+            acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
+    else:
+        print "There are no text recommendations..."
 
 
-# The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 
-# change in a FD / Recommendation.  The idea is that the gateway will send a message to all clients.  The payload of the 
-# message includes the console name.  If the client is responsible for the console and the setpoint spreadsheet is not 
-# already displayed, then display it.  There are a number of stratagies that could be used to determine if a client is 
-# responsible for / interested in a certain console.  The first one I will try is to check to see if the console window
-# is open.  (This depends on a reliable policy for keeping the console displayed)
+    # If there is at least 1 quant recommendation for the post the open the setpoint spreadsheet
+    from ils.diagToolkit.common import fetchActiveOutputsForPost
+    pds = fetchActiveOutputsForPost(post, database)
+    if len(pds) > 0:
+        window = system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'post' : post})
+        system.nav.centerWindow(window)
+    else:
+        print "There are no quantitative recommendations..."
+
+
+'''
+The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 
+change in a FD / Recommendation.  The idea is that the gateway will send a message to all clients.  The payload of the 
+message includes the console name.  If the client is responsible for the console and the setpoint spreadsheet is not 
+already displayed, then display it.  There are a number of stratagies that could be used to determine if a client is 
+responsible for / interested in a certain console.  The first one I will try is to check to see if the console window
+is open.  (This depends on a reliable policy for keeping the console displayed)
+'''
 def handleNotification(payload):
     print "-----------------------"
     print "In %s.handleNotification with %s" % (__name__, str(payload))
@@ -41,6 +78,12 @@ def handleNotification(payload):
     
     # First check if the setpoint spreadsheet is already open.  This does not check which console's
     # spreadsheet is open, it assumes a client can only be interested in one console.
+    
+    '''
+    This seems like it might not be right - if console A is showing the loud workspace and a notification for console B
+    comes through then it should be ignored.  I think the console should be checked first!  
+    (Look at how I did it for text recommendations below)
+    '''
     print "Checking to see if the setpoint spreadsheet or Loud Workspace is already open..."
     for window in windows:
         windowPath=window.getPath()
@@ -144,8 +187,41 @@ def handleTextRecommendationNotification(payload):
     database=payload.get('database', '')
     provider=payload.get('provider', '')
     diagnosisEntryId=payload.get('diagnosisEntryId', '')
+
+    callback="ils.diagToolkit.finalDiagnosisClient.ackTextRecommendation"
+    callbackPayloadDictionary = {"post": post, "application": application, "notificationText": notificationText, "diagnosisEntryId": diagnosisEntryId, "database": database, "provider": provider}
+    callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
     
     windows = system.gui.getOpenedWindows()
+    
+    '''
+    We are handling a text recommendation, so if there is already an open setpoint spreadsheet that has not been dealt with then
+    hide it.  The diagnosis entry/recommendation that triggered should be rescinded.
+    >>> This might not be correct, what if they were equal priority??? <<<
+    '''
+    print "Checking for an open setpoint spreadsheet..."
+    for window in windows:
+        windowPath=window.getPath()
+        pos = windowPath.find('Setpoint Spreadsheet')
+        if pos >= 0:
+            rootContainer=window.rootContainer
+            if post == rootContainer.post: 
+                print "...closing an open setpoint spreadsheet because we have what must be a higher priority text recommendation!"
+                system.nav.closeWindow(windowPath)
+
+    print "Checking to see if the Loud Workspace is already open..."
+    for window in windows:
+        windowPath=window.getPath()
+        pos = windowPath.find('OC Alert')
+        if pos >= 0:
+            rootContainer=window.rootContainer
+            if post == rootContainer.post: 
+                print "...found a matching OC alert - updating its properties!"
+
+                rootContainer.callback = callback
+                rootContainer.mainMessage = "<HTML> %s" % (notificationText)
+                rootContainer.callbackPayloadDataset = callbackPayloadDataset
+                return
     
     print "Checking for a matching console window..."
     for window in windows:
@@ -153,20 +229,21 @@ def handleTextRecommendationNotification(payload):
         rootContainer=window.rootContainer
         windowPost=rootContainer.getPropertyValue("post")
         if post == windowPost:
+            '''
+            We found an interested post.  Now see if there is already a loud workspace.
+            (What if there was a setpoint spreadsheet open and now a higher priority text recommendation comes through?)
+            '''
+            
             print "Found an interested console window, posting the loud workspace..."
-            callback="ils.diagToolkit.finalDiagnosisClient.ackTextRecommendation"
-
-            callbackPayloadDictionary = {"post": post, "application": application, "notificationText": notificationText, "diagnosisEntryId": diagnosisEntryId, "database": database, "provider": provider}
-            callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
             
             ocPayload = {
                          "post": post,
                          "topMessage": "Attention!! Attention!!", 
-                         "bottomMessage": "New diagnosis(es) is(are) here!", 
+                         "bottomMessage": "A new Text recommendation is ready!", 
                          "buttonLabel": "Acknowledge",
                          "callback": callback,
                          "callbackPayloadDataset": callbackPayloadDataset,
-                         "mainMessage": "<HTML> %s" % (notificationText),
+                         "mainMessage": "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button",
                          "timeoutEnabled": False,
                          "timeoutSeconds": 300
                          }
@@ -188,12 +265,18 @@ def ackTextRecommendation(event, payload):
     database=payload.get("database","")
     provider=payload.get("provider","")
     diagnosisEntryId=payload.get("diagnosisEntryId","")
+    notificationText=payload.get("notificationText","")
     
+    # Dismiss the loud workspace
+    system.nav.closeParentWindow(event)
+    
+    # Now display the text recommendation
+    system.gui.messageBox(notificationText, "Text Recommendation")
+
+    # Once the text recommendation is acknowledged proceed to perform the standard resets
+    print "Proceeding to acknowledge the text recommendation..."    
     from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
     acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
-    # Dismiss the loud workspace
-#    system.nav.closeParentWindow(event)
-    
 
 
 # This is called when they press ???

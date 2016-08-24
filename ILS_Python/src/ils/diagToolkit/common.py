@@ -127,7 +127,7 @@ def clearQuantOutputRecommendations(application, database=""):
 def fetchActiveDiagnosis(applicationName, database=""):
     SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
-        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.TextRecommendationCallback, FD.TextRecommendation "\
+        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
@@ -196,7 +196,7 @@ def fetchActiveOutputsForPost(post, database=""):
     return pds
 
 def fetchActiveTextRecommendationsForPost(post, database=""):
-    SQL = "select distinct TR.TextRecommendation"\
+    SQL = "select distinct TR.TextRecommendation, FD.PostProcessingCallback, A.ApplicationName, DE.DiagnosisEntryId "\
         " from TkPost P, TkUnit U, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE, DtTextRecommendation TR "\
         " where P.PostId = U.PostId "\
         " and U.UnitId = A.UnitId "\
@@ -247,7 +247,7 @@ def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
     SQL = "select U.UnitName, FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FamilyId, FD.FinalDiagnosisPriority, "\
         " FD.CalculationMethod, FD.UUID, FD.DiagramUUID, "\
-        " FD.PostTextRecommendation, FD.TextRecommendationCallback, FD.RefreshRate, FD.TextRecommendation "\
+        " FD.PostTextRecommendation, FD.PostProcessingCallback, FD.RefreshRate, FD.TextRecommendation "\
         " from TkUnit U, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
         " where U.UnitId = A.UnitId and A.ApplicationId = F.ApplicationId "\
         " and FD.FamilyId = F.FamilyId "\

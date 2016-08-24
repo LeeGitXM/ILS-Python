@@ -591,6 +591,15 @@ def storeSelector(tagRoot, database):
     vals = system.tag.readAll([tagRoot + '/value', tagRoot + '/sampleTime'])
     value=vals[0].value
     sampleTime=vals[1].value
+    
+    if value == None:
+        selectorLog.warn("Detected a value of None for <%s>" % (valueName))
+        return
+    
+    if sampleTime == None:
+        selectorLog.warn("Detected a sample time of None for <%s>" % (valueName))
+        return
+    
     selectorLog.trace("   ...handling %s at %s" % (str(value), str(sampleTime)))
     
     # Fetch the value id using the name

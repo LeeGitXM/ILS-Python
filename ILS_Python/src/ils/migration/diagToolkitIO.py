@@ -390,7 +390,7 @@ def insertFinalDiagnosis(container):
         else:
             postTextRecommendation=0
         textRecommendation=ds.getValueAt(row, "text-recommendation")
-        textRecommendationCallback=ds.getValueAt(row, "text-recommendation-callback")
+        postProcessingCallback=ds.getValueAt(row, "text-recommendation-callback")
         refreshRate=ds.getValueAt(row, "recommendation-refresh-rate-in-minutes")
             
         familyId=getFamilyId(rootContainer, family)
@@ -398,11 +398,11 @@ def insertFinalDiagnosis(container):
         if familyId >= 0:
             SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, FamilyId, Explanation, "\
                 "FinalDiagnosisPriority, Constant, CalculationMethod, TrapInsignificantRecommendations, "\
-                "PostTextRecommendation, TextRecommendation, TextRecommendationCallback, RefreshRate) "\
+                "PostTextRecommendation, TextRecommendation, PostProcessingCallback, RefreshRate) "\
                 "values ('%s', %s, '%s', %s, %i, '%s', %s, %s, '%s', '%s', %s)" % \
                  (finalDiagnosis, str(familyId), explanation, str(priority), constant, calculationMethod, 
                  trapInsignificantRecommendations, postTextRecommendation, textRecommendation,
-                 textRecommendationCallback, refreshRate)
+                 postProcessingCallback, refreshRate)
             print SQL
             familyId=system.db.runUpdateQuery(SQL, getKey=True)
             ds=system.dataset.setValue(ds, row, "id", familyId) 

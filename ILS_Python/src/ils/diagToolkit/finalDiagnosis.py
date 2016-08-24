@@ -112,6 +112,7 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     post=fetchPostForApplication(application)
     projectName = system.util.getProjectName()
     if activeOutputs > 0:
+        print "Notifying clients that there are new setpoints"
         notifyClients(projectName, post, notificationText, activeOutputs)
 
 
@@ -435,45 +436,55 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 " and FinalDiagnosisId = %i)" % (RECOMMENDATION_REC_MADE, fdId)
             logSQL.trace(SQL)
             rows=system.db.runUpdateQuery(SQL, database)
-            log.info("      deleted %i recommendations..." % (rows))
+            log.info("      ... deleted %i quantitative recommendations..." % (rows))
+            
+            SQL = "delete from DtTextRecommendation where DiagnosisEntryId in "\
+                " (select DiagnosisEntryId from DtDiagnosisEntry "\
+                " where Status = 'Active' and RecommendationStatus = '%s' "\
+                " and FinalDiagnosisId = %i)" % (RECOMMENDATION_REC_MADE, fdId)
+            logSQL.trace(SQL)
+            rows=system.db.runUpdateQuery(SQL, database)
+            log.info("      ... deleted %i text recommendations..." % (rows))
 
             SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s'"\
                 "where Status = 'Active' and RecommendationStatus = '%s' "\
                 " and FinalDiagnosisId = %i" % (RECOMMENDATION_RESCINDED, RECOMMENDATION_REC_MADE, fdId)
             logSQL.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, database)
-            log.info("      ...updated %i diagnosis entries to %s..." % (rows, RECOMMENDATION_REC_MADE))
+            log.info("      ...updated %i diagnosis entries recommendation state to %s..." % (rows, RECOMMENDATION_REC_MADE))
 
     #-------------------------------------------------------------------
     def rescindActiveDiagnosis(application, database):
-        log.info("...rescinding active diagnosis and deleting recommendations for application %s..." % (application))
+        log.info("...rescinding **active** diagnosis and deleting recommendations for application %s..." % (application))
 
-        SQL = "select A.ApplicationName, R.RecommendationId "\
+        SQL = "select R.RecommendationId "\
             "from DtRecommendation R, DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
               " where R.DiagnosisEntryId = DE.DiagnosisEntryId and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
-              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId "
+              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId and A.applicationName = '%s'" % (application)
         
         pds = system.db.runQuery(SQL, database)
         totalRows=0
         for record in pds:
             recommendationId=record["RecommendationId"]
-            applicationName=record["ApplicationName"]
-            log.info("Checking recommendation: %s, application: %s" % (str(recommendationId), applicationName))
-            if application == applicationName:
-                print "* delete it*"
-                SQL = "delete from DtRecommendation where RecommendationId = %i" % (recommendationId)
-                rows=system.db.runUpdateQuery(SQL)
-                totalRows=totalRows+rows
-        log.info("     ...deleted %i recommendations..." % (totalRows))
+            SQL = "delete from DtRecommendation where RecommendationId = %i" % (recommendationId)
+            rows=system.db.runUpdateQuery(SQL)
+            totalRows=totalRows+rows
+        log.info("     ...deleted %i quantitative recommendations..." % (totalRows))
+        
+        # Delete active text recommendations
+        SQL = "select DE.DiagnosisEntryId "\
+            "from DtTextRecommendation TR, DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+              " where TR.DiagnosisEntryId = DE.DiagnosisEntryId and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
+              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId and A.applicationName = '%s' " % (application)
 
-#        SQL = "delete from DtRecommendation where DiagnosisEntryId in "\
-#              " (select DE.DiagnosisEntryId from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
-#              " where DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
-#              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId "\
-#              " and A.ApplicationName = '%s')" % (application)
-#        logSQL.trace(SQL)
-#        rows=system.db.runUpdateQuery(SQL, database)
-#        log.trace("      deleted %i recommendations..." % (rows))
+        pds = system.db.runQuery(SQL, database)
+        totalRows=0
+        for record in pds:
+            diagnosisEntryId=record["DiagnosisEntryId"]
+            SQL = "delete from DtTextRecommendation where DiagnosisEntryId = %i" % (diagnosisEntryId)
+            rows=system.db.runUpdateQuery(SQL)
+            totalRows=totalRows+rows
+        log.info("     ...deleted %i text recommendations..." % (totalRows))
 
         # Update the Quant Outputs 
         log.info("...rescinding active recommendations for %s..." % (application))
@@ -606,7 +617,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
         diagnosisEntryId = record["DiagnosisEntryId"]
         constantFD = record["Constant"]
         postTextRecommendation = record["PostTextRecommendation"]
-        textRecommendationCallback = record["TextRecommendationCallback"]
+        postProcessingCallback = record["PostProcessingCallback"]
+        calculationMethod = record["CalculationMethod"]
         textRecommendation = record["TextRecommendation"]
         
         log.info("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i), Constant: %s" % (applicationName, familyName, finalDiagnosisName, finalDiagnosisId, str(constantFD)))
@@ -618,45 +630,29 @@ def manage(application, recalcRequested=False, database="", provider=""):
             log.info("Setting diagnosis entry recommendation status to POSTED for a contant FD")
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i" % (RECOMMENDATION_POSTED, diagnosisEntryId)
             system.db.runUpdateQuery(SQL)
-        
-        elif postTextRecommendation:
-            log.info(">>>> Making a text recommendation <<<<")
-            SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i" % (RECOMMENDATION_TEXT_POSTED, diagnosisEntryId)
-            system.db.runUpdateQuery(SQL)
-            
-            from ils.diagToolkit.recommendation import makeTextRecommendation
-            textRecommendation = makeTextRecommendation(textRecommendationCallback, textRecommendation, application, finalDiagnosisName, finalDiagnosisId, provider, database)
-            
-            # Insert the text of the recommendation into a special table just for text recommendations so that we have a place to store it in case
-            # the operator isn't connected or he loses his connection.
-            SQL = "Insert into DttextRecommendation (DiagnosisEntryId, TextRecommendation) values (%i, '%s')" % (diagnosisEntryId, textRecommendation)
-            system.db.runUpdateQuery(SQL, database=database)
-
-            projectName = system.util.getProjectName()
-            notifyClientsOfTextRecommendation(projectName, post, application, textRecommendation, diagnosisEntryId, database, provider)
 
         else:
             from ils.diagToolkit.recommendation import makeRecommendation
-            recommendations, recommendationStatus = makeRecommendation(
-                        applicationName, familyName, finalDiagnosisName, 
-                        record['FinalDiagnosisId'], record['DiagnosisEntryId'], database, provider)
+            recommendations, explanation, recommendationStatus = makeRecommendation(applicationName, familyName, finalDiagnosisName, finalDiagnosisId,
+                diagnosisEntryId, constantFD, calculationMethod, postTextRecommendation, textRecommendation, database, provider)
         
             # Fetch all of the quant outputs for the final diagnosis
             from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
             pds, fdQuantOutputs = fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
             quantOutputs = mergeOutputs(quantOutputs, fdQuantOutputs)
-        
-        
-            textRecommendation = postRecommendationMessage(applicationName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
+
             print "-----------------"
-            print "Text Recommendation: ", textRecommendation
             print "Recommendations: ", recommendations
-            print "Status: ", recommendationStatus
+            print "    Explanation: ", explanation
+            print "         Status: ", recommendationStatus
             print "-----------------"
+
+            # If there were numeric recommendations then make a concise message and post it to the application queue.
+            if len(quantOutputs) > 0:
+                postRecommendationMessage(applicationName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database)
                 
             if recommendationStatus == "ERROR":
                 log.error("The calculation method had an error")
-                finalDiagnosisId=record['FinalDiagnosisId']
                 # Not sure if I need to reset the quant outputs here...
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
                                      actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
@@ -706,7 +702,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     finalQuantOutputs, notificationText = calculateVectorClamps(finalQuantOutputs, provider)
     
-    # Store the results in the database
+    # Store the results in the database 
     log.info("Done managing, the final outputs are: %s" % (str(finalQuantOutputs)))
     quantOutputIds=[]
     for quantOutput in finalQuantOutputs:
@@ -716,7 +712,15 @@ def manage(application, recalcRequested=False, database="", provider=""):
     if constantFD:
         log.info(" --- handling a constant final diagnosis (by doing nothing) ---")
     elif postTextRecommendation:
-        log.info(" --- handling a text recommendation (by doing nothing) ---")
+        log.info(" --- handling a text recommendation by posting the loud workspace ---")
+        from ils.common.util import formatHTML
+        explanation = formatHTML(explanation, 50)
+        print "The explanation is: <%s>" % (explanation)
+        SQL = "Insert into DtTextRecommendation (DiagnosisEntryId, TextRecommendation) values (%i, '%s')" % (diagnosisEntryId, explanation)
+        system.db.runUpdateQuery(SQL, database=database)
+
+        projectName = system.util.getProjectName()
+        notifyClientsOfTextRecommendation(projectName, post, application, explanation, diagnosisEntryId, database, provider)
     elif numSignificantRecommendations == 0:
         log.info("There are no significant recommendations - Performing an automatic NO-DOWNLOAD because there are no significant recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
         resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], 

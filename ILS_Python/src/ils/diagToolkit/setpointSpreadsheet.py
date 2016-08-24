@@ -478,7 +478,7 @@ def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, 
 def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider):
     import sys, traceback
     print "Checking for special actions for final Diagnosis: %i" % (finalDiagnosisId)
-    SQL = "select SpecialPostProcessingCallback from DtFinalDiagnosis where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    SQL = "select PostProcessingCallback from DtFinalDiagnosis where FinalDiagnosisId = %i" % (finalDiagnosisId)
     callback = system.db.runScalarQuery(SQL, database)
     print "The callback is <%s>" % (callback)
 
@@ -572,8 +572,8 @@ def resetDiagram(finalDiagnosisIds, database):
                         print "Updated %i rows" % (rows)
 
                     if blockClass == "com.ils.block.Inhibitor":
-                            print "   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId)
-                            system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
+                        print "   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId)
+                        system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
                         
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
@@ -627,7 +627,7 @@ def partialResetDiagram(finalDiagnosisIds, database):
                             "com.ils.block.TrendDetector"]:
                         print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
                         system.ils.blt.diagram.setBlockState(diagramUUID, blockName, "UNKNOWN")
-                        # We do NOT want tosend a signal to the block to evaluate in order to get the signal 
+                        # We do NOT want to send a signal to the block to evaluate in order to get the signal 
                         # to propagate because the EVALUATE signal will cause the block to reevaluate the history
                         # buffer and reach the same conclusion that we just cleared.
                         
@@ -696,11 +696,9 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
 
     families=[]
     
-    from ils.diagToolkit.common import fetchActiveDiagnosis
-    pds = fetchActiveDiagnosis(application, db)
-    finalDiagnosisIds=[]
-    for record in pds:
-        finalDiagnosisIds.append(record["FinalDiagnosisId"])
+    SQL = "select FinalDiagnosisId from DtDiagnosisEntry where DiagnosisEntryId = %i" % (diagnosisEntryId)
+    finalDiagnosisId = system.db.runScalarQuery(SQL, db=db) 
+    finalDiagnosisIds=[finalDiagnosisId]
 
     print "Resetting: "
     print "  Application: ", application
