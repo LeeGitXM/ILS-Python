@@ -30,13 +30,6 @@ def insertPostMessage(post, status, message, db=''):
     
     insert(queueKey, status, message, db)
 
-# This version of the insert stems from translation of "build-msg-on-wksp"
-def insertFromWorkspace(message,color,x,y,wksp):
-    status   = 'Info'
-    queueKey = 'default'
-    insert(queueKey,status,message)
-    return 200,10  # Width, height - not used
-
 def queueSQL(queueKey, useCheckpoint, order, db =''):
     
     SQL = "select checkpointTimestamp from QueueMaster where QueueKey = '%s'" % (queueKey)

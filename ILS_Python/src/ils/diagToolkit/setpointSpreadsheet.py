@@ -6,6 +6,7 @@ Created on Sep 9, 2014
 
 import system, string
 from ils.sfc.common.constants import SQL
+from ils.common.operatorLogbook import insertForPost
 log = system.util.getLogger("com.ils.diagToolkit")
 WAIT_FOR_MORE_DATA="Wait For Data"
 
@@ -128,12 +129,12 @@ def writeFile(rootContainer, filepath):
             family=finalDiagnosisRecord['FamilyName']
             finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
             finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
-            recommendationMultiplier=finalDiagnosisRecord['RecommendationMultiplier']
+            multiplier=finalDiagnosisRecord['Multiplier']
             recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
             print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
             
-            if recommendationMultiplier < 0.99 or recommendationMultiplier > 1.01:
-                system.file.writeFile(filepath, "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, recommendationMultiplier), True)
+            if multiplier < 0.99 or multiplier > 1.01:
+                system.file.writeFile(filepath, "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier), True)
             else:
                 system.file.writeFile(filepath, "       Diagnosis -- %s\n" % (finalDiagnosis), True)
 
@@ -259,19 +260,7 @@ def recalcCallback(event):
 def waitCallback(event):
     print "Processing a WAIT-FOR-MORE-DATA..."
     rootContainer=event.source.parent
-
-    from ils.common.config import getDatabaseClient, getTagProviderClient
-    db=getDatabaseClient()
-    tagProvider=getTagProviderClient()
-    repeater=rootContainer.getComponent("Template Repeater")
-    ds = repeater.templateParams
-    postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=WAIT_FOR_MORE_DATA, recommendationStatus=WAIT_FOR_MORE_DATA)
-
-
-# This is called from the NO DOWNLOAD button on the set-point spreadsheet
-def noDownloadCallback(event):
-    print "Processing a NO-DOWNLOAD..."
-    rootContainer=event.source.parent
+    post = rootContainer.post
 
     from ils.common.config import getDatabaseClient, getTagProviderClient
     db=getDatabaseClient()
@@ -281,11 +270,65 @@ def noDownloadCallback(event):
     activeApplication = isThereAnActiveApplication(repeater)
     if activeApplication:
         ds = repeater.templateParams
+        
+        # Write something useful to the logbook to document this No Download
+        logbookMessage = "Wait for more data requested before acting on the following:\n"
+        logbookMessage += constructNoDownloadLogbookMessage(post, ds, db)
+        insertForPost(post, logbookMessage, db)
+    
+        postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=WAIT_FOR_MORE_DATA, recommendationStatus=WAIT_FOR_MORE_DATA)
+
+
+# This is called from the NO DOWNLOAD button on the set-point spreadsheet
+def noDownloadCallback(event):
+    print "Processing a NO-DOWNLOAD..."
+    rootContainer=event.source.parent
+    post = rootContainer.post
+
+    from ils.common.config import getDatabaseClient, getTagProviderClient
+    db=getDatabaseClient()
+    tagProvider=getTagProviderClient()
+    repeater=rootContainer.getComponent("Template Repeater")
+    
+    activeApplication = isThereAnActiveApplication(repeater)
+    if activeApplication:
+        ds = repeater.templateParams
+        
+        # Write something useful to the logbook to document this No Download
+        logbookMessage = "Download NOT performed for the following:\n"
+        logbookMessage += constructNoDownloadLogbookMessage(post, ds, db)
+        insertForPost(post, logbookMessage, db)
+    
+        # Now do the work of the NO Download
         allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
     
         # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
         if allApplicationsProcessed:
             system.nav.closeParentWindow(event)
+'''
+Format a message for the No-Download and for a Wait-For-More-Data.  The message will be posted to the operator logbook.
+The message is nearly the same for these two actions and it is really similar to what gets logged for an actual download.
+In fact we reuse some of the same logic used for the download.
+'''
+def constructNoDownloadLogbookMessage(post, ds, db):
+    logbookMessage = ""
+    for row in range(ds.rowCount):
+        rowType=ds.getValueAt(row, "type")
+        if rowType == "app":
+            applicationName = ds.getValueAt(row, "application")
+            logbookMessage += "  Application: %s\n" % applicationName
+            firstOutputRow = True
+                
+        elif rowType == "row":
+            command=ds.getValueAt(row, "command")
+            if string.upper(command) == 'GO':
+                if firstOutputRow:
+                    # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
+                    firstOutputRow = False
+                            
+                    from ils.diagToolkit.download import constructDownloadLogbookMessage
+                    logbookMessage += constructDownloadLogbookMessage(post, applicationName, db)
+    return logbookMessage
 
 def isThereAnActiveApplication(repeater):
     ds = repeater.templateParams

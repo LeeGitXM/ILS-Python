@@ -70,9 +70,9 @@ def setValues(udtTagPath):
                 else:
                     # Print a statement regarding not finding a tag
                     logger.trace("OPC Dataset Collector - could not find a tag:")
-                    logger.tracef("Unknown tagpath: %s", tagPath)
-                    logger.tracef("Dataset Tags row/column location: row %i, column %i", int(valueRow), int(valueCol))
-                    logger.tracef("OPC Dataset Collector Tagpath: %s", udtTagPath)
+                    logger.trace("Unknown tagpath: %s" % (str(tagPath)))
+                    logger.trace("Dataset Tags row/column location: row %i, column %i" % (int(valueRow), int(valueCol)))
+                    logger.trace("OPC Dataset Collector Tagpath: %s" % (udtTagPath))
                     alignTimestamps = False  # Don't assign data if tag does not exist, this is trick to not assign data
             else:  # OPC tag read
                 # Assume opc value
@@ -97,7 +97,7 @@ def setValues(udtTagPath):
                         value = -99999999999999
                 else:
                     value = str(qv.value)
-            else: #This value only applies to Ignition tags as for direct OPC don't know if tag exists
+            elif not(useOPC): #This value only applies to Ignition tags as for direct OPC don't know if tag exists
                 value = "The Ignition Tag %s does not exist." % (tagPath)
             if tagExists and qv.quality.isGood():
                 quality = qv.quality
