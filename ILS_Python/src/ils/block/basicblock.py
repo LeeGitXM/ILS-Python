@@ -95,10 +95,9 @@ class BasicBlock():
         self.properties[name] = dictionary
         self.handler.sendPropertyNotification(self.uuid,name,dictionary.get("value",""))
         
-    # Evaluate the block. This is called on expiration
-    # of a timer. This default implementation
+    # Propagate the current state of the block. This default implementation
     # does nothing.
-    def evaluate(self):
+    def propagate(self):
         pass
     # Trigger property and connection notifications on the block
     def notifyOfStatus(self):

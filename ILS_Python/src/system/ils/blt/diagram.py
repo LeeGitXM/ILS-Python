@@ -67,7 +67,10 @@ def listSourcesForSink(diagramId,blockName):
 
 def pathForBlock(diagid,bname):
      '''Return a nav-tree path for the named block '''
-         
+     
+def propagateBlockState(diagId,blockId):
+    '''Tell the block to propagate its latest values '''
+     
 def resetBlock(diagId, blockName):
     '''Reset the specified block'''
 

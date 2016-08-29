@@ -9,10 +9,10 @@ def getDiagramForBlock(common,dpath,blockName):
 	diagram = getDiagram(dpath)
 	for block in diagram.getProcessBlocks():
 		if block.getName() == blockName:
-			id = block.getBlockId().toString()
-			desc = script.getDiagramForBlock(id)
+			blkid = block.getBlockId().toString()
+			desc = script.getDiagramForBlock(blkid)
 			if desc==None:
-				common['result'] = "Diagram not found for block ",id
+				common['result'] = "Diagram not found for block ",blkid
 			else:
 				common['result'] = desc.getName()
 	return 
@@ -56,8 +56,8 @@ def internalBufferValue(common,dpath,blockName,attName,index):
 	diagram = getDiagram(dpath)
 	for block in diagram.getProcessBlocks():
 		if block.getName() == blockName:
-			map = block.getInternalStatus().getBuffer().get(int(index))
-			common['result'] = map.get(attName)
+			attmap = block.getInternalStatus().getBuffer().get(int(index))
+			common['result'] = attmap.get(attName)
 			return
 	print 'internalBufferValue for ',dpath,', ',blockName,' not found'
 			

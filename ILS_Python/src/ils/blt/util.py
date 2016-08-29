@@ -42,12 +42,12 @@ def createBlockInstance(className,parent,uid,result):
     result['instance'] = obj
 #
 # Given an instance of an executable block
-# Call its evaluate() method. There is no
+# Call its propagate() method. There is no
 # shared dictionary.
-def evaluate(block):
+def propagate(block):
 
     if block!=None:
-        block.evaluate()
+        block.propagate()
 
 # Given an instance of an executable block,
 # write its properties to the supplied list (properties)
