@@ -21,7 +21,10 @@ def getDiagramForBlock(blockId):
     
 def getDiagramState(diagid):
     return "ACTIVE"
-    
+
+def getExplanation(diagid,blockId):
+    return "because."
+
 def getHandler():
     '''Return a python request handler'''
 

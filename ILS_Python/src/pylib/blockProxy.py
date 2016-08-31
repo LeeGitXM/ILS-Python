@@ -94,6 +94,19 @@ def getBlockState(common,dpath,blockName):
 
 	common['result'] = result
 
+#
+# Return the state of a block
+def getExplanation(common,dpath,blockName):
+	diagram = getDiagram(dpath)
+	diagId = getDiagram(dpath).getSelf().toString()
+	result = blockName+" NOT FOUND"
+	for block in diagram.getProcessBlocks():
+		if block.getName() == blockName:
+			blockId = block.getBlockId().toString()
+			result = script.getExplanation(diagId,blockId)
+			break
+
+	common['result'] = result
 # Reset an individual block
 def reset(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
