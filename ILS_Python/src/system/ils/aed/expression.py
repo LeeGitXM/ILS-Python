@@ -7,5 +7,7 @@ def convertUserNumericExpression(expression,project,providerName,providerName):
     return "expression"
 def convertUserStringExpression(expression,project,providerName,providerName):
     return "expression"
+def convertUserDateExpression(expression,project,providerName,providerName):
+    return "expression"
 def setTagHistoryProvider(provider):
     pass
