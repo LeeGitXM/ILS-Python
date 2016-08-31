@@ -80,8 +80,8 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     
     # Insert an entry into the diagnosis queue
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
-        "RecommendationStatus, ManualMove, ManualMoveValue, RecommendationMultiplier) "\
-        "values (%i, 'Active', getdate(), '%s', '%s', '%s', 0, 0.0, 1.0)" \
+        "RecommendationStatus, Multiplier) "\
+        "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
         % (finalDiagnosisId, grade, txt, RECOMMENDATION_NONE_MADE)
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     logSQL.trace(SQL)
@@ -445,6 +445,12 @@ def manage(application, recalcRequested=False, database="", provider=""):
             logSQL.trace(SQL)
             rows=system.db.runUpdateQuery(SQL, database)
             log.info("      ... deleted %i text recommendations..." % (rows))
+            
+            SQL = "update DtFinalDiagnosis set Active = 0"\
+                "where FinalDiagnosisId = %i" % (fdId)
+            logSQL.trace(SQL)
+            rows = system.db.runUpdateQuery(SQL, database)
+            log.info("      ...updated %i final diagnosis Active flag to False" % (rows))
 
             SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s'"\
                 "where Status = 'Active' and RecommendationStatus = '%s' "\
@@ -501,7 +507,6 @@ def manage(application, recalcRequested=False, database="", provider=""):
         rows = system.db.runUpdateQuery(SQL, database)
         log.info("      ...rescinded %i diagnosis entries!" % (rows))
 
-
     #----------------------------------------------------------------------
     # Is this needed / called??? Why not just call reset application??
     def setDiagnosisEntryErrorStatus(alist, database):
@@ -520,9 +525,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     # Update the diagnosis entry and the final diagnosis for an unexpected error.
     def _setDiagnosisEntryErrorStatus(finalDiagnosisId, database):
-        
         log.info("   ...setting error status for active diagnosis entries for final diagnosis: %i..." % (finalDiagnosisId))
-        SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s', status = 'Inactive' where FinalDiagnosisId = %i and status = 'Active'" % (RECOMMENDATION_ERROR, finalDiagnosisId)
+        SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s', status = 'Inactive' where FinalDiagnosisId = %i "\
+            " and status = 'Active'" % (RECOMMENDATION_ERROR, finalDiagnosisId)
         logSQL.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         log.info("      ...updated %i diagnosis entries!" % (rows))
@@ -532,14 +537,16 @@ def manage(application, recalcRequested=False, database="", provider=""):
         rows=system.db.runUpdateQuery(SQL, database)
         log.info("      ...updated %i final diagnosis!" % (rows))
     
-    def resetMultipliers(application):
+    def resetMultipliers(applicationName):
         log.info("Resetting the multipliers...")
-        SQL = "UPDATE DtFinalDiagnosis "\
+        SQL = "UPDATE DtDiagnosisEntry "\
             " SET Multiplier = 1.0 "\
-            " WHERE FamilyId in (select F.familyId "\
-            " from DtFamily F, DtApplication A "\
-            " where F.ApplicationId = A.ApplicationId "\
-            " and A.ApplicationName = 'TESTAPP1')"
+            " WHERE Status = 'Active' and FinalDiagnosisId in (select FD.FinalDiagnosisId "\
+            " from DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
+            " where Fd.FamilyId = F.FamilyId "\
+            " and F.ApplicationId = A.ApplicationId "\
+            " and A.ApplicationName = '%s')" % (applicationName)
+        print SQL
         rows = system.db.runUpdateQuery(SQL)
         log.info("...reset %i final diagnosis" % (rows))
         

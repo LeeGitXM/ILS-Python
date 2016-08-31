@@ -11,7 +11,8 @@ from ils.queue.message import insertPostMessage
 from ils.io.api import confirmControllerMode
 from ils.io.api import write
 
-def downloadCallback(rootContainer):
+# This is called from the download button on the setpoint spreadsheet.
+def downloadCallback(event, rootContainer):
     log.info("In downloadCallback()")
     
     from ils.common.config import getTagProviderClient, getDatabaseClient
@@ -29,7 +30,7 @@ def downloadCallback(rootContainer):
     if not(workToDo):
         # Even though this is a warning, Warning boxes are not modal and these are!
         system.gui.messageBox("Canceling download because there is no work to be done!")
-        return;
+        return
 
     okToDownload=checkIfOkToDownload(repeater, ds, post, tagProvider, db)
     if not(okToDownload):
@@ -38,10 +39,20 @@ def downloadCallback(rootContainer):
         system.gui.messageBox("Cancelling download because one or more of the controllers is unreachable!")
         return
 
-    system.gui.messageBox("The Download will begin as soon as you press OK and may take a while, please be patient.")
+    ans = system.gui.confirm("There are setpoints to download and the controllers are in the correct mode, press 'Yes' to proceed with the downlaod.")
     
-    serviceDownload(repeater, ds, tagProvider)
-
+    if ans:
+        serviceDownload(post, repeater, ds, tagProvider, db)
+        
+        # Now do the standard post processing work such as resetting diagrams
+        from ils.diagToolkit.setpointSpreadsheet import postCallbackProcessing
+        allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="Download", recommendationStatus="Download")
+    
+        # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
+        if allApplicationsProcessed:
+            system.nav.closeParentWindow(event)
+    else:
+        print "The operator choose not to continue with the download."
 
 # This looks at the data in the setpoint spreadsheet and basically looks for at least one row that is set to GO
 def bookkeeping(ds):
@@ -118,29 +129,96 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
 
     return okToDownload
 
-def serviceDownload(repeater, ds, tagProvider):
+def constructDownloadLogbookMessage(post, applicationName, db):
+    from ils.diagToolkit.common import fetchActiveDiagnosis
+    pds = fetchActiveDiagnosis(applicationName, db)
+    txt = ""
+
+    for finalDiagnosisRecord in pds:
+        family=finalDiagnosisRecord['FamilyName']
+        finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
+        finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
+        multiplier=finalDiagnosisRecord['Multiplier']
+        recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
+        print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
+            
+        if multiplier < 0.99 or multiplier > 1.01:
+            txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier)
+        else:
+            txt += "       Diagnosis -- %s\n" % (finalDiagnosis)
+
+        if recommendationErrorText != None:
+            txt += "       %s\n\n" % (recommendationErrorText) 
+
+        from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
+        rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
+        for rootCause in rootCauseList:
+            txt += "      %s\n" % (rootCause)
+
+        from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
+        pds, outputs=fetchOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
+        for record in outputs:
+            print record
+            quantOutput = record.get('QuantOutput','')
+            tagPath = record.get('TagPath','')
+            feedbackOutput=record.get('FeedbackOutput',0.0)
+            feedbackOutputConditioned = record.get('FeedbackOutputConditioned',0.0)
+            manualOverride=record.get('ManualOverride', False)
+            outputLimited=record.get('OutputLimited', False)
+            outputLimitedStatus=record.get('OutputLimitedStatus', '')
+            print "Manual Override: ", manualOverride
+            txt += "          the desired change in %s = %f" % (tagPath, feedbackOutput)
+            if manualOverride:
+                txt += "%s  (manually specified)" % (txt)
+            txt += "\n"
+
+            if outputLimited and feedbackOutput != 0.0:
+                txt = "          change to %s adjusted to %f because %s" % (quantOutput, feedbackOutputConditioned, outputLimitedStatus)
+
+    return txt
+
+
+def serviceDownload(post, repeater, ds, tagProvider, db):
     # iterate through each row of the dataset that is marked to go and download it.
     log.info("Starting to download...")
+    
+    logbookMessage = "Download performed for the following:\n"
  
     for row in range(ds.rowCount):
         rowType=ds.getValueAt(row, "type")
-        if rowType == "row":
+        if rowType == "app":
+            applicationName = ds.getValueAt(row, "application")
+            logbookMessage += "  Application: %s\n" % applicationName
+            firstOutputRow = True
+            
+        elif rowType == "row":
             command=ds.getValueAt(row, "command")
             if string.upper(command) == 'GO':
+                if firstOutputRow:
+                    # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
+                    firstOutputRow = False
+                    logbookMessage += constructDownloadLogbookMessage(post, applicationName, db)
+                    
                 quantOutput=ds.getValueAt(row, "output")
                 tag=ds.getValueAt(row, "tag")
                 newSetpoint=ds.getValueAt(row, "finalSetpoint")
                 tagPath="[%s]%s" % (tagProvider, tag)
+
+                logbookMessage += "      download of %s to the value %f was " % (tagPath, newSetpoint)
                 
                 print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
                 success, errorMessage = write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
                 
                 if success:
                     ds = system.dataset.setValue(ds, row, "downloadStatus", "Success")
+                    logbookMessage += "confirmed\n"
                     print "The write was successful"
                 else:
                     print "The write FAILED because: ", errorMessage
                     ds = system.dataset.setValue(ds, row, "downloadStatus", "Error")
+                    logbookMessage += "failed because of an error: %s\n" % (errorMessage)
     
     repeater.templateParams=ds
-    return
+    
+    from ils.common.operatorLogbook import insertForPost
+    insertForPost(post, logbookMessage, db)

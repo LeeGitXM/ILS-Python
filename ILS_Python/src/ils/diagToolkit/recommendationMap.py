@@ -64,14 +64,16 @@ def fetchQuantOutput(applicationName, quantOutputName, db, provider):
 
 def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     print "Fetching Final Diagnosis..."
-    SQL = "select FD.FinalDiagnosisName, convert(decimal(10,2),FD.Multiplier) as Multiplier, FD.UUID, FD.DiagramUUID "\
-        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtFamily F, DtApplication A "\
-        " where FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+    SQL = "select FD.FinalDiagnosisName, convert(decimal(10,2),DE.Multiplier) as Multiplier, FD.UUID, FD.DiagramUUID "\
+        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtFamily F, DtApplication A "\
+        " where FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
         " and QO.QuantOutputName = '%s' "\
         " and FD.FamilyId = F.FamilyId "\
         " and F.applicationId = A.applicationId "\
         " and A.ApplicationName = '%s' "\
+        " and DE.Status = 'Active' "\
         " order by FinalDiagnosisName" % (quantOutputName, applicationName)
     print SQL
     pds = system.db.runQuery(SQL, database=db)
@@ -85,7 +87,7 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     return ds
 
 # Given a dataset of final diagnoses, for each diagnosis, interrogate the diagram and determine if there is a SQC diagnosis
-# upstream of the final diagnosis.
+# upstream of the final diagnosis. (This runs in the client)
 def updateSqcFlag(diagnoses):
     import system.ils.blt.diagram as diagram
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
@@ -322,7 +324,8 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
 
     try:
         # First  update the database
-        SQL = "Update DtFinalDiagnosis set Multiplier = %s where FinalDiagnosisName = '%s'" % (newMultiplier, finalDiagnosisName)
+        SQL = "Update DtDiagnosisEntry set Multiplier = %s where Status = 'Active' and FinalDiagnosisId = "\
+            "(select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName = '%s')" % (newMultiplier, finalDiagnosisName)
         print SQL
         rows = system.db.runUpdateQuery(SQL, db)
         print "Updated %i Final Diagnosis" % (rows)
@@ -468,7 +471,10 @@ def update(rootContainer):
     for row in range(ds.rowCount):
         finalDiagnosisName = ds.getValueAt(row, "Name")
 
-        SQL = "select Multiplier from DtFinalDiagnosis where FinalDiagnosisName = '%s' " % (finalDiagnosisName)
+        SQL = "select DE.Multiplier from DtDiagnosisEntry DE, DtFinalDiagnosis FD "\
+            " where FD.FinalDiagnosisName = '%s' "\
+            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+            " and DE.Status = 'Active'" % (finalDiagnosisName)
         pds = system.db.runQuery(SQL, db)
         if len(pds) == 1:
             record = pds[0]

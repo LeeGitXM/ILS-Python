@@ -126,7 +126,7 @@ def clearQuantOutputRecommendations(application, database=""):
 # low numbers are higher priority than high numbers. 
 def fetchActiveDiagnosis(applicationName, database=""):
     SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
-        " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.ManualMove, DE.ManualMoveValue, DE.RecommendationMultiplier, "\
+        " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.Multiplier, "\
         " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
         " where A.ApplicationId = F.ApplicationId "\
@@ -332,11 +332,33 @@ def convertOutputRecordToDictionary(record):
 # Fetch the SQC blocks that led to a Final Diagnosis becoming true.
 # We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
 # or 2) At the time we want to know the SQC blocks, we could query the diagram.
-def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis, database=""):
-    #TODO Need to implement this
-    print "**** NEED TO IMPLEMENT fetchSQCRootCauseForFinalDiagnosis() ****"
-    sqcRootCause=[]
-    return sqcRootCause
+def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName, database=""):
+    sqcRootCauses=[]
+
+    import system.ils.blt.diagram as diagram
+    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
+
+    print "Searching for SQC blocks for %s:" % (finalDiagnosisName)
+    
+    SQL = "select DiagramUUID from DtFinalDiagnosis where FinalDiagnosisName = '%s'" % (finalDiagnosisName)
+    diagramUUID = system.db.runScalarQuery(SQL, database)
+    print "  Diagram UUID: %s" % (str(diagramUUID))
+        
+    if diagramUUID != None: 
+        # Get the upstream blocks, make sure to jump connections
+        blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
+            
+        print "...found %i upstream blocks..." % (len(blocks))
+    
+        for block in blocks:
+            if block.getClassName() == "com.ils.block.SQC":
+                print "   ... found a SQC block..."
+                blockId=block.getIdString()
+                blockName=block.getName()
+                print "Found: %s - %s" % (str(blockId), str(blockName))
+
+    return sqcRootCauses
+
 
 def fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds, database=""):
     quantOutputIds=[]
