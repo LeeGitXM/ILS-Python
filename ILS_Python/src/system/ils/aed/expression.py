@@ -1,6 +1,8 @@
 '''
 
 '''
+def convertUserDateExpression(hrExpression, project, plainProvider, plainProvider):
+    return "expression"
 def convertUserLogicalExpression(hrExpression, project, plainProvider, plainProvider):
     return "expression"
 def convertUserNumericExpression(expression,project,providerName,providerName):
