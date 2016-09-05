@@ -6,6 +6,7 @@ Created on Mar 31, 2015
 
 import system, string, sys, traceback
 
+# This is generally called from the gateway, but should work from th
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
               callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
 
