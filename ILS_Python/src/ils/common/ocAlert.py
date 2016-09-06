@@ -28,7 +28,18 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         "timeoutSeconds": timeoutSeconds
         }
     print "Payload: ", payload
-    system.util.sendMessage(project, "ocAlert", payload, scope="C")
+    
+    if post <> "":
+        pds = system.util.getSessionInfo(post)
+        if len(pds) > 0:
+            for session in pds:
+                clientSessionId = session["clientId"]
+                print "Found %s with client Id %s" % (post, str(clientSessionId))
+                system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
+        else:
+            system.util.sendMessage(project, "ocAlert", payload, scope="C")
+    else:
+        system.util.sendMessage(project, "ocAlert", payload, scope="C")
 
 # This runs in a client and is called when the OC alert message is sent to every client.  The first
 # step is to sort out if THIS client is meant to display the OC alert.  OC alerts are sent to a post,
