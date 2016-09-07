@@ -20,6 +20,9 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
 def openSetpointSpreadsheetCallback(post):
     print "Checking what to open..."
 
+    noTextRecommendations = False
+    noQuantRecommendations = False
+    
     from ils.common.config import getDatabaseClient
     database=getDatabaseClient()
     
@@ -46,7 +49,7 @@ def openSetpointSpreadsheetCallback(post):
             acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
     else:
         print "There are no text recommendations..."
-
+        noTextRecommendations = True
 
     # If there is at least 1 quant recommendation for the post the open the setpoint spreadsheet
     from ils.diagToolkit.common import fetchActiveOutputsForPost
@@ -56,7 +59,10 @@ def openSetpointSpreadsheetCallback(post):
         system.nav.centerWindow(window)
     else:
         print "There are no quantitative recommendations..."
-
+        noQuantRecommendations = True
+        
+    if noTextRecommendations and noQuantRecommendations:
+        system.gui.messageBox("There are no recommendations pending (text or quant).", " ")
 
 '''
 The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 

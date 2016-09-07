@@ -599,8 +599,6 @@ def resetDiagram(finalDiagnosisIds, database):
                     blockName=block.getName()
                     blockClass=block.getClassName()
                     parentUUID=block.getAttributes().get("parent")
-                    
-                    print "Found a <%s> block named %s..." % (blockClass, blockName)
 
                     if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
                                 "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse"]:
@@ -656,8 +654,6 @@ def partialResetDiagram(finalDiagnosisIds, database):
                     blockId=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
-                    
-                    print "Found a <%s> block..." % (blockClass)
 
                     # I'm not exactly sure why we choose to do a full reset on the logic filter block, but the 
                     # reason from G2 was to allow high-frequency data to flow through the diagrams, and possibly
