@@ -16,3 +16,5 @@ def isAfter(date1,date2):
 def isBefore(date1,date2):
     return True
 
+def now():
+    return True
