@@ -382,7 +382,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         post = rootContainer.getPropertyValue('post')
         
         from ils.diagToolkit.finalDiagnosis import notifyClients
-        notifyClients(project, post, "", numOutputs)        
+        notifyClients(project, post, "", numOutputs, db)        
 
         # Make sure ALL map clients are updated, even ones on other windows        
         notifyRecommendationMapClients(project, post)

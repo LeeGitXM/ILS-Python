@@ -18,10 +18,11 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
-def notifyClients(project, post, notificationText="", numOutputs=0):
+def notifyClients(project, post, notificationText="", numOutputs=0, database=""):
     log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, numOutputs: <%s>..." % (project, post, str(numOutputs)))
-    system.util.sendMessage(project=project, messageHandler="consoleManager", 
-        payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}, scope="C")
+    messageHandler="consoleManager"
+    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}
+    notifier(project, post, messageHandler, payload, database)
 
     # If we are going to notify client to update their spreadsheet then maybe they should also update their recommendation maps...    
     from ils.diagToolkit.recommendationMap import notifyRecommendationMapClients
@@ -31,9 +32,38 @@ def notifyClients(project, post, notificationText="", numOutputs=0):
 # console and the spreadsheet isn't displayed.
 def notifyClientsOfTextRecommendation(project, post, application, notificationText, diagnosisEntryId, database, provider):
     log.info("Notifying %s-%s-%s client of a Text Recommendation..." % (project, post, application))
-    system.util.sendMessage(project=project, messageHandler="consoleManager", 
-        payload={'type':'textRecommendation', 'post':post, 'application':application, 'notificationText':notificationText, 
-                 'diagnosisEntryId':diagnosisEntryId, 'database':database, 'provider':provider}, scope="C")
+    messageHandler="consoleManager"
+    payload={'type':'textRecommendation', 'post':post, 'application':application, 'notificationText':notificationText, 
+                 'diagnosisEntryId':diagnosisEntryId, 'database':database, 'provider':provider}
+    notifier(project, post, messageHandler, payload, database)
+
+# The notification escalation is as follows:
+#   1) Notify every client logged in as the console operator
+#   2) If #1 is not found then notify every client displaying the console window
+#   3) If #2 is not found then notify every client
+def notifier(project, post, messageHandler, payload, database):
+#    system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
+
+    from ils.common.message.interface import getPostClientIds
+    clientSessionIds = getPostClientIds(post)
+    if len(clientSessionIds) > 0:
+        print "Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post)
+        for clientSessionId in clientSessionIds:
+            system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
+    else:
+        from ils.common.message.interface import getConsoleClientIds
+        clientSessionIds = getConsoleClientIds(post, database)
+        if len(clientSessionIds) > 0:
+            for clientSessionId in clientSessionIds:
+                print "Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId))
+                system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
+        else:
+            print "Notifying OC alert to every client because I could not find the post logged in"
+            system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
+
+
+
+
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -113,7 +143,7 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     projectName = system.util.getProjectName()
     if activeOutputs > 0:
         print "Notifying clients that there are new setpoints"
-        notifyClients(projectName, post, notificationText, activeOutputs)
+        notifyClients(projectName, post, notificationText, activeOutputs, database)
 
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
@@ -162,7 +192,7 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
     post=fetchPostForApplication(application)
     log.info("Sending update notification to post %s" % (post))
     projectName = system.util.getProjectName()
-    notifyClients(projectName, post, notificationText, activeOutputs)
+    notifyClients(projectName, post, notificationText, activeOutputs, database)
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -183,7 +213,7 @@ def recalcMessageHandler(payload):
         txt,activeOutputs=manage(applicationName, recalcRequested=True, database=database, provider=provider)
         totalActiveOutputs = totalActiveOutputs + activeOutputs
         
-    notifyClients(project, post, "", totalActiveOutputs)
+    notifyClients(project, post, "", totalActiveOutputs, database)
 
     
 # This is based on the original G2 procedure outout-msg-core()

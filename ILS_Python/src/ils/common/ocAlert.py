@@ -8,8 +8,9 @@ import system, string, sys, traceback
 
 # This is generally called from the gateway, but should work from th
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
-              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
-
+              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db=""):
+    print "In ", __name__
+    
     if callbackPayloadDictionary == None:
         callbackPayloadDataset = None
     else:
@@ -30,15 +31,26 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     print "Payload: ", payload
     
     if post <> "":
-        pds = system.util.getSessionInfo(post)
-        if len(pds) > 0:
-            for session in pds:
-                clientSessionId = session["clientId"]
-                print "Found %s with client Id %s" % (post, str(clientSessionId))
+        print "Targeting message to post: <%s>" % (post)
+        
+        from ils.common.message.interface import getPostClientIds
+        clientSessionIds = getPostClientIds(post)
+        if len(clientSessionIds) > 0:
+            print "Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post)
+            for clientSessionId in clientSessionIds:
                 system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
         else:
-            system.util.sendMessage(project, "ocAlert", payload, scope="C")
+            from ils.common.message.interface import getConsoleClientIds
+            clientSessionIds = getConsoleClientIds(post, db)
+            if len(clientSessionIds) > 0:
+                for clientSessionId in clientSessionIds:
+                    print "Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId))
+                    system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
+            else:
+                print "Notifying OC alert to every client because I could not find the post logged in"
+                system.util.sendMessage(project, "ocAlert", payload, scope="C")
     else:
+        print "Notifying OC alert to every client because this is not a targeted alert"
         system.util.sendMessage(project, "ocAlert", payload, scope="C")
 
 # This runs in a client and is called when the OC alert message is sent to every client.  The first
@@ -51,7 +63,12 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
 # Alas, if they did not provide a post in the payload then display the alert everywhere.  
 def handleMessage(payload):
     print "In ils.common.ocAlert.handleMessage()", payload
+    system.nav.openWindowInstance("Common/OC Alert", payload)
     
+    '''
+    This old code used to strategy of allowing a client to figure out if a received OC alert applies to them.
+    This worked OK except it couldn't handle the notification escalation policy desired by Mike whereby the alert
+    would only be displayed 
     targetPost=payload.get("post","")
     if targetPost != "" and targetPost != None:
         post = system.tag.read("[Client]Post").value
@@ -72,7 +89,7 @@ def handleMessage(payload):
                 print "Skipping this OC alert because it was destined for a different post"
     else:
         system.nav.openWindowInstance("Common/OC Alert", payload)
-
+    '''
 
 # This is called from the button smack in the middle of the screen 
 # This runs in the client, so don't bother with loggers, just print debug messages...

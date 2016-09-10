@@ -5,19 +5,43 @@ Created on Sep 5, 2016
 '''
 
 import system, time
+log=system.util.getLogger("com.ils.common.message")
 
-def isConsoleShowing(console):
-    clientId = False
+def getPostClientIds(post, project="", db=""):
+    log.trace("%s - Looking for a client logged in as: <%s>" % (__name__, post))
+
+    if project == "":
+        project = system.util.getProjectName()
+
+    clientIds = []
+    sessions=system.util.getSessionInfo(post)
+    for session in sessions:
+        if session["project"] == project:
+            clientIds.append(session["clientId"])
+
+    return clientIds
+
+
+# Use the message utility to get the first client logged in as 
+def getConsoleClientIds(console, db=""):
+    log.trace("%s - Looking for a client connected as: <%s>" % (__name__, console))
+    SQL = "select C.windowName from TkConsole C, TkPost P where C.PostId = P.PostId and P.Post = '%s'" % (console)
+    consoleWindow=system.db.runScalarQuery(SQL)
+    log.trace("  ...found console window: %s" % (consoleWindow))
+
+    clientIds = []
     windowList = listWindows()
     for record in windowList:
         windows = record["Reply"]
-        clientId = record["ClientId"]
-        
-    return clientId
+        if windows.find(consoleWindow) >= 0:
+            clientIds.append(record["ClientId"])
+
+    return clientIds
 
 # Send a request to all clients to return a list of the windows that are showing
 # This will run until a response is received from every connected window
 def listWindows():
+    log.trace("%s - Listing windows..." % (__name__))
     project = system.util.getProjectName()
     
     sessions=system.util.getSessionInfo()
@@ -34,11 +58,10 @@ def listWindows():
     from ils.common.message.gateway import send
     requestId=send('listWindows', project)
     
-    SQL = "select * from TkMessageReply where RequestId = %i" % requestId
+    SQL = "select Reply, ReplyTime, ClientId from TkMessageReply where RequestId = %i" % requestId
     pds = system.db.runQuery(SQL)
     while len(pds) <> numClients:
-        time.sleep(1)
-        print "fetching..." 
+        time.sleep(1) 
         pds = system.db.runQuery(SQL)
     
     return pds

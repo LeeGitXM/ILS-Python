@@ -4,9 +4,10 @@ Created on Sep 5, 2016
 @author: ils
 '''
 import system
+log=system.util.getLogger("com.ils.common.message")
  
 def send(requestType, project='XOM'):
-    print "Sending a message"
+    log.trace("Sending a <%s> message" % (requestType))
 
     messageHandler="MessageRequest"
     
