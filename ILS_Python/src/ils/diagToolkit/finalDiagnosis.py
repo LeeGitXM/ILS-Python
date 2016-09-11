@@ -45,15 +45,17 @@ def notifier(project, post, messageHandler, payload, database):
 #    system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
 
     from ils.common.message.interface import getPostClientIds
-    clientSessionIds = getPostClientIds(post)
+    clientSessionIds = getPostClientIds(post, project, database)
     if len(clientSessionIds) > 0:
         print "Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post)
         for clientSessionId in clientSessionIds:
             system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
     else:
-        from ils.common.message.interface import getConsoleClientIds
-        clientSessionIds = getConsoleClientIds(post, database)
+        from ils.common.message.interface import getConsoleClientIdsForPost
+        clientSessionIds = getConsoleClientIdsForPost(post, project, database)
+        print "The clients are: ", clientSessionIds
         if len(clientSessionIds) > 0:
+            print "A"
             for clientSessionId in clientSessionIds:
                 print "Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId))
                 system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
