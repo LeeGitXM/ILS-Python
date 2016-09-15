@@ -10,13 +10,7 @@ def addMonths(date1,months):
 def addWeeks(date1,weeks):
     return date1
 
-def isAfter(date1,date2):
-    return True
-
-def isBefore(date1,date2):
-    return True
-
-def now():
+def format(theDate):
     return True
 
 def getMillis(theDate):
@@ -55,4 +49,12 @@ def getYear(theDate):
 def getAMorPM(theDate):
     return True
 
+def isAfter(date1,date2):
+    return True
 
+def isBefore(date1,date2):
+    return True
+
+
+def now():
+    return True
