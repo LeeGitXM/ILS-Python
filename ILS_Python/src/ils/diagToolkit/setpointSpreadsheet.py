@@ -731,7 +731,7 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     print "... in %s performing Text Recommendation acknowledgement..." % (__name__)
     
     actionMessage="No Download"
-    recommendationStatus="No Download"
+    recommendationStatus="Acknowledged"
 
     families=[]
     

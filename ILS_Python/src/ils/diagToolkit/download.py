@@ -167,13 +167,13 @@ def constructDownloadLogbookMessage(post, applicationName, db):
             outputLimited=record.get('OutputLimited', False)
             outputLimitedStatus=record.get('OutputLimitedStatus', '')
             print "Manual Override: ", manualOverride
-            txt += "          the desired change in %s = %f" % (tagPath, feedbackOutput)
+            txt += "          the desired change in %s = %s" % (tagPath, str(feedbackOutput))
             if manualOverride:
                 txt += "%s  (manually specified)" % (txt)
             txt += "\n"
 
             if outputLimited and feedbackOutput != 0.0:
-                txt = "          change to %s adjusted to %f because %s" % (quantOutput, feedbackOutputConditioned, outputLimitedStatus)
+                txt = "          change to %s adjusted to %s because %s" % (quantOutput, str(feedbackOutputConditioned), outputLimitedStatus)
 
     return txt
 

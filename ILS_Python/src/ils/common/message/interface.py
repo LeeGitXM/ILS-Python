@@ -57,7 +57,6 @@ def getConsoleClientIdsForPost(post, project="", db=""):
     clientIds = []
     
     SQL = "select C.WindowName from TkConsole C, TkPost P where C.PostId = P.PostId and P.Post = '%s'" % (post)
-    print SQL
     consoleWindows=system.db.runQuery(SQL, db=db)
     log.trace("  ...(there are %i console windows)" % (len(consoleWindows)))
 
@@ -68,7 +67,7 @@ def getConsoleClientIdsForPost(post, project="", db=""):
     windowList = listWindows(project, db)
     for record in windowList:
         windows = str(record["Reply"])
-        print "Windows: ", windows
+        log.trace("Windows: %s" % (str(windows)))
         for consoleWindow in consoleWindows:
             windowName = consoleWindow["WindowName"]
             if windows <> None and windows.find(windowName) >= 0:

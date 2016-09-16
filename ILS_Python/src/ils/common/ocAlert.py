@@ -5,11 +5,12 @@ Created on Mar 31, 2015
 '''
 
 import system, string, sys, traceback
+logger=system.util.getLogger("com.ils.ocAlert")
 
 # This is generally called from the gateway, but should work from th
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
               callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db=""):
-    print "In ", __name__
+    logger.trace("In %s" % (__name__))
     
     if callbackPayloadDictionary == None:
         callbackPayloadDataset = None
@@ -28,15 +29,15 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         "timeoutEnabled": timeoutEnabled,
         "timeoutSeconds": timeoutSeconds
         }
-    print "Payload: ", payload
+    logger.trace("Payload: %s" % (str(payload))) 
     
     if post <> "":
-        print "Targeting message to post: <%s>" % (post)
+        logger.trace("Targeting message to post: <%s>" % (post))
         
         from ils.common.message.interface import getPostClientIds
         clientSessionIds = getPostClientIds(post)
         if len(clientSessionIds) > 0:
-            print "Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post)
+            logger.trace("Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post))
             for clientSessionId in clientSessionIds:
                 system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
         else:
@@ -44,13 +45,13 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
             clientSessionIds = getConsoleClientIds(post, db)
             if len(clientSessionIds) > 0:
                 for clientSessionId in clientSessionIds:
-                    print "Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId))
+                    logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
                     system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
             else:
-                print "Notifying OC alert to every client because I could not find the post logged in"
+                logger.trace("Notifying OC alert to every client because I could not find the post logged in")
                 system.util.sendMessage(project, "ocAlert", payload, scope="C")
     else:
-        print "Notifying OC alert to every client because this is not a targeted alert"
+        logger.trace("Notifying OC alert to every client because this is not a targeted alert")
         system.util.sendMessage(project, "ocAlert", payload, scope="C")
 
 # This runs in a client and is called when the OC alert message is sent to every client.  The first
@@ -62,7 +63,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
 # he will receive the OC alerts for the XO1RLA3 post.
 # Alas, if they did not provide a post in the payload then display the alert everywhere.  
 def handleMessage(payload):
-    print "In ils.common.ocAlert.handleMessage()", payload
+    logger.trace("In %s.handleMessage() - payload: %s" % (__name__, str(payload)))
     system.nav.openWindowInstance("Common/OC Alert", payload)
     
     '''
@@ -94,7 +95,7 @@ def handleMessage(payload):
 # This is called from the button smack in the middle of the screen 
 # This runs in the client, so don't bother with loggers, just print debug messages...
 def buttonHandler(event):
-    print "In %s..." % (__name__)
+    logger.trace("In %s..." % (__name__))
     rootContainer = event.source.parent
     callback=rootContainer.callback
     
@@ -105,7 +106,7 @@ def buttonHandler(event):
     else:
         payload=ds.getValueAt(0,0)
     
-    print "Dictionary: ", payload
+    logger.trace("Dictionary: %s" % (str(payload)))
 
     if callback == "" or callback == None or callback == "None":
         system.nav.closeParentWindow(event)
@@ -119,19 +120,19 @@ def buttonHandler(event):
         separator=string.rfind(packagemodule, ".")
         package = packagemodule[0:separator]
         module  = packagemodule[separator+1:]
-        print "Using External Python, the package is: <%s>.<%s>" % (package,module)
+        logger.trace("Using External Python, the package is: <%s>.<%s>" % (package,module))
         exec("import %s" % (package))
         exec("from %s import %s" % (package,module))
         
     try:
-        print "Calling custom callback procedure %s..." % (callback)
+        logger.trace("Calling custom callback procedure %s..." % (callback))
         eval(callback)(event, payload)
-        print "   ...back from the callback!"
+        logger.trace("   ...back from the callback!")
                 
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 1000)
-        print"Caught an exception calling callback... \n%s" % (errorTxt)
+        logger.trace("Caught an exception calling callback... \n%s" % (errorTxt))
 
 
 # This is a callback from the Acknowledge button in the middle of the loud workspace.

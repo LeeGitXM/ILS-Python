@@ -8,9 +8,8 @@ from ils.constants.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_
 from ils.sfc.common.constants import DATABASE
 
 # Not sure if this is used in production, but it is needed for testing
-def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
+def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database=""):
     print "Sending a message to post a diagnosis entry..."
-    projectName=system.util.getProjectName()
     payload={"application": application, "family": family, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database}
     system.util.sendMessage(projectName, "postDiagnosisEntry", payload, "G")
 
@@ -31,7 +30,7 @@ def openSetpointSpreadsheetCallback(post):
             
     # Check if there is a text recommendation for this post
     from ils.diagToolkit.common import fetchActiveTextRecommendationsForPost
-    pds = fetchActiveTextRecommendationsForPost(post)
+    pds = fetchActiveTextRecommendationsForPost(post, database)
     if len(pds) > 0:
         print "There are %i text recommendation(s)..." % (len(pds))
         for record in pds:
@@ -102,8 +101,9 @@ def handleNotification(payload):
             # This should trigger the spreadsheet to refresh
             rootContainer.refresh=True
             
-            # If there is some notification text then display it immediately since we already have
-            # the operator's attention.  One type of notification text is vector clamp advice.
+            # If we found an open setpoint spreadsheet AND if there is some notification text then display it immediately 
+            # since we already have the operator's attention.  One type of notification text is vector clamp advice.
+
             if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
                 system.gui.messageBox(notificationText)
             
@@ -118,12 +118,15 @@ def handleNotification(payload):
             print "... checking post and payload for an OC Alert ..."
             rootContainer=window.rootContainer
             if post == rootContainer.post: 
-                print "...found a matching OC alert - skipping the OC alert!"
+                print "...found a matching OC alert - skipping the OC alert but updating its payload!"
+                rootContainer.payload = payload
                 
                 # If there is some notification text then display it immediately since we already have
                 # the operator's attention.  One type of notification text is vector clamp advice.
-                if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
-                    system.gui.messageBox(notificationText)
+                
+                # --- This was wrong - they need to ack the loud WS and then see the modal message ---
+#                if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
+#                    system.gui.messageBox(notificationText)
                 
                 if numOutputs == 0:
                     print "Closing an OC alert that has not been answered because the recommendations have been cleared"

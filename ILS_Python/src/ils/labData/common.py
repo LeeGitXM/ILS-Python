@@ -43,16 +43,16 @@ def getDatabaseForTag(tagPath):
 
     import system.ils.blt.diagram as blt
     productionTagProvider=blt.getToolkitProperty("Provider")
-    
+
     if tagProvider == productionTagProvider:
         database=blt.getToolkitProperty("Database")
     else:
         database=blt.getToolkitProperty("SecondaryDatabase")
-        
+
     return database
 
 def queryLabHistoryValues(valueName, startDate, endDate, database = ""):
-    print "Fetching lab history for %s..." % (valueName)
+    log.trace("Fetching lab history for %s..." % (valueName))
     
     SQL = "select RawValue from LtHistory H, LtValue V "\
         " where V.ValueName = '%s' "\
@@ -66,6 +66,6 @@ def queryLabHistoryValues(valueName, startDate, endDate, database = ""):
     for record in records:
         vals.append(record["RawValue"])
     
-    print "Returning values: ", vals
+    log.trace("Returning values: %s" % (str(vals)))
     
     return vals
