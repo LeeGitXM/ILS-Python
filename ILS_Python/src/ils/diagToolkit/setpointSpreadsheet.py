@@ -8,7 +8,7 @@ import system, string
 from ils.sfc.common.constants import SQL
 from ils.common.operatorLogbook import insertForPost
 log = system.util.getLogger("com.ils.diagToolkit")
-WAIT_FOR_MORE_DATA="Wait For Data"
+from ils.constants.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD
 
 def initialize(rootContainer):
     print "In %s.initialize()..." % (__name__)
@@ -250,7 +250,7 @@ def recalcCallback(event):
     database=system.tag.read("[Client]Database").value
     tagProvider=system.tag.read("[Client]Tag Provider").value
     
-    print "Sending a message to manage applications for post: %s (database: %s)" % (post, database)
+    print "Sending a RECALC message to the gateway for all applications for post: %s (database: %s)" % (post, database)
     projectName=system.util.getProjectName()
     payload={"post": post, "database": database, "provider": tagProvider}
     system.util.sendMessage(projectName, "recalc", payload, "G")  
@@ -520,13 +520,17 @@ def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, 
 
 def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider):
     import sys, traceback
-    print "Checking for special actions for final Diagnosis: %i" % (finalDiagnosisId)
+    log.info("Checking for special actions for final Diagnosis: %i (%s)" % (finalDiagnosisId, actionMessage))
     SQL = "select PostProcessingCallback from DtFinalDiagnosis where FinalDiagnosisId = %i" % (finalDiagnosisId)
     callback = system.db.runScalarQuery(SQL, database)
-    print "The callback is <%s>" % (callback)
+    log.info("The callback is <%s>" % (callback))
 
     if callback <> None:
-        print "There IS a callback!"
+        log.info("   ...there IS a callback...")
+        
+        if actionMessage == AUTO_NO_DOWNLOAD:
+            log.info("   Skipping the special actions because the action is *AUTO* No Download!")
+            return
 
         # If they specify shared or project scope, then we don't need to do this
         if not(string.find(callback, "project") == 0 or string.find(callback, "shared") == 0):
@@ -570,10 +574,10 @@ def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recom
 def resetDiagram(finalDiagnosisIds, database):
 #    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     import system.ils.blt.diagram as diagram
-    print "Resetting BLT diagrams..."
+    log.info("Resetting BLT diagrams...")
     
     for finalDiagnosisId in finalDiagnosisIds:
-        print "Resetting final diagnosis Id: %s" % (str(finalDiagnosisId))
+        log.info("...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
         SQL = "select FinalDiagnosisName, DiagramUUID, UUID from DtFinalDiagnosis "\
             "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
@@ -584,12 +588,11 @@ def resetDiagram(finalDiagnosisIds, database):
             diagramUUID=record["DiagramUUID"]
             fdUUID=record["UUID"]
             
-            print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(fdUUID))
-            
-            print "   ... Resetting the final diagnosis: %s  %s..." % (finalDiagnosisName, diagramUUID)
+            log.info("... resetting the final diagnosis: %s <%s>, FD: <%s>" % (finalDiagnosisName, str(diagramUUID), str(fdUUID)))
+
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
                         
-            print "Fetching upstream blocks for diagram <%s> - final diagnosis <%s>..." % (str(diagramUUID), finalDiagnosisName)
+            log.info("... fetching upstream blocks ...")
 
             if diagramUUID != None and fdUUID != None:
                 blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
@@ -602,18 +605,17 @@ def resetDiagram(finalDiagnosisIds, database):
 
                     if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
                                 "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse"]:
-                        print "   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID)
+                        log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID))
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
                         
                     if blockClass == "xom.block.sqcdiagnosis.SQCDiagnosis":
-                        print "Setting the lastResetTime for SQC diagnosis named: %s" % (blockName)
-                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where BlockId = '%s'" % (blockId)
-                        print SQL
+                        log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (blockName))
+                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where UUID = '%s'" % (blockId)
                         rows = system.db.runUpdateQuery(SQL, database)
-                        print "Updated %i rows" % (rows)
+                        log.info("      ...updated %i rows" % (rows))
 
                     if blockClass == "com.ils.block.Inhibitor":
-                        print "   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId)
+                        log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId))
                         system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
                         
             else:
@@ -622,10 +624,10 @@ def resetDiagram(finalDiagnosisIds, database):
 
 # Reset the BLT diagram in response to a Wait-For-More-Data
 def partialResetDiagram(finalDiagnosisIds, database):
-    print "Performing a *partial* reset of the BLT diagrams..."
+    log.info("   ... performing a *partial* reset of the BLT diagrams ...")
     
     for finalDiagnosisId in finalDiagnosisIds:
-        print "Resetting final diagnosis Id: %s" % (str(finalDiagnosisId))
+        log.info("      ...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
         SQL = "select FinalDiagnosisName, DiagramUUID, UUID from DtFinalDiagnosis "\
             "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))

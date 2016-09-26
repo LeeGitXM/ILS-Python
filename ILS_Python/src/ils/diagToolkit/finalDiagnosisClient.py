@@ -78,9 +78,10 @@ def handleNotification(payload):
     post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
     numOutputs=payload.get('numOutputs', 1)
+    callback="ils.diagToolkit.finalDiagnosisClient.postSpreadsheet"
 
     windows = system.gui.getOpenedWindows()
-    
+       
     # First check if the setpoint spreadsheet is already open.  This does not check which console's
     # spreadsheet is open, it assumes a client can only be interested in one console.
     
@@ -117,44 +118,51 @@ def handleNotification(payload):
         if pos >= 0:
             print "... checking post and payload for an OC Alert ..."
             rootContainer=window.rootContainer
-            if post == rootContainer.post: 
-                print "...found a matching OC alert - skipping the OC alert but updating its payload!"
-                rootContainer.payload = payload
+            if post == rootContainer.getPropertyValue("post"): 
+                print "...found a matching OC alert..."
                 
+                if numOutputs == 0:
+                    print "...closing an OC alert that has not been answered because the recommendations have been cleared!"
+                    system.nav.closeWindow(windowPath)
+                    return
+                
+                print "...updating the OC alert payload..."
+                callbackPayloadDictionary = {"post": post, "notificationText": notificationText}
+                callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
+                
+                rootContainer.setPropertyValue("callbackPayloadDataset", callbackPayloadDataset)
+                
+                rootContainer.callback = callback
+                rootContainer.mainMessage = "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button"
+                rootContainer.setPropertyValue("bottomMessage", "A New diagnosis is here!")
+ 
                 # If there is some notification text then display it immediately since we already have
                 # the operator's attention.  One type of notification text is vector clamp advice.
                 
                 # --- This was wrong - they need to ack the loud WS and then see the modal message ---
 #                if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
 #                    system.gui.messageBox(notificationText)
-                
-                if numOutputs == 0:
-                    print "Closing an OC alert that has not been answered because the recommendations have been cleared"
-                    system.nav.closeWindow(windowPath)
+
                 return
-    
-    # We didn't find an open setpoint spreadsheet, so post the Loud workspace
 
     if numOutputs == 0:
         print "Skipping the load workspace posting because the spreadsheet would be empty..."
         return
-            
-    print "Posting the loud workspace..."
-            
+    
+    # We didn't find an open setpoint spreadsheet, so post the Loud workspace
     # We don't want to open the setpoint spreadsheet immediately, rather we want to post an OC Alert,
     # the load workspace, which will get their attention.  We are already on the client that is 
     # interested, we don't have to broadcast an OC alert message, so call the message handler which opens
     # the OC alert window on this client.
-                        
-    callback="ils.diagToolkit.finalDiagnosisClient.postSpreadsheet"
 
+    print "Posting the loud workspace..."
     callbackPayloadDictionary = {"post": post, "notificationText": notificationText}
     callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
     
     ocPayload = {
                  "post": post,
                  "topMessage": "Attention!! Attention!!", 
-                 "bottomMessage": "New diagnosis(es) is(are) here!", 
+                 "bottomMessage": "A New diagnosis is here!", 
                  "buttonLabel": "Acknowledge",
                  "callback": callback,
                  "callbackPayloadDataset": callbackPayloadDataset,
@@ -220,6 +228,7 @@ def handleTextRecommendationNotification(payload):
                 rootContainer.callback = callback
                 rootContainer.mainMessage = "<HTML> %s" % (notificationText)
                 rootContainer.callbackPayloadDataset = callbackPayloadDataset
+                rootContainer.setPropertyValue("bottomMessage", "A new TEXT recommendation is ready!")
                 return
     
 
@@ -229,7 +238,7 @@ def handleTextRecommendationNotification(payload):
     ocPayload = {
                  "post": post,
                  "topMessage": "Attention!! Attention!!", 
-                 "bottomMessage": "A new Text recommendation is ready!", 
+                 "bottomMessage": "A new TEXT recommendation is ready!", 
                  "buttonLabel": "Acknowledge",
                  "callback": callback,
                  "callbackPayloadDataset": callbackPayloadDataset,

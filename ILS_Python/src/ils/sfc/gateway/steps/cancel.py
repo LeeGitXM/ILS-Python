@@ -15,7 +15,7 @@ def activate(scopeContext, stepProperties, state):
         chartLogger = getChartLogger(chartScope)
         if not (state == DEACTIVATED or state == CANCELLED):
             cancelChart(chartScope)
-            addControlPanelMessage(chartScope, "Chart canceled", False)
+            addControlPanelMessage(chartScope, "Chart canceled", "Error", False)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in cancel.py', chartLogger)
     finally:

@@ -3,7 +3,7 @@ Created on Mar 29, 2015
 
 @author: Pete
 '''
-import system
+import system, string
 import ils.common.util as util
 
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
@@ -173,6 +173,17 @@ def setSeen(rootContainer):
             print SQL
             rows = system.db.runUpdateQuery(SQL)
             print "Inserted %i rows into LtValueViewed"
+
+    # If this was called when the table viewer was closed and we just updated what has been viewed, then update the 
+    # lab data chooser immediately, don't wait for it to poll.  But first see if the chooser is open...
+    print "Updating the Lab Table Chooser window, if it is open..."
+    import ils.labData.tableChooser as tableChooser
+    windows = system.gui.getOpenedWindows()
+    for window in windows:
+        windowPath=string.upper(window.getPath())
+        if windowPath.find("LAB TABLE CHOOSER") >= 0:
+            viewerRootContainer = window.rootContainer 
+            tableChooser.populateRepeater(viewerRootContainer)
 
 
 # This is ALWAYS run from a client.  For now, the "Get History" button appears on every lab data table, regardless of its source,

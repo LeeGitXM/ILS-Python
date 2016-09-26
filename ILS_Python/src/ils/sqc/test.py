@@ -12,12 +12,9 @@ def internalFrameOpened(rootContainer):
 
     print "The database is: ", database
     
-    # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
-    SQL = "select A.ApplicationName, F.FamilyName, SD.SQCDiagnosisName, SD.BlockId, SD.Status State, ' ' Status "\
-        " from DtApplication A, DtFamily F, DtSQCDiagnosis SD "\
-        " where F.FamilyId = SD.FamilyId "\
-        " and A.ApplicationId = F.ApplicationId "\
-        " order by SD.SQCDiagnosisName"
+    SQL = "select ApplicationName, FamilyName, SQCDiagnosisName, Status, LastResetTime, UUID, DiagramUUID, ' ' State "\
+        " from DtSQCDiagnosisView "\
+        " order by ApplicationName, FamilyName, SQCDiagnosisName"
     pds = system.db.runQuery(SQL, database)
     
     table = rootContainer.getComponent("Table")
@@ -36,7 +33,7 @@ def runTest(rootContainer):
     row = 0
     for record in pds:
         sqcBlockName = record["SQCDiagnosisName"]
-        sqcDiagnosisId = record["BlockId"]
+        sqcDiagnosisId = record["UUID"]
     
         print "Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisId)
    
@@ -54,7 +51,7 @@ def runTest(rootContainer):
             else:
                 status = "Success"
 
-        ds= system.dataset.setValue(ds, row, "Status", status)
+        ds= system.dataset.setValue(ds, row, "State", status)
         row = row + 1
 
     table.data = ds

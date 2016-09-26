@@ -18,15 +18,15 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
-def notifyClients(project, post, notificationText="", numOutputs=0, database=""):
+def notifyClients(project, post, clientId=-1, notificationText="", numOutputs=0, database=""):
     log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, numOutputs: <%s>..." % (project, post, str(numOutputs)))
     messageHandler="consoleManager"
-    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}
+    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId}
     notifier(project, post, messageHandler, payload, database)
 
     # If we are going to notify client to update their spreadsheet then maybe they should also update their recommendation maps...    
     from ils.diagToolkit.recommendationMap import notifyRecommendationMapClients
-    notifyRecommendationMapClients(project, post)
+    notifyRecommendationMapClients(project, post, clientId)
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
@@ -42,23 +42,29 @@ def notifyClientsOfTextRecommendation(project, post, application, notificationTe
 #   2) If #1 is not found then notify every client displaying the console window
 #   3) If #2 is not found then notify every client
 def notifier(project, post, messageHandler, payload, database):
-    from ils.common.message.interface import getPostClientIds
-    clientSessionIds = getPostClientIds(post, project, database)
-    if len(clientSessionIds) > 0:
-        log.trace("Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post))
-        for clientSessionId in clientSessionIds:
-            system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
-    else:
-        from ils.common.message.interface import getConsoleClientIdsForPost
-        clientSessionIds = getConsoleClientIdsForPost(post, project, database)
-        log.trace("The clients are: %s" % (str(clientSessionIds)))
+    print "Notifying..."
+    #-------------------------------------------------------------------------------------------------
+    def work(project=project, post=post, messageHandler=messageHandler, payload=payload, database=database):
+        print "...working asynchrounously..."
+        from ils.common.message.interface import getPostClientIds
+        clientSessionIds = getPostClientIds(post, project, database)
         if len(clientSessionIds) > 0:
+            log.trace("Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post))
             for clientSessionId in clientSessionIds:
-                log.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
                 system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
         else:
-            log.trace("Notifying OC alert to every client because I could not find the post logged in")
-            system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
+            from ils.common.message.interface import getConsoleClientIdsForPost
+            clientSessionIds = getConsoleClientIdsForPost(post, project, database)
+            log.trace("The clients are: %s" % (str(clientSessionIds)))
+            if len(clientSessionIds) > 0:
+                for clientSessionId in clientSessionIds:
+                    log.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
+                    system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
+            else:
+                log.trace("Notifying OC alert to every client because I could not find the post logged in")
+                system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
+    #----------------------------------------------------------------------------------------------------------------      
+    system.util.invokeAsynchronous(work)
 
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
@@ -138,7 +144,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     post=fetchPostForApplication(applicationName)
     projectName = system.util.getProjectName()
     if activeOutputs > 0:
-        notifyClients(projectName, post, notificationText, activeOutputs, database)
+        notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
         
     if postTextRecommendation:
         notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
@@ -154,14 +160,14 @@ def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
     return txt
     
 # Clear the final diagnosis (make the status = 'InActive') 
-def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provider=""):
-    log.info("Clearing the diagnosis entry for %s - %s - %s..." % (application, family, finalDiagnosis))
+def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", provider=""):
+    log.info("Clearing the diagnosis entry for %s - %s - %s..." % (applicationName, family, finalDiagnosis))
 
     from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
+    record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
-        log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
+        log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
         return    
 
     # If there was a recommendation, then rescind it
@@ -183,14 +189,18 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
     log.info("...cleared %i final diagnosis" % (rows))
     
     log.info("Starting to manage as a result of a cleared Final Diagnosis...")
-    notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(application, recalcRequested=False, database=database, provider=provider)
+    notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage due to a cleared final diagnosis!")
  
     # Update the setpoint spreadsheet
-    post=fetchPostForApplication(application)
+    post=fetchPostForApplication(applicationName)
     log.info("Sending update notification to post %s" % (post))
-    projectName = system.util.getProjectName()
-    notifyClients(projectName, post, notificationText, activeOutputs, database)
+    projectName = system.util.getProjectName()        
+    
+    if postTextRecommendation:
+        notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
+    else:
+        notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -217,7 +227,7 @@ def recalcMessageHandler(payload):
         if postTextRecommendation:
             notifyClientsOfTextRecommendation(project, post, applicationName, explanation, diagnosisEntryId, database, provider)
         else:
-            notifyClients(project, post, "", totalActiveOutputs, database)
+            notifyClients(project, post, notificationText="", numOutputs=totalActiveOutputs, database=database)
 
     
 # This is based on the original G2 procedure outout-msg-core()
@@ -321,6 +331,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # and is the first step in evaluating the active FDs and calculating new recommendations.
     def resetRecommendations(applicationName, log, database):
         log.info("Deleting recommendations for %s" % (applicationName))
+        
         SQL = "delete from DtRecommendation " \
             " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
             " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
@@ -330,7 +341,18 @@ def manage(application, recalcRequested=False, database="", provider=""):
             " and A.ApplicationName = '%s')" % (applicationName)
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
-        log.info("...deleted %i recommendations..." % (rows))
+        log.info("...deleted %i quantitative recommendations..." % (rows))
+        
+        SQL = "delete from DtTextRecommendation " \
+            " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
+            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+            " where A.ApplicationId = F.ApplicationId "\
+            " and F.FamilyId = FD.FamilyId "\
+            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+            " and A.ApplicationName = '%s')" % (applicationName)
+        log.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        log.info("...deleted %i text recommendations..." % (rows))
 
     #----------------------------------------------------------------------------
     # Delete the quant outputs for an applicatuon.

@@ -16,20 +16,15 @@ def getControlPanelMessages(chartRunId, db):
     results = system.db.runQuery(sql, db)
     return results
 
-def addControlPanelMessage(message, ackRequired, chartRunId, db):
+def addControlPanelMessage(message, priority, ackRequired, chartRunId, db):
     from ils.sfc.common.util import createUniqueId
     msgId = createUniqueId()
-    sql = ("insert into " + MSG_TABLE + " (chartRunId, message,createTime,ackRequired,id) values ('%s','%s',getdate(),%d,'%s')") % (chartRunId, message, boolToBit(ackRequired), msgId )
+    sql = ("insert into " + MSG_TABLE + " (chartRunId, message, priority, createTime, ackRequired, id) "\
+           "values ('%s','%s','%s',getdate(),%d,'%s')") % (chartRunId, message, priority, boolToBit(ackRequired), msgId )
     numUpdated = system.db.runUpdateQuery(sql, db)
     if(numUpdated != 1):
         handleUnexpectedClientError("insert into control panel msg db table failed")
     return msgId
-
-def acknowledgeControlPanelMessage(msgId, db):
-    sql = ("update " + MSG_TABLE + " set ackTime = getdate() where id = '%s'") % msgId
-    numUpdated = system.db.runUpdateQuery(sql, db)
-    if(numUpdated != 1):
-        handleUnexpectedClientError("setting ack time in control panel msg table failed")
 
 def getAckTime(msgId, db):
     sql = ("select ackTime from " + MSG_TABLE + " where id = '%s'") % msgId

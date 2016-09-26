@@ -104,9 +104,10 @@ def animatePageTabs(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    print "In In labData.tableChooser.populateTablesForConsole"
-    selectedPost = rootContainer.selectedPost
-    selectedPage = rootContainer.selectedPage
+    print "In %s" % (__name__)
+    selectedPost = rootContainer.getPropertyValue("selectedPost")
+    print "The selected post is: ", selectedPost
+    selectedPage = rootContainer.getPropertyValue("selectedPage")
     SQL = "Select DisplayTableTitle "\
         "from LtDisplayTable DT, TkPost P "\
         "where DT.PostId = P.PostId "\
@@ -127,7 +128,6 @@ def populateRepeater(rootContainer):
         data.append([displayTableTitle,newData])
     
     ds = system.dataset.toDataSet(header, data)
-    repeater=rootContainer.getComponent("Template Repeater")
     rootContainer.displayTableTitles = ds
 
 def checkForNewData(displayTableTitle):

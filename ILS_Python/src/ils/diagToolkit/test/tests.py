@@ -578,6 +578,7 @@ def test18c():
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID')
     return applicationName
 
+# Test a low priority text FD followed by a high priority numeric FD
 def test18d():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='TESTAPP1'
@@ -587,7 +588,9 @@ def test18d():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_5', 'FD_UUID', 'DIAGRAM_UUID')
+    time.sleep(10.0)
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID')
     return applicationName
 
 # Test a static (One without a calculation method) text recommendation.
