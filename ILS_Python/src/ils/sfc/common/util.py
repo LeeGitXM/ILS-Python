@@ -6,6 +6,11 @@ Created on Nov 3, 2014
 import system
 
 def startChart(chartPath, controlPanelId, project, originator, isolationMode):
+    ''' We need to get the queue name out of the unit procedure adn use that as the default message queue, but
+        unlike in the old system, where we ran a unit procedure, here we are running a chart, and the chart had
+        better have a unit procedure on the top chart.  However all this method has is a chart path, it has no
+        way of knowing about the unit procedure block.  So when the unit procedure block runs we will update the 
+        record in the SfcControlParameter table. '''
     from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, \
         PROJECT, ORIGINATOR, MESSAGE_QUEUE
     from system.ils.sfc.common.Constants import DEFAULT_MESSAGE_QUEUE

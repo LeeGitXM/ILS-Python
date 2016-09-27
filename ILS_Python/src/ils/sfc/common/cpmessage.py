@@ -26,12 +26,6 @@ def addControlPanelMessage(message, priority, ackRequired, chartRunId, db):
         handleUnexpectedClientError("insert into control panel msg db table failed")
     return msgId
 
-def getAckTime(msgId, db):
-    sql = ("select ackTime from " + MSG_TABLE + " where id = '%s'") % msgId
-    results = system.db.runQuery(sql, db)
-    ackTime = results[0][0]
-    return ackTime
-
 def timeOutControlPanelMessageAck(msgId, db):
     sql = ("update " + MSG_TABLE + " set ackTimedOut = 1 where id = '%s'") % msgId
     numUpdated = system.db.runUpdateQuery(sql, db)
