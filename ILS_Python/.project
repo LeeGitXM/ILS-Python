@@ -3,12 +3,8 @@
 	<name>ILS_Python</name>
 	<comment></comment>
 	<projects>
-		<project>BLT_Gateway</project>
 		<project>External</project>
-		<project>Ignition-77</project>
-		<project>sfc-common</project>
-		<project>sfc-gateway</project>
-		<project>XOM_Python</project>
+		<project>Ignition-78</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
