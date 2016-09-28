@@ -16,42 +16,6 @@ logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 def notifyConsole():
     print "Waking up the console"
 
-# Make a dynamix text recommendation
-def makeTextRecommendation_DELETE_ME(textRecommendationCallback, textRecommendation, application, finalDiagnosisName, finalDiagnosisId, provider, database):
-#application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, database="", provider=""):
-    log.info("********** In %s *********" % (__name__))
-    
-    if textRecommendationCallback == None or textRecommendationCallback == "":
-        return textRecommendation
-    
-    # There is a custom callback to generate a dynamic text recommendation
-    if not(string.find(textRecommendationCallback, "project") == 0 or string.find(textRecommendationCallback, "shared") == 0):
-        # The method contains a full python path, including the method name
-        separator=string.rfind(textRecommendationCallback, ".")
-        packagemodule=textRecommendationCallback[0:separator]
-        separator=string.rfind(packagemodule, ".")
-        package = packagemodule[0:separator]
-        module  = packagemodule[separator+1:]
-        log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
-        exec("import %s" % (package))
-        exec("from %s import %s" % (package,module))
-    
-    try:
-        calculationSuccess, dynamicText = eval(textRecommendationCallback)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
-        log.info("...back from the calculation method!")
-    except:
-        errorType,value,trace = sys.exc_info()
-        errorTxt = traceback.format_exception(errorType, value, trace, 500)
-        postApplicationMessage(application, QUEUE_ERROR, "Caught an exception calling the text recommendation calculation method named %s... \n%s" % (textRecommendationCallback, errorTxt), log)
-        return textRecommendation
-    
-    else:
-        log.info("The calculation method returned explanation: %s" % (dynamicText))
-    
-
-    txt = "%s%s" % (textRecommendation, dynamicText)
-    return txt
-
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, constantFD, calculationMethod, 
                        postTextRecommendation, textRecommendation, database="", provider=""):
@@ -73,7 +37,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         return recommendationList, "", "SUCCESS"
 
     # If they specify shared or project scope, then we don't need to do this
-    if not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0):
+    if calculationMethod not in ["", None] and (not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0)):
         # The method contains a full python path, including the method name
         separator=string.rfind(calculationMethod, ".")
         packagemodule=calculationMethod[0:separator]
@@ -85,8 +49,14 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         exec("from %s import %s" % (package,module))
     
     try:
-        calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
-        log.info("...back from the calculation method!")
+        if calculationMethod in ["", None]:
+            log.info("Implementing a static text recommendation because there is not a calculation method.")
+            calculationSuccess = True
+            explanation = ""
+            rawRecommendationList = []
+        else:
+            calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
+            log.info("...back from the calculation method!")
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)

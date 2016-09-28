@@ -6,8 +6,7 @@ Created on Aug 1, 2015
 import system
 from ils.labData.common import postMessage
 from ils.common.ocAlert import sendAlert
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.labData.limits")
+log = system.util.getLogger("com.ils.labData.limits")
 
 #------------------------------
 # Custom Validation Failure
@@ -45,7 +44,7 @@ def notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue
         "unitName": unitName,
         "limitType": "validity"
         }
-    print "Packing the payload: ", payload
+    log.trace("Packing the payload: %s" % (str(payload)))
     
     topMessage = "Sample value failed validity testing." 
     bottomMessage = "Result sample is " + valueName
@@ -101,7 +100,7 @@ def notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, s
         "unitName": unitName,
         "limitType": "validity"
         }
-    print "Packing the payload: ", payload
+    log.trace("Packing the payload: %s" % (str(payload)))
     
     topMessage = "Sample value failed validity testing." 
     bottomMessage = "Result sample is " + valueName
@@ -159,7 +158,7 @@ def notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sa
         "unitName": unitName,
         "limitType": "release"
         }
-    print "Packing the payload: ", payload
+    log.trace("Packing the payload: %s" % (str(payload)))
     
     topMessage = "Sample value failed release limit validation." 
     bottomMessage = "Result sample is " + valueName
@@ -182,7 +181,7 @@ def releaseLimitActionLauncher(event, payload):
 
 # This is called when the operator presses the accept button on the operator review screen or when that dialog times out.
 def acceptValue(rootContainer, timeout=False):
-    print "Accepting the value"
+    log.trace("Accepting the value")
     
     valueId=rootContainer.valueId
     valueName=rootContainer.valueName
@@ -202,7 +201,7 @@ def acceptValue(rootContainer, timeout=False):
 #
 # This is called when the operator presses the "Accept With UIR" button on the operator review screen or when that dialog times out.
 def acceptValueWithUIR(rootContainer, timeout=False):
-    print "Accepting the value and creating a UIR"
+    log.trace("Accepting the value and creating a UIR")
     
     valueId=rootContainer.valueId
     valueName=rootContainer.valueName
@@ -223,14 +222,14 @@ def acceptValueWithUIR(rootContainer, timeout=False):
     post=system.security.getUsername()
     
     import ils.common.grade as grade
-    grade = grade.get()
+    grade = grade.getGradeForUnit(unitName, tagProvider)
      
     window = system.nav.openWindow('UIR Vistalon/UIR Entry', {'post' : post, 'editable' : 'True', 'grade' : grade})
     system.nav.centerWindow(window)
 
 
 def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvider, database):
-    print "Accepting a value which failed validity checks :: valueId: %i, valueName: %s, rawValue: %s, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, str(rawValue), sampleTime, database, tagProvider)
+    log.trace("Accepting a value which failed validity checks - valueId: %i, valueName: %s, rawValue: %s, SampleTime: %s, database: %s, provider: %s" % (valueId, valueName, str(rawValue), sampleTime, database, tagProvider))
     
     from ils.labData.scanner import storeValue
     storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database)
@@ -248,7 +247,7 @@ def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvid
 # There is nothing that needs to be done if the operator determines that the value is not valid, by doing nothing we ignore 
 # the value.
 def rejectValue(rootContainer):
-    print "Rejecting the value"
+    log.trace("Rejecting the value")
     valueName=rootContainer.valueName
     rawValue=rootContainer.rawValue
     sampleTime=rootContainer.sampleTime
@@ -260,7 +259,7 @@ def rejectValue(rootContainer):
     # Update the Lab Data UDT tags 
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     
-    print "Writing to tag <%s>" % (tagName)
+    log.trace("Writing to tag <%s>" % (tagName))
     #  The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
     system.tag.write(tagName + "/badValue", True)
     system.tag.write(tagName + "/status", "Operator rejected value")    
@@ -269,5 +268,5 @@ def rejectValue(rootContainer):
 # If the operator does not respond to the notification in a timely manner, then by default accept the value.  The burden is on
 # the operator to reject the value but the presumption is that the measurement is accurate.
 def timeOutValue(rootContainer):
-    print "Bad value handling timed out waiting for a decision from the operator"
+    log.trace("Bad value handling timed out waiting for a decision from the operator")
     acceptValue(rootContainer, True)

@@ -22,6 +22,11 @@ def internalFrameActivated(rootContainer):
     print "In internalFrameActivated()"
     populateRepeater(rootContainer)
 
+# update the list of display tables that are appropriate for the selected console
+def refresh(rootContainer):
+    print "In refresh()"
+    populateRepeater(rootContainer)
+
 def newPostSelected(rootContainer):
     print "In newPostSelected()"
     populateRepeater(rootContainer)

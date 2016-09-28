@@ -8,9 +8,8 @@ from ils.constants.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_
 from ils.sfc.common.constants import DATABASE
 
 # Not sure if this is used in production, but it is needed for testing
-def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database=""):
+def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database=""):
     print "Sending a message to post a diagnosis entry..."
-    projectName=system.util.getProjectName()
     payload={"application": application, "family": family, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database}
     system.util.sendMessage(projectName, "postDiagnosisEntry", payload, "G")
 
@@ -20,6 +19,9 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
 def openSetpointSpreadsheetCallback(post):
     print "Checking what to open..."
 
+    noTextRecommendations = False
+    noQuantRecommendations = False
+    
     from ils.common.config import getDatabaseClient
     database=getDatabaseClient()
     
@@ -28,7 +30,7 @@ def openSetpointSpreadsheetCallback(post):
             
     # Check if there is a text recommendation for this post
     from ils.diagToolkit.common import fetchActiveTextRecommendationsForPost
-    pds = fetchActiveTextRecommendationsForPost(post)
+    pds = fetchActiveTextRecommendationsForPost(post, database)
     if len(pds) > 0:
         print "There are %i text recommendation(s)..." % (len(pds))
         for record in pds:
@@ -46,7 +48,7 @@ def openSetpointSpreadsheetCallback(post):
             acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
     else:
         print "There are no text recommendations..."
-
+        noTextRecommendations = True
 
     # If there is at least 1 quant recommendation for the post the open the setpoint spreadsheet
     from ils.diagToolkit.common import fetchActiveOutputsForPost
@@ -56,7 +58,10 @@ def openSetpointSpreadsheetCallback(post):
         system.nav.centerWindow(window)
     else:
         print "There are no quantitative recommendations..."
-
+        noQuantRecommendations = True
+        
+    if noTextRecommendations and noQuantRecommendations:
+        system.gui.messageBox("There are no recommendations pending (text or quant).", " ")
 
 '''
 The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 
@@ -73,9 +78,10 @@ def handleNotification(payload):
     post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
     numOutputs=payload.get('numOutputs', 1)
+    callback="ils.diagToolkit.finalDiagnosisClient.postSpreadsheet"
 
     windows = system.gui.getOpenedWindows()
-    
+       
     # First check if the setpoint spreadsheet is already open.  This does not check which console's
     # spreadsheet is open, it assumes a client can only be interested in one console.
     
@@ -96,8 +102,9 @@ def handleNotification(payload):
             # This should trigger the spreadsheet to refresh
             rootContainer.refresh=True
             
-            # If there is some notification text then display it immediately since we already have
-            # the operator's attention.  One type of notification text is vector clamp advice.
+            # If we found an open setpoint spreadsheet AND if there is some notification text then display it immediately 
+            # since we already have the operator's attention.  One type of notification text is vector clamp advice.
+
             if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
                 system.gui.messageBox(notificationText)
             
@@ -111,64 +118,64 @@ def handleNotification(payload):
         if pos >= 0:
             print "... checking post and payload for an OC Alert ..."
             rootContainer=window.rootContainer
-            if post == rootContainer.post: 
-                print "...found a matching OC alert - skipping the OC alert!"
-                
-                # If there is some notification text then display it immediately since we already have
-                # the operator's attention.  One type of notification text is vector clamp advice.
-                if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
-                    system.gui.messageBox(notificationText)
+            if post == rootContainer.getPropertyValue("post"): 
+                print "...found a matching OC alert..."
                 
                 if numOutputs == 0:
-                    print "Closing an OC alert that has not been answered because the recommendations have been cleared"
+                    print "...closing an OC alert that has not been answered because the recommendations have been cleared!"
                     system.nav.closeWindow(windowPath)
-                return
-    
-    # We didn't find an open setpoint spreadsheet, so if there are outputs check if this client is interested in the console
-    print "Checking for a matching console window..."
-    for window in windows:
-        windowPath=window.getPath()
-        rootContainer=window.rootContainer
-        windowPost=rootContainer.getPropertyValue("post")
-        if post == windowPost:
-            print "Found an interested console window..."
-
-            if numOutputs == 0:
-                print "Skipping the load workspace posting because the spreadsheet would be empty..."
-                return
-            
-            print "Posting the loud workspace..."
-            
-            # We don't want to open the setpoint spreadsheet immediately, rather we want to post an OC Alert,
-            # the load workspace, which will get their attention.  We are already on the client that is 
-            # interested, we don't have to broadcast an OC alert message, so call the message handler which opens
-            # the OC alert window on this client.
-                        
-            callback="ils.diagToolkit.finalDiagnosisClient.postSpreadsheet"
-
-            callbackPayloadDictionary = {"post": post, "notificationText": notificationText}
-            callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
-            
-            ocPayload = {
-                         "post": post,
-                         "topMessage": "Attention!! Attention!!", 
-                         "bottomMessage": "New diagnosis(es) is(are) here!", 
-                         "buttonLabel": "Acknowledge",
-                         "callback": callback,
-                         "callbackPayloadDataset": callbackPayloadDataset,
-                         "mainMessage": "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button",
-                         "timeoutEnabled": False,
-                         "timeoutSeconds": 300
-                         }
-
-            # This is not the normal way to post the OC alert - normally a message is sent out to clients, but in this case 
-            # we already caught a message so we are in the client            
-            from ils.common.ocAlert import handleMessage
-            handleMessage(ocPayload)
+                    return
                 
-            return
+                print "...updating the OC alert payload..."
+                callbackPayloadDictionary = {"post": post, "notificationText": notificationText}
+                callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
+                
+                rootContainer.setPropertyValue("callbackPayloadDataset", callbackPayloadDataset)
+                
+                rootContainer.callback = callback
+                rootContainer.mainMessage = "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button"
+                rootContainer.setPropertyValue("bottomMessage", "A New diagnosis is here!")
+ 
+                # If there is some notification text then display it immediately since we already have
+                # the operator's attention.  One type of notification text is vector clamp advice.
+                
+                # --- This was wrong - they need to ack the loud WS and then see the modal message ---
+#                if not(notificationText in ["", "None Made", RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR]):
+#                    system.gui.messageBox(notificationText)
+
+                return
+
+    if numOutputs == 0:
+        print "Skipping the load workspace posting because the spreadsheet would be empty..."
+        return
     
-    print "*** This client is not interested in the setpoint spreadsheet for the %s post ***" % (post)
+    # We didn't find an open setpoint spreadsheet, so post the Loud workspace
+    # We don't want to open the setpoint spreadsheet immediately, rather we want to post an OC Alert,
+    # the load workspace, which will get their attention.  We are already on the client that is 
+    # interested, we don't have to broadcast an OC alert message, so call the message handler which opens
+    # the OC alert window on this client.
+
+    print "Posting the loud workspace..."
+    callbackPayloadDictionary = {"post": post, "notificationText": notificationText}
+    callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
+    
+    ocPayload = {
+                 "post": post,
+                 "topMessage": "Attention!! Attention!!", 
+                 "bottomMessage": "A New diagnosis is here!", 
+                 "buttonLabel": "Acknowledge",
+                 "callback": callback,
+                 "callbackPayloadDataset": callbackPayloadDataset,
+                 "mainMessage": "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button",
+                 "timeoutEnabled": False,
+                 "timeoutSeconds": 300
+                 }
+
+    # This is not the normal way to post the OC alert - normally a message is sent out to clients, but in this case 
+    # we already caught a message so we are in the client            
+    from ils.common.ocAlert import handleMessage
+    handleMessage(ocPayload)
+    
 
 #
 # The purpose of this notification handler is to notify the operator of a text recommendation.
@@ -196,7 +203,7 @@ def handleTextRecommendationNotification(payload):
     
     '''
     We are handling a text recommendation, so if there is already an open setpoint spreadsheet that has not been dealt with then
-    hide it.  The diagnosis entry/recommendation that triggered should be rescinded.
+    hide it.  The diagnosis entry/recommendation that triggered it will be rescinded.
     >>> This might not be correct, what if they were equal priority??? <<<
     '''
     print "Checking for an open setpoint spreadsheet..."
@@ -221,40 +228,29 @@ def handleTextRecommendationNotification(payload):
                 rootContainer.callback = callback
                 rootContainer.mainMessage = "<HTML> %s" % (notificationText)
                 rootContainer.callbackPayloadDataset = callbackPayloadDataset
+                rootContainer.setPropertyValue("bottomMessage", "A new TEXT recommendation is ready!")
                 return
     
-    print "Checking for a matching console window..."
-    for window in windows:
-        windowPath=window.getPath()
-        rootContainer=window.rootContainer
-        windowPost=rootContainer.getPropertyValue("post")
-        if post == windowPost:
-            '''
-            We found an interested post.  Now see if there is already a loud workspace.
-            (What if there was a setpoint spreadsheet open and now a higher priority text recommendation comes through?)
-            '''
-            
-            print "Found an interested console window, posting the loud workspace..."
-            
-            ocPayload = {
-                         "post": post,
-                         "topMessage": "Attention!! Attention!!", 
-                         "bottomMessage": "A new Text recommendation is ready!", 
-                         "buttonLabel": "Acknowledge",
-                         "callback": callback,
-                         "callbackPayloadDataset": callbackPayloadDataset,
-                         "mainMessage": "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button",
-                         "timeoutEnabled": False,
-                         "timeoutSeconds": 300
-                         }
 
-            # This is not the normal way to post the OC alert - normally a message is sent out to clients, but in this case 
-            # we already caught a message so we are in the client            
-            from ils.common.ocAlert import handleMessage
-            handleMessage(ocPayload)
-            return
+            
+    print "Posting the loud workspace because there wasn't already one and there wasn't a setpoint spreadsheet either..."
     
-    print "*** This client is not interested in the text recommendation for the %s post ***" % (post)
+    ocPayload = {
+                 "post": post,
+                 "topMessage": "Attention!! Attention!!", 
+                 "bottomMessage": "A new TEXT recommendation is ready!", 
+                 "buttonLabel": "Acknowledge",
+                 "callback": callback,
+                 "callbackPayloadDataset": callbackPayloadDataset,
+                 "mainMessage": "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button",
+                 "timeoutEnabled": False,
+                 "timeoutSeconds": 300
+                 }
+
+    # This is not the normal way to post the OC alert - normally a message is sent out to clients, but in this case 
+    # we already caught a message so we are in the client            
+    from ils.common.ocAlert import handleMessage
+    handleMessage(ocPayload)
 
 
 def ackTextRecommendation(event, payload):

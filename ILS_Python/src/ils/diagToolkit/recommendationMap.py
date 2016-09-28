@@ -16,7 +16,7 @@ def build(rootContainer):
     provider=system.tag.read("[Client]Tag Provider").value
     
     theMap = rootContainer.getComponent("TheMap")
-    diagnoses = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db)
+    diagnoses = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=db)
     diagnoses = updateSqcFlag(diagnoses)
     theMap.diagnoses=diagnoses
     
@@ -229,9 +229,9 @@ def setActiveRecDef(recDefs,diagnosisIdx, outputIdx):
             return recDefs
     return recDefs
 
-#---------------------------
-# Final Diagnosis callbacks
-#---------------------------
+'''
+Final Diagnosis callbacks
+'''
 def hideFinalDiagnosis(theMap, diagnosisIdx):
     print "In hideFinalDiagnosis..."
     diagnosesDs = theMap.diagnoses
@@ -377,15 +377,15 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
                 rows = system.db.runUpdateQuery(SQL, db)
                 print "Updated %i quant outputs" % (rows)
 
+        # Update the recommendation map on this client
+        update(rootContainer)
         
-        # Notify clients to update their setpoint spreadsheet
+        # Notify clients to update their setpoint spreadsheeta and recommendation maps
         post = rootContainer.getPropertyValue('post')
+        clientId = system.util.getClientId()
         
         from ils.diagToolkit.finalDiagnosis import notifyClients
-        notifyClients(project, post, "", numOutputs)        
-
-        # Make sure ALL map clients are updated, even ones on other windows        
-        notifyRecommendationMapClients(project, post)
+        notifyClients(project, post, clientId, "", numOutputs, db)        
         print "Done"
         
     except:
@@ -394,13 +394,21 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         catch()
 
 # Send a message to clients to update any open recommendation maps.
-def notifyRecommendationMapClients(project, post):
+def notifyRecommendationMapClients(project, post, clientId):
     print "Notifying %s-%s client to update their recommendation map..." % (project, post)
-    system.util.sendMessage(project=project, messageHandler="consoleManager", payload={'type':'recommendationMap', 'post':post}, scope="C")
+    system.util.sendMessage(project=project, messageHandler="consoleManager", 
+                            payload={'type':'recommendationMap', 'post':post, 'clientId':clientId}, scope="C")
 
 
 def handleNotification(payload):
-    print "In %s handling a Recommendation Map update message" % (__name__)
+    print "In %s handling a Recommendation Map u pdate message (%s)" % (__name__, str(payload))
+
+    clientId=payload.get('clientId', -1)
+    
+    # If the client that received the message is the same on ethat sent the message then ignore it
+    if clientId == system.util.getClientId():
+        print "Ignoring a update recommendation map message because I am the client that sent it!"
+        return
     
     windows = system.gui.getOpenedWindows()
     
@@ -416,9 +424,10 @@ def handleNotification(payload):
             update(rootContainer)
 
 
-# This is called in response to something being updated, either a recalc happened (possibly on a different client,
-# or a new diagnosis was made.
- 
+'''
+This is called in response to something being updated, either a recalc happened (possibly on a different client,
+or a new diagnosis was made.
+''' 
 def update(rootContainer):
     print "Updating a recommendation map..."
     theMap = rootContainer.getComponent("TheMap")
@@ -487,9 +496,9 @@ def update(rootContainer):
     theMap.connections=recDefs
     theMap.recommendations=recommendations
     
-#--------------------------
-# Recommendation callbacks
-#--------------------------
+'''
+Recommendation callbacks
+'''
 def manualRecommendation(theMap, recommendationIdx):
     print "In changeRecommendation..."
     # Get the production/isolation database 
@@ -527,10 +536,9 @@ def manualRecommendation(theMap, recommendationIdx):
     rows = system.db.runUpdateQuery(SQL, db)
     print "Updated %i rows in Final Diagnosis" % (rows)
 
-
-#--------------------------
-# Quant Output callbacks
-#--------------------------
+'''
+Quant Output callbacks
+'''
 def hideOutput(theMap, outputIdx):
     print "In hideOutput, the index is %i..." % (outputIdx)
 
@@ -550,10 +558,14 @@ def expandOutput(theMap, outputIdx):
     print "In expandOutput, the index is %i..." % (outputIdx)
     # Get the production/isolation database 
     db=system.tag.read("[Client]Database").value
-    
+    rootContainer = theMap.parent
+    applicationName=rootContainer.getPropertyValue("applicationName")
     quantOutputName = getOutputName(theMap, outputIdx)
     print "...expanding %s..." % (quantOutputName) 
-    diagnosesDS = fetchDiagnosisForQuantOutput(quantOutputName, db)
+    
+    #TODO I think this is wrong!  This call only returns FDs if they are active, if I am
+    # expanding an output I think I should return any FD that might write to it.
+    diagnosesDS = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=db)
     ds = theMap.diagnoses
     
     addedDiagnosis = False
@@ -596,9 +608,9 @@ def expandOutput(theMap, outputIdx):
         theMap.recommendations=recommendations
 
 
-#-------------------
-# Callback Helpers
-#-------------------
+'''
+Callback Helpers
+'''
 def removeIdx(ds, attr, IDX):
     # Need to do this in reverse
     for row in range(ds.rowCount - 1, -1, -1):

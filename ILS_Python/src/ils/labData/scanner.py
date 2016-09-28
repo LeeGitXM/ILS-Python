@@ -352,7 +352,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         else:
             # I don't want to post this to the queue because this is called every minute, and if the same tag is bad for a day 
             # we'll fill the queue with errors, yet log.error isn't seen by anyone...
-            dcsLog.error("Skipping %s because its quality is %s" % (valueName, qv.quality))
+            dcsLog.warn("Skipping %s because its quality is %s" % (valueName, qv.quality))
 
     return writeTags, writeTagValues
 

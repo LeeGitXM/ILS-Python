@@ -18,22 +18,54 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
-def notifyClients(project, post, notificationText="", numOutputs=0):
+def notifyClients(project, post, clientId=-1, notificationText="", numOutputs=0, database=""):
     log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, numOutputs: <%s>..." % (project, post, str(numOutputs)))
-    system.util.sendMessage(project=project, messageHandler="consoleManager", 
-        payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs}, scope="C")
+    messageHandler="consoleManager"
+    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId}
+    notifier(project, post, messageHandler, payload, database)
 
     # If we are going to notify client to update their spreadsheet then maybe they should also update their recommendation maps...    
     from ils.diagToolkit.recommendationMap import notifyRecommendationMapClients
-    notifyRecommendationMapClients(project, post)
+    notifyRecommendationMapClients(project, post, clientId)
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
 def notifyClientsOfTextRecommendation(project, post, application, notificationText, diagnosisEntryId, database, provider):
     log.info("Notifying %s-%s-%s client of a Text Recommendation..." % (project, post, application))
-    system.util.sendMessage(project=project, messageHandler="consoleManager", 
-        payload={'type':'textRecommendation', 'post':post, 'application':application, 'notificationText':notificationText, 
-                 'diagnosisEntryId':diagnosisEntryId, 'database':database, 'provider':provider}, scope="C")
+    messageHandler="consoleManager"
+    payload={'type':'textRecommendation', 'post':post, 'application':application, 'notificationText':notificationText, 
+                 'diagnosisEntryId':diagnosisEntryId, 'database':database, 'provider':provider}
+    notifier(project, post, messageHandler, payload, database)
+
+# The notification escalation is as follows:
+#   1) Notify every client logged in as the console operator
+#   2) If #1 is not found then notify every client displaying the console window
+#   3) If #2 is not found then notify every client
+def notifier(project, post, messageHandler, payload, database):
+    print "Notifying..."
+    #-------------------------------------------------------------------------------------------------
+    def work(project=project, post=post, messageHandler=messageHandler, payload=payload, database=database):
+        print "...working asynchrounously..."
+        from ils.common.message.interface import getPostClientIds
+        clientSessionIds = getPostClientIds(post, project, database)
+        if len(clientSessionIds) > 0:
+            log.trace("Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post))
+            for clientSessionId in clientSessionIds:
+                system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
+        else:
+            from ils.common.message.interface import getConsoleClientIdsForPost
+            clientSessionIds = getConsoleClientIdsForPost(post, project, database)
+            log.trace("The clients are: %s" % (str(clientSessionIds)))
+            if len(clientSessionIds) > 0:
+                for clientSessionId in clientSessionIds:
+                    log.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
+                    system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
+            else:
+                log.trace("Notifying OC alert to every client because I could not find the post logged in")
+                system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
+    #----------------------------------------------------------------------------------------------------------------      
+    system.util.invokeAsynchronous(work)
+
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -50,21 +82,21 @@ def postDiagnosisEntryMessageHandler(payload):
     postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database)
 
 # Insert a record into the diagnosis queue
-def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
-    log.info("Posting a diagnosis entry for application: %s, family: %s, final diagnosis: %s" % (application, family, finalDiagnosis))
+def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
+    log.info("Posting a diagnosis entry for application: %s, family: %s, final diagnosis: %s" % (applicationName, family, finalDiagnosis))
     
     # Lookup the application Id
     from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
+    record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
     
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
         return
     
     unit=record.get('UnitName',None)
     if unit == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (application, family, finalDiagnosis))
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (applicationName, family, finalDiagnosis))
         return
     
     # Reset the flag that indicates that minimum change requirements should be ignored.
@@ -73,10 +105,10 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
     finalDiagnosisName=record.get('FinalDiagnosisName','Unknown Final Diagnosis')
     
     grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
-    print "The grade is: ", grade
+    log.info("The grade is: %s" % (str(grade)))
     
     txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID)
-    print "The text of the diagnosis entry is: ", txt
+    log.info("The text of the diagnosis entry is: %s" % (txt))
     
     # Insert an entry into the diagnosis queue
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
@@ -104,16 +136,18 @@ def postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, d
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
     log.info("Starting to manage diagnosis...")
-    notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
+    notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
     
     # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
     # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
-    post=fetchPostForApplication(application)
+    post=fetchPostForApplication(applicationName)
     projectName = system.util.getProjectName()
     if activeOutputs > 0:
-        print "Notifying clients that there are new setpoints"
-        notifyClients(projectName, post, notificationText, activeOutputs)
+        notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
+        
+    if postTextRecommendation:
+        notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
 
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
@@ -126,14 +160,14 @@ def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
     return txt
     
 # Clear the final diagnosis (make the status = 'InActive') 
-def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provider=""):
-    log.info("Clearing the diagnosis entry for %s - %s - %s..." % (application, family, finalDiagnosis))
+def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", provider=""):
+    log.info("Clearing the diagnosis entry for %s - %s - %s..." % (applicationName, family, finalDiagnosis))
 
     from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(application, family, finalDiagnosis, database)
+    record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
-        log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (application, family, finalDiagnosis))
+        log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
         return    
 
     # If there was a recommendation, then rescind it
@@ -155,14 +189,18 @@ def clearDiagnosisEntry(application, family, finalDiagnosis, database="", provid
     log.info("...cleared %i final diagnosis" % (rows))
     
     log.info("Starting to manage as a result of a cleared Final Diagnosis...")
-    notificationText,activeOutputs=manage(application, recalcRequested=False, database=database, provider=provider)
+    notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage due to a cleared final diagnosis!")
  
     # Update the setpoint spreadsheet
-    post=fetchPostForApplication(application)
+    post=fetchPostForApplication(applicationName)
     log.info("Sending update notification to post %s" % (post))
-    projectName = system.util.getProjectName()
-    notifyClients(projectName, post, notificationText, activeOutputs)
+    projectName = system.util.getProjectName()        
+    
+    if postTextRecommendation:
+        notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
+    else:
+        notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -170,6 +208,7 @@ def recalcMessageHandler(payload):
     post=payload["post"]
     project=system.util.getProjectName()
     log.info("Handling recalc message for post %s" % (post))
+    print "Payload: ", payload
     database=payload["database"]
     provider=payload["provider"]
 
@@ -180,10 +219,15 @@ def recalcMessageHandler(payload):
     totalActiveOutputs=0
     for record in pds:
         applicationName=record["ApplicationName"]
-        txt,activeOutputs=manage(applicationName, recalcRequested=True, database=database, provider=provider)
-        totalActiveOutputs = totalActiveOutputs + activeOutputs
         
-    notifyClients(project, post, "", totalActiveOutputs)
+        # I'm not sure why the first arg isn't notificationText and why it iusn't passed to notify.
+        txt,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=True, database=database, provider=provider)
+        totalActiveOutputs = totalActiveOutputs + activeOutputs
+ 
+        if postTextRecommendation:
+            notifyClientsOfTextRecommendation(project, post, applicationName, explanation, diagnosisEntryId, database, provider)
+        else:
+            notifyClients(project, post, notificationText="", numOutputs=totalActiveOutputs, database=database)
 
     
 # This is based on the original G2 procedure outout-msg-core()
@@ -287,6 +331,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # and is the first step in evaluating the active FDs and calculating new recommendations.
     def resetRecommendations(applicationName, log, database):
         log.info("Deleting recommendations for %s" % (applicationName))
+        
         SQL = "delete from DtRecommendation " \
             " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
             " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
@@ -296,7 +341,18 @@ def manage(application, recalcRequested=False, database="", provider=""):
             " and A.ApplicationName = '%s')" % (applicationName)
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
-        log.info("...deleted %i recommendations..." % (rows))
+        log.info("...deleted %i quantitative recommendations..." % (rows))
+        
+        SQL = "delete from DtTextRecommendation " \
+            " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
+            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+            " where A.ApplicationId = F.ApplicationId "\
+            " and F.FamilyId = FD.FamilyId "\
+            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+            " and A.ApplicationName = '%s')" % (applicationName)
+        log.trace(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
+        log.info("...deleted %i text recommendations..." % (rows))
 
     #----------------------------------------------------------------------------
     # Delete the quant outputs for an applicatuon.
@@ -552,6 +608,12 @@ def manage(application, recalcRequested=False, database="", provider=""):
         
     #--------------------------------------------------------------------
     # This is the start of manage()
+    #--------------------------------------------------------------------
+    
+    numSignificantRecommendations = 0
+    postTextRecommendation = False
+    explanation = ""
+    diagnosisEntryId = -1
     
     # Fetch the list of final diagnosis that were most important the last time we managed
     oldList=fetchPreviousHighestPriorityDiagnosis(application, database)
@@ -567,7 +629,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         log.info("Exiting the diagnosis manager because there are no active diagnosis for %s!" % (application))
         rescindActiveDiagnosis(application, database)
         # TODO we may need to clear something
-        return "", 0
+        return "", numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId
 
     log.info("The active diagnosis are: ")
     for record in pds:
@@ -596,7 +658,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     
     if not(changed) and not(recalcRequested):
         log.info("There has been no change in the most important diagnosis, nothing new to manage, so exiting!")
-        return "", 0
+        return "", numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId
 
     # There has been a change in what the most important diagnosis is so set the active flag
     if recalcRequested:
@@ -663,7 +725,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 # Not sure if I need to reset the quant outputs here...
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
                                      actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
-                return "Error", 0
+                return "Error", numSignificantRecommendations, False, explanation, diagnosisEntryId
     
             elif recommendationStatus == RECOMMENDATION_NONE_MADE:
                 log.warn("No recommendations were made")
@@ -671,7 +733,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_NONE_MADE, diagnosisEntryId)
                 logSQL.trace(SQL)
                 system.db.runUpdateQuery(SQL, database)
-                return "None Made", 0
+                return "None Made", numSignificantRecommendations, False, explanation, diagnosisEntryId
     
             quantOutputs = mergeRecommendations(quantOutputs, recommendations)
             print "-----------------"
@@ -680,7 +742,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")
     finalQuantOutputs = []
-    numSignificantRecommendations = 0
+    
     for quantOutput in quantOutputs:
         from ils.diagToolkit.recommendation import calculateFinalRecommendation
         quantOutputName = quantOutput.get("QuantOutput", "Unknown")
@@ -703,7 +765,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                          quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
 
                 # I just added this - 5/9/16, this used to continue on.
-                return RECOMMENDATION_ERROR, 0
+                return RECOMMENDATION_ERROR, 0, False, explanation, diagnosisEntryId
          
             finalQuantOutputs.append(quantOutput)
 
@@ -722,12 +784,13 @@ def manage(application, recalcRequested=False, database="", provider=""):
         log.info(" --- handling a text recommendation by posting the loud workspace ---")
         from ils.common.util import formatHTML
         explanation = formatHTML(explanation, 50)
-        print "The explanation is: <%s>" % (explanation)
+        log.info("     The explanation is: <%s>" % (explanation))
         SQL = "Insert into DtTextRecommendation (DiagnosisEntryId, TextRecommendation) values (%i, '%s')" % (diagnosisEntryId, explanation)
         system.db.runUpdateQuery(SQL, database=database)
 
-        projectName = system.util.getProjectName()
-        notifyClientsOfTextRecommendation(projectName, post, application, explanation, diagnosisEntryId, database, provider)
+        # Let whoever initiated the manage deal with the notification 
+#        projectName = system.util.getProjectName()
+#        notifyClientsOfTextRecommendation(projectName, post, application, explanation, diagnosisEntryId, database, provider)
     elif numSignificantRecommendations == 0:
         log.info("There are no significant recommendations - Performing an automatic NO-DOWNLOAD because there are no significant recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
         resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], 
@@ -737,7 +800,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     else:
         log.info("Finished managing recommendations - there are %i significant Quant Outputs (There are %i quantOutputs)" % (numSignificantRecommendations, len(finalQuantOutputs)))
     
-    return notificationText, numSignificantRecommendations
+    return notificationText, numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId
 
 # Check that recommendation against the bounds configured for the output
 def checkBounds(quantOutput, database, provider):
@@ -826,7 +889,7 @@ def checkBounds(quantOutput, database, provider):
     # Now check the minimum increment requirement
     minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
     ignoreMinimumIncrement = quantOutput.get('IgnoreMinimumIncrement', False)
-    print "Ignore Minimum Increment: ", ignoreMinimumIncrement
+    log.info("Ignore Minimum Increment: %s" % (str(ignoreMinimumIncrement)))
     if not(ignoreMinimumIncrement) and abs(feedbackOutputConditioned) < minimumIncrement:
         log.info("      ...the output IS Minimum change bound because the change (%f) is less then the minimum change amount (%f)..." % (feedbackOutputConditioned, minimumIncrement))
         quantOutput['OutputLimited'] = True
@@ -963,8 +1026,6 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     manualOverride = quantOutput.get('ManualOverride', False)
     manualOverride = toBool(manualOverride)
     feedbackOutputManual = quantOutput.get('FeedbackOutputManual', 0.0)
-    
-    print "Manual Override: ", manualOverride
 
     # The current setpoint was read when we checked the bounds.
     isGood = quantOutput.get('CurrentValueIsGood',False)
@@ -980,12 +1041,11 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     
     if manualOverride:
         # Manual values are always incremental
-        print "Using Manual"
         log.info("     ...using the validated manually entered value... ")
         finalSetpoint = currentSetpoint + feedbackOutputConditioned
         displayedRecommendation = feedbackOutputConditioned
     else:
-        print "Using AUTO"
+        log.info("     ...using the AUTO recommendations... ")
         # The recommendation may be absolute or incremental, but we always display incremental    
         incrementalOutput=quantOutput.get('IncrementalOutput')
         if incrementalOutput:
