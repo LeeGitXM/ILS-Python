@@ -13,7 +13,7 @@ log = system.util.getLogger("com.ils.diagToolkit.reset")
 # I'm not sure how generic this is, but it followed the pattern of RESET_FD-GDA.
 def resetApplication(unit, database, tagProvider):
     import system.ils.blt.diagram as diagram
-    log.info("Resetting all of the applications for unit: %s" % (unit)) 
+    log.info("com.ils.diagToolkit.reset.resetApplication: Resetting applications for unit: %s" % (unit)) 
     
     # Fetch all of the SQC Diagnosis for this Application
     SQL = "select SD.SQCDiagnosisId, SD.SQCDiagnosisName, F.FamilyId, SD.UUID, SD.DiagramUUID "\
@@ -24,7 +24,7 @@ def resetApplication(unit, database, tagProvider):
         " and U.UnitName = '%s'" % (unit)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
-    log.trace("Fetched %i SQC diagnosis" % (len(pds)))
+    log.trace("com.ils.diagToolkit.reset.resetApplication: Fetched %i SQC diagnosis" % (len(pds)))
     
     blocks=[]
     for record in pds:
@@ -32,11 +32,9 @@ def resetApplication(unit, database, tagProvider):
         diagramUUID = record['DiagramUUID']
         sqcDiagnosisName = record['SQCDiagnosisName']
                    
-        log.info("... resetting the SQC diagnosis: %s on diagram %s" % (sqcDiagnosisName, str(diagramUUID)))
+        log.debug("com.ils.diagToolkit.reset.resetApplication: Resetting SQC diagnosis %s on diagram %s" % (sqcDiagnosisName, str(diagramUUID)))
 
         diagram.resetBlock(diagramUUID, sqcDiagnosisName)
-                        
-        log.info("... fetching downstream blocks ...")
 
         if diagramUUID != None and UUID != None:
             tBlocks=diagram.listBlocksGloballyDownstreamOf(diagramUUID, sqcDiagnosisName)
@@ -44,9 +42,8 @@ def resetApplication(unit, database, tagProvider):
                 if block not in blocks:
                     blocks.append(block)
                     
-    print "Collected Blocks: ", blocks
     
-    log.info("... resetting downstream (non-constant) final diagnosis ...")
+    log.trace("com.ils.diagToolkit.reset.resetApplication: Resetting downstream (non-constant) final diagnosis ...")
     upstreamBlocks=[]
     for block in blocks:
         blockId=block.getIdString()
@@ -64,5 +61,5 @@ def resetApplication(unit, database, tagProvider):
                 if tBlock not in upstreamBlocks:
                     upstreamBlocks.append(tBlock)
                 
-    print "There are %i blocks upstream of unit %s final diagnosis..." % (len(upstreamBlocks), unit)
+    log.debug("com.ils.diagToolkit.reset.resetApplication:  %i blocks upstream of unit %s final diagnosis..." % (len(upstreamBlocks), unit))
 
