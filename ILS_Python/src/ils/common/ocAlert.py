@@ -35,14 +35,15 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         logger.trace("Targeting message to post: <%s>" % (post))
         
         from ils.common.message.interface import getPostClientIds
-        clientSessionIds = getPostClientIds(post)
+        clientSessionIds = getPostClientIds(post, project)
         if len(clientSessionIds) > 0:
             logger.trace("Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post))
             for clientSessionId in clientSessionIds:
                 system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
         else:
-            from ils.common.message.interface import getConsoleClientIds
-            clientSessionIds = getConsoleClientIds(post, db)
+            logger.trace("Did not find any console login sessions, now looking for clients with consoles displayed...")
+            from ils.common.message.interface import getConsoleClientIdsForPost
+            clientSessionIds = getConsoleClientIdsForPost(post, project, db)
             if len(clientSessionIds) > 0:
                 for clientSessionId in clientSessionIds:
                     logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))

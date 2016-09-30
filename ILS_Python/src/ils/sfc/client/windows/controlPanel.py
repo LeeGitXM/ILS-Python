@@ -15,28 +15,30 @@ def internalFrameOpened(event):
     print "In internalFrameOpened..."
     rootContainer = event.source.rootContainer
     rootContainer.selectedMessage=0
+    rootContainer.autoIndex=True
     
-def openControlPanel(controlPanelId, startImmediately):
-    cpWindow = findOpenControlPanel(controlPanelId)
+def openControlPanel(controlPanelName, startImmediately):
+    print "In openControlPanel..."
+    cpWindow = findOpenControlPanel(controlPanelName)
     if cpWindow == None:
-        cpWindow = system.nav.openWindowInstance(controlPanelWindowPath, {'controlPanelId': controlPanelId})
+        cpWindow = system.nav.openWindowInstance(controlPanelWindowPath, {'controlPanelName': controlPanelName})
     else:
         cpWindow.toFront()
     if startImmediately:
         startChart(cpWindow)
         
-def startChart(window):
+def startChart(rootContainer):
     from ils.sfc.client.util import getStartInIsolationMode
     from ils.sfc.common.util import startChart, chartIsRunning
-    rootContainer = window.getRootContainer()
-    cpId = rootContainer.controlPanelId
+    controlPanelName = rootContainer.controlPanelName
     isolationMode = getStartInIsolationMode()
     project = system.util.getProjectName()
-    chartPath = getControlPanelChartPath(cpId)
+    chartPath = getControlPanelChartPath(controlPanelName)
     originator = system.security.getUsername()
 
     if not chartIsRunning(chartPath):
-        chartRunId=startChart(chartPath, cpId, project, originator, isolationMode)
+        print "In %s - starting %s" % (__name__, controlPanelName)
+        chartRunId=startChart(chartPath, controlPanelName, project, originator, isolationMode)
     else:
         system.gui.warningBox('This chart is already running')
     
@@ -53,6 +55,7 @@ def resumeChart(event):
 def cancelChart(event):
     from system.sfc import cancelChart
     cancelChart(system.gui.getParentWindow(event).rootContainer.chartRunId)
+    closeAllPopups()
        
 def updateChartStatus(event):
     '''Get the status of this panel's chart run and set the status field appropriately.
@@ -72,9 +75,42 @@ def updateChartStatus(event):
         statusField.text = status
     else:
         statusField.text = ''
-    if status != oldStatus and status == CANCELED:
-        reset(event)
-        
+
+    # Presses the reset button should reset things, not cancelling the chart!
+#    if status != oldStatus and status == CANCELED:
+#        reset(event)
+
+
+def updateMessageCenter(rootContainer):
+    # print "Updating the message center... "
+    database = getDatabase()
+    chartRunId = rootContainer.chartRunId
+    selectedMessage = rootContainer.selectedMessage
+    SQL = "select id, createTime, message, priority, ackRequired, priority + CAST(ackRequired as varchar(5)) as state "\
+        " from SfcControlPanelMsg where chartRunId = '%s' order by createTime asc" % (chartRunId)
+    pds = system.db.runQuery(SQL, database)
+    rootContainer.messages = pds
+    numMessages = len(pds)
+    
+    if numMessages-1 == selectedMessage:
+        rootContainer.autoIndex = True
+    
+    # If the last message was selected and we added a new message then automatically select it.
+    if rootContainer.autoIndex:
+        selectedMessage = numMessages - 1
+        rootContainer.selectedMessage = selectedMessage
+
+    updateSelectedMessageText(rootContainer)
+
+def updateSelectedMessageText(rootContainer):
+    selectedMessage = rootContainer.selectedMessage
+    numMessages = rootContainer.messages.rowCount
+    if numMessages == 0:
+        txt = ""
+    else:
+        txt = "%i of %i" % (selectedMessage + 1, numMessages)
+    rootContainer.selectedMessageText = txt
+
 def reset(event):
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
@@ -92,10 +128,11 @@ def closeAllPopups():
             system.nav.closeWindow(window)
        
 def resetDb(rootContainer):
-    controlPanelId=rootContainer.controlPanelId
+    controlPanelName=rootContainer.controlPanelName
     chartRunId=rootContainer.chartRunId
+    print "Resetting the database for chart run: ", chartRunId
     database = getDatabase()
-    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelId = %d" % (controlPanelId), database)
+    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
     system.db.runUpdateQuery("delete from SfcControlPanelMsg where chartRunId = '%s'" % chartRunId, database)
     system.db.runUpdateQuery("delete from SfcDialogMsg", database)
     # order deletions so foreign key constraints are not violated:
@@ -128,10 +165,10 @@ def createControlPanel(controlPanelName):
     system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName, chartPath) values ('%s', '')" % (controlPanelName), database)
     return getControlPanelIdForName(controlPanelName, False)
 
-def getControlPanelChartPath(controlPanelId):
+def getControlPanelChartPath(controlPanelName):
     '''get the name of the SFC chart associated with the given control panel'''
     database = getDatabase()
-    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelId = %d" % (controlPanelId), database)
+    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database)
     if len(results) == 1:
         return results[0][0]
     else:
@@ -170,13 +207,13 @@ def ackMessage(window):
     if(numUpdated != 1):
         handleUnexpectedClientError("setting ack time in control panel msg table failed")
     
-def findOpenControlPanel(searchId):   
+def findOpenControlPanel(controlPanelName):   
     for window in system.gui.findWindow(controlPanelWindowPath):
-        if window.getRootContainer().controlPanelId == searchId:
+        if window.getRootContainer().controlPanelName == controlPanelName:
             return window
     return None
 
-def openDynamicControlPanel(chartPath, startImmediately, panelName):
+def openDynamicControlPanel(chartPath, startImmediately, controlPanelName):
     '''Open a control panel to run the given chart, starting the chart
        if startImmediately is true. If no control panel is associated 
        with the given chart, use the one with the given name (creating that
@@ -187,9 +224,9 @@ def openDynamicControlPanel(chartPath, startImmediately, panelName):
     controlPanelId = getControlPanelIdForChartPath(chartPath)
     if controlPanelId == None:
         # next, check for an existing panel with the given name, creating if not found:
-        controlPanelId = getControlPanelIdForName(panelName)
+        controlPanelId = getControlPanelIdForName(controlPanelName)
         if controlPanelId == None:
-            controlPanelId = createControlPanel(panelName)
+            controlPanelId = createControlPanel(controlPanelName)
         # re-set the panel's chart to the desired one:
         setControlPanelChartPath(controlPanelId, chartPath)
-    openControlPanel(controlPanelId, startImmediately)
+    openControlPanel(controlPanelName, startImmediately)

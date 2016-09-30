@@ -367,7 +367,9 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     Report an unexpected error so that it is visible to the operator--
     e.g. put in a message queue. Then cancel the chart.
     '''
-    logExceptionCause(msg, logger)
+    fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
+    
+    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartScope.chartPath, chartScope.name, fullMsg, tracebackMsg, javaCauseMsg)
     payload = dict()
     payload[MESSAGE] = msg
     payload[CONTROL_PANEL_ID] = getControlPanelId(chartScope)

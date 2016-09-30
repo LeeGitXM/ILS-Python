@@ -18,7 +18,6 @@ def activate(scopeContext, stepProperties, state):
     import system.db
     import time
 
-    print "State: ", state
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
@@ -55,7 +54,7 @@ def activate(scopeContext, stepProperties, state):
             else:
                 handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
                 delay = 0
-            print 'delay', delay
+
             delayUnit = getStepProperty(stepProperties, DELAY_UNIT)
             delaySeconds = getDelaySeconds(delay, delayUnit)
             unscaledDelaySeconds=delaySeconds

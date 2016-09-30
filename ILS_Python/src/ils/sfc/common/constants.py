@@ -16,8 +16,6 @@ TOP = 'top'
 BOTTOM = 'bottom'
 
 ACK_REQUIRED = "ackRequired"
-ACK_TIME = "ackTime"
-ACK_TIMED_OUT = "ackTimedOut"
 AUTO_MODE = "autoMode"
 AUTOMATIC = "automatic"
 BUTTON = 'button'

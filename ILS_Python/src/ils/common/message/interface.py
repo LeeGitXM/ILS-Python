@@ -12,7 +12,7 @@ log=system.util.getLogger("com.ils.common.message")
 # Note: This does not use the message-reply utility because there is a system utility, getSessionInfo()
 # that lists information about each client. 
 def getPostClientIds(post, project="", db=""):
-    log.trace("%s - Looking for a client logged in as: <%s>" % (__name__, post))
+    log.trace("%s - Looking for a client logged in as <%s> to project <%s>" % (__name__, post, project))
 
     if project == "":
         project = system.util.getProjectName()
@@ -23,17 +23,18 @@ def getPostClientIds(post, project="", db=""):
         if session["project"] == project:
             clientIds.append(session["clientId"])
 
+    log.trace("   ...found clients: %s" % (str(clientIds)))
     return clientIds
 
 
 # Get the client ids of all clients that are showing the console window for a specific console.
 # This returns a list of client ids 
 def getConsoleClientIds(consoleName, project="", db=""):
-    log.trace("%s - Looking for a client showing console: <%s>" % (__name__, consoleName))
+    log.trace("%s - Looking for a client showing console: <%s> in project <%s> and database <%s>" % (__name__, consoleName))
     clientIds = []
     
     SQL = "select windowName from TkConsole where ConsoleName = '%s'" % (consoleName)
-    consoleWindow=system.db.runScalarQuery(SQL, db=db)
+    consoleWindow=system.db.runScalarQuery(SQL, database=db)
     log.trace("  ...(console window: %s)" % (consoleWindow))
 
     # If we don't have a window name then we'll never find a client!
@@ -43,7 +44,6 @@ def getConsoleClientIds(consoleName, project="", db=""):
     windowList = listWindows(project, db)
     for record in windowList:
         windows = str(record["Reply"])
-        print "Windows: ", windows
         if windows <> None and windows.find(consoleWindow) >= 0:
             clientIds.append(record["ClientId"])
 
@@ -57,7 +57,7 @@ def getConsoleClientIdsForPost(post, project="", db=""):
     clientIds = []
     
     SQL = "select C.WindowName from TkConsole C, TkPost P where C.PostId = P.PostId and P.Post = '%s'" % (post)
-    consoleWindows=system.db.runQuery(SQL, db=db)
+    consoleWindows=system.db.runQuery(SQL, database=db)
     log.trace("  ...(there are %i console windows)" % (len(consoleWindows)))
 
     # If we don't have a window name then we'll never find a client!

@@ -25,29 +25,29 @@ def sendAndReceive(command, project, db, timeout=30):
         return pds
 
     # Send the message to the clients
-    requestId=send(command, project)
+    requestId=send(command, project, db)
     
     # Poll for a reply
     SQL = "select Reply, ReplyTime, ClientId from TkMessageReply where RequestId = %i" % requestId
-    pds = system.db.runQuery(SQL, db=db)
+    pds = system.db.runQuery(SQL, database=db)
     startTime = system.date.now()
     timeout = system.date.addSeconds(startTime, timeout)
     
     while len(pds) <> numClients and system.date.now() < timeout:
         time.sleep(1)
         log.trace("   ..checking for %i replies..." % (numClients)) 
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
     
     log.trace("   ...the replies have been received!")
     return pds
 
-def send(requestType, project='XOM'):
+def send(requestType, project, db):
     log.trace("Sending a <%s> message" % (requestType))
 
     messageHandler="MessageRequest"
     
     SQL = "Insert into tkMessageRequest (RequestType, RequestTime) values ('%s',  getdate())" % (requestType)
-    requestId = system.db.runUpdateQuery(SQL, getKey=True)
+    requestId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     
     payload={"requestId": requestId, "requestType": requestType}
     system.util.sendMessage(project, messageHandler, payload, scope="C")

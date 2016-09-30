@@ -63,18 +63,21 @@ def fetchQuantOutput(applicationName, quantOutputName, db, provider):
     return ds
 
 def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
-    print "Fetching Final Diagnosis..."
-    SQL = "select FD.FinalDiagnosisName, convert(decimal(10,2),DE.Multiplier) as Multiplier, FD.UUID, FD.DiagramUUID "\
-        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtFamily F, DtApplication A "\
-        " where FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
-        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
-        " and RD.QuantOutputId = QO.QuantOutputId "\
-        " and QO.QuantOutputName = '%s' "\
-        " and FD.FamilyId = F.FamilyId "\
-        " and F.applicationId = A.applicationId "\
-        " and A.ApplicationName = '%s' "\
-        " and DE.Status = 'Active' "\
+    ''' '''
+    print "Fetching Final Diagnosis that touch %s..." % (quantOutputName)
+
+    SQL = "select DtFinalDiagnosis.FinalDiagnosisName, DtDiagnosisEntry.Multiplier, DtFinalDiagnosis.UUID, DtFinalDiagnosis.DiagramUUID "\
+        " from DtFinalDiagnosis INNER JOIN "\
+        " DtRecommendationDefinition ON DtFinalDiagnosis.FinalDiagnosisId = DtRecommendationDefinition.FinalDiagnosisId INNER JOIN "\
+        " DtQuantOutput ON dbo.DtRecommendationDefinition.QuantOutputId = dbo.DtQuantOutput.QuantOutputId INNER JOIN "\
+        " DtFamily ON DtFinalDiagnosis.FamilyId = DtFamily.FamilyId INNER JOIN "\
+        " DtApplication ON DtQuantOutput.ApplicationId = DtApplication.ApplicationId AND "\
+        " DtFamily.ApplicationId = DtApplication.ApplicationId LEFT OUTER JOIN "\
+        " DtDiagnosisEntry ON DtFinalDiagnosis.FinalDiagnosisId = DtDiagnosisEntry.FinalDiagnosisId "\
+        " where DtQuantOutput.QuantOutputName = '%s' "\
+        " and DtApplication.ApplicationName = '%s'"\
         " order by FinalDiagnosisName" % (quantOutputName, applicationName)
+    
     print SQL
     pds = system.db.runQuery(SQL, database=db)
     print "  ...fetched %i Final Diagnoses..." % (len(pds))
@@ -563,8 +566,6 @@ def expandOutput(theMap, outputIdx):
     quantOutputName = getOutputName(theMap, outputIdx)
     print "...expanding %s..." % (quantOutputName) 
     
-    #TODO I think this is wrong!  This call only returns FDs if they are active, if I am
-    # expanding an output I think I should return any FD that might write to it.
     diagnosesDS = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=db)
     ds = theMap.diagnoses
     

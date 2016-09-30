@@ -149,6 +149,8 @@ def addControlPanelMessage(chartProperties, message, priority, ackRequired):
     '''display a message on the control panel'''
     from ils.sfc.common.cpmessage import addControlPanelMessage 
     from ils.sfc.gateway.util import escapeSingleQuotes, getTopChartRunId
+    
+    print "Adding a control panel message"
     escapedMessage = escapeSingleQuotes(message)
     chartRunId = getTopChartRunId(chartProperties)
     database = getDatabaseName(chartProperties)

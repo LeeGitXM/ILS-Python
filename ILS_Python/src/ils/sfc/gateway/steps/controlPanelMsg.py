@@ -13,7 +13,6 @@ def activate(scopeContext, stepProperties, state):
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, MESSAGE_ID, TIMED_OUT
     from ils.queue.message import insert
     from ils.sfc.gateway.recipe import substituteScopeReferences
-    from ils.sfc.common.cpmessage import timeOutControlPanelMessageAck
     from ils.sfc.gateway.api import getDatabaseName, addControlPanelMessage, getCurrentMessageQueue, getChartLogger 
 
     chartScope = scopeContext.getChartScope()
@@ -65,7 +64,6 @@ def activate(scopeContext, stepProperties, state):
                 workDone = True
             elif timeoutTime != None and time.time() > timeoutTime:
                 stepScope[TIMED_OUT] = True
-                timeOutControlPanelMessageAck(msgId, database)
                 workDone = True
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in controlPanelMsg.py', logger)

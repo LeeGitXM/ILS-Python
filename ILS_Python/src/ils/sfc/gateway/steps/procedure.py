@@ -8,6 +8,7 @@ def activate(scopeContext, stepProperties, state):
     from system.ils.sfc.common.Constants import MESSAGE_QUEUE
     import system.db
     try:
+        print "In ", __name__
         chartScope = scopeContext.getChartScope()
         queueName = getStepProperty(stepProperties, MESSAGE_QUEUE)
         chartLogger = getChartLogger(chartScope)

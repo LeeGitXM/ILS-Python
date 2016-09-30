@@ -102,12 +102,12 @@ class BasicBlock():
     # Trigger property and connection notifications on the block
     def notifyOfStatus(self):
         pass
+    
     # Reset the block. This default implementation
     # sends notifications on all output connections.
     def reset(self):
         self.state = 'UNSET'
         now = long(time.time()*1000)
-        print "BASICBLOCK:",now
         for anchor in self.outports:
             if anchor['type'].upper()=='TRUTHVALUE':
                 self.handler.sendConnectionNotification(self.uuid,anchor["name"],'UNKNOWN',"Good",long(now))

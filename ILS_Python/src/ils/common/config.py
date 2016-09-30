@@ -29,3 +29,8 @@ def getTagProviderClient():
 def getDatabaseClient():
     database=system.tag.read("[Client]Database").value
     return database
+
+def getIsolationModeClient():
+    isolationMode=system.tag.read("[Client]Isolation Mode").value
+    return isolationMode
+
