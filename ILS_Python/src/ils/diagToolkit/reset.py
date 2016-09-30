@@ -52,7 +52,7 @@ def resetApplication(unit, database, tagProvider):
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
 
         if blockClass in ["xom.block.finaldiagnosis.FinalDiagnosis"]:
-            log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID))
+            log.info("com.ils.diagToolkit.reset.resetApplication: resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID))
             system.ils.blt.diagram.resetBlock(parentUUID, blockName)
             
             # Collect all of the blocks upstream of this final diagnosis
