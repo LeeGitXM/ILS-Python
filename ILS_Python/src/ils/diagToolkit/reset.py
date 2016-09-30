@@ -27,6 +27,7 @@ def resetApplication(unit, database, tagProvider):
     log.trace("Fetched %i SQC diagnosis" % (len(pds)))
     
     blocks=[]
+    log.info("Resetting SQC Diagnosis...")
     for record in pds:
         UUID = record['UUID']
         diagramUUID = record['DiagramUUID']
@@ -36,7 +37,7 @@ def resetApplication(unit, database, tagProvider):
 
         diagram.resetBlock(diagramUUID, sqcDiagnosisName)
                         
-        log.info("... fetching downstream blocks ...")
+        log.trace("   ... fetching blocks downstream from it ...")
 
         if diagramUUID != None and UUID != None:
             tBlocks=diagram.listBlocksGloballyDownstreamOf(diagramUUID, sqcDiagnosisName)
@@ -44,9 +45,41 @@ def resetApplication(unit, database, tagProvider):
                 if block not in blocks:
                     blocks.append(block)
                     
-    print "Collected Blocks: ", blocks
+    log.info("...collected %i blocks downstream from the SQC diagnosis..." % (len(blocks)))
     
-    log.info("... resetting downstream (non-constant) final diagnosis ...")
+    # Fetch all of the Trend Detector  for this Application
+    SQL = "select TD.TrendDetectorId, TD.TrendDetectorName, F.FamilyId, TD.UUID, TD.DiagramUUID "\
+        " from DtTrendDetector TD, DtFamily F, DtApplication A, TkUnit U"\
+        " where U.UnitId = A.UnitId "\
+        " and A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = TD.FamilyId "\
+        " and U.UnitName = '%s'" % (unit)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    log.trace("Fetched %i Trend Detectors" % (len(pds)))
+    
+    blocks=[]
+    log.info("Resetting Trend Detectors...")
+    for record in pds:
+        UUID = record['UUID']
+        diagramUUID = record['DiagramUUID']
+        trendDetectorName = record['TrendDetectorName']
+                   
+        log.info("... resetting the trend detector: %s on diagram %s" % (trendDetectorName, str(diagramUUID)))
+
+        diagram.resetBlock(diagramUUID, trendDetectorName)
+                        
+        log.trace("   ... fetching blocks downstream from it ...")
+
+        if diagramUUID != None and UUID != None:
+            tBlocks=diagram.listBlocksGloballyDownstreamOf(diagramUUID, trendDetectorName)
+            for block in tBlocks:
+                if block not in blocks:
+                    blocks.append(block)
+                    
+    log.info("...collected %i blocks downstream from the Trend detectors and SQC diagnosis..." % (len(blocks)))    
+
+    log.info("Resetting downstream (non-constant) final diagnosis ...")
     upstreamBlocks=[]
     for block in blocks:
         blockId=block.getIdString()
@@ -55,10 +88,11 @@ def resetApplication(unit, database, tagProvider):
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
 
         if blockClass in ["xom.block.finaldiagnosis.FinalDiagnosis"]:
-            log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID))
+            log.info("... resetting the Final Diagnosis named: %s with id: %s on diagram: %s..." % (blockName, blockId, parentUUID))
             system.ils.blt.diagram.resetBlock(parentUUID, blockName)
             
             # Collect all of the blocks upstream of this final diagnosis
+            log.trace("   ... collecting blocks upstream from it ...")
             tBlocks = diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
             for tBlock in tBlocks:
                 if tBlock not in upstreamBlocks:
