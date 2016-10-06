@@ -25,7 +25,7 @@ def acceptValue(block,port,value,quality,time):
     #print 'ils.blt.util.acceptValue(block) ...'
     
     if block!=None:
-        log.info( "ils.block.util: "+str(block.__class__)+" received "+str(value)+" ("+str(quality)+") on port "+str(port))
+        log.trace( "ils.blt.util: "+str(block.__class__)+" received "+str(value)+" ("+str(quality)+") on port "+str(port))
         block.acceptValue(port,value,quality,time)
 #  ============== Externally callable ======
 # Create an instance of a particular class.
@@ -35,7 +35,7 @@ def acceptValue(block,port,value,quality,time):
 #     uid    - UUID string of the block itself
 #     result - shared dictionary.
 def createBlockInstance(className,parent,uid,result):
-    log.infof('createBlockInstance ...%s',className )
+    log.debugf('ils.blt.util.createBlockInstance ...%s',className )
     obj = getNewBlockInstance(className)
     obj.setUUID(uid)
     obj.setParentUUID(parent)
@@ -56,9 +56,9 @@ def propagate(block):
 def getBlockAnchors(block,anchors):
     
     if block!=None:
-        log.infof("util.getBlockAnchors: %s ==",str(block.__class__) )
-        log.info( str(block.getInputPorts()) )
-        log.info( str(block.getOutputPorts()) )
+        log.tracef("ils.blt.util.getBlockAnchors: %s ==",str(block.__class__) )
+        log.tracef( str(block.getInputPorts()) )
+        log.tracef( str(block.getOutputPorts()) )
         dictionary = block.getInputPorts()
         for key in dictionary:
             anchor = dictionary[key]
@@ -72,7 +72,7 @@ def getBlockAnchors(block,anchors):
             anchor['direction'] = "outgoing"
             anchors.append(anchor)
     else:
-        print "util.getBlockAnchors: argument ",block," not defined"
+        print "ils.blt.util.getBlockAnchors: argument ",block," not defined"
                 
 # Given an instance of an executable block,
 # write its properties to the supplied list (properties)
@@ -81,26 +81,26 @@ def getBlockAnchors(block,anchors):
 def getBlockProperties(block,properties):
     
     if block!=None:
-        log.infof("util.getBlockProperties: %s ==",str(block.__class__) )
-        log.info( str(block.getProperties()) )
+        #log.infof("util.getBlockProperties: %s ==",str(block.__class__) )
+        #log.info( str(block.getProperties()) )
         dictionary = block.getProperties()
         for key in dictionary:
             prop = dictionary[key]
             prop['name'] = key
             properties.append(prop)
     else:
-        print "util.getBlockProperties: argument ",block," not defined"
+        print "ils.blt.util.getBlockProperties: argument ",block," not defined"
 
 # Write the value of the state as a string in the results list.
 # 
 def getBlockState(block,properties):
     
     if block!=None:
-        log.infof("util.getBlockState: %s ==",str(block.__class__) )
+        #log.infof("ils.blt.util.getBlockState: %s ==",str(block.__class__) )
         state = block.getState()
         properties.append(state)
     else:
-        print "util.getBlockState: argument ",block," not defined" 
+        print "ils.blt.util.getBlockState: argument ",block," not defined" 
 
 #
 # Return a new instance of each class of block.
@@ -119,7 +119,7 @@ def getNewBlockInstances():
             className = eval("xom.block."+name+".getClassName()")
             constructor = "xom.block."+name.lower() +"."+className+"()"
             obj = eval(constructor)
-            print "util.getNewBlockInstances:",name,'=',obj.__class__
+            print "ils.blt.util.getNewBlockInstances:",name,'=',obj.__class__
             instances.append(obj) 
     print "====================="
     return instances
@@ -137,10 +137,9 @@ def getNewBlockInstance(className):
 # then create a dictionary of prototype attributes from each. 
 # Communicate results in 'prototypes', a list known to the gateway. 
 def getBlockPrototypes(prototypes):
-    log.debug("util.getBlockPrototypes")
+    log.debug("ils.blt.util.getBlockPrototypes")
     instances = getNewBlockInstances()
     for obj in instances:
-        print 'util.getBlockPrototype:',obj.__class__
         prototypes.append(obj.getPrototype())
 #
 # Trigger property and connection status notifications on the block
@@ -163,7 +162,7 @@ def reset(block):
 # as specified in the Gateway startup script.
 # 
 def setBlockProperty(block,prop):
-    log.debug('util.setBlockProperty(block) ...')
+    log.trace('ils.blt.util.setBlockProperty(block) ...')
     if block!=None:
         block.setProperty(prop.get("name","??"),prop)
     
