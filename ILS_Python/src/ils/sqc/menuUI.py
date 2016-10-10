@@ -38,7 +38,7 @@ def populateRepeater(rootContainer):
     database=system.tag.read("[Client]Database").value
     print "The database is: ", database
     
-    SQL = "Select SQCDiagnosisName, Status, BlockId "\
+    SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID "\
         "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
         "where SQC.FamilyId = F.FamilyId "\
         " and F.ApplicationId = A.ApplicationId "\
@@ -55,13 +55,13 @@ def populateRepeater(rootContainer):
 
 def openSQCPlot(event):
     sqcDiagnosisName = event.source.text
-    blockId = event.source.BlockId
-    openSQCPlotForSQCDiagnosis(sqcDiagnosisName, blockId)
+    SQCDiagnosisUUID = event.source.SQCDiagnosisUUID
+    openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID)
 
 
-def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, blockId):
+def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID):
     sqcWindowPath='SQC/SQC Plot'
-    print "The user selected %s - %s " % (sqcDiagnosisName, blockId)
+    print "The user selected %s - %s " % (sqcDiagnosisName, SQCDiagnosisUUID)
     
     # If this is the first SQC plot open it at full size and centered, if it is the nth plot
     # then open it tiled at 75%
@@ -75,7 +75,7 @@ def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, blockId):
 
     from ils.common.windowUtil import openWindowInstance
     if instanceCount == 0:
-        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'blockId' : blockId}, mode="CENTER", scale=1.0)
+        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'sqcDiagnosisUUID' : SQCDiagnosisUUID}, mode="CENTER", scale=1.0)
     else:
-        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'blockId' : blockId}, mode="Tile", scale = 0.75)
+        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'sqcDiagnosisUUID' : SQCDiagnosisUUID}, mode="Tile", scale = 0.75)
         

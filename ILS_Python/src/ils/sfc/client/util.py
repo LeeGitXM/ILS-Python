@@ -3,7 +3,19 @@ Created on Oct 31, 2014
 
 @author: rforbes
 '''
-import system.util 
+import system.util, time
+
+# This is called from a timer
+def checkTimeout(rootContainer):
+    timeoutTime = rootContainer.data.getValueAt(0,'timeout')
+    
+    if timeoutTime == None:
+        return False
+    
+    if timeoutTime < time.time():
+        return True
+    
+    return False
 
 def sendResponse(messageId, response):
     ''' send a message to the Gateway in response to a previous request message''' 

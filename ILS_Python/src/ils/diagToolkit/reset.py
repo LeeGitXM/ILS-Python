@@ -58,7 +58,6 @@ def resetApplication(unit, database, tagProvider):
     log.info("...resetting SQC diagnosis and trend diagnosis blocks")
     downstreamBlocks=[]
     for block in blocks:
-        blockId=block.getIdString()
         blockName=block.getName()
         blockClass=block.getClassName()
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
@@ -93,16 +92,16 @@ def resetApplication(unit, database, tagProvider):
         blockName=block.getName()
         
         if blockClass in ["xom.block.finaldiagnosis.FinalDiagnosis"]:
-            blockId=block.getIdString()
+            blockUUID=block.getIdString()
               
             # We only want to reset FDs that are not a CONSTANT type of FD.  Constant FDs are typically
             # plant status diagrams that update quickly in real time and do not make recommendations.
             # (I'm not sure how a constant FD would ever get in this list because we started from a SQC diagnosis.) 
-            SQL = "Select constant from DtFinalDiagnosis where UUID = '%s'" % (blockId)
+            SQL = "Select constant from DtFinalDiagnosis where FinalDiagnosisUUID = '%s'" % (blockUUID)
             constant = system.db.runScalarQuery(SQL, database)
 
             if constant == 0:
-                log.info("   ... resetting Final Diagnosis: %s with id: %s on diagram: %s..." % (blockName, blockId, parentUUID))
+                log.info("   ... resetting Final Diagnosis: %s with id: %s on diagram: %s..." % (blockName, blockUUID, parentUUID))
                 blockName=block.getName()
                 parentUUID=block.getAttributes().get("parent")
                 

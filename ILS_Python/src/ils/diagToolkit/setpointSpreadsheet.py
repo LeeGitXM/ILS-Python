@@ -579,43 +579,43 @@ def resetDiagram(finalDiagnosisIds, database):
     for finalDiagnosisId in finalDiagnosisIds:
         log.info("...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
-        SQL = "select FinalDiagnosisName, DiagramUUID, UUID from DtFinalDiagnosis "\
+        SQL = "select FinalDiagnosisName, DiagramUUID, FinalDiagnosisUUID from DtFinalDiagnosis "\
             "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
         pds = system.db.runQuery(SQL, database)
         
         for record in pds:
             finalDiagnosisName=record["FinalDiagnosisName"]
             diagramUUID=record["DiagramUUID"]
-            fdUUID=record["UUID"]
+            finalDiagnosisUUID=record["FinalDiagnosisUUID"]
             
-            log.info("... resetting the final diagnosis: %s <%s>, FD: <%s>" % (finalDiagnosisName, str(diagramUUID), str(fdUUID)))
+            log.info("... resetting the final diagnosis: %s <%s>, FD: <%s>" % (finalDiagnosisName, str(diagramUUID), str(finalDiagnosisUUID)))
 
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
                         
             log.info("... fetching upstream blocks ...")
 
-            if diagramUUID != None and fdUUID != None:
+            if diagramUUID != None and finalDiagnosisUUID != None:
                 blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
                 for block in blocks:
-                    blockId=block.getIdString()
+                    UUID=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
                     parentUUID=block.getAttributes().get("parent")
 
                     if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
                                 "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse"]:
-                        log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, blockId, parentUUID))
+                        log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, UUID, parentUUID))
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
                         
                     if blockClass == "xom.block.sqcdiagnosis.SQCDiagnosis":
                         log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (blockName))
-                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where UUID = '%s'" % (blockId)
+                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where UUID = '%s'" % (UUID)
                         rows = system.db.runUpdateQuery(SQL, database)
                         log.info("      ...updated %i rows" % (rows))
 
                     if blockClass == "com.ils.block.Inhibitor":
-                        log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, blockId))
+                        log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, UUID))
                         system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
                         
             else:
@@ -629,16 +629,16 @@ def partialResetDiagram(finalDiagnosisIds, database):
     for finalDiagnosisId in finalDiagnosisIds:
         log.info("      ...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
-        SQL = "select FinalDiagnosisName, DiagramUUID, UUID from DtFinalDiagnosis "\
+        SQL = "select FinalDiagnosisName, DiagramUUID, FinalDiagnosisUUID from DtFinalDiagnosis "\
             "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
         pds = system.db.runQuery(SQL, database)
         
         for record in pds:
             finalDiagnosisName=record["FinalDiagnosisName"]
             diagramUUID=record["DiagramUUID"]
-            fdUUID=record["UUID"]
+            finalDiagnosisUUID=record["FinalDiagnosisUUID"]
             
-            print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(fdUUID))
+            print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(finalDiagnosisUUID))
             
             print "Setting the watermark"
             system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
@@ -649,11 +649,11 @@ def partialResetDiagram(finalDiagnosisIds, database):
             print "Fetching upstream blocks for diagram <%s> - final diagnosis <%s>..." % (str(diagramUUID), finalDiagnosisName)
 
             downstreamBlocks=[]
-            if diagramUUID != None and fdUUID != None:
+            if diagramUUID != None and finalDiagnosisUUID != None:
                 blocks=system.ils.blt.diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
                 for block in blocks:
-                    blockId=block.getIdString()
+                    UUID=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
 
@@ -662,11 +662,11 @@ def partialResetDiagram(finalDiagnosisIds, database):
                     # trigger other diagnosis, but the diagnosis connected to this logic-filter will effectively
                     # be inhibited from firing based on the configuration of the logic filter. 
                     if blockClass == "com.ils.block.LogicFilter":
-                        print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, blockId)
+                        print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, UUID)
                         system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
                     elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
                             "com.ils.block.TrendDetector"]:
-                        print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, blockId)
+                        print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, UUID)
                         system.ils.blt.diagram.setBlockState(diagramUUID, blockName, "UNKNOWN")
                         # We do NOT want to send a signal to the block to evaluate in order to get the signal 
                         # to propagate because the EVALUATE signal will cause the block to reevaluate the history

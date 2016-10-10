@@ -125,7 +125,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
     # Update the UUID and DiagramUUID of the final diagnosis
-    SQL = "update DtFinalDiagnosis set UUID = '%s', DiagramUUID = '%s' "\
+    SQL = "update DtFinalDiagnosis set FinalDiagnosisUUID = '%s', DiagramUUID = '%s' "\
         " where FinalDiagnosisId = %i "\
         % (UUID, diagramUUID, finalDiagnosisId)
     logSQL.trace(SQL)

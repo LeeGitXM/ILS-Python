@@ -16,21 +16,6 @@ T3TagName='Sandbox/Diagnostic/T3'
 TC100TagName='Sandbox/Diagnostic/TC100/sp/value'
 TC101TagName='Sandbox/Diagnostic/TC101/sp/value'
 
-def foo():
-    print "Hello foo"
-
-def test00():
-#    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
-    applicationName='TESTAPP1'
-    appId=insertApp1()
-    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6)
-    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
-    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
-    insertApp1Families(appId,T1Id,T2Id,T3Id)
-    # Insert a diagnosis Entry - This simulates the FD becoming True
-#    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
-    return applicationName
-
 def test01():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='TESTAPP1'

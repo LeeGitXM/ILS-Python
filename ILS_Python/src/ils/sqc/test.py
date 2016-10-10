@@ -12,7 +12,7 @@ def internalFrameOpened(rootContainer):
 
     print "The database is: ", database
     
-    SQL = "select ApplicationName, FamilyName, SQCDiagnosisName, Status, LastResetTime, UUID, DiagramUUID, ' ' State "\
+    SQL = "select ApplicationName, FamilyName, SQCDiagnosisName, Status, LastResetTime, SQCDiagnosisUUID, DiagramUUID, ' ' State "\
         " from DtSQCDiagnosisView "\
         " order by ApplicationName, FamilyName, SQCDiagnosisName"
     pds = system.db.runQuery(SQL, database)
@@ -33,11 +33,11 @@ def runTest(rootContainer):
     row = 0
     for record in pds:
         sqcBlockName = record["SQCDiagnosisName"]
-        sqcDiagnosisId = record["UUID"]
+        sqcDiagnosisUUID = record["SQCDiagnosisUUID"]
     
-        print "Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisId)
+        print "Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisUUID)
    
-        diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisId)
+        diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisUUID)
         if diagramDescriptor == None:
             status="Unable to locate the diagram"
         else:
@@ -55,4 +55,3 @@ def runTest(rootContainer):
         row = row + 1
 
     table.data = ds
-        

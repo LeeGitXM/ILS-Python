@@ -22,22 +22,22 @@ def internalFrameActivated(rootContainer):
 def configureChart(rootContainer):
     import system.ils.blt.diagram as diagram
     sqcDiagnosisName=rootContainer.sqcDiagnosisName
-    sqcDiagnosisId=rootContainer.blockId
+    sqcDiagnosisUUID=rootContainer.sqcDiagnosisUUID
     
-    if sqcDiagnosisId == None or sqcDiagnosisId == "NULL":
+    if sqcDiagnosisUUID == None or sqcDiagnosisUUID == "NULL":
         system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
         clearChart(rootContainer)
         return
     
-    lastResetTime = fetchLastResetTime(sqcDiagnosisId)
-    chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
+    lastResetTime = fetchLastResetTime(sqcDiagnosisUUID)
+    chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
     print "Chart Info: ", chartInfo
     if chartInfo == None:
-        system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named <%s> with id <%s>" % (sqcDiagnosisName, str(sqcDiagnosisId)))
+        system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named <%s> with uuid <%s>" % (sqcDiagnosisName, str(sqcDiagnosisUUID)))
         clearChart(rootContainer)
         return
     
-    unitName, labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisId)
+    unitName, labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
     rootContainer.unitName=unitName
     rootContainer.valueName=labValueName
 
@@ -146,8 +146,8 @@ def configureChart(rootContainer):
     configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime)
 
 
-def fetchLastResetTime(sqcDiagnosisId):
-    SQL = "select LastResetTime from DtSQCDiagnosis where BlockId = '%s'" % (sqcDiagnosisId)
+def fetchLastResetTime(sqcDiagnosisUUID):
+    SQL = "select LastResetTime from DtSQCDiagnosis where SQCDiagnosisUUID = '%s'" % (sqcDiagnosisUUID)
     print SQL
     lastResetTime = system.db.runScalarQuery(SQL)
     print "The last reset time was: %s" % (str(lastResetTime))

@@ -66,7 +66,7 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     ''' '''
     print "Fetching Final Diagnosis that touch %s..." % (quantOutputName)
 
-    SQL = "select DtFinalDiagnosis.FinalDiagnosisName, DtDiagnosisEntry.Multiplier, DtFinalDiagnosis.UUID, DtFinalDiagnosis.DiagramUUID "\
+    SQL = "select DtFinalDiagnosis.FinalDiagnosisName, DtDiagnosisEntry.Multiplier, DtFinalDiagnosis.FinalDiagnosisUUID, DtFinalDiagnosis.DiagramUUID "\
         " from DtFinalDiagnosis INNER JOIN "\
         " DtRecommendationDefinition ON DtFinalDiagnosis.FinalDiagnosisId = DtRecommendationDefinition.FinalDiagnosisId INNER JOIN "\
         " DtQuantOutput ON dbo.DtRecommendationDefinition.QuantOutputId = dbo.DtQuantOutput.QuantOutputId INNER JOIN "\
@@ -85,7 +85,7 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     headers=["Name","Problem","Multiplier", "hasSQC", "UUID", "DiagramUUID", "SqcUUID", "SqcName"]
     data = []
     for record in pds:
-        data.append([record["FinalDiagnosisName"],record["FinalDiagnosisName"],record["Multiplier"], False, record["UUID"], record["DiagramUUID"], None, None])
+        data.append([record["FinalDiagnosisName"],record["FinalDiagnosisName"],record["Multiplier"], False, record["FinalDiagnosisUUID"], record["DiagramUUID"], None, None])
     ds = system.dataset.toDataSet(headers, data)
     return ds
 

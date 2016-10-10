@@ -8,11 +8,11 @@ from ils.sfc.common.util import isEmpty
 import system.gui.warningBox
 from ils.common.config import getDatabaseClient
  
-def sendData(window):
+def sendData(rootContainer):
     '''Send data to gateway. If configured, check that all values have been entered, and
        don't send and warn if they have not. Return true if data was sent.'''
 
-    table = window.getRootContainer().getComponent('Power Table')
+    table = rootContainer.getComponent('Power Table')
     dataset = table.data
     
     print "In %s" % (__name__)
@@ -26,7 +26,7 @@ def sendData(window):
             if isEmpty(recipeUnits):
                 system.gui.messageBox("Unit %s is specified but recipe data %s has no units. No conversion will be done." % (units, key), 'Warning')
      
-    requireAllInputs = window.getRootContainer().data.getValueAt(0,'requireAllInputs')
+    requireAllInputs = rootContainer.data.getValueAt(0,'requireAllInputs')
     print "This window requires all inputs: %s" % (str(requireAllInputs))
     
     allInputsOk = True
@@ -40,7 +40,7 @@ def sendData(window):
 
     if allInputsOk:
         print "All inputs are OK - sending data to the gateway!"
-        saveData(window.rootContainer)    
+        saveData(rootContainer)    
         return True
     else:
         system.gui.messageBox("All inputs are required", "Warning")
