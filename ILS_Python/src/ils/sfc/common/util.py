@@ -11,8 +11,7 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
         better have a unit procedure on the top chart.  However all this method has is a chart path, it has no
         way of knowing about the unit procedure block.  So when the unit procedure block runs we will update the 
         record in the SfcControlParameter table. '''
-    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, \
-        PROJECT, ORIGINATOR, MESSAGE_QUEUE
+    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, PROJECT, ORIGINATOR, MESSAGE_QUEUE
     from system.ils.sfc.common.Constants import DEFAULT_MESSAGE_QUEUE
     
     controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
@@ -21,6 +20,7 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
     initialChartParams = dict()
     initialChartParams[PROJECT] = project
     initialChartParams[ISOLATION_MODE] = isolationMode
+    initialChartParams[CONTROL_PANEL_NAME] = controlPanelName
     initialChartParams[CONTROL_PANEL_ID] = controlPanelId
     initialChartParams[ORIGINATOR] = originator
     initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
@@ -56,11 +56,11 @@ def boolToBit(bool):
         return 0
 
 def substituteHistoryProvider(chartProperties, tagPath):
-    from ils.sfc.gateway.api import getProviderName
+    from ils.sfc.gateway.api import getHistoryProviderName
     '''alter the given tag path to reflect the isolation mode provider setting'''
 
     # Get the history tag provider 
-    historyProvider=system.tag.read("Configuration/Common/historyTagProvider").value
+    historyProvider=getHistoryProviderName(chartProperties)
     
     rbIndex = tagPath.find(']')
     if rbIndex >= 0:

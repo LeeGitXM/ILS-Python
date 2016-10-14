@@ -8,7 +8,7 @@ from ils.sfc.common.util import isEmpty
 import system.gui.warningBox
 from ils.common.config import getDatabaseClient
  
-def sendData(rootContainer):
+def sendData(rootContainer, timedOut=False):
     '''Send data to gateway. If configured, check that all values have been entered, and
        don't send and warn if they have not. Return true if data was sent.'''
 
@@ -40,13 +40,13 @@ def sendData(rootContainer):
 
     if allInputsOk:
         print "All inputs are OK - sending data to the gateway!"
-        saveData(rootContainer)    
+        saveData(rootContainer, timedOut)
         return True
     else:
         system.gui.messageBox("All inputs are required", "Warning")
         return False
     
-def saveData(rootContainer):
+def saveData(rootContainer, timedOut):
     print "Saving the data..."
     database=getDatabaseClient()
     windowData = rootContainer.data
@@ -62,7 +62,9 @@ def saveData(rootContainer):
         SQL = "update SfcManualDataEntryTable set value = '%s' where windowId = '%s' and rowNum = %i" % (val, windowId, rowNum)
         system.db.runUpdateQuery(SQL, database=database)
 
-    SQL = "update SfcManualDataEntry set complete = 1 where windowId = '%s'" % (windowId)
+
+    SQL = "update SfcManualDataEntry set complete = 1, timedOut = %i where windowId = '%s'" % (timedOut, windowId)
+    print SQL
     system.db.runUpdateQuery(SQL, database=database)        
     print "--- Done ---"
     

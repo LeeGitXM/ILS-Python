@@ -38,6 +38,7 @@ COMMAND = "callback"
 COMPUTER = 'computer'
 CONFIG = 'config'
 CONTROL_PANEL_ID = 'controlPanelId'
+CONTROL_PANEL_NAME = 'controlPanelName'
 CREATE_TIME = 'createTime'
 CREATE = 'create'
 DATA = "data"

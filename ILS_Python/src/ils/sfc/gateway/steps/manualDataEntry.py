@@ -9,12 +9,12 @@ from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOM
 from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
-from ils.sfc.gateway.util import getStepId, sendOpenWindow, createWindowRecord, \
+from ils.sfc.gateway.util import getStepId, sendOpenWindow, createWindowRecord, deleteAndSendClose, \
     getControlPanelId, getStepProperty, getTimeoutTime, logStepDeactivated, \
     dbStringForFloat, handleUnexpectedGatewayError, getStepName
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, s88Set, s88Get, s88SetWithUnits, s88GetWithUnits
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, s88Set, s88Get, s88SetWithUnits, s88GetWithUnits, getProject
 from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT
-    
+
 def activate(scopeContext, stepProperties, state):    
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -44,6 +44,7 @@ def activate(scopeContext, stepProperties, state):
                 timeoutTime = getTimeoutTime(chartScope, stepProperties)
                 logger.trace("The timeoutTime is: %s" % (str(timeoutTime)))
                 stepScope[TIMEOUT_TIME] = timeoutTime
+                stepScope[TIMED_OUT] = False
                 database = getDatabaseName(chartScope)
                 controlPanelId = getControlPanelId(chartScope)
                 buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
@@ -92,12 +93,14 @@ def activate(scopeContext, stepProperties, state):
                 sendOpenWindow(chartScope, windowId, stepId, database)
             
         else:
-            complete = checkIfComplete(chartScope, stepScope, stepProperties)
+            complete, timedOut = checkIfComplete(chartScope, stepScope, stepProperties)
             if complete:
                 logger.trace("Manual Data Entry step %s has completed!" % (stepName))
                 workDone = True
                 saveResponse(chartScope, stepScope, stepProperties, logger)
-                
+                if timedOut:
+                    stepScope[TIMED_OUT] = True
+
             else:
                 timeoutTime = stepScope[TIMEOUT_TIME]
                 if timeoutTime <> None:
@@ -143,8 +146,13 @@ def saveResponse(chartScope, stepScope, stepProperties, logger):
 def checkIfComplete(chartScope, stepScope, stepProperties):
     database = getDatabaseName(chartScope)
     windowId = stepScope[WINDOW_ID]
-    complete=system.db.runScalarQuery("select complete from SfcManualDataEntry where windowId = '%s'" % (windowId), database=database)
-    return complete
+    pds=system.db.runQuery("select complete, timedOut from SfcManualDataEntry where windowId = '%s'" % (windowId), database=database)
+    if len(pds) != 1:
+        return True, False
+    record = pds[0]
+    complete = record["complete"]
+    timedOut = record["timedOut"]
+    return complete, timedOut
 
 def getResponse(chartScope, stepScope, stepProperties):
     database = getDatabaseName(chartScope)
@@ -153,17 +161,12 @@ def getResponse(chartScope, stepScope, stepProperties):
     return pds
 
 def cleanup(chartScope, stepScope):
-    import system.db
-    from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
-    from ils.sfc.common.constants import WINDOW_ID
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
         windowId = stepScope.get(WINDOW_ID, '???')
         system.db.runUpdateQuery("delete from SfcManualDataEntryTable where windowId = '%s'" % (windowId), database)
         system.db.runUpdateQuery("delete from SfcManualDataEntry where windowId = '%s'" % (windowId), database)
-        project = getProject(chartScope)
         deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)

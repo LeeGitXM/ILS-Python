@@ -226,6 +226,10 @@ def getDatabaseName(chartProperties):
     isolationMode = getIsolationMode(chartProperties)
     return getDatabaseName(isolationMode)
 
+def getHistoryProviderName(chartProperties):
+    #TODO Figure this out
+    return "XOMhistory"
+
 def getProviderName(chartProperties):
     '''Get the name of the tag provider for this chart, taking isolation mode into account'''
     from system.ils.sfc import getProviderName, getIsolationMode

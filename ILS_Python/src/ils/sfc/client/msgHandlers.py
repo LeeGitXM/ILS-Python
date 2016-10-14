@@ -1,16 +1,19 @@
 '''
 All SFC Client Message Handlers
 '''
+
+import system
+
 def sfcUnexpectedError(payload):
     print "In %s" % (__name__)
     from ils.sfc.common.util import handleUnexpectedClientError
-    from ils.sfc.common.constants import MESSAGE, CONTROL_PANEL_ID, ORIGINATOR
+    from ils.sfc.common.constants import MESSAGE, CONTROL_PANEL_NAME, ORIGINATOR
     from ils.sfc.client.windowUtil import shouldShowWindow
     msg = payload.get(MESSAGE, '<no message>')
-    controlPanelId = payload[CONTROL_PANEL_ID]
+    controlPanelName = payload[CONTROL_PANEL_NAME]
     originator = payload[ORIGINATOR]
     print "Checking if we should show..."
-    if not shouldShowWindow(controlPanelId, originator):
+    if not shouldShowWindow(controlPanelName, originator):
         print " ** Don't Show **"
         return
     print "Show it!"
@@ -24,13 +27,20 @@ def sfcOpenWindow(payload):
 
 def sfcOpenOrdinaryWindow(payload):
     '''Open a plain Vision window that doesn't have all the special SFC window stuff'''
-    from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_ID, ORIGINATOR
+    print "In ", __name__
+    print "The payload is: ", payload
+    from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_NAME, ORIGINATOR
     from ils.sfc.client.windowUtil import controlPanelOpen
-    import system.nav
+    
     windowPath = payload[WINDOW]
-    controlPanelId = payload[CONTROL_PANEL_ID]
+    print "WindowPath: ", windowPath
     originator = payload[ORIGINATOR]
-    controlPanelOpen = controlPanelOpen(controlPanelId)
+    print "Originator: ", originator
+    controlPanelName = payload[CONTROL_PANEL_NAME]
+    print "Control Panel Id: ", controlPanelName
+    
+    print "Checking if there is a control panel..."
+    controlPanelOpen = controlPanelOpen(controlPanelName)
     print 'controlPanelOpen', controlPanelOpen, 'originator', originator
     if not controlPanelOpen and (originator != system.security.getUsername()):
         # this client should not see windows from this run
@@ -45,17 +55,13 @@ def sfcCloseWindow(payload):
                                               
 def sfcCloseWindowByName(payload):
     from ils.sfc.common.constants import WINDOW
-    from ils.sfc.common.windowUtil import isSfcWindow
+
     from ils.sfc.client.windowUtil import closeDbWindow, getWindowId
     import system.gui, system.nav
     windowPath = payload[WINDOW]
     windows = system.gui.findWindow(windowPath)
     for window in windows:
-        if isSfcWindow(windowPath):
-            windowId = getWindowId(window)
-            closeDbWindow(windowId)
-        else:
-            system.nav.closeWindow(window)
+        system.nav.closeWindow(window)
 
 def sfcShowQueue(payload):
     queueKey=payload['queueKey']

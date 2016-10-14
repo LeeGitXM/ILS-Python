@@ -60,11 +60,11 @@ def getRootContainer(event):
     from system.gui import getParentWindow
     return getParentWindow(event).rootContainer
 
-def controlPanelOpen(controlPanelId):
+def controlPanelOpen(controlPanelName):
     import system.gui
     controlPanels = system.gui.findWindow('SFC/ControlPanel')
     for controlPanel in controlPanels:
-        if controlPanel.getRootContainer().controlPanelId == controlPanelId:
+        if controlPanel.getRootContainer().controlPanelName == controlPanelName:
             return True
     return False
 
@@ -87,10 +87,10 @@ def getOpenWindow(windowId):
             return window
     return None
 
-def shouldShowWindow(controlPanelId, originator):
+def shouldShowWindow(controlPanelName, originator):
     '''return if a window from the chart with given control panel and originator should show in this client'''    
     import system
-    return originator == system.security.getUsername() or controlPanelOpen(controlPanelId) 
+    return originator == system.security.getUsername() or controlPanelOpen(controlPanelName) 
        
 def openDbWindow(windowId):
     '''A generic helper method for message handlers to open a window in the 
@@ -112,9 +112,9 @@ def openDbWindow(windowId):
         print "...window has been closed..."
         return
     
-    controlPanelId = pyWindowData[0]['controlPanelId']
+    controlPanelName = pyWindowData[0]['controlPanelName']
     originator = pyWindowData[0]['originator']
-    if not shouldShowWindow(controlPanelId, originator):
+    if not shouldShowWindow(controlPanelName, originator):
         return
     
     windowType = pyWindowData[0]['type']
