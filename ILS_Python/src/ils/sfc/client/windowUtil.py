@@ -3,7 +3,9 @@ Created on May 3, 2015
 
 @author: rforbes
 '''
+import system
 from ils.sfc.client.util import getDatabase
+from ils.sfc.common.constants import SFC_WINDOW_LIST
 
 def sendWindowResponse(window, response):
     '''standard actions when a window representing a response is closed by the user'''
@@ -16,6 +18,7 @@ def sendWindowResponse(window, response):
     replyPayload[RESPONSE] = response
     replyPayload[WINDOW_ID] = windowId    
     project = system.util.getProjectName()
+    print "Sending a window response (sfcResponse): ", replyPayload
     sendMessageToGateway(project, 'sfcResponse', replyPayload)
     system.nav.closeWindow(window)
     
@@ -43,7 +46,7 @@ def positionWindow(window, position, scale):
         uly = .5 * mainWindow.getHeight() - .5 * height
     else:
         uly = mainWindow.getHeight() - height
-#    window.setSize(int(width), int(height))
+    window.setSize(int(width), int(height))
     window.setLocation(int(ulx), int(uly))
 
 def getWindowId(window):
@@ -68,14 +71,6 @@ def controlPanelOpen(controlPanelName):
             return True
     return False
 
-def getOpenWindowByPath(path):
-    '''Get the open window with the given path, or None if there isnt one'''
-    import system.gui
-    openWindows = system.gui.findWindow(path)
-    if len(openWindows) > 0:
-        return openWindows[0]
-    else:
-        return None
 
 def getOpenWindow(windowId):
     '''Get the open window with the given id, or None if there isnt one'''
@@ -87,41 +82,86 @@ def getOpenWindow(windowId):
             return window
     return None
 
-def shouldShowWindow(controlPanelName, originator):
+def shouldShowWindow(payload):
     '''return if a window from the chart with given control panel and originator should show in this client'''    
-    import system
-    return originator == system.security.getUsername() or controlPanelOpen(controlPanelName) 
-       
+    from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_NAME, ORIGINATOR, SECURITY, PRIVATE
+
+    originator = payload[ORIGINATOR]
+    controlPanelName = payload[CONTROL_PANEL_NAME]
+    security = payload.get(SECURITY, PRIVATE)
+
+    if security == PRIVATE and not controlPanelOpen(controlPanelName) and (originator != system.security.getUsername()):
+        print "The control panel is not open and the originator is not this user so do not show the window here!"
+        return False
+    
+    return True
+    
 def openDbWindow(windowId):
-    '''A generic helper method for message handlers to open a window in the 
-       control panel that has an associated toolbar button'''
+    reopenWindow(windowId)
+    
+def fetchWindowInfo(windowId):
+    database = getDatabase()
+    SQL = "select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' "\
+        " and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId)
+    pds = system.db.runQuery(SQL, database)
+    
+    if len(pds) == 0:
+        return None
+    
+    return pds[0]
+
+def reopenWindow(windowId):
+    '''This is called from the button on the control panel.'''
     import system.nav, system.security
     from ils.sfc.client.util import getDatabase
     from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
-    existingWindow = getOpenWindow(windowId)
-    if existingWindow != None:
-        print "Bringing an open window to the front..."
-        existingWindow.toFront()
-        return
     
+    print "In %s.reopenWindow(), the windowId is: %s" % (__name__, windowId)
+
     database = getDatabase()
     SQL = "select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId)
-    pyWindowData = system.db.runQuery(SQL, database)
-    if len(pyWindowData) == 0:
+    pds = system.db.runQuery(SQL, database)
+    if len(pds) == 0:
         # window closed already; ignore
         print "...window has been closed..."
         return
     
-    controlPanelName = pyWindowData[0]['controlPanelName']
-    originator = pyWindowData[0]['originator']
-    if not shouldShowWindow(controlPanelName, originator):
-        return
+    record = pds[0]
+    windowPath = record['windowPath']
+    position = record[POSITION]
+    scale = record[SCALE]
+    title = record['title']
+    windowId = record['windowId']
     
-    windowType = pyWindowData[0]['type']
-    position = pyWindowData[0][POSITION]
-    scale = pyWindowData[0][SCALE]
-    title = pyWindowData[0]['title']
-    window = system.nav.openWindowInstance(windowType, {WINDOW_ID:windowId})
+    # Check if the window is already open.  If the window is an SFC window then we can support multiple distinct
+    # instances of the window being open.  If it is a plain window, then we really don't support multiple instances
+    # of the same window because we don't have a mechanism to pass data to initialize it.
+    openWindows = system.gui.findWindow(windowPath)
+    if len(openWindows) > 0:
+        if windowPath in SFC_WINDOW_LIST:
+            for window in openWindows:
+                rootContainer = window.rootContainer
+                if rootContainer.windowId == windowId:
+                    print "...the window is already open, bringing it to the front..."
+                    window.toFront()
+                    return
+            
+        else:
+            for window in openWindows:
+                print "...the window is already open, bringing it to the front..."
+                window.toFront()
+            return
+
+    payload = {}
+    if windowPath in SFC_WINDOW_LIST:
+        print "...reopening a SFC window..."
+        payload = {"windowId": windowId}
+    else:
+        payload = {}
+        print "...reopening an ordinary window: ", windowPath
+
+    
+    window = system.nav.openWindowInstance(windowPath, payload)
     window.title = title
     positionWindow(window, position, scale)
     

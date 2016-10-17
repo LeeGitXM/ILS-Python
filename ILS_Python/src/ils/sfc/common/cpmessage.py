@@ -10,14 +10,14 @@ from ils.sfc.common.util import boolToBit
 from ils.sfc.common.util import handleUnexpectedClientError
 
 def getControlPanelMessages(chartRunId, db):
-    sql = "select * from SfcControlPanelMsg where chartRunId = '%s' order by createTime asc" % (chartRunId)
+    sql = "select * from SfcControlPanelMessage where chartRunId = '%s' order by createTime asc" % (chartRunId)
     results = system.db.runQuery(sql, db)
     return results
 
 def addControlPanelMessage(message, priority, ackRequired, chartRunId, db):
     from ils.sfc.common.util import createUniqueId
     msgId = createUniqueId()
-    sql = ("insert into SfcControlPanelMsg (chartRunId, message, priority, createTime, ackRequired, id) "\
+    sql = ("insert into SfcControlPanelMessage (chartRunId, message, priority, createTime, ackRequired, id) "\
            "values ('%s','%s','%s',getdate(),%d,'%s')") % (chartRunId, message, priority, boolToBit(ackRequired), msgId )
     print sql
     numUpdated = system.db.runUpdateQuery(sql, db)

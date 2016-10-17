@@ -17,8 +17,8 @@ def okActionPerformed(event):
     rootContainer = window.getRootContainer()
     responseField = rootContainer.getComponent('responseField')
     response = responseField.text
-    lowLimit = rootContainer.data.getValueAt(0,'lowLimit')
-    highLimit = rootContainer.data.getValueAt(0,'highLimit')
+    lowLimit = rootContainer.lowLimit
+    highLimit = rootContainer.highLimit
     if (lowLimit != None) and (response != None):
         # check a float value against limits
         try:

@@ -87,7 +87,7 @@ def updateMessageCenter(rootContainer):
     chartRunId = rootContainer.chartRunId
     selectedMessage = rootContainer.selectedMessage
     SQL = "select id, createTime, message, priority, ackRequired, priority + CAST(ackRequired as varchar(5)) as state "\
-        " from SfcControlPanelMsg where chartRunId = '%s' order by createTime asc" % (chartRunId)
+        " from SfcControlPanelMessage where chartRunId = '%s' order by createTime asc" % (chartRunId)
     pds = system.db.runQuery(SQL, database)
     rootContainer.messages = pds
     numMessages = len(pds)
@@ -133,8 +133,8 @@ def resetDb(rootContainer):
     print "Resetting the database for chart run: ", chartRunId
     database = getDatabase()
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
-    system.db.runUpdateQuery("delete from SfcControlPanelMsg where chartRunId = '%s'" % chartRunId, database)
-    system.db.runUpdateQuery("delete from SfcDialogMsg", database)
+    system.db.runUpdateQuery("delete from SfcControlPanelMessage where chartRunId = '%s'" % chartRunId, database)
+    system.db.runUpdateQuery("delete from SfcDialogMessage", database)
     # order deletions so foreign key constraints are not violated:
     system.db.runUpdateQuery("delete from SfcInputChoices", database)
     system.db.runUpdateQuery("delete from SfcInput", database)
@@ -202,7 +202,7 @@ def ackMessage(window):
     rootContainer = window.getRootContainer()
     selectedMessage = rootContainer.selectedMessage
     msgId = rootContainer.messages.getValueAt(selectedMessage, 'id')
-    SQL = "DELETE from SfcControlPanelMsg where id = '%s'" % msgId
+    SQL = "DELETE from SfcControlPanelMessage where id = '%s'" % msgId
     numUpdated = system.db.runUpdateQuery(SQL, db)
     if(numUpdated != 1):
         handleUnexpectedClientError("setting ack time in control panel msg table failed")

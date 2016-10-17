@@ -247,11 +247,11 @@ def getTimeFactor(chartProperties):
     isolationMode = getIsolationMode(chartProperties)
     return getTimeFactor(isolationMode)
 
-def sendMessageToClient(project, handler, payload, clientSessionId=None):
+def sendMessageToClient(project, messageHandler, payload, clientSessionId=None):
     '''Send a message to the client(s) of this chart'''
     from ils.sfc.common.constants import HANDLER
     from system.util import sendMessage
-    payload[HANDLER] = handler
+    payload[HANDLER] = messageHandler
     # print 'sending message to client', project, handler, payload
     if clientSessionId != None:
         sendMessage(project, 'sfcMessage', payload, "C", clientSessionId)

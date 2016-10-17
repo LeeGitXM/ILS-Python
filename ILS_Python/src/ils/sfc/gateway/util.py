@@ -5,6 +5,8 @@ Created on Sep 30, 2014
 
 @author: rforbes
 '''
+
+import system
 from system.ils.sfc import getResponse
 from ils.sfc.gateway.api import cancelChart, sendMessageToClient
 
@@ -105,16 +107,21 @@ def createFilepath(chartScope, stepProperties, includeExtension):
     filepath = directory + '/' + fileName + timestamp + extension
     return filepath
 
-def createWindowRecord(controlPanelId, window, buttonLabel, position, scale, title, database):
-    import system.db
+def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database):
+    print "********************************************************************************"
+    print "***** THIS IS AN OBSOLETE API PLEASE USE registerWindowWithControlPanel() ******"
+    print "********************************************************************************"
+    registerWindowWithControlPanel(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database)
+
+def registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database):
     from ils.sfc.common.util import createUniqueId
     windowId = createUniqueId()
-    sql = "Insert into SfcWindow (windowId, controlPanelId, type, buttonLabel, position, scale, title) values ('%s', %d, '%s', '%s', '%s', %f, '%s')" % (windowId, controlPanelId, window, buttonLabel, position, scale, title)
-    system.db.runUpdateQuery(sql, database)
+    sql = "Insert into SfcWindow (windowId, chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title) "\
+        "values (?, ?, ?, ?, ?, ?, ?, ?)"
+    system.db.runPrepUpdate(sql, [windowId, chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title], database)
     return windowId
 
 def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile, database):
-    import system.db
     print 'windowId', windowId, 'dataText', dataText, 'filepath', filepath, 'computer', computer, 'printFile', printFile, 'showPrintDialog', showPrintDialog, 'viewFile', viewFile
     system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, showPrintDialog, viewText) values ('%s', '%s', '%s', '%s', %d, %d, %d)" % (windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile), database)
 
@@ -135,7 +142,6 @@ def dbStringForFloat(numberValue):
 def deleteAndSendClose(project, windowId, database):
     '''Delete the common window record and message the client to close the window'''
     from ils.sfc.common.constants import WINDOW_ID
-    import system.db
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
     sendMessageToClient(project, 'sfcCloseWindow', {WINDOW_ID: windowId})
     
@@ -280,14 +286,17 @@ def queueMessage(chartScope, msg, priority):
     database = getDatabaseName(chartScope)
     insert(currentMsgQueue, priority, msg, database) 
 
-def sendOpenWindow(chartScope, windowId, stepId, database):
+def sendOpenWindow(chartScope, windowId, stepId, database, message='sfcOpenWindow'):
     '''Message the client to open a window'''
+    print "*****************************************************************"
+    print "** This is an obsolete API. replace with sendMessageToClient() **"
+    print "*****************************************************************"
     from ils.sfc.common.constants import WINDOW_ID, DATABASE
     from ils.sfc.gateway.api import getProject
     from system.ils.sfc import addRequestId
-    addRequestId(windowId, stepId)
+#    addRequestId(windowId, stepId)
     project = getProject(chartScope)
-    sendMessageToClient(project, 'sfcOpenWindow', {WINDOW_ID: windowId, DATABASE: database})
+    sendMessageToClient(project, message, {WINDOW_ID: windowId, DATABASE: database})
 
 def standardDeviation(dataset, column):
     '''calculate the standard deviation of the given column of the dataset'''

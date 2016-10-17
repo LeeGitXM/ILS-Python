@@ -26,7 +26,7 @@ def sendData(rootContainer, timedOut=False):
             if isEmpty(recipeUnits):
                 system.gui.messageBox("Unit %s is specified but recipe data %s has no units. No conversion will be done." % (units, key), 'Warning')
      
-    requireAllInputs = rootContainer.data.getValueAt(0,'requireAllInputs')
+    requireAllInputs = rootContainer.requireAllInputs
     print "This window requires all inputs: %s" % (str(requireAllInputs))
     
     allInputsOk = True
@@ -49,8 +49,7 @@ def sendData(rootContainer, timedOut=False):
 def saveData(rootContainer, timedOut):
     print "Saving the data..."
     database=getDatabaseClient()
-    windowData = rootContainer.data
-    windowId = windowData.getValueAt(0,0)
+    windowId = rootContainer.windowId
     print "The window id is: ", windowId
 
     table = rootContainer.getComponent('Power Table')

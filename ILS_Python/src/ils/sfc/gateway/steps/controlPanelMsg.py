@@ -56,7 +56,7 @@ def activate(scopeContext, stepProperties, state):
             timeoutTime = stepScope[TIMEOUT_TIME]
             msgId = stepScope[MESSAGE_ID]
 
-            SQL = "select count(*) from SfcControlPanelMsg where id = '%s'" % msgId
+            SQL = "select count(*) from SfcControlPanelMessage where id = '%s'" % msgId
             rows = system.db.runScalarQuery(SQL, database)
 
             if rows == 0:

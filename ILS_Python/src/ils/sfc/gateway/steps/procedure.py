@@ -8,14 +8,14 @@ def activate(scopeContext, stepProperties, state):
     from system.ils.sfc.common.Constants import MESSAGE_QUEUE
     import system.db
     try:
-        print "In ", __name__
         chartScope = scopeContext.getChartScope()
         queueName = getStepProperty(stepProperties, MESSAGE_QUEUE)
-        chartLogger = getChartLogger(chartScope)
+        logger = getChartLogger(chartScope)
+        logger.trace("In %s.activate()" % (__name__))
         database = getDatabaseName(chartScope)
         chartRunId = getTopChartRunId(chartScope)
         system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where chartRunId = '%s'" % (queueName, chartRunId), database)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in procedure.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, 'Unexpected error in procedure.py', logger)
     finally:
         return True

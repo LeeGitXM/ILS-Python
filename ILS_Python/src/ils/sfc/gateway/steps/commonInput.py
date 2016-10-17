@@ -3,21 +3,21 @@ Common code for input steps: Yes/No, Input, Input w. choices
 Created on Dec 21, 2015
 @author: rforbes
 '''
-def activate(scopeContext, stepProperties, state, buttonLabel, windowType, choices=None, lowLimit=None, highLimit=None):
+
+import system
+from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
+        checkForResponse, logStepDeactivated, getStepId, dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, \
+        deleteAndSendClose, handleUnexpectedGatewayError
+from ils.sfc.gateway.api import s88Set, getDatabaseName, getChartLogger, getProject
+from ils.sfc.common.constants import RECIPE_LOCATION, KEY, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT
+from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
+    
+def activate(scopeContext, stepProperties, state, buttonLabel, windowType, message, choices=None, lowLimit=None, highLimit=None):
     '''
     Action for java InputStep
     Get an response from the user; block until a
     response is received, put response in chart properties
     '''
-    from ils.sfc.gateway.util import getTimeoutTime, getControlPanelId, createWindowRecord, \
-        getStepProperty, sendOpenWindow, checkForResponse, logStepDeactivated, \
-        getStepId, dbStringForFloat, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, getChartLogger
-    from system.ils.sfc.common.Constants import POSITION, SCALE, WINDOW_TITLE, PROMPT
-    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-    from ils.sfc.common.constants import TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID 
-    import system.util
-    import system.db
 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -27,8 +27,7 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, choic
         cleanup(chartScope, stepScope)
         return False
             
-    try:
-        
+    try:        
         # Get info from scope common across invocations 
         stepId = getStepId(stepProperties) 
 
@@ -51,7 +50,8 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, choic
             # step-specific properties:
             prompt = getStepProperty(stepProperties, PROMPT)
             database = getDatabaseName(chartScope)
-            windowId = createWindowRecord(controlPanelId, windowType, buttonLabel, position, scale, title, database)
+            chartRunId = getTopChartRunId(chartScope)
+            windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowType, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
             # Note: the low/high limits are formatted as strings so we can insert 'null' if desired
             lowLimit = dbStringForFloat(lowLimit)
@@ -82,18 +82,11 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, choic
         return workDone
 
 def setResponse(chartScope, stepScope, stepProperties, response):
-    from ils.sfc.gateway.util import getStepProperty
-    from ils.sfc.gateway.api import s88Set
-    from system.ils.sfc.common.Constants import RECIPE_LOCATION, KEY
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     s88Set(chartScope, stepScope, key, response, recipeLocation)
     
 def cleanup(chartScope, stepScope):
-    import system.db
-    from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
-    from ils.sfc.common.constants import WINDOW_ID
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
@@ -106,4 +99,3 @@ def cleanup(chartScope, stepScope):
         chartLogger = getChartLogger(chartScope)
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in commonInput.py', chartLogger)
 
-        

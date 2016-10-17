@@ -7,9 +7,9 @@ import system.util, time
 
 # This is called from a timer
 def checkTimeout(rootContainer):
-    timeoutTime = rootContainer.data.getValueAt(0,'timeout')
+    timeoutTime = rootContainer.timeout
     
-    if timeoutTime == None:
+    if timeoutTime == None or timeoutTime <= 0:
         return False
     
     if timeoutTime < time.time():
@@ -86,7 +86,7 @@ def checkDatabaseConfig(database, messages):
         messages.append(database + " is not a defined Datasource")        
         return
 
-    tableNames = ['SfcControlPanelMsgs', 'Units', 'UnitAliases', 'QueueMessageStatus', 'QueueDetail', 'QueueMaster']
+    tableNames = ['SfcControlPanelMessage', 'Units', 'UnitAliases', 'QueueMessageStatus', 'QueueDetail', 'QueueMaster']
     for table in tableNames:
         if not tableExists(table, database):
             messages.append("Table " + table + " does not exist")

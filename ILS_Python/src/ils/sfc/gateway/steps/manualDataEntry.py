@@ -5,21 +5,25 @@ Created on Dec 17, 2015
 '''
 
 import system, time
-from system.ils.sfc.common.Constants import MANUAL_DATA_CONFIG, AUTO_MODE, AUTOMATIC, DATA, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS
-from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
-from ils.sfc.gateway.util import getStepId, sendOpenWindow, createWindowRecord, deleteAndSendClose, \
-    getControlPanelId, getStepProperty, getTimeoutTime, logStepDeactivated, \
-    dbStringForFloat, handleUnexpectedGatewayError, getStepName
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, s88Set, s88Get, s88SetWithUnits, s88GetWithUnits, getProject
-from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT
+from ils.sfc.gateway.util import getStepId, registerWindowWithControlPanel, deleteAndSendClose, \
+    getControlPanelId, getControlPanelName, getStepProperty, getTimeoutTime, logStepDeactivated, \
+    dbStringForFloat, handleUnexpectedGatewayError, getStepName, getTopChartRunId, getOriginator
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, \
+    s88Set, s88Get, s88SetWithUnits, s88GetWithUnits, getProject, sendMessageToClient, getProject
+from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT,  \
+    AUTO_MODE, AUTOMATIC, DATA, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
+    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, DATABASE, CONTROL_PANEL_ID, \
+    CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_ID
 
 def activate(scopeContext, stepProperties, state):    
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     stepName = getStepName(stepProperties)
+    windowPath = "SFC/ManualDataEntry"
+    messageHandler = "sfcOpenWindow"
 
     if state == DEACTIVATED or state == CANCELLED:
         logStepDeactivated(chartScope, stepProperties)
@@ -35,6 +39,7 @@ def activate(scopeContext, stepProperties, state):
             autoMode = getStepProperty(stepProperties, AUTO_MODE)
             configJson = getStepProperty(stepProperties, MANUAL_DATA_CONFIG)
             config = getManualDataEntryConfig(configJson)
+
             if autoMode == AUTOMATIC:
                 for row in config.rows:
                     s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
@@ -45,15 +50,22 @@ def activate(scopeContext, stepProperties, state):
                 logger.trace("The timeoutTime is: %s" % (str(timeoutTime)))
                 stepScope[TIMEOUT_TIME] = timeoutTime
                 stepScope[TIMED_OUT] = False
+                
                 database = getDatabaseName(chartScope)
+                originator = getOriginator(chartScope)
+                project = getProject(chartScope)
                 controlPanelId = getControlPanelId(chartScope)
+                controlPanelName = getControlPanelName(chartScope)
+                chartRunId = getTopChartRunId(chartScope)
+                
                 buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
                 if isEmpty(buttonLabel):
                     buttonLabel = 'Enter Data'
+
                 position = getStepProperty(stepProperties, POSITION) 
                 scale = getStepProperty(stepProperties, SCALE) 
                 title = getStepProperty(stepProperties, WINDOW_TITLE) 
-                windowId = createWindowRecord(controlPanelId, 'SFC/ManualDataEntry', buttonLabel, position, scale, title, database)
+                windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
                 stepScope[WINDOW_ID] = windowId
                 stepId = getStepId(stepProperties) 
                 requireAllInputs = getStepProperty(stepProperties, REQUIRE_ALL_INPUTS)
@@ -89,8 +101,12 @@ def activate(scopeContext, stepProperties, state):
                         % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, tagType, existingUnitsName)
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
-                    
-                sendOpenWindow(chartScope, windowId, stepId, database)
+    
+#                sendMessageToClient(chartScope, windowId, stepId, database)
+                
+                payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
+                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath, STEP_ID: stepId}
+                sendMessageToClient(project, messageHandler, payload)
             
         else:
             complete, timedOut = checkIfComplete(chartScope, stepScope, stepProperties)

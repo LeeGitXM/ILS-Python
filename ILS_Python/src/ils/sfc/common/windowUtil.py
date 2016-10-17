@@ -7,7 +7,7 @@ Created on Jan 28, 2016
 # All window tables listed in an order that is safe for deletion, i.e. will
 # satisfy foreign key constraints
 windowTables = [
-'SfcDialogMsg',
+'SfcDialogMessage',
 'SfcReviewFlowsTable',
 'SfcReviewFlows',
 'SfcReviewDataTable',
