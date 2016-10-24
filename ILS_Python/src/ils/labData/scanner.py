@@ -604,7 +604,7 @@ def storeSelector(tagRoot, database):
     
     # Fetch the value id using the name
     SQL = "select ValueId from LtValue where ValueName = '%s'" % (valueName)
-    valueId=system.db.runScalarQuery(SQL)
+    valueId=system.db.runScalarQuery(SQL, database)
     if valueId == None:
         selectorLog.error("Error storing lab value for selector <%s> due to unable to find name in LtValue" % (valueName))
         return
