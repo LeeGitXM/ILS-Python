@@ -25,7 +25,7 @@ def openControlPanel(controlPanelName, startImmediately):
     else:
         cpWindow.toFront()
     if startImmediately:
-        startChart(cpWindow)
+        startChart(cpWindow.rootContainer)
         
 def startChart(rootContainer):
     from ils.sfc.client.util import getStartInIsolationMode

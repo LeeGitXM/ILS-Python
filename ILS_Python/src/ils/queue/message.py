@@ -5,11 +5,16 @@ Created on Sep 9, 2014
 '''
 import  system, string
 from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
+log = system.util.getLogger("com.ils.queue")
 
 # Expected status are Info, Warning, or Error
 def insert(queueKey, status, message, db = ''):
     from ils.queue.commons import getQueueId
     queueId = getQueueId(queueKey, db)
+    
+    if queueId == None:
+        log.warn("Unable to insert a message into queue with key <%s> and id: <%s>" % (queueKey, str(queueId)))
+        return
     
     _insert(queueId, status, message, db)
 
@@ -27,6 +32,11 @@ def _insert(queueId, status, message, db = ''):
 def insertPostMessage(post, status, message, db=''):
     from ils.queue.commons import getQueueForPost
     queueKey=getQueueForPost(post)
+    
+    if queueKey == None:
+        log.warn("Unable to insert a message into queue for post <%s> (key: <%s>" % (post, str(queueKey)))
+        return
+    
     
     insert(queueKey, status, message, db)
 
@@ -86,7 +96,11 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
 def clear(queueKey, db = ''):
     from ils.queue.commons import getQueueId
     queueId = getQueueId(queueKey, db)
-
+    
+    if queueId == None:
+        log.warn("Unable to clear queue with key <%s> and id: <%s>" % (queueKey, str(queueId)))
+        return
+    
     SQL = "update QueueMaster set CheckpointTimestamp = getdate() where QueueId = %i" % (queueId)
 
     system.db.runUpdateQuery(SQL, db)
