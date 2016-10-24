@@ -262,7 +262,8 @@ def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
     from system.util import getLogger
     from ils.sfc.gateway.util import getChartPath
-    return getLogger(getChartPath(chartScope))
+    pypath = getChartPath(chartScope).replace("/",".")
+    return getLogger(pypath)
 
 def getTagType(tagPath): 
     '''Get the value type of a tag; returns one of INT, FLOAT, BOOLEAN, STRING from ils.sfc.common.constants'''
