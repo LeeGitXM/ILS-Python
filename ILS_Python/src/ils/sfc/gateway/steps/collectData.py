@@ -8,14 +8,15 @@ from ils.common.error import catch
 def activate(scopeContext, stepProperties, state):
     from ils.sfc.gateway.util import standardDeviation, getTopLevelProperties, getStepProperty, \
     getTopChartRunId, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getChartLogger, s88Set
+    from ils.sfc.gateway.api import getChartLogger, s88Set, getProviderName
     from system.ils.sfc.common.Constants import COLLECT_DATA_CONFIG
     from ils.sfc.common.util import substituteHistoryProvider
     from system.util import jsonDecode
-    import system.tag
+    import system.tag 
  
     try:
         chartScope = scopeContext.getChartScope()
+        provider = getProviderName(chartScope)
         stepScope = scopeContext.getStepScope()
         logger = getChartLogger(chartScope)
         logger.trace("Executing a collect data block")
@@ -29,7 +30,7 @@ def activate(scopeContext, stepProperties, state):
             
             if valueType == 'current':
                 try:
-                    tagPath=row['tagPath']
+                    tagPath = "[%s]%s" % (provider, row['tagPath'])
                     logger.trace("Collecting %s from %s" % (str(valueType), str(tagPath)))
                     tagReadResult = system.tag.read(tagPath)
                     tagValue = tagReadResult.value

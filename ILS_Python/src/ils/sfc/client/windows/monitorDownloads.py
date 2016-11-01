@@ -20,6 +20,9 @@ def internalFrameOpened(rootContainer):
     state, timerTagPath = fetchWindowInfo(windowId, database)
     rootContainer.timerTagPath = timerTagPath
 
+    title = system.db.runScalarQuery("Select title from SfcWindow where windowId = '%s'" % (windowId), database)
+    rootContainer.title = title
+
     update(rootContainer)
 
 def update(rootContainer):
@@ -71,6 +74,7 @@ def fetchWindowInfo(windowId, database):
     
     SQL = "select State, TimerTagPath "\
         "from SfcDownloadGUI where windowId = '%s'" % (windowId)
+    print SQL
     pds = system.db.runQuery(SQL, database)
 
     state = pds[0]["State"]

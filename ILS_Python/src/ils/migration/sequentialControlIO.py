@@ -5,13 +5,35 @@ Created on Jul 21, 2015
 '''
 import system, string
 from ils.migration.common import lookupOPCServerAndScanClass
-from ils.migration.common import lookupMessageQueue
-from ils.common.database import lookup
+
+def translateTags(rootContainer):
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data
+    pds = system.dataset.toPyDataSet(ds)
+    
+    translations = []
+    row = 0
+    for record in pds:
+        tagName = record["name"]
+        alternateNames = record["names"]
+        folder = record["folder"]
+        tagPath = "%s/%s" % (folder, tagName)
+        tokens = alternateNames.split(" ")
+        print "Row %i: %s" % (row, tokens)
+        
+        for token in tokens:
+            translations.append(["insert into foo (term, translation) values ('%s', '%s')" % (token, tagPath)])
+        row = row + 1
+    
+    print translations
+    translationTable = rootContainer.getComponent("Translation Table")
+    ds = system.dataset.toDataSet(['Translation'], translations)
+    translationTable.data = ds
 
 def load(rootContainer):
     filename=rootContainer.getComponent("File Field").text
     if not(system.file.fileExists(filename)):
-        system.gui.messageBox("Yes, the file exists")
+        system.gui.messageBox("The file does not exist!")
         return
     
     contents = system.file.readFileAsString(filename, "US-ASCII")
@@ -88,6 +110,7 @@ def createTags(rootContainer):
             outputName = ds.getValueAt(row, "name")
             outputNames = ds.getValueAt(row, "names")
             gsiInterface = ds.getValueAt(row, "gsi-interface")
+            initialValue = ds.getValueAt(row, "initial-value")
             itemId = ds.getValueAt(row, "itemId")
 #            conditionalItemId = ds.getValueAt(row, "Conditional ItemId")
             
@@ -99,10 +122,11 @@ def createTags(rootContainer):
             print "GSI Interface: ", gsiInterface
             print "Item Id: ", itemId
             
-            itemId = itemIdPrefix + itemId
-            serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
-            path = rootFolder + "/" + folder
+            if itemId <> "":
+                itemId = itemIdPrefix + itemId
+                serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
             
+            path = rootFolder + "/" + folder
             print folder, outputName, itemId, serverName
             
             parentPath = '[' + provider + ']' + path    
@@ -117,10 +141,13 @@ def createTags(rootContainer):
                     createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "String")
                     status = "Created"
                 elif className == "FLOAT-PARAMETER":
-                    createParameter(parentPath, outputName, scanClass, "Float8")
+                    createParameter(parentPath, outputName, scanClass, "Float8", initialValue)
                     status = "Created"
                 elif className == "OPC-FLOAT-OUTPUT":
                     createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Float")
+                    status = "Created"
+                elif className == "OPC-INT-OUTPUT":
+                    createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Integer")
                     status = "Created"
                 elif className == "OPC-FLOAT-BAD-FLAG":
                     createBadFlag(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Float")
@@ -172,10 +199,12 @@ def createTags(rootContainer):
             ds=system.dataset.setValue(ds, row, "status", status)
     table.data=ds
 
-def createParameter(parentPath, tagName, scanClass, dataType):
+def createParameter(parentPath, tagName, scanClass, dataType, initialValue):
     print "Creating a memory tag named: %s, Path: %s, Scan Class: %s" % (tagName, parentPath, scanClass)
     system.tag.addTag(parentPath=parentPath, name=tagName, tagType="MEMORY", dataType=dataType)
-    
+    tagPath = parentPath + "/" + tagName
+    print "Writing %s to %s" % (str(initialValue), tagPath) 
+    system.tag.write(tagPath, float(initialValue))
 
 def createOutput(parentPath, outputName, itemId, serverName, scanClass, names, dataType):
     UDTType='Basic IO/OPC Output'

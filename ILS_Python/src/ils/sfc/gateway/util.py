@@ -170,12 +170,20 @@ def getChartPath(chartProperties):
 def getControlPanelId(chartScope):
     from ils.sfc.common.constants import CONTROL_PANEL_ID
     topScope = getTopLevelProperties(chartScope)
-    return topScope.get(CONTROL_PANEL_ID,None)
+    controlPanelId=topScope.get(CONTROL_PANEL_ID,None)
+    #TODO This is a hack to facilitate testing from the designer - need to do something better
+    if controlPanelId == None:
+        controlPanelId = 6
+    return controlPanelId
 
 def getControlPanelName(chartScope):
     from ils.sfc.common.constants import CONTROL_PANEL_NAME
     topScope = getTopLevelProperties(chartScope)
-    return topScope.get(CONTROL_PANEL_NAME,None)
+    controlPanelName=topScope.get(CONTROL_PANEL_NAME,None)
+    #TODO This is a hack to facilitate testing from the designer - need to do something better
+    if controlPanelName == None:
+        controlPanelName = "PolymerizeEpdm"
+    return controlPanelName
 
 def getDefaultMessageQueueScope():
     from ils.sfc.common.constants import OPERATION_SCOPE

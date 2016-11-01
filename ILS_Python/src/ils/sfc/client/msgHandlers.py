@@ -102,10 +102,11 @@ def sfcOpenWindow(payload):
     positionWindow(window, position, scale)
 
 def sfcCloseWindow(payload):
-    from ils.sfc.common.constants import WINDOW_ID
-    from ils.sfc.client.windowUtil import closeDbWindow, getOpenWindow
+    from ils.sfc.client.windowUtil import closeDbWindow
     windowId = payload[WINDOW_ID]
-    closeDbWindow(windowId)
+    print "Attempting to close window with id: ", windowId
+    if windowId <> None:
+        closeDbWindow(windowId)
                                               
 def sfcCloseWindowByName(payload):
     windowPath = payload[WINDOW]
@@ -123,7 +124,7 @@ def sfcShowQueue(payload):
         return
 
     from ils.queue.message import view
-    view(queueKey, useCheckpoint=True)
+    view(queueKey, useCheckpoint=True, silent=True)
         
 def sfcPrintWindow(payload):
     windowName = payload['window']

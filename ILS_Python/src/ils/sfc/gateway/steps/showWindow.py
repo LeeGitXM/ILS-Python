@@ -20,8 +20,7 @@ def activate(scopeContext, stepProperties, state):
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)
-        
-        
+                
         scale = getStepProperty(stepProperties, SCALE)
         position = getStepProperty(stepProperties, POSITION)
         security = getStepProperty(stepProperties, SECURITY)
@@ -38,9 +37,8 @@ def activate(scopeContext, stepProperties, state):
         chartRunId = getTopChartRunId(chartScope)
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
 
-        print "Opening an ordinary window"
         project = getProject(chartScope)
-        sendMessageToClient(project, messageHandler, \
+        sendMessageToClient(project, messageHandler, 
                 {WINDOW_ID: windowId, WINDOW_PATH: windowPath, CONTROL_PANEL_ID: controlPanelId, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, 
                  SECURITY: security, POSITION: position, SCALE: scale})
 

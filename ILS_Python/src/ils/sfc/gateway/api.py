@@ -6,6 +6,44 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
 
+import system
+
+'''
+These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that
+store and the fetch various recipe configurations.  The idea is that before shutting down we save the configuration
+so that we can start it up the same way.
+'''
+def stashRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, recipeDataValue, database):
+    print "TODO Stashing has not been implemented!"
+
+def fetchRecipeData(rxConfig, database):
+    print "Fetching stashed recipe data for %s..." % (rxConfig)
+    SQL = "select RecipeDataKey, RecipeDataAttribute, RecipeDataValue "\
+        "from SfcRecipeDataStash "\
+        "where RxConfigurastion = '%s' "\
+        "order by RecipeDataKey" % (rxConfig)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+def fetchRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, database):
+    print "Fetching %s.%s for %s..." % (recipeDataKey, recipeDataAttribute, rxConfig)
+    SQL = "select RecipeDataValue "\
+        "from SfcRecipeDataStash "\
+        "where RxConfigurastion = '%s' and RecipeDataKey = '%s' and RecipeDataAttribute = '%s' "\
+        "order by RecipeDataKey" % (rxConfig, recipeDataKey, recipeDataAttribute)
+    recipeDataValue = system.db.runScalarQuery(SQL, database)
+    return recipeDataValue
+
+def clearRecipeData(rxConfig, database):
+    print "Clearing %s" % (rxConfig)
+    SQL = "delete from SfcRecipeDataStash "\
+        "where RxConfigurastion = '%s'" % (rxConfig)
+    rows = system.db.runUpdateQuery(SQL, database)
+    print "...deleted %i rows" % (rows)
+    
+'''
+General API functions
+'''
 def s88GetFullTagPath(chartProperties, stepProperties, valuePath, location):
     '''Get the full path to the recipe data tag, taking isolation mode into account'''
     from ils.sfc.common.recipe import getRecipeDataTagPath, getBasicTagPath

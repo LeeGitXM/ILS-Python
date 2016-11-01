@@ -5,7 +5,8 @@ Created on Oct 31, 2014
 """
 
 # I know Rob defined this somewhere else but I can't find it 
-SFC_WINDOW_LIST = ["SFC/YesNo", "SFC/DialogMessage", "SFC/Input", "SFC/ManualDataEntry", "SFC/BusyNotification"]
+SFC_WINDOW_LIST = ["SFC/BusyNotification", "SFC/DialogMessage", "SFC/Input", "SFC/ManualDataEntry", "SFC/MonitorDownloads", "SFC/Notification", \
+                   "SFC/ReviewData", "SFC/ReviewFlows", "SFC/SelectInput", "SFC/TimeDelayNotification", "SFC/YesNo", ]
 
 # Screen Positions
 CENTER = "center"

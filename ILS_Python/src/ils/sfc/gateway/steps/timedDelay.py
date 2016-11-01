@@ -4,20 +4,21 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, \
-        handleUnexpectedGatewayError, getDelaySeconds, sendOpenWindow
-    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get
-    from ils.sfc.common.util import callMethod, isEmpty
-    from ils.sfc.gateway.util import getStepId, logStepDeactivated
-    from ils.sfc.gateway.api import getTimeFactor
-    from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
-    RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, \
-    BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE
-    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-    import system.db
-    import time
+import system, time
+from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, getControlPanelName, \
+    handleUnexpectedGatewayError, getDelaySeconds, sendOpenWindow, registerWindowWithControlPanel, getTopChartRunId, \
+    getOriginator
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, getProject, sendMessageToClient
+from ils.sfc.common.util import callMethod, isEmpty
+from ils.sfc.gateway.util import getStepId, logStepDeactivated
+from ils.sfc.gateway.api import getTimeFactor
+from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
+    RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, WINDOW_ID, \
+    BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, \
+    DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH
 
+
+def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
@@ -30,11 +31,11 @@ def activate(scopeContext, stepProperties, state):
        
     try:
         # Recover state from work in progress:
-        endTimeEpochSecs = stepScope.get('_endTimeEpochSecs', None)
+        endTime = stepScope.get('_endTime', None)
         postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
         workIsDone = False
         
-        if endTimeEpochSecs == None:
+        if endTime == None:
             chartLogger.trace("Executing TimedDelay block - First time initialization")
             stepId = getStepId(stepProperties) 
             timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
@@ -61,28 +62,51 @@ def activate(scopeContext, stepProperties, state):
             timeFactor = getTimeFactor(chartScope)
             delaySeconds = delaySeconds * timeFactor
             chartLogger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
-            startTimeEpochSecs = time.time()
-            endTimeEpochSecs = startTimeEpochSecs + delaySeconds
-            stepScope['_endTimeEpochSecs'] = endTimeEpochSecs
+            
+            startTime = system.date.now()
+            endTime = system.date.addSeconds(startTime, int(delaySeconds))
+            stepScope['_endTime'] = endTime
             if postNotification:
                 message = getStepProperty(stepProperties, MESSAGE) 
                 # window common properties:
                 database = getDatabaseName(chartScope)
                 controlPanelId = getControlPanelId(chartScope)
+                controlPanelName = getControlPanelName(chartScope)
+                originator = getOriginator(chartScope)
+                project = getProject(chartScope)
+                database = getDatabaseName(chartScope)
+                chartRunId = getTopChartRunId(chartScope)
+                
                 buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
                 if isEmpty(buttonLabel):
                     buttonLabel = 'Delay'
                 position = getStepProperty(stepProperties, POSITION) 
                 scale = getStepProperty(stepProperties, SCALE) 
                 title = getStepProperty(stepProperties, WINDOW_TITLE) 
-                windowId = createWindowRecord(controlPanelId, 'SFC/TimeDelayNotification', buttonLabel, position, scale, title, database)
-                numInserted = system.db.runUpdateQuery("insert into SfcTimeDelayNotification (windowId, message, endTime) values ('%s', '%s', %f)" % (windowId, message, endTimeEpochSecs), database)
+                message = getStepProperty(stepProperties, MESSAGE) 
+                windowPath = 'SFC/TimeDelayNotification'
+                messageHandler = "sfcOpenWindow"
+                
+                print "Window Title:", title
+                print "Window Message: ", message
+                
+                windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
+                stepScope[WINDOW_ID] = windowId
+                
+                formattedEndTime = system.date.format(endTime, "MM/dd/yyyy HH:mm:ss")
+                sql = "insert into SfcTimeDelayNotification (windowId, message, endTime) values ('%s', '%s', '%s')" % (windowId, message, formattedEndTime)
+                numInserted = system.db.runUpdateQuery(sql, database)
                 if numInserted == 0:
                     handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
-                sendOpenWindow(chartScope, windowId, stepId, database)
+                
+                payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
+                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath}
+                sendMessageToClient(project, messageHandler, payload)
+                
+                #sendOpenWindow(chartScope, windowId, stepId, database)
         else:
             chartLogger.trace("Executing TimedDelay block - checking for work done...")
-            workIsDone = time.time() >= endTimeEpochSecs
+            workIsDone = system.date.now() >= endTime
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in timedDelay.py', chartLogger)        
         workIsDone = True

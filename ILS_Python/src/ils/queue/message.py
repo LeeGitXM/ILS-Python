@@ -106,7 +106,7 @@ def clear(queueKey, db = ''):
     system.db.runUpdateQuery(SQL, db)
 
 
-def view(queueKey, useCheckpoint=False):
+def view(queueKey, useCheckpoint=False, silent=False):
     windowName = 'Queue/Message Queue'
     
     # First check if this queue is already displayed
@@ -115,8 +115,10 @@ def view(queueKey, useCheckpoint=False):
         qk = window.rootContainer.key
         print "found a window with key: ", qk
         if qk == queueKey:
+            window.toFront()
             system.nav.centerWindow(window)
-            system.gui.messageBox("The queue is already open!")
+            if silent == False:
+                system.gui.messageBox("The queue is already open!")
             return
 
     print "Opening a queue window..."
