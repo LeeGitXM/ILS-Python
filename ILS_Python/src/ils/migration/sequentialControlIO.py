@@ -10,6 +10,7 @@ def translateTags(rootContainer):
     table = rootContainer.getComponent("Power Table")
     ds = table.data
     pds = system.dataset.toPyDataSet(ds)
+    rootFolder = rootContainer.getComponent("Root Folder").text
     
     translations = []
     row = 0
@@ -17,18 +18,32 @@ def translateTags(rootContainer):
         tagName = record["name"]
         alternateNames = record["names"]
         folder = record["folder"]
-        tagPath = "%s/%s" % (folder, tagName)
+        tagPath = "%s/%s/%s" % (rootFolder, folder, tagName)
         tokens = alternateNames.split(" ")
         print "Row %i: %s" % (row, tokens)
         
         for token in tokens:
-            translations.append(["insert into foo (term, translation) values ('%s', '%s')" % (token, tagPath)])
+            translations.append(["insert into TagMap (GSIName, TagPath, DataType) values ('%s', '%s','DOUBLE');" % (token, tagPath)])
         row = row + 1
     
     print translations
     translationTable = rootContainer.getComponent("Translation Table")
     ds = system.dataset.toDataSet(['Translation'], translations)
     translationTable.data = ds
+
+def saveTranslationFile(rootContainer):
+    filename = system.file.saveFile("outputData.sql", "sql", "An SQL file")
+    if filename == None:
+        return
+    
+    translationTable = rootContainer.getComponent("Translation Table")
+    ds = translationTable.data
+    pds = system.dataset.toPyDataSet(ds)
+    
+    append = False
+    for record in pds:
+        system.file.writeFile(filename, record["Translation"] + "\n", append)
+        append = True
 
 def load(rootContainer):
     filename=rootContainer.getComponent("File Field").text
@@ -85,6 +100,20 @@ def clearStatus(rootContainer):
     ds=table.data
     for row in range(ds.rowCount):
         ds=system.dataset.setValue(ds, row, "status", "")
+    table.data=ds
+    
+def skipAll(rootContainer):
+    table=rootContainer.getComponent("Power Table")
+    ds=table.data
+    for row in range(ds.rowCount):
+        ds=system.dataset.setValue(ds, row, "skip", True)
+    table.data=ds
+
+def createAll(rootContainer):
+    table=rootContainer.getComponent("Power Table")
+    ds=table.data
+    for row in range(ds.rowCount):
+        ds=system.dataset.setValue(ds, row, "skip", False)
     table.data=ds
     
 def createTags(rootContainer):
@@ -152,6 +181,9 @@ def createTags(rootContainer):
                 elif className == "OPC-FLOAT-BAD-FLAG":
                     createBadFlag(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Float")
                     status = "Created"
+                elif className == "OPC-INT-BAD-FLAG":
+                    createBadFlag(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Integer")
+                    status = "Created"
                 elif className == "OPC-TEXT-BAD-FLAG":
                     createBadFlag(parentPath, outputName, itemId, serverName, scanClass, outputNames, "String")
                     status = "Created"
@@ -217,6 +249,9 @@ def createOutput(parentPath, outputName, itemId, serverName, scanClass, names, d
     if string.upper(dataType) == "STRING":
         system.tag.editTag(tagPath=parentPath + "/" + outputName,
                            overrides={"value":{"DataType":"String"}, "writeValue": {"DataType":"String"}})
+    elif string.upper(dataType) == "INTEGER":
+        system.tag.editTag(tagPath=parentPath + "/" + outputName,
+                           overrides={"value":{"DataType":"Int8"}, "writeValue": {"DataType":"Int8"}})
 
 def createBadFlag(parentPath, outputName, itemId, serverName, scanClass, names, dataType):
     UDTType='Basic IO/OPC Tag Bad Flag'
@@ -229,6 +264,9 @@ def createBadFlag(parentPath, outputName, itemId, serverName, scanClass, names, 
     if string.upper(dataType) == "STRING":
         system.tag.editTag(tagPath=parentPath + "/" + outputName,
                            overrides={"value":{"DataType":"String"}, "writeValue": {"DataType":"String"}})
+    elif string.upper(dataType) == "INTEGER":
+        system.tag.editTag(tagPath=parentPath + "/" + outputName,
+                           overrides={"value":{"DataType":"Int8"}, "writeValue": {"DataType":"Int8"}})
 
 def createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, serverName, scanClass, names, dataType, permissiveDataType):
     UDTType='Basic IO/OPC Conditional Output'

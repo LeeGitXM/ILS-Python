@@ -101,7 +101,7 @@ def activate(scopeContext, stepProperties, state):
                 
                 payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
                        CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath}
-                sendMessageToClient(project, messageHandler, payload)
+                sendMessageToClient(chartScope, messageHandler, payload)
                 
                 #sendOpenWindow(chartScope, windowId, stepId, database)
         else:

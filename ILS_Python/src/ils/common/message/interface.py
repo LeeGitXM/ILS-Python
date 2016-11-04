@@ -12,7 +12,7 @@ log=system.util.getLogger("com.ils.common.message")
 # Note: This does not use the message-reply utility because there is a system utility, getSessionInfo()
 # that lists information about each client. 
 def getPostClientIds(post, project="", db=""):
-    log.trace("%s - Looking for a client logged in as <%s> to project <%s>" % (__name__, post, project))
+    log.trace("Looking for a client logged in as <%s> to project <%s>" % (post, project))
 
     if project == "":
         project = system.util.getProjectName()
@@ -30,7 +30,7 @@ def getPostClientIds(post, project="", db=""):
 # Get the client ids of all clients that are showing the console window for a specific console.
 # This returns a list of client ids 
 def getConsoleClientIds(consoleName, project="", db=""):
-    log.trace("%s - Looking for a client showing console: <%s> in project <%s> and database <%s>" % (__name__, consoleName))
+    log.trace("Looking for a client showing console: <%s> in project <%s> and database <%s>" % (consoleName))
     clientIds = []
     
     SQL = "select windowName from TkConsole where ConsoleName = '%s'" % (consoleName)
@@ -53,7 +53,7 @@ def getConsoleClientIds(consoleName, project="", db=""):
 # Get the client ids of all clients that are showing the console window for a specific console.
 # This returns a list of client ids 
 def getConsoleClientIdsForPost(post, project="", db=""):
-    log.trace("%s - Looking for a client showing console for post: <%s>" % (__name__, post))
+    log.trace("Looking for a client showing console for post: <%s>" % (post))
     clientIds = []
     
     SQL = "select C.WindowName from TkConsole C, TkPost P where C.PostId = P.PostId and P.Post = '%s'" % (post)
@@ -81,7 +81,7 @@ def getConsoleClientIdsForPost(post, project="", db=""):
 # This returns a dataset with three columns: Reply, ReplyTime, ClientId.  Reply is a comma 
 # separated string of the window names. 
 def listWindows(project="", db=""):
-    log.trace("%s - Listing windows..." % (__name__))
+    log.trace("Listing windows...")
     if project == "":
         project = system.util.getProjectName()
     from ils.common.message.gateway import sendAndReceive

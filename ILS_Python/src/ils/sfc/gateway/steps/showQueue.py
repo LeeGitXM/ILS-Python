@@ -10,8 +10,8 @@ def activate(scopeContext, stepProperties, state):
     send a message to the client to show the current message queue
     '''
     from ils.sfc.gateway.util import handleUnexpectedGatewayError, getControlPanelId, getControlPanelName, getOriginator
-    from ils.sfc.gateway.api import getChartLogger, sendMessageToClient, getProject, getCurrentMessageQueue
-    from ils.sfc.common.constants import ORIGINATOR, CONTROL_PANEL_ID, CONTROL_PANEL_NAME
+    from ils.sfc.gateway.api import getChartLogger, sendMessageToClient, getProject, getCurrentMessageQueue, getDatabaseName, getPostForControlPanelName
+    from ils.sfc.common.constants import ORIGINATOR, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, HANDLER
 
     try:
         chartScope = scopeContext.getChartScope()
@@ -21,9 +21,9 @@ def activate(scopeContext, stepProperties, state):
         controlPanelName = getControlPanelName(chartScope)
         originator = getOriginator(chartScope)
 
-        payload = {'queueKey': currentMsgQueue, CONTROL_PANEL_ID: controlPanelId, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator}
-        project = getProject(chartScope)
-        sendMessageToClient(project, 'sfcShowQueue', payload)
+        handler = "sfcShowQueue"
+        payload = {HANDLER: handler, 'queueKey': currentMsgQueue, CONTROL_PANEL_ID: controlPanelId, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator}
+        sendMessageToClient(chartScope, handler, payload)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in showQueue.py', chartLogger)
     finally:

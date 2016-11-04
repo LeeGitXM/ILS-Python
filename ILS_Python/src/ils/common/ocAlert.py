@@ -5,6 +5,7 @@ Created on Mar 31, 2015
 '''
 
 import system, string, sys, traceback
+from ils.common.notification import notify
 logger=system.util.getLogger("com.ils.ocAlert")
 
 # This is generally called from the gateway, but should work from th
@@ -31,29 +32,10 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         }
     logger.trace("Payload: %s" % (str(payload))) 
     
-    if post <> "":
-        logger.trace("Targeting message to post: <%s>" % (post))
-        
-        from ils.common.message.interface import getPostClientIds
-        clientSessionIds = getPostClientIds(post, project)
-        if len(clientSessionIds) > 0:
-            logger.trace("Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post))
-            for clientSessionId in clientSessionIds:
-                system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
-        else:
-            logger.trace("Did not find any console login sessions, now looking for clients with consoles displayed...")
-            from ils.common.message.interface import getConsoleClientIdsForPost
-            clientSessionIds = getConsoleClientIdsForPost(post, project, db)
-            if len(clientSessionIds) > 0:
-                for clientSessionId in clientSessionIds:
-                    logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
-                    system.util.sendMessage(project, "ocAlert", payload, scope="C", clientSessionId=clientSessionId)
-            else:
-                logger.trace("Notifying OC alert to every client because I could not find the post logged in")
-                system.util.sendMessage(project, "ocAlert", payload, scope="C")
-    else:
-        logger.trace("Notifying OC alert to every client because this is not a targeted alert")
-        system.util.sendMessage(project, "ocAlert", payload, scope="C")
+    message = "ocAlert"
+
+    notify(project, message, payload, post, db)
+
 
 # This runs in a client and is called when the OC alert message is sent to every client.  The first
 # step is to sort out if THIS client is meant to display the OC alert.  OC alerts are sent to a post,

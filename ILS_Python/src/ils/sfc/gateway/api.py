@@ -7,6 +7,7 @@ Created on Oct 30, 2014
 '''
 
 import system
+logger=system.util.getLogger("com.ils.sfc.api")
 
 '''
 These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that
@@ -44,6 +45,12 @@ def clearRecipeData(rxConfig, database):
 '''
 General API functions
 '''
+
+def getPostForControlPanelName(controlPanelName, db=""):
+    SQL = "select Post from SfcControlPanel CP, TkPost P where CP.PostId = P.PostId and ControlPanelName = '%s'" % (controlPanelName)
+    postId = system.db.runScalarQuery(SQL, db)
+    return postId
+
 def s88GetFullTagPath(chartProperties, stepProperties, valuePath, location):
     '''Get the full path to the recipe data tag, taking isolation mode into account'''
     from ils.sfc.common.recipe import getRecipeDataTagPath, getBasicTagPath
@@ -285,16 +292,43 @@ def getTimeFactor(chartProperties):
     isolationMode = getIsolationMode(chartProperties)
     return getTimeFactor(isolationMode)
 
-def sendMessageToClient(project, messageHandler, payload, clientSessionId=None):
+def sendMessageToClient(chartScope, messageHandler, payload):
     '''Send a message to the client(s) of this chart'''
     from ils.sfc.common.constants import HANDLER
-    from system.util import sendMessage
+    from ils.sfc.gateway.util import getControlPanelName
+
     payload[HANDLER] = messageHandler
-    # print 'sending message to client', project, handler, payload
-    if clientSessionId != None:
-        sendMessage(project, 'sfcMessage', payload, "C", clientSessionId)
+    
+    controlPanelName = getControlPanelName(chartScope)
+    project = getProject(chartScope)
+    db = getDatabaseName(chartScope)
+    post = getPostForControlPanelName(controlPanelName, db)
+
+    logger.trace("In notify, attempting to deliver a %s message..." % (str(messageHandler)))
+    
+    if post <> "":
+        logger.trace("Targeting message to post: <%s>" % (post))
+        
+        from ils.common.message.interface import getPostClientIds
+        clientSessionIds = getPostClientIds(post, project)
+        if len(clientSessionIds) > 0:
+            logger.trace("Found %i clients logged in as %s!" % (len(clientSessionIds), post))
+            for clientSessionId in clientSessionIds:
+                system.util.sendMessage(project, 'sfcMessage', payload, scope="C", clientSessionId=clientSessionId)
+        else:
+            logger.trace("Did not find any console login sessions, now looking for clients with consoles displayed...")
+            from ils.common.message.interface import getConsoleClientIdsForPost
+            clientSessionIds = getConsoleClientIdsForPost(post, project, db)
+            if len(clientSessionIds) > 0:
+                for clientSessionId in clientSessionIds:
+                    logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
+                    system.util.sendMessage(project, 'sfcMessage', payload, scope="C", clientSessionId=clientSessionId)
+            else:
+                logger.trace("Notifying every client because I could not find the post logged in")
+                system.util.sendMessage(project, 'sfcMessage', payload, scope="C")
     else:
-        sendMessage(project, 'sfcMessage', payload, "C")
+        logger.trace("Sending notification to every client because this is not a targeted alert")
+        system.util.sendMessage(project, 'sfcMessage', payload, scope="C")
 
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''

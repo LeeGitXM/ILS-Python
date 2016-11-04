@@ -5,7 +5,7 @@ Created on Dec 17, 2015
 '''
 import system
 from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getProject, getChartLogger
+from ils.sfc.gateway.api import getProject, getChartLogger,getDatabaseName, getPostForControlPanelName, getControlPanelName
 from ils.sfc.gateway.util import getTopChartRunId, getStepName
     
 def activate(scopeContext, stepProperties, state):       
@@ -14,13 +14,16 @@ def activate(scopeContext, stepProperties, state):
         chartScope = scopeContext.getChartScope()    
         chartRunId = getTopChartRunId(chartScope)
         logger = getChartLogger(chartScope)
+        controlPanelName = getControlPanelName(chartScope)
+        db = getDatabaseName(chartScope)
+        post = getPostForControlPanelName(controlPanelName, db)
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
         project = getProject(chartScope)
         
         logger.tracef("In %s.activate for step: %s, the payload is: %s", __name__, stepName, str(payload))
         
-        sendMessageToClient(project, 'sfcCloseWindowByName', payload)
+        sendMessageToClient(chartScope, 'sfcCloseWindowByName', payload, db)
         
         windowPath = payload.get("window")
         SQL = "delete from SfcWindow where windowPath = '%s'" % (windowPath)
