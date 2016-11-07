@@ -610,7 +610,7 @@ def resetDiagram(finalDiagnosisIds, database):
                         
                     if blockClass == "xom.block.sqcdiagnosis.SQCDiagnosis":
                         log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (blockName))
-                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where UUID = '%s'" % (UUID)
+                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where SQCDiagnosisUUID = '%s'" % (UUID)
                         rows = system.db.runUpdateQuery(SQL, database)
                         log.info("      ...updated %i rows" % (rows))
 
