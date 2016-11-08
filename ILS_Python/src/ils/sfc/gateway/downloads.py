@@ -174,13 +174,14 @@ def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
         timerStart = getTimerStart(chartScope, stepScope, stepProperties)
     return timerStart
 
-#
+
+# Write an output value
 # Modified this to use WriteDatum from the IO layer which automatically does a Write Confirm...
-def writeValue(chartScope, config, logger, providerName):
-    '''write an output value'''
+def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation, logger, providerName):
+    from ils.sfc.gateway.api import s88Set, s88Get
     
     #----------------------------------------------------------------------------------------------------
-    def _writeValue(chartScope=chartScope, config=config, logger=logger, providerName=providerName):
+    def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, errorCountKey=errorCountKey, errorCountLocation=errorCountLocation, logger=logger, providerName=providerName):
         from ils.io.api import write
         from ils.sfc.gateway.util import queueMessage
         from ils.sfc.common.constants import MSG_STATUS_INFO
@@ -206,6 +207,11 @@ def writeValue(chartScope, config, logger, providerName):
         else:
             logger.trace("---- setting status to FAILURE ----")
             config.outputRD.set(DOWNLOAD_STATUS, STEP_FAILURE)
+
+            if errorCountKey <> "" and errorCountLocation <> "":
+                print " *** INCREMENTING THE GLOBAL ERROR COUNTER *** "
+                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
+                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
     
         queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)
     #----------------------------------------------------------------------------------------------------
