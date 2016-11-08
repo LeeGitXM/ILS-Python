@@ -8,9 +8,9 @@ def activate(scopeContext, stepProperties, state):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, \
-    STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
+        STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
     from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
-    from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY
+    from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY, ERROR_COUNT_KEY, ERROR_COUNT_LOCATION
     import system, time
     from java.util import Date, Calendar
     from ils.sfc.common.util import formatTime
@@ -134,6 +134,9 @@ def activate(scopeContext, stepProperties, state):
         try:
             elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
             timerStart = getTimerStart(chartScope, stepScope, stepProperties)
+            errorCountKey = getStepProperty(stepProperties, ERROR_COUNT_KEY) 
+            errorCountLocation = getStepProperty(stepProperties, ERROR_COUNT_LOCATION) 
+
             
             if elapsedMinutes <= 0.0:
                 logger.trace("The timer has not been started")
@@ -196,7 +199,7 @@ def activate(scopeContext, stepProperties, state):
                     for row in immediateRows:
 #                        row.outputRD.set("setpointStatus", "downloading")
                         logger.trace("   writing a immediate write for step %s" % (row.key))
-                        writeValue(chartScope, row, logger, providerName)
+                        writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
                      
                 logger.trace("...checking timed writes...")
                 writesPending = False
@@ -210,7 +213,7 @@ def activate(scopeContext, stepProperties, state):
                             if elapsedMinutes >= row.timingMinutes:
                                 logger.trace("      writing a timed write for step %s" % (row.key))
 #                                row.outputRD.set("setpointStatus", "downloading")
-                                writeValue(chartScope, row, logger, providerName)
+                                writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
                                 row.written = True
                             else:
                                 writesPending = True
@@ -227,7 +230,7 @@ def activate(scopeContext, stepProperties, state):
                         row.outputRD.set(STEP_TIMESTAMP, timestamp)
                         row.outputRD.set(STEP_TIME, absTiming)
 #                        row.outputRD.set("setpointStatus", "downloading")
-                        writeValue(chartScope, row, logger, providerName)
+                        writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
                     
                     # All of the timed writes have completed and the final writes have been made so signal that the block is done
                     complete = True
