@@ -63,6 +63,11 @@ ENABLE_PAUSE = "enablePause"
 ENABLE_RESUME = "enableResume"
 ENABLE_CANCEL = "enableCancel"
 END_TIME = "endTime"
+
+# Shared error counter for multiple Write Output blocks
+ERROR_COUNT_KEY = "globalErrorCountKey"
+ERROR_COUNT_LOCATION = "globalErrorCountLocation"
+
 EXTENSION = "extension"
 FETCH_MODE = "fetchMode"
 FILEPATH = "filepath"
