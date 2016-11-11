@@ -18,9 +18,8 @@ These methods make the timer UDT work.  They are called by a tag change script o
 '''
 def handleTimerCommand(tagPath, previousValue, currentValue, initialChange, missedEvents):
     val = currentValue.value
-    print "Handling a change in command for: ", tagPath
     parentPath = tagPath[:tagPath.rfind("/")]
-    print "The parent path is <%s>" % (parentPath)
+
     if val == TIMER_STATE_CLEAR:
         print "Clear the run time"
         system.tag.write(parentPath + "/runTime", 0.0)

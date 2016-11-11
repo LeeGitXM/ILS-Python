@@ -4,34 +4,27 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 import system
-from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getProject, getChartLogger,getDatabaseName, getPostForControlPanelName, getControlPanelName
+from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError, getControlPanelName
+from ils.sfc.gateway.api import getProject, getChartLogger,getDatabaseName, getPostForControlPanelName
 from ils.sfc.gateway.util import getTopChartRunId, getStepName
-    
+
 def activate(scopeContext, stepProperties, state):       
     try:
         stepName = getStepName(stepProperties)
-        chartScope = scopeContext.getChartScope()    
-        chartRunId = getTopChartRunId(chartScope)
+        chartScope = scopeContext.getChartScope()
+        database = getDatabaseName(chartScope)  
         logger = getChartLogger(chartScope)
-        controlPanelName = getControlPanelName(chartScope)
-        db = getDatabaseName(chartScope)
-        post = getPostForControlPanelName(controlPanelName, db)
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
-        project = getProject(chartScope)
         
         logger.tracef("In %s.activate for step: %s, the payload is: %s", __name__, stepName, str(payload))
         
-        sendMessageToClient(chartScope, 'sfcCloseWindowByName', payload, db)
+        sendMessageToClient(chartScope, 'sfcCloseWindowByName', payload)
         
         windowPath = payload.get("window")
         SQL = "delete from SfcWindow where windowPath = '%s'" % (windowPath)
-        print SQL
-        rows=system.db.runUpdateQuery(SQL)
+        rows=system.db.runUpdateQuery(SQL, database)
         logger.tracef("   ...deleted %d window records/toolbar buttons...", rows)
-        
-        logger.tracef("   ...leaving %s", __name__)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in closeWindow.py', logger)
     finally:

@@ -10,7 +10,7 @@ def activate(scopeContext, stepProperties, state):
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, \
         STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
     from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
-    from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY, ERROR_COUNT_KEY, ERROR_COUNT_LOCATION
+    from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY, SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION
     import system, time
     from java.util import Date, Calendar
     from ils.sfc.common.util import formatTime
@@ -35,7 +35,10 @@ def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
     isolationMode = getIsolationMode(chartScope)
     providerName = getProviderName(isolationMode)
-        
+    
+    errorCountKey = getStepProperty(stepProperties, SHARED_ERROR_COUNT_KEY)
+    errorCountLocation = getStepProperty(stepProperties, SHARED_ERROR_COUNT_LOCATION)
+
     logger = getChartLogger(chartScope)
     logger.trace("In writeOutput.activate() (state: %s)..." % (state))
     
@@ -61,7 +64,7 @@ def activate(scopeContext, stepProperties, state):
 
         # The timer is not running until someone starts it
         stepScope[TIMER_RUNNING]=False
-    
+
         # filter out disabled rows:
         downloadRows = []
         numDisabledRows = 0
@@ -132,11 +135,15 @@ def activate(scopeContext, stepProperties, state):
     else:
         logger.trace("...performing write output work...")
         try:
-            elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
-            timerStart = getTimerStart(chartScope, stepScope, stepProperties)
-            errorCountKey = getStepProperty(stepProperties, ERROR_COUNT_KEY) 
-            errorCountLocation = getStepProperty(stepProperties, ERROR_COUNT_LOCATION) 
+            # Monitor for the specified period, possibly extended by persistence time
+            timerStart=getTimerStart(chartScope, stepScope, stepProperties)
 
+            # It is possible that this block starts before some other block starts the timer
+            if timerStart == None:
+                logger.trace("   ...the timer has not yet started...")
+                elapsedMinutes = 0.0
+            else:
+                elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
             
             if elapsedMinutes <= 0.0:
                 logger.trace("The timer has not been started")

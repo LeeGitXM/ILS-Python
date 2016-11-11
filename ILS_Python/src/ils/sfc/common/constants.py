@@ -65,8 +65,8 @@ ENABLE_CANCEL = "enableCancel"
 END_TIME = "endTime"
 
 # Shared error counter for multiple Write Output blocks
-ERROR_COUNT_KEY = "globalErrorCountKey"
-ERROR_COUNT_LOCATION = "globalErrorCountLocation"
+SHARED_ERROR_COUNT_KEY = "globalErrorCountKey"
+SHARED_ERROR_COUNT_LOCATION = "globalErrorCountLocation"
 
 EXTENSION = "extension"
 FETCH_MODE = "fetchMode"

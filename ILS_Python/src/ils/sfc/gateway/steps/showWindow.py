@@ -23,12 +23,8 @@ def activate(scopeContext, stepProperties, state):
                 
         scale = getStepProperty(stepProperties, SCALE)
         position = getStepProperty(stepProperties, POSITION)
-        security = getStepProperty(stepProperties, SECURITY)
         buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
-        
         controlPanelId = getControlPanelId(chartScope)
-        controlPanelName = getControlPanelName(chartScope)
-        originator = getOriginator(chartScope)
         
         database = getDatabaseName(chartScope)
         title = ""
@@ -37,11 +33,8 @@ def activate(scopeContext, stepProperties, state):
         chartRunId = getTopChartRunId(chartScope)
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
 
-        project = getProject(chartScope)
-        sendMessageToClient(project, messageHandler, 
-                {WINDOW_ID: windowId, WINDOW_PATH: windowPath, CONTROL_PANEL_ID: controlPanelId, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, 
-                 SECURITY: security, POSITION: position, SCALE: scale})
-
+        payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+        sendMessageToClient(chartScope, messageHandler, payload)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in showWindow.py', chartLogger)
     # No window cleanup--window is closed in CloseWindow step

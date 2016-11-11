@@ -101,13 +101,9 @@ def activate(scopeContext, stepProperties, state):
                         % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, tagType, existingUnitsName)
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
-    
-#                sendMessageToClient(chartScope, windowId, stepId, database)
-                
-                payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
-                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath, STEP_ID: stepId}
-                sendMessageToClient(project, messageHandler, payload)
-            
+
+                payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+                sendMessageToClient(chartScope, messageHandler, payload)
         else:
             complete, timedOut = checkIfComplete(chartScope, stepScope, stepProperties)
             if complete:

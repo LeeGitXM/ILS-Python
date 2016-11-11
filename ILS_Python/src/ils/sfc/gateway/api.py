@@ -6,7 +6,7 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
 
-import system
+import system, string
 logger=system.util.getLogger("com.ils.sfc.api")
 
 '''
@@ -75,14 +75,20 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
         database = getDatabaseName(chartProperties)
         value = getIndexedValue(fullTagPath, database)
     else:
+        # A reference to undefined recipe data is a run-time error.
+        exists = system.tag.exists(fullTagPath)
+        if not(exists):
+            raise Exception("Unresolved reference to %s.%s" % (location, valuePath))
+         
         qv = system.tag.read(fullTagPath)
         value = qv.value
+    
     # we're not doing unit conversion here, but if there happens to be a time
     # unit then we want to do the isolation mode time scaling:
     if isValueKey(valuePath):
         unitName = getAssociatedUnitName(chartProperties, stepProperties, valuePath, location)
         if not isEmpty(unitName):
-            unit = getUnitByName(chartProperties, unitName)
+            unit = getUnitByName(chartProperties, string.upper(unitName))
             value = scaleTimeForIsolationMode(chartProperties, value, unit)
     return value
 
@@ -115,7 +121,7 @@ def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, return
     '''Like s88Get, but adds a conversion to the given units'''
     value = s88Get(chartProperties, stepProperties, valuePath, location)
     existingUnitsName = getAssociatedUnitName(chartProperties, stepProperties, valuePath, location)
-    convertedValue = convertUnits(chartProperties, value, existingUnitsName, returnUnitsName)
+    convertedValue = convertUnits(chartProperties, value, existingUnitsName, string.upper(returnUnitsName))
     return convertedValue
 
 def getAssociatedUnitName(chartProperties, stepProperties, valuePath, location):
@@ -123,7 +129,7 @@ def getAssociatedUnitName(chartProperties, stepProperties, valuePath, location):
     unitsKey = getUnitsPath(valuePath)
     if unitsKey != None:
         unitsName = s88Get(chartProperties, stepProperties, unitsKey, location)
-        return unitsName
+        return string.upper(unitsName)
     else:
         return None
 
@@ -294,42 +300,25 @@ def getTimeFactor(chartProperties):
 
 def sendMessageToClient(chartScope, messageHandler, payload):
     '''Send a message to the client(s) of this chart'''
-    from ils.sfc.common.constants import HANDLER
-    from ils.sfc.gateway.util import getControlPanelName
+    from ils.sfc.common.constants import HANDLER, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR
+    from ils.sfc.gateway.util import getControlPanelName, getControlPanelId, getOriginator
 
-    payload[HANDLER] = messageHandler
-    
+    logger.trace("Sending a %s SFC message... " % (str(messageHandler)))
+    controlPanelId = getControlPanelId(chartScope)
     controlPanelName = getControlPanelName(chartScope)
     project = getProject(chartScope)
     db = getDatabaseName(chartScope)
     post = getPostForControlPanelName(controlPanelName, db)
+    originator = getOriginator(chartScope)
 
-    logger.trace("In notify, attempting to deliver a %s message..." % (str(messageHandler)))
-    
-    if post <> "":
-        logger.trace("Targeting message to post: <%s>" % (post))
-        
-        from ils.common.message.interface import getPostClientIds
-        clientSessionIds = getPostClientIds(post, project)
-        if len(clientSessionIds) > 0:
-            logger.trace("Found %i clients logged in as %s!" % (len(clientSessionIds), post))
-            for clientSessionId in clientSessionIds:
-                system.util.sendMessage(project, 'sfcMessage', payload, scope="C", clientSessionId=clientSessionId)
-        else:
-            logger.trace("Did not find any console login sessions, now looking for clients with consoles displayed...")
-            from ils.common.message.interface import getConsoleClientIdsForPost
-            clientSessionIds = getConsoleClientIdsForPost(post, project, db)
-            if len(clientSessionIds) > 0:
-                for clientSessionId in clientSessionIds:
-                    logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
-                    system.util.sendMessage(project, 'sfcMessage', payload, scope="C", clientSessionId=clientSessionId)
-            else:
-                logger.trace("Notifying every client because I could not find the post logged in")
-                system.util.sendMessage(project, 'sfcMessage', payload, scope="C")
-    else:
-        logger.trace("Sending notification to every client because this is not a targeted alert")
-        system.util.sendMessage(project, 'sfcMessage', payload, scope="C")
-
+    payload[HANDLER] = messageHandler
+    payload[DATABASE] = db
+    payload[CONTROL_PANEL_ID] = controlPanelId
+    payload[CONTROL_PANEL_NAME] = controlPanelName
+    payload[ORIGINATOR] = originator
+
+    from ils.common.notification import notify
+    notify(project, 'sfcMessage', payload, post, db)
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
     from system.util import getLogger

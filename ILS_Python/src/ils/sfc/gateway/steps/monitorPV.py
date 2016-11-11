@@ -9,16 +9,19 @@ def activate(scopeContext, stepProperties, state):
     S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger, s88Get
-    import system.tag
+    import system, string
     
     from system.ils.sfc.common.Constants import CLASS, DATA_LOCATION, DOWNLOAD_STATUS, IMMEDIATE, KEY, MONITOR, MONITORING, \
-    RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, RECIPE, SETPOINT, STEP_TIME,  STRATEGY, STATIC, TAG, \
-    TARGET_VALUE, TIMEOUT, VALUE, WAIT 
-    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
+    RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, STEP_TIME,  STRATEGY, STATIC, TARGET_VALUE, TIMEOUT, WAIT, \
+    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
 
     from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
         PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
-        STEP_SUCCESS, STEP_FAILURE, SLEEP_INCREMENT, TIMED_OUT
+        STEP_SUCCESS, STEP_FAILURE, TIMED_OUT
+
+    # PV monitoring target types
+    from ils.sfc.common.constants import VALUE, SETPOINT, TAG, RECIPE
+    
     from java.util import Date 
     from ils.sfc.gateway.api import getIsolationMode
     from system.ils.sfc import getProviderName, getPVMonitorConfig
@@ -65,21 +68,13 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[TIMED_OUT] = False
                 stepScope[INITIALIZED]=True
                 stepScope["workDone"]=False
-                
-                # Check that the timer exists - it is mandatory!
-#                timer, timerAttribute = handleTimer(chartScope, stepScope, stepProperties, logger)
-#                print "Timer = <%s>, attribute = <%s>" % (str(timer), timerAttribute)
-#                if timer == None or timer == "":
-#                    handleUnexpectedGatewayError(chartScope, 'Timer not defined in monitorPV.py', logger)
-#                    complete = True
-#                    return complete
     
                 configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
                 config = getPVMonitorConfig(configJson)
     
                 # initialize each input
                 maxPersistence = 0
-                logger.trace("...initializing PV monitor recipe data...")
+                logger.trace("...initializing PV monitor recipe data... ")
                 monitorActiveCount = 0
                 for configRow in config.rows:
                     logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
@@ -108,17 +103,21 @@ def activate(scopeContext, stepProperties, state):
                         
                     # we assume the target value won't change, so we get it once.
                     # (This is storing the target into the config structure not recipe data)
-                    if configRow.targetType == SETPOINT:
+                    # The constants are all lower case so make this case insensitive by converting to lowercase
+                    targetType = string.lower(configRow.targetType)
+                    configRow.targetType = targetType
+                    
+                    if targetType == SETPOINT:
                         configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/value', recipeLocation)
                         targetRd.set(TARGET_VALUE, configRow.targetValue)
-                    elif configRow.targetType == VALUE:
-                        configRow.targetValue = configRow.targetNameIdOrValue
-                    elif configRow.targetType == TAG:
+                    elif targetType == VALUE:
+                        configRow.targetValue = float(configRow.targetNameIdOrValue)
+                    elif targetType == TAG:
                         qualVal = system.tag.read("[" + providerName + "]" + configRow.targetNameIdOrValue)
                         configRow.targetValue = qualVal.value
-                    elif configRow.targetType == RECIPE:
+                    elif targetType == RECIPE:
                         configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeLocation)           
-                    
+
                     logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
 
                 # Put the initialized config data back into step scope for the next iteration
@@ -152,7 +151,7 @@ def activate(scopeContext, stepProperties, state):
             
                 # Monitor for the specified period, possibly extended by persistence time
                 timerStart=getTimerStart(chartScope, stepScope, stepProperties)
-                
+
                 # It is possible that this block starts before some other block starts the timer
                 if timerStart == None:
                     logger.trace("   ...waiting for the timer to start...")
@@ -160,7 +159,6 @@ def activate(scopeContext, stepProperties, state):
                     return complete
                 
                 elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
-
                 persistencePending = stepScope[PERSISTENCE_PENDING]
                 monitorActiveCount = stepScope[MONITOR_ACTIVE_COUNT]
                 maxPersistence = stepScope[MAX_PERSISTENCE]
@@ -181,7 +179,7 @@ def activate(scopeContext, stepProperties, state):
                         if configRow.status == PV_OK:
                             continue
                         
-                        logger.trace('PV monitoring - PV: %s, Target type: %s, Target: %s' % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue))
+                        logger.trace('PV monitoring - PV: %s, Target type: %s, Target: %s, Strategy: %s' % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
     
                         pvRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
     
@@ -223,7 +221,9 @@ def activate(scopeContext, stepProperties, state):
                             continue
                        
                         # if we're just reading for display purposes, we're done with this pvInput:
+
                         if configRow.strategy != MONITOR:
+                            logger.trace('   skipping because the strategy is NOT monitor!')
                             continue
                         
                         target=configRow.targetValue
@@ -259,6 +259,7 @@ def activate(scopeContext, stepProperties, state):
                                 
                         # check dead time - assume that immediate writes coincide with starting the timer.      
                         if configRow.download == IMMEDIATE:
+                            print "Setting the reference time to the timer start time", timerStart
                             referenceTime = timerStart
                         else:
                             referenceTime = configRow.downloadTime

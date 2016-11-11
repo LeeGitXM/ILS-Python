@@ -12,14 +12,11 @@ from system.ils.sfc.common.Constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY
 from ils.sfc.gateway.steps import commonInput
 from ils.sfc.common.util import isEmpty
 
-
 from ils.sfc.gateway.steps.commonInput import cleanup, setResponse
 
 from ils.sfc.common.constants import DATABASE, BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, \
     CONTROL_PANEL_ID, CONTROL_PANEL_NAME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, ORIGINATOR, WINDOW_PATH, \
     DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-
-
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)

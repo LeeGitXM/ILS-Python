@@ -74,11 +74,10 @@ def activate(scopeContext, stepProperties, state):
             numInserted = system.db.runUpdateQuery("insert into SfcDialogMessage (windowId, message, ackRequired) values ('%s', '%s', %d)" % (windowId, message, ackRequired), database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcDialogMessage', logger)
-
-            payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
-                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath}
             
-            sendMessageToClient(project, messageHandler, payload)
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+            sendMessageToClient(chartScope, messageHandler, payload)
+            
             logger.trace("...done initializing!")
         else:
             logger.trace("In %s.activate(), waiting for a response..." % (__name__))

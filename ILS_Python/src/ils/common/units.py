@@ -173,6 +173,7 @@ class Unit(object):
         '''read unit info from the project's default '''
         import system.db
         import sys
+        import string
         
         try:
             results = system.db.runQuery("select * from Units", database)
@@ -182,7 +183,7 @@ class Unit(object):
             newUnits = dict()
             for row in results:
                 unit = Unit()
-                unit.name = row["name"]
+                unit.name = string.upper(row["name"])
                 unit.description = row["description"];
                 unit.type = row["type"]
                 unit.m = row["m"]
@@ -195,9 +196,9 @@ class Unit(object):
             results = system.db.runQuery("select * from UnitAliases", database)
             print "Read %i aliases..." % (len(results))
             for row in results:
-                realUnit = Unit.getUnit(row["name"])
+                realUnit = Unit.getUnit(string.upper(row["name"]))
                 if realUnit != None:
-                    newUnits[row["alias"]] = realUnit
+                    newUnits[string.upper(row["alias"])] = realUnit
             Unit.addUnits(newUnits)
         except:
             print "ils.common.units.py: Exception reading units : " + str(sys.exc_info()[0])+str(sys.exc_info()[1])

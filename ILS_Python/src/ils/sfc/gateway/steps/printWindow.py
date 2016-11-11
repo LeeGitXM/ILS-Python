@@ -12,8 +12,7 @@ def activate(scopeContext, stepProperties, state):
         chartLogger = getChartLogger(chartScope)
         payload = dict()
         transferStepPropertiesToMessage(stepProperties, payload)
-        project = getProject(chartScope)
-        sendMessageToClient(project, 'sfcPrintWindow', payload)
+        sendMessageToClient(chartScope, 'sfcPrintWindow', payload)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in printWindow.py', chartLogger)
     finally:

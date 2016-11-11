@@ -50,7 +50,7 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
         highLimit = target + tolerance;
         lowLimit = target - tolerance;
 
-#    if DEBUG-MODE then post "*** PV = [1PV], Target = [TARGET], High Limit = [HIGH-LIMIT], Low Limit = [Low-Limit] ****";
+    logger.tracef("    PV=%f, Target=%f, High Limit=%f, Low Limit=%f", pv, target, highLimit, lowLimit)
 
     if limitType == "High/Low":
         if pv > highLimit or pv < lowLimit:
@@ -141,9 +141,10 @@ def dbStringForFloat(numberValue):
 
 def deleteAndSendClose(project, windowId, database):
     '''Delete the common window record and message the client to close the window'''
-    from ils.sfc.common.constants import WINDOW_ID
+    from ils.sfc.common.constants import WINDOW_ID, HANDLER
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
-    sendMessageToClient(project, 'sfcCloseWindow', {WINDOW_ID: windowId})
+    payload = {WINDOW_ID: windowId, HANDLER: 'sfcCloseWindow'}
+    system.util.sendMessage(project, 'sfcMessage', payload, scope="C")
     
 def dictToString(dict):
     '''

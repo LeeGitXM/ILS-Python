@@ -44,6 +44,7 @@ def activate(scopeContext, stepProperties, state):
         scale = getStepProperty(stepProperties, SCALE)
         title = getStepProperty(stepProperties, WINDOW_TITLE)
         windowPath = "SFC/MonitorDownloads"
+        messageHandler = "sfcOpenWindow"
         
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
         stepScope[WINDOW_ID] = windowId # This step completes as soon as the GUI is posted do I doubt I need to save this.
@@ -81,10 +82,9 @@ def activate(scopeContext, stepProperties, state):
 
             system.db.runUpdateQuery(SQL, database)
         
-        payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
-                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath}
-        project = getProject(chartScope)
-        sendMessageToClient(project, 'sfcOpenWindow', payload)
+        payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+        sendMessageToClient(chartScope, messageHandler, payload)
+        
         logger.tracef("   Monitor Download payload: %s", str(payload))
         logger.trace("...leaving monitorDownload.activate()")      
     except:

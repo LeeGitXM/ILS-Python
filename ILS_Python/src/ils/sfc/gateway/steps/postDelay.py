@@ -42,12 +42,9 @@ def activate(scopeContext, stepProperties, state):
 
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
         system.db.runUpdateQuery("insert into SfcBusyNotification (windowId, message) values ('%s', '%s')" % (windowId, message), database)
-            
-#        sendOpenWindow(chartScope, windowId, stepId, database)
-        payload = {WINDOW_ID: windowId, DATABASE: database}
-        payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
-                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath}
-        sendMessageToClient(project, messageHandler, payload)
+
+        payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+        sendMessageToClient(chartScope, messageHandler, payload)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in postDelay.py', logger)
     finally:

@@ -87,6 +87,7 @@ def setResponse(chartScope, stepScope, stepProperties, response):
     s88Set(chartScope, stepScope, key, response, recipeLocation)
     
 def cleanup(chartScope, stepScope):
+    print "Cleaning up for a common input step"
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)

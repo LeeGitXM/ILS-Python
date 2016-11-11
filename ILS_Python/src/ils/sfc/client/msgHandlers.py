@@ -17,6 +17,7 @@ def dispatchMessage(payload):
     methodPath = 'ils.sfc.client.msgHandlers.' + handlerMethod
     keys = ['payload']
     values = [payload]
+    
     try:
         callMethodWithParams(methodPath, keys, values)
     except Exception, e:
@@ -94,11 +95,13 @@ def sfcOpenWindow(payload):
     if windowPath in SFC_WINDOW_LIST:
         print "The window is an SFC window, passing the WindowId!"
         payload = {WINDOW_ID: windowId}
+        print "Opening <%s>" % (windowPath)
+        window = system.nav.openWindowInstance(windowPath, payload)
     else:
         print "The window is a plain window..."
-        payload = {}   
-    
-    window = system.nav.openWindowInstance(windowPath, payload)
+        print "Opening <%s>" % (windowPath)
+        window = system.nav.openWindowInstance(windowPath)
+
     positionWindow(window, position, scale)
 
 def sfcCloseWindow(payload):
