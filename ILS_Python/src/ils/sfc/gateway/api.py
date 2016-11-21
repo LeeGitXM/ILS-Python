@@ -56,13 +56,17 @@ def s88GetFullTagPath(chartProperties, stepProperties, valuePath, location):
     from ils.sfc.common.recipe import getRecipeDataTagPath, getBasicTagPath
     provider = getProviderName(chartProperties)
     basicTagPath = getBasicTagPath(chartProperties, stepProperties, valuePath, location)
-    return getRecipeDataTagPath(provider, basicTagPath)
+    fullTagPath = getRecipeDataTagPath(provider, basicTagPath)
+    logger.tracef("In s88GetFullTagPath with %s.%s -> %s", location, valuePath, fullTagPath)
+    return fullTagPath
 
 def s88DataExists(chartProperties, stepProperties, valuePath, location):
     '''Returns true if the the specified recipe data exists'''
     import system.tag
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
-    return system.tag.exists(fullTagPath)
+    exists = system.tag.exists(fullTagPath)
+    logger.tracef("In s88DataExists with %s.%s -> %s", location, valuePath, str(exists))
+    return exists
   
 def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
@@ -70,7 +74,7 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
     from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.recipe import getIndexedValue
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
-    #print fullTagPath
+    logger.tracef("In s88Get, the full path is: ", fullTagPath)
     if fullTagPath.find('(') != -1:
         database = getDatabaseName(chartProperties)
         value = getIndexedValue(fullTagPath, database)
@@ -90,6 +94,7 @@ def s88Get(chartProperties, stepProperties, valuePath, location):
         if not isEmpty(unitName):
             unit = getUnitByName(chartProperties, string.upper(unitName))
             value = scaleTimeForIsolationMode(chartProperties, value, unit)
+    logger.tracef("...and the returned value is: %s", str(value))
     return value
 
 def isValueKey(key):

@@ -76,8 +76,21 @@ def getMonitoredTagPath(recipeData, tagProvider):
     tagPath = recipeData.get("tagPath")
     tagPath = "[" + tagProvider + "]" + tagPath
 
+    print "Monitoring a %s" % (rdClass)
+
     if string.upper(rdClass) == "OUTPUT":
-        tagPath = tagPath + "/value"
+        print "The recipe data IS an OUTPUT class (for %s)" % tagPath
+        outputType = string.upper(recipeData.get("outputType"))
+        if outputType == "MODE":
+            attributePath = "/mode/value"
+        elif outputType == "SETPOINT":
+            attributePath = "/sp/value"
+        elif outputType == "OUTPUT":
+            attributePath = "/op/value"
+        else:
+            attributePath = "/value"
+
+        tagPath = tagPath + attributePath
     else:
         # this is the default path for just a plain old tag
         pass
@@ -156,13 +169,17 @@ def writer(tagPath, val, valueType=""):
     
     if isUDT(tagPath):
         log.trace("The target is a UDT - resetting...")
-        status = system.tag.write(tagPath + '/command', 'RESET')
-        if status == 0:
-            log.error("ERROR: writing RESET to the command tag for %s" % (tagPath))
-            return False, "Failed writing RESET to command tag"
+        
+        # Read the writeStatus, if the UDT has already been reset, then no use doing it again
+        writeStatus = system.tag.read(tagPath + '/writeStatus')
+        if string.upper(writeStatus.value) <> 'RESET':
+            status = system.tag.write(tagPath + '/command', 'RESET')
+            if status == 0:
+                log.error("ERROR: writing RESET to the command tag for %s" % (tagPath))
+                return False, "Failed writing RESET to command tag"
          
-        # Give the reset command a chance to complete
-        time.sleep(0.5)
+            # Give the reset command a chance to complete
+            time.sleep(1.0)
         
         # I think valueType is always used - REQUIRED!  This is now handled below by checking 
         # if it is a controller.

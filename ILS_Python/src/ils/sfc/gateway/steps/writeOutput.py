@@ -29,6 +29,7 @@ def activate(scopeContext, stepProperties, state):
     TIMED_ROWS="timedRows"
     FINAL_ROWS="finalRows"
     DOWNLOAD_ROWS="downloadRows"
+    TIMER_NEEDED="timerNeeded"
     
     complete = False
     stepScope = scopeContext.getStepScope()
@@ -122,6 +123,7 @@ def activate(scopeContext, stepProperties, state):
         stepScope[TIMED_ROWS]=timedRows
         stepScope[FINAL_ROWS]=finalRows
         stepScope[DOWNLOAD_ROWS]=downloadRows
+        stepScope[TIMER_NEEDED]=timerNeeded
 
         logger.trace("There are %i immediate rows" % (len(immediateRows)))
         logger.trace("There are %i timed rows" % (len(timedRows)))
@@ -129,122 +131,145 @@ def activate(scopeContext, stepProperties, state):
         
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             complete = True
-        else:
+        if timerNeeded:
             handleTimer(chartScope, stepScope, stepProperties, logger)
 
     else:
         logger.trace("...performing write output work...")
         try:
-            # Monitor for the specified period, possibly extended by persistence time
-            timerStart=getTimerStart(chartScope, stepScope, stepProperties)
-
-            # It is possible that this block starts before some other block starts the timer
-            if timerStart == None:
-                logger.trace("   ...the timer has not yet started...")
-                elapsedMinutes = 0.0
-            else:
-                elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
-            
-            if elapsedMinutes <= 0.0:
-                logger.trace("The timer has not been started")
-            else:
-                logger.trace("   the elapsed time is: %.2f" % (elapsedMinutes))    
-                immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
-                timedRows=stepScope.get(TIMED_ROWS,[])
-                finalRows=stepScope.get(FINAL_ROWS,[])
-                downloadRows=stepScope.get(DOWNLOAD_ROWS,[])
+            timerNeeded=stepScope[TIMER_NEEDED]
+            if timerNeeded:
+                # Monitor for the specified period, possibly extended by persistence time
+                timerStart=getTimerStart(chartScope, stepScope, stepProperties)
+    
+                # It is possible that this block starts before some other block starts the timer
+                if timerStart == None:
+                    logger.trace("   ...the timer has not yet started...")
+                    elapsedMinutes = 0.0
+                else:
+                    elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
                 
-                timerWasRunning=stepScope.get(TIMER_RUNNING, False)
-                
-                # Immediately after the timer starts running we need to calculate the absolute download times for each output.
-                if not(timerWasRunning):
-                    stepScope[TIMER_RUNNING]=True
-
-                    # wait until the timer starts
-                    logger.trace("   the timer just started... ")
+                if elapsedMinutes <= 0.0:
+                    logger.trace("The timer has not been started")
+                else:
+                    logger.trace("   the elapsed time is: %.2f" % (elapsedMinutes))    
+                    immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
+                    timedRows=stepScope.get(TIMED_ROWS,[])
+                    finalRows=stepScope.get(FINAL_ROWS,[])
+                    downloadRows=stepScope.get(DOWNLOAD_ROWS,[])
                     
-                    # This is a strange little initialization that is done to initialize final writes in the bizzare 
-                    # case where ALL of the writes are final
-                    cal = Calendar.getInstance()
-                    cal.setTime(timerStart)
-                    absTiming = cal.getTime()
-                    timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-
-                    # Immediately after the timer starts running we need to calculate the absolute download time.            
-                    for row in downloadRows:
-                        row.written = False
-                        
-                        # write the absolute step timing back to recipe data
-                        if row.timingMinutes >= 1000.0:
-                            # Final writes
-                            # Because the rows are ordered by the timing, it is safe to use the last timestamp...
-                            row.outputRD.set(STEP_TIMESTAMP, timestamp)
-                            # I don't want to propagate the magic 1000 value, so we use None
-                            # to signal an event-driven step
-                            row.outputRD.set(STEP_TIME, None)
-                            
-                        elif row.timingMinutes > 0 and row.timingMinutes < 1000.0:
-                            # Timed writes
-                            cal = Calendar.getInstance()
-                            cal.setTime(timerStart)
-                            cal.add(Calendar.SECOND, int(row.timingMinutes * 60))
-                            absTiming = cal.getTime()
-                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-                            row.outputRD.set(STEP_TIMESTAMP, timestamp)
-                            row.outputRD.set(STEP_TIME, absTiming)
-                        
-                        else:
-                            # Immediate writes
-                            cal = Calendar.getInstance()
-                            cal.setTime(timerStart)
-                            absTiming = cal.getTime()
-                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-                            row.outputRD.set(STEP_TIMESTAMP, timestamp)
-                            row.outputRD.set(STEP_TIME, absTiming)
-
-                    logger.trace("...performing immediate writes...")
-                    for row in immediateRows:
-#                        row.outputRD.set("setpointStatus", "downloading")
-                        logger.trace("   writing a immediate write for step %s" % (row.key))
-                        writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
-                     
-                logger.trace("...checking timed writes...")
-                writesPending = False
-                if len(timedRows) > 0:                    
+                    timerWasRunning=stepScope.get(TIMER_RUNNING, False)
                     
-                    for row in timedRows:
-                        if not row.written:
-                            # If the row hasn't been written and the elapsed time is greater than the requested time then write the output
-                            logger.trace("   checking output step %s at %.2f" % (row.key, row.timingMinutes))
-
-                            if elapsedMinutes >= row.timingMinutes:
-                                logger.trace("      writing a timed write for step %s" % (row.key))
-#                                row.outputRD.set("setpointStatus", "downloading")
-                                writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
-                                row.written = True
-                            else:
-                                writesPending = True
-                                if elapsedMinutes >= row.timingMinutes - 0.5:
-                                    row.outputRD.set(DOWNLOAD_STATUS, "approaching")
-            
-                # If all of the timed writes have been written then do the final writes
-                if not(writesPending):
-                    logger.trace("...starting final writes...")
-                    for row in finalRows:
-                        logger.trace("   writing a final write for step %s" % (row.key))
-                        absTiming = Date()
+                    # Immediately after the timer starts running we need to calculate the absolute download times for each output.
+                    if not(timerWasRunning):
+                        stepScope[TIMER_RUNNING]=True
+    
+                        # wait until the timer starts
+                        logger.trace("   the timer just started... ")
+                        
+                        # This is a strange little initialization that is done to initialize final writes in the bizzare 
+                        # case where ALL of the writes are final
+                        cal = Calendar.getInstance()
+                        cal.setTime(timerStart)
+                        absTiming = cal.getTime()
                         timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-                        row.outputRD.set(STEP_TIMESTAMP, timestamp)
-                        row.outputRD.set(STEP_TIME, absTiming)
-#                        row.outputRD.set("setpointStatus", "downloading")
-                        writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
-                    
-                    # All of the timed writes have completed and the final writes have been made so signal that the block is done
-                    complete = True
-                    logger.info("Write output block finished all of its work!")
-                    
-            #Note: write confirmations are on a separate thread and will write the result
-            # directly to recipe data
+    
+                        # Immediately after the timer starts running we need to calculate the absolute download time.            
+                        for row in downloadRows:
+                            row.written = False
+                            
+                            # write the absolute step timing back to recipe data
+                            if row.timingMinutes >= 1000.0:
+                                # Final writes
+                                # Because the rows are ordered by the timing, it is safe to use the last timestamp...
+                                row.outputRD.set(STEP_TIMESTAMP, timestamp)
+                                # I don't want to propagate the magic 1000 value, so we use None
+                                # to signal an event-driven step
+                                row.outputRD.set(STEP_TIME, None)
+                                
+                            elif row.timingMinutes > 0 and row.timingMinutes < 1000.0:
+                                # Timed writes
+                                cal = Calendar.getInstance()
+                                cal.setTime(timerStart)
+                                cal.add(Calendar.SECOND, int(row.timingMinutes * 60))
+                                absTiming = cal.getTime()
+                                timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
+                                row.outputRD.set(STEP_TIMESTAMP, timestamp)
+                                row.outputRD.set(STEP_TIME, absTiming)
+                            
+                            else:
+                                # Immediate writes
+                                cal = Calendar.getInstance()
+                                cal.setTime(timerStart)
+                                absTiming = cal.getTime()
+                                timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
+                                row.outputRD.set(STEP_TIMESTAMP, timestamp)
+                                row.outputRD.set(STEP_TIME, absTiming)
+    
+                        logger.trace("...performing immediate writes...")
+                        for row in immediateRows:
+    #                        row.outputRD.set("setpointStatus", "downloading")
+                            logger.trace("   writing a immediate write for step %s" % (row.key))
+                            writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
+                         
+                    logger.trace("...checking timed writes...")
+                    writesPending = False
+                    if len(timedRows) > 0:                    
+                        
+                        for row in timedRows:
+                            if not row.written:
+                                # If the row hasn't been written and the elapsed time is greater than the requested time then write the output
+                                logger.trace("   checking output step %s at %.2f" % (row.key, row.timingMinutes))
+    
+                                if elapsedMinutes >= row.timingMinutes:
+                                    logger.trace("      writing a timed write for step %s" % (row.key))
+    #                                row.outputRD.set("setpointStatus", "downloading")
+                                    writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
+                                    row.written = True
+                                else:
+                                    writesPending = True
+                                    if elapsedMinutes >= row.timingMinutes - 0.5:
+                                        row.outputRD.set(DOWNLOAD_STATUS, "approaching")
+                
+                    # If all of the timed writes have been written then do the final writes
+                    if not(writesPending):
+                        logger.trace("...starting final writes...")
+                        for row in finalRows:
+                            logger.trace("   writing a final write for step %s" % (row.key))
+                            absTiming = Date()
+                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
+                            row.outputRD.set(STEP_TIMESTAMP, timestamp)
+                            row.outputRD.set(STEP_TIME, absTiming)
+    #                        row.outputRD.set("setpointStatus", "downloading")
+                            writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
+                        
+                        # All of the timed writes have completed and the final writes have been made so signal that the block is done
+                        complete = True
+                        logger.info("Write output block finished all of its work!")
+                        
+                #Note: write confirmations are on a separate thread and will write the result
+                # directly to recipe data
+            
+            else:
+                # There are no timed writes - everything should be immediate
+                # Immediately after the timer starts running we need to calculate the absolute download time.            
+                logger.info("The timer is not needed, performing immediate writes.")
+                immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
+                absTiming = system.date.now()
+                timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
+
+                for row in immediateRows:
+                    row.outputRD.set(STEP_TIMESTAMP, timestamp)
+                    row.outputRD.set(STEP_TIME, absTiming)
+
+                    logger.trace("   writing an immediate write for step %s" % (row.key))
+                    writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
+
+                complete = True
+                logger.info("Write output block finished all of its work, which was purely immediate!")
+                        
+                #Note: write confirmations are on a separate thread and will write the result
+                
         except:
             handleUnexpectedGatewayError(chartScope, 'Unexpected error in writeOutput.py', logger)
         finally:

@@ -18,8 +18,6 @@ class RecipeData:
         s88Set(self.chartScope, self.stepScope, self.key + '/' + attribute, value, self.location)
         
     def get(self, attribute):
-        from ils.sfc.gateway.util import getTopChartRunId
-        #print 'RecipeData.get', attribute, getTopChartRunId(self.chartScope)
         return s88Get(self.chartScope, self.stepScope, self.key + '/' + attribute, self.location) 
 
 def parseBracketedScopeReference(bracketedRef):

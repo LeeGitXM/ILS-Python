@@ -44,7 +44,7 @@ def activate(scopeContext, stepProperties, state):
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         stepName = getStepProperty(stepProperties, NAME)
         logger = getChartLogger(chartScope)
-        logger.trace("In monitorPV.activate(), step: %s, state: %s..." % (stepName, state))
+        logger.trace("In monitorPV.activate(), step: %s, state: %s, recipe location: %s..." % (stepName, state, recipeLocation))
         
         # Everything will have the same tag provider - check isolation mode and get the provider
         isolationMode = getIsolationMode(chartScope)
@@ -74,12 +74,14 @@ def activate(scopeContext, stepProperties, state):
     
                 # initialize each input
                 maxPersistence = 0
-                logger.trace("...initializing PV monitor recipe data... ")
                 monitorActiveCount = 0
                 for configRow in config.rows:
                     logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
                     configRow.status = MONITORING
                     pvRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+                    dataType = pvRd.get(CLASS)
+                    configRow.isOutput = (dataType == 'Output')
+
                     targetType = configRow.targetType
                     if targetType == SETPOINT:
                         targetRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
@@ -88,9 +90,9 @@ def activate(scopeContext, stepProperties, state):
                         targetRd.set(PV_MONITOR_ACTIVE, True)
                         targetRd.set(PV_VALUE, None)
                         dataType = targetRd.get(CLASS)
-                        configRow.isOutput = (dataType == 'Output')
-                    else:
-                        configRow.isOutput = False
+
+#                    else:
+#                        configRow.targetIsOutput = False
                         
                     configRow.isDownloaded = False
                     configRow.persistenceOK = False
@@ -108,14 +110,23 @@ def activate(scopeContext, stepProperties, state):
                     configRow.targetType = targetType
                     
                     if targetType == SETPOINT:
+                        # This means that the recipe data is an OUTPUT recipe data that points to some part of a controller I/O,
+                        # the recipe data will tell what
+                        logger.trace("Getting the target value using SETPOINT strategy...")
+                        tagPath = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/tagPath', recipeLocation)
+                        outputType = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/outputType', recipeLocation)
+                        logger.tracef("...Tagpath: %s, Output Type: %s", tagPath, outputType)
                         configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/value', recipeLocation)
                         targetRd.set(TARGET_VALUE, configRow.targetValue)
                     elif targetType == VALUE:
+                        # The target value is hard coded in the config data
                         configRow.targetValue = float(configRow.targetNameIdOrValue)
                     elif targetType == TAG:
+                        # Read the value from a tag
                         qualVal = system.tag.read("[" + providerName + "]" + configRow.targetNameIdOrValue)
                         configRow.targetValue = qualVal.value
                     elif targetType == RECIPE:
+                        # This means that the value will be in some property of the recipe data
                         configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeLocation)           
 
                     logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
@@ -182,6 +193,7 @@ def activate(scopeContext, stepProperties, state):
                         logger.trace('PV monitoring - PV: %s, Target type: %s, Target: %s, Strategy: %s' % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
     
                         pvRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+                        dataType = pvRd.get(CLASS)
     
                         # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
                         # download GUI block.  It appears that the PV of a PV monitoring block is always INPUT recipe data.  The target of a PV monitoring  
@@ -263,8 +275,11 @@ def activate(scopeContext, stepProperties, state):
                             referenceTime = timerStart
                         else:
                             referenceTime = configRow.downloadTime
-    
-                        deadTimeExceeded = getElapsedMinutes(Date(long(referenceTime))) > configRow.deadTime 
+
+                        print "The reference time is: ", referenceTime
+#                        deadTimeExceeded = getElapsedMinutes(Date(long(referenceTime))) > configRow.deadTime 
+                        deadTimeExceeded = getElapsedMinutes(referenceTime) > configRow.deadTime 
+
                         # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
                         # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
                         # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
