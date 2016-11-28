@@ -18,7 +18,7 @@ def stashRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, recipeDat
     print "TODO Stashing has not been implemented!"
 
 def fetchRecipeData(rxConfig, database):
-    print "Fetching stashed recipe data for %s..." % (rxConfig)
+    logger.tracef("Fetching stashed recipe data for %s...", rxConfig)
     SQL = "select RecipeDataKey, RecipeDataAttribute, RecipeDataValue "\
         "from SfcRecipeDataStash "\
         "where RxConfigurastion = '%s' "\
@@ -27,20 +27,19 @@ def fetchRecipeData(rxConfig, database):
     return pds
 
 def fetchRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, database):
-    print "Fetching %s.%s for %s..." % (recipeDataKey, recipeDataAttribute, rxConfig)
+    logger.tracef("Fetching %s.%s for %s...", recipeDataKey, recipeDataAttribute, rxConfig)
     SQL = "select RecipeDataValue "\
         "from SfcRecipeDataStash "\
-        "where RxConfigurastion = '%s' and RecipeDataKey = '%s' and RecipeDataAttribute = '%s' "\
+        "where RxConfiguration = '%s' and RecipeDataKey = '%s' and RecipeDataAttribute = '%s' "\
         "order by RecipeDataKey" % (rxConfig, recipeDataKey, recipeDataAttribute)
     recipeDataValue = system.db.runScalarQuery(SQL, database)
     return recipeDataValue
 
 def clearRecipeData(rxConfig, database):
-    print "Clearing %s" % (rxConfig)
-    SQL = "delete from SfcRecipeDataStash "\
-        "where RxConfigurastion = '%s'" % (rxConfig)
+    logger.tracef("Clearing %s", rxConfig)
+    SQL = "delete from SfcRecipeDataStash where RxConfigurastion = '%s'" % (rxConfig)
     rows = system.db.runUpdateQuery(SQL, database)
-    print "...deleted %i rows" % (rows)
+    logger.tracef("   ...deleted %d rows", rows)
     
 '''
 General API functions
@@ -219,6 +218,7 @@ def getCurrentMessageQueue(chartProperties):
     from ils.sfc.common.constants import MESSAGE_QUEUE
     from ils.sfc.gateway.util import getTopLevelProperties
     topScope = getTopLevelProperties(chartProperties)
+    print "The top scope is: ", topScope
     return topScope[MESSAGE_QUEUE]
 
 def setCurrentMessageQueue(chartProperties, queue):
