@@ -61,6 +61,9 @@ def openSQCPlot(event):
 
 def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID):
     sqcWindowPath='SQC/SQC Plot'
+    n = 8
+    intervalType = "Hours"
+    
     print "The user selected %s - %s " % (sqcDiagnosisName, SQCDiagnosisUUID)
     
     # If this is the first SQC plot open it at full size and centered, if it is the nth plot
@@ -75,7 +78,7 @@ def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID):
 
     from ils.common.windowUtil import openWindowInstance
     if instanceCount == 0:
-        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'sqcDiagnosisUUID' : SQCDiagnosisUUID}, mode="CENTER", scale=1.0)
+        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="CENTER", scale=1.0)
     else:
-        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName' : sqcDiagnosisName, 'sqcDiagnosisUUID' : SQCDiagnosisUUID}, mode="Tile", scale = 0.75)
+        openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="Tile", scale = 0.75)
         

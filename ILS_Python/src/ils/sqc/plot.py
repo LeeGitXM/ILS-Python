@@ -398,3 +398,22 @@ def fetchChartData(unitName, labValueName):
     chartData.append({"x": 0.0, "y": 7.9})
     
     return chartData
+
+def sync(event):
+    sqcWindowPath='SQC/SQC Plot'
+    button = event.source
+    container = button.parent
+    updater = container.getComponent("Realtime Updater")
+    n = updater.n
+    intervalType = updater.intervalType
+    
+    print "Synchronizing all of the SQC plots to: %s - %s" % (intervalType, str(n))
+    
+    windows = system.gui.getOpenedWindows()
+    print 'There are %d windows open' % len(windows)
+    for window in windows:
+        if window.getPath() == sqcWindowPath:
+            print "Found an SQC plot..."
+            rootContainer = window.rootContainer
+            rootContainer.n = n
+            rootContainer.intervalType = intervalType
