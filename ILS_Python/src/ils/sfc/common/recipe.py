@@ -8,10 +8,11 @@ self-explanatory
 '''
 import system.tag
 from system.ils.sfc.common.Constants import RECIPE_DATA_FOLDER
-
+from com.inductiveautomation.ignition.common.util import LogUtil
+log = LogUtil.getLogger("ils.sfc.common")
 
 def getBasicTagPath(chartProperties, stepProperties, valuePath, location):
-    '''Get "basic" path to the recipe data tag, which does not include the provider or top folder'''
+    '''Get the "basic" path to the recipe data tag. This does not include the provider or top folder'''
     from system.ils.sfc import getRecipeDataTagPath
     from system.ils.sfc.common.Constants import NAMED
     location = location.lower()
@@ -30,21 +31,21 @@ def getRecipeDataTagPrefix(provider):
     return "[" + provider + "]" + RECIPE_DATA_FOLDER + "/"
 
 def getRecipeDataTagPath(provider, path):
-    '''given a recipe data "key", return the full absolute tag path'''
+    '''Given a recipe data "key", return the full absolute tag path'''
     # treat dot separators like slash:
     if path.find('.') != -1:
         path = path.replace(".", "/")
     return getRecipeDataTagPrefix(provider) + path 
 
 def createGroupPropertyTag(provider, folder, rdName):    
-    '''for creating simple string members of Groups'''
+    '''For creating simple string members of Groups'''
     fullFolder = getRecipeDataTagPath(provider, folder)
-    print 'creating group property', rdName, 'in', fullFolder
+    log.infof("createGroupPropertyTag: %s in %s", rdName, fullFolder)
     system.tag.addTag(parentPath=fullFolder, name=rdName, tagType = 'MEMORY', dataType='String')
 
 def createRecipeDataTag(provider, folder, rdName, rdType, valueType):    
     fullFolder = getRecipeDataTagPath(provider, folder)
-    print 'creating', rdType, rdName, valueType, 'in', fullFolder
+    log.infof("createRecipeDataTag: %s(%s:%s) in %s", rdName,rdType, valueType,fullFolder)
     typePath = RECIPE_DATA_FOLDER + "/" + rdType
     if rdType == 'Group':
         rdTagType = 'Folder'
@@ -52,13 +53,15 @@ def createRecipeDataTag(provider, folder, rdName, rdType, valueType):
     else:
         rdTagType='UDT_INST'
         system.tag.addTag(parentPath=fullFolder, name=rdName, tagType=rdTagType, attributes={"UDTParentType":typePath})
-        if (rdType == 'Value' or rdType == 'Output' or rdType == 'Input') and valueType != None:
+        if (rdType == 'Value' or rdType == 'Output' or rdType == 'Input' ) and valueType != None:
             changeType(fullFolder, rdName, valueType)
+        elif (rdType == 'Array' ) and valueType != None:
+            changeArrayType(fullFolder, rdName, valueType)
 
 
 def changeType(folderPath, tagName, valueType):
-    '''For the value tag only, change the tag type to
-    agree with the value type'''
+    '''For the value, input, and output tags, change the tag type to
+       agree with the value type'''
     from system.ils.sfc.common.Constants import INT, FLOAT, BOOLEAN, STRING, DATE_TIME
 
     if valueType == INT:
@@ -73,6 +76,27 @@ def changeType(folderPath, tagName, valueType):
         newType = 'DateTime' 
     else:   
         newType = 'String' 
+    valuePath = folderPath + "/" + tagName
+    system.tag.editTag(valuePath, overrides={"value": {"DataType":newType}})
+    
+#
+def changeArrayType(folderPath, tagName, valueType):
+    '''For the array tags, change the tag array type to
+       agree with the value type'''
+    from system.ils.sfc.common.Constants import INT, FLOAT, BOOLEAN, STRING, DATE_TIME
+
+    if valueType == INT:
+        newType = 'Int8Array'
+    elif valueType == FLOAT:
+        newType = 'Float8Array'
+    elif valueType == BOOLEAN:
+        newType = 'BooleanArray'
+    elif valueType == STRING:
+        newType = 'StringArray' 
+    elif valueType == DATE_TIME:
+        newType = 'DateTimeArray' 
+    else:   
+        newType = 'StringArray' 
     valuePath = folderPath + "/" + tagName
     system.tag.editTag(valuePath, overrides={"value": {"DataType":newType}})
     
@@ -91,7 +115,7 @@ def getRecipeData(provider, path):
     
 def setRecipeData(provider, path, value, synchronous):
     fullPath = getRecipeDataTagPath(provider, path)
-    # print 'set', fullPath, value
+    log.infof("setRecipeData: %s = %s",fullPath,str(value))
     if synchronous:
         system.tag.writeSynchronous(fullPath, value)
     else:
@@ -102,7 +126,7 @@ def recipeDataTagExists(provider, path):
     return system.tag.exists(fullPath)
 
 def cleanupRecipeData(provider, chartPath, sfcStepPaths):
-    '''remove any recipe data for the given chart that does not 
+    '''Remove any recipe data for the given chart that does not 
     belong to one of the supplied step names. This handles
     cleaning up recipe data for deleted steps and charts. '''
     from system.util import getLogger
