@@ -66,7 +66,7 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     ''' '''
     print "Fetching Final Diagnosis that touch %s..." % (quantOutputName)
 
-    SQL = "select DtFinalDiagnosis.FinalDiagnosisName, DtDiagnosisEntry.Multiplier, DtFinalDiagnosis.FinalDiagnosisUUID, DtFinalDiagnosis.DiagramUUID "\
+    SQL = "select distinct DtFinalDiagnosis.FinalDiagnosisName, DtDiagnosisEntry.Multiplier, DtFinalDiagnosis.FinalDiagnosisUUID, DtFinalDiagnosis.DiagramUUID "\
         " from DtFinalDiagnosis INNER JOIN "\
         " DtRecommendationDefinition ON DtFinalDiagnosis.FinalDiagnosisId = DtRecommendationDefinition.FinalDiagnosisId INNER JOIN "\
         " DtQuantOutput ON dbo.DtRecommendationDefinition.QuantOutputId = dbo.DtQuantOutput.QuantOutputId INNER JOIN "\
