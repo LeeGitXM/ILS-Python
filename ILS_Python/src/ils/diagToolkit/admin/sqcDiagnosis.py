@@ -47,7 +47,7 @@ def runTest(rootContainer):
             diagramId=diagramDescriptor.getId()
             print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
 
-            # Now get the SQC observation blocks
+            # Now get the SQC observation blocks (There must be SQC observations upstream of a SQC diagnosis)
             blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
             if len(blocks) == 0:
                 status = "No upstream blocks found"
