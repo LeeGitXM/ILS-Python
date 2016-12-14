@@ -14,7 +14,7 @@ log = system.util.getLogger("com.ils.labData")
 derivedLog = system.util.getLogger("com.ils.labData.derivedValues")
 customValidationLog = system.util.getLogger("com.ils.labData.customValidation")
 
-def customValidate(valueName, rawValue, validationProcedure):
+def customValidate(validationProcedure, valueId, valueName, rawValue, sampleTime, unitName, tagProvider, database):
     customValidationLog.trace("There is a custom validation procedure <%s> for %s" % (valueName, validationProcedure))
     
     # If they specify shared or project scope, then we don't need to do this
@@ -31,16 +31,18 @@ def customValidate(valueName, rawValue, validationProcedure):
         
     try:
         customValidationLog.trace("Calling validation procedure %s" % (validationProcedure))
-        isValid = eval(validationProcedure)(valueName, rawValue)
-        customValidationLog.trace("The value returned from the validation procedure is: %s" % (str(isValid)))
+        isValid, notifyConsole, statusMessage = eval(validationProcedure)(valueId, valueName, rawValue, sampleTime, unitName, tagProvider, database)
+        customValidationLog.trace("The value returned from the validation procedure is: %s - %s - %s" % (str(isValid), str(notifyConsole), statusMessage))
                 
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
         customValidationLog.error("Caught an exception calling calculation method named %s... \n%s" % (validationProcedure, errorTxt) )
         isValid = False
-    
-    return isValid
+        notifyConsole = True
+        statusMessage = "errorTxt"
+        
+    return isValid, notifyConsole, statusMessage
 
 
 def derivedValueCallback(callback, dataDictionary):

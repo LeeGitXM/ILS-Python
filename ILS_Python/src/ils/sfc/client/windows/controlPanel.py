@@ -62,10 +62,13 @@ def updateChartStatus(event):
        Will show None if the chart is not running.'''
     from ils.sfc.common.util import getChartStatus
     from ils.sfc.common.constants import CANCELED
+    from ils.common.config import getDatabaseClient, getTagProviderClient
+    
+    database = getDatabaseClient()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
-    runId = rootContainer.windowData.getValueAt(0,'chartRunId')
-    status = getChartStatus(runId)
+    chartRunId = rootContainer.windowData.getValueAt(0,'chartRunId')
+    status = getChartStatus(chartRunId)
     statusField = window.rootContainer.getComponent('statusLabel')
     if statusField.text == '':
         oldStatus = None
@@ -75,6 +78,21 @@ def updateChartStatus(event):
         statusField.text = status
     else:
         statusField.text = ''
+
+    # Fetch the enable/disable state of the control panel command buttons.
+    SQL = "Select * from SfcControlPanel where chartRunId = '%s'" % (chartRunId)
+    print SQL
+    pds = system.db.runPrepQuery(SQL, database=database)
+    
+    if len(pds) <> 1:
+        return
+    
+    record = pds[0]
+    rootContainer.enableCancel = record["EnableCancel"]
+    rootContainer.enablePause = record["EnablePause"]
+    rootContainer.enableReset = record["EnableReset"]
+    rootContainer.enableResume = record["EnableResume"]
+    rootContainer.enableStart = record["EnableStart"]
 
     # Presses the reset button should reset things, not cancelling the chart!
 #    if status != oldStatus and status == CANCELED:

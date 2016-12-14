@@ -50,6 +50,7 @@ def createTags(tagProvider):
     path = tagProvider + "Configuration/LabData/"
 
     data.append([path, "pollingEnabled", "Boolean", "True"])
+    data.append([path, "pollingEnabledIsolation", "Boolean", "False"])
     data.append([path, "standardDeviationsToValidityLimits", "Float8", "4.5"])
     data.append([path, "manualEntryPermitted", "Boolean", "False"])
     data.append([path, "communicationHealthy", "Boolean", "True"])

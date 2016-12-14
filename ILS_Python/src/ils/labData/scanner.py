@@ -298,7 +298,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
 
 #----------------------------------------------------------------------
 def checkIfValueIsNew(valueName, rawValue, sampleTime, log):
-    log.trace("Checking if lab value is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
+    log.trace("...checking if it is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
         
     if lastValueCache.has_key(valueName):
         lastValue=lastValueCache.get(valueName)
@@ -352,7 +352,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         else:
             # I don't want to post this to the queue because this is called every minute, and if the same tag is bad for a day 
             # we'll fill the queue with errors, yet log.error isn't seen by anyone...
-            dcsLog.warn("Skipping %s because its quality is %s" % (valueName, qv.quality))
+            dcsLog.warn("...skipping %s because its quality is %s" % (valueName, qv.quality))
 
     return writeTags, writeTagValues
 
@@ -474,15 +474,22 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
     if validationProcedure != None and validationProcedure != "":
         
         from ils.labData.callbackDispatcher import customValidate
-        isValid = customValidate(valueName, rawValue, validationProcedure)
+        isValid, notifyConsole, statusMessage = customValidate(validationProcedure, valueId, valueName, rawValue, sampleTime, unitName, tagProvider, database)
+
         # If it fails custom validation then don't bother with any further checks!
         if not(isValid):
             log.trace("%s failed custom validation procedure <%s> " % (valueName, validationProcedure))
 
-            from ils.labData.limitWarning import notifyCustomValidationViolation
-            foundConsole=notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database)
-        
-            writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)
+            if notifyConsole:
+                from ils.labData.limitWarning import notifyCustomValidationViolation
+                foundConsole=notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database)
+                # If the value is bad and we re supposed to notify the console but there isn't one, then store the value even if it is bad.
+                storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database)
+            else:
+                foundConsole = False
+
+            # Remember that updateTags does not always promote the value...
+            writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, isValid, foundConsole, writeTags, writeTagValues, log, notifyConsole, statusMessage)
             updateCache(valueId, valueName, rawValue, sampleTime)
             return writeTags, writeTagValues
         
@@ -631,7 +638,7 @@ def updateRawTags(tagProvider, unitName, valueName, rawValue, sampleTime, tags, 
     
 # Update the Lab Data UDT tags
 # FoundConsole is only relevant if the tag failed validation
-def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues, log):
+def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, foundConsole, tags, tagValues, log, notifyConsole=True, statusMessage="bad - waiting for operator review"):
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
     log.trace("Updating lab data tags %s..." % (tagName))
        
@@ -646,16 +653,34 @@ def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, fo
         tagValues.append("Good")
         
     else:
-        if foundConsole:
-            log.trace("Value is bad and there is a console - Setting the bad value flag to TRUE")
+        if notifyConsole:
+            if foundConsole:
+                # The value is bad, there is a console and the operator has been notified
+                log.trace("Value is bad and there is a console - Setting the bad value flag to TRUE")
+                tags.append(tagName + "/badValue")
+                tagValues.append(True)
+                tags.append(tagName + "/status")
+                tagValues.append(statusMessage)
+            else:
+                # The value is bad and we are supposed to notify the console for to approve/reject the value, but there isn't a console connected, 
+                # so accept the value even though it is bad.
+                log.trace("Value is bad, we are supposed to notify the console, but there isn't one so promote the bad value")
+                tags.append(tagName + "/badValue")
+                tagValues.append(True)
+                tags.append(tagName + "/status")
+                tagValues.append(statusMessage)
+                tags.append(tagName + "/sampleTime")
+                tagValues.append(sampleTime)
+                tags.append(tagName + "/value")
+                tagValues.append(rawValue)
+
+        else:
+            # The value is bad but we do not wish to notify the console so do not promote the bad value
+            log.trace("Value is bad and we do not need to notify the console - Setting the bad value flag to TRUE")
             tags.append(tagName + "/badValue")
             tagValues.append(True)
             tags.append(tagName + "/status")
-            tagValues.append("bad - waiting for operator review")
-        else:
-            # Don't write to any tags here - the notify function will immediately call the accept logic if there is not a console
-            # and that logic writes to the tags
-            pass
+            tagValues.append(statusMessage)
         
     return tags, tagValues
 

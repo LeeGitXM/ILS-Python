@@ -21,7 +21,7 @@ def fetchRecipeData(rxConfig, database):
     logger.tracef("Fetching stashed recipe data for %s...", rxConfig)
     SQL = "select RecipeDataKey, RecipeDataAttribute, RecipeDataValue "\
         "from SfcRecipeDataStash "\
-        "where RxConfigurastion = '%s' "\
+        "where RxConfiguration = '%s' "\
         "order by RecipeDataKey" % (rxConfig)
     pds = system.db.runQuery(SQL, database)
     return pds

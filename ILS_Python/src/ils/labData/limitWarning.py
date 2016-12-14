@@ -192,7 +192,7 @@ def acceptValue(rootContainer, timeout=False):
     database=""
     
     if timeout:
-        postMessage("The value was accept because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+        postMessage("The value was accepted because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
     else:
         postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
 

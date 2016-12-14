@@ -15,16 +15,17 @@ from ils.sfc.gateway.api import getTimeFactor
 from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
     RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, WINDOW_ID, \
     BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, \
-    DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH
+    DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_NAME
 
 
 def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope() 
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
+    stepName = getStepProperty(stepProperties, STEP_NAME)
 
     if state == DEACTIVATED:
-        chartLogger.trace("Handling deactivate request for a TimedDelay block")
+        chartLogger.trace("Handling deactivate request for a TimedDelay block named %s" %(stepName))
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope, stepProperties)
         return False
@@ -36,7 +37,7 @@ def activate(scopeContext, stepProperties, state):
         workIsDone = False
         
         if endTime == None:
-            chartLogger.trace("Executing TimedDelay block - First time initialization")
+            chartLogger.trace("Executing TimedDelay block %s - First time initialization" % (stepName))
             stepId = getStepId(stepProperties) 
             timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
             if timeDelayStrategy == STATIC:
@@ -62,6 +63,8 @@ def activate(scopeContext, stepProperties, state):
             timeFactor = getTimeFactor(chartScope)
             delaySeconds = delaySeconds * timeFactor
             chartLogger.trace("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f" % (unscaledDelaySeconds, timeFactor, delaySeconds))
+            
+            stepScope['tooltip'] = "Starting a %s second delay" % (str(unscaledDelaySeconds))
             
             startTime = system.date.now()
             endTime = system.date.addSeconds(startTime, int(delaySeconds))
@@ -105,7 +108,19 @@ def activate(scopeContext, stepProperties, state):
                 
                 #sendOpenWindow(chartScope, windowId, stepId, database)
         else:
-            chartLogger.trace("Executing TimedDelay block - checking for work done...")
+            chartLogger.trace("Executing TimedDelay block %s - checking for work done..." % (stepName))
+            
+            secondsLeft = system.date.secondsBetween(system.date.now(), endTime)
+            if secondsLeft > 60 * 60:
+                hoursLeft = round(10.0 * secondsLeft / (60.0 * 60.0)) / 10.0
+                tooltip = "%s hours left" % ( str(hoursLeft) )
+            elif secondsLeft > 60:
+                minutesLeft = round(10.0 * secondsLeft / 60.0 ) / 10.0
+                tooltip = "%s minutes left" % ( str(minutesLeft) )
+            else:
+                tooltip = "%s seconds left..." % (str(secondsLeft))
+                
+            stepScope['tooltip'] = tooltip
             workIsDone = system.date.now() >= endTime
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in timedDelay.py', chartLogger)        

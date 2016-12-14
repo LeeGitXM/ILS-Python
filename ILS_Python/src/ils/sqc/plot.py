@@ -23,6 +23,7 @@ def configureChart(rootContainer):
     import system.ils.blt.diagram as diagram
     sqcDiagnosisName=rootContainer.sqcDiagnosisName
     sqcDiagnosisUUID=rootContainer.sqcDiagnosisUUID
+    print "Configuring a chart for %s - %s" % (sqcDiagnosisName, sqcDiagnosisUUID)
     
     if sqcDiagnosisUUID == None or sqcDiagnosisUUID == "NULL":
         system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
@@ -33,11 +34,16 @@ def configureChart(rootContainer):
     chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
     print "Chart Info: ", chartInfo
     if chartInfo == None:
-        system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named <%s> with uuid <%s>" % (sqcDiagnosisName, str(sqcDiagnosisUUID)))
+        system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named: %s with uuid: %s" % (str(sqcDiagnosisName), str(sqcDiagnosisUUID)))
         clearChart(rootContainer)
         return
     
     unitName, labValueName=getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
+    if unitName == None or labValueName == None:
+        system.gui.errorBox("Unable to get the lab value for the SQC Diagnosis named: %s with uuid: %s" % (str(sqcDiagnosisName), str(sqcDiagnosisUUID)))
+        clearChart(rootContainer)
+        return
+    
     rootContainer.unitName=unitName
     rootContainer.valueName=labValueName
 
