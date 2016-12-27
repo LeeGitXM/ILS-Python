@@ -49,6 +49,10 @@ def populateRepeater(rootContainer):
     
     print SQL
     pds = system.db.runQuery(SQL, database)
+    
+    for record in pds:
+        print record["SQCDiagnosisName"], record["Status"]
+
     ds = system.dataset.toDataSet(pds)
     repeater=rootContainer.getComponent("Template Repeater")
     repeater.templateParams=ds
