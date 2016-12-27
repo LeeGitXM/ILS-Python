@@ -284,3 +284,26 @@ def splitTagPath(tagPath):
         tagName = tagPath[string.rfind(tagPath, '/') + 1:]
 #    print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
     return parentPath, tagName
+
+# Check for the existence of the tag and that the global write enabled flag is set.
+def checkConfig(tagPath):
+    log.trace("In util.checkConfig()...")
+    # Check that the tag exists
+    reason = ""
+    tagExists = system.tag.exists(tagPath)
+    if not(tagExists):
+        reason = "Tag %s does not exist!" % tagPath
+        log.error(reason)
+        return False, reason
+
+    provider = getProviderFromTagpath(tagPath)
+    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+    
+    if not(globalWriteEnabled):
+        log.info('Write bypassed for %s because writes are inhibited!' % (tagPath))
+        return False, 'Writing is currently inhibited'
+    
+    # TODO: Check if there is an item ID and an OPC server.  
+    # TODO: Should I read the current value and see if quality is good?  If the tag is bad is there any way a write could succeed?
+                                           
+    return True, ""

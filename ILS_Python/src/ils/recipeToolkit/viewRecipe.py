@@ -7,13 +7,19 @@ import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 
-# This runs in the client when it receives a message that an automated download message has been received
+# This runs in the client when it receives a message that an automated download message has been received.  This is in response to the Automated download tag
+# receiving a new Grade (a download is being initiated from the DCS) AND the automatedDownload tag of the download trigger UDT is set to FALSE, meaning that the 
+# download is initiated automatically, but the operator is in charge, so this is really a semi-automatic mode.  So all we have to do is launch the Recipe Viewer
+# screen with the new grade selected.  It is up to the operator to press the Download button and actually start the download.
 def automatedDownloadMessageHandler(payload):
+    print "In %s.automatedDownloadMessageHandler(), the payload is %s" % (__name__, payload)
     targetPost = payload.get("post", "None")
     myPost = system.tag.read("[Client]Post").value
 
     # If the message was intended for another post then bail    
-    if string.upper(targetPost) != string.upper(myPost):return
+    if string.upper(targetPost) != string.upper(myPost):
+        print "Bailing from a semi-automated download request because my post (%s) does not match the target post (%s)" % (string.upper(myPost), string.upper(targetPost))
+        return
     
     grade = payload.get("grade", "")
     version = payload.get("version", 0)
@@ -21,16 +27,15 @@ def automatedDownloadMessageHandler(payload):
     downloadType = 'GradeChange'
     
     # Save the grade and type to the recipe map table.
-    # grade looks like an int, but it is probably a string
-    SQL = "update RtRecipeMap set CurrentRecipeGrade = %s, CurrentRecipeVersion = %s, Status = 'Initializing', "\
-        "Timestamp = getdate() where RecipeKey = '%s'" \
+    SQL = "update RtRecipeFamily set CurrentGrade = %s, CurrentVersion = %s, Status = 'Initializing', "\
+        "Timestamp = getdate() where RecipeFamilyName = '%s'" \
         % (str(grade), version, recipeKey)
     
     print "SQL: ", SQL
     rows = system.db.runUpdateQuery(SQL)
     print "Successfully updated %i rows" % (rows)
 
-    system.nav.openWindow('Recipe/Recipe Viewer', {'recipeKey': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType})
     system.nav.centerWindow('Recipe/Recipe Viewer')
     
 def showCurrentRecipeCallback(familyName):

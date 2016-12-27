@@ -36,14 +36,12 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
 
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output
-    def writeDatum(self):
+    def writeDatum(self, val, valueType):
         
-        # Get the value to be written - this must be there BEFORE the command is set       
-        val = system.tag.read(self.path + "/writeValue").value
+        log.info("Writing <%s>, <%s> to %s, an OPCConditionalOutput" % (str(val), str(valueType), self.path))
+
         if val == None:
             val = float("NaN")
-        
-        log.info("Writing <%s> to %s, an OPCConditionalOutput" % (str(val), self.path))
 
         log.trace("Initializing %s status and  to False" % (self.path))                   
         system.tag.write(self.path + "/writeConfirmed", False)
@@ -58,17 +56,19 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
             return status,reason
  
         # Update the status to "Writing"
+        log.tracef("   %s - writing permissive...", self.path)
         system.tag.write(self.path + "/writeStatus", "Writing Permissive")
  
-        # Read the current permissive and save it so that we can put it back the way is was when we are done
+        # Read the current permissive so that we can put it back the way is was when we are done
         permissiveAsFound = system.tag.read(self.path + "/permissive").value
-        system.tag.write(self.path + "/permissiveAsFound", permissiveAsFound)
+        log.tracef("   %s - the permissive as found is: %s", self.path, permissiveAsFound)
         
         # Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed
         permissiveValue = system.tag.read(self.path + "/permissiveValue").value
         permissiveConfirmation = system.tag.read(self.path + "/permissiveConfirmation").value
         
         # Write the permissive value to the permissive tag and wait until it gets there
+        log.tracef("   %s - writing permissive %s", self.path, permissiveValue)
         system.tag.write(self.path + "/permissive", permissiveValue)
         
         # Confirm the permissive if necessary.  If the UDT is configured for confirmation, then it MUST be confirmed 

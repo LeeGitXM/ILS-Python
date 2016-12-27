@@ -3,12 +3,8 @@ Created on Nov 30, 2014
 
 @author: Pete
 '''
-import string
-import system
-import time
-import traceback
-from java.util import Date
-from ils.io.util import isUDT, checkIfController, getOuterUDT
+import string, system, time, traceback
+from ils.io.util import isUDT, getOuterUDT
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -132,7 +128,7 @@ def writeDatum(tagPath, val, valueType=""):
         # The write was successful, now confirm the write by reading the value back
         success, errorMessage = simpleWriteConfirm(tagPath, val, valueType)
         if success:
-            log.trace("WriteDatum successfully confirmed writing %s to %s" % (str(val), tagPath))
+            log.info("   Confirmed writing %s to %s" % (str(val), tagPath))
         else:
             log.error("WriteDatum failed to confirm writing %s to %s because %s" % (str(val), str(tagPath), errorMessage))
     else:
@@ -157,12 +153,18 @@ def writeWithNoCheck(tagPath, val, valueType=""):
         
     return success, errorMessage
 
-
-# This implements the common core write logic.  It is used by both WriteDatum and WriteWithNoCheck.
-# The reason for not just making this WriteWithNoCheck is so that I can make distinct log messages.
-def writer(tagPath, val, valueType=""):
-    log.trace("In writer with %s-%s-%s" % (tagPath, str(val), valueType))
+# This is the equivalent of s88-write-setpoint-ramp in the old system.
+# This method makes sequential writes to ramp either the SP or OP of a controller.  
+# There is no native output ramping capability in EPKS and this method fills the gap.  
+# In addition, it will ramp the SP of a controller that isn't built in G2 as having native EPKS SP Ramp capability.  
+# In both cases, the ramp is executed by writing sequentially based on a linear ramp.  
+# Ramp time is in minutes, update frequency is in seconds.
+def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
+    log.info("Writing a controller ramp for %s" % (tagPath))
+        
     errorMessage=""
+    confirmed = False
+    
     tagExists = system.tag.exists(tagPath)
     if not(tagExists):
         return False, "%s does not exist" % (tagPath)
@@ -170,56 +172,122 @@ def writer(tagPath, val, valueType=""):
     if isUDT(tagPath):
         log.trace("The target is a UDT - resetting...")
         
-        # Read the writeStatus, if the UDT has already been reset, then no use doing it again
-        writeStatus = system.tag.read(tagPath + '/writeStatus')
-        if string.upper(writeStatus.value) <> 'RESET':
-            status = system.tag.write(tagPath + '/command', 'RESET')
-            if status == 0:
-                log.error("ERROR: writing RESET to the command tag for %s" % (tagPath))
-                return False, "Failed writing RESET to command tag"
-         
-            # Give the reset command a chance to complete
-            time.sleep(1.0)
+        # Get the name of the Python class that corresponds to this UDT.
+        pyc = system.tag.read(tagPath + "/pythonClass").value
+        pkg = "ils.io.%s"%pyc.lower()
+        pythonClass = pyc.lower()+"."+pyc
+
+        # Dynamically create an object (that won't live very long)
+        try:
+            # This requires that I explicitly import everything up above
+            cmd = "ils.io." + pythonClass + "('"+tagPath+"')"
+            log.trace("Creating a tag object using: <%s>" % (cmd))
+            tag = eval(cmd)
+
+            confirmed, errorMessage = tag.writeRamp(val, valType, rampTime, updateFrequency, writeConfirm)
+
+        except:
+            reason = "ERROR writing to %s, a <%s> (%s)" % (tagPath, pythonClass, traceback.format_exc()) 
+            log.error(reason)
+            return False, reason
         
-        # I think valueType is always used - REQUIRED!  This is now handled below by checking 
-        # if it is a controller.
-        if valueType == "":
-            # The 'Tag" is one of the OPC Output classes - not a controller
-            log.trace("Writing %s to /writeval..." % (str(val)))
-            status = system.tag.write(tagPath + '/writeValue', val)
-            if status == 0:
-                log.error("ERROR: writing %s to the writeValue tag for %s" % (str(val), tagPath))
-                return False, "Failed writing %s to writeValue tag" % (str(val))
-        else:
-            # The 'Tag" is a controller
-            isController=checkIfController(tagPath)
-            if isController:
-                payload = {"val": val, "valueType": valueType}
-                log.trace("Writing %s to /payload..." % (str(payload)))
-            
-                status = system.tag.write(tagPath + '/payload', str(payload))
-                if status == 0:
-                    log.error("ERROR: writing %s to the payload tag for %s" % (str(payload), tagPath))
-                    return False, "Failed writing %s to payload tag" % (str(val))
-            else:
-                # The 'Tag" is one of the OPC Output classes - not a controller
-                log.trace("Writing %s to /writeval..." % (str(val)))
-                status = system.tag.write(tagPath + '/writeValue', val)
-                if status == 0:
-                    log.error("ERROR: writing %s to the writeValue tag for %s" % (str(val), tagPath))
-                    return False, "Failed writing %s to writeValue tag" % (str(val))
-        
-        log.trace("Writing WriteDatum to /command")
-        status = system.tag.write(tagPath + '/command', 'WriteDatum')
-        if status == 0:
-            log.error("ERROR: writing WriteDatum to the command tag for %s" % (tagPath))
-            return False, "Failed writing WriteDatum to command tag"
-    
-        # Without confirming the round trip of the value
-        from ils.io.util import waitForWriteComplete
-        success, errorMessage = waitForWriteComplete(tagPath)           
     else:
         # The 'Tag" is either a simple memory tag or an simple OPC tag
+        log.error("Ramps have not been implemented to simple tags (%s)..." % (tagPath))
+        return False, "Ramps have not been implemented for a simple tag."
+    
+    return confirmed, errorMessage
+
+# This implements the common core write logic.  It is used by both WriteDatum and WriteWithNoCheck.
+# The reason for not just making this WriteWithNoCheck is so that I can make distinct log messages.
+def writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit):
+    log.trace("In writeRecipeDetail with %s-%s-%s-%s" % (tagPath, str(newValue), str(newHighLimit),str(newLowLimit)))
+      
+    errorMessage=""
+    success = False
+    
+    tagExists = system.tag.exists(tagPath)
+    if not(tagExists):
+        return False, "%s does not exist" % (tagPath)
+    
+    if isUDT(tagPath):
+
+        # Dynamically create an object (that won't live very long)
+        try:
+            # This requires that I explicitly import everything up above
+            cmd = "ils.io.recipedetail.RecipeDetail('"+tagPath+"')"
+            log.trace("Creating a tag object using: <%s>" % (cmd))
+            tag = eval(cmd)
+                        
+            success, errorMessage = tag.writeRecipeDetail(newValue, newHighLimit, newLowLimit)
+
+        except:
+            reason = "ERROR writing to %s, a recipeDetail (%s)" % (tagPath, traceback.format_exc()) 
+            log.error(reason)
+            return False, reason
+        
+    else:
+        success = False
+        errorMessage = "WriteRecipeDetail is only appropriate for recipe detail UDTs"
+
+    return success, errorMessage
+
+
+# This implements the common core write logic.  It is used by both WriteDatum and WriteWithNoCheck.
+# The reason for not just making this WriteWithNoCheck is so that I can make distinct log messages.
+def writer(tagPath, val, valueType=""):
+    log.trace("In writer with %s-%s-%s" % (tagPath, str(val), valueType))
+    
+    command = "writeDatum"
+    
+    errorMessage=""
+    success = False
+    
+    tagExists = system.tag.exists(tagPath)
+    if not(tagExists):
+        return False, "%s does not exist" % (tagPath)
+    
+    if isUDT(tagPath):
+        log.trace("The target is a UDT - resetting...")
+        
+        # Get the name of the Python class that corresponds to this UDT.
+        pyc = system.tag.read(tagPath + "/pythonClass").value
+        pythonClass = pyc.lower()+"."+pyc
+
+        # Dynamically create an object (that won't live very long)
+        try:
+            # This requires that I explicitly import everything up above
+            cmd = "ils.io." + pythonClass + "('"+tagPath+"')"
+            log.trace("Creating a tag object using: <%s>" % (cmd))
+            tag = eval(cmd)
+                
+            if string.upper(command) == "WRITEDATUM":
+                success, errorMessage = tag.writeDatum(val, valueType)
+            elif string.upper(command) == "WRITEWITHNOCHECK":
+                success, errorMessage = tag.writeWithNoCheck()
+            elif string.upper(command) == "WRITERAMP":
+                success, errorMessage = tag.writeRamp()
+            elif string.upper(command) == "RESET":
+                success, errorMessage = tag.reset()
+            else:
+                errorMessage = "Unrecognized command: "+command
+                log.error(errorMessage)
+        except:
+            reason = "ERROR writing to %s, a <%s> (%s)" % (tagPath, pythonClass, traceback.format_exc()) 
+            log.error(reason)
+            return False, reason
+        
+    else:
+        # The 'Tag" is either a simple memory tag or an simple OPC tag
+        log.trace("Checking the basic configuration for a simple write to %s..." % (tagPath))
+        
+        # Check that the tag exists and writing is enabled
+        from ils.io.util import checkConfig
+        configOK, errorMessage = checkConfig(tagPath)
+        
+        if not(configOK):
+            return configOK, errorMessage
+        
         log.trace("Simple write of %s to %s..." % (str(val), tagPath))
         status = system.tag.write(tagPath, val)
         if status == 0:
@@ -260,55 +328,28 @@ def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1):
 
     return confirmation, errorMessage
 
-
-# This is the equivalent of s88-write-setpoint-ramp in the old system.
-# This method makes sequential writes to ramp either the SP or OP of an Experion controller.  
-# There is no native output ramping capability in EPKS and this method fills the gap.  
-# In addition, it will ramp the SP of a controller that isn't built in G2 as having native EPKS SP Ramp capability.  
-# In both cases, the ramp is executed by writing sequentially based on a linear ramp.  
-# It assumes that the ramp time is in minutes..   
-# TODO - This can't possible be finished...
-def writeRamp(controllerTagpath, val, rampTime, updateFrequency, valType, writeConfirm):
-    log.info("Writing a controller ramp for %s" % (controllerTagpath))
-    payload = {"val": val, "rampTime": rampTime, "updateFrequency": updateFrequency, "writeConfirm": writeConfirm, "valType": valType}
-    
-    system.tag.write(controllerTagpath + '/payload', payload)
-    system.tag.write(controllerTagpath + '/command', 'WRITERAMP')
-    
-    # The gateway is going to confirm the write whether we want to or not.   If the caller 
-    # doesn't care, then don't wait around for the answer
-    if writeConfirm:
-        # It is going to be a little tough to come up with the exact path to the tag to be confirmed without using some 
-        # knowledge of the controller structure
-        from ils.io.util import waitForWriteConfirm
-        confirmed, errorMessage = waitForWriteConfirm(controllerTagpath)
-        return confirmed
-    
-    return True
-
-
 # This is the equivalent of s88-confirm-controller-mode in the old system.
 # This is a method dispatcher to the method appropriate for the class of controller.
 # This is called from Python and runs in the client.
 # I used to trap errors here, but I think it is best to let errors pass up to a higher level where they can be dealt 
 # with better (7/20/16_
-def confirmControllerMode(tagpath, val, testForZero, checkPathToValve, valueType, logger):
-    logger.trace("In %s, checking %s" % (__name__, tagpath))
+def confirmControllerMode(tagpath, val, testForZero, checkPathToValve, valueType):
+    log.trace("In %s, checking %s" % (__name__, tagpath))
 
     controllerUDTType, controllerTagpath=getOuterUDT(tagpath)
     
     if controllerUDTType == None:
-        logger.trace("The target is not a controller so assume it is reachable")
+        log.trace("The target is not a controller so assume it is reachable")
         return True, "The target is not a Controller"
 
-    logger.trace("The UDT is: %s, the path to the UDT is: %s" % (controllerUDTType, controllerTagpath))
+    log.trace("The UDT is: %s, the path to the UDT is: %s" % (controllerUDTType, controllerTagpath))
     # Get the name of the Python class that corresponds to this UDT.
     pythonClass = system.tag.read(controllerTagpath + "/pythonClass").value
     pythonClass = pythonClass.lower() + "." + pythonClass
 
     # Dynamically create an object (that won't live very long) and then call its reset method
     cmd = "ils.io." + pythonClass + "('" + controllerTagpath + "')"
-    logger.trace("Command: %s" % (cmd))
+    log.trace("Command: %s" % (cmd))
     controller = eval(cmd)
     success, errorMessage = controller.confirmControllerMode(val, testForZero, checkPathToValve, valueType)
 
@@ -353,3 +394,59 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
 
     return displayName
 
+'''
+The purpose of this message handler is to perform the actual write from the gateway even though it is initiated from a client.
+There is an impression that writes work better from the gateway and perform faster from a threading point of view than from a client.
+The design of this handler is that a list of writes can be sent in a single message and the handler will perform them sequentially.
+This handler is not designed to do the writes in parallel, but the most strenuous use case is recipe download which uses 
+WriteWithNoCheck which should be a fast operation.  Of course on Mike's real system this might be a problem and some refactoring 
+may be required.
+'''
+def writeMessageHandler(payload):
+    command = payload.get("command", "writeDatum")    
+    tagList = payload.get("tagList", [])
+    log.info("----------------------------------------------------")
+    log.info("Handling a %s writeMessage with %i tags" % (command, len(tagList)))
+    log.trace("%s" % (str(payload)))
+    log.info( "----------------------------------------------------")
+    
+    for tagDict in tagList:
+    
+        try:
+            log.trace(str(tagDict))
+            if command == "writeDatum":
+                tagPath = tagDict.get("tagPath", "")
+                tagValue = tagDict.get("tagValue", "")
+                valueType = tagDict.get("valueType", "value")
+                writeDatum(tagPath, tagValue, valueType)
+            elif command == "writeWithNoCheck":
+                tagPath = tagDict.get("tagPath", "")
+                tagValue = tagDict.get("tagValue", "")
+                valueType = tagDict.get("valueType", "value")
+                writeWithNoCheck(tagPath, tagValue, valueType)
+            elif command == "writeRamp":
+                tagPath = tagDict.get("tagPath", "")
+                tagValue = tagDict.get("tagValue", "")
+                valueType = tagDict.get("valueType", "value")
+                rampTime = tagDict.get("rampTime", 1.0)
+                updateFrequency = tagDict.get("updateFrequency", 1.0)
+                writeConfirm = tagDict.get("writeConfirm", True)
+                writeRamp(tagPath, tagValue, valueType, rampTime, updateFrequency, writeConfirm)
+            elif command == "writeRecipeDetail":
+                tagPath = tagDict.get("tagPath", "")
+                newValue = tagDict.get("newValue", "")
+                newHighLimit = tagDict.get("newHighLimit", "")
+                newLowLimit = tagDict.get("newLowLimit", "")
+                writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit)
+            else:
+                log.error("Unrecognized command: %s in ils.io.api.writeMessageHandler" % (command))
+        except:
+            log.error("Caught an error in ils.io.api.writeMessageHandler")
+        
+        # This is just a short dwell that may or may not be necessary, it definetly seemed to help during 
+        # testing from the standpoint of keeping log messages from getting intertwined.
+        time.sleep(0.2)
+    
+    log.info("-------------------------------------------------")
+    log.info("   completed writing to %i tags" % (len(tagList)))
+    log.info("-------------------------------------------------")

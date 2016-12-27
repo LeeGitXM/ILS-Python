@@ -13,6 +13,7 @@ import ils.recipeToolkit.refresh as recipeToolkit_refresh
 import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.io.client import writeWithNoChecks, writeRecipeDetails
 log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 
 def automatedDownloadHandler(tagPath, grade):
@@ -86,18 +87,16 @@ def fullyAutomatedDownload(post, project, database, familyName, grade, version):
     globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
     writeEnabled = recipeWriteEnabled and globalWriteEnabled
     localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
-    
     downloadTimeout = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/downloadTimeout").value
-    print "The download timeout is ", downloadTimeout, " seconds"
     
-    log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s)..." % (familyName, str(writeEnabled)))
+    log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s, timeout: %s seconds)..." % (familyName, str(writeEnabled), str(downloadTimeout)))
     
     recipeToolkit_update.recipeFamilyStatus(familyName, 'Processing Download', database)
 
     # Save the time that the download started so that we know when to stop monitoring it.
     downloadStartTime = util.getDate(database)
 
-    resetTags(dsProcessed, provider, familyName)
+    resetTags(dsProcessed, provider, familyName, localWriteAlias)
 
     # Open a master download record for this download
     familyId = recipeToolkit_fetch.fetchFamilyId(familyName, database)
@@ -107,8 +106,8 @@ def fullyAutomatedDownload(post, project, database, familyName, grade, version):
     
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
-    dsProcessed = writeImmediate(dsProcessed, provider, familyName, logId, localWriteAlias, writeEnabled)
-    dsProcessed = writeDeferred(dsProcessed, provider, familyName, logId, writeEnabled)
+    dsProcessed = writeImmediate(dsProcessed, provider, familyName, logId, localWriteAlias, writeEnabled, project)
+    dsProcessed = writeDeferred(dsProcessed, provider, familyName, logId, writeEnabled, project)
 
     # Start the download monitor
     recipeToolkit_downloadMonitor.automatedRunner(dsProcessed, provider, familyName, grade, version, logId, downloadStartTime, downloadTimeout, database)
@@ -145,7 +144,7 @@ def downloadCallback(rootContainer):
 
 
 def download(rootContainer):
-    
+    project = system.util.getProjectName()
     provider = rootContainer.getPropertyValue("provider")
     familyName = rootContainer.getPropertyValue("familyName")
     table = rootContainer.getComponent("Power Table")
@@ -189,8 +188,9 @@ def download(rootContainer):
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
     ds = table.processedData 
-    ds = writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnabled)
-    ds = writeDeferred(ds, provider, familyName, logId, writeEnabled)
+    ds = writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnabled, project)
+
+    ds = writeDeferred(ds, provider, familyName, logId, writeEnabled, project)
     table.processedData = ds
     
     # Update the tables visible rows from the processed Data structure
@@ -284,7 +284,7 @@ def logSkippedTags(table, logId):
 
 
 # There are two types of immediate writes: 1) writes to memory tags, and 2) writes to OPC tags that do not involve high low limits 
-def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnabled):
+def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnabled, project):
     from ils.recipeToolkit.common import formatLocalTagName
     from ils.recipeToolkit.common import formatTagName
 
@@ -292,12 +292,8 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
 
     pds = system.dataset.toPyDataSet(ds)
 
-    tags = []
-    vals = []
-    commandTags = []
-    commandVals = []
-    localTags = []
-    localVals = []
+    localTagValues = []
+    opcTagValues = []
 
     i = 0
     for record in pds:
@@ -315,20 +311,15 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
             if string.upper(writeLocation) == localWriteAlias:
                 tagName = formatLocalTagName(provider, tagName)
                 log.trace("Immediate Local: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
-                localTags.append(tagName)
-                localVals.append(pendVal)
+                localTagValues.append({"tagPath": tagName, "tagValue": pendVal})
             else:
                 # Convert to Ignition tagname            
                 tagName = formatTagName(provider, familyName, tagName)
                 log.trace("Immediate OPC: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
-                tags.append(tagName + '/writeValue')
-                vals.append(pendVal)
-                commandTags.append(tagName + '/Command')
-                commandVals.append('WriteDatum')
+                opcTagValues.append({"tagPath": tagName, "tagValue": pendVal})
                 modeAttributeValue = record['Mode Attribute Value']
-                if modeAttributeValue != '':
-                    commandTags.append(tagName + '/PermissiveValue')
-                    commandVals.append(modeAttributeValue)
+                if modeAttributeValue != '' and modeAttributeValue != None:
+                    opcTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
 
             ds = system.dataset.setValue(ds, i, 'Download Status', 'Pending')
 
@@ -338,14 +329,9 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
 
     log.trace("====================================")
     if writeEnabled:
-        log.info("Writing to immediate LOCAL tags...")
-        log.trace("Local Tags:   %s" % (str(localTags)))
-        log.trace("Local Values: %s" % (str(localVals)))
-        
-        status = system.tag.writeAll(localTags, localVals)
-        log.trace("   write results (0 = failed immediate, 1 = success, 2 = pending)")
-        for i in range(0, len(status)):
-            log.trace("    %s : %s  ->  %s" % (str(localTags[i]), str(localVals[i]), str(status[i])))
+        log.info("Writing to %i immediate LOCAL tags..." % (len(localTagValues)))
+        log.trace("  %s" % (str(localTagValues)))
+        writeWithNoChecks(localTagValues, project)
     else:
         log.info("*** Skipping write to immediate LOCAL tags ***")
 
@@ -353,41 +339,38 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
 
     log.trace("====================================")
     if writeEnabled:
-        log.info("Writing to immediate OPC tags...") 
-        log.trace("  Step 1: Writing values to the holding variables...")
-        status = system.tag.writeAll(tags, vals)
-        log.trace("    write results (0 = failed immediate, 1 = success, 2 = pending)")
-        for i in range(0, len(status)):
-            log.trace("      %s : %s -> %s" % (str(tags[i]), str(vals[i]), str(status[i])))
-
-        # Now write the commands, which really make the download go
-        log.trace("  Step 2: Writing to the command tag...")
-        status = system.tag.writeAll(commandTags, commandVals)
-        log.trace("    write results (0 = failed immediate, 1 = success, 2 = pending)")
-        for i in range(0, len(status)):
-            log.trace("      %s : %s  ->  %s" % (str(commandTags[i]), str(commandVals[i]), str(status[i])))
-
+        log.info("Writing to %i immediate OPC tags..." % len(opcTagValues)) 
+        writeWithNoChecks(opcTagValues, project)
     else:
         log.info("*** Skipping write to immediate OPC tags ***")
 
-    log.info("Immediate downloads: %i local, %i OPC" % (len(localTags), len(tags)))
+    log.info("Immediate downloads: %i local, %i OPC" % (len(localTagValues), len(opcTagValues)))
 
     return ds
 
 
 # Deferred writes generally involve a setpoint and one or more limits.  We need to be careful to write things in the correct order 
-# so that the limits are not temporarily violated.
-def writeDeferred(ds, provider, familyName, logId, writeEnabled):
-    import string
+# so that the limits are not temporarily violated.  The idea behind the deferred write is that multiple lines in the recipe viewer are
+# related and the write to them needs to be coordinated.  If we want to write to a target that has high and low limits set then we can 
+# also change the high and low limits.  When the limits are changed then we need to consider the order of change that will prevent a
+# momentary violation of limits.
+# The first step is to gather all of the deferred writes and put them in the list.  Then we need to determine if any of then are 
+# related.  We do this by finding all of the recipe detail UDTs.  Every deferred write in the recipe viewer should be referenced in a
+# recipe detail.  The recipe detail UDT contains the association between target and the high and low limits.  
+# Once we have paired things up, then we make a dictionary and send it to the gateway for processing.
+def writeDeferred(ds, provider, familyName, logId, writeEnabled, project):
     from ils.recipeToolkit.common import formatTagName
 
     log.trace("=====================================")
-    log.trace("Writing to deferred OPC tags...")
+    log.trace("Writing to deferred (recipe detail) tags...")
     
     # Collect all of the details that need to be downloaded
     pds = system.dataset.toPyDataSet(ds)
 
     rootTags = []   # I'll use this later to determine which recipe detail onjects to use
+    pendVals = []
+    downloadTypes = []
+    
     tags = []
     vals = []
 
@@ -405,9 +388,9 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled):
             tagName = formatTagName(provider, familyName, tagName)
             rootTags.append(str(tagName))
             
-            # Write the value to be sent to the DCS
-            tags.append(tagName + '/writeValue')
-            vals.append(pendVal)
+            # Save the value that we are going to write
+            pendVals.append(pendVal)
+            downloadTypes.append(downloadType)
             
             # Update status to indicate we are writing
             tags.append(tagName + '/writeStatus')
@@ -422,22 +405,25 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled):
 
         i = i + 1
 
+    log.trace("    The root tags are:     %s" %  (str(rootTags)))
+    log.trace("    The pendVals are:      %s" % (str(pendVals)))
+    log.trace("    The dwonloadTypes are: %s" % (str(downloadTypes)))
+    
     status = system.tag.writeAll(tags, vals)
     log.trace("Tag write status: %s" % (str(status)))
     
-    # Write the "write" command to the recipe details which will initiate the download in the gateway
-    log.trace("  ...writing the write command to the recipe details...")
-    log.trace("     The root of the tags that will be written are: %s" % (str(rootTags)))
+
+    log.trace("    --- matching recipe detail UDTS with deferred tags ---")
     
-    tags = []
-    vals = []
+    tagDicts = []
     path = '[' + provider + ']Recipe/' + familyName
     for udtType in ['Recipe Data/Recipe Details']:
         details = system.tag.browseTags(path, udtParentType=udtType)
 
         for detail in details:
-#            print "Checking recipe detail named: ", detail.name
+            log.tracef("Checking recipe detail named: %s", detail.name)
             tagName = formatTagName(provider, familyName, detail.name)
+            log.tracef("  Tag: %s", tagName)
 
             highLimitTagName = system.tag.read(tagName+'/highLimitTagName').value
             highLimitTagName = formatTagName(provider, familyName, highLimitTagName)
@@ -446,17 +432,35 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled):
             valueTagName = system.tag.read(tagName+'/valueTagName').value
             valueTagName = formatTagName(provider, familyName, valueTagName)
             
-#            print "   High: ", highLimitTagName
-#            print "    Low: ", lowLimitTagName
-#            print "  Value: ", valueTagName
-            
             if highLimitTagName in rootTags or lowLimitTagName in rootTags or valueTagName in rootTags:
+                tagDict = {"tagPath": tagName}
+                
+                if highLimitTagName in rootTags:
+                    idx = rootTags.index(highLimitTagName)
+                    val = pendVals[idx]
+                    log.tracef("    Changing the high limit to %s", str(val))
+                    tagDict['newHighLimit'] = val
+                    
+                if lowLimitTagName in rootTags:
+                    idx = rootTags.index(lowLimitTagName)
+                    val = pendVals[idx]
+                    log.tracef("    Changing the low limit to %s", str(val))
+                    tagDict['newLowLimit'] = val
+                
+                if valueTagName in rootTags:
+                    idx = rootTags.index(valueTagName)
+                    val = pendVals[idx]
+                    log.tracef("    Changing the SP to %s", str(val))
+                    tagDict['newValue'] = val
+                    
+                tagDicts.append(tagDict)
                 log.trace("     adding %s to the deferred value write list..." % (tagName))
-                tags.append(tagName + '/command')
-                vals.append('write')
 
-    # Write all of the COMMAND values at once which will kick off the writes in the gateway
-    status = system.tag.writeAll(tags, vals)
-    log.trace("Tag write status: %s" % (str(status)))
+    # send the recipe detail write dictionaries to the gateway
+    if len(tagDicts) > 0:
+        log.info("Sending %i recipeDetail dictionaries to the gateway..." % (len(tagDicts)))
+        writeRecipeDetails(tagDicts,project) 
+
     log.trace("=====================================")
     return ds
+    

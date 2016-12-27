@@ -9,7 +9,7 @@ Created on Jul 9, 2014
 import ils
 import ils.io
 import ils.io.opctag as opctag
-import system
+import system, string
 
 log = system.util.getLogger("com.ils.io")
 
@@ -46,20 +46,18 @@ class OPCOutput(opctag.OPCTag):
         log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
  
         from ils.io.util import confirmWrite
+        system.tag.write(self.path + '/writeStatus', 'Confirming')
         confirmation, errorMessage = confirmWrite(self.path + "/value", val)
         return confirmation, errorMessage
    
     
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output
-    def writeDatum(self):
-        
-        # Get the value to be written - this must be there BEFORE the command is set       
-        val = system.tag.read(self.path + "/writeValue").value
-        if val == None:
+    def writeDatum(self, val, valueType=""):
+        log.info("Writing <%s>, <%s> to %s, an OPCOutput" % (str(val), str(valueType), self.path))
+
+        if val == None or string.upper(str(val)) == 'NAN':
             val = float("NaN")
-        
-        log.info("Writing <%s> to %s, an OPCOutput" % (str(val), self.path))
 
         system.tag.write(self.path + "/writeConfirmed", False)
         system.tag.write(self.path + "/writeStatus", "")
@@ -69,7 +67,7 @@ class OPCOutput(opctag.OPCTag):
         if status == False :              
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", reason)
-            log.info("Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
+            log.warn("* Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
             return status,reason
  
         # Update the status to "Writing"
@@ -95,13 +93,10 @@ class OPCOutput(opctag.OPCTag):
     
     # Write with NO confirmation.
     # Assume the UDT structure of an OPC Output
-    def writeWithNoCheck(self):
-        
-        # Get the value to be written - this must be there BEFORE the command is set       
-        val = system.tag.read(self.path + "/writeValue").value
+    def writeWithNoCheck(self, val):
         if val == None:
             val = float("NaN")
-        
+
         log.info("Writing <%s> to %s, an OPCOutput with no confirmation" % (str(val), self.path))
 
         system.tag.write(self.path + "/writeConfirmed", False)

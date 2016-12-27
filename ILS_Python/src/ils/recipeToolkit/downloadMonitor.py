@@ -44,7 +44,7 @@ def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, dow
 
 def start(rootContainer):
     log.info("Starting the download monitor timer...")
-    timer = rootContainer.getComponent("Timer")
+    timer = rootContainer.getComponent("Monitor Timer")
     timer.running = True
 
 # This is called from the timer widget on the Recipe viewer screen in client scope.
@@ -52,7 +52,7 @@ def runner(rootContainer):
     from java.util import Date
 
     log.trace("Starting a download monitor cycle...")
-    timer = rootContainer.getComponent("Timer")
+    timer = rootContainer.getComponent("Monitor Timer")
     
     from ils.recipeToolkit.downloadComplete import downloadComplete
     
@@ -130,8 +130,6 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                 # Even though these are 'IMMEDIATE' writes, it will take a cycle for OPC tags
                 if downloadType == 'IMMEDIATE' or downloadType == 'DEFERRED VALUE' or downloadType == 'DEFERRED LOW LIMIT' or downloadType == 'DEFERRED HIGH LIMIT':
                     writeLocation = record["Write Location"]
-                    print "Download Type: ", downloadType
-                    print "Write Location: ", writeLocation
                         
                     pendVal = record["Pend"]
                     reason = record["Reason"]
@@ -163,7 +161,6 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                             from ils.recipeToolkit.common import formatTagName
                             tagName=formatTagName(provider, familyName, storTagName) + '/writeStatus'
                             qv = system.tag.read(tagName)
-                            print tagName, " => ", qv.value, qv.quality 
                             writeStatus=str(qv.value)
                             
                             if string.upper(writeStatus) == 'SUCCESS' or string.upper(writeStatus) == 'FAILURE':
@@ -201,7 +198,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                 failures = failures + 1            
             
             else:
-                print "Unexpected download status: ", downloadStatus
+                log.trace("Unexpected download status in step: %s - %s" % (str(step), downloadStatus))
 
         i = i + 1
 

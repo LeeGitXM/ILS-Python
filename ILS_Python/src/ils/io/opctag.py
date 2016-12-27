@@ -22,38 +22,28 @@ class OPCTag():
     # Path is the root tag path of the UDT which this object encapsulates
     path = None
     
-    def __init__(self,tagPath):
-        self.initialize(tagPath)
-        
     # Set any default properties.
     # For this abstract class there aren't many (yet).
-    def initialize(self,tagPath):    
-        log.trace("in OPCTag.initialize() The tagPath is %s" % (tagPath))
-        self.path = str(tagPath)
+    def __init__(self,path):
+        self.path = str(path)
         
-    # Check for the existence of the tag
+        
+    # Check for the existence of the tag and the global write flag
     def checkConfig(self):
         log.trace("In OPCTag.checkConfig()...")
-        # Check that the tag exists
-        reason = ""
-        tagExists = system.tag.exists(self.path)
-        if not(tagExists):
-            reason = "Tag %s does not exist!" % self.path
-            log.error(reason)
-            return False, reason
- 
-        provider = getProviderFromTagpath(self.path)
-        recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
-        globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
-        writeEnabled = recipeWriteEnabled and globalWriteEnabled
-        log.trace("The combined write enabled status is: %s" % (str(writeEnabled)))
         
-        if not(writeEnabled):
-            log.info('Write bypassed for %s because writes are inhibited!' % (self.path))
-            return False, 'Writing is currently inhibited'
-        # TODO: Check if there is an item ID and an OPC server
-                                               
-        return True, ""
+        from ils.io.util import checkConfig
+        status, reason = checkConfig(self.path)
+        if not(status):
+            return status, reason
+        
+        # Read the value and check the quality.  I don't think that there is a way that an OPC tag can be bad.
+        # If NaN causes the tag to appear bad then we will need to look at the specific reason
+        val = system.tag.read(self.path + "/value")
+        if val.quality.isGood() or str(val.quality) in ['Tag Evaluation Error', 'foo']:
+            return True, ""
+            
+        return False, "Tag is bad: %s" % (val.quality)
     
     # This basic class doesn't support this method
     def confirmWrite(self,command, val):

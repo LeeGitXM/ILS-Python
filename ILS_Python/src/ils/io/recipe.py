@@ -13,6 +13,7 @@
 import system
 import time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+
 log = LogUtil.getLogger("com.ils.io")
 
 class Recipe():
@@ -33,7 +34,9 @@ class Recipe():
         log.trace("Entering Recipe.writeDatum(): %s - %s" % (tagPath, str(val)))
  
         # Record the current command being executed.
-        system.tag.write(tagPath + '/command', 'WRITEDATUM')
+#        system.tag.write(tagPath + '/command', 'WRITEDATUM')
+#        writeWithNoCheck(tagPath, val)
+        print "NEED TO FIGURE OUT A WRITE HERE"
                                
         # wait until the tag is confirmed
         log.trace("Waiting for the write to be confirmed...")

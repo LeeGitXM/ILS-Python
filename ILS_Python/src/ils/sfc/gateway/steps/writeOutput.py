@@ -8,9 +8,10 @@ def activate(scopeContext, stepProperties, state):
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getChartLogger
     from system.ils.sfc.common.Constants import RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, \
-        STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS
+        STEP_TIMESTAMP, STEP_TIME, TIMING, DOWNLOAD, VALUE, TAG_PATH, DOWNLOAD_STATUS, WRITE_CONFIRMED
     from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
-    from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY, SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION
+    from ils.sfc.common.constants import SLEEP_INCREMENT, WAITING_FOR_REPLY, SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION, \
+        STEP_SUCCESS, STEP_FAILURE
     import system, time
     from java.util import Date, Calendar
     from ils.sfc.common.util import formatTime
@@ -31,7 +32,8 @@ def activate(scopeContext, stepProperties, state):
     DOWNLOAD_ROWS="downloadRows"
     TIMER_NEEDED="timerNeeded"
     
-    complete = False
+    writeComplete = False
+    writeConfirmComplete = False
     stepScope = scopeContext.getStepScope()
     chartScope = scopeContext.getChartScope()
     isolationMode = getIsolationMode(chartScope)
@@ -47,7 +49,8 @@ def activate(scopeContext, stepProperties, state):
     initialized = stepScope.get(INITIALIZED, False)
     if state == DEACTIVATED:
         logger.trace("*** A deactivate has been detected ***")
-        complete=True
+        writeComplete=True
+        writeConfirmComplete = True
     elif state == PAUSED:
         logger.trace("The writeOutput was paused")
         pauseTimer(chartScope, stepScope, stepProperties, logger)
@@ -130,7 +133,8 @@ def activate(scopeContext, stepProperties, state):
         logger.trace("There are %i final rows" % (len(finalRows)))
         
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
-            complete = True
+            writeComplete = True
+            writeConfirmComplete = True
         if timerNeeded:
             handleTimer(chartScope, stepScope, stepProperties, logger)
 
@@ -235,16 +239,17 @@ def activate(scopeContext, stepProperties, state):
                     if not(writesPending):
                         logger.trace("...starting final writes...")
                         for row in finalRows:
-                            logger.trace("   writing a final write for step %s" % (row.key))
-                            absTiming = Date()
-                            timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-                            row.outputRD.set(STEP_TIMESTAMP, timestamp)
-                            row.outputRD.set(STEP_TIME, absTiming)
-    #                        row.outputRD.set("setpointStatus", "downloading")
-                            writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
+                            if row.outputRD.get(DOWNLOAD_STATUS) == "pending":
+                                logger.trace("   writing a final write for step %s" % (row.key))
+                                absTiming = Date()
+                                timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
+                                row.outputRD.set(STEP_TIMESTAMP, timestamp)
+                                row.outputRD.set(STEP_TIME, absTiming)
+        #                        row.outputRD.set("setpointStatus", "downloading")
+                                writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
                         
                         # All of the timed writes have completed and the final writes have been made so signal that the block is done
-                        complete = True
+                        writeComplete = True
                         logger.info("Write output block finished all of its work!")
                         
                 #Note: write confirmations are on a separate thread and will write the result
@@ -265,7 +270,7 @@ def activate(scopeContext, stepProperties, state):
                     logger.trace("   writing an immediate write for step %s" % (row.key))
                     writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName)
 
-                complete = True
+                writeComplete = True
                 logger.info("Write output block finished all of its work, which was purely immediate!")
                         
                 #Note: write confirmations are on a separate thread and will write the result
@@ -276,6 +281,18 @@ def activate(scopeContext, stepProperties, state):
             # TODO: handle re-entrant logic; don't return True until really done
             pass
 
-    logger.trace("leaving writeOutput.activate(), complete=%s..." % (str(complete)))    
+    if writeComplete and not(writeConfirmComplete):
+        logger.trace("The writes are all complete, check if the confirmations are complete...")
+        writeConfirmComplete = True
+        for row in downloadRows:
+            logger.tracef( "Tag: %s", row.tagPath)
+            logger.tracef( "          written: %s", str(row.written))
+            logger.tracef( "  download status: %s", str(row.outputRD.get(DOWNLOAD_STATUS)))
+            logger.tracef( "  write confirmed: %s", str(row.outputRD.get(WRITE_CONFIRMED)))
+            if row.outputRD.get(DOWNLOAD_STATUS) not in [STEP_SUCCESS, STEP_FAILURE]:
+                writeConfirmComplete = False
+                print "****  FOUND A STEP THAT IS STILL WORKING ****"
         
-    return complete
+    logger.trace("leaving writeOutput.activate(), writeComplete=%s, writeConfirmComplete=%s... " % (str(writeComplete), str(writeConfirmComplete)))    
+        
+    return writeComplete and writeConfirmComplete
