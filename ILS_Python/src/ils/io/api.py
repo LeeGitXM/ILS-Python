@@ -198,8 +198,9 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
     
     return confirmed, errorMessage
 
-# This implements the common core write logic.  It is used by both WriteDatum and WriteWithNoCheck.
-# The reason for not just making this WriteWithNoCheck is so that I can make distinct log messages.
+# This is an interface for the Recipe Toolkit.  A recipe detail coordinates writes to a controller and 
+# guarantees the correct order of writing when the limits and the target all change ensuring that there isn't
+# a momentary limit violation.
 def writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit):
     log.trace("In writeRecipeDetail with %s-%s-%s-%s" % (tagPath, str(newValue), str(newHighLimit),str(newLowLimit)))
       

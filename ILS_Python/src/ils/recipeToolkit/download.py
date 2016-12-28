@@ -458,9 +458,11 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled, project):
 
     # send the recipe detail write dictionaries to the gateway
     if len(tagDicts) > 0:
-        log.info("Sending %i recipeDetail dictionaries to the gateway..." % (len(tagDicts)))
-        writeRecipeDetails(tagDicts,project) 
+        if writeEnabled:
+            log.info("Sending %i recipeDetail dictionaries to the gateway..." % (len(tagDicts)))
+            writeRecipeDetails(tagDicts,project)
+        else:
+            log.info("*** Skipping write to deferred tags ***")
 
     log.trace("=====================================")
     return ds
-    

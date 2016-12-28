@@ -184,7 +184,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                                 pending = pending + 1 
                     else:
                         # Writing is inhibited so this will never pass...
-                        print "Writes are inhibited"
+                        log.info("Skipping write to %s because writing is inhibited" % (storTagName))
                         failures = failures + 1
                         status = 'Failure - Write inhibited'
                         ds = system.dataset.setValue(ds, i, "Download Status", status)
