@@ -18,7 +18,10 @@ def update(treeWidget, db=""):
     for record in chartPDS:
         chartId=record["ChartId"]
         chartPath=record["ChartPath"]
-        chartDict[chartId] = chartPath
+        
+        # Chart Paths use the '/' to indicate the path structure, but the tree widget interprets that as a child.  I want to treat
+        # the chart path as the name so replace "/" with ":"
+        chartDict[chartId] = chartPath.replace('/',':')
 
     log.trace("The chart dictionary is %s" % (str(chartDict)))    
     rows=[]

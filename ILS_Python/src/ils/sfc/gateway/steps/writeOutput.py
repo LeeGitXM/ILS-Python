@@ -291,7 +291,7 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef( "  write confirmed: %s", str(row.outputRD.get(WRITE_CONFIRMED)))
             if row.outputRD.get(DOWNLOAD_STATUS) not in [STEP_SUCCESS, STEP_FAILURE]:
                 writeConfirmComplete = False
-                print "****  FOUND A STEP THAT IS STILL WORKING ****"
+                logger.tracef("Found an output that still needs to be confirmed.")
         
     logger.trace("leaving writeOutput.activate(), writeComplete=%s, writeConfirmComplete=%s... " % (str(writeComplete), str(writeConfirmComplete)))    
         

@@ -98,4 +98,14 @@ def splitKey(keyAndAttribute):
     key = tokens[0]
     attribute = tokens[1]
     return key, attribute
+
+def fetchStepTypeIdFromFactoryId(factoryId, database):
+    SQL = "select StepTypeId from SfcStepType where FactoryId = '%s'" % (factoryId)
+    stepTypeId = system.db.runScalarQuery(SQL, db=database)
+    return stepTypeId
+
+def fetchChartIdFromChartPath(chartPath, database):
+    SQL = "select chartId from SfcChart where ChartPath = '%s'" % (chartPath)
+    chartId = system.db.runScalarQuery(SQL, db=database)
+    return chartId
     
