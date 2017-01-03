@@ -7,39 +7,11 @@ Created on Oct 30, 2014
 '''
 
 import system, string
+from ils.sfc.recipeData.core import getTargetStep, fetchRecipeData, getChartUUID, getStepUUID, splitKey
+
 logger=system.util.getLogger("com.ils.sfc.api")
 
-'''
-These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that
-store and the fetch various recipe configurations.  The idea is that before shutting down we save the configuration
-so that we can start it up the same way.
-'''
-def stashRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, recipeDataValue, database):
-    print "TODO Stashing has not been implemented!"
 
-def fetchRecipeData(rxConfig, database):
-    logger.tracef("Fetching stashed recipe data for %s...", rxConfig)
-    SQL = "select RecipeDataKey, RecipeDataAttribute, RecipeDataValue "\
-        "from SfcRecipeDataStash "\
-        "where RxConfiguration = '%s' "\
-        "order by RecipeDataKey" % (rxConfig)
-    pds = system.db.runQuery(SQL, database)
-    return pds
-
-def fetchRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, database):
-    logger.tracef("Fetching %s.%s for %s...", recipeDataKey, recipeDataAttribute, rxConfig)
-    SQL = "select RecipeDataValue "\
-        "from SfcRecipeDataStash "\
-        "where RxConfiguration = '%s' and RecipeDataKey = '%s' and RecipeDataAttribute = '%s' "\
-        "order by RecipeDataKey" % (rxConfig, recipeDataKey, recipeDataAttribute)
-    recipeDataValue = system.db.runScalarQuery(SQL, database)
-    return recipeDataValue
-
-def clearRecipeData(rxConfig, database):
-    logger.tracef("Clearing %s", rxConfig)
-    SQL = "delete from SfcRecipeDataStash where RxConfigurastion = '%s'" % (rxConfig)
-    rows = system.db.runUpdateQuery(SQL, database)
-    logger.tracef("   ...deleted %d rows", rows)
     
 '''
 General API functions
@@ -69,9 +41,11 @@ def s88DataExists(chartProperties, stepProperties, valuePath, location):
   
 def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
+
     import system.tag
     from ils.sfc.common.util import isEmpty
     from ils.sfc.gateway.recipe import getIndexedValue
+    
     fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
     logger.tracef("In s88Get, the full path is: ", fullTagPath)
     if fullTagPath.find('(') != -1:

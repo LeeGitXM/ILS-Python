@@ -23,6 +23,20 @@ def toDict(pds):
     # If the dataset was empty then return an empty list
     return records
 
+# Convert the Python Data Set (PDS) to a list of dictionaries 
+def toDictList(pds, records):
+    if len(pds) > 0:    
+        ds = system.dataset.toDataSet(pds)
+        for row in range(ds.rowCount):
+            record={}
+            for col in range(ds.columnCount):
+                colName=ds.getColumnName(col)
+                val=ds.getValueAt(row,col)
+                record[colName]=val
+            records.append(record)
+
+    return records
+
 # Lookup the post id given the name
 def getPostId(post, database=""):
     SQL = "select PostId from TkPost where Post = '%s'" % (post)

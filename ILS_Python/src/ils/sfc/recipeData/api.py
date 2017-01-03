@@ -1,17 +1,56 @@
-from ils.sfc.recipeData.core import getTargetStep, fetchRecipeData, getChartUUID, getStepUUID, splitKey
+from ils.sfc.recipeData.core import getTargetStep, fetchRecipeData, setRecipeData, splitKey
+from ils.sfc.gateway.api import getDatabaseName
 
-#def s88Get(chartProperties, stepProperties, valuePath, location):
+import system
+logger=system.util.getLogger("com.ils.sfc.recipeData.api")
+
+
 def s88Get(chartProperties, stepProperties, keyAndAttribute, scope):
-    print "In s88Get"
-    chartUUID = getChartUUID(chartProperties)
-    stepUUID = getStepUUID(stepProperties)
-    db = ""
-    targetStep = getTargetStep(chartUUID, stepUUID, scope, db)
+    logger.tracef("In the new s88Get")
+    db = getDatabaseName(chartProperties)
+    stepUUID, stepName = getTargetStep(chartProperties, stepProperties, scope)
+    logger.tracef("The target step is: %s - %s" % (stepUUID, stepName))
     key,attribute = splitKey(keyAndAttribute)
-    val = fetchRecipeData(targetStep, key, attribute, db)
+    val = fetchRecipeData(stepUUID, key, attribute, db)
     return val
 
-#def s88Set(chartProperties, stepProperties, valuePath, value, location):
-def s88Set(chartProperties, stepProperties, keyAttribute, value, scope):
-    print "In s88Set"
+
+def s88Set(chartProperties, stepProperties, keyAndAttribute, value, scope):
+    logger.tracef("In the new s88Set")
+    db = getDatabaseName(chartProperties)
+    stepUUID, stepName = getTargetStep(chartProperties, stepProperties, scope)
+    key,attribute = splitKey(keyAndAttribute)
+    setRecipeData(stepUUID, key, attribute, value, db)
+    
+'''
+These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that
+store and the fetch various recipe configurations.  The idea is that before shutting down we save the configuration
+so that we can start it up the same way.
+'''
+def stashRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, recipeDataValue, database):
+    print "TODO Stashing has not been implemented!"
+
+def fetchStashedRecipeData(rxConfig, database):
+    logger.tracef("Fetching stashed recipe data for %s...", rxConfig)
+    SQL = "select RecipeDataKey, RecipeDataAttribute, RecipeDataValue "\
+        "from SfcRecipeDataStash "\
+        "where RxConfiguration = '%s' "\
+        "order by RecipeDataKey" % (rxConfig)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+def fetchStashedRecipeDataValue(rxConfig, recipeDataKey, recipeDataAttribute, database):
+    logger.tracef("Fetching %s.%s for %s...", recipeDataKey, recipeDataAttribute, rxConfig)
+    SQL = "select RecipeDataValue "\
+        "from SfcRecipeDataStash "\
+        "where RxConfiguration = '%s' and RecipeDataKey = '%s' and RecipeDataAttribute = '%s' "\
+        "order by RecipeDataKey" % (rxConfig, recipeDataKey, recipeDataAttribute)
+    recipeDataValue = system.db.runScalarQuery(SQL, database)
+    return recipeDataValue
+
+def clearStashedRecipeData(rxConfig, database):
+    logger.tracef("Clearing %s", rxConfig)
+    SQL = "delete from SfcRecipeDataStash where RxConfigurastion = '%s'" % (rxConfig)
+    rows = system.db.runUpdateQuery(SQL, database)
+    logger.tracef("   ...deleted %d rows", rows)
     

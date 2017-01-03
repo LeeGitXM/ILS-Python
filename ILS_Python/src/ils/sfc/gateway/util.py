@@ -7,8 +7,8 @@ Created on Sep 30, 2014
 '''
 
 import system
-from system.ils.sfc import getResponse
-from ils.sfc.gateway.api import cancelChart, sendMessageToClient
+#from system.ils.sfc import getResponse
+from ils.sfc.gateway.api import sendMessageToClient
 
 NEWLINE = '\n\r'
 
@@ -21,7 +21,9 @@ def checkForResponse(chartScope, stepScope, stepProperties):
     windowId = stepScope[WINDOW_ID]
     stepScope[TIMED_OUT] = False
 
-    responsePayload = getResponse(windowId)    
+    # PETE - not sure who uses this or what this did - I don't think we need this with the new style of windows.
+#    responsePayload = getResponse(windowId)
+    recponsePayload = {}
     if responsePayload != None:
         response = responsePayload[RESPONSE]
     elif timeoutTime != None and time.time() > timeoutTime:
@@ -227,10 +229,6 @@ def getStepId(stepProperties):
     else:
         return None
 
-def getStepName(stepProperties):
-    from ils.sfc.common.constants import NAME
-    return getStepProperty(stepProperties, NAME)
-
 def getStepProperty(stepProperties, pname):
     for prop in stepProperties.getProperties():
         if prop.getName() == pname:
@@ -259,15 +257,30 @@ def getTopChartRunId(chartProperties):
     return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
 
 def getTopLevelProperties(chartProperties):
+#    print "------------------"
+#    print "In getTopLevelProperties..."
     from ils.sfc.common.constants import PARENT
+#    print "Checking: ", chartProperties.get(PARENT, None)
+#    print "   level: ", chartProperties.get("s88Level", None)
     while chartProperties.get(PARENT, None) != None:
+#        print chartProperties
         chartProperties = chartProperties.get(PARENT)
+#        print "Checking: ", chartProperties.get(PARENT, None)
+#        print "   level: ", chartProperties.get("s88Level", None)
+#    print " --- returning --- "
     return chartProperties
+
+def dumpProperties(properties):
+    for k in properties.keys():
+        print k
 
 def getWithPath(properties, key):
     '''
     Get a value using a potentially compound key
     '''
+
+
+
 
 def hasStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
@@ -399,3 +412,11 @@ def notifyGatewayError(chartScope, msg, logger=None):
     payload[ORIGINATOR] = getOriginator(chartScope)
     project = getProject(chartScope)
     sendMessageToClient(project, 'sfcUnexpectedError', payload)
+
+
+# This exact same method is in ils.sfc.gateway.api, but I copy it here to avoid circular imports.
+def cancelChart(chartProperties):
+    '''cancel the entire chart hierarchy'''
+    import system.sfc
+    topChartRunId = getTopChartRunId(chartProperties)
+    system.sfc.cancelChart(topChartRunId)

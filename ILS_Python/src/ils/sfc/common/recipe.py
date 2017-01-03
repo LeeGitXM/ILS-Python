@@ -108,6 +108,7 @@ def deleteRecipeDataTag(provider, tagPath):
     system.tag.removeTag(fullPath)
 
 def getRecipeData(provider, path): 
+    raise Exception('Obsolete Python API %s.getRecipeData()' % (__name__))
     fullPath = getRecipeDataTagPath(provider, path)
     qv = system.tag.read(fullPath)
     # print 'get', fullPath, qv.value, 'quality', qv.quality

@@ -81,7 +81,6 @@ def updateChartStatus(event):
 
     # Fetch the enable/disable state of the control panel command buttons.
     SQL = "Select * from SfcControlPanel where chartRunId = '%s'" % (chartRunId)
-    print SQL
     pds = system.db.runPrepQuery(SQL, database=database)
     
     if len(pds) <> 1:
