@@ -14,8 +14,13 @@ def getRecipeDataList(stepUUID):
     
     db = getDatabaseClient()
     recipeData = []
+    
     pds = system.db.runQuery("select * from SfcRecipeDataSimpleValueView where stepUUID = '%s'" % (stepUUID), db)
     recipeData = toDictList(pds, recipeData)
+    
+    pds = system.db.runQuery("select * from SfcRecipeDataOutputView where stepUUID = '%s'" % (stepUUID), db)
+    recipeData = toDictList(pds, recipeData)
+    
     print "Fetched recipe data: ", recipeData
     
     return recipeData

@@ -20,6 +20,7 @@ UNIT_PROCEDURE_STEP = "Global"
 
 # Recipe data types
 SIMPLE_VALUE = "Simple Value"
+OUTPUT = "Output"
 
 # Constants used to navigate and interrogate the chart scope property dictionary
 ENCLOSING_STEP_SCOPE_KEY = "enclosingStep"
@@ -205,7 +206,20 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             valueType = record['ValueType']
             val = record["%sVALUE" % string.upper(valueType)]
         else:
-            logger.errorf("Unsupported attribute: %s for simple value recipe data", attribute)
+            logger.errorf("Unsupported attribute: %s for a simple value recipe data", attribute)
+    
+    elif record["RecipeDataType"] == OUTPUT:
+        SQL = "select DESCRIPTION, TAG, UNITS, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, LABEL, TIMING, "\
+            "STEPTIME, MAXTIMING, PVVALUE, TARGETVALUE, PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
+            "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        
+        if attribute in ["DESCRIPTION","TAG","UNITS","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","LABEL","TIMING","STEPTIME","MAXTIMING","PVVALUE","TARGETVALUE","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED"]:
+            val = record[attribute]
+        else:
+            logger.errorf("Unsupported attribute: %s for an output recipe data", attribute)
+    
     else:
         logger.errorf("Unsupported recipe data type: %s", record["RecipeDataType"])
     
