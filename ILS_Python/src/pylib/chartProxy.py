@@ -41,6 +41,10 @@ def start(common,path,isolation):
 	ilssfc.watchChart(str(chartid),path)
 	common['result'] = str(chartid)
 
+def getDatabaseName(common,isIsolationMode):
+	name = ilssfc.getDatabaseName(str2bool(isIsolationMode))
+	common['result'] = name
+	
 def getProviderName(common,isIsolationMode):
 	name = ilssfc.getProviderName(str2bool(isIsolationMode))
 	common['result'] = name
