@@ -90,14 +90,14 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                 tag=ds.getValueAt(row, "tag")
                 tagPath="[%s]%s" % (tagProvider, tag)
                 
-                log.trace("Checking Quant Output: %s - Tag: %s" % (quantOutput, tagPath))
+                log.info("Checking Quant Output: %s - Tag: %s" % (quantOutput, tagPath))
                 
                 # The first check is to verify that the tag exists...
                 exists = system.tag.exists(tagPath)
                 if not(exists):
                     okToDownload = False
                     unreachableCnt=unreachableCnt+1
-                    print "The tag does not exist"
+                    log.warn("The tag (%s) does not exist" % (tagPath))
                     insertPostMessage(post, "Error", "The tag does not exist for %s-%s" % (quantOutput, tagPath), db)
                 else:
                     # The second check is to read the current SP - I guess if a controller doesn't have a SP then the
@@ -112,7 +112,7 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                         # I'm calling a generic I/O API here which is shared with S88.  S88 can write to the OP of a controller, but I think that 
                         # the diag toolkit can only write to the SP of a controller.  (The G2 version just used stand-alone GSI variables, so it 
                         # was not obvious if we were writing to the SP or the OP, but I think we always wrote to the SP.
-                        reachable,msg=confirmControllerMode(tagPath, newSetpoint, testForZero=False, checkPathToValve=True, valueType="SP", logger=log)
+                        reachable,msg=confirmControllerMode(tagPath, newSetpoint, testForZero=False, checkPathToValve=True, valueType="SP")
 
                         if not(reachable):
                             okToDownload=False
