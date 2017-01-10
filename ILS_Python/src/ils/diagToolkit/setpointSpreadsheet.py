@@ -525,7 +525,7 @@ def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log,
     callback = system.db.runScalarQuery(SQL, database)
     log.info("The callback is <%s>" % (callback))
 
-    if callback <> None:
+    if callback <> None and callback <> "":
         log.info("   ...there IS a callback...")
         
         if actionMessage == AUTO_NO_DOWNLOAD:
