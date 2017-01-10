@@ -31,6 +31,7 @@ def createTags(tagProvider):
 
     data.append([path, "vectorClampMode", "String", "Implement"])
     data.append([path, "itemIdPrefix", "String", ""])
+    data.append([path, "diagnosticToolkitWriteEnabled", "Boolean", "True"])
           
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
