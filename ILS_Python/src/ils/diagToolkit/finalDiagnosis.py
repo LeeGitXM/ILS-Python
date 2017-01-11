@@ -973,7 +973,7 @@ def calculateVectorClamps(quantOutputs, provider):
     log.info("All outputs will be clamped at %f pct" % (minOutputRatio))
 
     finalQuantOutputs = []
-    txt = "The most bound output is %s, %.0f%% of the total recommendation of %.4f, which equals %.4f, will be implemented." % \
+    txt = "The most bound output is %s, %.0f pct of the total recommendation of %.4f, which equals %.4f, will be implemented." % \
         (boundOutput['QuantOutput'], minOutputRatio, boundOutput['FeedbackOutput'], boundOutput['FeedbackOutputConditioned'])
         
     for quantOutput in quantOutputs:
