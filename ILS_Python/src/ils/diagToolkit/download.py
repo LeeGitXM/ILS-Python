@@ -10,6 +10,7 @@ log = system.util.getLogger("com.ils.diagToolkit.download")
 from ils.queue.message import insertPostMessage
 from ils.io.api import confirmControllerMode
 from ils.io.api import write
+from ils.diagToolkit.setpointSpreadsheet import hideDetailMap
 
 # This is called from the download button on the setpoint spreadsheet.
 def downloadCallback(event, rootContainer):
@@ -42,6 +43,9 @@ def downloadCallback(event, rootContainer):
     ans = system.gui.confirm("There are setpoints to download and the controllers are in the correct mode, press 'Yes' to proceed with the downlaod.")
     
     if ans:
+        # If there is an open recommendation map then close it
+        hideDetailMap()
+        
         serviceDownload(post, repeater, ds, tagProvider, db)
         
         # Now do the standard post processing work such as resetting diagrams

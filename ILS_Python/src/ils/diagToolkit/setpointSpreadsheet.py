@@ -14,6 +14,7 @@ def initialize(rootContainer):
     print "In %s.initialize()..." % (__name__)
 
     rootContainer.initializationComplete = False
+    rootContainer.recalculateFlag = False
     database=system.tag.read("[Client]Database").value
     print "The database is: ", database
     
@@ -246,6 +247,7 @@ def statusCallback(event):
 # This is called from the recalc button on the setpoint spreadsheet
 def recalcCallback(event):
     rootContainer=event.source.parent
+    rootContainer.recalculateFlag=True
     post=rootContainer.post
     database=system.tag.read("[Client]Database").value
     tagProvider=system.tag.read("[Client]Tag Provider").value
@@ -284,6 +286,8 @@ def noDownloadCallback(event):
     print "Processing a NO-DOWNLOAD..."
     rootContainer=event.source.parent
     post = rootContainer.post
+    
+    hideDetailMap()
 
     from ils.common.config import getDatabaseClient, getTagProviderClient
     db=getDatabaseClient()
@@ -305,6 +309,18 @@ def noDownloadCallback(event):
         # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
         if allApplicationsProcessed:
             system.nav.closeParentWindow(event)
+
+'''
+This is called when the oerator does a download or a No Download.  It closes any open recommendation maps that are open on the client.
+It does not check other clients.  It doesn't worry about if the operator only selected one output or application.
+'''
+def hideDetailMap():
+    print "Hiding..."
+    windows = system.gui.getOpenedWindows()
+    for window in windows:
+        if window.getPath() == "DiagToolkit/Recommendation Map":
+            system.nav.closeWindow(window)
+
 '''
 Format a message for the No-Download and for a Wait-For-More-Data.  The message will be posted to the operator logbook.
 The message is nearly the same for these two actions and it is really similar to what gets logged for an actual download.
