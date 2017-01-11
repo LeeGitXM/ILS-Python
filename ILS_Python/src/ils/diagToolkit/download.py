@@ -182,6 +182,9 @@ def serviceDownload(post, repeater, ds, tagProvider, db):
     # iterate through each row of the dataset that is marked to go and download it.
     log.info("Starting to download...")
     
+    diagToolkitWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
+    print "DiagToolkitWriteEnabled: ", diagToolkitWriteEnabled
+    
     logbookMessage = "Download performed for the following:\n"
  
     for row in range(ds.rowCount):
@@ -206,19 +209,26 @@ def serviceDownload(post, repeater, ds, tagProvider, db):
 
                 logbookMessage += "      download of %s to the value %f was " % (tagPath, newSetpoint)
                 
-                print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
-                success, errorMessage = write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
-                
-                if success:
-                    ds = system.dataset.setValue(ds, row, "downloadStatus", "Success")
-                    logbookMessage += "confirmed\n"
-                    print "The write was successful"
+                if diagToolkitWriteEnabled:
+                    print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
+                    success, errorMessage = write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
+                    
+                    if success:
+                        ds = system.dataset.setValue(ds, row, "downloadStatus", "Success")
+                        logbookMessage += "confirmed\n"
+                        print "The write was successful"
+                    else:
+                        print "The write FAILED because: ", errorMessage
+                        ds = system.dataset.setValue(ds, row, "downloadStatus", "Error")
+                        logbookMessage += "failed because of an error: %s\n" % (errorMessage)
                 else:
-                    print "The write FAILED because: ", errorMessage
+                    print "...writes from the diagnostic toolkit are disabled..."
+                    insertPostMessage(post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), db)
                     ds = system.dataset.setValue(ds, row, "downloadStatus", "Error")
-                    logbookMessage += "failed because of an error: %s\n" % (errorMessage)
+                    logbookMessage += "failed because diag toolkit writes are disabled\n"
     
     repeater.templateParams=ds
     
     from ils.common.operatorLogbook import insertForPost
+    print "Logging logbook message: ", logbookMessage
     insertForPost(post, logbookMessage, db)
