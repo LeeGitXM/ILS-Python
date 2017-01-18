@@ -76,7 +76,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         if textRecommendation != "":
             explanation = "%s  %s" % (textRecommendation, explanation)
     
-        postApplicationMessage(application, messageLevel, explanation, log)
+        postApplicationMessage(application, messageLevel, explanation, log, database)
 
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
         # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
@@ -245,8 +245,9 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
 
     return status, explanation, rawRecommendationList
 
-def postApplicationMessage(applicationName, status, message, log):
-    queueId = system.db.runScalarQuery("select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName))
+def postApplicationMessage(applicationName, status, message, log, database):
+    SQL = "select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName)
+    queueId = system.db.runScalarQuery(SQL, database)
     from ils.queue.message import _insert
     _insert(queueId, status, message)
     log.info("%s - %s" % (status,message))
