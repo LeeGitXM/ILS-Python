@@ -12,6 +12,7 @@ from ils.common.database import getUnitId
 from ils.common.database import getPostId
 from ils.common.database import lookup
 from ils.common.cast import toBit
+migrationDatabase = "XOMMigration"
 
 def insertLabTableIntoDB(container):
     print "In migration.labData.insertLabTableIntoDB()"
@@ -329,11 +330,11 @@ def insertDCSLabValue(labData, valueId, site):
 
 def translateCallback(callback):
     SQL = "select NewName from DerivedValueCallbackTranslation where oldName = '%s'" % (callback)
-    pds = system.db.runQuery(SQL, "XOMMigration")
+    pds = system.db.runQuery(SQL, migrationDatabase)
     if len(pds) == 0:
         print "Discovered a new callback that needs translation: ", callback
         SQL = "insert into DerivedValueCallbackTranslation (oldName, newName) values ('%s', '%s') " % (callback, callback)
-        system.db.runUpdateQuery(SQL, "XOMMigration")
+        system.db.runUpdateQuery(SQL, migrationDatabase)
     else:
         record = pds[0]
         callback = record["NewName"]
@@ -798,8 +799,10 @@ def loadUnitParameters(container):
     #-------------------------------------------------
     def create(unitParameter):    
         UDTType='Lab Data/Unit Parameter'
-        provider = "XOM"
+        from ils.common.config import getTagProvider
+        provider = getTagProvider()
         scanClass = "Default"
+        
         
         parameterName = unitParameter.get("name")
         

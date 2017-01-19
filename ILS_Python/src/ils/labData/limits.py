@@ -5,6 +5,7 @@ Created on Mar 31, 2015
 '''
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.common.config import getTagProvider, getTagProviderClient
 
 log = LogUtil.getLogger("com.ils.labData.limits")
 sqlLog = LogUtil.getLogger("com.ils.SQL.labData.limits")
@@ -64,7 +65,7 @@ def checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagPro
 def fetchLimits(database = ""):
     #-------------------------------------
     # When SQC limits are loaded from recipe, the target, standard deviation and validity limits are calculated and then 
-    # stored in the XOM database so no further calculations are necessary.
+    # stored in the database so no further calculations are necessary.
     def getSQCLimits(record, oldLimit=None):
         limitSource=record["LimitSource"]
         if limitSource=="DCS":
@@ -150,7 +151,7 @@ def fetchLimits(database = ""):
                 if result == 0:
                     log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
         #-------------
-        providerName="XOM"
+        providerName=getTagProvider()
         unitName=limit.get("UnitName","")
         valueName=limit.get("ValueName", None)
         limitType=limit.get("LimitType", None)
@@ -296,6 +297,7 @@ def updateSQCLimitsFromRecipe(recipeFamily, grade, database=""):
 # The SQC limits can come from anywhere, recipe, the DCS, or manually entered.
 def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowerSQCLimit, database):
     
+    provider = getTagProvider()
     target=float("NaN")
     standardDeviation=float("NaN")
     lowerValidityLimit=float("NaN")
@@ -330,7 +332,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         sqlLog.trace("   ...updated %i rows" % (rows))
         
         # Now write the fetched limits to the Lab Data UDT tags
-        path = '[XOM]LabData/' + unitName + '/' + valueName + '-RELEASE'
+        path = '[' + provider + ']LabData/' + unitName + '/' + valueName + '-RELEASE'
         tags = [path+'/lowerReleaseLimit', path+'/upperReleaseLimit']
         vals = [lowerSQCLimit, upperSQCLimit]
     
@@ -356,7 +358,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         sqlLog.trace("   ...updated %i rows" % (rows))
         
         # Now write the fetched limits to the Lab Data UDT tags
-        path = '[XOM]LabData/' + unitName + '/' + valueName + '-VALIDITY'
+        path = '[' + provider + ']LabData/' + unitName + '/' + valueName + '-VALIDITY'
         tags = [path+'/lowerValidityLimit', path+'/upperValidityLimit']
         vals = [lowerSQCLimit, upperSQCLimit]
     
@@ -413,7 +415,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
     
         # Now write the fetched and calculated limits to the Lab Data UDT tags
     
-        path = '[XOM]LabData/' + unitName + '/' + valueName + '-SQC'
+        path = '[' + provider + ']LabData/' + unitName + '/' + valueName + '-SQC'
     
         tags = [path+'/lowerSQCLimit', path+'/lowerValidityLimit', path+'/standardDeviation', path+'/target', path+'/upperSQCLimit', path+'/upperValidityLimit']
         vals = [lowerSQCLimit, lowerValidityLimit, standardDeviation, target, upperSQCLimit, upperValidityLimit]

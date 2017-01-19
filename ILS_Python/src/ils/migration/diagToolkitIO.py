@@ -7,7 +7,7 @@ import sys, system, string, traceback
 from ils.migration.common import lookupOPCServerAndScanClass
 from ils.migration.common import lookupMessageQueue
 from ils.common.database import lookup
-#from xom.extensions import family
+migrationDatabase = "XOMMigration"
 
 def load(rootContainer, stripGDA):
     filename=rootContainer.getComponent("File Field").text
@@ -415,12 +415,12 @@ def insertFinalDiagnosis(container):
 
 def lookupTranslatedName(translationType, oldName, suggestedName):
     SQL = "select NewName from NameTranslations where Type = '%s' and oldName = '%s'" % (translationType, oldName)
-    newName = system.db.runScalarQuery(SQL, "XOMMigration")
+    newName = system.db.runScalarQuery(SQL, migrationDatabase)
     
     if newName == None:
         print "Inserting a new translatable item..."
         SQL = "insert into NameTranslations (Type, OldName, NewName) values ('%s','%s','%s')" % (translationType, oldName, suggestedName)
-        system.db.runUpdateQuery(SQL, "XOMMigration")
+        system.db.runUpdateQuery(SQL, migrationDatabase)
         newName = suggestedName
         
     return newName

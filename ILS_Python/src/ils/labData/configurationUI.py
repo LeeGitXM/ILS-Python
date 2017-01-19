@@ -3,8 +3,8 @@ Created on Jun 15, 2015
 
 @author: Pete
 '''
-import system, string
-from formatter import NullFormatter
+import system
+from ils.common.config import getTagProviderClient
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -51,11 +51,11 @@ def commitChanges(rootContainer):
     txId=rootContainer.txId
     system.db.commitTransaction(txId)
     
-    provider = "[XOM]"
+    tagProvider = getTagProviderClient()
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     
     from ils.labData.synchronize import synchronize
-    synchronize(provider, unitName, txId)
+    synchronize("[" + tagProvider + "]", unitName, txId)
 
   
 #close transaction when window is closed

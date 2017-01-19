@@ -5,10 +5,11 @@ Created on Mar 7, 2016
 '''
 
 import system
+from ils.common.config import getDatabaseClient
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened"
-    database="XOM"
+    database=getDatabaseClient()
     txId=system.db.beginTransaction(database, timeout=600000)
     rootContainer.txId=txId
     refreshMaster(rootContainer)

@@ -5,6 +5,7 @@ Created on Jul 1, 2015
 '''
 import system
 from ils.sfc.common.constants import SQL
+from ils.common.config import getTagProviderClient
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -41,10 +42,10 @@ def commitChanges(rootContainer):
     txId=rootContainer.txId
     system.db.commitTransaction(txId)
     
-    provider = "[XOM]"
+    tagProvider = getTagProviderClient()
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     from ils.labData.synchronize import synchronize
-    synchronize(provider, unitName, txId)
+    synchronize("[" + tagProvider + "]", unitName, txId)
 
 
 #close transaction when window is closed

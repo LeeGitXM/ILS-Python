@@ -4,12 +4,13 @@ Created on Mar 29, 2015
 @author: Pete
 '''
 import system
+from ils.common.config import getDatabase, getDatabaseClient
 
 def valueChanged(tagPath):
     import time
     log = system.util.getLogger("com.ils.labData.selector")
     log.trace("Detected a value change in: %s" % (tagPath))
-    database = "XOM"
+    database = getDatabase
  
     # Find the root of the tag by stripping off the /value or /sampleTime   
     tagRoot=tagPath.rstrip('/trigger') 

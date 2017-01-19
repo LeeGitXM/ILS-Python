@@ -194,8 +194,8 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
  
     # Update the setpoint spreadsheet
     post=fetchPostForApplication(applicationName)
-    log.info("Sending update notification to post %s" % (post))
-    projectName = system.util.getProjectName()        
+    projectName = system.util.getProjectName()   
+    log.info("Sending update notification to post %s and project %s" % (post, projectName))     
     
     if postTextRecommendation:
         notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)

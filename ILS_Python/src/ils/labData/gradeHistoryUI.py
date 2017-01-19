@@ -12,7 +12,7 @@ def internalFrameOpened(rootContainer):
     tagProvider=getTagProviderClient()
     
     # Browse for all of the Grade UDTs
-    gradeTags = system.tag.browseTags(parentPath="[XOM]Site",  udtParentType="Grade", recursive=True)
+    gradeTags = system.tag.browseTags(parentPath="[%s]Site" % (tagProvider),  udtParentType="Grade", recursive=True)
     print "Found %i grade tags!" % (len(gradeTags))
     print gradeTags
     vals=[]
