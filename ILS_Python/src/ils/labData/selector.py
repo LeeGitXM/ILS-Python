@@ -10,7 +10,7 @@ def valueChanged(tagPath):
     import time
     log = system.util.getLogger("com.ils.labData.selector")
     log.trace("Detected a value change in: %s" % (tagPath))
-    database = getDatabase
+    database = getDatabase()
  
     # Find the root of the tag by stripping off the /value or /sampleTime   
     tagRoot=tagPath.rstrip('/trigger') 
