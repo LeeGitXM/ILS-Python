@@ -166,4 +166,12 @@ def setBlockProperty(block,prop):
     if block!=None:
         block.setProperty(prop.get("name","??"),prop)
     
-
+# Write the value of the state as a string in the results list.
+# 
+def setBlockState(block,state):
+    
+    if block!=None:
+        log.infof("ils.blt.util.setBlockState: %s ==%s",str(block.__class__),state )
+        block.setState(state)
+    else:
+        print "ils.blt.util.setBlockState: argument ",block," not defined" 
