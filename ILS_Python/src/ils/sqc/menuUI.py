@@ -5,12 +5,13 @@ Created on Dec 10, 2015
 '''
 
 import system
+log = system.util.getLogger("com.ils.sqc.plotChooser")
 
 def internalFrameOpened(rootContainer):
-    print "In internalFrameOpened()"
+    log.info("In internalFrameOpened()")
     
     database=system.tag.read("[Client]Database").value
-    print "The database is: ", database
+    log.tracef("The database is: %s", database)
     
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
     SQL = "select post from TkPost order by post"
@@ -19,24 +20,24 @@ def internalFrameOpened(rootContainer):
 
 # update the list of display tables that are appropriate for the selected console
 def internalFrameActivated(rootContainer):
-    print "In internalFrameActivated()"
+    log.trace("In internalFrameActivated()")
     populateRepeater(rootContainer)
 
 # update the list of display tables that are appropriate for the selected console
 def refresh(rootContainer):
-    print "In refresh()"
+    log.trace("In refresh()")
     populateRepeater(rootContainer)
 
 def newPostSelected(rootContainer):
-    print "In newPostSelected()"
+    log.info("In newPostSelected()")
     populateRepeater(rootContainer)
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    print "In populateTablesForConsole"
+    log.trace("In populateTablesForConsole")
     selectedPost = rootContainer.selectedPost
     database=system.tag.read("[Client]Database").value
-    print "The database is: ", database
+    log.tracef("The database is: %s", database)
     
     SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID "\
         "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
@@ -47,11 +48,11 @@ def populateRepeater(rootContainer):
         " and P.Post = '%s' "\
         "Order by SQCDiagnosisName" % (selectedPost)
     
-    print SQL
+    log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     
     for record in pds:
-        print record["SQCDiagnosisName"], record["Status"]
+        log.tracef("%s - %s", record["SQCDiagnosisName"], record["Status"])
 
     ds = system.dataset.toDataSet(pds)
     repeater=rootContainer.getComponent("Template Repeater")
@@ -68,7 +69,7 @@ def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID):
     n = 8
     intervalType = "Hours"
     
-    print "The user selected %s - %s " % (sqcDiagnosisName, SQCDiagnosisUUID)
+    log.tracef("The user selected %s - %s ", sqcDiagnosisName, SQCDiagnosisUUID)
     
     # If this is the first SQC plot open it at full size and centered, if it is the nth plot
     # then open it tiled at 75%

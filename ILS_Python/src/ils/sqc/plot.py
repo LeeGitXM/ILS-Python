@@ -13,7 +13,6 @@ def internalFrameOpened(rootContainer):
     tabStrip = rootContainer.getComponent("Tab Strip")
     tabStrip.selectedTab="Plot"
     configureChart(rootContainer)
-    refreshChart(rootContainer)
 
 def internalFrameActivated(rootContainer):
     print "In internalFrameActivated()"
@@ -32,7 +31,7 @@ def configureChart(rootContainer):
     
     lastResetTime = fetchLastResetTime(sqcDiagnosisUUID)
     chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
-    print "Chart Info: ", chartInfo
+    print "   ... chart Info: ", chartInfo
     if chartInfo == None:
         system.gui.errorBox("Unable to get SQC info for SQC Diagnosis named: %s with uuid: %s" % (str(sqcDiagnosisName), str(sqcDiagnosisUUID)))
         clearChart(rootContainer)
@@ -51,10 +50,10 @@ def configureChart(rootContainer):
     highLimits=[]
     lowLimits=[]
     violatedRules=[]
-    print "Determining violated rules..."
+    print "   ...determining violated rules..."
     maxSampleSize = -1
     for info in chartInfo:
-        print "Info: ", info
+        print "      ...checking: ", info
         if info['limitType'] == 'HIGH' and abs(float(str(info['numberOfStandardDeviations']))) >= 0.5:
             highLimits.append(abs(float(str(info['numberOfStandardDeviations']))))
         if info['limitType'] == 'LOW' and abs(float(str(info['numberOfStandardDeviations']))) >= 0.5:
@@ -62,15 +61,16 @@ def configureChart(rootContainer):
         
         state=string.upper(str(info['state']))
         if state in ['SET', 'TRUE']:
+            print "         --- found a violated SQC rule ---"
             rule="%s %s of %s" % (info["limitType"], str(info["minimumOutOfRange"]), str(info["sampleSize"]))
             violatedRules.append([rule])
 
         sampleSize=int(str(info['sampleSize']))
         if sampleSize > maxSampleSize:
             maxSampleSize = sampleSize
-            
-    print "...violated Rules: ", violatedRules
-    print "...the maximum sample size is: ", maxSampleSize
+
+    print "   ...the violated SQC rules are: ", violatedRules
+    print "   ...the maximum sample size is: ", maxSampleSize
     # Create a dataset from the violated rules and put it in the rootContainer which will drive the table of violated rules
     ds=system.dataset.toDataSet(["rule"], violatedRules)
     rootContainer.violatedRules=ds
@@ -78,18 +78,18 @@ def configureChart(rootContainer):
     # Each block dictionary has target and standard deviation, but they should all be the same
     target=info['target']
     standardDeviation=info['standardDeviation']
-    print "Target: ", target
-    print "Standard Deviation:", standardDeviation
+    print "   ...Target: ", target
+    print "   ...Standard Deviation:", standardDeviation
     
     highLimits.sort()
     lowLimits.sort()
-    print "The high limits are: ", highLimits
-    print "The low limits are: ", lowLimits
+    print "   ...The high limits are: ", highLimits
+    print "   ...The low limits are: ", lowLimits
 
     sqcInfo=[]
     
     if target == None or target == "NaN" or standardDeviation == None or standardDeviation == "NaN":
-        print "Unable to completely configure the SQC chart"
+        print "Unable to completely configure the SQC chart because the target or standard deviation are missisng"
         target=0.0
         standardDeviation=0.0
         upperLimit1=target
@@ -112,11 +112,9 @@ def configureChart(rootContainer):
         if len(lowLimits) >= 2:
             lowerLimit2 = float(target) - float(standardDeviation) * float(lowLimits[1])
 
-        print "Determining SQC Info..."
+        print "   ...formatting the SQC Info..."
         sqcInfo.append(["Target", float(str(target))])
         for info in chartInfo:
-            print "Info: ", info
-    
             if info['limitType'] == 'HIGH':
                 txt="High Limit (%s sigma)" % (str(info['numberOfStandardDeviations']))
                 val = float(target) + float(standardDeviation) * float(info['numberOfStandardDeviations'])
@@ -126,7 +124,7 @@ def configureChart(rootContainer):
                 val = float(target) - float(standardDeviation) * float(info['numberOfStandardDeviations'])
                 sqcInfo.append([txt, val])
 
-        print "...SQC info:", sqcInfo
+        print "      SQC info:", sqcInfo
     
     # Create a dataset from SQC Info and put it in the rootContainer which will drive the SQC Info table
     ds=system.dataset.toDataSet(["Limit", "Value"], sqcInfo)
@@ -142,9 +140,10 @@ def configureChart(rootContainer):
     rootContainer.yAxisAutoScaling=True
     
     # Using the number of points that are required, by looking at the n of m configuration of each block, fetch the actual lab data 
-    # results and see how har back we need to go to get that number of points.  Some data is arrives hourly, others every 4 hours, etc.
-    showLastnHours=determineTimeScale(unitName, labValueName, maxSampleSize)
-    rootContainer.showLastnHours = showLastnHours
+    # results and see how far back we need to go to get that number of points.  Some data is arrives hourly, others every 4 hours, etc.
+    nHours=determineTimeScale(unitName, labValueName, maxSampleSize)
+    rootContainer.n = nHours
+    
     # Now set the auto Y-axis limits - this will be called automatically from a property change script
     calculateLimitsFromTargetAndSigma(rootContainer)
     
@@ -154,9 +153,8 @@ def configureChart(rootContainer):
 
 def fetchLastResetTime(sqcDiagnosisUUID):
     SQL = "select LastResetTime from DtSQCDiagnosis where SQCDiagnosisUUID = '%s'" % (sqcDiagnosisUUID)
-    print SQL
     lastResetTime = system.db.runScalarQuery(SQL)
-    print "The last reset time was: %s" % (str(lastResetTime))
+    print "The last reset time for %s was: %s" % (str(sqcDiagnosisUUID), str(lastResetTime))
     return lastResetTime
 
 # Return the number of hours that are required to obtain the required # of points
@@ -177,6 +175,7 @@ def determineTimeScale(unitName, labValueName, maxSampleSize):
         " order by SampleTime DESC " % (unitName, labValueName, quertStartDateTxt)
 
     pds = system.db.runQuery(SQL)
+    print "   ...fetched %i lab values..." % (len(pds))
     
     i = 0
     for record in pds:
@@ -184,14 +183,14 @@ def determineTimeScale(unitName, labValueName, maxSampleSize):
             sampleTime = record["SampleTime"]
             deltaTime = nowTime.getTime() - sampleTime.getTime()
             numHours = math.ceil(deltaTime / (60.0 * 60.0 * 1000.0))
-            print "The required hours is: ", numHours
+            print "   ...the required hours is: ", numHours
             return numHours
         i = i + 1
-    print "RAN OUT OF POINTS - RETURNING DEFAULT"
+    print "   *** RAN OUT OF POINTS - RETURNING DEFAULT ***"
     return 24 * 7
 
 # The idea behind this is to somehow force a refresh, but I'm not sure how to do that.  system.db.refresh does not work
-def refreshChart(rootContainer):
+def refreshChartCRAP(rootContainer):
     print "Refreshing the chart..."
     chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
 #    system.db.refresh(chart, "pens")
@@ -256,7 +255,6 @@ def configureChartSQCLimit(rootContainer, limit, value):
     
     for row in range(ds.rowCount):
         if ds.getValueAt(row, "NAME") == limit:
-            print "Setting it"
             ds = system.dataset.setValue(ds, row, "FUNCTION_PARAM", value)
     
     chart.calcPens = ds
@@ -300,18 +298,17 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
         return None
 
     diagramId=diagramDescriptor.getId() 
-    print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
+    print "   ... fetching upstream block info for chart <%s> ..." % (str(diagramId))
 
     # Now get the SQC observation blocks
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
-    print "...found %i upstream blocks..." % (len(blocks))
+    print "   ... found %i upstream blocks..." % (len(blocks))
 
     sqcInfo=[]
     for block in blocks:
 #        print "Found a %s block..." % (block.getClassName())
         if block.getClassName() == "com.ils.block.SQC":
-            print "   ... found a SQC block..."
             blockId=block.getIdString()
             blockName=block.getName()
             
@@ -340,7 +337,7 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
                             "state": state
                             }
             sqcInfo.append(sqcDictionary)
-            print sqcDictionary
+            print "      ", sqcDictionary
         
     return sqcInfo
 
@@ -359,12 +356,12 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
    
     diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisId)
     if diagramDescriptor == None:
-        print "Unable to locate the diagram for block with id: ", sqcDiagnosisId
+        print "   *** Unable to locate the diagram for block with id: ", sqcDiagnosisId
         return unitName, labValueName
     
     diagramId=diagramDescriptor.getId()
     
-    print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
+    print "   ... fetching upstream block info for chart <%s> ..." % (str(diagramId))
 
     # Get all of the upstream blocks
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
@@ -393,7 +390,7 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
             unitName=valueTagPath[valueTagPath.find("/")+1:valueTagPath.rfind("/")]
             labValueName=valueTagPath[valueTagPath.rfind("/")+1:]
     
-    print "Found unit: <%s> - lab value: <%s>" % (unitName, labValueName)
+    print "   Found unit: <%s> - lab value: <%s>" % (unitName, labValueName)
     return unitName, labValueName
 
 
