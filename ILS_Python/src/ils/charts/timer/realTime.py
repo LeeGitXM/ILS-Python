@@ -10,7 +10,7 @@ def update(rootContainer):
     intervalType = rootContainer.intervalType
     intervalType = string.upper(intervalType)
     
-    print "Setting the realtime start and end time using %s - %s" % (intervalType, str(n))
+    print "In ils.charts.timer.realTime.py - setting the real-time start and end time using %s - %s" % (intervalType, str(n))
     
     now = system.date.now()
     print "Now: ", now
