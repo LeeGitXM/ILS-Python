@@ -69,7 +69,7 @@ class BasicBlock():
     # Return all properties
     def getProperties(self):
         return self.properties
-    # Return all properties
+    # Return the current block state
     def getState(self):
         return self.state
     # Return a list of all input ports
@@ -94,6 +94,11 @@ class BasicBlock():
         #print "BasicBlock.setProperty:",name,"=",dictionary
         self.properties[name] = dictionary
         self.handler.sendPropertyNotification(self.uuid,name,dictionary.get("value",""))
+        
+    # Programmatically set the state. The default implementation has no side effects.
+    def setState(self,newState):
+        #print "BasicBlock.setProperty:",name,"=",dictionary
+        self.state = newState
         
     # Propagate the current state of the block. This default implementation
     # does nothing.
