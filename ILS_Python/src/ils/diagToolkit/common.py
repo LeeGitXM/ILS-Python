@@ -6,7 +6,30 @@ Created on Sep 19, 2014
 
 import system, time
 from java.util import Date, Calendar
+import system.ils.blt.diagram as scriptingInterface
+
 log = system.util.getLogger("com.ils.diagToolkit.SQL")
+
+# -------------------------- Helper methods ----------------------
+# Return the ProcessDiagram at the specified path
+def getDiagram(diagramPath):
+    print "Getting the process diagram named: %s" % (diagramPath)
+    diagram = None
+    # The descriptor paths are :-separated, the input uses /
+    # the descriptor path starts with ":root:", 
+    # the input starts with the application
+    
+    descriptors = scriptingInterface.getDiagramDescriptors()
+    handler = scriptingInterface.getHandler()
+
+    for desc in descriptors:
+        path = desc.path[6:]
+        
+        if diagramPath == path:
+            print "*** Found it ***"
+            return handler.getDiagram(desc.id)
+    return diagram  
+
 
 # Check if the timestamps of two tags are consistent.  
 # This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?

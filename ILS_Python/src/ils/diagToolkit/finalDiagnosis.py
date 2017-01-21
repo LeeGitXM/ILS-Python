@@ -83,7 +83,8 @@ def postDiagnosisEntryMessageHandler(payload):
 
 # Insert a record into the diagnosis queue
 def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
-    log.info("Posting a diagnosis entry for application: %s, family: %s, final diagnosis: %s" % (applicationName, family, finalDiagnosis))
+    projectName = system.util.getProjectName()
+    log.info("Posting a diagnosis entry for project: %s, application: %s, family: %s, final diagnosis: %s" % (projectName, applicationName, family, finalDiagnosis))
     
     # Lookup the application Id
     from ils.diagToolkit.common import fetchFinalDiagnosis
@@ -142,7 +143,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
     # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
     post=fetchPostForApplication(applicationName)
-    projectName = system.util.getProjectName()
+    
     if activeOutputs > 0:
         notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
         
@@ -161,7 +162,8 @@ def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
     
 # Clear the final diagnosis (make the status = 'InActive') 
 def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", provider=""):
-    log.info("Clearing the diagnosis entry for %s - %s - %s..." % (applicationName, family, finalDiagnosis))
+    projectName = system.util.getProjectName()
+    log.info("Clearing the diagnosis entry for %s - %s - %s - %s..." % (projectName, applicationName, family, finalDiagnosis))
 
     from ils.diagToolkit.common import fetchFinalDiagnosis
     record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
@@ -194,7 +196,7 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
  
     # Update the setpoint spreadsheet
     post=fetchPostForApplication(applicationName)
-    projectName = system.util.getProjectName()   
+       
     log.info("Sending update notification to post %s and project %s" % (post, projectName))     
     
     if postTextRecommendation:
@@ -207,7 +209,7 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
 def recalcMessageHandler(payload):
     post=payload["post"]
     project=system.util.getProjectName()
-    log.info("Handling recalc message for post %s" % (post))
+    log.info("Handling recalc message for project: %s, post: %s" % (projet, post))
     print "Payload: ", payload
     database=payload["database"]
     provider=payload["provider"]
