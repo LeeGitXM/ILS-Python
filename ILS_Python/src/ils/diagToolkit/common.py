@@ -451,3 +451,19 @@ def updateFamilyPriority(familyName, familyPriority, database=""):
     log.trace(SQL)
     rows = system.db.runUpdateQuery(SQL, database)
     log.trace("Updated %i rows" % (rows))
+    
+# Delete all Final Diagnosis.
+def resetFinalDiagnosis(log, database):
+    log.info("Resetting Final Diagnosis...")
+    SQL = "update DtFinalDiagnosis set Active = 0 where Active = 1"
+    log.trace(SQL)
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.info("...reset %i finalDiagnosis" % (rows))
+
+# Delete the quant outputs for an applicatuon.
+def resetDiagnosisEntries(log, database):
+    log.info("Resetting Diagnosis Entries...")
+    SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus = 'Restart' where Status = 'Active' "
+    log.trace(SQL)
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.info("...reset %i Diagnosis Entries!" % (rows))

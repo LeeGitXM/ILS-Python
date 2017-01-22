@@ -81,7 +81,8 @@ def postDiagnosisEntryMessageHandler(payload):
     
     postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database)
 
-# Insert a record into the diagnosis queue
+# This is called from the finalDiagnosis method acceptValue when the value is True.  This should only happen afer we receiv a False and have cleared the previous diagnosis entry.
+# However, on a gateway restart, we may become True again.  There are two possibilities of how this could be handled: 1) I could ignore the Insert a record into the diagnosis queue
 def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
     projectName = system.util.getProjectName()
     log.info("Posting a diagnosis entry for project: %s, application: %s, family: %s, final diagnosis: %s" % (projectName, applicationName, family, finalDiagnosis))
@@ -111,17 +112,28 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID)
     log.info("The text of the diagnosis entry is: %s" % (txt))
     
+    # If there are other active dagnosis for this final diagnoisis make them inactive
+    SQL0 = "update DtDiagnosisEntry set Active = 'Inactive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
+    
     # Insert an entry into the diagnosis queue
-    SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
+    SQL1 = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, Multiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
         % (finalDiagnosisId, grade, txt, RECOMMENDATION_NONE_MADE)
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
-    logSQL.trace(SQL)
+    logSQL.trace(SQL1)
     
     try:
+        SQL = SQL0
+        rows = system.db.runUpdateQuery(SQL, database)
+        if rows > 0:
+            log.warn("Updated %i diagnosis entries that were already active - probably due to a restart, there may be recommendations that need to be cleared up" % (rows))
+        
+        SQL = SQL1
         system.db.runUpdateQuery(SQL, database)
-        system.db.runUpdateQuery(SQL2, database)
+        
+        SQL = SQL2
+        system.db.runUpdateQuery(SQL, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
@@ -172,17 +184,17 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
         log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
         return    
 
-    # If there was a recommendation, then rescind it
-    SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s' where FinalDiagnosisId = %i and Status = 'Active'" % (RECOMMENDATION_RESCINDED, finalDiagnosisId)
+    # If there was an active diagnosis entry then set its recommendation status to RESCINDED and its state to INACTIVE
+    SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s', Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (RECOMMENDATION_RESCINDED, finalDiagnosisId)
     logSQL.trace(SQL)
     rows = system.db.runUpdateQuery(SQL, database)
     log.trace("Cleared %i diagnosis entries" % (rows))
 
-    # Set the state of the diagnosis entry to InActive
-    SQL = "update DtDiagnosisEntry set Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
-    logSQL.trace(SQL)
-    rows = system.db.runUpdateQuery(SQL, database)
-    log.info("...cleared %i diagnosis entries" % (rows))
+    # PAH 1/22/17 consolidated this SQL with the one above that hasd the same where clause...
+#    SQL = "update DtDiagnosisEntry set Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
+#    logSQL.trace(SQL)
+#    rows = system.db.runUpdateQuery(SQL, database)
+ #   log.info("...cleared %i diagnosis entries" % (rows))
     
     # Set the state of the Final Diagnosis to InActive
     SQL = "update DtFinalDiagnosis set State = 0, Active = 0 where FinalDiagnosisId = %i" % (finalDiagnosisId)
@@ -209,7 +221,7 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
 def recalcMessageHandler(payload):
     post=payload["post"]
     project=system.util.getProjectName()
-    log.info("Handling recalc message for project: %s, post: %s" % (projet, post))
+    log.info("Handling recalc message for project: %s, post: %s" % (project, post))
     print "Payload: ", payload
     database=payload["database"]
     provider=payload["provider"]
@@ -286,6 +298,46 @@ def fetchTextRecommendation(finalDiagnosisId, database):
     txt=system.db.runScalarQuery(SQL, database)
     return txt
 
+
+# Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
+# and is the first step in evaluating the active FDs and calculating new recommendations.
+def resetRecommendations(applicationName, log, database):
+    log.infof("Deleting recommendations for %s", applicationName)
+    
+    SQL = "delete from DtRecommendation " \
+        " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
+        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+        " and A.ApplicationName = '%s')" % (applicationName)
+    log.trace(SQL)
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.info("...deleted %i quantitative recommendations..." % (rows))
+    
+    SQL = "delete from DtTextRecommendation " \
+        " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
+        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+        " and A.ApplicationName = '%s')" % (applicationName)
+    log.trace(SQL)
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.info("...deleted %i text recommendations..." % (rows))
+
+
+# Delete the quant outputs for an applicatuon.
+def resetOutputs(applicationName, log, database):
+    log.infof("Resetting QuantOutputs for application %s", applicationName)
+    SQL = "update DtQuantOutput " \
+        " set Active = 0, FeedbackOutputManual = 0.0, ManualOverride = 0 where ApplicationId in (select ApplicationId "\
+        " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
+    log.trace(SQL)
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.info("...reset %i QuantOutputs..." % (rows))
+        
+        
 # This replaces _em-manage-diagnosis().  Its job is to prioritize the active diagnosis for an application diagnosis queue.
 def manage(application, recalcRequested=False, database="", provider=""):
     log.info("Managing diagnosis for application: %s using database %s and tag provider %s" % (application, database, provider))
@@ -327,45 +379,6 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 quantOutputs=newQuantOutputs
         log.info("...outputs merged with recommendations are: %s" % (str(quantOutputs)))
         return quantOutputs
-
-    #-------------------------------------------------------------------------
-    # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
-    # and is the first step in evaluating the active FDs and calculating new recommendations.
-    def resetRecommendations(applicationName, log, database):
-        log.info("Deleting recommendations for %s" % (applicationName))
-        
-        SQL = "delete from DtRecommendation " \
-            " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
-            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
-            " where A.ApplicationId = F.ApplicationId "\
-            " and F.FamilyId = FD.FamilyId "\
-            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
-            " and A.ApplicationName = '%s')" % (applicationName)
-        log.trace(SQL)
-        rows=system.db.runUpdateQuery(SQL, database)
-        log.info("...deleted %i quantitative recommendations..." % (rows))
-        
-        SQL = "delete from DtTextRecommendation " \
-            " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
-            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
-            " where A.ApplicationId = F.ApplicationId "\
-            " and F.FamilyId = FD.FamilyId "\
-            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
-            " and A.ApplicationName = '%s')" % (applicationName)
-        log.trace(SQL)
-        rows=system.db.runUpdateQuery(SQL, database)
-        log.info("...deleted %i text recommendations..." % (rows))
-
-    #----------------------------------------------------------------------------
-    # Delete the quant outputs for an applicatuon.
-    def resetOutputs(applicationName, database):
-        log.info("Resetting QuantOutputs for %s" % (applicationName))
-        SQL = "update DtQuantOutput " \
-            " set Active = 0, FeedbackOutputManual = 0.0, ManualOverride = 0 where ApplicationId in (select ApplicationId "\
-            " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
-        log.trace(SQL)
-        rows=system.db.runUpdateQuery(SQL, database)
-        log.info("...reset %i QuantOutputs..." % (rows))
 
     #---------------------------------------------------------------------
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
@@ -552,7 +565,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
         # Update the Quant Outputs 
         log.info("...rescinding active recommendations for %s..." % (application))
-        resetOutputs(application, database)
+        resetOutputs(application, log, database)
 
         SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s'"\
             "where Status = 'Active' and RecommendationStatus = '%s' "\
@@ -672,7 +685,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     resetRecommendations(application, log, database)
     
     log.info("...resetting the QuantOutput active flag for %s..." % (application))
-    resetOutputs(application, database)
+    resetOutputs(application, log, database)
     
     rescindLowPriorityDiagnosis(lowPriorityList, database)
     setActiveDiagnosisFlag(list2, database)

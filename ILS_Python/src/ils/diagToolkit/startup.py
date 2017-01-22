@@ -14,9 +14,23 @@ def gateway():
     log.info("---------------------------------------------------------")
     log.info("Starting Diagnostic Toolkit gateway version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
-    from ils.common.config import getTagProvider
+    from ils.common.config import getTagProvider, getDatabase
     provider = getTagProvider()
+    database = getDatabase()
+    
     createTags("[" + provider + "]")
+    
+    #
+    # Reset the database diagnosis and recommendations
+    #
+    
+    from ils.diagToolkit.finalDiagnosis import resetRecommendations, resetOutputs
+    from ils.diagToolkit.common import resetFinalDiagnosis, resetDiagnosisEntries
+
+    resetFinalDiagnosis(log, database)
+    resetDiagnosisEntries(log, database)
+    resetRecommendations("%", log, database)
+    resetOutputs("%", log, database)
 
 def client():
     from ils.diagToolkit.version import version
