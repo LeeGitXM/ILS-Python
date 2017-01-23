@@ -183,6 +183,7 @@ def fetchSuperiorStepOLD(chartPath, db):
 '''
 
 def fetchRecipeData(stepUUID, key, attribute, db):
+    logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
     SQL = "select * from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
@@ -195,7 +196,9 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     
     record = pds[0]
     recipeDataId = record["RecipeDataId"]
-    if record["RecipeDataType"] == SIMPLE_VALUE:
+    recipeDataType = record["RecipeDataType"]
+    logger.tracef("...the recipe data tyoe is: %s for id: %d", recipeDataType, recipeDataId)
+    if recipeDataType == SIMPLE_VALUE:
         SQL = "select DESCRIPTION, UNITS, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
@@ -208,7 +211,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         else:
             logger.errorf("Unsupported attribute: %s for a simple value recipe data", attribute)
     
-    elif record["RecipeDataType"] == OUTPUT:
+    elif recipeDataType == OUTPUT:
         SQL = "select DESCRIPTION, TAG, UNITS, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, LABEL, TIMING, "\
             "STEPTIME, MAXTIMING, PVVALUE, TARGETVALUE, PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
             "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
@@ -221,7 +224,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             logger.errorf("Unsupported attribute: %s for an output recipe data", attribute)
     
     else:
-        logger.errorf("Unsupported recipe data type: %s", record["RecipeDataType"])
+        logger.errorf("Unsupported recipe data type: %s", recipeDataType)
     
     return val
 

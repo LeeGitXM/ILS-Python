@@ -9,9 +9,10 @@ def s88Get(chartProperties, stepProperties, keyAndAttribute, scope):
     logger.tracef("In the new s88Get")
     db = getDatabaseName(chartProperties)
     stepUUID, stepName = getTargetStep(chartProperties, stepProperties, scope)
-    logger.tracef("The target step is: %s - %s" % (stepUUID, stepName))
+    logger.tracef("...the target step is: %s - %s" % (stepUUID, stepName))
     key,attribute = splitKey(keyAndAttribute)
     val = fetchRecipeData(stepUUID, key, attribute, db)
+    logger.tracef("...fetched %s" % (str(val)))
     return val
 
 

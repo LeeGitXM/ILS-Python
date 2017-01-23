@@ -154,7 +154,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     
     # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
     # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
-    post=fetchPostForApplication(applicationName)
+    post=fetchPostForApplication(applicationName, database)
     
     if activeOutputs > 0:
         notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
@@ -207,7 +207,7 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
     log.info("...back from manage due to a cleared final diagnosis!")
  
     # Update the setpoint spreadsheet
-    post=fetchPostForApplication(applicationName)
+    post=fetchPostForApplication(applicationName, database)
        
     log.info("Sending update notification to post %s and project %s" % (post, projectName))     
     
