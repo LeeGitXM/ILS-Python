@@ -111,25 +111,16 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     
     txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID)
     log.info("The text of the diagnosis entry is: %s" % (txt))
-    
-    # If there are other active dagnosis for this final diagnoisis make them inactive
-    SQL0 = "update DtDiagnosisEntry set Active = 'Inactive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
-    
+      
     # Insert an entry into the diagnosis queue
-    SQL1 = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
+    SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, Multiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
         % (finalDiagnosisId, grade, txt, RECOMMENDATION_NONE_MADE)
+    
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
-    logSQL.trace(SQL1)
     
     try:
-        SQL = SQL0
-        rows = system.db.runUpdateQuery(SQL, database)
-        if rows > 0:
-            log.warn("Updated %i diagnosis entries that were already active - probably due to a restart, there may be recommendations that need to be cleared up" % (rows))
-        
-        SQL = SQL1
         system.db.runUpdateQuery(SQL, database)
         
         SQL = SQL2
