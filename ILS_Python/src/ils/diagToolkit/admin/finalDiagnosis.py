@@ -17,7 +17,7 @@ def internalFrameOpened(rootContainer):
         " Active, LastRecommendationTime, TimeOfMostRecentRecommendationImplementation, DiagramUUID, FinalDiagnosisUUID, "\
         " ' ' State "\
         " from DtFinalDiagnosisView "\
-        " order by ApplicationName, FamilyPriority, FinalDiagnosisPriority"
+        " order by ApplicationName, FamilyName, FinalDiagnosisName"
     pds = system.db.runQuery(SQL, database)
     
     table = rootContainer.getComponent("Power Table")

@@ -263,8 +263,12 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
 
 # This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
 # provider without the brackets.
-def getProviderFromTagpath(tagPath):
-    provider=tagPath[1:tagPath.find(']')]
+def getProviderFromTagPath(tagPath):
+    if tagPath.find("[") < 0 or tagPath.find("]"):
+        from ils.common.config import getTagProvider
+        provider = getTagProvider()
+    else:
+        provider=tagPath[1:tagPath.find(']')]
     return provider
 
 # Convert a full tag path to just the tag name.
@@ -296,7 +300,7 @@ def checkConfig(tagPath):
         log.error(reason)
         return False, reason
 
-    provider = getProviderFromTagpath(tagPath)
+    provider = getProviderFromTagPath(tagPath)
     globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
     
     if not(globalWriteEnabled):

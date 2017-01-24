@@ -16,6 +16,12 @@ def getTagProvider():
 def getDatabase():
     return 'XOM'
 
+def getIsolationTagProvider():
+    return 'XOM_ISOLATION'
+
+def getIsolationDatabase():
+    return 'XOM_ISOLATION'
+
 # These should be used only by a client.  They totally respect the isolation mode settings that are in force for the client.
 def getHistoryTagProviderClient():
     tagProvider=system.tag.read("[Client]History Tag Provider").value
@@ -33,4 +39,3 @@ def getDatabaseClient():
 def getIsolationModeClient():
     isolationMode=system.tag.read("[Client]Isolation Mode").value
     return isolationMode
-

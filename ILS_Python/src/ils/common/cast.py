@@ -6,7 +6,7 @@ Created on Sep 10, 2014
 
 def toBool(txt):
 
-    if txt == "true" or txt == "True" or txt == "TRUE" or txt == True:
+    if txt == "true" or txt == "True" or txt == "TRUE" or txt == True or txt == '1' or txt == 1:
         val = True
     else:
         val = False
@@ -15,7 +15,7 @@ def toBool(txt):
 
 def toBit(txt):
 
-    if txt == "true" or txt == "True" or txt == "TRUE" or txt == True:
+    if txt == "true" or txt == "True" or txt == "TRUE" or txt == True or txt == '1' or txt == 1:
         val = 1
     else:
         val = 0

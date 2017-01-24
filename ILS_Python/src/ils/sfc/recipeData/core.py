@@ -5,6 +5,7 @@ Created on Nov 30, 2016
 '''
 
 import system, string
+from ils.common.cast import toBit
 
 # Recipe Data Scopes
 LOCAL_SCOPE = "local"
@@ -21,6 +22,7 @@ UNIT_PROCEDURE_STEP = "Global"
 # Recipe data types
 SIMPLE_VALUE = "Simple Value"
 OUTPUT = "Output"
+ARRAY = "Array"
 
 # Constants used to navigate and interrogate the chart scope property dictionary
 ENCLOSING_STEP_SCOPE_KEY = "enclosingStep"
@@ -188,11 +190,11 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         logger.errorf("Error the key was not found")
-        return -1
+        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
-        return -1
+        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
     
     record = pds[0]
     recipeDataId = record["RecipeDataId"]
@@ -205,11 +207,13 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         
         if attribute in ["DESCRIPTION","UNITS"]:
             val = record[attribute]
+            print "Fetched a description or units", val
         elif attribute == "VALUE":
             valueType = record['ValueType']
             val = record["%sVALUE" % string.upper(valueType)]
+            print "Fetched the value: ", val
         else:
-            logger.errorf("Unsupported attribute: %s for a simple value recipe data", attribute)
+            raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
     
     elif recipeDataType == OUTPUT:
         SQL = "select DESCRIPTION, TAG, UNITS, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, LABEL, TIMING, "\
@@ -221,10 +225,22 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         if attribute in ["DESCRIPTION","TAG","UNITS","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","LABEL","TIMING","STEPTIME","MAXTIMING","PVVALUE","TARGETVALUE","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED"]:
             val = record[attribute]
         else:
-            logger.errorf("Unsupported attribute: %s for an output recipe data", attribute)
+            raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
+    
+    elif recipeDataType == ARRAY:
+        
+        SQL = "select DESCRIPTION, UNITS, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+            " from SfcRecipeDataArrayView where RecipeDataId = %s order by ARRAYINDEX" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        
+        if attribute in ["DESCRIPTION","UNITS"]:
+            val = record[attribute]
+        else:
+            raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
     
     else:
-        logger.errorf("Unsupported recipe data type: %s", recipeDataType)
+        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
     
     return val
 
@@ -234,15 +250,23 @@ def setRecipeData(stepUUID, key, attribute, val, db):
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         logger.errorf("Error the key was not found")
-        return -1
+        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
-        return -1
+        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
     
     record = pds[0]
     recipeDataId = record["RecipeDataId"]
-    if record["RecipeDataType"] == SIMPLE_VALUE:
+    recipeDataType = record["RecipeDataType"]
+    logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
+    
+    if attribute in ['DESCRIPTION', 'UNITS']:
+        SQL = "update SfcRecipeData set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
+        rows = system.db.runUpdateQuery(SQL, db)
+        logger.tracef('...updated %d records in SfcRecipeData', rows)
+    
+    elif recipeDataType == SIMPLE_VALUE:
         SQL = "select * from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
@@ -252,11 +276,42 @@ def setRecipeData(stepUUID, key, attribute, val, db):
         else:
             SQL = "update SfcRecipeDataSimpleValue set %sValue = %s where recipeDataId = %s" % (valueType, val, recipeDataId)
         rows = system.db.runUpdateQuery(SQL, db)
-        logger.tracef('Updated %d simple value recipe data records', rows)
+        logger.tracef('...updated %d simple value recipe data records', rows)
+    
+    elif recipeDataType == OUTPUT:
+        if attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'LABEL', 'PVMONITORSTATUS']:
+            SQL = "update SfcRecipeDataOutput set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
+        elif attribute in ['DOWNLOAD', 'PVMONITORACTIVE', 'WRITECONFIRM', 'WRITECONFIRMED']:
+            bitVal = toBit(val)
+            SQL = "update SfcRecipeDataOutput set %s = %s where recipeDataId = %s" % (attribute, bitVal, recipeDataId)
+        elif attribute in ['TIMING', 'MAXTIMING','PVVALUE','TARGETVALUE']:
+            SQL = "update SfcRecipeDataOutput set %s = %s where recipeDataId = %s" % (attribute, val, recipeDataId)
+        elif attribute in ['VALUETYPE']:
+            valueTypeId = fetchValueTypeId(val, db)
+            SQL = "update SfcRecipeDataOutput set ValueTypeId = %i where recipeDataId = %s" % (valueTypeId, recipeDataId)
+        elif attribute in ['OUTPUTTYPE']:
+            outputTypeId = fetchOutputTypeId(val, db)
+            SQL = "update SfcRecipeDataOutput set OutputTypeId = %i where recipeDataId = %s" % (outputTypeId, recipeDataId)
+        else:
+            logger.errorf("Unsupported attribute <%s> for output recipe data", attribute)
+            raise ValueError, "Unsupported attribute <%s> for output recipe data" % (attribute)
+            
+        rows = system.db.runUpdateQuery(SQL, db)
+        logger.tracef('...updated %d output recipe data records', rows)
+        
     else:
         logger.errorf("Unsupported recipe data type: %s", record["RecipeDataType"])
-    
+        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
 
+def fetchOutputTypeId(val, db):
+    SQL = "select OutputTypeId from SfcRecipeDataOutputType where OutputType = '%s'" % (val)
+    outputTypeId = system.db.runScalarQuery(SQL, db)
+    return outputTypeId
+
+def fetchValueTypeId(val, db):
+    SQL = "select ValueTypeId from SfcValueType where ValueType = '%s'" % (val)
+    valueTypeId = system.db.runScalarQuery(SQL, db)
+    return valueTypeId
 
 def getChartUUID(chartProperties):
     return chartProperties.get("chartUUID", "-1")

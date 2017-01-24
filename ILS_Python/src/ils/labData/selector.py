@@ -5,10 +5,11 @@ Created on Mar 29, 2015
 '''
 import system
 from ils.common.config import getDatabase, getDatabaseClient
+log = system.util.getLogger("com.ils.labData.selector")
 
 def valueChanged(tagPath):
     import time
-    log = system.util.getLogger("com.ils.labData.selector")
+    
     log.trace("Detected a value change in: %s" % (tagPath))
     database = getDatabase()
  
@@ -31,8 +32,7 @@ def valueChanged(tagPath):
 
 # Update the expression in the selector tag to get its values from a new source
 # This operates entirely on tags and has no database transactions
-def configureSelector(unitName, selectorName, sourceName):
-    log = system.util.getLogger("com.ils.labData.selector")
+def configureSelector(unitName, selectorName, sourceName, database):
     from ils.common.config import getTagProvider
     provider = getTagProvider()
     parentTagPath = '[' + provider + ']LabData/' + unitName + '/'
@@ -64,9 +64,9 @@ def configureSelector(unitName, selectorName, sourceName):
         system.tag.editTag(tagPath, parameters=parameters)
         
         # Update the LtSelector table to reflect the current active source
-        valueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (selectorName))
-        sourceValueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (sourceName))
-        system.db.runUpdateQuery("update LtSelector set sourceValueId = %i where ValueId = %i" % (sourceValueId, valueId))
+        valueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (selectorName), database)
+        sourceValueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (sourceName), database)
+        system.db.runUpdateQuery("update LtSelector set sourceValueId = %i where ValueId = %i" % (sourceValueId, valueId), database)
         
     elif UDTType == "Lab Data/Lab Selector Limit SQC":
         lowerSQCLimitTag='{[.]../' + sourceName + '/lowerSQCLimit}'
@@ -118,8 +118,8 @@ def configureSelector(unitName, selectorName, sourceName):
 # When a selector has a new source, the tags are configured above, but we also need to update the 
 # description of the selector, which shows up in the display table.  For example, they don't want to see
 # Mooney lab data (which doesn't tell them where it came from), they want to see Rx1-ML or Rx2-ML
-def updateSelectorDisplayTableDescription(selectorName, sourceName):
-    
+def updateSelectorDisplayTableDescription(selectorName, sourceName, database):
     SQL = "update LtValue set Description = (select description from LtValue where ValueName = '%s') "\
         " where ValueName = '%s'" % (sourceName, selectorName)
-    rows = system.db.runUpdateQuery(SQL)
+    rows = system.db.runUpdateQuery(SQL, database)
+    log.trace("Updated %i rows in LtValue" % (rows))
