@@ -13,6 +13,9 @@ import system
 def getTagProvider():
     return 'XOM'
 
+def getHistoryProvider():
+    return 'XOMhistory'
+
 def getDatabase():
     return 'XOM'
 
