@@ -4,8 +4,9 @@ Created on Jul 9, 2014
 @author: chuckc
 '''
 import ils.io.recipe as recipe
-import system
+import system, string
 import ils.io.opcoutput as opcoutput
+import ils.io.opcconditionaloutput as opcconditionaloutput
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io")
 
@@ -16,6 +17,7 @@ class RecipeDetail(recipe.Recipe):
     writeHighLimit = False
     writeLowLimit = False
     writeSp = False
+    pythonClass = ""
     
     def __init__(self,path):
         recipe.Recipe.__init__(self,path)
@@ -42,9 +44,22 @@ class RecipeDetail(recipe.Recipe):
             self.writeLowLimit = True
             log.trace("  setting up to write the low limit")
 
+
+        '''
+        The limits that I am setting up above here are always opcOutputs.  The SP is generally a more
+        complicated UDT.  At Vistalon, they are always OPC Conditional Outputs, but I'm not sure that will always be the case.
+        So for the sp, the first thing I need to do is to read the Python class from the UDT so I can create the proper
+        type of object here and then dispatch the method correctly
+        '''
         spTagName = vals[2].value
         if spTagName <> "":
-            self.spTag = opcoutput.OPCOutput(rootPath + spTagName)
+            self.pythonClass = system.tag.read(rootPath + spTagName + "/pythonClass").value
+            
+            if self.pythonClass == "OPCOutput":
+                self.spTag = opcoutput.OPCOutput(rootPath + spTagName)
+            elif self.pythonClass == "OPCConditionalOutput":
+                self.spTag = opcconditionaloutput.OPCConditionalOutput(rootPath + spTagName)
+            
             self.writeSp = True
             log.trace("  setting up to write the setpoint")
 
