@@ -300,10 +300,19 @@ def getApplicationId(rootContainer, application):
 # We could use the database to do this, but since we have everything here in the table, I can just look it up. 
 def getApplicationName(rootContainer, oldApplicationName):
     applicationName = ""
+    
+    # Remove the "_" and make camel case
+    tokens=oldApplicationName.split("_")
+    oldApplicationName = ""
+    for token in tokens:
+        token=string.replace(token, "_", "")
+        oldApplicationName = oldApplicationName + string.capitalize(token)
+
     ds=rootContainer.getComponent("Application Container").getComponent("Power Table").data
     for row in range(ds.rowCount):
         if ds.getValueAt(row, "name") == oldApplicationName:
             return ds.getValueAt(row, 4)
+    print "Looking up %s and replacing it with %s..." % (oldApplicationName, applicationName)
     return applicationName
 
 #
@@ -612,6 +621,9 @@ def createPKSACEController(container):
     site = rootContainer.getComponent("Site").text
     provider = rootContainer.getComponent("Tag Provider").text
     itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
+    
+    writeTags=[]
+    writeValues=[]
 
     for row in range(ds.rowCount):
         oldApplicationName = ds.getValueAt(row, 2)
@@ -631,6 +643,7 @@ def createPKSACEController(container):
         windupItemId = itemIdPrefix + ds.getValueAt(row, "windup-item-id")
         modeItemId = itemIdPrefix + ds.getValueAt(row, "mode-item-id")
         processingCommandItemId = itemIdPrefix + ds.getValueAt(row, "processing-cmd-item-id")
+        processingCommandWait = itemIdPrefix + ds.getValueAt(row, "processing-cmd-wait")
         
         gsiInterface = ds.getValueAt(row, "opc-server")
         serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
@@ -638,6 +651,10 @@ def createPKSACEController(container):
        
         parentPath = '[' + provider + ']' + path    
         tagPath = parentPath + "/" + outputName
+        
+        writeTags.append(tagPath + "/processingCommandWait")
+        writeValues.append(processingCommandWait)
+        
         tagExists = system.tag.exists(tagPath)
 
         if not(tagExists):
@@ -649,6 +666,11 @@ def createPKSACEController(container):
                             "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId, 
                             "processingCommandItemId": processingCommandItemId, "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
+        else:
+            print "Tag %s already exists..." % (outputName)
+    
+    print "Writing to the processing command wait tag..."
+    system.tag.writeAll(writeTags, writeValues)
 
 
 # We could probably use the database for this lookup, but let's just follow the pattern
