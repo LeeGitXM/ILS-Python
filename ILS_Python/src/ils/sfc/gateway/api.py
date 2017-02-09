@@ -10,8 +10,6 @@ import system, string
 from ils.sfc.recipeData.core import getTargetStep, fetchRecipeData, getChartUUID, getStepUUID, splitKey
 
 logger=system.util.getLogger("com.ils.sfc.api")
-
-
     
 '''
 General API functions
@@ -41,34 +39,10 @@ def s88DataExists(chartProperties, stepProperties, valuePath, location):
   
 def s88Get(chartProperties, stepProperties, valuePath, location):
     '''Get the given recipe data's value'''
-
-    import system.tag
-    from ils.sfc.common.util import isEmpty
-    from ils.sfc.gateway.recipe import getIndexedValue
-    
-    fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
-    logger.tracef("In s88Get, the full path is: ", fullTagPath)
-    if fullTagPath.find('(') != -1:
-        database = getDatabaseName(chartProperties)
-        value = getIndexedValue(fullTagPath, database)
-    else:
-        # A reference to undefined recipe data is a run-time error.
-        exists = system.tag.exists(fullTagPath)
-        if not(exists):
-            raise Exception("Unresolved reference to %s.%s" % (location, valuePath))
-         
-        qv = system.tag.read(fullTagPath)
-        value = qv.value
-    
-    # we're not doing unit conversion here, but if there happens to be a time
-    # unit then we want to do the isolation mode time scaling:
-    if isValueKey(valuePath):
-        unitName = getAssociatedUnitName(chartProperties, stepProperties, valuePath, location)
-        if not isEmpty(unitName):
-            unit = getUnitByName(chartProperties, string.upper(unitName))
-            value = scaleTimeForIsolationMode(chartProperties, value, unit)
-    logger.tracef("...and the returned value is: %s", str(value))
-    return value
+    print "Using a deprecated API - replace gateway.api.s88Get() with recipeData.api.s88Get()"
+    from ils.sfc.recipeData.api import s88Get as s88GetNew
+    val = s88GetNew(chartProperties, stepProperties, valuePath, location)
+    return val
 
 def isValueKey(key):
     '''return true if the given key references the "value" attribute'''
@@ -80,20 +54,11 @@ def s88GetType(chartProperties, stepProperties, valuePath, location):
     return getTagType(fullTagPath);
 
 def s88Set(chartProperties, stepProperties, valuePath, value, location):
-    '''Set the given recipe data's value'''
-    import system.tag
-    from ils.sfc.gateway.recipe import setIndexedValue
-    fullTagPath = s88GetFullTagPath(chartProperties, stepProperties, valuePath, location)
-    try:
-        if fullTagPath.find('(') != -1:
-            database = getDatabaseName(chartProperties)
-            setIndexedValue(fullTagPath, value, database)
-        else:
-            system.tag.writeSynchronous(fullTagPath, value)
-            # print "ils.sfc.api.s88Set: Write to ",fullTagPath
-    except:
-        chartLogger = getChartLogger(chartProperties)
-        chartLogger.error("ils.sfc.api.s88Set: Failed to write to recipe data tag %s" % (fullTagPath))
+    '''Set the given recipe data's value'''    
+    print "Using a deprecated API - replace gateway.api.s88Set() with recipeData.api.s88Set()"
+    from ils.sfc.recipeData.api import s88Set as s88SetNew
+    s88SetNew(chartProperties, stepProperties, valuePath, value, location)
+
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     '''Like s88Get, but adds a conversion to the given units'''

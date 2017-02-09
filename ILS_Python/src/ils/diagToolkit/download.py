@@ -4,7 +4,7 @@ Created on Feb 4, 2015
 @author: Pete
 '''
 
-import system, string
+import system, string, time
 from __builtin__ import False
 log = system.util.getLogger("com.ils.diagToolkit.download")
 from ils.queue.message import insertPostMessage
@@ -19,6 +19,7 @@ def downloadCallback(event, rootContainer):
     from ils.common.config import getTagProviderClient, getDatabaseClient
     tagProvider=getTagProviderClient()
     db=getDatabaseClient()
+    project = system.util.getProjectName()
     
     post=rootContainer.post
     
@@ -40,21 +41,34 @@ def downloadCallback(event, rootContainer):
         system.gui.messageBox("Cancelling download because one or more of the controllers is unreachable!")
         return
 
-    ans = system.gui.confirm("There are setpoints to download and the controllers are in the correct mode, press 'Yes' to proceed with the downlaod.")
-    
+    confirmationEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/downloadConfirmationEnabled").value
+    if confirmationEnabled:
+        ans = system.gui.confirm("There are setpoints to download and the controllers are in the correct mode, press 'Yes' to proceed with the downlaod.")
+    else:
+        ans = True
+
     if ans:
         # If there is an open recommendation map then close it
         hideDetailMap()
         
-        serviceDownload(post, repeater, ds, tagProvider, db)
+        # Send a serviceDownload message to the gateway
+        payload = {"post": post, "tagProvider": tagProvider, "database": db, "ds": ds}
+        log.info("Sending serviceDownload message to the gateway...")
+        system.util.sendMessage(project, "serviceDownload", payload, "G")
+        
+        # Set the download active flag on the UI that triggers the status message and database updates...
+        rootContainer.downloadActive = True
+        from ils.diagToolkit.setpointSpreadsheet import updateDownloadActiveFlag
+        updateDownloadActiveFlag(post, True, db)
+#        serviceDownload(post, repeater, ds, tagProvider, db)
         
         # Now do the standard post processing work such as resetting diagrams
-        from ils.diagToolkit.setpointSpreadsheet import postCallbackProcessing
-        allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="Download", recommendationStatus="Download")
+#        from ils.diagToolkit.setpointSpreadsheet import postCallbackProcessing
+#        allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="Download", recommendationStatus="Download")
     
         # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
-        if allApplicationsProcessed:
-            system.nav.closeParentWindow(event)
+#        if allApplicationsProcessed:
+#            system.nav.closeParentWindow(event)
     else:
         print "The operator choose not to continue with the download."
 
@@ -133,6 +147,100 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
 
     return okToDownload
 
+'''
+This should run in the gateway to free up the client.  Status is communicated via the database
+'''
+
+def serviceDownloadMessageHandler(payload):
+    print "Received a service download message"
+    print "The payload is: ", payload
+    
+    post = payload.get("post", None)
+    ds = payload.get("ds", None)
+    tagProvider = payload.get("tagProvider", None)
+    db = payload.get("database", None)
+    
+    print "Post:         ", post
+    print "Tag Provider: ", tagProvider
+    print "Database:     ", db
+    print "Dataset:      ", ds
+    
+    serviceDownload(post, ds, tagProvider, db)
+
+def serviceDownload(post, ds, tagProvider, db):
+    # iterate through each row of the dataset that is marked to go and download it.
+    log.info("Starting to download...")
+    
+    diagToolkitWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
+    print "DiagToolkitWriteEnabled: ", diagToolkitWriteEnabled
+    
+    logbookMessage = "Download performed for the following:\n"
+
+    # First update the download status of every output we intend to write
+    for row in range(ds.rowCount):
+        rowType=ds.getValueAt(row, "type")
+        if rowType == "row":
+            command=ds.getValueAt(row, "command")
+            if string.upper(command) == 'GO':
+                quantOutputId=ds.getValueAt(row, "qoId")
+                updateQuantOutputDownloadStatus(quantOutputId, "Pending", db)
+
+    print "Sleeping..."
+    time.sleep(10)
+    print "Waking up..."
+    
+    # Now get to work on the download...
+    for row in range(ds.rowCount):
+        rowType=ds.getValueAt(row, "type")
+        if rowType == "app":
+            applicationName = ds.getValueAt(row, "application")
+            logbookMessage += "  Application: %s\n" % applicationName
+            firstOutputRow = True
+            
+        elif rowType == "row":
+            command=ds.getValueAt(row, "command")
+            if string.upper(command) == 'GO':
+                if firstOutputRow:
+                    # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
+                    firstOutputRow = False
+                    logbookMessage += constructDownloadLogbookMessage(post, applicationName, db)
+                    
+                quantOutput=ds.getValueAt(row, "output")
+                quantOutputId=ds.getValueAt(row, "qoId")
+                tag=ds.getValueAt(row, "tag")
+                newSetpoint=ds.getValueAt(row, "finalSetpoint")
+                tagPath="[%s]%s" % (tagProvider, tag)
+
+                logbookMessage += "      download of %s to the value %f was " % (tagPath, newSetpoint)
+                
+                if diagToolkitWriteEnabled:
+                    print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
+                    success, errorMessage = write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
+                    
+                    if success:
+                        updateQuantOutputDownloadStatus(quantOutputId, "Success", db)
+                        logbookMessage += "confirmed\n"
+                        print "The write was successful"
+                    else:
+                        print "The write FAILED because: ", errorMessage
+                        updateQuantOutputDownloadStatus(quantOutputId, "Error", db)
+                        logbookMessage += "failed because of an error: %s\n" % (errorMessage)
+                else:
+                    print "...writes from the diagnostic toolkit are disabled..."
+                    insertPostMessage(post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), db)
+                    updateQuantOutputDownloadStatus(quantOutputId, "Error", db)
+                    logbookMessage += "failed because diag toolkit writes are disabled\n"
+    
+    from ils.common.operatorLogbook import insertForPost
+    print "Logging logbook message: ", logbookMessage
+    insertForPost(post, logbookMessage, db)
+
+def updateQuantOutputDownloadStatus(quantOutputId, downloadStatus, db):
+    SQL = "update DtQuantOutput set DownloadStatus = '%s' where QuantOutputId = %i " % (downloadStatus, quantOutputId)
+    log.trace(SQL)
+    system.db.runUpdateQuery(SQL, db)
+
+#
 def constructDownloadLogbookMessage(post, applicationName, db):
     from ils.diagToolkit.common import fetchActiveDiagnosis
     pds = fetchActiveDiagnosis(applicationName, db)
@@ -180,59 +288,3 @@ def constructDownloadLogbookMessage(post, applicationName, db):
                 txt = "          change to %s adjusted to %s because %s" % (quantOutput, str(feedbackOutputConditioned), outputLimitedStatus)
 
     return txt
-
-
-def serviceDownload(post, repeater, ds, tagProvider, db):
-    # iterate through each row of the dataset that is marked to go and download it.
-    log.info("Starting to download...")
-    
-    diagToolkitWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
-    print "DiagToolkitWriteEnabled: ", diagToolkitWriteEnabled
-    
-    logbookMessage = "Download performed for the following:\n"
- 
-    for row in range(ds.rowCount):
-        rowType=ds.getValueAt(row, "type")
-        if rowType == "app":
-            applicationName = ds.getValueAt(row, "application")
-            logbookMessage += "  Application: %s\n" % applicationName
-            firstOutputRow = True
-            
-        elif rowType == "row":
-            command=ds.getValueAt(row, "command")
-            if string.upper(command) == 'GO':
-                if firstOutputRow:
-                    # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
-                    firstOutputRow = False
-                    logbookMessage += constructDownloadLogbookMessage(post, applicationName, db)
-                    
-                quantOutput=ds.getValueAt(row, "output")
-                tag=ds.getValueAt(row, "tag")
-                newSetpoint=ds.getValueAt(row, "finalSetpoint")
-                tagPath="[%s]%s" % (tagProvider, tag)
-
-                logbookMessage += "      download of %s to the value %f was " % (tagPath, newSetpoint)
-                
-                if diagToolkitWriteEnabled:
-                    print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
-                    success, errorMessage = write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
-                    
-                    if success:
-                        ds = system.dataset.setValue(ds, row, "downloadStatus", "Success")
-                        logbookMessage += "confirmed\n"
-                        print "The write was successful"
-                    else:
-                        print "The write FAILED because: ", errorMessage
-                        ds = system.dataset.setValue(ds, row, "downloadStatus", "Error")
-                        logbookMessage += "failed because of an error: %s\n" % (errorMessage)
-                else:
-                    print "...writes from the diagnostic toolkit are disabled..."
-                    insertPostMessage(post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), db)
-                    ds = system.dataset.setValue(ds, row, "downloadStatus", "Error")
-                    logbookMessage += "failed because diag toolkit writes are disabled\n"
-    
-    repeater.templateParams=ds
-    
-    from ils.common.operatorLogbook import insertForPost
-    print "Logging logbook message: ", logbookMessage
-    insertForPost(post, logbookMessage, db)

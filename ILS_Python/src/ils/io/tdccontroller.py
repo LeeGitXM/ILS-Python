@@ -58,16 +58,16 @@ class TDCController(controller.Controller):
         
         # Check the Output Disposability
         
-        outputDisposability = system.tag.read(self.path + '/outputDisposability/value')
+        windup = system.tag.read(self.path + '/windup')
         
         # Check the quality of the tags to make sure we can trust their values
-        if str(outputDisposability.quality) != 'Good': 
-            log.warn("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
-            return False, "The outputDisposability quality is %s" % (str(outputDisposability.quality))
+        if str(windup.quality) != 'Good': 
+            log.warn("checkConfig failed for %s because the windup quality is %s" % (self.path, str(windup.quality)))
+            return False, "The windup quality is %s" % (str(windup.quality))
 
-        outputDisposability = string.strip(outputDisposability.value)        
+        windup = string.strip(windup.value)        
 
-        log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, outputType, str(currentValue), outputDisposability, mode))
+        log.trace("%s: %s=%s, windup=%s, mode:%s" % (self.path, outputType, str(currentValue), windup, mode))
 
         # For outputs check that the mode is MANUAL - no other test is required
         if string.upper(outputType) in ["OP", "OUTPUT"]:
@@ -78,7 +78,7 @@ class TDCController(controller.Controller):
         # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is 
         # optional 
         elif string.upper(outputType) in ["SP", "SETPOINT"]:
-            if string.upper(outputDisposability) == 'HILO' and checkPathToValve:
+            if string.upper(windup) == 'HILO' and checkPathToValve:
                 success = False
                 errorMessage = "%s has no path to valve" % (self.path)
         

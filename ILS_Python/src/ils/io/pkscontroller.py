@@ -37,8 +37,7 @@ class PKSController(controller.Controller):
             system.tag.write(tagPath + '/writeErrorMessage', '')
             system.tag.write(tagPath + '/writeConfirmed', False)
             system.tag.write(tagPath + '/writeStatus', '')
-            
-        # Not sure if outputDisposability needs to be reset
+
         return success, errorMessage
 
     
@@ -202,17 +201,17 @@ class PKSController(controller.Controller):
         
         mode = string.strip(mode.value)
         
-        # Check the Output Disposability
-        outputDisposability = system.tag.read(self.path + '/outputDisposability/value')
+        # Check the Windup
+        windup = system.tag.read(self.path + '/windup')
         
         # Check the quality of the tags to make sure we can trust their values
-        if str(outputDisposability.quality) != 'Good': 
-            log.warn("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
-            return False, "The outputDisposability quality is %s" % (str(outputDisposability.quality))
+        if str(windup.quality) != 'Good': 
+            log.warn("checkConfig failed for %s because the windup quality is %s" % (self.path, str(windup.quality)))
+            return False, "The windup quality is %s" % (str(windup.quality))
 
-        outputDisposability = string.strip(outputDisposability.value)        
+        windup = string.strip(windup.value)        
 
-        log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, outputType, str(currentValue), outputDisposability, mode))
+        log.trace("%s: %s=%s, windup=%s, mode:%s" % (self.path, outputType, str(currentValue), windup, mode))
 
         # For outputs check that the mode is MANUAL - no other test is required
         if string.upper(outputType) in ["OP", "OUTPUT"]:
@@ -220,10 +219,9 @@ class PKSController(controller.Controller):
                 success = False
                 errorMessage = "%s is not in manual (mode is actually %s)" % (self.path, mode)
         
-        # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is 
-        # optional 
+        # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is optional 
         elif string.upper(outputType) in ["SP", "SETPOINT"]:
-            if string.upper(outputDisposability) == 'HILO' and checkPathToValve:
+            if string.upper(windup) == 'HILO' and checkPathToValve:
                 success = False
                 errorMessage = "%s has no path to valve" % (self.path)
         
@@ -236,7 +234,7 @@ class PKSController(controller.Controller):
             # See s88-confirm-controller-mode(opc-pks-controller)
             if (currentValue > (float(newVal) * 0.03)) and testForZero:
                 success = False
-                errorMessage = "%s %s setpoint is n ot zero (it is actually %f)" % (errorMessage, self.path, currentValue)
+                errorMessage = "%s %s setpoint is not zero (it is actually %f)" % (errorMessage, self.path, currentValue)
 
         log.trace("  confirmControllerMode returned: %s - %s" % (str(success), errorMessage))
         return success, errorMessage

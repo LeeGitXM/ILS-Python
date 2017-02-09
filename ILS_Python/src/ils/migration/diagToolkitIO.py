@@ -573,6 +573,9 @@ def createPKSController(container):
     site = rootContainer.getComponent("Site").text
     provider = rootContainer.getComponent("Tag Provider").text
     itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
+    
+    writeTags=[]
+    writeValues=[]
 
     for row in range(ds.rowCount):
         oldApplicationName = ds.getValueAt(row, 2)
@@ -587,6 +590,7 @@ def createPKSController(container):
         spItemId = itemIdPrefix + ds.getValueAt(row, "item-id")
         
         permissiveItemId = itemIdPrefix + ds.getValueAt(row, "permissive-item-id")
+        permissiveValue = ds.getValueAt(row, "permissive-value")
         highClampItemId = itemIdPrefix + ds.getValueAt(row, "high-clamp-item-id")
         lowClampItemId = itemIdPrefix + ds.getValueAt(row, "low-clamp-item-id")
         windupItemId = itemIdPrefix + ds.getValueAt(row, "windup-item-id")
@@ -598,6 +602,10 @@ def createPKSController(container):
         
         parentPath = '[' + provider + ']' + path    
         tagPath = parentPath + "/" + outputName
+        
+        writeTags.append(tagPath + "/permissiveValue")
+        writeValues.append(permissiveValue)
+        
         tagExists = system.tag.exists(tagPath)
     
         if not(tagExists):
@@ -611,7 +619,11 @@ def createPKSController(container):
                                 "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId,
                                 "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
-            
+        else:
+            print "Tag %s already exists..." % (outputName)
+    
+    print "Writing to the processing command wait and permissive value tags..."
+    system.tag.writeAll(writeTags, writeValues)
 
 def createPKSACEController(container):
     rootContainer=container.parent
@@ -638,6 +650,7 @@ def createPKSACEController(container):
         spItemId = itemIdPrefix + ds.getValueAt(row, "item-id")
         
         permissiveItemId = itemIdPrefix + ds.getValueAt(row, "permissive-item-id")
+        permissiveValue = ds.getValueAt(row, "permissive-value")
         highClampItemId = itemIdPrefix + ds.getValueAt(row, "high-clamp-item-id")
         lowClampItemId = itemIdPrefix + ds.getValueAt(row, "low-clamp-item-id")
         windupItemId = itemIdPrefix + ds.getValueAt(row, "windup-item-id")
@@ -655,6 +668,9 @@ def createPKSACEController(container):
         writeTags.append(tagPath + "/processingCommandWait")
         writeValues.append(processingCommandWait)
         
+        writeTags.append(tagPath + "/permissiveValue")
+        writeValues.append(permissiveValue)
+        
         tagExists = system.tag.exists(tagPath)
 
         if not(tagExists):
@@ -669,7 +685,7 @@ def createPKSACEController(container):
         else:
             print "Tag %s already exists..." % (outputName)
     
-    print "Writing to the processing command wait tag..."
+    print "Writing to the processing command wait and permissive value tags..."
     system.tag.writeAll(writeTags, writeValues)
 
 
