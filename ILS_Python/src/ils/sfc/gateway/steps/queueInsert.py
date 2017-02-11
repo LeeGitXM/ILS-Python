@@ -21,7 +21,7 @@ def activate(scopeContext, stepProperties, state):
         stepScope = scopeContext.getStepScope()
         chartLogger = getChartLogger(chartScope)
         currentMsgQueue = getCurrentMessageQueue(chartScope)
-        message = getStepProperty(stepProperties, MESSAGE)  
+        message = getStepProperty(stepProperties, MESSAGE)
         message = substituteScopeReferences(chartScope, stepScope, message)
         priority = getStepProperty(stepProperties, PRIORITY)  
         database = getDatabaseName(chartScope)

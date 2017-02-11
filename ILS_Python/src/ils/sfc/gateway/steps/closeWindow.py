@@ -4,13 +4,14 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 import system
-from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError, getControlPanelName
+from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import getProject, getChartLogger,getDatabaseName, getPostForControlPanelName
-from ils.sfc.gateway.util import getTopChartRunId, getStepName
+from ils.sfc.gateway.util import getTopChartRunId, getStepProperty
+from ils.sfc.common.constants import NAME
 
 def activate(scopeContext, stepProperties, state):       
     try:
-        stepName = getStepName(stepProperties)
+        stepName = getStepProperty(stepProperties, NAME)
         chartScope = scopeContext.getChartScope()
         database = getDatabaseName(chartScope)  
         logger = getChartLogger(chartScope)

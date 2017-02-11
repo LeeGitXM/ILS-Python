@@ -85,10 +85,10 @@ class TDCController(controller.Controller):
             if string.upper(mode) <> 'AUTO':
                 success = False
                 errorMessage = "%s %s is not in automatic (mode is actually %s)" % (errorMessage, self.path, mode)
-            
-            # I don't understand this check, not sure if we are checking the current value or the new value.  
-            # If checking the currentValue, what difference does it make what the new value is??
-            # See s88-confirm-controller-mode(opc-pks-controller)
+
+            # The testForZero check is used when we expect the starting point for the write to be 0, i.e. a closed valve.
+            # If we expect the current SP to be 0, and it isn't, then the state of the plant is not what we expect so
+            # warn the operator.  See s88-confirm-controller-mode(opc-pks-controller)
             if (currentValue > (float(newVal) * 0.03)) and testForZero:
                 success = False
                 errorMessage = "%s %s setpoint is not zero (it is actually %f)" % (errorMessage, self.path, currentValue)

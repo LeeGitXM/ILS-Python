@@ -23,7 +23,7 @@ def checkForResponse(chartScope, stepScope, stepProperties):
 
     # PETE - not sure who uses this or what this did - I don't think we need this with the new style of windows.
 #    responsePayload = getResponse(windowId)
-    recponsePayload = {}
+    responsePayload = {}
     if responsePayload != None:
         response = responsePayload[RESPONSE]
     elif timeoutTime != None and time.time() > timeoutTime:
@@ -279,9 +279,6 @@ def getWithPath(properties, key):
     Get a value using a potentially compound key
     '''
 
-
-
-
 def hasStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
     for prop in stepProperties.getProperties():
@@ -291,9 +288,10 @@ def hasStepProperty(stepProperties, pname):
 
 def logStepDeactivated(chartScope, stepProperties):
     from ils.sfc.gateway.api import getChartLogger
+    from ils.sfc.common.constants import NAME
     chartLogger = getChartLogger(chartScope)
     chartPath = getChartPath(chartScope)
-    stepName = getStepName(stepProperties)
+    stepName = getStepProperty(stepProperties, NAME)
     chartLogger.info("Step %s in %s deactivated before completing" % (stepName, chartPath))
     
 def printSpace(level, out):

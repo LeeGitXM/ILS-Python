@@ -9,6 +9,7 @@ from ils.common.cast import toBit
 
 # Recipe Data Scopes
 LOCAL_SCOPE = "local"
+PRIOR_SCOPE = "prior"
 SUPERIOR_SCOPE = "superior"
 PHASE_SCOPE = "phase"
 OPERATION_SCOPE = "operation"
@@ -36,11 +37,16 @@ logger=system.util.getLogger("com.ils.sfc.recipeData.core")
 
 # Return the UUID of the step  
 def getTargetStep(chartProperties, stepProperties, scope):
+    scope.lower()
     logger.tracef("Getting target step for scope %s...", scope)
     
     if scope == LOCAL_SCOPE:
         stepUUID = getStepUUID(stepProperties)
         stepName = getStepName(stepProperties)
+        return stepUUID, stepName
+    
+    elif scope == PRIOR_SCOPE:
+        stepUUID, stepName = getPriorStep(chartProperties, stepProperties)
         return stepUUID, stepName
     
     elif scope == SUPERIOR_SCOPE:
@@ -106,6 +112,15 @@ def getSuperiorStep(chartProperties):
     
     return superiorUUID, superiorName
     
+'''
+This is only called from a transition.  The SFC framework passes the PRIOR step's properties
+in stepProperties.
+'''
+def getPriorStep(chartProperties, stepProperties):
+    logger.trace("Getting the prior step UUID and Name...")
+    priorName = stepProperties.get(STEP_NAME, None) 
+    priorUUID= stepProperties.get(STEP_NAME, None) 
+    return priorUUID, priorName
 
 # Get the S88 level of the step superior to this chart.  The chart that is encapsulated under an operation is operation scope.
 def getEnclosingStepScope(chartScope):
@@ -171,7 +186,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         elif attribute == "VALUE":
             valueType = record['VALUETYPE']
             val = record["%sVALUE" % string.upper(valueType)]
-            print "Fetched the value: ", val
+            logger.tracef("Fetched the value: %s", str(val))
         else:
             raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
     
@@ -186,7 +201,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             startTime = record["STARTTIME"]
             runTimeMinutes = system.date.minutesBetween(startTime, system.date.now())
             val = runTimeMinutes
-            print "Fetched the value: ", val
+            logger.tracef("Fetched the value: %s", str(val))
         else:
             raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
     
@@ -366,6 +381,8 @@ def getStepName(stepProperties):
 # This handles a simple "key.attribute" notation, but does not handle folder reference or arrays
 def splitKey(keyAndAttribute):
     tokens = keyAndAttribute.split(".")
+    if len(tokens) < 2:
+        raise ValueError "Missing attribute name in %s" % (keyAndAttribute)
     key = string.upper(tokens[0])
     attribute = string.upper(tokens[1])
     return key, attribute

@@ -10,13 +10,13 @@ response is received, put response in chart properties
 
 import system
 from ils.sfc.common.util import isEmpty
-from ils.sfc.gateway.steps.commonInput import cleanup, setResponse
+from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
 from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
-        checkForResponse, logStepDeactivated, getStepId, getTopChartRunId, \
-        handleUnexpectedGatewayError
+        logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
 from ils.sfc.common.constants import BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, \
-    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED
+    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -28,6 +28,8 @@ def activate(scopeContext, stepProperties, state):
     logger = getChartLogger(chartScope)
     windowPath = "SFC/YesNo"
     messageHandler = "sfcOpenWindow"
+    responseKey = getStepProperty(stepProperties, KEY)
+    responseRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     
     if state == DEACTIVATED:
         logStepDeactivated(chartScope, stepProperties)
@@ -35,9 +37,6 @@ def activate(scopeContext, stepProperties, state):
         return False
             
     try:        
-        # Get info from scope common across invocations 
-        stepId = getStepId(stepProperties) 
-
         # Check for previous state:
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
@@ -47,7 +46,9 @@ def activate(scopeContext, stepProperties, state):
             # calculate the absolute timeout time in epoch secs:
             logger.trace("Initializing a Yes/No step")
             
-            setResponse(chartScope, stepScope, stepProperties, None)
+            # Clear the response recipe data so we know when the client has updated it
+            s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
+
             stepScope[WAITING_FOR_REPLY] = True
             timeoutTime = getTimeoutTime(chartScope, stepProperties)
             stepScope[TIMEOUT_TIME] = timeoutTime
@@ -69,19 +70,29 @@ def activate(scopeContext, stepProperties, state):
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', logger)
 
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey}
             sendMessageToClient(chartScope, messageHandler, payload)
-        else: # waiting for reply
-            logger.trace("Waiting for a response to a Yes/No step...")
-            response = checkForResponse(chartScope, stepScope, stepProperties)
-            if response != None: 
+        
+        else: 
+            # waiting for reply
+            response = s88Get(chartScope, stepScope, responseKey, responseRecipeLocation)
+            logger.tracef("...the current response to a Yes/No step is: %s", str(response))
+            
+            if response != "None": 
+                logger.tracef("Setting the workDone flag")
                 workDone = True
-                if response != TIMED_OUT:
-                    setResponse(chartScope, stepScope, stepProperties, response)                
+            else:
+                timeout = checkForTimeout(stepScope)
+                if timeout:
+                    logger.tracef("Setting the Timeout flag")
+                    stepScope[TIMED_OUT] = True
+
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', logger)
         workDone = True
     finally:
         if workDone:
+            logger.trace("All of the work is done, cleaning up...")
             cleanup(chartScope, stepScope)
         return workDone
