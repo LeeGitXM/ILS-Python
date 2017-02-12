@@ -4,9 +4,27 @@ Created on Feb 10, 2017
 @author: phass
 '''
 import system
+from ils.common.windowUtil import clearTable
 log =system.util.getLogger("com.ils.sfc.recipeBrowser")
 
-def updateSfcTree(rootContainer, db=""):
+# The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
+def internalFrameOpened(rootContainer, db):
+    print "In internalFrameOpened"
+    updateSfcTree(rootContainer, db)
+    stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
+    clearTable(stepTable)
+    recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
+    clearTable(recipeDataTable)
+
+
+# This is called whenever the windows gains focus.  his happens as part of the noral workflow of creating or editing recipe data
+# so update the recipe data table to reflect the edit.
+def internalFrameActivated(rootContainer, db):
+    print "In internalFrameActivated"
+    refreshSteps(rootContainer, db)
+    updateRecipeData(rootContainer, db)
+
+def updateSfcTree(rootContainer, db):
     log.info("Updating the SFC Tree Widget...")
     hierarchyPDS = fetchHierarchy(db)
     chartPDS = fetchCharts(db)
@@ -73,7 +91,7 @@ def getChildren(chartId, hierarchyPDS):
 
     
 # This version traverses and creates a list of strings
-def fetchSfcTree(chartPDS, hierarchyPDS, db=""):
+def fetchSfcTree(chartPDS, hierarchyPDS, db):
     
     def depthSearch(trees, depth, hierarchyPDS):
         log.trace("------------")
@@ -129,9 +147,10 @@ def fetchSfcTree(chartPDS, hierarchyPDS, db=""):
 '''
 These methods have to do with the list of steps
 '''
-def refreshSteps(rootContainer, db=""):
+def refreshSteps(rootContainer, db):
     print "Updating the list of steps..."
     treeWidget = rootContainer.getComponent("Tree Container").getComponent("Tree View")
+    stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     
     # First get the last node in the path
     chartPath = treeWidget.selectedPath
@@ -140,12 +159,16 @@ def refreshSteps(rootContainer, db=""):
     # Now replace ":" with "/"
     chartPath = chartPath.replace(':', '/')
     print "The selected chart path is <%s>" % chartPath
+    if chartPath == "" or chartPath == None:
+        clearTable(stepTable)
+        return
     
     SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
     chartId = system.db.runScalarQuery(SQL) 
     print "Fetched chart id: ", chartId
-    
-    stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
+    if chartId == None:
+        clearTable(stepTable)
+        return
     
     SQL = " select S.StepName, T.StepType, S.StepId, "\
         "(select COUNT(*) from SfcRecipeData D where D.StepId = S.StepId) as myRefs "\
@@ -158,13 +181,13 @@ def refreshSteps(rootContainer, db=""):
     stepTable.data = pds
 
 
-def updateRecipeData(rootContainer, db=""):
+def updateRecipeData(rootContainer, db):
     print "Updating the recipe data table..."
-    stepTable = rootContainer.getComponent("Steps")
-    recipeDataTable = rootContainer.getComponent("Recipe Data")
+    stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
+    recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
     
     if stepTable.selectedRow < 0:
-        clearRecipeDataTable(recipeDataTable)
+        clearTable(recipeDataTable)
     else:
         ds = stepTable.data
         stepId = ds.getValueAt(stepTable.selectedRow, "StepId")
@@ -173,17 +196,9 @@ def updateRecipeData(rootContainer, db=""):
         print SQL
         pds = system.db.runQuery(SQL, db)
         recipeDataTable.data = pds
-
-def clearRecipeDataTable(recipeDataTable):
-    print "Clearing table"
-    ds = recipeDataTable.data
-    rows=[]
-    for i in range(0, ds.rowCount):
-        rows.append(i)
-    ds = system.dataset.deleteRows(ds, rows)
-    recipeDataTable.data = ds
+        
     
-def deleteRecipeData(rootContainer, db=""):
+def deleteRecipeData(rootContainer, db):
     print "Deleting a recipe data..."
 
     recipeDataTable = rootContainer.getComponent("Recipe Data")
@@ -202,7 +217,6 @@ def deleteRecipeData(rootContainer, db=""):
     
     # Update the table
     updateRecipeData(rootContainer, db)
-
 
 
 '''
