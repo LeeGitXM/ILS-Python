@@ -37,8 +37,9 @@ logger=system.util.getLogger("com.ils.sfc.recipeData.core")
 
 # Return the UUID of the step  
 def getTargetStep(chartProperties, stepProperties, scope):
-    scope.lower()
     logger.tracef("Getting target step for scope %s...", scope)
+    
+    scope.lower()
     
     if scope == LOCAL_SCOPE:
         stepUUID = getStepUUID(stepProperties)
@@ -111,7 +112,7 @@ def getSuperiorStep(chartProperties):
         superiorUUID = None
     
     return superiorUUID, superiorName
-    
+
 '''
 This is only called from a transition.  The SFC framework passes the PRIOR step's properties
 in stepProperties.
@@ -382,7 +383,7 @@ def getStepName(stepProperties):
 def splitKey(keyAndAttribute):
     tokens = keyAndAttribute.split(".")
     if len(tokens) < 2:
-        raise ValueError "Missing attribute name in %s" % (keyAndAttribute)
+        raise ValueError, "Missing attribute name in %s" % (keyAndAttribute)
     key = string.upper(tokens[0])
     attribute = string.upper(tokens[1])
     return key, attribute

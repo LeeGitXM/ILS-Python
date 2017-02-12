@@ -23,6 +23,7 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     
     log.infof("***************")
     log.infof("Migrating a charts recipe data(PYTHON) (%s-%s) ...", chartPath, str(resourceId))
+    log.infof("***************")
     
     # This runs immediately after the chart hierarchy analysis which has a number of database transactions.  Give those time to get
     # committed to the database.  This only runs in designer during migration, so we are not super concerned about performance.
@@ -46,6 +47,7 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
                 print "Found a step inside of a parallel..."
                 processStep(step, db, tx)
         
+        log.infof("***************")
         log.infof(" Done migrating recipe data, committing transactions...")
         log.infof("***************")
         
@@ -109,7 +111,7 @@ def getRecipeDataTypeFromAssociatedData(recipeData):
 
 def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
-    log.infof("   Migrating a SIMPLE VALUE with key: %s for step: %s", key, stepName)
+    log.infof("Migrating a SIMPLE VALUE with key: %s for step: %s", key, stepName)
     description = recipeData.get("description","")
     units = recipeData.get("units","")
     recipeDataTypeId=fetchRecipeDataTypeId("Simple Value", db)
@@ -117,7 +119,7 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, units, tx)
     
     valueType = recipeData.get("valueType","String")
-    valueType = str(convertValueType(valueType))
+    valueType = convertValueType(valueType)
     valueTypeId = fetchValueTypeId(valueType, db)
     val = recipeData.get("value", None)
     
@@ -137,8 +139,8 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
 
 def output(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
-    log.infof("   Migrating an OUTPUT with key: %s for step: %s", key, stepName)
-    log.tracef("    Dictionary: %s", str(recipeData))
+    log.infof("Migrating an OUTPUT with key: %s for step: %s", key, stepName)
+    log.tracef("  Dictionary: %s", str(recipeData))
     description = recipeData.get("description","")
     units = recipeData.get("units","")
     recipeDataTypeId=fetchRecipeDataTypeId("Output", db)
@@ -190,7 +192,6 @@ def insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, descript
     return recipeDataId
 
 def convertValueType(valueType):
-    valueType = valueType.lower()
     if valueType == "int":
         valueType = "Integer"
     elif valueType == "float":

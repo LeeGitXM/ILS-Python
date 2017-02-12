@@ -9,23 +9,23 @@ def s88Get(chartProperties, stepProperties, keyAndAttribute, scope):
     logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
     db = getDatabaseName(chartProperties)
     stepUUID, stepName = getTargetStep(chartProperties, stepProperties, scope)
-    logger.tracef("...the target step is: %s" % (stepName))
+    logger.tracef("...the target step is: %s", stepName)
     key,attribute = splitKey(keyAndAttribute)
     val = fetchRecipeData(stepUUID, key, attribute, db)
-    logger.tracef("...fetched %s" % (str(val)))
+    logger.tracef("...fetched %s", str(val))
     return val
 
 def s88GetTargetStepUUID(chartProperties, stepProperties, scope):
     logger.tracef("s88GetTargetStep(): %s", scope)
     stepUUID, stepName = getTargetStep(chartProperties, stepProperties, scope)
-    logger.tracef("...the target step is: %s - %s" % (stepName, stepUUID))
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     return stepUUID
 
 def s88Set(chartProperties, stepProperties, keyAndAttribute, value, scope):
     logger.tracef("s88Set(): %s - %s - %s", keyAndAttribute, scope, str(value))
     db = getDatabaseName(chartProperties)
     stepUUID, stepName = getTargetStep(chartProperties, stepProperties, scope)
-    logger.tracef("...the target step is: %s - %s" % (stepName, stepUUID))
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     setRecipeData(stepUUID, key, attribute, value, db)
     
