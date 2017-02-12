@@ -12,6 +12,14 @@ def getRootContainer(component):
         return component
     else:
         return getRootContainer(component.parent)
+    
+def clearTable(table):
+    ds = table.data
+    rows=[]
+    for i in range(0, ds.rowCount):
+        rows.append(i)
+    ds = system.dataset.deleteRows(ds, rows)
+    table.data = ds
 
 # Open a window instance with additional capability to TILE, STACK, CENTER or position the 
 # window in the standard well-known positions.
