@@ -58,16 +58,16 @@ class TDCController(controller.Controller):
         
         # Check the Output Disposability
         
-        outputDisposability = system.tag.read(self.path + '/outputDisposability/value')
+        windup = system.tag.read(self.path + '/windup')
         
         # Check the quality of the tags to make sure we can trust their values
-        if str(outputDisposability.quality) != 'Good': 
-            log.warn("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
-            return False, "The outputDisposability quality is %s" % (str(outputDisposability.quality))
+        if str(windup.quality) != 'Good': 
+            log.warn("checkConfig failed for %s because the windup quality is %s" % (self.path, str(windup.quality)))
+            return False, "The windup quality is %s" % (str(windup.quality))
 
-        outputDisposability = string.strip(outputDisposability.value)        
+        windup = string.strip(windup.value)        
 
-        log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, outputType, str(currentValue), outputDisposability, mode))
+        log.trace("%s: %s=%s, windup=%s, mode:%s" % (self.path, outputType, str(currentValue), windup, mode))
 
         # For outputs check that the mode is MANUAL - no other test is required
         if string.upper(outputType) in ["OP", "OUTPUT"]:
@@ -78,17 +78,17 @@ class TDCController(controller.Controller):
         # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is 
         # optional 
         elif string.upper(outputType) in ["SP", "SETPOINT"]:
-            if string.upper(outputDisposability) == 'HILO' and checkPathToValve:
+            if string.upper(windup) == 'HILO' and checkPathToValve:
                 success = False
                 errorMessage = "%s has no path to valve" % (self.path)
         
             if string.upper(mode) <> 'AUTO':
                 success = False
                 errorMessage = "%s %s is not in automatic (mode is actually %s)" % (errorMessage, self.path, mode)
-            
-            # I don't understand this check, not sure if we are checking the current value or the new value.  
-            # If checking the currentValue, what difference does it make what the new value is??
-            # See s88-confirm-controller-mode(opc-pks-controller)
+
+            # The testForZero check is used when we expect the starting point for the write to be 0, i.e. a closed valve.
+            # If we expect the current SP to be 0, and it isn't, then the state of the plant is not what we expect so
+            # warn the operator.  See s88-confirm-controller-mode(opc-pks-controller)
             if (currentValue > (float(newVal) * 0.03)) and testForZero:
                 success = False
                 errorMessage = "%s %s setpoint is not zero (it is actually %f)" % (errorMessage, self.path, currentValue)

@@ -46,7 +46,8 @@ def findBracketedScopeReference(string):
 def substituteScopeReferences(chartProperties, stepProperties, sql):
     ''' Substitute for scope variable references, e.g. '{local:selected-emp.value}'
     '''
-    from ils.sfc.gateway.api import s88Get, readTag
+    from ils.sfc.recipeData.api import s88Get
+    from ils.sfc.gateway.api import readTag
     from ils.sfc.common.constants import TAG, CHART, STEP
     # really wish Python had a do-while loop...
     while True:
@@ -61,7 +62,10 @@ def substituteScopeReferences(chartProperties, stepProperties, sql):
             elif location == STEP:
                 value = stepProperties.get(key, "<not found>")
             else:
-                value = s88Get(chartProperties, stepProperties, key, location)
+                try:
+                    value = s88Get(chartProperties, stepProperties, key, location)
+                except:
+                    value = "<Error: %s.%s not found>" % (location, key)
             sql = sql.replace(ref, str(value))
         else:
             break

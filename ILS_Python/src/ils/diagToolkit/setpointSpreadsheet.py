@@ -15,14 +15,15 @@ def initialize(rootContainer):
 
     rootContainer.initializationComplete = False
     rootContainer.recalculateFlag = False
-    database=system.tag.read("[Client]Database").value
-    print "The database is: ", database
+    db=system.tag.read("[Client]Database").value
+    print "The database is: ", db
     
     post = rootContainer.post
+    fetchAndSetDownloadActiveFlag(rootContainer, post, db)
     repeater = rootContainer.getComponent("Template Repeater")
     
     from ils.diagToolkit.common import fetchActiveOutputsForPost
-    pds = fetchActiveOutputsForPost(post, database)
+    pds = fetchActiveOutputsForPost(post, db)
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
     header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus','numberFormat']
@@ -43,7 +44,12 @@ def initialize(rootContainer):
             minChangeBoundCount = 0
              
             application = record['ApplicationName']
-            applicationRow = ['app',i,0,0,'Active',0,application,'','',0,False,0,0,'','','']
+            downloadAction = fetchApplicationDownloadAction(application, db)
+            if string.upper(downloadAction) == 'ACTIVE':
+                actionValue = 0
+            else:
+                actionValue = 1
+            applicationRow = ['app',i,0,0,downloadAction,actionValue,application,'','',0,False,0,0,'','','']
             print "App row: ", applicationRow
             rows.append(applicationRow)
             i = i + 1
@@ -81,8 +87,13 @@ def initialize(rootContainer):
             tagPath = record["TagPath"]
             numberPattern= system.tag.read(tagPath + ".FormatString").value
             
-            row = ['row',i,0,record['QuantOutputId'],'GO',0,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],
-                   record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,'',numberPattern]
+            action = record['DownloadAction']
+            if action == 'GO':
+                actionValue = 0
+            else:
+                actionValue = 1
+            row = ['row',i,0,record['QuantOutputId'],action,actionValue,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],
+                   record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,record['DownloadStatus'],numberPattern]
             print "Output Row: ", row
             rows.append(row)
             i = i + 1
@@ -100,7 +111,68 @@ def initialize(rootContainer):
 
     print "Invoking later..."
     system.util.invokeLater(initializationComplete, 1000)
+
+# This is called by a timer script that runs when a download is active.  It determines if the download is complete by checking for a terminal
+# download status (Error or Success) in each of the outputs that are marked as GO 
+def checkIfDownloadComplete(rootContainer):
+    print "Checking if the download is complete..."
+    downloadComplete = True
+    repeater=rootContainer.getComponent("Template Repeater")
+    ds = repeater.templateParams
+    for row in range(ds.rowCount):
+        rowType=ds.getValueAt(row, "type")
+        if rowType == "row":
+            command=ds.getValueAt(row, "command")
+            if string.upper(command) == 'GO':
+                downloadStatus=ds.getValueAt(row, "downloadStatus")
+                if downloadStatus not in ['Error', 'Success']:
+                    print "Found an output still working: ", downloadStatus
+                    downloadComplete = False
+
+    # Only update the database if downloadComplete is True, we assume it is True since this is running
+    if downloadComplete:
+        print "Hey - the download is done!"
+        rootContainer.downloadActive = False
+        db=system.tag.read("[Client]Database").value
+        updateDownloadActiveFlag(rootContainer.post, False, db)
+
     
+# This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
+def updateQuantOutputAction(rootContainer, ds, row, action):
+    log.info("Updating the database with the QuantOutput action...")
+    database=system.tag.read("[Client]Database").value
+    quantOutputId = ds.getValueAt(row, 'qoId')
+    SQL = "update DtQuantOutput set DownloadAction = '%s' where QuantOutputId = %i " % (action, quantOutputId)
+    print SQL
+    system.db.runUpdateQuery(SQL, database)
+
+# This fetches the flag from the TkPost table and sets the flag on the rootContainer
+def fetchAndSetDownloadActiveFlag(rootContainer, post, db):
+    SQL = "select DownloadActive from TkPost where Post = '%s'" % (post)
+    downloadActive = system.db.runScalarQuery(SQL, db)
+    rootContainer.downloadActive = downloadActive
+    
+# This is called from the download.py (client scope) when the download starts and from here when the download is done.
+def updateDownloadActiveFlag(post, state, db):
+    from ils.common.cast import toBit
+    state = toBit(state)
+    SQL = "update TkPost set DownloadActive = %d where Post = '%s'" % (state, post)
+    system.db.runUpdateQuery(SQL, db)
+    
+# This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
+def updateApplicationAction(rootContainer, ds, row, action):
+    log.info("Updating the database with the application action...")
+    database=system.tag.read("[Client]Database").value
+    applicationName = ds.getValueAt(row, 'application')
+    SQL = "update DtApplication set DownloadAction = '%s' where ApplicationName = '%s'" % (string.upper(action), applicationName)
+    print SQL
+    system.db.runUpdateQuery(SQL, database)
+
+def fetchApplicationDownloadAction(applicationName, database):
+    SQL = "select DownloadAction from DtApplication where applicationName = '%s'" % (applicationName)
+    downloadAction = system.db.runScalarQuery(SQL, db=database)
+    print "Fetched %s for %s" % (downloadAction, applicationName)
+    return downloadAction
 
 def writeFileCallback(rootContainer):
     print "In writeFileCallback()..."

@@ -9,6 +9,7 @@ from ils.common.cast import toBit
 
 # Recipe Data Scopes
 LOCAL_SCOPE = "local"
+PRIOR_SCOPE = "prior"
 SUPERIOR_SCOPE = "superior"
 PHASE_SCOPE = "phase"
 OPERATION_SCOPE = "operation"
@@ -20,9 +21,10 @@ OPERATION_STEP = "Operation"
 UNIT_PROCEDURE_STEP = "Global"
 
 # Recipe data types
-SIMPLE_VALUE = "Simple Value"
-OUTPUT = "Output"
 ARRAY = "Array"
+OUTPUT = "Output"
+SIMPLE_VALUE = "Simple Value"
+TIMER = "Timer"
 
 # Constants used to navigate and interrogate the chart scope property dictionary
 ENCLOSING_STEP_SCOPE_KEY = "enclosingStep"
@@ -37,9 +39,15 @@ logger=system.util.getLogger("com.ils.sfc.recipeData.core")
 def getTargetStep(chartProperties, stepProperties, scope):
     logger.tracef("Getting target step for scope %s...", scope)
     
+    scope.lower()
+    
     if scope == LOCAL_SCOPE:
         stepUUID = getStepUUID(stepProperties)
         stepName = getStepName(stepProperties)
+        return stepUUID, stepName
+    
+    elif scope == PRIOR_SCOPE:
+        stepUUID, stepName = getPriorStep(chartProperties, stepProperties)
         return stepUUID, stepName
     
     elif scope == SUPERIOR_SCOPE:
@@ -104,7 +112,16 @@ def getSuperiorStep(chartProperties):
         superiorUUID = None
     
     return superiorUUID, superiorName
-    
+
+'''
+This is only called from a transition.  The SFC framework passes the PRIOR step's properties
+in stepProperties.
+'''
+def getPriorStep(chartProperties, stepProperties):
+    logger.trace("Getting the prior step UUID and Name...")
+    priorName = stepProperties.get(STEP_NAME, None) 
+    priorUUID= stepProperties.get(STEP_NAME, None) 
+    return priorUUID, priorName
 
 # Get the S88 level of the step superior to this chart.  The chart that is encapsulated under an operation is operation scope.
 def getEnclosingStepScope(chartScope):
@@ -132,61 +149,15 @@ def getSubScope(scope, key):
     subScope = scope.get(key, None)
     print "The sub scope is: ", subScope
     return subScope
-    
-
-'''
-def getTargetStepOLD(chartPath, stepUUID, scope, db):
-    logger.tracef("Getting target step for %s - %s", chartPath, scope)
-    
-    if scope == LOCAL_SCOPE:
-        return stepUUID
-
-    elif scope == SUPERIOR_SCOPE:
-        superiorStep = fetchSuperiorStepOLD(chartPath, db)
-        stepUUID = superiorStep["StepUUID"]
-        return stepUUID
-    
-    elif scope == PHASE_SCOPE:
-        phaseStep = walkUpHieracrchyOLD(chartPath, PHASE_STEP, db)
-        stepUUID = phaseStep["StepUUID"]       
-        return stepUUID
-    
-    elif scope == OPERATION_SCOPE:
-        operationStep = walkUpHieracrchyOLD(chartPath, OPERATION_STEP, db)
-        stepUUID = operationStep["StepUUID"]       
-        return stepUUID
-    
-    elif scope == GLOBAL_SCOPE:
-        unitProcedureStep = walkUpHieracrchyOLD(chartPath, UNIT_PROCEDURE_STEP, db)
-        stepUUID = unitProcedureStep["StepUUID"]       
-        return stepUUID
-        
-    else:
-        logger.errorf("Undefined scope: %s", scope)
-        
-    return -1 
-
-def walkUpHieracrchyOLD(chartPath, stepType, db):
-    thisStepType = ""
-    while thisStepType <> stepType:
-        logger.tracef("Fetching step superior to chart: %s", chartPath)
-        superiorStep = fetchSuperiorStep(chartPath, db)
-        thisStepType = superiorStep["StepType"]
-        chartPath = superiorStep["ChartPath"]
-    return superiorStep
-
-def fetchSuperiorStepOLD(chartPath, db):
-    logger.tracef("Fetching the step superior to %s", chartPath)
-    SQL = "select * from SfcHierarchyView where childChartPath = '%s'" % (chartPath)
-    pds = system.db.runQuery(SQL, db)
-    logger.tracef("...fetched %d records...", len(pds))
-    superiorStep=pds[0]
-    return superiorStep
-'''
 
 def fetchRecipeData(stepUUID, key, attribute, db):
     logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
-    SQL = "select * from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    
+    # Separate the key from the array index if there is an array index
+    key, arrayIndex = checkForArrayReference(key)
+        
+    SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+        " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         logger.errorf("Error the key was not found")
@@ -197,47 +168,82 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
     
     record = pds[0]
-    recipeDataId = record["RecipeDataId"]
-    recipeDataType = record["RecipeDataType"]
+    recipeDataId = record["RECIPEDATAID"]
+    recipeDataType = record["RECIPEDATATYPE"]
     logger.tracef("...the recipe data tyoe is: %s for id: %d", recipeDataType, recipeDataId)
-    if recipeDataType == SIMPLE_VALUE:
-        SQL = "select DESCRIPTION, UNITS, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
+    
+    # These attributes are common to all recipe data classes
+    if attribute in ["DESCRIPTION","UNITS","LABEL"]:
+        print "Fetching a common attribute..."
+        val = record[attribute]
+    
+    elif recipeDataType == SIMPLE_VALUE:
+        SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         
-        if attribute in ["DESCRIPTION","UNITS"]:
+        if attribute in ["VALUETYPE"]:
             val = record[attribute]
-            print "Fetched a description or units", val
         elif attribute == "VALUE":
-            valueType = record['ValueType']
+            valueType = record['VALUETYPE']
             val = record["%sVALUE" % string.upper(valueType)]
-            print "Fetched the value: ", val
+            logger.tracef("Fetched the value: %s", str(val))
+        else:
+            raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
+    
+    elif recipeDataType == TIMER:
+        SQL = "select STARTTIME from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        
+        if attribute in ["STARTTIME"]:
+            val = record[attribute]
+        elif attribute == "RUNTIME":
+            startTime = record["STARTTIME"]
+            runTimeMinutes = system.date.minutesBetween(startTime, system.date.now())
+            val = runTimeMinutes
+            logger.tracef("Fetched the value: %s", str(val))
         else:
             raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
     
     elif recipeDataType == OUTPUT:
-        SQL = "select DESCRIPTION, TAG, UNITS, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, LABEL, TIMING, "\
-            "STEPTIME, MAXTIMING, PVVALUE, TARGETVALUE, PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
+        SQL = "select TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, "\
+            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, OUTPUTVALUE, TARGETVALUE, PVVALUE, PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
             "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         
-        if attribute in ["DESCRIPTION","TAG","UNITS","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","LABEL","TIMING","STEPTIME","MAXTIMING","PVVALUE","TARGETVALUE","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED"]:
+        if attribute in ["TAG","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","TIMING","MAXTIMING",\
+                         "ACTUALTIMING","ACTUALDATETIME","OUTPUTVALUE","TARGETVALUE","PVVALUE","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED"]:
             val = record[attribute]
         else:
             raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
     
     elif recipeDataType == ARRAY:
-        
-        SQL = "select DESCRIPTION, UNITS, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
-            " from SfcRecipeDataArrayView where RecipeDataId = %s order by ARRAYINDEX" % (recipeDataId)
-        pds = system.db.runQuery(SQL, db)
-        record = pds[0]
-        
-        if attribute in ["DESCRIPTION","UNITS"]:
-            val = record[attribute]
+        if attribute == "VALUE":
+            if arrayIndex == None:
+                val = []
+                SQL = "select VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+                    " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElement E where A.RecipeDataId = E.RecipeDataId "\
+                    " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
+                pds = system.db.runQuery(SQL, db)
+                for record in pds:
+                    valueType = record['VALUETYPE']
+                    aVal = record["%sVALUE" % string.upper(valueType)]
+                    val.append(aVal)
+                logger.tracef("Fetched the whole array: %s", str(val))
+            else:
+                SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+                    " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElement E where A.RecipeDataId = E.RecipeDataId "\
+                    " and E.RecipeDataId = %d and ArrayIndex = %d" % (recipeDataId, arrayIndex)
+                pds = system.db.runQuery(SQL, db)
+                record = pds[0]
+                valueType = record['VALUETYPE']
+                val = record["%sVALUE" % string.upper(valueType)]
+                logger.tracef("Fetched the value: %s", str(val))
+                
         else:
-            raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
+            raise ValueError, "Unsupported attribute: %s for an array recipe data" % (attribute)
     
     else:
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
@@ -246,6 +252,10 @@ def fetchRecipeData(stepUUID, key, attribute, db):
 
 def setRecipeData(stepUUID, key, attribute, val, db):
     logger.tracef("Setting recipe data value for step: stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, val)
+    
+    # Separate the key from the array index if there is an array index
+    key, arrayIndex = checkForArrayReference(key)
+    
     SQL = "select * from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
@@ -261,25 +271,31 @@ def setRecipeData(stepUUID, key, attribute, val, db):
     recipeDataType = record["RecipeDataType"]
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
-    if attribute in ['DESCRIPTION', 'UNITS']:
+    if attribute in ['DESCRIPTION', 'UNITS', 'LABEL']:
         SQL = "update SfcRecipeData set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d records in SfcRecipeData', rows)
     
     elif recipeDataType == SIMPLE_VALUE:
-        SQL = "select * from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
-        pds = system.db.runQuery(SQL, db)
-        record = pds[0]
-        valueType = record['ValueType']
-        if valueType == "String":
-            SQL = "update SfcRecipeDataSimpleValue set %sValue = '%s' where recipeDataId = %s" % (valueType, val, recipeDataId)
+        if attribute in ["VALUETYPE"]:
+            valueTypeId = fetchValueTypeId(val, db)
+            SQL = "update SfcRecipeDataSimpleValue set ValueTypeId=%d where recipeDataId = %s" % (valueTypeId, recipeDataId)
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef('...updated %d simple value recipe data records', rows)
         else:
-            SQL = "update SfcRecipeDataSimpleValue set %sValue = %s where recipeDataId = %s" % (valueType, val, recipeDataId)
-        rows = system.db.runUpdateQuery(SQL, db)
-        logger.tracef('...updated %d simple value recipe data records', rows)
+            SQL = "select * from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            record = pds[0]
+            valueType = record['ValueType']
+            if valueType == "String":
+                SQL = "update SfcRecipeDataSimpleValue set %sValue = '%s' where recipeDataId = %s" % (valueType, val, recipeDataId)
+            else:
+                SQL = "update SfcRecipeDataSimpleValue set %sValue = %s where recipeDataId = %s" % (valueType, val, recipeDataId)
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef('...updated %d simple value recipe data records', rows)
     
     elif recipeDataType == OUTPUT:
-        if attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'LABEL', 'PVMONITORSTATUS']:
+        if attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS']:
             SQL = "update SfcRecipeDataOutput set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
         elif attribute in ['DOWNLOAD', 'PVMONITORACTIVE', 'WRITECONFIRM', 'WRITECONFIRMED']:
             bitVal = toBit(val)
@@ -298,11 +314,47 @@ def setRecipeData(stepUUID, key, attribute, val, db):
             
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d output recipe data records', rows)
+    
+    elif recipeDataType == TIMER:
+        if attribute in ['STARTTIME']:
+            SQL = "update SfcRecipeDataTimer set StartTime = '%s' where recipeDataId = %s" % (val, recipeDataId)
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef('...updated %d timer recipe data records', rows)
+        else:
+            logger.errorf("Unsupported attribute <%s> for timer recipe data", attribute)
+            raise ValueError, "Unsupported attribute <%s> for timer recipe data" % (attribute)
+        
+    
+    elif recipeDataType == ARRAY:
+        if arrayIndex == None:
+            raise ValueError, "Array Recipe data must specify an index - %s" % (key)
+        
+        SQL = "select * from SfcRecipeDataArrayView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        valueType = record['ValueType']
+        
+        if valueType == "String":
+            SQL = "update SfcRecipeDataArrayElement set %sValue = '%s' where recipeDataId = %d and ArrayIndex = %d" % (valueType, val, recipeDataId, arrayIndex)
+        else:
+            SQL = "update SfcRecipeDataArrayElement set %sValue = %s where recipeDataId = %d and ArrayIndex = %d" % (valueType, val, recipeDataId, arrayIndex)
+        rows = system.db.runUpdateQuery(SQL, db)
+        logger.tracef('...updated %d array value recipe data records', rows)
         
     else:
         logger.errorf("Unsupported recipe data type: %s", record["RecipeDataType"])
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
 
+# Separate the key from the array index if there is an array index
+def checkForArrayReference(key):
+    arrayIndex = None
+    if key.find("[") > 0:
+        logger.tracef("There is an array index...")
+        arrayIndex = key[key.find("[")+1:len(key)-1]
+        arrayIndex = int(arrayIndex)
+        key = key[:key.find("[")]
+    return key, arrayIndex
+        
 def fetchOutputTypeId(val, db):
     SQL = "select OutputTypeId from SfcRecipeDataOutputType where OutputType = '%s'" % (val)
     outputTypeId = system.db.runScalarQuery(SQL, db)
@@ -313,11 +365,16 @@ def fetchValueTypeId(val, db):
     valueTypeId = system.db.runScalarQuery(SQL, db)
     return valueTypeId
 
+def fetchRecipeDataTypeId(val, db):
+    SQL = "select RecipeDataTypeId from SfcRecipeDataType where RecipeDataType = '%s'" % (val)
+    recipeDataTypeId = system.db.runScalarQuery(SQL, db)
+    return recipeDataTypeId
+
 def getChartUUID(chartProperties):
     return chartProperties.get("chartUUID", "-1")
 
 def getStepUUID(stepProperties):
-    return stepProperties.get("stepUUID", "-1")
+    return stepProperties.get("id", "-1")
 
 def getStepName(stepProperties):
     return stepProperties.get(STEP_NAME, "")
@@ -325,17 +382,31 @@ def getStepName(stepProperties):
 # This handles a simple "key.attribute" notation, but does not handle folder reference or arrays
 def splitKey(keyAndAttribute):
     tokens = keyAndAttribute.split(".")
+    if len(tokens) < 2:
+        raise ValueError, "Missing attribute name in %s" % (keyAndAttribute)
     key = string.upper(tokens[0])
     attribute = string.upper(tokens[1])
     return key, attribute
 
-def fetchStepTypeIdFromFactoryId(factoryId, database):
+def fetchStepTypeIdFromFactoryId(factoryId, tx):
     SQL = "select StepTypeId from SfcStepType where FactoryId = '%s'" % (factoryId)
-    stepTypeId = system.db.runScalarQuery(SQL, db=database)
+    stepTypeId = system.db.runScalarQuery(SQL, tx=tx)
+    
+    if stepTypeId < 0:
+        print "Step %s does not exist, iserting it..." % (factoryId)
+        SQL = "Insert into SfcStepType (StepType, FactoryId) values ('%s','%s')" % (factoryId, factoryId)
+        stepTypeId = system.db.runUpdateQuery(SQL, tx=tx, getKey=True)
+        print "...inserted into SfcSteptype with id: ", stepTypeId
+
     return stepTypeId
 
-def fetchChartIdFromChartPath(chartPath, database):
+def fetchChartIdFromChartPath(chartPath, tx):
     SQL = "select chartId from SfcChart where ChartPath = '%s'" % (chartPath)
-    chartId = system.db.runScalarQuery(SQL, db=database)
+    chartId = system.db.runScalarQuery(SQL, tx=tx)
     return chartId
+
+def fetchStepIdFromUUID(stepUUID, tx):
+    SQL = "select stepId from SfcStep where StepUUID = '%s'" % (stepUUID)
+    stepId = system.db.runScalarQuery(SQL, tx=tx)
+    return stepId
     

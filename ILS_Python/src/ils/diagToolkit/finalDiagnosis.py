@@ -779,6 +779,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     
     # Store the results in the database 
     log.info("Done managing, the final outputs are: %s" % (str(finalQuantOutputs)))
+    updateApplicationDownloadStatus(application, 'ACTIVE', database)
     quantOutputIds=[]
     for quantOutput in finalQuantOutputs:
         quantOutputIds.append(quantOutput.get("QuantOutputId", -1))
@@ -1017,6 +1018,11 @@ def calculateVectorClamps(quantOutputs, provider):
         
     return finalQuantOutputs, notificationText
 
+def updateApplicationDownloadStatus(applicationName, downloadAction, database):
+    log.tracef("Setting the downloadAction of application %s to %s", applicationName, downloadAction)
+    SQL = "update DtApplication set DownloadAction = '%s' where ApplicationName = '%s'" % (downloadAction, applicationName)
+    system.db.runUpdateQuery(SQL, db=database)
+
 # Store the updated quantOutput in the database so that it will show up in the setpoint spreadsheet
 def updateQuantOutput(quantOutput, database='', provider=''):
     from ils.common.cast import toBool
@@ -1065,7 +1071,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
 
     # Active is hard-coded to True here because these are the final active quantOutputs
     SQL = "update DtQuantOutput set FeedbackOutput = %s, OutputLimitedStatus = '%s', OutputLimited = %i, "\
-        " OutputPercent = %s, FeedbackOutputManual = %s, FeedbackOutputConditioned = %s, "\
+        " OutputPercent = %s, FeedbackOutputManual = %s, FeedbackOutputConditioned = %s, DownloadAction = 'GO', DownloadStatus = '', "\
         " ManualOverride = %i, Active = 1, CurrentSetpoint = %s, FinalSetpoint = %s, DisplayedRecommendation = %s "\
         " where QuantOutputId = %i "\
         % (str(feedbackOutput), outputLimitedStatus, outputLimited, str(outputPercent), str(feedbackOutputManual), str(feedbackOutputConditioned), \

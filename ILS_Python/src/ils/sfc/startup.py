@@ -32,6 +32,7 @@ def createTags(tagProvider):
     path = tagProvider + "Configuration/SFC/"
 
     data.append([path, "sfcWriteEnabled", "Boolean", "True"])
+    data.append([path, "sfcMigrationEnabled", "Boolean", "False"])
           
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

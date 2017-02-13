@@ -4,32 +4,37 @@ Created on Dec 10, 2015
 @author: Pete
 '''
 import system, string, math
+from ils.common.config import getTagProviderClient, getDatabaseClient
 log = system.util.getLogger("com.ils.sqc.plot")
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()"
     
+    tagProvider = getTagProviderClient()
+    db = getDatabaseClient()
+    print "Using database <%s> and tag provider <%s>" % (db, tagProvider)
+    
     # Reset the tab strip so the plot tab is selected
     tabStrip = rootContainer.getComponent("Tab Strip")
     tabStrip.selectedTab="Plot"
-    configureChart(rootContainer)
+    configureChart(rootContainer, db)
 
 def internalFrameActivated(rootContainer):
     print "In internalFrameActivated()"
 
 
-def configureChart(rootContainer):
+def configureChart(rootContainer, db):
     import system.ils.blt.diagram as diagram
     sqcDiagnosisName=rootContainer.sqcDiagnosisName
     sqcDiagnosisUUID=rootContainer.sqcDiagnosisUUID
-    print "Configuring a chart for %s - %s" % (sqcDiagnosisName, sqcDiagnosisUUID)
+    print "Configuring a chart for %s - %s using %s" % (sqcDiagnosisName, sqcDiagnosisUUID, db)
     
     if sqcDiagnosisUUID == None or sqcDiagnosisUUID == "NULL":
         system.gui.errorBox("Unable to configure an SQC chart for an SQC Diagnosis without a block id")
         clearChart(rootContainer)
         return
     
-    lastResetTime = fetchLastResetTime(sqcDiagnosisUUID)
+    lastResetTime = fetchLastResetTime(sqcDiagnosisUUID, db)
     chartInfo=getSqcInfoFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
     print "   ... chart Info: ", chartInfo
     if chartInfo == None:
@@ -141,24 +146,24 @@ def configureChart(rootContainer):
     
     # Using the number of points that are required, by looking at the n of m configuration of each block, fetch the actual lab data 
     # results and see how far back we need to go to get that number of points.  Some data is arrives hourly, others every 4 hours, etc.
-    nHours=determineTimeScale(unitName, labValueName, maxSampleSize)
+    nHours=determineTimeScale(unitName, labValueName, maxSampleSize, db)
     rootContainer.n = nHours
     
     # Now set the auto Y-axis limits - this will be called automatically from a property change script
     calculateLimitsFromTargetAndSigma(rootContainer)
     
     # Configure the where clause of the database pens which should drive the update of the chart
-    configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime)
+    configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime, db)
 
 
-def fetchLastResetTime(sqcDiagnosisUUID):
+def fetchLastResetTime(sqcDiagnosisUUID, db):
     SQL = "select LastResetTime from DtSQCDiagnosis where SQCDiagnosisUUID = '%s'" % (sqcDiagnosisUUID)
-    lastResetTime = system.db.runScalarQuery(SQL)
+    lastResetTime = system.db.runScalarQuery(SQL, db)
     print "The last reset time for %s was: %s" % (str(sqcDiagnosisUUID), str(lastResetTime))
     return lastResetTime
 
 # Return the number of hours that are required to obtain the required # of points
-def determineTimeScale(unitName, labValueName, maxSampleSize):
+def determineTimeScale(unitName, labValueName, maxSampleSize, db):
     print "...determining how much time is required to display %i points for %s..." % (maxSampleSize, labValueName) 
     # It is important to not bring back the entire database, so limit the query by sample time
     from java.util import Calendar
@@ -174,7 +179,7 @@ def determineTimeScale(unitName, labValueName, maxSampleSize):
         " where UnitName = '%s' and ValueName = '%s' and SampleTime > '%s' "\
         " order by SampleTime DESC " % (unitName, labValueName, quertStartDateTxt)
 
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, db)
     print "   ...fetched %i lab values..." % (len(pds))
     
     i = 0
@@ -211,7 +216,7 @@ def clearChart(rootContainer):
 
 # This sets the where clause of the two DB pens, that stor ethe actual data values.  It also sets the colors of the pens from the 
 # configuration tags..
-def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime):
+def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime, db):
     print "...configuring the where clause of the value pens for %s..." % (labValueName)
     
     chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
@@ -223,6 +228,10 @@ def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime)
     # Set the color of the current and stale data pens
     ds = system.dataset.setValue(ds, 0, "COLOR", freshColor)
     ds = system.dataset.setValue(ds, 1, "COLOR", staleColor)
+    
+    # Set the datasource (production or isolation)
+    ds = system.dataset.setValue(ds, 0, "DATASOURCE", db)
+    ds = system.dataset.setValue(ds, 1, "DATASOURCE", db)
     
     if lastResetTime == None:
         whereClause = "UnitName = '%s' and ValueName = '%s'" % (unitName, labValueName)

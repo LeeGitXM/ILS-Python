@@ -9,12 +9,17 @@ Created on Jan 15, 2015
 @author: rforbes
 '''
 
-from ils.sfc.client.windowUtil import sendWindowResponse
+from ils.common.config import getDatabaseClient
+from ils.sfc.recipeData.core import splitKey, setRecipeData
 import system.gui
 
 def okActionPerformed(event):
+    db = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
+    targetStepUUID = rootContainer.targetStepUUID
+    key = rootContainer.key
+    key,attribute = splitKey(key)
     responseField = rootContainer.getComponent('responseField')
     response = responseField.text
     lowLimit = rootContainer.lowLimit
@@ -27,14 +32,13 @@ def okActionPerformed(event):
         except ValueError:
             valueOk = False
         if valueOk:
-            sendWindowResponse(window, floatResponse)
+            setRecipeData(targetStepUUID, key, attribute, response, db)
         else:
             system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
     else:
         # return the response as a string
-        sendWindowResponse(window, response)
+        setRecipeData(targetStepUUID, key, attribute, response, db)
   
 def cancelActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    sendWindowResponse(window, None)
     

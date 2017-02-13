@@ -36,7 +36,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
 
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output
-    def writeDatum(self, val, valueType):
+    def writeDatum(self, val, valueType=""):
         
         log.info("Writing <%s>, <%s> to %s, an OPCConditionalOutput" % (str(val), str(valueType), self.path))
 

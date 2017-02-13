@@ -79,6 +79,7 @@ def refresh(rootContainer):
         vals.append([record[0], record[1]])
     
     ds = system.dataset.toDataSet(header, vals)
+    ds = system.dataset.sort(ds, 0, False)
     table = rootContainer.getComponent("Power Table")
     table.data = ds
     

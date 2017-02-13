@@ -3,23 +3,27 @@ All SFC Client Message Handlers
 '''
 
 import system
-from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, SECURITY, PRIVATE, SFC_WINDOW_LIST
-from ils.sfc.client.windowUtil import controlPanelOpen, positionWindow, shouldShowWindow,\
-    fetchWindowInfo
+from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, SECURITY, PRIVATE, \
+    SFC_WINDOW_LIST, TARGET_STEP_UUID, KEY
+from ils.sfc.client.windowUtil import controlPanelOpen, positionWindow, shouldShowWindow, fetchWindowInfo
 
 def dispatchMessage(payload):
     '''call the appropriate method in this module and pass it the payload'''
-    from ils.sfc.common.util import callMethodWithParams
     from ils.sfc.common.constants import HANDLER
     from ils.sfc.client.windowUtil import openErrorPopup
     print "In %s.dispatchMessage() received a message, payload: %s" % (__name__, payload)
     handlerMethod = payload[HANDLER]
-    methodPath = 'ils.sfc.client.msgHandlers.' + handlerMethod
-    keys = ['payload']
-    values = [payload]
     
     try:
-        callMethodWithParams(methodPath, keys, values)
+        if handlerMethod == "sfcOpenWindow":
+            sfcOpenWindow(payload) 
+        elif handlerMethod == "sfcCloseWindow":
+            sfcCloseWindow(payload)
+        elif handlerMethod == "sfcShowQueue":
+            sfcShowQueue(payload)
+        else:
+            raise ValueError, "Unexpected message handler <%s>" % handlerMethod
+
     except Exception, e:
         try:
             cause = e.getCause()
@@ -73,11 +77,9 @@ def sfcDialogMessage(payload):
     print "Done!"
 
 
+''' This handles windows that are know to the SFC system'''
 def sfcOpenWindow(payload):
-    '''Open a plain Vision window that doesn't have all the special SFC window stuff'''
-    from ils.sfc.client.windowUtil import positionWindow, shouldShowWindow
-    
-    print "In %s.sfcOpenWindow, the payload is: %s" % (__name__, str(payload))
+    print "In sfcOpenWindow()..."
     
     windowPath = payload[WINDOW_PATH]
     windowId = payload[WINDOW_ID]
@@ -92,10 +94,13 @@ def sfcOpenWindow(payload):
     
     print "Path: %s, Position: %s, Scale: %s" % (windowPath, position, str(scale)) 
     
-    if windowPath in SFC_WINDOW_LIST:
-        print "The window is an SFC window, passing the WindowId!"
-        payload = {WINDOW_ID: windowId}
+    if windowPath in SFC_WINDOW_LIST:    
+        targetStepUUID = payload[TARGET_STEP_UUID]
+        key = payload[KEY]
+        print "The window is an SFC window, passing the WindowId: <%s>, targetStepUUID: <%s>, key: <%s>!" % (str(windowId), targetStepUUID, key)
+        payload = {WINDOW_ID: windowId, TARGET_STEP_UUID: targetStepUUID, KEY: key}
         print "Opening <%s>" % (windowPath)
+        print "Payload: ", payload
         window = system.nav.openWindowInstance(windowPath, payload)
     else:
         print "The window is a plain window..."
@@ -105,11 +110,16 @@ def sfcOpenWindow(payload):
     positionWindow(window, position, scale)
 
 def sfcCloseWindow(payload):
-    from ils.sfc.client.windowUtil import closeDbWindow
     windowId = payload[WINDOW_ID]
     print "Attempting to close window with id: ", windowId
     if windowId <> None:
-        closeDbWindow(windowId)
+        openWindows = system.gui.getOpenedWindows()
+        for window in openWindows:
+            # Not all windows have a windowId, so be careful
+            rootContainer = window.getRootContainer()
+            openWindowId = rootContainer.getPropertyValue("windowId")
+            if openWindowId == windowId:
+                system.nav.closeWindow(window)
                                               
 def sfcCloseWindowByName(payload):
     windowPath = payload[WINDOW]

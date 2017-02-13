@@ -4,7 +4,7 @@ Created on Dec 21, 2015
 @author: rforbes
 '''
 
-import system
+import system, time
 from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
         checkForResponse, logStepDeactivated, getStepId, dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, \
         deleteAndSendClose, handleUnexpectedGatewayError
@@ -80,6 +80,17 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, messa
         if workDone:
             cleanup(chartScope, stepScope)
         return workDone
+
+def checkForTimeout(stepScope):
+    '''Common code for checking the timeout of a step, generally one that has a UI'''
+    timeoutTime = stepScope[TIMEOUT_TIME]
+
+    if timeoutTime != None and time.time() > timeoutTime:
+        timeout =  True        
+    else:
+        timeout = False
+
+    return timeout
 
 def setResponse(chartScope, stepScope, stepProperties, response):
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 

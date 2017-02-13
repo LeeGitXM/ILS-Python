@@ -7,8 +7,8 @@ Created on Dec 9, 2015
 import system
 from ils.sfc.client.util import getDatabase
 from ils.sfc.common.util import handleUnexpectedClientError
-controlPanelWindowPath = 'SFC/ControlPanel'
-errorPopupWindowPath = 'SFC/ErrorPopup'
+immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 'SFC/RecipeDataViewer',
+                    'SFC/SfcHierarchy', 'SFC/SFC Runner']
 sfcWindowPrefix = 'SFC/'
 
 def internalFrameOpened(event):
@@ -21,7 +21,7 @@ def openControlPanel(controlPanelName, startImmediately):
     print "In openControlPanel..."
     cpWindow = findOpenControlPanel(controlPanelName)
     if cpWindow == None:
-        cpWindow = system.nav.openWindowInstance(controlPanelWindowPath, {'controlPanelName': controlPanelName})
+        cpWindow = system.nav.openWindowInstance("SFC/ControlPanel", {'controlPanelName': controlPanelName})
     else:
         cpWindow.toFront()
     if startImmediately:
@@ -141,7 +141,7 @@ def closeAllPopups():
     from ils.sfc.client.windowUtil import getWindowPath
     for window in system.gui.getOpenedWindows():
         windowPath = getWindowPath(window)
-        if windowPath.startswith(sfcWindowPrefix) and windowPath != controlPanelWindowPath and windowPath != errorPopupWindowPath:
+        if windowPath.startswith(sfcWindowPrefix) and windowPath not in immuneWindowList:
             system.nav.closeWindow(window)
        
 def resetDb(rootContainer):
@@ -225,7 +225,7 @@ def ackMessage(window):
         handleUnexpectedClientError("setting ack time in control panel msg table failed")
     
 def findOpenControlPanel(controlPanelName):   
-    for window in system.gui.findWindow(controlPanelWindowPath):
+    for window in system.gui.findWindow('SFC/ControlPanel'):
         if window.getRootContainer().controlPanelName == controlPanelName:
             return window
     return None
