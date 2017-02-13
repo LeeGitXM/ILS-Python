@@ -124,6 +124,8 @@ def updateSelectedMessageText(rootContainer):
     numMessages = rootContainer.messages.rowCount
     if numMessages == 0:
         txt = ""
+        messageArea = rootContainer.getComponent("messageCenterPanel").getComponent("messageArea")
+        messageArea.background = system.gui.color("255,255,255")
     else:
         txt = "%i of %i" % (selectedMessage + 1, numMessages)
     rootContainer.selectedMessageText = txt

@@ -21,6 +21,10 @@ def dispatchMessage(payload):
             sfcCloseWindow(payload)
         elif handlerMethod == "sfcShowQueue":
             sfcShowQueue(payload)
+        elif handlerMethod == "sfcCloseWindowByName":
+            sfcCloseWindowByName(payload)
+        elif handlerMethod == "sfcPrintWindow":
+            sfcPrintWindow(payload)
         else:
             raise ValueError, "Unexpected message handler <%s>" % handlerMethod
 

@@ -1,6 +1,9 @@
 '''
 Created on Jul 28, 2015
 
+This implements the save action for the manual data entry window.  The save updates the database table for the 
+SfcManualDataEntryTable database table.  The gateway is reading the same table, when it sees the results then the block execution will complete.
+
 @author: rforbes
 '''
 
@@ -9,7 +12,7 @@ import system.gui.warningBox
 from ils.common.config import getDatabaseClient
  
 def sendData(rootContainer, timedOut=False):
-    '''Send data to gateway. If configured, check that all values have been entered, and
+    '''Save data to the database. If configured, check that all values have been entered, and
        don't send and warn if they have not. Return true if data was sent.'''
 
     table = rootContainer.getComponent('Power Table')
@@ -45,7 +48,9 @@ def sendData(rootContainer, timedOut=False):
     else:
         system.gui.messageBox("All inputs are required", "Warning")
         return False
-    
+
+
+# This actually does the work of saving the data to the database.
 def saveData(rootContainer, timedOut):
     print "Saving the data..."
     database=getDatabaseClient()

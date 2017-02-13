@@ -383,7 +383,8 @@ def getStepName(stepProperties):
 def splitKey(keyAndAttribute):
     tokens = keyAndAttribute.split(".")
     if len(tokens) < 2:
-        raise ValueError, "Missing attribute name in %s" % (keyAndAttribute)
+        txt = "Recipe access failed while attempting to split the key and attribute because there were not enough tokens: <%s> " % (keyAndAttribute)
+        raise ValueError, txt
     key = string.upper(tokens[0])
     attribute = string.upper(tokens[1])
     return key, attribute

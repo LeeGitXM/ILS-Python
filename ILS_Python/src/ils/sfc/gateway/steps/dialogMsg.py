@@ -5,20 +5,19 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.gateway.api import sendMessageToClient, getProject
+from ils.sfc.gateway.api import sendMessageToClient
+from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
+from ils.sfc.gateway.util import getControlPanelId, registerWindowWithControlPanel, getStepProperty, getTimeoutTime, \
+    handleUnexpectedGatewayError, logStepDeactivated, getTopChartRunId, deleteAndSendClose
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, s88Set, getProject
+from ils.sfc.common.util import isEmpty
+from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, WINDOW_PATH, TIMED_OUT, MESSAGE, \
+    KEY, TARGET_STEP_UUID, DEACTIVATED, POSITION, SCALE, WINDOW_TITLE, STATIC, RECIPE_LOCATION, STRATEGY, ACK_REQUIRED, BUTTON_LABEL
+from ils.sfc.gateway.util import checkForResponse
 
 def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.util import getControlPanelId, getControlPanelName, registerWindowWithControlPanel, getStepProperty, getTimeoutTime, \
-        handleUnexpectedGatewayError, getStepId, sendOpenWindow, logStepDeactivated, getOriginator, getTopChartRunId
-    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, s88Set
-    from ils.sfc.common.util import isEmpty
-    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-    from system.ils.sfc.common.Constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, \
-        ACK_REQUIRED, STRATEGY, STATIC, RECIPE_LOCATION, KEY
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, WINDOW_PATH, TIMED_OUT, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, DATABASE, ORIGINATOR
-    from ils.sfc.gateway.util import checkForResponse
-    
     chartScope = scopeContext.getChartScope()
+    database = getDatabaseName(chartScope)
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     windowPath = "SFC/DialogMessage"
@@ -40,13 +39,10 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[WAITING_FOR_REPLY] = True
             else:
                 workDone = True
-            # window common properties:
-            database = getDatabaseName(chartScope)
-            project = getProject(chartScope)
+            
+            # common window properties:
             controlPanelId = getControlPanelId(chartScope)
-            controlPanelName = getControlPanelName(chartScope)
             chartRunId = getTopChartRunId(chartScope)
-            originator = getOriginator(chartScope)
             
             buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
             if isEmpty(buttonLabel):
@@ -54,8 +50,6 @@ def activate(scopeContext, stepProperties, state):
             position = getStepProperty(stepProperties, POSITION) 
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
-            # step-specific properties:
-            stepId = getStepId(stepProperties) 
 
             strategy = getStepProperty(stepProperties, STRATEGY)
             if strategy == STATIC:
@@ -75,19 +69,26 @@ def activate(scopeContext, stepProperties, state):
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcDialogMessage', logger)
             
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+            # The client side does not use recipe data, but I need to send it to keep the framework happy.
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: "", KEY: ""}
             sendMessageToClient(chartScope, messageHandler, payload)
             
             logger.trace("...done initializing!")
+        
         else:
+            # If we ever get into this branch then acknowledgement is required.
             logger.trace("In %s.activate(), waiting for a response..." % (__name__))
-            response = checkForResponse(chartScope, stepScope, stepProperties)    
-            if response != None: 
+            windowId = stepScope[WINDOW_ID]
+            SQL = "select acknowledged from SfcDialogMessage where windowId = '%s'" % (windowId)
+            acknowledged = system.db.runScalarQuery(SQL, database)
+            print "Acknowledged: ", acknowledged
+            if acknowledged:
                 workDone = True
-                if response != TIMED_OUT:
-                    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-                    key = getStepProperty(stepProperties, KEY) 
-                    s88Set(chartScope, stepScope, key, response, recipeLocation)
+            else:
+                timeout = checkForTimeout(stepScope)
+                if timeout:
+                    logger.tracef("Setting the Timeout flag")
+                    stepScope[TIMED_OUT] = True
                 
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in dialogMsg.py', logger)
@@ -101,10 +102,6 @@ def activate(scopeContext, stepProperties, state):
         return workDone
    
 def cleanup(chartScope, stepScope):
-    import system.db
-    from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
-    from ils.sfc.common.constants import WINDOW_ID
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)

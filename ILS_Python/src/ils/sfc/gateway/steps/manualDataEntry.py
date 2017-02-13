@@ -9,19 +9,20 @@ from system.ils.sfc import getManualDataEntryConfig
 from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.util import getStepId, registerWindowWithControlPanel, deleteAndSendClose, \
     getControlPanelId, getControlPanelName, getStepProperty, getTimeoutTime, logStepDeactivated, \
-    dbStringForFloat, handleUnexpectedGatewayError, getStepName, getTopChartRunId, getOriginator
+    dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, getOriginator
 from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, \
-    s88Set, s88Get, s88SetWithUnits, s88GetWithUnits, getProject, sendMessageToClient, getProject
+    s88SetWithUnits, s88GetWithUnits, getProject, sendMessageToClient, getProject
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
 from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT,  \
     AUTO_MODE, AUTOMATIC, DATA, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
     DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, DATABASE, CONTROL_PANEL_ID, \
-    CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_ID
+    CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_ID, NAME, TARGET_STEP_UUID, KEY
 
 def activate(scopeContext, stepProperties, state):    
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    stepName=stepScope.get(NAME, "Unknown")
     logger = getChartLogger(chartScope)
-    stepName = getStepName(stepProperties)
     windowPath = "SFC/ManualDataEntry"
     messageHandler = "sfcOpenWindow"
 
@@ -102,9 +103,12 @@ def activate(scopeContext, stepProperties, state):
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
 
-                payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+                # This step does not communicate back though recipe data, rather it uses the step configuration data in the Manuald Data Entry table,
+                # So we don't really need to pass the id and key but we need to keep the API happy.
+                payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: stepId, KEY: ""}
                 sendMessageToClient(chartScope, messageHandler, payload)
         else:
+            windowId = stepScope[WINDOW_ID]
             complete, timedOut = checkIfComplete(chartScope, stepScope, stepProperties)
             if complete:
                 logger.trace("Manual Data Entry step %s has completed!" % (stepName))

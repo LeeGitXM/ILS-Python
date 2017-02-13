@@ -79,7 +79,7 @@ def activate(scopeContext, stepProperties, state):
             response = s88Get(chartScope, stepScope, responseKey, responseRecipeLocation)
             logger.tracef("...the current response to a Yes/No step is: %s", str(response))
             
-            if response != "None": 
+            if response != "None" and response != "NULL": 
                 logger.tracef("Setting the workDone flag")
                 workDone = True
             else:
