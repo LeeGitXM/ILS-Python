@@ -799,10 +799,11 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     record=quantOutputs[0]
     from ils.diagToolkit.common import convertOutputRecordToDictionary
     quantOutput=convertOutputRecordToDictionary(record)
-    print "Before: ", quantOutput
+    quantOutputName=quantOutput.get("QuantOutput","")
+    print "Before*: ", quantOutput
     
     from ils.diagToolkit.finalDiagnosis import checkBounds
-    quantOutput, madeSignificantRecommendation = checkBounds(quantOutput, database, tagProvider)
+    quantOutput, madeSignificantRecommendation = checkBounds(applicationName, quantOutput, quantOutputName, database, tagProvider)
     
     print "After: ", quantOutput
     

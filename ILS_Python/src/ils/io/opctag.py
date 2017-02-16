@@ -13,7 +13,7 @@
 # WARNING: basic imports (like sys) fail here, but succeed in subclasses.
 #          Could it be from the import * in util.py? 
 # NOTE: Subclasses must be added to __init__.py.
-import system
+import system, string
 from ils.io.util import getProviderFromTagPath
 log = system.util.getLogger("com.ils.io")
 
@@ -45,12 +45,44 @@ class OPCTag():
             
         return False, "Tag is bad: %s" % (val.quality)
     
-    # This basic class doesn't support this method
-    def confirmWrite(self,command, val):
-        return True,""
+    # This check doesn't make sense for a simple OPC tag, always return True. 
+    def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
+        success = True
+        errorMessage = ""
+        return success, errorMessage
     
-    # The default implementation clears the command
-    # After doing nothing    
-    def writeDatum(self):
-        commandPath = self.path+"/command"
-        system.tag.write(commandPath,"")
+    # This basic class doesn't support this method
+    # Implement a simple write confirmation.  Use the standard utility routine to perform the check.
+    def confirmWrite(self, val):  
+        log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
+ 
+        from ils.io.util import confirmWrite as confirmWriteUtil
+        confirmation, errorMessage = confirmWriteUtil(self.path + "/value", val)
+        return confirmation, errorMessage
+    
+    # This is a very simple write    
+    def writeDatum(self, val, valueType=""):
+
+        if val == None or string.upper(str(val)) == 'NAN':
+            val = float("NaN")
+                               
+        status,reason = self.checkConfig()
+        if status == False :              
+            log.warn("* Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
+            return status,reason
+ 
+        # Write the value to the OPC tag
+        log.trace("  Writing value <%s> to %s/value" % (str(val), self.path))
+        status = system.tag.write(self.path + "/value", val)
+        log.trace("  Write status: %s" % (status))
+                               
+        status, msg = self.confirmWrite(val)
+ 
+        if status:
+            log.trace("Confirmed: %s - %s - %s" % (self.path, status, msg))
+        else:
+            log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, msg))
+ 
+        return status, msg
+
+        

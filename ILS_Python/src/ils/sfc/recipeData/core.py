@@ -287,10 +287,11 @@ def setRecipeData(stepUUID, key, attribute, val, db):
             pds = system.db.runQuery(SQL, db)
             record = pds[0]
             valueType = record['ValueType']
+            valueId = record['ValueId']
             if valueType == "String":
-                SQL = "update SfcRecipeDataSimpleValue set %sValue = '%s' where recipeDataId = %s" % (valueType, val, recipeDataId)
+                SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %s" % (valueType, val, valueId)
             else:
-                SQL = "update SfcRecipeDataSimpleValue set %sValue = %s where recipeDataId = %s" % (valueType, val, recipeDataId)
+                SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %s" % (valueType, val, valueId)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d simple value recipe data records', rows)
     

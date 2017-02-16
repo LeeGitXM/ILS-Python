@@ -22,6 +22,25 @@ def isUDT(fullTagPath):
             isUDT = tag.isUDT()       
     return isUDT
 
+def getOutputForTagPath(tagPath, outputType):
+    print "Getting the output path for <%s> <%s>" % (tagPath, outputType)
+    if isUDT(tagPath):
+        '''
+        I have not figured out a good way of reading the type of a UDT.  So instead I will read the pythonClass memory tag
+        which I have embedded in each of our I/O UDTs.  Then I could create a method to get the output path fri the UDT, but 
+        instead I did the cheap and cheerful case statement.  It would be more robust to take the OO method approach.
+        '''
+        pythonClass = system.tag.read(tagPath + "/pythonClass").value
+        if pythonClass in ["PKSController", "PKSACEController"]:
+            tagPath = "%s/%s/value" % (tagPath, outputType)
+        elif pythonClass in ["OPCOutput", "OPCTag"]:
+            tagPath = "%s/value" % (tagPath)
+        else:
+            raise ValueError, "Unexpected python I/O class <%s> for <%s> in %s" % (pythonClass, tagPath, __name__)
+        
+    print "...returning <%s>" % (tagPath)
+    return tagPath
+
 # This is the easier method but I need to know how to decode the tagTypoe integer
 #def ___isUDTNew(fullTagPath):
 #    isUDT = False

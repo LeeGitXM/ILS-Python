@@ -6,6 +6,7 @@ Created on Feb 4, 2015
 
 import system, string, time
 from __builtin__ import False
+from ils.io.util import getOuterUDT
 log = system.util.getLogger("com.ils.diagToolkit.download")
 from ils.queue.message import insertPostMessage
 from ils.io.api import confirmControllerMode
@@ -108,10 +109,13 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                 tag=ds.getValueAt(row, "tag")
                 tagPath="[%s]%s" % (tagProvider, tag)
                 
-                log.info("Checking Quant Output: %s - Tag: %s" % (quantOutput, tagPath))
+                from ils.io.util import getOutputForTagPath
+                outputTagPath=getOutputForTagPath(tagPath, "sp")
+                
+                log.info("Checking Quant Output: %s - Tag: %s" % (quantOutput, outputTagPath))
                 
                 # The first check is to verify that the tag exists...
-                exists = system.tag.exists(tagPath)
+                exists = system.tag.exists(outputTagPath)
                 if not(exists):
                     okToDownload = False
                     unreachableCnt=unreachableCnt+1
@@ -120,12 +124,12 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                 else:
                     # The second check is to read the current SP - I guess if a controller doesn't have a SP then the
                     # odds of writing a new one successfully are low!
-                    qv=system.tag.read(tagPath)
+                    qv=system.tag.read(outputTagPath)
                     if not(qv.quality.isGood()):
                         okToDownload = False
                         unreachableCnt=unreachableCnt+1
                         print "The tag is bad"
-                        insertPostMessage(post, "Error", "The quality of the tag %s-%s is bad (%s)" % (quantOutput, tagPath, qv.quality), db)
+                        insertPostMessage(post, "Error", "The quality of the tag %s-%s is bad (%s)" % (quantOutput, outputTagPath, qv.quality), db)
                     else:
                         # I'm calling a generic I/O API here which is shared with S88.  S88 can write to the OP of a controller, but I think that 
                         # the diag toolkit can only write to the SP of a controller.  (The G2 version just used stand-alone GSI variables, so it 
@@ -215,6 +219,10 @@ def serviceDownload(post, ds, tagProvider, db):
                 
                 if diagToolkitWriteEnabled:
                     print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
+                    
+                    # From the tagpath determine if we are writing directly to an OPC tag or to a controller
+                    UDTType, tagPath = getOuterUDT(tagPath)
+                    
                     success, errorMessage = write(tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
                     
                     if success:

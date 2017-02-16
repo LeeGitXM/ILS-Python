@@ -8,6 +8,7 @@ import system
 from ils.common.cast import toBit
 from ils.common.error import catch
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
+from mailbox import fcntl
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
     
@@ -33,7 +34,7 @@ def internalFrameOpened(rootContainer, db=""):
             SQL = "select * from SfcRecipeDataArrayView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch an Output recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch an Array recipe data with id: %s" % (recipeDataId)
             record = pds[0]
             rootContainer.arrayDataset = pds
             
@@ -41,7 +42,7 @@ def internalFrameOpened(rootContainer, db=""):
             valueType = record["ValueType"]
             setArrayTableColumnVisibility(rootContainer, valueType)
             
-            SQL = "select * from SfcRecipeDataArrayElement where recipeDataId = %s order by ArrayIndex" % (recipeDataId)
+            SQL = "select * from SfcRecipeDataArrayElementView where recipeDataId = %s order by ArrayIndex" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             rootContainer.arrayValuesDataset = pds
 
@@ -236,44 +237,51 @@ def saveSimpleValue(rootContainer, db=""):
             
             if valueType == "Float":
                 val = simpleValueContainer.getComponent("Float Value").floatValue
-                SQL = "Insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, FloatValue) values (%d, %d, %f)" % (recipeDataId, valueTypeId, val)
+                SQL = "Insert into SfcRecipeDataValue (FloatValue) values (%f)" % (val)
             elif valueType == "Integer":
                 val = simpleValueContainer.getComponent("Integer Value").intValue
-                SQL = "Insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, IntegerValue) values (%d, %d, %f)" % (recipeDataId, valueTypeId, val)
+                SQL = "Insert into SfcRecipeDataValue (IntegerValue) values (%d)" % (val)
             elif valueType == "String":
                 val = simpleValueContainer.getComponent("String Value").text
-                SQL = "Insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, StringValue) values (%d, %d, '%s')" % (recipeDataId, valueTypeId, val)
+                SQL = "Insert into SfcRecipeDataValue (StringValue) values ('%s')" % (val)
             elif valueType == "Boolean":
                 val = simpleValueContainer.getComponent("Boolean Value").selected
                 val = toBit(val)
-                SQL = "Insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, BooleanValue) values (%d, %d, %d)" % (recipeDataId, valueTypeId, val)
+                SQL = "Insert into SfcRecipeDataValue (BooleanValue) values (%d)" % (val)
             
             print SQL
+            valueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            
+            SQL = "Insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, ValueId) values (%d, %d, %d)" % (recipeDataId, valueTypeId, valueId)
+            print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
+            
         else:
             print "Updating a simple value..."
+            ds = rootContainer.simpleValueDataset
+            valueId = ds.getValueAt(0,"ValueId")
             recipeDataId = rootContainer.recipeDataId
             SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
             
+            SQL = "Update SfcRecipeDataSimpleValue set ValueTypeId=%d where RecipeDataId = %d" % (valueTypeId, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+            
             if valueType == "Float":
                 val = simpleValueContainer.getComponent("Float Value").floatValue
-                SQL = "Update SfcRecipeDataSimpleValue set ValueTypeId=%d, IntegerValue=NULL, FloatValue=%f, StringValue=NULL, BooleanValue=NULL "\
-                    "where RecipeDataId = %d" % (valueTypeId, val, recipeDataId)
+                SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=%f, StringValue=NULL, BooleanValue=NULL where ValueId = %d" % (val, valueId)
             elif valueType == "Integer":
                 val = simpleValueContainer.getComponent("Integer Value").intValue
-                SQL = "Update SfcRecipeDataSimpleValue set ValueTypeId=%d, IntegerValue=%d, FloatValue=NULL, StringValue=NULL, BooleanValue=NULL "\
-                    "where RecipeDataId = %d" % (valueTypeId, val, recipeDataId)
+                SQL = "Update SfcRecipeDataValue set IntegerValue=%d, FloatValue=NULL, StringValue=NULL, BooleanValue=NULL where ValueId = %d" % (val, valueId)
             elif valueType == "String":
                 val = simpleValueContainer.getComponent("String Value").text
-                SQL = "Update SfcRecipeDataSimpleValue set ValueTypeId=%d, IntegerValue=NULL, FloatValue=NULL, StringValue='%s', BooleanValue=NULL "\
-                    "where RecipeDataId = %d" % (valueTypeId, val, recipeDataId)
+                SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=NULL, StringValue='%s', BooleanValue=NULL where ValueId = %d" % (val, valueId)
             elif valueType == "Boolean":
                 val = simpleValueContainer.getComponent("Boolean Value").selected
                 val = toBit(val)
-                SQL = "Update SfcRecipeDataSimpleValue set ValueTypeId=%d, IntegerValue=NULL, FloatValue=NULL, StringValue=NULL, BooleanValue=%d "\
-                    "where RecipeDataId = %d" % (valueTypeId, val, recipeDataId)
+                SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=NULL, StringValue=NULL, BooleanValue=%d where ValueId = %d" % (val, valueId)
             
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
@@ -451,10 +459,16 @@ def saveArray(rootContainer, db=""):
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
 
-        # Now deal with the array.  First delete all of the rows than insert new ones.  There are no foreign keys or ids so this should be fast and easy
+        # Now deal with the array.  First delete all of the rows than insert new ones.  There are no foreign keys or ids so this should be fast and easy.
+        # There is a cascade delete to the SFcRecipeDataValue table, but the PK is there, not here
         
-        SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %d" % (recipeDataId)
-        rows = system.db.runUpdateQuery(SQL, tx=tx)
+        SQL = "select ValueId from SfcRecipeDataArrayElement where RecipeDataId = %d" % (recipeDataId)
+        pds = system.db.runQuery(SQL, tx=tx)
+        rows=0
+        for record in pds:
+            SQL = "delete from SfcRecipeDataValue where valueId = %d" % record["ValueId"]
+            cnt = system.db.runUpdateQuery(SQL, tx=tx)
+            rows = rows + cnt
         print "...deleted %d array elements..." % (rows)
         
         table = arrayContainer.getComponent("Array Table")
@@ -462,14 +476,17 @@ def saveArray(rootContainer, db=""):
         for row in range(ds.rowCount):
             if valueType == 'String':
                 val = ds.getValueAt(row, "StringValue")
-                SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, StringValue) values (%d, %d, '%s')" % (recipeDataId, row, val)
+                SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (val)
             else:
                 valueColumnName = valueType + "Value"
                 val = ds.getValueAt(row, valueColumnName)
                 if valueType == "Boolean":
                     val = toBit(val)
-                SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, %s) values (%d, %d, '%s')" % (valueColumnName, recipeDataId, row, val)
+                SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (valueColumnName, val)
             print SQL            
+            valueId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            
+            SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, row, valueId)
             system.db.runUpdateQuery(SQL, tx=tx)
 
         system.db.commitTransaction(tx)

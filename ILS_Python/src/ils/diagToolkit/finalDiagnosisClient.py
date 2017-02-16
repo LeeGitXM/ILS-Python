@@ -8,9 +8,9 @@ from ils.constants.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_
 from ils.sfc.common.constants import DATABASE
 
 # Not sure if this is used in production, but it is needed for testing
-def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database=""):
+def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
     print "Sending a message to post a diagnosis entry..."
-    payload={"application": application, "family": family, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database}
+    payload={"application": application, "family": family, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database, "provider":provider}
     system.util.sendMessage(projectName, "postDiagnosisEntry", payload, "G")
 
 

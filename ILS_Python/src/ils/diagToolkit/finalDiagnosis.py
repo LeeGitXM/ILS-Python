@@ -11,8 +11,10 @@ Created on Sep 12, 2014
 import system, string
 from ils.diagToolkit.common import fetchPostForApplication
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
+from ils.diagToolkit.common import insertApplicationQueueMessage
 from ils.constants.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
     RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD, RECOMMENDATION_TEXT_POSTED
+from ils.io.util import getOutputForTagPath
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
@@ -78,8 +80,9 @@ def postDiagnosisEntryMessageHandler(payload):
     UUID=payload["UUID"]
     diagramUUID=payload["diagramUUID"]
     database=payload["database"]
+    provider=payload["provider"]
     
-    postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database)
+    postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database, provider)
 
 # This is called from the finalDiagnosis method acceptValue when the value is True.  This should only happen afer we receiv a False and have cleared the previous diagnosis entry.
 # However, on a gateway restart, we may become True again.  There are two possibilities of how this could be handled: 1) I could ignore the Insert a record into the diagnosis queue
@@ -757,7 +760,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
             # The case where a FD has 5 quant outputs defined but there are only recommendations to change 3 of them is not an error
             pass
         else:
-            quantOutput, madeSignificantRecommendation = checkBounds(quantOutput, database, provider)
+            quantOutput, madeSignificantRecommendation = checkBounds(applicationName, quantOutput, quantOutputName, database, provider)
             if madeSignificantRecommendation:
                 numSignificantRecommendations=numSignificantRecommendations + 1
                 
@@ -810,7 +813,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     return notificationText, numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId
 
 # Check that recommendation against the bounds configured for the output
-def checkBounds(quantOutput, database, provider):
+def checkBounds(applicationName, quantOutput, quantOutputName, database, provider):
 
     log.info("   ...checking Bounds...")
     madeSignificantRecommendation=True
@@ -824,10 +827,13 @@ def checkBounds(quantOutput, database, provider):
     
     # Read the current setpoint - the tagpath in the QuantOutput does not have the provider
     tagpath = '[' + provider + ']' + quantOutput.get('TagPath','unknown')
-    log.info("   ...reading the current value of tag: %s" % (tagpath))
-    qv=system.tag.read(tagpath)
+    outputTagPath = getOutputForTagPath(tagpath, "sp")
+    log.info("   ...reading the current value of tag: %s" % (outputTagPath))
+    qv=system.tag.read(outputTagPath)
     if not(qv.quality.isGood()):
-        log.error("Error reading the current setpoint from (%s), tag quality is: (%s)" % (tagpath, str(qv.quality)))
+        txt = "Error reading the current setpoint for %s from (%s), tag quality is: (%s)" % (quantOutputName, outputTagPath, str(qv.quality))
+        log.error(txt)
+        insertApplicationQueueMessage(applicationName, txt, "error", database)
  
         # Make this quant-output inactive since we can't make an intelligent recommendation without the current setpoint;
         # moreover, we don't want t to make any recommendations related to this problem / FD
@@ -840,7 +846,10 @@ def checkBounds(quantOutput, database, provider):
     # There is no "default value" that can be used for a tag that has a value of None - and we don't want to process other outputs
     # for the same FD - this effectively invalidates all of the recommendations for this problem.
     if qv.value == None:
-        log.error("Error reading the current setpoint from (%s), the value is: (%s)" % (tagpath, str(qv.value)))
+        txt = "Error reading the current setpoint for %s from (%s), the value is: (%s)" % (quantOutputName, outputTagPath, str(qv.value))
+        log.error(txt)
+        insertApplicationQueueMessage(applicationName, txt, "error", database)
+        
         madeSignificantRecommendation=False
         return None, madeSignificantRecommendation
 

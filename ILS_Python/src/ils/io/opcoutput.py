@@ -29,6 +29,12 @@ class OPCOutput(opctag.OPCTag):
                                                
         return tagExists, reason
  
+     # This check doesn't make sense for a simple OPC tag, always return True. 
+    def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
+        success = True
+        errorMessage = ""
+        return success, errorMessage
+ 
     # Reset the UDT in preparation for a write 
     def reset(self):
         status = True
@@ -45,9 +51,9 @@ class OPCOutput(opctag.OPCTag):
     def confirmWrite(self, val):  
         log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
  
-        from ils.io.util import confirmWrite
+        from ils.io.util import confirmWrite as confirmWriteUtil
         system.tag.write(self.path + '/writeStatus', 'Confirming')
-        confirmation, errorMessage = confirmWrite(self.path + "/value", val)
+        confirmation, errorMessage = confirmWriteUtil(self.path + "/value", val)
         return confirmation, errorMessage
    
     

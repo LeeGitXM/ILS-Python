@@ -10,11 +10,30 @@ from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 logger=system.util.getLogger("ils.test")
 
 project = "XOM"
-T1TagName='Sandbox/Diagnostic/T1'
-T2TagName='Sandbox/Diagnostic/T2'
-T3TagName='Sandbox/Diagnostic/T3'
-TC100TagName='Sandbox/Diagnostic/TC100/sp/value'
-TC101TagName='Sandbox/Diagnostic/TC101/sp/value'
+T1TagName='Sandbox/Diagnostic/Outputs/T1'
+T2TagName='Sandbox/Diagnostic/Outputs/T2'
+T3TagName='Sandbox/Diagnostic/Outputs/T3'
+TC100_TagName='Sandbox/Diagnostic/Outputs/TC100'
+TC101_TagName='Sandbox/Diagnostic/Outputs/TC101'
+T100_TagName='Sandbox/Diagnostic/Outputs/T100'
+T101_TagName='Sandbox/Diagnostic/Outputs/T101'
+
+def test00():
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='TESTAPP1'
+    appId=insertApp1()
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 09.6789123456)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5432198765)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3456789123)
+    insertApp1Families(appId,T1Id,T2Id,T3Id,postProcessingCallback='xom.vistalon.diagToolkit.test.test.postDownloadSpecialActions')
+    
+    Q21_id=insertQuantOutput(appId, 'TEST_Q21', TC100_TagName,  19.88)
+    Q22_id=insertQuantOutput(appId, 'TEST_Q22', TC101_TagName, 123.15)
+    Q23_id=insertQuantOutput(appId, 'TEST_Q23', T100_TagName,    2.31)
+    Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName,   36.23)
+    insertApp2Families(appId,Q21_id,Q22_id,Q23_id,Q24_id,FD211calculationMethod='xom.vistalon.diagToolkit.test.test.fd2_1_1')
+    return applicationName
+
 
 def test01():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
@@ -25,7 +44,7 @@ def test01():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3456789123)
     insertApp1Families(appId,T1Id,T2Id,T3Id,postProcessingCallback='xom.vistalon.diagToolkit.test.test.postDownloadSpecialActions')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test02():
@@ -37,7 +56,7 @@ def test02():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3456789123)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test03a():
@@ -50,9 +69,9 @@ def test03a():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test03b():
@@ -65,9 +84,9 @@ def test03b():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test03c():
@@ -80,11 +99,11 @@ def test03c():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test03d():
@@ -97,11 +116,11 @@ def test03d():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test04():
@@ -113,9 +132,9 @@ def test04():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
         
 def test05():
@@ -127,9 +146,9 @@ def test05():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, feedbackMethod='Most Negative')
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test06():
@@ -141,9 +160,9 @@ def test06():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, feedbackMethod='Average')
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
             
 def test07():
@@ -155,9 +174,9 @@ def test07():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, feedbackMethod='Simple Sum')
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test08a():
@@ -169,7 +188,7 @@ def test08a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 # Same test as above but use incremental outputs
@@ -182,7 +201,7 @@ def test08b():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=True)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
         
 def test09():
@@ -194,7 +213,7 @@ def test09():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test10():
@@ -206,7 +225,7 @@ def test10():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test11a():
@@ -218,7 +237,7 @@ def test11a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test11b():
@@ -230,7 +249,7 @@ def test11b():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test11c():
@@ -243,7 +262,7 @@ def test11c():
     insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_1e')
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test12a():
@@ -255,7 +274,7 @@ def test12a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test12b():
@@ -267,7 +286,7 @@ def test12b():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test12c():
@@ -279,7 +298,7 @@ def test12c():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test12d():
@@ -291,7 +310,7 @@ def test12d():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3a')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test13a():
@@ -303,7 +322,7 @@ def test13a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test13b():
@@ -315,7 +334,7 @@ def test13b():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)    
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 # Test incremental recommendations when the setpoint is way outside the limits.
@@ -328,7 +347,7 @@ def test13c():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)    
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 # Test a bad output wherte the FD only writes to 1
@@ -341,7 +360,7 @@ def test14a1():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')    
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")    
     return applicationName
 
 # Test a bad output where the FD writes to 2 - I think if we can't write to all of them we don't want to write to any.
@@ -354,7 +373,7 @@ def test14a2():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')    
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")    
     return applicationName
 
 def test14b1():
@@ -366,7 +385,7 @@ def test14b1():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id, FD111calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_1_1X')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID')    
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")    
     return applicationName
 
 # This tests error handling for a non existent calculation method.  Specifically it tests that the Final diagnosis
@@ -380,9 +399,9 @@ def test14b2():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=False)
     insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_1X')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test14c():
@@ -394,7 +413,7 @@ def test14c():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15a():
@@ -406,7 +425,7 @@ def test15a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15b():
@@ -418,9 +437,9 @@ def test15b():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15c():
@@ -432,9 +451,9 @@ def test15c():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15d():
@@ -446,7 +465,7 @@ def test15d():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3c')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15e():
@@ -458,7 +477,7 @@ def test15e():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3d')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15f():
@@ -470,9 +489,9 @@ def test15f():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3c')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15g():
@@ -484,20 +503,32 @@ def test15g():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3d')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     time.sleep(2.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test16a():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='TESTAPP2'
-    appId=insertApp2()
-    T1Id=insertQuantOutput(appId, 'TEST_Q0_TC100', TC100TagName, 9.6)
-    T2Id=insertQuantOutput(appId, 'TEST_Q1_TC101', TC101TagName, 23.5)
-    insertApp2Families(appId,T1Id,T2Id,FD211calculationMethod='xom.vistalon.diagToolkit.test.test.fd2_1_1')
+    appId=insertApp2()  
+    
+    system.tag.write("[XOM]" + TC100_TagName + "/sp/value", 35.63)
+    Q21_id=insertQuantOutput(appId, 'TEST_Q21', TC100_TagName,  35.63)
+    
+    system.tag.write("[XOM]" + TC101_TagName + "/sp/value", 526.89)
+    Q22_id=insertQuantOutput(appId, 'TEST_Q22', TC101_TagName, 526.89)
+    
+    system.tag.write("[XOM]" + T100_TagName + "/value", 27.91)
+    Q23_id=insertQuantOutput(appId, 'TEST_Q23', T100_TagName, 27.91)
+    
+    system.tag.write("[XOM]" + T101_TagName + "/value", 113.81)
+    Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81)
+    
+    insertApp2Families(appId,Q21_id,Q22_id,Q23_id,Q24_id,FD211calculationMethod='xom.vistalon.diagToolkit.test.test.fd2_1_1')
+    
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test17a():
@@ -509,15 +540,17 @@ def test17a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
 
     applicationName='TESTAPP2'
     appId=insertApp2()
-    T1Id=insertQuantOutput(appId, 'TEST_Q0_TC100', TC100TagName, 9.6)
-    T2Id=insertQuantOutput(appId, 'TEST_Q1_TC101', TC101TagName, 23.5)
-    insertApp2Families(appId,T1Id,T2Id,FD211calculationMethod='xom.vistalon.diagToolkit.test.test.fd2_1_1')
+    Q21_id=insertQuantOutput(appId, 'TEST_Q21', TC100_TagName,  19.88)
+    Q22_id=insertQuantOutput(appId, 'TEST_Q22', TC101_TagName, 123.15)
+    Q23_id=insertQuantOutput(appId, 'TEST_Q23', T100_TagName,    2.31)
+    Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName,   36.23)
+    insertApp2Families(appId,Q21_id,Q22_id,Q23_id,Q24_id,FD211calculationMethod='xom.vistalon.diagToolkit.test.test.fd2_1_1')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     
     return applicationName
 
@@ -531,7 +564,7 @@ def test18a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,postProcessingCallback='xom.vistalon.diagToolkit.test.test.postDownloadSpecialActions')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 # Simultaneously post two text recommendations
@@ -544,8 +577,8 @@ def test18b():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID')
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_5', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 # Test a high priority text final diagnosis becoming true followed by a low priority numeric diagnosis 
@@ -558,9 +591,9 @@ def test18c():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     time.sleep(10.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 # Test a low priority text FD followed by a high priority numeric FD
@@ -573,9 +606,9 @@ def test18d():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_5', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     time.sleep(10.0)
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 # Test a static (One without a calculation method) text recommendation.
@@ -588,5 +621,5 @@ def test18e():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id, FD126calculationMethod='')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID')
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName

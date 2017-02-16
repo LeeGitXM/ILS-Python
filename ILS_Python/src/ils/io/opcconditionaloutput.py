@@ -33,6 +33,11 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
 
         return True, ""
 
+    # This check doesn't make sense for a simple OPC tag, always return True. 
+    def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
+        success = True
+        errorMessage = ""
+        return success, errorMessage
 
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output

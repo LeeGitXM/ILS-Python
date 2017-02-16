@@ -7,6 +7,7 @@ Created on Sep 19, 2014
 import system, time
 from java.util import Date, Calendar
 import system.ils.blt.diagram as scriptingInterface
+from ils.queue.commons import getQueueForDiagnosticApplication
 
 log = system.util.getLogger("com.ils.diagToolkit.SQL")
 
@@ -59,6 +60,11 @@ def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeo
     log.trace("** %s and %s are NOT consistent **" % (tagPath1, tagPath2))
     return isConsistent
 
+def insertApplicationQueueMessage(applicationName, message, status="info", db=""):
+    key = getQueueForDiagnosticApplication(applicationName, db)
+    from ils.queue.message import insert
+    insert(key, status, message)
+    
 # Check if the timestamp of the tag is less than a certain tolerance older then theTime, or the current time if theTime 
 # is omitted.  This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
 def checkFreshness(tagPath, theTime="now", tolerance=5, recheckInterval=1.0, timeout=10):

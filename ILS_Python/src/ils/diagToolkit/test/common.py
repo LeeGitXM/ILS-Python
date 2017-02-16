@@ -35,11 +35,12 @@ def run():
             "delete from DtRecommendation", \
             "delete from QueueDetail", \
             "delete from DtDiagnosisEntry", \
-            "delete from DtRecommendationDefinition where FinalDiagnosisId in (select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%')", \
+            "delete from DtRecommendationDefinition where FinalDiagnosisId in (select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%')",
             "delete from DtQuantOutput where QuantOutputName like 'TEST%'",\
             "delete from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%'", \
             "delete from DtFamily where FamilyName like 'TEST%'", \
-            "delete from DtApplication where ApplicationName like 'TEST%'" ]:
+            "delete from DtApplication where ApplicationName like 'TEST%'"
+            ]:
             system.db.runUpdateQuery(SQL, db=db)
         
         logger.trace("...done initializing the database")
@@ -430,7 +431,7 @@ def insertApp2():
     app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey)
     return app2Id
 
-def insertApp2Families(appId,T1Id,T2Id,
+def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id,
     FD211calculationMethod='xom.vistalon.diagToolkit.test.test.fd2_1_1'
     ):
 
@@ -442,7 +443,10 @@ def insertApp2Families(appId,T1Id,T2Id,
     finalDiagnosisPriority=7.8
     textRecommendation = "Final Diagnosis 2.1.1"
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD211calculationMethod, textRecommendation)
-    insertRecommendationDefinition(finalDiagnosisId, T1Id)
+    insertRecommendationDefinition(finalDiagnosisId, Q21_id)
+    insertRecommendationDefinition(finalDiagnosisId, Q22_id)
+    insertRecommendationDefinition(finalDiagnosisId, Q23_id)
+    insertRecommendationDefinition(finalDiagnosisId, Q24_id)
 
 # Insert a Quant Output
 def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncrement=-500.0, mostPositiveIncrement=500.0, minimumIncrement=0.0001,

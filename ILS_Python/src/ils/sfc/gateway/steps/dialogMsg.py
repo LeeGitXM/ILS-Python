@@ -80,15 +80,22 @@ def activate(scopeContext, stepProperties, state):
             logger.trace("In %s.activate(), waiting for a response..." % (__name__))
             windowId = stepScope[WINDOW_ID]
             SQL = "select acknowledged from SfcDialogMessage where windowId = '%s'" % (windowId)
-            acknowledged = system.db.runScalarQuery(SQL, database)
-            print "Acknowledged: ", acknowledged
-            if acknowledged:
+            pds = system.db.runQuery(SQL, database)
+            if len(pds) == 0:
+                logger.trace("...no rows found for this window, assuming that the window has been acknowledged!")
                 workDone = True
             else:
-                timeout = checkForTimeout(stepScope)
-                if timeout:
-                    logger.tracef("Setting the Timeout flag")
-                    stepScope[TIMED_OUT] = True
+                record = pds[0]
+                acknowledged = record["acknowledged"]
+                print "Acknowledged: ", acknowledged
+                if acknowledged:
+                    workDone = True
+                else:
+                    timeout = checkForTimeout(stepScope)
+                    if timeout:
+                        logger.tracef("Setting the Timeout flag")
+                        stepScope[TIMED_OUT] = True
+                        workDone = True
                 
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in dialogMsg.py', logger)

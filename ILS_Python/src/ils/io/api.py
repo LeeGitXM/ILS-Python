@@ -309,16 +309,20 @@ def writer(tagPath, val, valueType=""):
 #       For now ALWAYS read the value in the tag. 
 def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1): 
     if isUDT(tagPath):
-        if string.upper(valueType) in ["SP", "SETPOINT"]:
-            tagRoot = tagPath + '/sp'
-        elif string.upper(valueType) in ["OP", "OUTPUT"]:
-            tagRoot = tagPath + '/op'
-        elif string.upper(valueType) in ["MODE"]:
-            tagRoot = tagPath + '/mode'
-        else:
-            tagRoot = tagPath
+        pythonClass = system.tag.read(tagPath + "/pythonClass").value
+        if pythonClass in ["PKSController", "PKSACEController"]:
+            if string.upper(valueType) in ["SP", "SETPOINT"]:
+                fullTagPath = tagPath + '/sp/value'
+            elif string.upper(valueType) in ["OP", "OUTPUT"]:
+                fullTagPath = tagPath + '/op/value'
+            elif string.upper(valueType) in ["MODE"]:
+                fullTagPath = tagPath + '/mode/value'
         
-        fullTagPath = tagRoot + "/value"
+        elif pythonClass in ["OPCOutput", "OPCTag"]:
+            fullTagPath = tagPath + "/value"
+        else:
+            fullTagPath = tagPath + "/value"
+            
         log.trace("Confirming write to a UDT <%s>..." % (fullTagPath))
     else:
         fullTagPath = tagPath

@@ -16,12 +16,11 @@ def internalFrameOpened(rootContainer, db):
     recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
     clearTable(recipeDataTable)
 
-
 # This is called whenever the windows gains focus.  his happens as part of the noral workflow of creating or editing recipe data
 # so update the recipe data table to reflect the edit.
 def internalFrameActivated(rootContainer, db):
     print "In internalFrameActivated"
-    refreshSteps(rootContainer, db)
+#    refreshSteps(rootContainer, db)
     updateRecipeData(rootContainer, db)
 
 def updateSfcTree(rootContainer, db):
@@ -71,12 +70,12 @@ def expandRow(tree, chartDict):
     return row
 
 def fetchCharts(db):
-    SQL = "select * from SfcChart"
+    SQL = "select * from SfcChart order by ChartPath"
     pds = system.db.runQuery(SQL, db)
     return pds
 
 def fetchHierarchy(db):
-    SQL = "select * from SfcHierarchyView"
+    SQL = "select * from SfcHierarchyView order by ChartPath"
     pds = system.db.runQuery(SQL, db)
     return pds
 
@@ -89,7 +88,6 @@ def getChildren(chartId, hierarchyPDS):
     log.trace("The children of %s are %s" % (chartId, str(children)))
     return children
 
-    
 # This version traverses and creates a list of strings
 def fetchSfcTree(chartPDS, hierarchyPDS, db):
     
@@ -123,7 +121,6 @@ def fetchSfcTree(chartPDS, hierarchyPDS, db):
             if chartId == record["ChildChartId"]:
                 return False
         return True
-    
     # --------------------------
     
     # Get the roots
@@ -179,7 +176,7 @@ def refreshSteps(rootContainer, db):
     pds = system.db.runQuery(SQL, db)
 
     stepTable.data = pds
-
+    stepTable.selectedRow = -1
 
 def updateRecipeData(rootContainer, db):
     print "Updating the recipe data table..."
@@ -196,12 +193,11 @@ def updateRecipeData(rootContainer, db):
         print SQL
         pds = system.db.runQuery(SQL, db)
         recipeDataTable.data = pds
-        
-    
+
 def deleteRecipeData(rootContainer, db):
     print "Deleting a recipe data..."
 
-    recipeDataTable = rootContainer.getComponent("Recipe Data")
+    recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
     
     if recipeDataTable.selectedRow < 0:
         system.gui.messageBox("Please select a row from the Recie Data table.")
@@ -217,7 +213,6 @@ def deleteRecipeData(rootContainer, db):
     
     # Update the table
     updateRecipeData(rootContainer, db)
-
 
 '''
 This is just a good text book example of recursion.

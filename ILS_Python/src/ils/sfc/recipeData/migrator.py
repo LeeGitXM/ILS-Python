@@ -95,6 +95,8 @@ def processStep(step, db, tx):
                 output(stepName, stepType, stepId, recipeData, db, tx)
             elif recipeDataType == "Value":
                 simpleValue(stepName, stepType, stepId, recipeData, db, tx)
+            elif recipeDataType == "Timer":
+                timer(stepName, stepType, stepId, recipeData, db, tx)
 
             elif recipeDataType == None:
                 log.trace("Skipping a NULL value")
@@ -113,10 +115,11 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
     log.infof("Migrating a SIMPLE VALUE with key: %s for step: %s", key, stepName)
     description = recipeData.get("description","")
+    label = recipeData.get("label","")
     units = recipeData.get("units","")
     recipeDataTypeId=fetchRecipeDataTypeId("Simple Value", db)
     
-    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, units, tx)
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
     
     valueType = recipeData.get("valueType","String")
     valueType = convertValueType(valueType)
@@ -142,10 +145,11 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     log.infof("Migrating an OUTPUT with key: %s for step: %s", key, stepName)
     log.tracef("  Dictionary: %s", str(recipeData))
     description = recipeData.get("description","")
+    label = recipeData.get("label","")
     units = recipeData.get("units","")
     recipeDataTypeId=fetchRecipeDataTypeId("Output", db)
 
-    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, units, tx)
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
     
     outputType = recipeData.get("outputType","Setpoint")
     outputTypeId = fetchOutputTypeId(outputType, db)
@@ -157,7 +161,6 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     tag = recipeData.get("tagPath","")
     download = recipeData.get("download",False)
     download = toBit(download)
-    label = recipeData.get("label","")
     timing = recipeData.get("timing",0.0)
     maxTiming = recipeData.get("maxTiming",0.0)
     outputValue = recipeData.get("value",0.0)
@@ -175,17 +178,35 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     if targetValue == "":
         targetValue = 0.0
     
-    SQL = "insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, Tag, Download, Label, Timing, MaxTiming, OutputValue, TargetValue, WriteConfirm) "\
-        "values (%d, %d, %d, '%s', %s, '%s', %s, %s, %s, %s, %s)"\
-        % (recipeDataId, valueTypeId, outputTypeId, tag, str(download), label, str(timing), str(maxTiming), str(outputValue), str(targetValue), str(writeConfirm))
+    SQL = "insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, Tag, Download, Timing, MaxTiming, OutputValue, TargetValue, WriteConfirm) "\
+        "values (%d, %d, %d, '%s', %s, %s, %s, %s, %s, %s)"\
+        % (recipeDataId, valueTypeId, outputTypeId, tag, str(download), str(timing), str(maxTiming), str(outputValue), str(targetValue), str(writeConfirm))
 
     log.tracef(SQL)
     system.db.runUpdateQuery(SQL, tx=tx)
     log.tracef("   ...done inserting an output!")
     
-def insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, units, tx):
-    SQL = "insert into SfcRecipeData (stepId, RecipeDataKey, RecipeDataTypeId, Description, Units) "\
-        " values ('%s', '%s', %d, '%s', '%s')" % (stepId, key, recipeDataTypeId, description, units)
+def timer(stepName, stepType, stepId, recipeData, db, tx):
+    key = recipeData.get("key","")
+    log.infof("Migrating a TIMER with key: %s for step: %s", key, stepName)
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    recipeDataTypeId=fetchRecipeDataTypeId("Timer", db)
+    
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
+    
+    # The time is the associated data is stored in some goofy format and is irrelevant anyway, the timer is always set at runtime.
+    startTime = "01/01/1960 12:00:00"
+    
+    SQL = "insert into SfcRecipeDataTimer (RecipeDataId, StartTime) values (%d, '%s')" % (recipeDataId, startTime)
+    log.tracef(SQL)
+    system.db.runUpdateQuery(SQL, tx=tx)
+    log.tracef("   ...done inserting a simple value!")    
+    
+def insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx):
+    SQL = "insert into SfcRecipeData (stepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
+        " values ('%s', '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
     log.tracef(SQL)
     recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
     log.tracef("   ...inserted a record into SfcRecipeData with id: %d", recipeDataId)
