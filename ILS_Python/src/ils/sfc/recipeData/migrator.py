@@ -33,8 +33,9 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     
     log.tracef("parsing the tree...")
     root = ET.fromstring(chartResourceAsXML)
-    tx = system.db.beginTransaction(db)
+    tx = ""
     try:
+        tx = system.db.beginTransaction(db)
         for step in root.findall('step'):
             processStep(step, db, tx)
         

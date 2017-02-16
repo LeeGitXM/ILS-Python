@@ -37,8 +37,9 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
     log.tracef("Step UUIDs: %s", str(stepUUIDs))
     log.tracef("Factory Ids: %s", str(stepFactoryIds))
     
-    tx = system.db.beginTransaction(database)
+    tx = ""
     try:
+        tx = system.db.beginTransaction(database)
         # Fetch the chart id (the database id)
         SQL = "select chartId from SfcChart where ChartResourceId = %d" % (parentResourceId)
         chartId =  system.db.runScalarQuery(SQL, tx=tx)
