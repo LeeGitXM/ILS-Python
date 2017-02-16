@@ -115,7 +115,7 @@ class BasicBlock():
         now = long(time.time()*1000)
         for anchor in self.outports:
             if anchor['type'].upper()=='TRUTHVALUE':
-                self.handler.sendConnectionNotification(self.uuid,anchor["name"],'UNKNOWN',"Good",long(now))
+                self.handler.sendConnectionNotification(self.uuid,anchor["name"],'UNSET',"Good",long(now))
             elif anchor['type'].upper() == 'DATA':
                 self.handler.sendConnectionNotification(self.uuid,anchor["name"],String.valueOf(Double.NaN),"Good",now)
             else:

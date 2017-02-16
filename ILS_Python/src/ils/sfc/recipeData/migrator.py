@@ -33,10 +33,8 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     
     log.tracef("parsing the tree...")
     root = ET.fromstring(chartResourceAsXML)
-    
+    tx = system.db.beginTransaction(db)
     try:
-        tx = system.db.beginTransaction(db)
-        
         for step in root.findall('step'):
             processStep(step, db, tx)
         
@@ -49,14 +47,13 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
         
         log.infof("***************")
         log.infof(" Done migrating recipe data, committing transactions...")
-        log.infof("***************")
-        
+        log.infof("***************") 
         system.db.commitTransaction(tx)
-        system.db.closeTransaction(tx)
     except:
         errorTxt = catch("Migrating Recipe Data - rolling back transactions")
         log.errorf(errorTxt)
         system.db.rollbackTransaction(tx)
+    finally:
         system.db.closeTransaction(tx)
 
 def processStep(step, db, tx):

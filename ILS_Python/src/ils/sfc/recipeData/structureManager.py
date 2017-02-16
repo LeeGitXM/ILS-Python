@@ -37,9 +37,8 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
     log.tracef("Step UUIDs: %s", str(stepUUIDs))
     log.tracef("Factory Ids: %s", str(stepFactoryIds))
     
+    tx = system.db.beginTransaction(database)
     try:
-        tx = system.db.beginTransaction(database)
-
         # Fetch the chart id (the database id)
         SQL = "select chartId from SfcChart where ChartResourceId = %d" % (parentResourceId)
         chartId =  system.db.runScalarQuery(SQL, tx=tx)
@@ -139,10 +138,10 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
         
         log.infof("...committing and closing transaction!")
         system.db.commitTransaction(tx)
-        system.db.closeTransaction(tx)
     except:
         errorTxt = catch("Updating the Chart Hierarchy - rolling back transactions")
         log.errorf(errorTxt)
         system.db.rollbackTransaction(tx)
+    finally:
         system.db.closeTransaction(tx)
         
