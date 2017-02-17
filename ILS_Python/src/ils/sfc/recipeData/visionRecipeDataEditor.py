@@ -87,9 +87,18 @@ def internalFrameOpened(rootContainer, db=""):
         elif recipeDataType == "Output":
             print "Initializing an Output..."
             ds = rootContainer.outputDataset
-            ds = system.dataset.setValue(ds, 0, "OutputValue", 0.0)
-            ds = system.dataset.setValue(ds, 0, "TargetValue", 0.0)
-            ds = system.dataset.setValue(ds, 0, "PVValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "OutputFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "OutputIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "OutputStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "OutputBooleanValue", False)
+            ds = system.dataset.setValue(ds, 0, "TargetFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "TargetIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "TargetStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "TargetBooleanValue", False)
+            ds = system.dataset.setValue(ds, 0, "PVFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "PVIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "PVStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "PVBooleanValue", False)
             ds = system.dataset.setValue(ds, 0, "Timing", 0.0)
             ds = system.dataset.setValue(ds, 0, "MaxTiming", 0.0)
             ds = system.dataset.setValue(ds, 0, "ActualTiming", 0.0)
@@ -198,6 +207,10 @@ def refreshComboBoxes(event):
     outputType = ds.getValueAt(0,"OutputType")
     combo.selectedStringValue = outputType
     
+    combo = container.getComponent("Value Type Dropdown")
+    valueType = ds.getValueAt(0,"ValueType")
+    combo.selectedStringValue = valueType
+    
     # Array Combos
     container = rootContainer.getComponent("Array Container")
     combo = container.getComponent("Value Type Dropdown")
@@ -271,20 +284,15 @@ def saveSimpleValue(rootContainer, db=""):
             
             if valueType == "Float":
                 val = simpleValueContainer.getComponent("Float Value").floatValue
-                SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=%f, StringValue=NULL, BooleanValue=NULL where ValueId = %d" % (val, valueId)
             elif valueType == "Integer":
                 val = simpleValueContainer.getComponent("Integer Value").intValue
-                SQL = "Update SfcRecipeDataValue set IntegerValue=%d, FloatValue=NULL, StringValue=NULL, BooleanValue=NULL where ValueId = %d" % (val, valueId)
             elif valueType == "String":
                 val = simpleValueContainer.getComponent("String Value").text
-                SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=NULL, StringValue='%s', BooleanValue=NULL where ValueId = %d" % (val, valueId)
             elif valueType == "Boolean":
                 val = simpleValueContainer.getComponent("Boolean Value").selected
                 val = toBit(val)
-                SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=NULL, StringValue=NULL, BooleanValue=%d where ValueId = %d" % (val, valueId)
-            
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+    
+            updateRecipeDataValue(valueId, valueType, val, tx)
 
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
@@ -309,7 +317,6 @@ def saveOutput(rootContainer, db=""):
     
     outputType = outputContainer.getComponent("Output Type Dropdown").selectedStringValue
     outputTypeId = outputContainer.getComponent("Output Type Dropdown").selectedValue
-    outputValue = outputContainer.getComponent("Output Value").floatValue
     tag = outputContainer.getComponent("Tag").text
     download = outputContainer.getComponent("Download").selected
     download=toBit(download)
@@ -319,8 +326,8 @@ def saveOutput(rootContainer, db=""):
     writeConfirm=toBit(writeConfirm)
     
     # For now, the valueType of an output is always a Float
-    valueType = "Float"
-    valueTypeId = fetchValueTypeId(valueType, db)
+    valueType = outputContainer.getComponent("Value Type Dropdown").selectedStringValue
+    valueTypeId = outputContainer.getComponent("Value Type Dropdown").selectedValue
     
     tx = system.db.beginTransaction(db)
     
@@ -336,10 +343,33 @@ def saveOutput(rootContainer, db=""):
             print SQL
             recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
             rootContainer.recipeDataId = recipeDataId
+            
+            valueIds=[]
+            for i in [0,1,2]:
+                # TargetValue and PV Value are dynamic values that cannot be edited.
+                if i == 0:
+                    attr = valueType + "Value"
+                    if valueType == 'String':
+                        val = outputContainer.getComponent("Output String Value").text
+                        SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (attr, val)
+                    else:
+                        if valueType == 'Float':
+                            val = outputContainer.getComponent("Output Float Value").floatValue
+                        elif valueType == 'Integer':
+                            val = outputContainer.getComponent("Output Integer Value").intValue
+                        elif valueType == 'Boolean':
+                            val = outputContainer.getComponent("Output Boolean Value").selected
+                            val = toBit(val)
+                        SQL = "insert into SfcRecipeDataValue (%s) values (%s)" % (attr, str(val))
+                else:
+                    SQL = "insert into SfcRecipeDataValue (FloatValue) values (NULL)"
+                print SQL
+                valueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+                valueIds.append(valueId)
 
-            SQL = "Insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, OutputValue, Tag, Download, Timing, MaxTiming, WriteConfirm) "\
-                "values (%d, %d, %d, %f, '%s', %d, %f, %f, %d)" \
-                % (recipeDataId, valueTypeId, outputTypeId, outputValue, tag, download, timing, maxTiming, writeConfirm)            
+            SQL = "Insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, OutputValueId, TargetValueId, PVValueId, Tag, Download, Timing, MaxTiming, WriteConfirm) "\
+                "values (%d, %d, %d, %d, %d, %d, '%s', %d, %f, %f, %d)" \
+                % (recipeDataId, valueTypeId, outputTypeId, valueIds[0], valueIds[1], valueIds[2], tag, download, timing, maxTiming, writeConfirm)            
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
         else:
@@ -349,10 +379,23 @@ def saveOutput(rootContainer, db=""):
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
 
-            SQL = "Update SfcRecipeDataOutput set ValueTypeId=%d, OutputTypeId=%d, OutputValue=%f, Tag='%s', Download=%d, Timing=%f, MaxTiming=%f, WriteConfirm=%d "\
-                "where RecipeDataId = %d" % (valueTypeId, outputTypeId, outputValue, tag, download, timing, maxTiming, writeConfirm, recipeDataId)
+            SQL = "Update SfcRecipeDataOutput set ValueTypeId=%d, OutputTypeId=%d, Tag='%s', Download=%d, Timing=%f, MaxTiming=%f, WriteConfirm=%d "\
+                "where RecipeDataId = %d" % (valueTypeId, outputTypeId, tag, download, timing, maxTiming, writeConfirm, recipeDataId)
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
+                       
+            ds = rootContainer.outputDataset
+            valueId = ds.getValueAt(0,"OutputValueId")
+            if valueType == "Float":
+                val = outputContainer.getComponent("Output Float Value").floatValue
+            elif valueType == "Integer":
+                val = outputContainer.getComponent("Output Integer Value").intValue
+            elif valueType == "String":
+                val = outputContainer.getComponent("Output String Value").text
+            elif valueType == "Boolean":
+                val = outputContainer.getComponent("Output Boolean Value").selected
+                val = toBit(val)
+            updateRecipeDataValue(valueId, valueType, val, tx)
 
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
@@ -498,3 +541,16 @@ def saveArray(rootContainer, db=""):
     
     print "Done!"
 
+def updateRecipeDataValue(valueId, valueType, val, tx):
+    if valueType == "Float":
+        SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=%f, StringValue=NULL, BooleanValue=NULL where ValueId = %d" % (val, valueId)
+    elif valueType == "Integer":
+        SQL = "Update SfcRecipeDataValue set IntegerValue=%d, FloatValue=NULL, StringValue=NULL, BooleanValue=NULL where ValueId = %d" % (val, valueId)
+    elif valueType == "String":
+        SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=NULL, StringValue='%s', BooleanValue=NULL where ValueId = %d" % (val, valueId)
+    elif valueType == "Boolean":
+        val = toBit(val)
+        SQL = "Update SfcRecipeDataValue set IntegerValue=NULL, FloatValue=NULL, StringValue=NULL, BooleanValue=%d where ValueId = %d" % (val, valueId)
+
+    print SQL
+    system.db.runUpdateQuery(SQL, tx=tx)

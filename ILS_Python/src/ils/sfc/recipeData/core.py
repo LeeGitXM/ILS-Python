@@ -154,7 +154,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
     
     # Separate the key from the array index if there is an array index
-    key, arrayIndex = checkForArrayReference(key)
+    attribute, arrayIndex = checkForArrayReference(attribute)
         
     SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
         " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
@@ -208,14 +208,27 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     
     elif recipeDataType == OUTPUT:
         SQL = "select TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, "\
-            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, OUTPUTVALUE, TARGETVALUE, PVVALUE, PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
+            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
+            "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
+            "PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
             "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
+        valueType = string.upper(record["VALUETYPE"])
         
         if attribute in ["TAG","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","TIMING","MAXTIMING",\
-                         "ACTUALTIMING","ACTUALDATETIME","OUTPUTVALUE","TARGETVALUE","PVVALUE","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED"]:
+                         "ACTUALTIMING","ACTUALDATETIME","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED"]:
             val = record[attribute]
+        elif attribute == "OUTPUTVALUE":
+            theAttribute = "OUTPUT%sVALUE" % (valueType)
+            val = record[theAttribute]
+        elif attribute == "TARGETVALUE":
+            theAttribute = "TARGET%sVALUE" % (valueType)
+            val = record[theAttribute]
+        elif attribute == "PVVALUE":
+            theAttribute = "PV%sVALUE" % (valueType)
+            val = record[theAttribute]
         else:
             raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
     
@@ -224,7 +237,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             if arrayIndex == None:
                 val = []
                 SQL = "select VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
-                    " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElement E where A.RecipeDataId = E.RecipeDataId "\
+                    " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
                     " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
                 pds = system.db.runQuery(SQL, db)
                 for record in pds:
@@ -234,7 +247,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 logger.tracef("Fetched the whole array: %s", str(val))
             else:
                 SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
-                    " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElement E where A.RecipeDataId = E.RecipeDataId "\
+                    " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
                     " and E.RecipeDataId = %d and ArrayIndex = %d" % (recipeDataId, arrayIndex)
                 pds = system.db.runQuery(SQL, db)
                 record = pds[0]
@@ -254,7 +267,7 @@ def setRecipeData(stepUUID, key, attribute, val, db):
     logger.tracef("Setting recipe data value for step: stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, val)
     
     # Separate the key from the array index if there is an array index
-    key, arrayIndex = checkForArrayReference(key)
+    attribute, arrayIndex = checkForArrayReference(attribute)
     
     SQL = "select * from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
@@ -301,8 +314,28 @@ def setRecipeData(stepUUID, key, attribute, val, db):
         elif attribute in ['DOWNLOAD', 'PVMONITORACTIVE', 'WRITECONFIRM', 'WRITECONFIRMED']:
             bitVal = toBit(val)
             SQL = "update SfcRecipeDataOutput set %s = %s where recipeDataId = %s" % (attribute, bitVal, recipeDataId)
-        elif attribute in ['TIMING', 'MAXTIMING','PVVALUE','TARGETVALUE']:
+        elif attribute in ['TIMING', 'MAXTIMING']:
             SQL = "update SfcRecipeDataOutput set %s = %s where recipeDataId = %s" % (attribute, val, recipeDataId)
+        elif attribute in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
+            attrName="%sID" % (attribute)
+            SQL = "select ValueType, %s from SfcRecipeDataOutputView where RecipeDataId = %s" % (attrName, recipeDataId)
+            print SQL
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to find the value type for Output recipe data"
+            record = pds[0]
+            valueType = record["ValueType"]
+            valueId = record[attrName]
+            theAttribute = "%sValue" % (valueType)
+    
+            if valueType == 'String':
+                SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
+            else:
+                SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)
+            print SQL
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef('...updated %d value records', rows)
+
         elif attribute in ['VALUETYPE']:
             valueTypeId = fetchValueTypeId(val, db)
             SQL = "update SfcRecipeDataOutput set ValueTypeId = %i where recipeDataId = %s" % (valueTypeId, recipeDataId)
@@ -328,17 +361,23 @@ def setRecipeData(stepUUID, key, attribute, val, db):
     
     elif recipeDataType == ARRAY:
         if arrayIndex == None:
-            raise ValueError, "Array Recipe data must specify an index - %s" % (key)
+            raise ValueError, "Array Recipe data must specify an index - %s - %s" % (key, attribute)
         
+        # Get the value type from the SfcRecipeDataArray table.
         SQL = "select * from SfcRecipeDataArrayView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         valueType = record['ValueType']
         
+        # Now fetch the Value Id of the specific element of the array
+        SQL = "select valueId from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex = %s" % (str(recipeDataId), str(arrayIndex))
+        valueId = system.db.runScalarQuery(SQL, db)
+        
         if valueType == "String":
-            SQL = "update SfcRecipeDataArrayElement set %sValue = '%s' where recipeDataId = %d and ArrayIndex = %d" % (valueType, val, recipeDataId, arrayIndex)
+            SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %d" % (valueType, val, valueId)
         else:
-            SQL = "update SfcRecipeDataArrayElement set %sValue = %s where recipeDataId = %d and ArrayIndex = %d" % (valueType, val, recipeDataId, arrayIndex)
+            SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %d" % (valueType, val, valueId)
+
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d array value recipe data records', rows)
         
@@ -347,14 +386,14 @@ def setRecipeData(stepUUID, key, attribute, val, db):
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
 
 # Separate the key from the array index if there is an array index
-def checkForArrayReference(key):
+def checkForArrayReference(attribute):
     arrayIndex = None
-    if key.find("[") > 0:
+    if attribute.find("[") > 0:
         logger.tracef("There is an array index...")
-        arrayIndex = key[key.find("[")+1:len(key)-1]
+        arrayIndex = attribute[attribute.find("[")+1:len(attribute)-1]
         arrayIndex = int(arrayIndex)
-        key = key[:key.find("[")]
-    return key, arrayIndex
+        attribute = attribute[:attribute.find("[")]
+    return attribute, arrayIndex
         
 def fetchOutputTypeId(val, db):
     SQL = "select OutputTypeId from SfcRecipeDataOutputType where OutputType = '%s'" % (val)

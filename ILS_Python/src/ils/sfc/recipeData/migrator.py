@@ -125,17 +125,24 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     val = recipeData.get("value", None)
     
     if valueType == "Float":
-        SQL = "insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, FloatValue) values (%d, %d, %s)" % (recipeDataId, valueTypeId, str(val))
+        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, FloatValue) values (%d, %d, %s)" % (recipeDataId, valueTypeId, str(val))
     elif valueType == "Integer":
-        SQL = "insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, IntegerValue) values (%d, %d, %s)" % (recipeDataId, valueTypeId, str(val))
+        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, IntegerValue) values (%d, %d, %s)" % (recipeDataId, valueTypeId, str(val))
     elif valueType == "String":
-        SQL = "insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, StringValue) values (%d, %d, '%s')" % (recipeDataId, valueTypeId, str(val))
+        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, StringValue) values (%d, %d, '%s')" % (recipeDataId, valueTypeId, str(val))
+    elif valueType == "Boolean":
+        val=toBit(val)
+        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, BooleanValue) values (%d, %d, %d)" % (recipeDataId, valueTypeId, val)
     else:
         errorTxt = "Unknown value type: %s" % str(valueType)
         raise ValueError, errorTxt
     
     log.tracef(SQL)
+    valueId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    
+    SQL = "insert into SfcRecipeDataSimpleValue (RecipeDataId, ValueTypeId, ValueId) values (%d, %d, %d)" % (recipeDataId, valueTypeId, valueId)
     system.db.runUpdateQuery(SQL, tx=tx)
+
     log.tracef("   ...done inserting a simple value!")
 
 def output(stepName, stepType, stepId, recipeData, db, tx):
@@ -151,6 +158,9 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     
     outputType = recipeData.get("outputType","Setpoint")
     outputTypeId = fetchOutputTypeId(outputType, db)
+    if outputTypeId == None:
+        log.warnf("Overriding unknown output type <%s> to <Setpoint>", outputType)
+        outputTypeId = fetchOutputTypeId("Setpoint", db)
     
     valueType = recipeData.get("valueType","String")
     valueType = convertValueType(valueType)
@@ -174,12 +184,24 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     if outputValue == "":
         outputValue = 0.0
     if targetValue == "":
-        targetValue = 0.0
-    
-    SQL = "insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, Tag, Download, Timing, MaxTiming, OutputValue, TargetValue, WriteConfirm) "\
-        "values (%d, %d, %d, '%s', %s, %s, %s, %s, %s, %s)"\
-        % (recipeDataId, valueTypeId, outputTypeId, tag, str(download), str(timing), str(maxTiming), str(outputValue), str(targetValue), str(writeConfirm))
+        targetValue = 0.0        
 
+    # Insert values into the value table
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('%s')" % (valueType, outputValue)
+    log.tracef(SQL)
+    outputValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('%s')" % (valueType, targetValue)
+    log.tracef(SQL)
+    targetValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('0.0')" % (valueType)
+    log.tracef(SQL)
+    pvValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+
+    SQL = "insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, Tag, Download, Timing, MaxTiming, OutputValueId, TargetValueId, PVValueId, WriteConfirm) "\
+        "values (%s, %s, %s, '%s', %s, %s, %s, %s, %s, %s, %s)"\
+        % (str(recipeDataId), str(valueTypeId), str(outputTypeId), tag, str(download), str(timing), str(maxTiming), str(outputValueId), str(targetValueId), str(pvValueId), str(writeConfirm))
     log.tracef(SQL)
     system.db.runUpdateQuery(SQL, tx=tx)
     log.tracef("   ...done inserting an output!")

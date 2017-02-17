@@ -206,10 +206,36 @@ def deleteRecipeData(rootContainer, db):
     ds = recipeDataTable.data
     recipeDataId = ds.getValueAt(recipeDataTable.selectedRow, "RecipeDataId")
     
+    recipeDataType = ds.getValueAt(recipeDataTable.selectedRow, "RecipeDataType")
+    
+    # Get the value ids before we delete the data
+    valueIds = []
+    if recipeDataType == "Simple Value":
+        SQL = "select ValueId from SfcRecipeDataSimpleValue where recipeDataId = %d" % (recipeDataId)
+        valueId = system.db.runScalarQuery(SQL, db)
+        valueIds.append(valueId)
+    elif recipeDataType == "Output":
+        SQL = "select OutputValueId, TargetValueId, PVValueId from SfcRecipeDataSimpleValue where recipeDataId = %d" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        valueIds.append(record["OutputValueId"])
+        valueIds.append(record["TargetValueId"])
+        valueIds.append(record["PVValueId"])
+    elif recipeDataType == "Array":
+        SQL = "select ValueId from SfcRecipeDataArrayElement where recipeDataId = %d" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        for record in pds:
+            valueIds.append(record["ValueId"])
+    
     # The recipe data tables all have cascade delete foreign keys so we just need to delete from the main table
     SQL = "delete from SfcRecipeData where RecipeDataId = %d" % (recipeDataId)
     print SQL
     system.db.runUpdateQuery(SQL, db)
+    
+    # Now delete the values
+    for valueId in valueIds:
+        SQL = "delete from SfcRecipeDataValue where ValueId = %d" % (valueId)
+        system.db.runUpdateQuery(SQL, db)
     
     # Update the table
     updateRecipeData(rootContainer, db)
