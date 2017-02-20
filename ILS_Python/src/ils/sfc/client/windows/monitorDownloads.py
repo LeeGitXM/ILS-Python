@@ -5,6 +5,7 @@ Created on May 29, 2015
 '''
 import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord
 
 # This is called when the Download GUI window is opened.  The window is opened in response to a message sent 
 # from the gateway to the client when the download GUI task runs in the gateway.  The gateway task populates the 
@@ -17,8 +18,16 @@ def internalFrameOpened(rootContainer):
 
     database = getDatabaseClient()
     windowId = rootContainer.windowId
-    state, timerTagPath = fetchWindowInfo(windowId, database)
-    rootContainer.timerTagPath = timerTagPath
+    
+    SQL = "select State, TimerStepUUID, TimerKey from SfcDownloadGUI where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL, database)
+
+    timerStepUUID = pds[0]["TimerStepUUID"]
+    timerKey =  pds[0]["TimerKey"]
+
+    rootContainer.startTime = None
+    rootContainer.timerStepUUID = timerStepUUID
+    rootContainer.timerKey = timerKey
 
     title = system.db.runScalarQuery("Select title from SfcWindow where windowId = '%s'" % (windowId), database)
     rootContainer.title = title
@@ -29,22 +38,26 @@ def update(rootContainer):
     print "In monitorDownloads.update()"
 
     windowId = rootContainer.windowId
-    timerTagPath = rootContainer.timerTagPath
-    print "The timer tag path is: ", timerTagPath
+    timerStepUUID = rootContainer.timerStepUUID
+    timerKey = rootContainer.timerKey
     database = getDatabaseClient()
     tagProvider = getTagProviderClient()
     
     state, secondsSinceLastUpdate = fetchWindowState(windowId, database)
     
-    startTime = system.tag.read(timerTagPath + "/startTime").value
-    
-    if startTime == None:
-        startTime = system.tag.read(timerTagPath).value
+    # If this window hasn't discovered a starttime, then check if someone started the timer.
+    if rootContainer.startTime == None:
+        startTime = s88GetFromStep(timerStepUUID, timerKey + ".StartTime", database)
         if startTime != None:
+            rootContainer.startTime = startTime
             updateStartTime(windowId, startTime, database)
+    else:
+        startTime = rootContainer.startTime
         
-    rootContainer.startTime = startTime
-    startTimeFormatted = system.db.dateFormat(startTime, "dd-MMM-yy h:mm:ss a")
+    if startTime == None:
+        startTimeFormatted = ""
+    else:
+        startTimeFormatted = system.db.dateFormat(startTime, "dd-MMM-yy h:mm:ss a")
     
     if string.upper(state)  == "CREATED":
         initializeDatabaseTable(windowId, database, tagProvider)
@@ -64,24 +77,11 @@ def update(rootContainer):
     
     # Need to add a row at the top to specify the time that the download started.
     ds = system.dataset.toDataSet(pds)
-    ds = system.dataset.addRow(ds,0,["","",None,None,None,None,None, "", startTimeFormatted,None, "pending", "monitoring", ""])
+    ds = system.dataset.addRow(ds,0,["","","",None,None,None,None,None, "", startTimeFormatted,None, "pending", "monitoring", ""])
     
     table=rootContainer.getComponent("table")
     table.data=ds
 
-def fetchWindowInfo(windowId, database):
-    print "...fetching the window info..."
-    
-    SQL = "select State, TimerTagPath "\
-        "from SfcDownloadGUI where windowId = '%s'" % (windowId)
-    print SQL
-    pds = system.db.runQuery(SQL, database)
-
-    state = pds[0]["State"]
-    timerTagPath = pds[0]["TimerTagPath"]
-    
-    print "...fetched State: %s, tagPath: %s" % (state, timerTagPath)
-    return state, timerTagPath
 
 def fetchWindowState(windowId, database):
     print "...fetching the window state..."
@@ -119,39 +119,25 @@ def initializeDatabaseTable(windowId, database, tagProvider):
     # Oddly enough, Inputs do not have any additional attributes vs IO
     # get common IO attributes and set some defaults:
     for record in pds:
-        recipeDataPath=record["RecipeDataPath"]
-        labelAttribute=record["LabelAttribute"]
+        recipeDataStepUUID = record["RecipeDataStepUUID"]
+        recipeDataKey = record["RecipeDataKey"]
         
-        tagPaths=[]
-        tagPaths.append(recipeDataPath + '/timing')
-        tagPaths.append(recipeDataPath + '/tagPath')
-        tagPaths.append(recipeDataPath + '/value')
-        tagPaths.append(recipeDataPath + '/downloadStatus')
-        tagPaths.append(recipeDataPath + '/pvMonitorStatus')
-        tagPaths.append(recipeDataPath + '/pvMonitorActive')
-        tagPaths.append(recipeDataPath + '/setpointStatus')
-        tagPaths.append(recipeDataPath + '/pvValue')
-        tagPaths.append(recipeDataPath + '/stepTimestamp')
-        tagPaths.append(recipeDataPath + '/description')
-        tagPaths.append(recipeDataPath + '/valueType')
-        tagPaths.append(recipeDataPath + '/units')
-        tagPaths.append(recipeDataPath + '/guiUnits')
-        
-        tagValues=system.tag.readAll(tagPaths)
-        rawTiming = tagValues[0].value
-        tagPath = tagValues[1].value
-        setpoint = tagValues[2].value
-        downloadStatus = tagValues[3].value
-        pvMonitorStatus = tagValues[4].value
-        pvMonitorActive = tagValues[5].value
-        setpointStatus = tagValues[6].value
-        pvValue = tagValues[7].value
-        pvQuality = tagValues[7].quality
-        stepTimestamp = tagValues[8].value
-        description = tagValues[9].value
-        valueType = tagValues[10].value
-        units = tagValues[11].value
-        guiUnits = tagValues[12].value
+        recipeRecord = s88GetRecord(recipeDataStepUUID, recipeDataKey, database)
+        print "Fetched recipe record: ", recipeRecord
+
+        rawTiming = recipeRecord["TIMING"]
+        tagPath = recipeRecord["TAG"]
+        setpoint = recipeRecord["TARGETFLOATVALUE"]
+        downloadStatus = recipeRecord["DOWNLOADSTATUS"]
+        pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
+        pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
+        setpointStatus = recipeRecord["DOWNLOADSTATUS"]
+        pvValue = recipeRecord["PVFLOATVALUE"]
+        stepTimestamp = recipeRecord["ACTUALDATETIME"]
+        description = recipeRecord["DESCRIPTION"]
+        valueType = recipeRecord["VALUETYPE"]
+        units = recipeRecord["UNITS"]
+#        guiUnits = tagValues[12].value
         
         if rawTiming >=1000.0:
             timing = "NULL"
@@ -167,17 +153,18 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 
         # Determine the DCS Tag ID - this can either be the name of the tag/UDT or the item id
         import ils.io.api as api
-        displayName = api.getDisplayName(tagProvider, tagPath, valueType, labelAttribute)
+        displayAttribute = "NAME"
+        displayName = api.getDisplayName(tagProvider, tagPath, valueType, displayAttribute)
 
         if units != "":
             description = "%s (%s)" % (description, units)
 
         SQL = "update SfcDownloadGUITable set RawTiming=%s, Timing=%s, DcsTagId='%s', SetPoint='%s', PV='%s'," \
             "StepTimestamp='%s', DownloadStatus='%s', PVMonitorStatus='%s', SetpointStatus='%s', " \
-            "Description = '%s' where windowId = '%s' and RecipeDataPath = '%s'  " % \
+            "Description = '%s' where windowId = '%s' and RecipeDataKey = '%s'  " % \
             (str(rawTiming), str(timing), displayName, str(setpoint), formattedPV, \
              stepTimestamp, str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
-             description, windowId, recipeDataPath)
+             description, windowId, recipeDataKey)
 
         system.db.runUpdateQuery(SQL, database)
 
@@ -195,25 +182,18 @@ def updateDatabaseTable(windowId, database):
     pds = system.db.runQuery(SQL, database)
 
     for record in pds:
-        recipeDataPath=record["RecipeDataPath"]
+        recipeDataStepUUID = record["RecipeDataStepUUID"]
+        recipeDataKey = record["RecipeDataKey"]
         
-        tagPaths=[]
-        tagPaths.append(recipeDataPath + '/downloadStatus')
-        tagPaths.append(recipeDataPath + '/pvMonitorStatus')
-        tagPaths.append(recipeDataPath + '/pvMonitorActive')
-        tagPaths.append(recipeDataPath + '/setpointStatus')
-        tagPaths.append(recipeDataPath + '/pvValue')
-        tagPaths.append(recipeDataPath + '/stepTimestamp')
+        recipeRecord = s88GetRecord(recipeDataStepUUID, recipeDataKey, database)
+        print "Fetched recipe record: ", recipeRecord
         
-        tagValues=system.tag.readAll(tagPaths)
-        
-        downloadStatus = tagValues[0].value
-        pvMonitorStatus = tagValues[1].value
-        pvMonitorActive = tagValues[2].value
-        setpointStatus = tagValues[3].value
-        pvValue = tagValues[4].value
-        pvQuality = tagValues[4].quality
-        stepTimestamp = tagValues[5].value
+        downloadStatus = recipeRecord["DOWNLOADSTATUS"]
+        pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
+        pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
+        setpointStatus = recipeRecord["DOWNLOADSTATUS"]
+        pvValue = recipeRecord["PVFLOATVALUE"]
+        stepTimestamp = recipeRecord["ACTUALDATETIME"]
         
         if pvValue == None:
             formattedPV = ""
@@ -224,9 +204,9 @@ def updateDatabaseTable(windowId, database):
 
         SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
             "SetpointStatus='%s', StepTimestamp='%s' "\
-            "where windowId = '%s' and RecipeDataPath = '%s' " % \
+            "where windowId = '%s' and RecipeDataKey = '%s' " % \
             (str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
-             stepTimestamp, windowId, recipeDataPath)
+             stepTimestamp, windowId, recipeDataKey)
 
         system.db.runUpdateQuery(SQL, database)
 

@@ -45,6 +45,15 @@ def internalFrameOpened(rootContainer, db=""):
             SQL = "select * from SfcRecipeDataArrayElementView where recipeDataId = %s order by ArrayIndex" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             rootContainer.arrayValuesDataset = pds
+            
+        elif recipeDataType == "Input":
+            print "Fetching an Input"
+            SQL = "select * from SfcRecipeDataInputView where recipeDataId = %s" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to fetch an Input recipe data with id: %s" % (recipeDataId)
+            record = pds[0]
+            rootContainer.inputDataset = pds
 
         elif recipeDataType == "Output":
             print "Fetching an Output"
@@ -110,6 +119,24 @@ def internalFrameOpened(rootContainer, db=""):
             ds = system.dataset.setValue(ds, 0, "WriteConfirmed", 0)
             ds = system.dataset.setValue(ds, 0, "PVMonitorActive", 0)
             rootContainer.outputDataset = ds
+            
+        elif recipeDataType == "Input":
+            print "Initializing a new Input..."
+            ds = rootContainer.outputDataset
+            ds = system.dataset.setValue(ds, 0, "TargetFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "TargetIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "TargetStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "TargetBooleanValue", False)
+            ds = system.dataset.setValue(ds, 0, "PVFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "PVIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "PVStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "PVBooleanValue", False)
+            ds = system.dataset.setValue(ds, 0, "Tag", "")
+            ds = system.dataset.setValue(ds, 0, "PVMonitorStatus", "")
+            ds = system.dataset.setValue(ds, 0, "ErrorCode", "")
+            ds = system.dataset.setValue(ds, 0, "ErrorText", "")
+            ds = system.dataset.setValue(ds, 0, "PVMonitorActive", 0)
+            rootContainer.inputDataset = ds
 
         elif recipeDataType == "Timer":
             print "Initializing a Timer..."
@@ -197,6 +224,12 @@ def refreshComboBoxes(event):
     container = rootContainer.getComponent("Simple Value Container")
     combo = container.getComponent("Value Type Dropdown")
     ds = rootContainer.simpleValueDataset
+    valueType = ds.getValueAt(0,"ValueType")
+    combo.selectedStringValue = valueType
+    
+    # Input Combos
+    container = rootContainer.getComponent("Input Container")    
+    combo = container.getComponent("Value Type Dropdown")
     valueType = ds.getValueAt(0,"ValueType")
     combo.selectedStringValue = valueType
     
@@ -302,6 +335,71 @@ def saveSimpleValue(rootContainer, db=""):
         system.db.closeTransaction(tx) 
     
     print "Done!"
+
+def saveInput(rootContainer, db=""):
+    print "Saving an Input"
+
+    recipeDataId = rootContainer.recipeDataId
+    stepId = rootContainer.stepId
+    
+    key = rootContainer.getComponent("Key").text
+    description = rootContainer.getComponent("Description").text
+    label = rootContainer.getComponent("Label").text
+    units = rootContainer.getComponent("Units Dropdown").selectedStringValue
+    inputContainer=rootContainer.getComponent("Input Container")
+    
+    tag = inputContainer.getComponent("Tag").text
+    
+    # For now, the valueType of an output is always a Float
+    valueType = inputContainer.getComponent("Value Type Dropdown").selectedStringValue
+    valueTypeId = inputContainer.getComponent("Value Type Dropdown").selectedValue
+    
+    tx = system.db.beginTransaction(db)
+    
+    try:
+        if recipeDataId < 0:
+            print "Inserting an Input..."
+            
+            recipeDataType = rootContainer.recipeDataType
+            recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
+            
+            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
+                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
+            print SQL
+            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            rootContainer.recipeDataId = recipeDataId
+            
+            # The values are meaningless until someone uses this data in a PV Monitoring block
+            SQL = "insert into SfcRecipeDataValue (BooleanValue) values (0)"
+            pvValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            SQL = "insert into SfcRecipeDataValue (BooleanValue) values (0)"
+            targetValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+
+            SQL = "Insert into SfcRecipeDataInput (RecipeDataId, ValueTypeId, TargetValueId, PVValueId, Tag) "\
+                "values (%d, %d, %d, %d, '%s')" \
+                % (recipeDataId, valueTypeId, targetValueId, pvValueId, tag)            
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+        else:
+            print "Updating an Input..."
+            recipeDataId = rootContainer.recipeDataId
+            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label='%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+            SQL = "Update SfcRecipeDataInput set ValueTypeId=%d, Tag='%s' where RecipeDataId = %d" % (valueTypeId, tag, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+        system.db.commitTransaction(tx)
+        system.db.closeTransaction(tx) 
+    except:
+        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        system.db.rollbackTransaction(tx)
+        system.db.closeTransaction(tx) 
+    
+    print "Done!"
+
 
 def saveOutput(rootContainer, db=""):
     print "Saving an Output"

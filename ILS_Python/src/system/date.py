@@ -55,6 +55,9 @@ def isAfter(date1,date2):
 def isBefore(date1,date2):
     return True
 
+def minutesBetween(date1, date2):
+    return True
+
 def secondsBetween(date1, date2):
     return 45
 

@@ -375,24 +375,24 @@ def writeTestRamp(controllers, durationSecs, increment):
             adjustment = sign * min(increment, absDiff)
             controller.setCurrentValue(currentValue + adjustment)
         time.sleep(5)
-    
+ 
+ 
+'''
+Report an unexpected error so that it is visible to the operator--
+e.g. put in a message queue. Then cancel the chart.
+'''    
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.util import logExceptionCause
     from ils.sfc.common.constants import MESSAGE, CONTROL_PANEL_ID, ORIGINATOR
     from  ils.sfc.gateway.api import cancelChart, getProject
-    '''
-    Report an unexpected error so that it is visible to the operator--
-    e.g. put in a message queue. Then cancel the chart.
-    '''
+
     fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
-    
-    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartScope.chartPath, chartScope.name, fullMsg, tracebackMsg, javaCauseMsg)
+    chartPath = chartScope.get("chartPath", "")
+    stepName = chartScope.get("name", "")
+    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
     payload = dict()
-    payload[MESSAGE] = msg
-    payload[CONTROL_PANEL_ID] = getControlPanelId(chartScope)
-    payload[ORIGINATOR] = getOriginator(chartScope)
-    project = getProject(chartScope)
-    sendMessageToClient(project, 'sfcUnexpectedError', payload)
+    payload[MESSAGE] = payloadMsg
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
     cancelChart(chartScope)
 
     

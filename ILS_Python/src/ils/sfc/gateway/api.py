@@ -247,6 +247,7 @@ def sendMessageToClient(chartScope, messageHandler, payload):
     from ils.sfc.common.constants import HANDLER, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR
     from ils.sfc.gateway.util import getControlPanelName, getControlPanelId, getOriginator
 
+    print "Sending a message..."
     logger.trace("Sending a %s SFC message... " % (str(messageHandler)))
     controlPanelId = getControlPanelId(chartScope)
     controlPanelName = getControlPanelName(chartScope)
@@ -254,12 +255,12 @@ def sendMessageToClient(chartScope, messageHandler, payload):
     db = getDatabaseName(chartScope)
     post = getPostForControlPanelName(controlPanelName, db)
     originator = getOriginator(chartScope)
-
     payload[HANDLER] = messageHandler
     payload[DATABASE] = db
     payload[CONTROL_PANEL_ID] = controlPanelId
     payload[CONTROL_PANEL_NAME] = controlPanelName
     payload[ORIGINATOR] = originator
+    logger.tracef("   payload: %s" , str(payload))
 
     from ils.common.notification import notify
     notify(project, 'sfcMessage', payload, post, db)

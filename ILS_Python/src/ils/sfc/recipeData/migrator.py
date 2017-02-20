@@ -91,6 +91,8 @@ def processStep(step, db, tx):
             
             if recipeDataType == "Output":
                 output(stepName, stepType, stepId, recipeData, db, tx)
+            elif recipeDataType == "Input":
+                input(stepName, stepType, stepId, recipeData, db, tx)
             elif recipeDataType == "Value":
                 simpleValue(stepName, stepType, stepId, recipeData, db, tx)
             elif recipeDataType == "Timer":
@@ -99,7 +101,7 @@ def processStep(step, db, tx):
             elif recipeDataType == None:
                 log.trace("Skipping a NULL value")
             else:
-                raise ValueError, "Unexpected type of recipe data: %s" % recipeDataType
+                raise ValueError, "Unexpected type of recipe data: %s" % (recipeDataType)
     
 def getRecipeDataTypeFromAssociatedData(recipeData):
     try:
@@ -125,14 +127,14 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     val = recipeData.get("value", None)
     
     if valueType == "Float":
-        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, FloatValue) values (%d, %d, %s)" % (recipeDataId, valueTypeId, str(val))
+        SQL = "insert into SfcRecipeDataValue (FloatValue) values (%s)" % (str(val))
     elif valueType == "Integer":
-        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, IntegerValue) values (%d, %d, %s)" % (recipeDataId, valueTypeId, str(val))
+        SQL = "insert into SfcRecipeDataValue (IntegerValue) values (%s)" % (str(val))
     elif valueType == "String":
-        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, StringValue) values (%d, %d, '%s')" % (recipeDataId, valueTypeId, str(val))
+        SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (str(val))
     elif valueType == "Boolean":
         val=toBit(val)
-        SQL = "insert into SfcRecipeDataValue (RecipeDataId, ValueTypeId, BooleanValue) values (%d, %d, %d)" % (recipeDataId, valueTypeId, val)
+        SQL = "insert into SfcRecipeDataValue (BooleanValue) values (%d)" % (val)
     else:
         errorTxt = "Unknown value type: %s" % str(valueType)
         raise ValueError, errorTxt
@@ -205,6 +207,46 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     log.tracef(SQL)
     system.db.runUpdateQuery(SQL, tx=tx)
     log.tracef("   ...done inserting an output!")
+    
+
+def input(stepName, stepType, stepId, recipeData, db, tx):
+    key = recipeData.get("key","")
+    log.infof("Migrating an INPUT with key: %s for step: %s", key, stepName)
+    log.tracef("  Dictionary: %s", str(recipeData))
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    recipeDataTypeId=fetchRecipeDataTypeId("Input", db)
+
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
+    
+    valueType = recipeData.get("valueType","String")
+    valueType = convertValueType(valueType)
+    valueTypeId = fetchValueTypeId(valueType, db)
+    
+    tag = recipeData.get("tagPath","")
+    targetValue = recipeData.get("targetValue",0.0)
+    
+    # Guard against missing string values in places where we need floats.
+    if targetValue == "":
+        targetValue = 0.0        
+
+    # Insert values into the value table
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('%s')" % (valueType, targetValue)
+    log.tracef(SQL)
+    targetValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('0.0')" % (valueType)
+    log.tracef(SQL)
+    pvValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+
+    SQL = "insert into SfcRecipeDataInput (RecipeDataId, ValueTypeId, Tag, TargetValueId, PVValueId) "\
+        "values (%s, %s, '%s', %s, %s)"\
+        % (str(recipeDataId), str(valueTypeId), tag, str(targetValueId), str(pvValueId))
+    log.tracef(SQL)
+    system.db.runUpdateQuery(SQL, tx=tx)
+    log.tracef("   ...done inserting an input!")
+
     
 def timer(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")

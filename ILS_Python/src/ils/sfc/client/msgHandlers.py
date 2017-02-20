@@ -10,7 +10,6 @@ from ils.sfc.client.windowUtil import controlPanelOpen, positionWindow, shouldSh
 def dispatchMessage(payload):
     '''call the appropriate method in this module and pass it the payload'''
     from ils.sfc.common.constants import HANDLER
-    from ils.sfc.client.windowUtil import openErrorPopup
     print "In %s.dispatchMessage() received a message, payload: %s" % (__name__, payload)
     handlerMethod = payload[HANDLER]
     
@@ -25,6 +24,8 @@ def dispatchMessage(payload):
             sfcCloseWindowByName(payload)
         elif handlerMethod == "sfcPrintWindow":
             sfcPrintWindow(payload)
+        elif handlerMethod == "sfcUnexpectedError":
+            sfcUnexpectedError(payload)
         else:
             raise ValueError, "Unexpected message handler <%s>" % handlerMethod
 
@@ -36,21 +37,23 @@ def dispatchMessage(payload):
             errMsg = "Error dispatching client message %s: %s" % (handlerMethod, str(e))
         openErrorPopup(errMsg)
 
+
+def openErrorPopup(msg):
+    import system.nav
+    window = system.nav.openWindowInstance('SFC/ErrorPopup', {"message": msg})
+    system.nav.centerWindow(window)
+    
  
 def sfcUnexpectedError(payload):
-    print "In %s" % (__name__)
-    from ils.sfc.common.util import handleUnexpectedClientError
+    print "In sfcUnexpectedError..."
 
-    from ils.sfc.client.windowUtil import shouldShowWindow
-    msg = payload.get(MESSAGE, '<no message>')
-    controlPanelName = payload[CONTROL_PANEL_NAME]
-    originator = payload[ORIGINATOR]
-    print "Checking if we should show..."
-    if not shouldShowWindow(controlPanelName, originator):
-        print " ** Don't Show **"
+    # Check if this error is relevant to this client
+    if not shouldShowWindow(payload):
         return
-    print "Show it!"
-    handleUnexpectedClientError(msg)
+
+    msg = payload.get(MESSAGE, '<no message>')
+    window = system.nav.openWindowInstance('SFC/ErrorPopup', {"message": msg})
+    system.nav.centerWindow(window)
 
 
 def sfcDialogMessage(payload):
@@ -99,8 +102,8 @@ def sfcOpenWindow(payload):
     print "Path: %s, Position: %s, Scale: %s" % (windowPath, position, str(scale)) 
     
     if windowPath in SFC_WINDOW_LIST:    
-        targetStepUUID = payload[TARGET_STEP_UUID]
-        key = payload[KEY]
+        targetStepUUID = payload.get(TARGET_STEP_UUID, "")
+        key = payload.get(KEY,"")
         print "The window is an SFC window, passing the WindowId: <%s>, targetStepUUID: <%s>, key: <%s>!" % (str(windowId), targetStepUUID, key)
         payload = {WINDOW_ID: windowId, TARGET_STEP_UUID: targetStepUUID, KEY: key}
         print "Opening <%s>" % (windowPath)

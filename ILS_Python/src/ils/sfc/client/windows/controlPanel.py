@@ -6,7 +6,6 @@ Created on Dec 9, 2015
 
 import system
 from ils.sfc.client.util import getDatabase
-from ils.sfc.common.util import handleUnexpectedClientError
 immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 'SFC/RecipeDataViewer',
                     'SFC/SfcHierarchy', 'SFC/SFC Runner']
 sfcWindowPrefix = 'SFC/'
@@ -223,8 +222,6 @@ def ackMessage(window):
     msgId = rootContainer.messages.getValueAt(selectedMessage, 'id')
     SQL = "DELETE from SfcControlPanelMessage where id = '%s'" % msgId
     numUpdated = system.db.runUpdateQuery(SQL, db)
-    if(numUpdated != 1):
-        handleUnexpectedClientError("setting ack time in control panel msg table failed")
     
 def findOpenControlPanel(controlPanelName):   
     for window in system.gui.findWindow('SFC/ControlPanel'):

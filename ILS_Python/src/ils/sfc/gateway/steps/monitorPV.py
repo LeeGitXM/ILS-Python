@@ -1,35 +1,37 @@
 '''
 Created on Dec 17, 2015
 
+see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt
+
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, state):
-    '''see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and 
-    S88-RECIPE-OUTPUT-DATA__S88-MONITOR-PV.txt'''
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getChartLogger, s88Get
-    import system, string
+import system, string
+from java.util import Date 
+from ils.sfc.gateway.api import getIsolationMode
+from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
+from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart, getElapsedMinutes
+from ils.sfc.gateway.recipe import RecipeData
+from ils.io.api import getMonitoredTagPath
     
-    from system.ils.sfc.common.Constants import CLASS, DATA_LOCATION, DOWNLOAD_STATUS, IMMEDIATE, KEY, MONITOR, MONITORING, \
-    RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, STEP_TIME,  STRATEGY, STATIC, TARGET_VALUE, TIMEOUT, WAIT, \
+from ils.sfc.recipeData.api import s88Get, s88Set, s88GetTargetStepUUID, s88GetFromStep,\
+    s88SetFromStep
+from ils.sfc.common.constants import SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION, TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
+    START_TIMER, PAUSE_TIMER, RESUME_TIMER,  VALUE, SETPOINT, RECIPE, \
+    STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
+    CLASS, DATA_LOCATION, DOWNLOAD_STATUS, IMMEDIATE, KEY, MONITOR, MONITORING, STRATEGY, RECIPE_DATA_TYPE, \
+    RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, STATIC, TARGET_VALUE, TIMEOUT, WAIT, \
     DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
+from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
+from ils.sfc.gateway.api import getChartLogger, s88Get
 
-    from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
-        PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
-        STEP_SUCCESS, STEP_FAILURE, TIMED_OUT
+from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
+    PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
+    STEP_SUCCESS, STEP_FAILURE, TIMED_OUT
 
-    # PV monitoring target types
-    from ils.sfc.common.constants import VALUE, SETPOINT, TAG, RECIPE
-    
-    from java.util import Date 
-    from ils.sfc.gateway.api import getIsolationMode
-    from system.ils.sfc import getProviderName, getPVMonitorConfig
-    from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart, getElapsedMinutes, pauseTimer, resumeTimer
-    from ils.sfc.gateway.recipe import RecipeData
-    from ils.io.api import getMonitoredTagPath
-
+def activate(scopeContext, stepProperties, state):
     # some local constants
+    print "In monitorPV.activate()"
     MONITOR_ACTIVE_COUNT = "monitorActiveCount"
     PERSISTENCE_PENDING = "persistencePending"
     INITIALIZED = "initialized"
@@ -39,17 +41,23 @@ def activate(scopeContext, stepProperties, state):
 
     try:
         # general initialization:
+        print "AAA"
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         stepName = getStepProperty(stepProperties, NAME)
         logger = getChartLogger(chartScope)
-        logger.trace("In monitorPV.activate(), step: %s, state: %s, recipe location: %s..." % (stepName, state, recipeLocation))
-        
+        logger.trace("In monitorPV.activate(), step: %s, state: %s, recipe location: %s..." % (str(stepName), str(state), str(recipeLocation)))
+        print "BBB"
         # Everything will have the same tag provider - check isolation mode and get the provider
         isolationMode = getIsolationMode(chartScope)
         providerName = getProviderName(isolationMode)
-    
+        database = getDatabaseName(isolationMode)
+        timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+        timerKey = getStepProperty(stepProperties, TIMER_KEY)
+        recipeDataLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+        targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, recipeDataLocation)
+        print "CCC"
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
         if state == DEACTIVATED:
@@ -57,17 +65,18 @@ def activate(scopeContext, stepProperties, state):
             complete=True
         elif state == PAUSED:
             logger.trace("The PV Monitor was paused")
-            pauseTimer(chartScope, stepScope, stepProperties, logger)
+            handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, PAUSE_TIMER, logger)
         elif state == RESUMED:
             logger.trace("The PV Monitor was resumed")
-            resumeTimer(chartScope, stepScope, stepProperties, logger)
+            handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, RESUME_TIMER, logger)
         else:
+            print "Het we are running!!!"
             if not initialized:
                 logger.trace("...initializing PV Monitor step %s ..." % (stepName))
                 stepScope[NUMBER_OF_TIMEOUTS] = 0
                 stepScope[TIMED_OUT] = False
-                stepScope[INITIALIZED]=True
-                stepScope["workDone"]=False
+                stepScope[INITIALIZED] = True
+                stepScope["workDone"] = False
     
                 configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
                 config = getPVMonitorConfig(configJson)
@@ -78,18 +87,17 @@ def activate(scopeContext, stepProperties, state):
                 for configRow in config.rows:
                     logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
                     configRow.status = MONITORING
-                    pvRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
-                    dataType = pvRd.get(CLASS)
+                    pvKey = configRow.pvKey
+                    dataType = s88GetFromStep(targetStepUUID, pvKey + "." + RECIPE_DATA_TYPE, database)
                     configRow.isOutput = (dataType == 'Output')
 
                     targetType = configRow.targetType
                     if targetType == SETPOINT:
-                        targetRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
-                        targetRd.set(PV_MONITOR_STATUS, PV_MONITORING)
-                        targetRd.set(SETPOINT_STATUS, SETPOINT_OK)
-                        targetRd.set(PV_MONITOR_ACTIVE, True)
-                        targetRd.set(PV_VALUE, None)
-                        dataType = targetRd.get(CLASS)
+                        targetKey = configRow.targetNameIdOrValue
+                        s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_STATUS, PV_MONITORING, database)
+                        s88SetFromStep(targetStepUUID, targetKey + "." + SETPOINT_STATUS, SETPOINT_OK, database)
+                        s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_ACTIVE, True, database)
+                        s88SetFromStep(targetStepUUID, targetKey + "." + PV_VALUE, "Null", database)
 
 #                    else:
 #                        configRow.targetIsOutput = False
@@ -113,21 +121,25 @@ def activate(scopeContext, stepProperties, state):
                         # This means that the recipe data is an OUTPUT recipe data that points to some part of a controller I/O,
                         # the recipe data will tell what
                         logger.trace("Getting the target value using SETPOINT strategy...")
-                        tagPath = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/tagPath', recipeLocation)
-                        outputType = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/outputType', recipeLocation)
+                        targetKey = configRow.targetNameIdOrValue
+                        tagPath =    s88GetFromStep(targetStepUUID, targetKey + '.Tag', database)
+                        outputType = s88GetFromStep(targetStepUUID, targetKey + '.OutputType', database)
                         logger.tracef("...Tagpath: %s, Output Type: %s", tagPath, outputType)
-                        configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue + '/value', recipeLocation)
-                        targetRd.set(TARGET_VALUE, configRow.targetValue)
+                        
+                        # I'm not sure why I need to put this into the configrow PAH 2/19/17
+                        configRow.targetValue = s88GetFromStep(targetStepUUID, targetKey + '.TargetValue', database)
+#                        targetRd.set(TARGET_VALUE, configRow.targetValue)
+                        
                     elif targetType == VALUE:
                         # The target value is hard coded in the config data
                         configRow.targetValue = float(configRow.targetNameIdOrValue)
                     elif targetType == TAG:
                         # Read the value from a tag
-                        qualVal = system.tag.read("[" + providerName + "]" + configRow.targetNameIdOrValue)
-                        configRow.targetValue = qualVal.value
+                        qv = system.tag.read("[" + providerName + "]" + configRow.targetNameIdOrValue)
+                        configRow.targetValue = qv.value
                     elif targetType == RECIPE:
                         # This means that the value will be in some property of the recipe data
-                        configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeLocation)           
+                        configRow.targetValue = s88GetFromStep(targetStepUUID, targetKey, database)           
 
                     logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
 
@@ -139,11 +151,18 @@ def activate(scopeContext, stepProperties, state):
                 
                 # This will clear and/or set the timer if the block is configured to do so 
                 handleTimer(chartScope, stepScope, stepProperties, logger)
+                
+                startTimer = getStepProperty(stepProperties, TIMER_SET)
+                if startTimer:
+                    handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, START_TIMER, logger)
 
                 # If there are no rows configured to monitor, then the block is done, even though the block is probably misconfigured
                 if monitorActiveCount <= 0:
                     logger.warn("PV Monitoring block is not configured to monitor anything")
                     complete = True
+                
+                
+                print "***********  DONW WITH THE INITIALIZATION PHASE **************"
             
             else:    
                 logger.trace("...monitoring step %s..." % (stepName))
@@ -213,7 +232,7 @@ def activate(scopeContext, stepProperties, state):
                             configRow.isDownloaded = (downloadStatus == STEP_SUCCESS or downloadStatus == STEP_FAILURE)
                             if configRow.isDownloaded:
                                 logger.trace("...the download just completed!")
-                                configRow.downloadTime = rd.get(STEP_TIME)
+                                configRow.downloadTime = rd.get(ACTUAL_TIMING)
             
                         # Display the PVs as soon as the block starts running, even before the SP has been written
                         tagPath = getMonitoredTagPath(pvRd, providerName)
@@ -337,11 +356,6 @@ def activate(scopeContext, stepProperties, state):
                     logger.info("...there were %i PV monitoring timeouts!" % (numTimeouts))
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorPV.py', logger)
-        try:
-            import traceback, sys
-            print traceback.format_exc()
-        except:
-            pass
     finally:
         # do cleanup here
         pass

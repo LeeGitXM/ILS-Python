@@ -7,7 +7,6 @@ Created on Nov 3, 2014
 '''
 import system
 from ils.sfc.common.util import boolToBit
-from ils.sfc.common.util import handleUnexpectedClientError
 
 def getControlPanelMessages(chartRunId, db):
     sql = "select * from SfcControlPanelMessage where chartRunId = '%s' order by createTime asc" % (chartRunId)
@@ -20,7 +19,6 @@ def addControlPanelMessage(message, priority, ackRequired, chartRunId, db):
     sql = ("insert into SfcControlPanelMessage (chartRunId, message, priority, createTime, ackRequired, id) "\
            "values ('%s','%s','%s',getdate(),%d,'%s')") % (chartRunId, message, priority, boolToBit(ackRequired), msgId )
     print sql
-    numUpdated = system.db.runUpdateQuery(sql, db)
-    if(numUpdated != 1):
-        handleUnexpectedClientError("insert into control panel msg db table failed")
+    system.db.runUpdateQuery(sql, db)
+
     return msgId

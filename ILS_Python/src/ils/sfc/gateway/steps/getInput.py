@@ -9,7 +9,7 @@ from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
 from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, getProject
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
 from ils.sfc.common.constants import BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, \
     WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID
@@ -21,6 +21,7 @@ def activate(scopeContext, stepProperties, state):
     
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    project = getProject(chartScope)
     logger = getChartLogger(chartScope)
     windowPath = "SFC/Input"
     messageHandler = "sfcOpenWindow"

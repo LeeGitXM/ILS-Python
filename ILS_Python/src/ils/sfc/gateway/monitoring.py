@@ -59,7 +59,7 @@ class MonitoringMgr:
         from ils.sfc.gateway.api import getProject
         '''Send the current monitoring information to clients'''
         from system.ils.sfc.common.Constants import DATA, DATA_ID, TIME, CLASS, \
-        STEP_TIME, STEP_TIMESTAMP, TIMING, DESCRIPTION, \
+        ACTUAL_TIMING, ACTUAL_DATETIME, TIMING, DESCRIPTION, \
         FAILURE, PENDING, VALUE,  PV_MONITOR_ACTIVE, PV_VALUE, TAG_PATH, VALUE_TYPE, TIMEOUT
 
         from ils.sfc.common.constants import DOWNLOAD_STATUS, PV_MONITOR_STATUS, SETPOINT_STATUS, STEP_PENDING, STEP_APPROACHING, \
@@ -121,10 +121,10 @@ class MonitoringMgr:
                     formattedTiming = "%.2f" % timing
                 else:
                     formattedTiming = ''
-                # STEP_TIME and STEP_TIMESTAMP are ABSOLUTE time values written by the 
+                # ACTUAL_TIMING and ACTUAL_DATETIME are ABSOLUTE time values written by the 
                 # WriteOutput step that reflect the offset from the actual timer start time
-                stepTime = info.inout.get(STEP_TIME) 
-                stepTimestamp = info.inout.get(STEP_TIMESTAMP) # empty string for event-driven steps
+                stepTime = info.inout.get(ACTUAL_TIMING) 
+                stepTimestamp = info.inout.get(ACTUAL_DATETIME) # empty string for event-driven steps
                 # note: we want to reflect the setpoint that WILL be written, even if
                 # the current actual setpoint is different
                 # ?? not using the WRITE_CONFIRMED value in recipe data

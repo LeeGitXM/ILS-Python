@@ -6,22 +6,16 @@ Created on Nov 30, 2016
 
 import system, string
 from ils.common.cast import toBit
-
-# Recipe Data Scopes
-LOCAL_SCOPE = "local"
-PRIOR_SCOPE = "prior"
-SUPERIOR_SCOPE = "superior"
-PHASE_SCOPE = "phase"
-OPERATION_SCOPE = "operation"
-GLOBAL_SCOPE = "global"
-
-# Recipe data step types (I'm not sure where these are used)
-PHASE_STEP = "Phase"
-OPERATION_STEP = "Operation"
-UNIT_PROCEDURE_STEP = "Global"
+from ils.common.util import formatDateTime
+from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, \
+    TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED, \
+    LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
+    PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
+from com.jidesoft.utils import AccumulativeRunnable
 
 # Recipe data types
 ARRAY = "Array"
+INPUT = "Input"
 OUTPUT = "Output"
 SIMPLE_VALUE = "Simple Value"
 TIMER = "Timer"
@@ -192,19 +186,56 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
     
     elif recipeDataType == TIMER:
-        SQL = "select STARTTIME from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
+        SQL = "select STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES from SfcRecipeDataTimer where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         
-        if attribute in ["STARTTIME"]:
+        if attribute in ["CUMULATIVEMINUTES", "STARTTIME", "STOPTIME", "TIMERSTATE"]:
             val = record[attribute]
-        elif attribute == "RUNTIME":
-            startTime = record["STARTTIME"]
-            runTimeMinutes = system.date.minutesBetween(startTime, system.date.now())
-            val = runTimeMinutes
-            logger.tracef("Fetched the value: %s", str(val))
+        elif attribute in ["RUNTIME", "ELAPSEDTIME"]:
+            timerState = record["TIMERSTATE"]
+            if timerState in ['NULL', None, 'Cleared']:
+                val = 0
+            elif timerState in [TIMER_STOPPED, TIMER_PAUSED]:
+                startTime = record["STARTTIME"]
+                stopTime = record['STOPTIME']
+                cumulativeMinutes = record['CUMULATIVEMINUTES']
+                runTimeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, stopTime) / 60.0
+                val = runTimeMinutes
+            elif timerState in [TIMER_RUNNING]:
+                startTime = record["STARTTIME"]
+                cumulativeMinutes = record['CUMULATIVEMINUTES']
+                now = system.date.now()
+                runTimeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, now) / 60.0
+                val = runTimeMinutes
+            elif timerState in [TIMER_CLEARED]:
+                val = 0.0
+
         else:
             raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
+        
+        logger.tracef("Fetched the value: %s", str(val))
+        
+    elif recipeDataType == INPUT:
+        SQL = "select TAG, VALUETYPE, ERRORCODE, ERRORTEXT, "\
+            "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
+            "PVMONITORACTIVE, PVMONITORSTATUS "\
+            "from SfcRecipeDataInputView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        valueType = string.upper(record["VALUETYPE"])
+        
+        if attribute in ["TAG","VALUETYPE","ERRORCODE","ERRORTEXT","PVMONITORACTIVE","PVMONITORSTATUS"]:
+            val = record[attribute]
+        elif attribute == "TARGETVALUE":
+            theAttribute = "TARGET%sVALUE" % (valueType)
+            val = record[theAttribute]
+        elif attribute == "PVVALUE":
+            theAttribute = "PV%sVALUE" % (valueType)
+            val = record[theAttribute]
+        else:
+            raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
     
     elif recipeDataType == OUTPUT:
         SQL = "select TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, "\
@@ -263,6 +294,74 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     
     return val
 
+def fetchRecipeDataRecord(stepUUID, key, db):
+    logger.tracef("Fetching %s from %s", key, stepUUID)
+        
+    SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+        " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) == 0:
+        logger.errorf("Error the key was not found")
+        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
+    
+    if len(pds) > 1:
+        logger.errorf("Error multiple records were found")
+        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
+    
+    record = pds[0]
+    recipeDataId = record["RECIPEDATAID"]
+    recipeDataType = record["RECIPEDATATYPE"]
+    logger.tracef("...the recipe data tyoe is: %s for id: %d", recipeDataType, recipeDataId)
+    
+    # These attributes are common to all recipe data classes
+    if recipeDataType == SIMPLE_VALUE:
+        SQL = "select DESCRIPTION, LABEL, UNITS, VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
+    
+    elif recipeDataType == TIMER:
+        SQL = "select DESCRIPTION, LABEL, UNITS, STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
+        
+    elif recipeDataType == INPUT:
+        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, ERRORCODE, ERRORTEXT, "\
+            "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
+            "PVMONITORACTIVE, PVMONITORSTATUS "\
+            "from SfcRecipeDataInputView where RecipeDataId = %s" % (recipeDataId)
+    
+    elif recipeDataType == OUTPUT:
+        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, "\
+            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
+            "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
+            "PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
+            "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
+    
+    elif recipeDataType == ARRAY:
+
+        val = []
+        SQL = "select VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+            " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
+            " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        for record in pds:
+            valueType = record['VALUETYPE']
+            aVal = record["%sVALUE" % string.upper(valueType)]
+            val.append(aVal)
+        logger.tracef("Fetched the whole array: %s", str(val))
+
+        raise ValueError, "Unsupported operation for an array recipe data"
+    
+    else:
+        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
+    
+    
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) <> 1:
+        raise ValueError, "%d rows were returned when exactly 1 was expected" % (len(pds))
+
+    record = pds[0]
+    return record
+
+
 def setRecipeData(stepUUID, key, attribute, val, db):
     logger.tracef("Setting recipe data value for step: stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, val)
     
@@ -307,14 +406,54 @@ def setRecipeData(stepUUID, key, attribute, val, db):
                 SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %s" % (valueType, val, valueId)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d simple value recipe data records', rows)
+            
+    elif recipeDataType == INPUT:
+        if attribute in ['TAG', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS']:
+            SQL = "update SfcRecipeDataInput set %s = '%s' where recipeDataId = %s" % (attribute, str(val), recipeDataId)
+        elif attribute in ['PVMONITORACTIVE']:
+            bitVal = toBit(val)
+            SQL = "update SfcRecipeDataInput set %s = %s where recipeDataId = %s" % (attribute, bitVal, recipeDataId)
+        elif attribute in ['PVVALUE','TARGETVALUE']:
+            attrName="%sID" % (attribute)
+            SQL = "select ValueType, %s from SfcRecipeDataInputView where RecipeDataId = %s" % (attrName, recipeDataId)
+            print SQL
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to find the value type for Input recipe data"
+            record = pds[0]
+            valueType = record["ValueType"]
+            valueId = record[attrName]
+            theAttribute = "%sValue" % (valueType)
+    
+            if valueType == 'String':
+                SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
+            else:
+                SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)
+            print SQL
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef('...updated %d value records', rows)
+
+        elif attribute in ['VALUETYPE']:
+            valueTypeId = fetchValueTypeId(val, db)
+            SQL = "update SfcRecipeDataInput set ValueTypeId = %i where recipeDataId = %s" % (valueTypeId, recipeDataId)
+        else:
+            txt = "Unsupported attribute <%s> for input recipe data" % (attribute)
+            logger.errorf(txt)
+            raise ValueError, txt
+            
+        rows = system.db.runUpdateQuery(SQL, db)
+        logger.tracef('...updated %d input recipe data records', rows)
+
     
     elif recipeDataType == OUTPUT:
-        if attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS']:
-            SQL = "update SfcRecipeDataOutput set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
+        if string.upper(str(val)) == "NULL" and attribute not in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
+            SQL = "update SfcRecipeDataOutput set %s = NULL where recipeDataId = %s" % (attribute, recipeDataId)
+        elif attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS', 'ACTUALDATETIME']:
+            SQL = "update SfcRecipeDataOutput set %s = '%s' where recipeDataId = %s" % (attribute, str(val), recipeDataId)
         elif attribute in ['DOWNLOAD', 'PVMONITORACTIVE', 'WRITECONFIRM', 'WRITECONFIRMED']:
             bitVal = toBit(val)
             SQL = "update SfcRecipeDataOutput set %s = %s where recipeDataId = %s" % (attribute, bitVal, recipeDataId)
-        elif attribute in ['TIMING', 'MAXTIMING']:
+        elif attribute in ['TIMING', 'MAXTIMING', 'ACTUALTIMING']:
             SQL = "update SfcRecipeDataOutput set %s = %s where recipeDataId = %s" % (attribute, val, recipeDataId)
         elif attribute in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
             attrName="%sID" % (attribute)
@@ -328,7 +467,7 @@ def setRecipeData(stepUUID, key, attribute, val, db):
             valueId = record[attrName]
             theAttribute = "%sValue" % (valueType)
     
-            if valueType == 'String':
+            if valueType == 'String' and val <> string.upper(str(val)):
                 SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
             else:
                 SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)
@@ -350,10 +489,47 @@ def setRecipeData(stepUUID, key, attribute, val, db):
         logger.tracef('...updated %d output recipe data records', rows)
     
     elif recipeDataType == TIMER:
-        if attribute in ['STARTTIME']:
-            SQL = "update SfcRecipeDataTimer set StartTime = '%s' where recipeDataId = %s" % (val, recipeDataId)
+        if attribute in ['COMMAND']:
+            now = system.date.now()
+            now = formatDateTime(now, format='MM/dd/yy HH:mm:ss')
+            val=val.upper()
+            if val == PAUSE_TIMER.upper():
+                print "Pausing..."
+                SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_PAUSED, recipeDataId)
+            elif val == START_TIMER.upper():
+                print "Starting..."
+                SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_RUNNING, recipeDataId)
+            elif val == RESUME_TIMER.upper():
+                print "Resuming..."
+                SQL = "select * from sfcRecipeDataTimerView where RecipeDataId = %d" % (recipeDataId)
+                pds = system.db.runQuery(SQL, db)
+                record = pds[0]
+                cumulativeMinutes = record["CumulativeMinutes"]
+                startTime = record['StartTime']
+                stopTime = record['StopTime']
+                
+                if stopTime == None or startTime == None:
+                    cumulativeMinutes = 0.0
+                else:
+                    cumulativeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, stopTime) / 60.0
+                
+                SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = %f where RecipeDataId = %d" % (now, TIMER_RUNNING, cumulativeMinutes, recipeDataId)
+            elif val == CLEAR_TIMER.upper():
+                print "Clearing..."
+                SQL = "update SfcRecipeDataTimer set StartTime = NULL, StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (TIMER_CLEARED, recipeDataId)
+            elif val == STOP_TIMER.upper():
+                print "Stopping..."
+                SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_STOPPED, recipeDataId)
+            else:
+                raise ValueError, "Unsupported timer command <%s> for timer recipe data" % (val)
+
+            print SQL
             rows = system.db.runUpdateQuery(SQL, db)
-            logger.tracef('...updated %d timer recipe data records', rows)
+            logger.tracef('...updated %d timer records', rows)
+        
+#            SQL = "update SfcRecipeDataTimer set StartTime = '%s' where recipeDataId = %s" % (val, recipeDataId)
+#            rows = system.db.runUpdateQuery(SQL, db)
+#            logger.tracef('...updated %d timer recipe data records', rows)
         else:
             logger.errorf("Unsupported attribute <%s> for timer recipe data", attribute)
             raise ValueError, "Unsupported attribute <%s> for timer recipe data" % (attribute)

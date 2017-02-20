@@ -7,7 +7,7 @@ Created on Dec 17, 2015
 import system
 from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getTimeoutTime, getControlPanelId, \
     registerWindowWithControlPanel, checkForResponse, logStepDeactivated, getStepId, getTopChartRunId, getControlPanelName, getOriginator
-from ils.sfc.gateway.api import s88Get, getChartLogger, getDatabaseName, getProject, sendMessageToClient
+from ils.sfc.gateway.api import s88Get, getChartLogger, getDatabaseName, getProject
 from system.ils.sfc.common.Constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY, BUTTON_LABEL
 from ils.sfc.gateway.steps import commonInput
 from ils.sfc.common.util import isEmpty
@@ -98,7 +98,7 @@ def activate(scopeContext, stepProperties, state):
 
             payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
                        CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath}
-            sendMessageToClient(project, messageHandler, payload)
+            system.util.sendMessage(project, messageHandler, payload, scope="C")
         else: # waiting for reply
             logger.trace("Waiting for a response to a selectInput step...")
             response = checkForResponse(chartScope, stepScope, stepProperties)

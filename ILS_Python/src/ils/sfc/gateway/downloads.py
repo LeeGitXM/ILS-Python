@@ -9,116 +9,34 @@ Created on Jun 18, 2015
 
 import system, time
 from java.util import Date, Calendar
+from ils.sfc.recipeData.api import s88Set, s88Get
+from ils.sfc.common.constants import START_TIMER, PAUSE_TIMER, STOP_TIMER, RESUME_TIMER, CLEAR_TIMER 
 from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED, TAG_PATH, \
     TIMER_STATE, TIMER_STATE_CANCEL, TIMER_STATE_CLEAR, TIMER_STATE_PAUSE, TIMER_STATE_RESUME, TIMER_STATE_RUN, TIMER_STATE_STOP, \
     TIMER_LOCATION, TIMER_KEY, TIMER_SET, TIMER_CLEAR, TIMER_RUN_MINUTES, TIMER_START_TIME
-
-'''
-These methods make the timer UDT work.  They are called by a tag change script on the UDT or by a scripting function on the UDT
-'''
-def handleTimerCommand(tagPath, previousValue, currentValue, initialChange, missedEvents):
-    val = currentValue.value
-    parentPath = tagPath[:tagPath.rfind("/")]
-
-    if val == TIMER_STATE_CLEAR:
-        print "Clear the run time"
-        system.tag.write(parentPath + "/runTime", 0.0)
-    elif val == TIMER_STATE_RUN:
-        print "Set the start time"
-        startTime = Date().getTime()
-        system.tag.write(parentPath + "/startTime", startTime)
-    elif val == TIMER_STATE_PAUSE:
-        print "PAUSE"
-    elif val == TIMER_STATE_RESUME:
-        print "resume"
-    elif val in [TIMER_STATE_STOP, TIMER_STATE_CANCEL]:
-        print "stop or cancel"
-    else:
-        print "Unsupported command: ", currentValue
-
-# This is generally called every second, but it doesn't matter, it will calculate the elapsed time, in minutes since it was last called.
-def updateTimer(tagPath, previousValue, currentValue, initialChange, missedEvents):
-    parentPath = tagPath[:tagPath.rfind("/")]
-    qvs=system.tag.readAll([parentPath + "/state", parentPath + "/runTime"])
-    state = qvs[0]
-        
-    # If the timer is running then update the runtime by calculating the elapsed time since it was last updated or it started running.
-    # If the current state is resume, then the last state must have been paused.
-    if state.value in [TIMER_STATE_RUN, TIMER_STATE_RESUME]:
-        runtime = qvs[1]
-        now = Date().getTime()
-
-        if state.timestamp > runtime.timestamp:
-#                print "The state was most recently changed"
-            elapsedMs = now - state.timestamp.getTime()
-        else:
-#                print "The runtime was most recently changed" 
-            elapsedMs = now - runtime.timestamp.getTime()
-#            print "The elapsed seconds is: ", str(elapsedMs / 1000.0)
-        system.tag.write(parentPath + "/runTime", runtime.value + elapsedMs / 1000.0 / 60.0)
-
-'''
-These methods are called by steps that use a timer.  This is designed so that any step that is using a timer 
-can pause it.  It does not have to be the step that was designated to set (start) or clear the timer, those 
-steps may have finished.  Since individual steps cannot be paused, this should work.
-'''
-def pauseTimer(chartScope, stepScope, stepProperties, logger):
-    from ils.sfc.gateway.util import getStepProperty
-    from ils.sfc.gateway.recipe import RecipeData, splitKey
-        
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
-    timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
-    timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
-    timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
-    timerState = timer.get(TIMER_STATE)
-    print "The Timer state is: ", timerState
-    if timerState <> TIMER_STATE_PAUSE:
-        logger.info("Pausing the download timer...")
-        timer.set(TIMER_STATE, TIMER_STATE_PAUSE)
-
-def resumeTimer(chartScope, stepScope, stepProperties, logger):
-    from ils.sfc.gateway.util import getStepProperty
-    from ils.sfc.gateway.recipe import RecipeData, splitKey
     
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
-    timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
-    timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
-    timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
-    timerState = timer.get(TIMER_STATE)
-    print "The Timer state is: ", timerState
-    if timerState <> TIMER_STATE_RESUME:
-        logger.info("Resuming the download timer...")
-        timer.set(TIMER_STATE, TIMER_STATE_RESUME)
 
-def handleTimer(chartScope, stepScope, stepProperties, logger):
+def handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, command, logger):
     '''perform the timer-related logic for a step'''
-    from ils.sfc.gateway.util import getStepProperty
-    from ils.sfc.gateway.recipe import RecipeData, splitKey
+    logger.trace("Timer command: <%s>, the key and attribute are: %s" % (command, timerKey))
+    key = timerKey + ".command"
     
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
-    timerKeyAndAttribute = getStepProperty(stepProperties, TIMER_KEY)
-    logger.trace("The timer key and attribute are: %s" % (timerKeyAndAttribute))
-#    print "The step properties are: ", stepProperties
-    timerKey, timerAttribute = splitKey(timerKeyAndAttribute)
-    timer = RecipeData(chartScope, stepScope, timerLocation, timerKey)
-
-    # Note: there may be no timer-clear property, in which case the
-    # value is null which 
-    clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
-    if clearTimer:
+    # The specifics of the command are handled in the s88Set command 
+    if command == CLEAR_TIMER:
         logger.info("Clearing the download timer...")
-        timer.set(TIMER_STATE, TIMER_STATE_CLEAR)
+        s88Set(chartScope, stepScope, key, CLEAR_TIMER, timerLocation)
 
-    setTimer = getStepProperty(stepProperties, TIMER_SET)
-    if setTimer:
+    if command == START_TIMER:
         logger.info("Starting the download timer...")
-        print "Clearing..."
-        timer.set(TIMER_STATE, TIMER_STATE_CLEAR)
-        time.sleep(0.5)
-        print "Running..."
-        timer.set(TIMER_STATE, TIMER_STATE_RUN)
-
-    return timer, timerAttribute
+        s88Set(chartScope, stepScope, key, START_TIMER, timerLocation)
+    
+    if command == PAUSE_TIMER:
+        logger.info("Pausing the download timer...")
+        s88Set(chartScope, stepScope, key, PAUSE_TIMER, timerLocation)
+    
+    if command == RESUME_TIMER:
+        logger.info("Resuming the download timer...")
+        s88Set(chartScope, stepScope, key, RESUME_TIMER, timerLocation)
 
 # Get the timer run time in minutes
 def getRunMinutes(chartScope, stepScope, stepProperties):
@@ -176,11 +94,10 @@ def waitForTimerStart(chartScope, stepScope, stepProperties, logger):
 
 # Write an output value
 # Modified this to use WriteDatum from the IO layer which automatically does a Write Confirm...
-def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation, logger, providerName):
-    from ils.sfc.gateway.api import s88Set, s88Get
+def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation, logger, providerName, recipeDataScope):
     
     #----------------------------------------------------------------------------------------------------
-    def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, errorCountKey=errorCountKey, errorCountLocation=errorCountLocation, logger=logger, providerName=providerName):
+    def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, errorCountKey=errorCountKey, errorCountLocation=errorCountLocation, logger=logger, providerName=providerName, recipeDataScope=recipeDataScope):
         from ils.io.api import write
         from ils.sfc.gateway.util import queueMessage
         from ils.sfc.common.constants import MSG_STATUS_INFO
@@ -188,24 +105,25 @@ def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation,
         from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT,  WRITE_CONFIRMED, SUCCESS, FAILURE
     
         tagPath = "[%s]%s" % (providerName, config.tagPath)
-        outputType = config.outputRD.get(OUTPUT_TYPE)
+        outputType = s88Get(chartScope, stepScope, config.key + "." + OUTPUT_TYPE, recipeDataScope)
+        
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, outputType,str(config.confirmWrite)))
         
         logger.trace("---- setting status to downloading ----")
-        config.outputRD.set(DOWNLOAD_STATUS, STEP_DOWNLOADING)
+        s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_DOWNLOADING, recipeDataScope)
         writeStatus, txt = write(tagPath, config.value, config.confirmWrite, outputType)
         logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
         config.written = True
     
         if config.confirmWrite:
-            config.outputRD.set(WRITE_CONFIRMED, writeStatus)
+            s88Set(chartScope, stepScope, config.key + "." + WRITE_CONFIRMED, writeStatus, recipeDataScope)
     
         if writeStatus:
             logger.trace("---- setting status to SUCCESS ----")
-            config.outputRD.set(DOWNLOAD_STATUS, STEP_SUCCESS)
+            s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_SUCCESS, recipeDataScope)
         else:
             logger.trace("---- setting status to FAILURE ----")
-            config.outputRD.set(DOWNLOAD_STATUS, STEP_FAILURE)
+            s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)
 
             if errorCountKey <> "" and errorCountLocation <> "":
                 print " *** INCREMENTING THE GLOBAL ERROR COUNTER *** "

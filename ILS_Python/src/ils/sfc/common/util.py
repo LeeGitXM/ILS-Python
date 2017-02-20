@@ -81,10 +81,6 @@ def substituteProvider(chartProperties, tagPath):
         else:
             return '[' + provider + ']' + tagPath
     
-# this should really be in client.util
-def handleUnexpectedClientError(msg):
-    from ils.sfc.client.windowUtil import openErrorPopup
-    openErrorPopup(msg)
 
 def isEmpty(str):
     return str == None or str.strip() == ""
