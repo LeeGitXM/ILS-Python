@@ -6,6 +6,7 @@ Created on May 29, 2015
 import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord
+from ils.common.util import formatDateTime
 
 # This is called when the Download GUI window is opened.  The window is opened in response to a message sent 
 # from the gateway to the client when the download GUI task runs in the gateway.  The gateway task populates the 
@@ -55,7 +56,7 @@ def update(rootContainer):
         startTime = rootContainer.startTime
         
     if startTime == None:
-        startTimeFormatted = ""
+        startTimeFormatted = "  "
     else:
         startTimeFormatted = system.db.dateFormat(startTime, "dd-MMM-yy h:mm:ss a")
     
@@ -76,7 +77,7 @@ def update(rootContainer):
     pds = system.db.runQuery(SQL, database)
     
     # Need to add a row at the top to specify the time that the download started.
-    ds = system.dataset.toDataSet(pds)
+    ds = system.dataset.toDataSet(pds)    
     ds = system.dataset.addRow(ds,0,["","","",None,None,None,None,None, "", startTimeFormatted,None, "pending", "monitoring", ""])
     
     table=rootContainer.getComponent("table")
@@ -131,13 +132,16 @@ def initializeDatabaseTable(windowId, database, tagProvider):
         downloadStatus = recipeRecord["DOWNLOADSTATUS"]
         pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
         pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
-        setpointStatus = recipeRecord["DOWNLOADSTATUS"]
+        setpointStatus = recipeRecord["SETPOINTSTATUS"]
         pvValue = recipeRecord["PVFLOATVALUE"]
         stepTimestamp = recipeRecord["ACTUALDATETIME"]
         description = recipeRecord["DESCRIPTION"]
         valueType = recipeRecord["VALUETYPE"]
         units = recipeRecord["UNITS"]
 #        guiUnits = tagValues[12].value
+
+        if stepTimestamp <> None:
+            stepTimestamp = system.db.dateFormat(stepTimestamp, "dd-MMM-yy h:mm:ss a")
         
         if rawTiming >=1000.0:
             timing = "NULL"
@@ -191,7 +195,7 @@ def updateDatabaseTable(windowId, database):
         downloadStatus = recipeRecord["DOWNLOADSTATUS"]
         pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
         pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
-        setpointStatus = recipeRecord["DOWNLOADSTATUS"]
+        setpointStatus = recipeRecord["SETPOINTSTATUS"]
         pvValue = recipeRecord["PVFLOATVALUE"]
         stepTimestamp = recipeRecord["ACTUALDATETIME"]
         
@@ -201,6 +205,9 @@ def updateDatabaseTable(windowId, database):
             formattedPV = "%.2f" % pvValue
         else:
             formattedPV = "%.2f*" % pvValue
+            
+        if stepTimestamp <> None:
+            stepTimestamp = system.db.dateFormat(stepTimestamp, "dd-MMM-yy h:mm:ss a")
 
         SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
             "SetpointStatus='%s', StepTimestamp='%s' "\

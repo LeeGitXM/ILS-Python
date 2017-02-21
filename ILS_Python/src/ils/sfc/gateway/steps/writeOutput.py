@@ -110,7 +110,7 @@ def activate(scopeContext, stepProperties, state):
                 s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "approaching", recipeDataScope)
             elif row.timingMinutes >= 1000.:
                 finalRows.append(row)
-                s88Set(chartScope, stepScope, row.key + "." +DOWNLOAD_STATUS, "pending", recipeDataScope)
+                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "pending", recipeDataScope)
             else:
                 timedRows.append(row)
                 s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "pending", recipeDataScope)
@@ -142,7 +142,7 @@ def activate(scopeContext, stepProperties, state):
             if timerNeeded:
                 # Monitor for the specified period, possibly extended by persistence time
                 # It is possible that this block starts before some other block starts the timer
-                elapsedMinutes=s88Get(chartScope, stepScope, timerKey + ".elapsedTime", timerLocation)
+                elapsedMinutes=s88Get(chartScope, stepScope, timerKey + ".elapsedMinutes", timerLocation)
                 
                 if elapsedMinutes <= 0.0:
                     logger.trace("The timer has not been started")
@@ -239,7 +239,7 @@ def activate(scopeContext, stepProperties, state):
                         
                         # All of the timed writes have completed and the final writes have been made so signal that the block is done
                         writeComplete = True
-                        logger.info("Write output block finished all of its work!")
+                        logger.trace("...Write output block finished all of its writes!")
                         
                 #Note: write confirmations are on a separate thread and will write the result
                 # directly to recipe data
@@ -282,7 +282,9 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef( "  write confirmed: %s", writeConfirmed)
             if downloadStatus not in [STEP_SUCCESS, STEP_FAILURE]:
                 writeConfirmComplete = False
-                logger.tracef("Found an output that still needs to be confirmed.")
+                
+        if writeConfirmComplete == False:
+            logger.tracef("Found at least one output that still needs to be confirmed.")
         
     logger.trace("leaving writeOutput.activate(), writeComplete=%s, writeConfirmComplete=%s... " % (str(writeComplete), str(writeConfirmComplete)))    
         

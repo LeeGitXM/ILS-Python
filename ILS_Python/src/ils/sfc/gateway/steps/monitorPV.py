@@ -10,12 +10,11 @@ import system, string
 from java.util import Date 
 from ils.sfc.gateway.api import getIsolationMode
 from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
-from ils.sfc.gateway.downloads import handleTimer, getRunMinutes, getTimerStart, getElapsedMinutes
+from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
 from ils.sfc.gateway.recipe import RecipeData
 from ils.io.api import getMonitoredTagPath
     
-from ils.sfc.recipeData.api import s88Get, s88Set, s88GetTargetStepUUID, s88GetFromStep,\
-    s88SetFromStep
+from ils.sfc.recipeData.api import s88Get, s88Set, s88GetTargetStepUUID, s88GetFromStep,s88SetFromStep
 from ils.sfc.common.constants import SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION, TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER,  VALUE, SETPOINT, RECIPE, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
@@ -23,7 +22,7 @@ from ils.sfc.common.constants import SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_
     RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, STATIC, TARGET_VALUE, TIMEOUT, WAIT, \
     DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
 from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getChartLogger, s88Get
+from ils.sfc.gateway.api import getChartLogger
 
 from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
@@ -31,7 +30,6 @@ from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS
 
 def activate(scopeContext, stepProperties, state):
     # some local constants
-    print "In monitorPV.activate()"
     MONITOR_ACTIVE_COUNT = "monitorActiveCount"
     PERSISTENCE_PENDING = "persistencePending"
     INITIALIZED = "initialized"
@@ -41,14 +39,13 @@ def activate(scopeContext, stepProperties, state):
 
     try:
         # general initialization:
-        print "AAA"
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         stepName = getStepProperty(stepProperties, NAME)
         logger = getChartLogger(chartScope)
         logger.trace("In monitorPV.activate(), step: %s, state: %s, recipe location: %s..." % (str(stepName), str(state), str(recipeLocation)))
-        print "BBB"
+
         # Everything will have the same tag provider - check isolation mode and get the provider
         isolationMode = getIsolationMode(chartScope)
         providerName = getProviderName(isolationMode)
@@ -57,7 +54,7 @@ def activate(scopeContext, stepProperties, state):
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
         recipeDataLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, recipeDataLocation)
-        print "CCC"
+
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
         if state == DEACTIVATED:
@@ -70,7 +67,6 @@ def activate(scopeContext, stepProperties, state):
             logger.trace("The PV Monitor was resumed")
             handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, RESUME_TIMER, logger)
         else:
-            print "Het we are running!!!"
             if not initialized:
                 logger.trace("...initializing PV Monitor step %s ..." % (stepName))
                 stepScope[NUMBER_OF_TIMEOUTS] = 0
@@ -95,13 +91,12 @@ def activate(scopeContext, stepProperties, state):
                     if targetType == SETPOINT:
                         targetKey = configRow.targetNameIdOrValue
                         s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_STATUS, PV_MONITORING, database)
-                        s88SetFromStep(targetStepUUID, targetKey + "." + SETPOINT_STATUS, SETPOINT_OK, database)
+                        s88SetFromStep(targetStepUUID, targetKey + "." + SETPOINT_STATUS, "", database)
                         s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_ACTIVE, True, database)
                         s88SetFromStep(targetStepUUID, targetKey + "." + PV_VALUE, "Null", database)
 
 #                    else:
 #                        configRow.targetIsOutput = False
-                        
                     configRow.isDownloaded = False
                     configRow.persistenceOK = False
                     configRow.inToleranceTime = 0
@@ -149,9 +144,7 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[PERSISTENCE_PENDING] = False
                 stepScope[MAX_PERSISTENCE] = maxPersistence
                 
-                # This will clear and/or set the timer if the block is configured to do so 
-                handleTimer(chartScope, stepScope, stepProperties, logger)
-                
+                # This will clear and/or set the timer if the block is configured to do so               
                 startTimer = getStepProperty(stepProperties, TIMER_SET)
                 if startTimer:
                     handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, START_TIMER, logger)
@@ -160,9 +153,8 @@ def activate(scopeContext, stepProperties, state):
                 if monitorActiveCount <= 0:
                     logger.warn("PV Monitoring block is not configured to monitor anything")
                     complete = True
-                
-                
-                print "***********  DONW WITH THE INITIALIZATION PHASE **************"
+
+                logger.tracef("Completed the initialization phase of PV monitoring")
             
             else:    
                 logger.trace("...monitoring step %s..." % (stepName))
@@ -180,7 +172,7 @@ def activate(scopeContext, stepProperties, state):
                 config = stepScope[PV_MONITOR_CONFIG]
             
                 # Monitor for the specified period, possibly extended by persistence time
-                timerStart=getTimerStart(chartScope, stepScope, stepProperties)
+                timerStart=s88Get(chartScope, stepScope, timerKey + ".StartTime", timerLocation)
 
                 # It is possible that this block starts before some other block starts the timer
                 if timerStart == None:
@@ -188,7 +180,7 @@ def activate(scopeContext, stepProperties, state):
                     complete = False
                     return complete
                 
-                elapsedMinutes = getRunMinutes(chartScope, stepScope, stepProperties)
+                elapsedMinutes = s88Get(chartScope, stepScope, timerKey + ".ElapsedMinutes", timerLocation)
                 persistencePending = stepScope[PERSISTENCE_PENDING]
                 monitorActiveCount = stepScope[MONITOR_ACTIVE_COUNT]
                 maxPersistence = stepScope[MAX_PERSISTENCE]
@@ -211,8 +203,10 @@ def activate(scopeContext, stepProperties, state):
                         
                         logger.trace('PV monitoring - PV: %s, Target type: %s, Target: %s, Strategy: %s' % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
     
+                        pvKey = configRow.pvKey
+                        
                         pvRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
-                        dataType = pvRd.get(CLASS)
+                        dataType = s88GetFromStep(targetStepUUID, pvKey + "." + RECIPE_DATA_TYPE, database)
     
                         # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
                         # download GUI block.  It appears that the PV of a PV monitoring block is always INPUT recipe data.  The target of a PV monitoring  
@@ -220,22 +214,23 @@ def activate(scopeContext, stepProperties, state):
                         # results in the INPUT.
                         targetType = configRow.targetType
                         if targetType == SETPOINT:
-                            rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
+                            targetKey = configRow.targetNameIdOrValue
                         else:
-                            rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+                            targetKey = configRow.pvKey
                         
+                        targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, recipeDataLocation)
                         monitorActiveCount = monitorActiveCount + 1
                         #TODO: how are we supposed to know about a download unless we have an Output??
                         if configRow.isOutput and not configRow.isDownloaded:
                             logger.trace("The item is an output and it hasn't been downloaded...")
-                            downloadStatus = rd.get(DOWNLOAD_STATUS)
+                            downloadStatus = s88Get(chartScope, stepScope, targetKey + "." + DOWNLOAD_STATUS, recipeDataLocation)
                             configRow.isDownloaded = (downloadStatus == STEP_SUCCESS or downloadStatus == STEP_FAILURE)
                             if configRow.isDownloaded:
                                 logger.trace("...the download just completed!")
-                                configRow.downloadTime = rd.get(ACTUAL_TIMING)
+                                configRow.downloadTime = s88Get(chartScope, stepScope, targetKey + "." + ACTUAL_TIMING, recipeDataLocation)
             
                         # Display the PVs as soon as the block starts running, even before the SP has been written
-                        tagPath = getMonitoredTagPath(pvRd, providerName)
+                        tagPath = getMonitoredTagPath(targetStepUUID, targetKey, providerName, database)
                         qv = system.tag.read(tagPath)
                         
                         logger.trace("The present qualified value for %s is: %s-%s" % (tagPath, str(qv.value), str(qv.quality)))
@@ -244,7 +239,7 @@ def activate(scopeContext, stepProperties, state):
                             continue
     
                         pv=qv.value
-                        rd.set(PV_VALUE, pv)
+                        s88Set(chartScope, stepScope, targetKey + ".pvValue", pv, recipeDataLocation)
     
                         # If we are configured to wait for the download and it hasn't been downloaded, then don't start to monitor
                         if configRow.download == WAIT and not configRow.isDownloaded:
@@ -305,7 +300,7 @@ def activate(scopeContext, stepProperties, state):
                         if valueOk:
                             if isPersistent:
                                 configRow.status = PV_OK
-                                rd.set(PV_MONITOR_ACTIVE, False)
+                                s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_ACTIVE, False, recipeDataLocation)
                             else:
                                 configRow.status = PV_OK_NOT_PERSISTENT
                                 persistencePending = True
@@ -320,10 +315,10 @@ def activate(scopeContext, stepProperties, state):
             
                         if configRow.status == PV_ERROR:
                             # Set the setpoint status to PROBLEM - this cannot be reset
-                            rd.set(SETPOINT_STATUS, SETPOINT_PROBLEM)
+                            s88Set(chartScope, stepScope, targetKey + "." + SETPOINT_STATUS, SETPOINT_PROBLEM, recipeDataLocation)
             
                         logger.trace("  Status: %s" % configRow.status)  
-                        rd.set(PV_MONITOR_STATUS, configRow.status)        
+                        s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_STATUS, configRow.status, recipeDataLocation)        
                 
                 logger.trace("Checking end conditions...")
                 if monitorActiveCount == 0:
@@ -340,16 +335,16 @@ def activate(scopeContext, stepProperties, state):
                         logger.trace("...checking row whose status is: %s" % (configRow.status))
                         targetType = configRow.targetType
                         if targetType == SETPOINT:
-                            rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.targetNameIdOrValue)
+                            tergetKey = configRow.targetNameIdOrValue
                         else:
-                            rd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
+                            tergetKey = configRow.pvKey
     
                         if configRow.status in [PV_ERROR, PV_WARNING, PV_BAD_NOT_CONSISTENT]:
                             numTimeouts = numTimeouts + 1
-                            rd.set(SETPOINT_STATUS, SETPOINT_PROBLEM)
-                            rd.set(PV_MONITOR_STATUS, PV_ERROR)
+                            s88Set(chartScope, stepScope, targetKey + "." + SETPOINT_STATUS, SETPOINT_PROBLEM, recipeDataLocation)
+                            s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_STATUS, PV_ERROR, recipeDataLocation)
     
-                        rd.set(PV_MONITOR_ACTIVE, False)
+                        s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_ACTIVE, 0, recipeDataLocation)
                     stepScope[NUMBER_OF_TIMEOUTS] = numTimeouts
                     if numTimeouts > 0:
                         stepScope[TIMED_OUT] = True

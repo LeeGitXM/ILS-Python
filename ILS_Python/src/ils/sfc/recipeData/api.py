@@ -19,7 +19,7 @@ def s88Get(chartScope, stepScope, keyAndAttribute, scope):
 
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetFromStep(stepUUID, keyAndAttribute, db):
-    logger.tracef("s88GetFromStep(): %s - %s", keyAndAttribute)
+    logger.tracef("s88GetFromStep(): %s", keyAndAttribute)
     key,attribute = splitKey(keyAndAttribute)
     val = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))

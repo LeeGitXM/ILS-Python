@@ -15,7 +15,9 @@ def sendAndReceive(command, project, db, timeout=30):
     sessions=system.util.getSessionInfo()
     numClients=0
     for session in sessions:
+        log.tracef("Session client id: %s, address: %s, Designer: %s, Username: %s", session["clientId"], session["address"], session["isDesigner"], session["username"])
         if not(session["isDesigner"]) and session["project"] == project:
+            log.tracef("Found a client...")
             numClients+=1
     
     # If there are no clients then there won't ever be a reply

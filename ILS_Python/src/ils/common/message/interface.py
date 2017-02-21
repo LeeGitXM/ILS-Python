@@ -85,6 +85,7 @@ def listWindows(project="", db=""):
     if project == "":
         project = system.util.getProjectName()
     from ils.common.message.gateway import sendAndReceive
-    pds=sendAndReceive('listWindows', project, db)
+    pds=sendAndReceive('listWindows', project, db, 5)
+    log.trace("...got the list of windows!")
     
     return pds

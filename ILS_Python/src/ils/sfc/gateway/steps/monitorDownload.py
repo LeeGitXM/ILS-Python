@@ -8,7 +8,7 @@ This step used to be known as Download GUI
 
 import system
 from ils.sfc.recipeData.api import s88Get, s88Set, s88GetTargetStepUUID
-from ils.sfc.common.constants import ACTUAL_TIMING, ACTUAL_DATETIME, PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
+from ils.sfc.common.constants import ACTUAL_TIMING, ACTUAL_DATETIME, PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID,\
     POSITION, SCALE, WINDOW_TITLE, \
     MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
@@ -78,6 +78,7 @@ def activate(scopeContext, stepProperties, state):
             s88Set(chartScope, stepScope, row.key + "." + PV_MONITOR_ACTIVE, False, recipeLocation)
             s88Set(chartScope, stepScope, row.key + "." + PV_VALUE, "NULL", recipeLocation)
             s88Set(chartScope, stepScope, row.key + "." + PV_MONITOR_STATUS, PV_NOT_MONITORED, recipeLocation)
+            s88Set(chartScope, stepScope, row.key + "." + SETPOINT_STATUS, SETPOINT_OK, recipeLocation)
             s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, "NULL", recipeLocation)
             s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, "NULL", recipeLocation)
             
@@ -87,11 +88,14 @@ def activate(scopeContext, stepProperties, state):
             system.db.runUpdateQuery(SQL, database)
         
         payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: recipeDataStepUUID}
+        print "Sending message..."
         sendMessageToClient(chartScope, messageHandler, payload)
+        print "...message sent!"
         
         logger.tracef("   Monitor Download payload: %s", str(payload))
         logger.trace("...leaving monitorDownload.activate()")      
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorDownload.py', logger)
 
+    print "Done with Download GUI"
     return True

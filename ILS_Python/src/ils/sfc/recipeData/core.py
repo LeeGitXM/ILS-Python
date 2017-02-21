@@ -167,7 +167,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     logger.tracef("...the recipe data tyoe is: %s for id: %d", recipeDataType, recipeDataId)
     
     # These attributes are common to all recipe data classes
-    if attribute in ["DESCRIPTION","UNITS","LABEL"]:
+    if attribute in ["DESCRIPTION","UNITS","LABEL","RECIPEDATATYPE"]:
         print "Fetching a common attribute..."
         val = record[attribute]
     
@@ -192,7 +192,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         
         if attribute in ["CUMULATIVEMINUTES", "STARTTIME", "STOPTIME", "TIMERSTATE"]:
             val = record[attribute]
-        elif attribute in ["RUNTIME", "ELAPSEDTIME"]:
+        elif attribute in ["RUNTIME", "ELAPSEDMINUTES"]:
             timerState = record["TIMERSTATE"]
             if timerState in ['NULL', None, 'Cleared']:
                 val = 0
@@ -217,7 +217,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         logger.tracef("Fetched the value: %s", str(val))
         
     elif recipeDataType == INPUT:
-        SQL = "select TAG, VALUETYPE, ERRORCODE, ERRORTEXT, "\
+        SQL = "select TAG, VALUETYPE, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, "\
             "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
             "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
             "PVMONITORACTIVE, PVMONITORSTATUS "\
@@ -238,7 +238,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
     
     elif recipeDataType == OUTPUT:
-        SQL = "select TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, "\
+        SQL = "select TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
             "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
             "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
             "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
@@ -315,28 +315,27 @@ def fetchRecipeDataRecord(stepUUID, key, db):
     
     # These attributes are common to all recipe data classes
     if recipeDataType == SIMPLE_VALUE:
-        SQL = "select DESCRIPTION, LABEL, UNITS, VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
+        SQL = "select DESCRIPTION, LABEL, UNITS, VALUETYPE, RECIPEDATATYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == TIMER:
-        SQL = "select DESCRIPTION, LABEL, UNITS, STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
+        SQL = "select DESCRIPTION, LABEL, UNITS, RECIPEDATATYPE, STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
         
     elif recipeDataType == INPUT:
-        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, ERRORCODE, ERRORTEXT, "\
+        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, PVMONITORACTIVE, PVMONITORSTATUS, "\
             "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
             "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
-            "PVMONITORACTIVE, PVMONITORSTATUS "\
             "from SfcRecipeDataInputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == OUTPUT:
-        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, "\
-            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
+        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
+            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, PVMONITORACTIVE, PVMONITORSTATUS, SETPOINTSTATUS,  WRITECONFIRM, WRITECONFIRMED, "\
+            "OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
             "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
-            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
-            "PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED "\
+            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
             "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == ARRAY:
-
+        # This really doesn't work for an array, have some work to do...
         val = []
         SQL = "select VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
             " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
@@ -448,7 +447,7 @@ def setRecipeData(stepUUID, key, attribute, val, db):
     elif recipeDataType == OUTPUT:
         if string.upper(str(val)) == "NULL" and attribute not in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
             SQL = "update SfcRecipeDataOutput set %s = NULL where recipeDataId = %s" % (attribute, recipeDataId)
-        elif attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS', 'ACTUALDATETIME']:
+        elif attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS', 'ACTUALDATETIME', 'SETPOINTSTATUS']:
             SQL = "update SfcRecipeDataOutput set %s = '%s' where recipeDataId = %s" % (attribute, str(val), recipeDataId)
         elif attribute in ['DOWNLOAD', 'PVMONITORACTIVE', 'WRITECONFIRM', 'WRITECONFIRMED']:
             bitVal = toBit(val)
