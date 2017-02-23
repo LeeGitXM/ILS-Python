@@ -168,7 +168,6 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     
     # These attributes are common to all recipe data classes
     if attribute in ["DESCRIPTION","UNITS","LABEL","RECIPEDATATYPE"]:
-        print "Fetching a common attribute..."
         val = record[attribute]
     
     elif recipeDataType == SIMPLE_VALUE:
@@ -323,7 +322,7 @@ def fetchRecipeDataRecord(stepUUID, key, db):
     elif recipeDataType == INPUT:
         SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, PVMONITORACTIVE, PVMONITORSTATUS, "\
             "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
-            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
+            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
             "from SfcRecipeDataInputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == OUTPUT:

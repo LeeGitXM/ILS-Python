@@ -8,7 +8,8 @@ from ils.common.error import catch
 def activate(scopeContext, stepProperties, state):
     from ils.sfc.gateway.util import standardDeviation, getTopLevelProperties, getStepProperty, \
     getTopChartRunId, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getChartLogger, s88Set, getProviderName
+    from ils.sfc.gateway.api import getChartLogger, getProviderName
+    from ils.sfc.recipeData.api import s88Set
     from system.ils.sfc.common.Constants import COLLECT_DATA_CONFIG
     from ils.sfc.common.util import substituteHistoryProvider
     from system.util import jsonDecode

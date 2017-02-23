@@ -84,9 +84,11 @@ def activate(scopeContext, stepProperties, state):
                     logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
                     configRow.status = MONITORING
                     pvKey = configRow.pvKey
-                    dataType = s88GetFromStep(targetStepUUID, pvKey + "." + RECIPE_DATA_TYPE, database)
-                    configRow.isOutput = (dataType == 'Output')
-
+                    
+                    # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
+                    # download GUI block.  It appears that the PV of a PV monitoring block is always INPUT recipe data.  The target of a PV monitoring  
+                    # block can be just about anything.  If the target is an OUTPUT - then write results there, if the target is anything else then store the 
+                    # results in the INPUT.
                     targetType = configRow.targetType
                     if targetType == SETPOINT:
                         targetKey = configRow.targetNameIdOrValue
@@ -94,9 +96,12 @@ def activate(scopeContext, stepProperties, state):
                         s88SetFromStep(targetStepUUID, targetKey + "." + SETPOINT_STATUS, "", database)
                         s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_ACTIVE, True, database)
                         s88SetFromStep(targetStepUUID, targetKey + "." + PV_VALUE, "Null", database)
+                    else:
+                        targetKey = configRow.pvKey
 
-#                    else:
-#                        configRow.targetIsOutput = False
+                    dataType = s88GetFromStep(targetStepUUID, targetKey + "." + RECIPE_DATA_TYPE, database)
+                    configRow.isOutput = (dataType == 'Output')
+
                     configRow.isDownloaded = False
                     configRow.persistenceOK = False
                     configRow.inToleranceTime = 0
@@ -193,7 +198,6 @@ def activate(scopeContext, stepProperties, state):
                     monitorActiveCount = 0
                     persistencePending = False
                     for configRow in config.rows:
-                        
                         if not configRow.enabled:
                             continue;
                         
@@ -204,8 +208,6 @@ def activate(scopeContext, stepProperties, state):
                         logger.trace('PV monitoring - PV: %s, Target type: %s, Target: %s, Strategy: %s' % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
     
                         pvKey = configRow.pvKey
-                        
-                        pvRd = RecipeData(chartScope, stepScope, recipeLocation, configRow.pvKey)
                         dataType = s88GetFromStep(targetStepUUID, pvKey + "." + RECIPE_DATA_TYPE, database)
     
                         # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
@@ -227,10 +229,10 @@ def activate(scopeContext, stepProperties, state):
                             configRow.isDownloaded = (downloadStatus == STEP_SUCCESS or downloadStatus == STEP_FAILURE)
                             if configRow.isDownloaded:
                                 logger.trace("...the download just completed!")
-                                configRow.downloadTime = s88Get(chartScope, stepScope, targetKey + "." + ACTUAL_TIMING, recipeDataLocation)
+                                configRow.downloadTime = elapsedMinutes
             
                         # Display the PVs as soon as the block starts running, even before the SP has been written
-                        tagPath = getMonitoredTagPath(targetStepUUID, targetKey, providerName, database)
+                        tagPath = getMonitoredTagPath(targetStepUUID, pvKey, providerName, database)
                         qv = system.tag.read(tagPath)
                         
                         logger.trace("The present qualified value for %s is: %s-%s" % (tagPath, str(qv.value), str(qv.quality)))
@@ -288,11 +290,11 @@ def activate(scopeContext, stepProperties, state):
                             print "Setting the reference time to the timer start time", timerStart
                             referenceTime = timerStart
                         else:
+                            print "Setting the reference time as the download time"
                             referenceTime = configRow.downloadTime
 
-                        print "The reference time is: ", referenceTime
-#                        deadTimeExceeded = getElapsedMinutes(Date(long(referenceTime))) > configRow.deadTime 
-                        deadTimeExceeded = getElapsedMinutes(referenceTime) > configRow.deadTime 
+                        print "Checking if the dead time has been exceeded:: Elapsed Minutes: %f, referenceTime: %d, allowed dead time: %d" % (elapsedMinutes, referenceTime, configRow.deadTime)
+                        deadTimeExceeded = (elapsedMinutes - referenceTime) > configRow.deadTime 
 
                         # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
                         # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
@@ -335,9 +337,9 @@ def activate(scopeContext, stepProperties, state):
                         logger.trace("...checking row whose status is: %s" % (configRow.status))
                         targetType = configRow.targetType
                         if targetType == SETPOINT:
-                            tergetKey = configRow.targetNameIdOrValue
+                            targetKey = configRow.targetNameIdOrValue
                         else:
-                            tergetKey = configRow.pvKey
+                            targetKey = configRow.pvKey
     
                         if configRow.status in [PV_ERROR, PV_WARNING, PV_BAD_NOT_CONSISTENT]:
                             numTimeouts = numTimeouts + 1

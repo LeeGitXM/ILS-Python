@@ -65,16 +65,16 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
 # it must be either an INPUT or OUTPUT recipe data.  So I'm going to use these assumptions:
 #  1) If the recipe data is an output then we monitor the value tag of the controller
 #  2) If the recipe data is an input then just monitor the tag 
-def getMonitoredTagPath(targetStepUUID, targetKey, tagProvider, db):
+def getMonitoredTagPath(targetStepUUID, pvKey, tagProvider, db):
 #    from system.ils.sfc.common.Constants import TAG_PATH
 
     from ils.sfc.recipeData.api import s88GetRecord
-    recipeDataRecord = s88GetRecord(targetStepUUID, targetKey, db)
+    recipeDataRecord = s88GetRecord(targetStepUUID, pvKey, db)
     recipeDataType = recipeDataRecord["RECIPEDATATYPE"]
     tagPath = recipeDataRecord["TAG"]
     tagPath = "[" + tagProvider + "]" + tagPath
 
-    print "Monitoring a %s" % (recipeDataType)
+    print "The monitored item for %s is a %s" % (pvKey, recipeDataType)
 
     if string.upper(recipeDataType) == "OUTPUT":
         print "The recipe data IS an OUTPUT class (for %s)" % tagPath

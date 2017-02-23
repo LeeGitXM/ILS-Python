@@ -114,9 +114,6 @@ def activate(scopeContext, stepProperties, state):
             else:
                 timedRows.append(row)
                 s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "pending", recipeDataScope)
-        
-            # I have no idea what this does - maybe it is needed for PV monitoring??? (Pete)
-#PH            row.io = AbstractSfcIO.getIO(row.tagPath, isolationMode) 
 
         stepScope[IMMEDIATE_ROWS]=immediateRows
         stepScope[TIMED_ROWS]=timedRows

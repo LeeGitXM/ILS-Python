@@ -7,18 +7,16 @@ This step used to be known as Download GUI
 '''
 
 import system
-from ils.sfc.recipeData.api import s88Get, s88Set, s88GetTargetStepUUID
-from ils.sfc.common.constants import ACTUAL_TIMING, ACTUAL_DATETIME, PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
-    DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID,\
-    POSITION, SCALE, WINDOW_TITLE, \
-    MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
-    SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION, TIMER_SET, TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, CLEAR_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME
+from ils.sfc.recipeData.api import s88Set, s88GetTargetStepUUID
+from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
+    WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID,\
+    POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
+    TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, CLEAR_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME
 from system.ils.sfc import getMonitorDownloadsConfig
 from ils.sfc.gateway.downloads import handleTimer
-from ils.sfc.gateway.util import sendMessageToClient, getStepProperty, transferStepPropertiesToMessage, handleUnexpectedGatewayError, \
-    getControlPanelId, getControlPanelName, registerWindowWithControlPanel, getTopChartRunId, getOriginator
-from system.ils.sfc import getProviderName, getDatabaseName
-from ils.sfc.gateway.api import getIsolationMode, getChartLogger, getProject
+from ils.sfc.gateway.util import sendMessageToClient, getStepProperty, handleUnexpectedGatewayError, getControlPanelId, registerWindowWithControlPanel, getTopChartRunId
+from system.ils.sfc import getDatabaseName
+from ils.sfc.gateway.api import getIsolationMode, getChartLogger
 
 def activate(scopeContext, stepProperties, state): 
 
@@ -42,15 +40,10 @@ def activate(scopeContext, stepProperties, state):
         monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)
         isolationMode = getIsolationMode(chartScope)
         chartRunId = getTopChartRunId(chartScope)
-        providerName = getProviderName(isolationMode)
         database = getDatabaseName(isolationMode)
-        
-        print "Using database: ", database
         
         # Insert a window record into the database
         controlPanelId = getControlPanelId(chartScope)
-        controlPanelName = getControlPanelName(chartScope)
-        originator = getOriginator(chartScope)
         buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
         position = getStepProperty(stepProperties, POSITION)
         scale = getStepProperty(stepProperties, SCALE)
@@ -88,14 +81,11 @@ def activate(scopeContext, stepProperties, state):
             system.db.runUpdateQuery(SQL, database)
         
         payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: recipeDataStepUUID}
-        print "Sending message..."
         sendMessageToClient(chartScope, messageHandler, payload)
-        print "...message sent!"
         
         logger.tracef("   Monitor Download payload: %s", str(payload))
         logger.trace("...leaving monitorDownload.activate()")      
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorDownload.py', logger)
 
-    print "Done with Download GUI"
     return True

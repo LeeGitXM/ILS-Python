@@ -696,11 +696,7 @@ def resetDiagram(finalDiagnosisIds, database):
                         log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, UUID, parentUUID))
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
                         
-                    if blockClass == "xom.block.sqcdiagnosis.SQCDiagnosis":
-                        log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (blockName))
-                        SQL = "update DtSQCDiagnosis set LastResetTime = getdate() where SQCDiagnosisUUID = '%s'" % (UUID)
-                        rows = system.db.runUpdateQuery(SQL, database)
-                        log.info("      ...updated %i rows" % (rows))
+
 
                     if blockClass == "com.ils.block.Inhibitor":
                         log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, UUID))
