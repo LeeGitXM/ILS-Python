@@ -400,10 +400,12 @@ In fact we reuse some of the same logic used for the download.
 '''
 def constructNoDownloadLogbookMessage(post, ds, db):
     logbookMessage = ""
+    print "Constructing a NO DOWNLOAD logbook message..."
     for row in range(ds.rowCount):
         rowType=ds.getValueAt(row, "type")
         if rowType == "app":
             applicationName = ds.getValueAt(row, "application")
+            print "Processing application: ", applicationName
             logbookMessage += "  Application: %s\n" % applicationName
             firstOutputRow = True
                 
@@ -411,6 +413,7 @@ def constructNoDownloadLogbookMessage(post, ds, db):
             command=ds.getValueAt(row, "command")
             if string.upper(command) == 'GO':
                 if firstOutputRow:
+                    print "...found the first row after a GO..."
                     # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
                     firstOutputRow = False
                             
@@ -678,7 +681,11 @@ def resetDiagram(finalDiagnosisIds, database):
             
             log.info("... resetting the final diagnosis: %s <%s>, FD: <%s>" % (finalDiagnosisName, str(diagramUUID), str(finalDiagnosisUUID)))
 
+            # Resetting a block sets its state to UNSET, which does not propagate. 
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
+            
+            # Now set the state to UNKNOWN, which does propagate
+            system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
                         
             log.info("... fetching upstream blocks ...")
 
@@ -694,8 +701,12 @@ def resetDiagram(finalDiagnosisIds, database):
                     if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
                                 "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse"]:
                         log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, UUID, parentUUID))
+                        
+                        # Resetting a block sets its state to UNSET, which does not propagate. 
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
                         
+                        # Now set the state to UNKNOWN, which does propagate
+                        system.ils.blt.diagram.setBlockState(diagramUUID, blockName, "UNKNOWN")
 
 
                     if blockClass == "com.ils.block.Inhibitor":

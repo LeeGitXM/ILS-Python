@@ -79,12 +79,13 @@ def activate(scopeContext, stepProperties, state):
             response = s88Get(chartScope, stepScope, responseKey, responseRecipeLocation)
             logger.tracef("...the current response to a Yes/No step is: %s", str(response))
             
-            if response != "None" and response != "NULL": 
+            if response <> None and response <> "None" and response <> "NULL": 
                 logger.tracef("Setting the workDone flag")
                 workDone = True
             else:
                 timeout = checkForTimeout(stepScope)
                 if timeout:
+                    print "The YES_NO step has timed out!"
                     logger.tracef("Setting the Timeout flag")
                     stepScope[TIMED_OUT] = True
 

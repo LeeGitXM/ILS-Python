@@ -4,7 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-import system
+import system, time
 from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
 from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
@@ -69,13 +69,14 @@ def activate(scopeContext, stepProperties, state):
 
             targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey}
+            time.sleep(0.1)
             sendMessageToClient(chartScope, messageHandler, payload)
         
         else: # waiting for reply
             response = s88Get(chartScope, stepScope, responseKey, responseRecipeLocation)
             logger.tracef("...the current response to a Get Input step is: %s", str(response))
             
-            if response != None:
+            if response <> None and response <> "NULL":
                 logger.tracef("Setting the workDone flag")
                 workDone = True
             else:

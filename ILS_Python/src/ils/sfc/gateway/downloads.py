@@ -57,9 +57,23 @@ def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation,
         from ils.sfc.common.constants import MSG_STATUS_INFO
         from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE
         from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT,  WRITE_CONFIRMED, SUCCESS, FAILURE
-    
+
         tagPath = "[%s]%s" % (providerName, config.tagPath)
         outputType = s88Get(chartScope, stepScope, config.key + "." + OUTPUT_TYPE, recipeDataScope)
+     
+        s88WriteEnabled = system.tag.read("[" + providerName + "]/Configuration/SFC/sfcWriteEnabled").value   
+        if not(s88WriteEnabled):
+            logger.info('Write bypassed for %s because SFC writes are inhibited!' % (tagPath))
+            s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)
+
+            if errorCountKey <> "" and errorCountLocation <> "":
+                print " *** INCREMENTING THE GLOBAL ERROR COUNTER *** "
+                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
+                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
+    
+            txt = "Write of %s to %s bypassed because SFC I/O is disabled." % (str(config.value), config.tagPath)
+            queueMessage(chartScope, txt, MSG_STATUS_INFO)
+            return
         
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, outputType,str(config.confirmWrite)))
         

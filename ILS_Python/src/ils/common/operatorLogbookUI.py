@@ -45,7 +45,7 @@ def initializeView(rootContainer):
     
     def setSelectedValue(dropdown=dropdown, selectedStringValue=selectedStringValue):
         print "Setting the selected Value to: ", selectedStringValue
-#        time.sleep(5)
+        time.sleep(0.5)
         dropdown.selectedStringValue=selectedStringValue
 
     system.util.invokeLater(setSelectedValue)

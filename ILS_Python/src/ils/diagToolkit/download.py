@@ -250,42 +250,54 @@ def updateQuantOutputDownloadStatus(quantOutputId, downloadStatus, db):
 
 #
 def constructDownloadLogbookMessage(post, applicationName, db):
-    from ils.diagToolkit.common import fetchActiveDiagnosis
-    pds = fetchActiveDiagnosis(applicationName, db)
+    from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
+    from ils.diagToolkit.common import fetchHighestActiveDiagnosis
+    pds = fetchHighestActiveDiagnosis(applicationName, db)
     txt = ""
-
-    for finalDiagnosisRecord in pds:
-        family=finalDiagnosisRecord['FamilyName']
-        finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
-        finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
-        multiplier=finalDiagnosisRecord['Multiplier']
-        recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
-        print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
+    
+    # If there are more than on final diagnosis active, then print the individual recommendation contributions from each
+    # recommendation and then a summary at the end
+    if len(pds) > 1:
+        print "The individual contributions from each diagnosis are:"
+        txt += "    The individual contributions from each diagnosis are:\n"
+        finalDiagnosisIds = []
+        for finalDiagnosisRecord in pds:
+            finalDiagnosisName=finalDiagnosisRecord['FinalDiagnosisName']
+            finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
+            finalDiagnosisIds.append(finalDiagnosisId)
+            multiplier=finalDiagnosisRecord['Multiplier']
+            recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
             
-        if multiplier < 0.99 or multiplier > 1.01:
-            txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier)
-        else:
-            txt += "       Diagnosis -- %s\n" % (finalDiagnosis)
+            if multiplier < 0.99 or multiplier > 1.01:
+                txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosisName, multiplier)
+            else:
+                txt += "       Diagnosis -- %s\n" % (finalDiagnosisName)
+    
+            if recommendationErrorText != None:
+                txt += "       %s\n\n" % (recommendationErrorText) 
 
-        if recommendationErrorText != None:
-            txt += "       %s\n\n" % (recommendationErrorText) 
+            rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName)
+            for rootCause in rootCauseList:
+                txt += "      %s\n" % (rootCause)
 
-        from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
-        rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
-        for rootCause in rootCauseList:
-            txt += "      %s\n" % (rootCause)
-
-        from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
-        pds, outputs=fetchOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
-        for record in outputs:
-            print record
-            quantOutput = record.get('QuantOutput','')
-            tagPath = record.get('TagPath','')
-            feedbackOutput=record.get('FeedbackOutput',0.0)
-            feedbackOutputConditioned = record.get('FeedbackOutputConditioned',0.0)
-            manualOverride=record.get('ManualOverride', False)
-            outputLimited=record.get('OutputLimited', False)
-            outputLimitedStatus=record.get('OutputLimitedStatus', '')
+            recPDS = fetchRecommendationsForFinalDiagnosis(finalDiagnosisId, db) 
+            for record in recPDS:
+                print record["QuantOutputName"], record["TagPath"], record["Recommendation"], record["AutoRecommendation"], record["ManualRecommendation"], record["AutoOrManual"]
+                txt += "          the desired change in %s = %f\n" % (record["TagPath"], record["AutoRecommendation"])
+        
+        # Now print the summary
+        txt += "\n    The combined recommendations are:\n"    
+        pds=fetchOutputsForListOfFinalDiagnosis(finalDiagnosisIds, database="")
+        for record in pds:
+            quantOutputName = record['QuantOutputName']
+            quantOutputId = record['QuantOutputId']
+            print "%s - %s" % (str(quantOutputId), quantOutputName)
+            tagPath = record['TagPath']
+            feedbackOutput=record['FeedbackOutput']
+            feedbackOutputConditioned = record['FeedbackOutputConditioned']
+            manualOverride=record['ManualOverride']
+            outputLimited=record['OutputLimited']
+            outputLimitedStatus=record['OutputLimitedStatus']
             print "Manual Override: ", manualOverride
             txt += "          the desired change in %s = %s" % (tagPath, str(feedbackOutput))
             if manualOverride:
@@ -293,6 +305,88 @@ def constructDownloadLogbookMessage(post, applicationName, db):
             txt += "\n"
 
             if outputLimited and feedbackOutput != 0.0:
-                txt = "          change to %s adjusted to %s because %s" % (quantOutput, str(feedbackOutputConditioned), outputLimitedStatus)
+                txt = "          change to %s adjusted to %s because %s" % (quantOutputName, str(feedbackOutputConditioned), outputLimitedStatus)
+        
+    else:
+        
+        for finalDiagnosisRecord in pds:
+            family=finalDiagnosisRecord['FamilyName']
+            finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
+            finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
+            multiplier=finalDiagnosisRecord['Multiplier']
+            recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
+            print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
+                
+            if multiplier < 0.99 or multiplier > 1.01:
+                txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier)
+            else:
+                txt += "       Diagnosis -- %s\n" % (finalDiagnosis)
+    
+            if recommendationErrorText != None:
+                txt += "       %s\n\n" % (recommendationErrorText) 
+    
+            rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
+            for rootCause in rootCauseList:
+                txt += "      %s\n" % (rootCause)
+    
+            from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
+            pds, outputs=fetchOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
+            for record in outputs:
+                print record
+                quantOutput = record.get('QuantOutput','')
+                tagPath = record.get('TagPath','')
+                feedbackOutput=record.get('FeedbackOutput',0.0)
+                feedbackOutputConditioned = record.get('FeedbackOutputConditioned',0.0)
+                manualOverride=record.get('ManualOverride', False)
+                outputLimited=record.get('OutputLimited', False)
+                outputLimitedStatus=record.get('OutputLimitedStatus', '')
+                if feedbackOutput <> None:
+                    txt += "          the desired change in %s = %s" % (tagPath, str(feedbackOutput))
+                    if manualOverride:
+                        txt += "%s  (manually specified)" % (txt)
+                    txt += "\n"
+        
+                    if outputLimited and feedbackOutput != 0.0:
+                        txt += "          change to %s adjusted to %s because %s\n" % (tagPath, str(feedbackOutputConditioned), outputLimitedStatus)
 
     return txt
+
+# Fetch the outputs for a final diagnosis and return them as a list of dictionaries
+# I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
+# that are used when calculating/managing recommendations and the output of those recommendations.
+def fetchRecommendationsForFinalDiagnosis(finalDiagnosisId, database=""):
+    SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+        " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
+        " R.Recommendation, R.AutoRecommendation, R.ManualRecommendation, R.AutoOrManual "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R, Lookup L "\
+        " where L.LookupTypeCode = 'FeedbackMethod'"\
+        " and L.LookupId = QO.FeedbackMethodId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and RD.QuantOutputId = QO.QuantOutputId "\
+        " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
+        " and FD.FinalDiagnosisId = %s "\
+        " order by QuantOutputName"  % ( str(finalDiagnosisId))
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+# Fetch the outputs for a final diagnosis and return them as a list of dictionaries
+# I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
+# that are used when calculating/managing recommendations and the output of those recommendations.
+def fetchOutputsForListOfFinalDiagnosis(finalDiagnosisIdList, database=""):
+    ids = ','.join(str(t) for t in finalDiagnosisIdList)
+    SQL = "select distinct QO.QuantOutputName, QO.QuantOutputId, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+        " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
+        " where L.LookupTypeCode = 'FeedbackMethod'"\
+        " and L.LookupId = QO.FeedbackMethodId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and RD.QuantOutputId = QO.QuantOutputId "\
+        " and FD.FinalDiagnosisId in (%s) "\
+        " order by QuantOutputName"  % ( ids )
+    print SQL
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds

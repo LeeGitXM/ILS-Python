@@ -28,13 +28,12 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     # This runs immediately after the chart hierarchy analysis which has a number of database transactions.  Give those time to get
     # committed to the database.  This only runs in designer during migration, so we are not super concerned about performance.
     time.sleep(5)
-        
-    log.tracef(chartResourceAsXML)
-    
-    log.tracef("parsing the tree...")
-    root = ET.fromstring(chartResourceAsXML)
-    tx = ""
     try:
+        #log.tracef(chartResourceAsXML)
+        tx = ""
+        log.tracef("parsing the tree...")
+        root = ET.fromstring(chartResourceAsXML)
+
         tx = system.db.beginTransaction(db)
         for step in root.findall('step'):
             processStep(step, db, tx)
@@ -49,60 +48,70 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
         log.infof("***************")
         log.infof(" Done migrating recipe data, committing transactions...")
         log.infof("***************") 
-        system.db.commitTransaction(tx)
+        
     except:
         errorTxt = catch("Migrating Recipe Data - rolling back transactions")
         log.errorf(errorTxt)
-        system.db.rollbackTransaction(tx)
+        if tx != "":
+            system.db.rollbackTransaction(tx)
     finally:
-        system.db.closeTransaction(tx)
+        if tx != "":
+            system.db.closeTransaction(tx)
 
 def processStep(step, db, tx):
     log.tracef("==============")
-            
-    stepName = step.get("name")
-    stepUUID = step.get("id")
-    stepId = fetchStepIdFromUUID(stepUUID, tx)
-    stepType = step.get("factory-id")
-    log.tracef("Found a step %s - %s - %s- %d....", stepName, stepType, stepUUID, stepId)
-    
-    SQL = "delete from SfcRecipeData where StepId = %d" % stepId
-    log.tracef(SQL)
-    rows=system.db.runUpdateQuery(SQL, tx=tx)
-    log.tracef("...Deleted %d rows from SfcRecipeData", rows)
-    
-    for associatedData in step.findall('associated-data'):
-
-        # This looks a lot like a dictionary of dictionaries
-#        log.tracef("  Raw Text:            %s", associatedData.text)
+    try:
+        stepName = step.get("name")
+        log.infof("Migrating step: %s...", stepName)
+        stepUUID = step.get("id")
+        stepId = fetchStepIdFromUUID(stepUUID, tx)
+        stepType = step.get("factory-id")
+        log.tracef("Found a step %s - %s - %s- %d....", stepName, stepType, stepUUID, stepId)
         
-        # The associated data is a text string that looks like a dictionary.  Python can convert it but is a little picky about some format things
-        txt=associatedData.text
-        txt = string.replace(txt, "null","\"\"")
-        txt = string.replace(txt, "false","False")
-        txt = string.replace(txt, "true","True")
-#        log.tracef("  Converted Text:      %s", txt)
-        myDict = eval(txt)
-        log.tracef("  Dictionary:          %s", str(myDict))
+        SQL = "delete from SfcRecipeData where StepId = %d" % stepId
+        log.tracef(SQL)
+        rows=system.db.runUpdateQuery(SQL, tx=tx)
+        log.tracef("...Deleted %d rows from SfcRecipeData", rows)
         
-        for k in myDict.keys():
-            recipeData = myDict.get(k)
-            recipeDataType = getRecipeDataTypeFromAssociatedData(recipeData)
-            
-            if recipeDataType == "Output":
-                output(stepName, stepType, stepId, recipeData, db, tx)
-            elif recipeDataType == "Input":
-                input(stepName, stepType, stepId, recipeData, db, tx)
-            elif recipeDataType == "Value":
-                simpleValue(stepName, stepType, stepId, recipeData, db, tx)
-            elif recipeDataType == "Timer":
-                timer(stepName, stepType, stepId, recipeData, db, tx)
-
-            elif recipeDataType == None:
-                log.trace("Skipping a NULL value")
-            else:
-                raise ValueError, "Unexpected type of recipe data: %s" % (recipeDataType)
+        for associatedData in step.findall('associated-data'):
     
+            # This looks a lot like a dictionary of dictionaries
+            log.tracef("  Raw Text:            %s", str(associatedData.text))
+            
+            # The associated data is a text string that looks like a dictionary.  Python can convert it but is a little picky about some format things
+            txt=associatedData.text
+            txt = string.replace(txt, "null","\"\"")
+            txt = string.replace(txt, "false","False")
+            txt = string.replace(txt, "true","True")
+    #        log.tracef("  Converted Text:      %s", txt)
+            myDict = eval(txt)
+            log.tracef("  Dictionary:          %s", str(myDict))
+            
+            for k in myDict.keys():
+                recipeData = myDict.get(k)
+                recipeDataType = getRecipeDataTypeFromAssociatedData(recipeData)
+                
+                if recipeDataType == "Output":
+                    output(stepName, stepType, stepId, recipeData, db, tx)
+                elif recipeDataType == "Input":
+                    input(stepName, stepType, stepId, recipeData, db, tx)
+                elif recipeDataType == "Value":
+                    simpleValue(stepName, stepType, stepId, recipeData, db, tx)
+                elif recipeDataType == "Timer":
+                    timer(stepName, stepType, stepId, recipeData, db, tx)
+    
+                elif recipeDataType == None:
+                    log.trace("Skipping a NULL value")
+                else:
+                    raise ValueError, "Unexpected type of recipe data: %s" % (recipeDataType)
+
+        log.trace("Done with step - Committing transactions")
+        system.db.commitTransaction(tx)
+    except:
+        errorTxt = catch("Processing a step - rolling back transactions")
+        log.errorf(errorTxt)
+        system.db.rollbackTransaction(tx)
+            
 def getRecipeDataTypeFromAssociatedData(recipeData):
     try:
         recipeDataType = recipeData.get("class", None)
@@ -113,7 +122,7 @@ def getRecipeDataTypeFromAssociatedData(recipeData):
 
 def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
-    log.infof("Migrating a SIMPLE VALUE with key: %s for step: %s", key, stepName)
+    log.infof("  Migrating a SIMPLE VALUE with key: %s for step: %s", key, stepName)
     description = recipeData.get("description","")
     label = recipeData.get("label","")
     units = recipeData.get("units","")
@@ -149,7 +158,7 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
 
 def output(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
-    log.infof("Migrating an OUTPUT with key: %s for step: %s", key, stepName)
+    log.infof("  Migrating an OUTPUT with key: %s for step: %s", key, stepName)
     log.tracef("  Dictionary: %s", str(recipeData))
     description = recipeData.get("description","")
     label = recipeData.get("label","")
@@ -211,7 +220,7 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
 
 def input(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
-    log.infof("Migrating an INPUT with key: %s for step: %s", key, stepName)
+    log.infof("  Migrating an INPUT with key: %s for step: %s", key, stepName)
     log.tracef("  Dictionary: %s", str(recipeData))
     description = recipeData.get("description","")
     label = recipeData.get("label","")
@@ -250,7 +259,7 @@ def input(stepName, stepType, stepId, recipeData, db, tx):
     
 def timer(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
-    log.infof("Migrating a TIMER with key: %s for step: %s", key, stepName)
+    log.infof("  Migrating a TIMER with key: %s for step: %s", key, stepName)
     description = recipeData.get("description","")
     label = recipeData.get("label","")
     units = recipeData.get("units","")
@@ -268,9 +277,9 @@ def timer(stepName, stepType, stepId, recipeData, db, tx):
     
 def insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx):
     SQL = "insert into SfcRecipeData (stepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-        " values ('%s', '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
+        " values (?, ?, ?, ?, ?, ?)"
     log.tracef(SQL)
-    recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    recipeDataId = system.db.runPrepUpdate(SQL, [stepId, key, recipeDataTypeId, description, label, units], getKey=True, tx=tx)
     log.tracef("   ...inserted a record into SfcRecipeData with id: %d", recipeDataId)
     return recipeDataId
 

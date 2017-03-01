@@ -215,10 +215,16 @@ def deleteRecipeData(rootContainer, db):
         valueId = system.db.runScalarQuery(SQL, db)
         valueIds.append(valueId)
     elif recipeDataType == "Output":
-        SQL = "select OutputValueId, TargetValueId, PVValueId from SfcRecipeDataSimpleValue where recipeDataId = %d" % (recipeDataId)
+        SQL = "select OutputValueId, TargetValueId, PVValueId from SfcRecipeDataOutput where recipeDataId = %d" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         valueIds.append(record["OutputValueId"])
+        valueIds.append(record["TargetValueId"])
+        valueIds.append(record["PVValueId"])
+    elif recipeDataType == "Input":
+        SQL = "select TargetValueId, PVValueId from SfcRecipeDataInput where recipeDataId = %d" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
         valueIds.append(record["TargetValueId"])
         valueIds.append(record["PVValueId"])
     elif recipeDataType == "Array":

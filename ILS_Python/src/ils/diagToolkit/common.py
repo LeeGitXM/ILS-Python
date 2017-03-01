@@ -172,6 +172,27 @@ def fetchActiveDiagnosis(applicationName, database=""):
 # Fetch all of the active final diagnosis for an application.
 # Order the diagnosis from most import to least important - remember that the numeric priority is such that
 # low numbers are higher priority than high numbers. 
+def fetchHighestActiveDiagnosis(applicationName, database=""):
+    SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
+        " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.Multiplier, "\
+        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
+        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+        " and DE.Status = 'Active' "\
+        " and FD.Active = 1 "\
+        " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) "\
+        " and A.ApplicationName = '%s'"\
+        " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+
+# Fetch all of the active final diagnosis for an application.
+# Order the diagnosis from most import to least important - remember that the numeric priority is such that
+# low numbers are higher priority than high numbers. 
 def fetchActiveFamilies(applicationName, database=""):
     SQL = "select distinct A.ApplicationName, F.FamilyName, F.FamilyId "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\

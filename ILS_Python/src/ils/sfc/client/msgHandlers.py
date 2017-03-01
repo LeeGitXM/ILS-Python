@@ -91,14 +91,21 @@ def sfcOpenWindow(payload):
     windowPath = payload[WINDOW_PATH]
     windowId = payload[WINDOW_ID]
     
+    print "...checking if the window should be shown on this client..."
     if not(shouldShowWindow(payload)):
         print "The control panel is not open and the originator is not this user so do not show the window here!"
         return
     
+    print "...the window is meant for this client..."
     record = fetchWindowInfo(windowId)
-    position = record[POSITION]
-    scale = record[SCALE]
-    
+    if record == None:
+        print "Unable to find window info, using defaults..."
+        position = "center"
+        scale = 1.0
+    else:
+        position = record[POSITION]
+        scale = record[SCALE]
+        
     print "Path: %s, Position: %s, Scale: %s" % (windowPath, position, str(scale)) 
     
     if windowPath in SFC_WINDOW_LIST:    

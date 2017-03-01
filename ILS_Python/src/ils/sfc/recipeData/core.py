@@ -114,7 +114,8 @@ in stepProperties.
 def getPriorStep(chartProperties, stepProperties):
     logger.trace("Getting the prior step UUID and Name...")
     priorName = stepProperties.get(STEP_NAME, None) 
-    priorUUID= stepProperties.get(STEP_NAME, None) 
+    priorUUID= stepProperties.get(STEP_UUID, None) 
+    logger.tracef("...returning %s and %s", priorUUID, priorName)
     return priorUUID, priorName
 
 # Get the S88 level of the step superior to this chart.  The chart that is encapsulated under an operation is operation scope.

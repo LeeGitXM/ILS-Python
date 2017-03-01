@@ -8,7 +8,8 @@ import system, time
 from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, getControlPanelName, \
     handleUnexpectedGatewayError, getDelaySeconds, sendOpenWindow, registerWindowWithControlPanel, getTopChartRunId, \
     getOriginator
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, getProject, sendMessageToClient
+from ils.sfc.recipeData.api import s88Get
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, getProject, sendMessageToClient
 from ils.sfc.common.util import callMethod, isEmpty
 from ils.sfc.gateway.util import getStepId, logStepDeactivated
 from ils.sfc.gateway.api import getTimeFactor
@@ -40,12 +41,15 @@ def activate(scopeContext, stepProperties, state):
             chartLogger.trace("Executing TimedDelay block %s - First time initialization" % (stepName))
             stepId = getStepId(stepProperties) 
             timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
+            chartLogger.tracef("...the strategy is %s", timeDelayStrategy)
             if timeDelayStrategy == STATIC:
                 delay = getStepProperty(stepProperties, DELAY) 
             elif timeDelayStrategy == RECIPE:
-                recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-                key = getStepProperty(stepProperties, KEY) 
+                recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+                key = getStepProperty(stepProperties, KEY)
+                chartLogger.tracef("  Getting the delay from %s.%s", recipeLocation, key)
                 delay = s88Get(chartScope, stepScope, key, recipeLocation)
+                chartLogger.tracef("    ...the raw delay is %s", str(delay))
             elif timeDelayStrategy == CALLBACK:
                 callback = getStepProperty(stepProperties, CALLBACK) 
                 delay = callMethod(callback)
