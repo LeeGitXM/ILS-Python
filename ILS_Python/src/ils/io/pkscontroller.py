@@ -217,7 +217,7 @@ class PKSController(controller.Controller):
         if string.upper(outputType) in ["OP", "OUTPUT"]:
             if string.upper(mode) != 'MAN':
                 success = False
-                errorMessage = "%s is not in manual (mode is actually %s)" % (self.path, mode)
+                errorMessage = "%s is not in MAN (mode is actually %s)" % (self.path, mode)
         
         # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is optional 
         elif string.upper(outputType) in ["SP", "SETPOINT"]:
@@ -227,7 +227,7 @@ class PKSController(controller.Controller):
         
             if string.upper(mode) != 'AUTO':
                 success = False
-                errorMessage = "%s %s is not in automatic (mode is actually %s)" % (errorMessage, self.path, mode)
+                errorMessage = "%s %s is not in AUTO (mode is actually %s)" % (errorMessage, self.path, mode)
             
             # The testForZero check is used when we expect the starting point for the write to be 0, i.e. a closed valve.
             # If we expect the current SP to be 0, and it isn't, then the state of the plant is not what we expect so

@@ -18,6 +18,17 @@ def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, d
 # spreadsheet, with numeric recommendations or the loud workspace with text recommendations.
 def openSetpointSpreadsheetCallback(post):
     print "Checking what to open..."
+    
+    # First, see if there is a loud workspace on this window.  If there is and I decide to press the red button instead then
+    # hide the loud workspace.
+    openWindows = system.gui.getOpenedWindows()
+    for window in openWindows:
+        if window.getPath() == "Common/OC Alert":
+            rootContainer = window.rootContainer
+            print "The window is of type: ", rootContainer.notificationType
+            if  rootContainer.notificationType == "Setpoint Spreadsheet":
+                print "Found an open OC alert that I am closing"
+                system.nav.closeWindow(window)
 
     noTextRecommendations = False
     noQuantRecommendations = False
@@ -77,11 +88,18 @@ def handleNotification(payload):
     
     post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
+    notificationMode=payload.get('notificationMode', 'loud')
     numOutputs=payload.get('numOutputs', 1)
     callback="ils.diagToolkit.finalDiagnosisClient.postSpreadsheet"
 
     windows = system.gui.getOpenedWindows()
-       
+    
+#    
+        # If the setpoint spreadsheet is open, then quietly update it.  If it isn't open then post the loud workspace
+#        print "YO"
+        
+#    else:
+        
     # First check if the setpoint spreadsheet is already open.  This does not check which console's
     # spreadsheet is open, it assumes a client can only be interested in one console.
     
@@ -97,11 +115,7 @@ def handleNotification(payload):
         pos = windowPath.find('Setpoint Spreadsheet')
         if pos >= 0:
             print "...found an open spreadsheet - skipping the OC alert"
-            rootContainer=window.rootContainer
-            
-            # This should trigger the spreadsheet to refresh
-            rootContainer.refresh=True
-            
+
             # If we found an open setpoint spreadsheet AND if there is some notification text then display it immediately 
             # since we already have the operator's attention.  One type of notification text is vector clamp advice.
 
@@ -111,9 +125,19 @@ def handleNotification(payload):
             if numOutputs == 0:
                 print "Closing an open setpoint spreadsheet because there are no outputs!"
                 system.nav.closeWindow(windowPath)
+                return
 
-            return
-
+            # The most common reason to use "quiet" notification mode is for a recalc.
+            if notificationMode == "quiet":
+                # This should trigger the spreadsheet to refresh
+                print "...skipping the OC alert because we are in quiet mode..."
+                rootContainer=window.rootContainer
+                rootContainer.refresh=True
+                return
+            else:
+                print "...closing the setpoint spreadsheet so we can regain the operators attention..."
+                system.nav.closeWindow(windowPath)
+                
         pos = windowPath.find('OC Alert')
         if pos >= 0:
             print "... checking post and payload for an OC Alert ..."
@@ -144,6 +168,8 @@ def handleNotification(payload):
 #                    system.gui.messageBox(notificationText)
 
                 return
+    # If we fall through the checks above, then we are going to  post the loud workspace.
+    # The above checks must first determine that the alert is meant for this client
 
     if numOutputs == 0:
         print "Skipping the load workspace posting because the spreadsheet would be empty..."
@@ -168,7 +194,8 @@ def handleNotification(payload):
                  "callbackPayloadDataset": callbackPayloadDataset,
                  "mainMessage": "<HTML> Click on either the 'Pend Recc' button on the<br>Operator Console or this Acknowledge button",
                  "timeoutEnabled": False,
-                 "timeoutSeconds": 300
+                 "timeoutSeconds": 300,
+                 "notificationType": "Setpoint Spreadsheet"
                  }
 
     # This is not the normal way to post the OC alert - normally a message is sent out to clients, but in this case 

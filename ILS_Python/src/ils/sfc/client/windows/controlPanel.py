@@ -6,8 +6,8 @@ Created on Dec 9, 2015
 
 import system
 from ils.sfc.client.util import getDatabase
-immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 'SFC/RecipeDataViewer',
-                    'SFC/SfcHierarchy', 'SFC/SFC Runner']
+immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 'SFC/RecipeDataTypeChooser',
+                    'SFC/RecipeDataViewer', 'SFC/SfcHierarchy', 'SFC/SfcHierarchyWithRecipeBrowser', 'SFC/SFC Runner']
 sfcWindowPrefix = 'SFC/'
 
 def internalFrameOpened(event):

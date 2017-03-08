@@ -3,7 +3,7 @@ Created on Nov 3, 2014
 
 @author: rforbes
 '''
-import system
+import system, string
 
 def startChart(chartPath, controlPanelName, project, originator, isolationMode):
     ''' We need to get the queue name out of the unit procedure and use that as the default message queue, but
@@ -219,12 +219,18 @@ def logExceptionCause(contextMsg, logger=None):
         # no cause
         pass
        
-    # Log or print the info:
+    # Log or print the error message
+    '''
+    The log utility is really stupid when it comes to embedded '%' characters.  It interprets them all as format characters.
+    So be shure to escape the '%' as '%%' for the logger.  But I don't want to do that with the error messages that I return which will
+    ultimately be sent to the client and displayed in a vision window.  One of the common causes of error is in a log or irint statement 
+    that uses the '%' character.  Prior to escaping these this error trapping routine would throw an error.
+    '''
     if logger != None:
-        logger.error(fullMsg)
+        logger.errorf(string.replace(fullMsg, "%", "%%"))
         if javaCauseMsg != None:
-            logger.error(javaCauseMsg)
-        logger.error(tracebackMsg)
+            logger.errorf(string.replace(javaCauseMsg, "%", "%%"))
+        logger.errorf(string.replace(tracebackMsg, "%", "%%"))
     else:
         print fullMsg
         if javaCauseMsg != None:

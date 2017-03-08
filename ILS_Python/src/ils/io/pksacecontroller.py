@@ -37,7 +37,7 @@ class PKSACEController(pkscontroller.PKSController):
         if not(status):
             return status, errorMessage
         
-        print "... back in PKS ACE writeDatum()!"
+        log.trace("... back in PKS ACE writeDatum()!")
 
         log.trace("managing the processingCommand for a PKS ACE controller")
 

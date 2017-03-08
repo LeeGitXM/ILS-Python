@@ -157,7 +157,6 @@ def getCurrentMessageQueue(chartProperties):
     from ils.sfc.common.constants import MESSAGE_QUEUE
     from ils.sfc.gateway.util import getTopLevelProperties
     topScope = getTopLevelProperties(chartProperties)
-    print "The top scope is: ", topScope
     return topScope[MESSAGE_QUEUE]
 
 def setCurrentMessageQueue(chartProperties, queue):

@@ -4,7 +4,7 @@ Created on Feb 1, 2017
 @author: phass
 '''
 
-import system
+import system, string
 from ils.common.cast import toBit
 from ils.common.error import catch
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
@@ -78,7 +78,8 @@ def internalFrameOpened(rootContainer, db=""):
 
         rootContainer.description = record["Description"]
         rootContainer.label = record["Label"]
-        rootContainer.units = record["Units"]
+        rootContainer.units = string.upper(record["Units"])
+        print "Setting the units to: ", string.upper(record["Units"])
         
     else:
         if recipeDataType == "Simple Value":
@@ -166,16 +167,14 @@ def setArrayTableColumnVisibility(rootContainer, valueType):
     columnAttributes = table.columnAttributesData
     
     for column in ["Float", "Integer", "Boolean", "String"]:
-        print "Checking ", column
         if column == valueType:
             hidden = False
         else:
             hidden = True
-        print "Hidden: ", hidden
+
         # Find the row in the dataset for this data type (One row per dataType
         for row in range(columnAttributes.rowCount):
             if columnAttributes.getValueAt(row, "name") == column + "Value":
-                print "Settingn row: ", row 
                 columnAttributes = system.dataset.setValue(columnAttributes, row, "hidden", hidden)
     
     table.columnAttributesData = columnAttributes

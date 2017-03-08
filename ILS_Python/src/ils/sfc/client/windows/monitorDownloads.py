@@ -157,7 +157,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 
         # Determine the DCS Tag ID - this can either be the name of the tag/UDT or the item id
         import ils.io.api as api
-        displayAttribute = "NAME"
+        displayAttribute = record["LabelAttribute"]
         displayName = api.getDisplayName(tagProvider, tagPath, valueType, displayAttribute)
 
         if units != "":
@@ -230,8 +230,7 @@ def cancelChart(event):
         return
 
     # This might be a temporary measure as we also need to honor the Pause / resume from the control panel
-    timerTagPath = rootContainer.timerTagPath
-    system.tag.write(timerTagPath + "/state", "stop")
+    handleTimer(rootContainer, "stop")
 
     from system.sfc import cancelChart
     cancelChart(chartRunId)
@@ -246,8 +245,7 @@ def pauseChart(event):
         return
 
     # This might be a temporary measure as we also need to honor the Pause / resume from the control panel
-    timerTagPath = rootContainer.timerTagPath
-    system.tag.write(timerTagPath + "/state", "pause")
+    handleTimer(rootContainer, "pause") 
     
     from system.sfc import pauseChart
     pauseChart(chartRunId)
@@ -262,19 +260,18 @@ def resumeChart(event):
         return
     
     # This might be a temporary measure as we also need to honor the Pause / resume from the control panel
-    timerTagPath = rootContainer.timerTagPath
-    system.tag.write(timerTagPath + "/state", "resume")
+    handleTimer(rootContainer, "resume")
     
     from system.sfc import resumeChart
     resumeChart(chartRunId)
     
 def getChartRunId(rootContainer):
     windowId = rootContainer.windowId
-    
-    SQL = "select chartRunId from sfcControlPanel CP, sfcWindow W "\
-        " where W.controlPanelId = CP.controlPanelId "\
-        " and W.windowId = '%s'" % (windowId)
-        
+    SQL = "select chartRunId from sfcWindow where windowId = '%s'" % (windowId)
+    print SQL
     chartRunId = system.db.runScalarQuery(SQL)
     return chartRunId
+
+def handleTimer(rootContainer, command):
+    print command + "ing the timer"
 

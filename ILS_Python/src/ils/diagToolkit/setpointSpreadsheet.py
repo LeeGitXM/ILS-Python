@@ -7,8 +7,10 @@ Created on Sep 9, 2014
 import system, string
 from ils.sfc.common.constants import SQL
 from ils.common.operatorLogbook import insertForPost
-log = system.util.getLogger("com.ils.diagToolkit")
+from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.constants.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD
+
+log = system.util.getLogger("com.ils.diagToolkit")
 
 def initialize(rootContainer):
     print "In %s.initialize()..." % (__name__)
@@ -16,7 +18,6 @@ def initialize(rootContainer):
     rootContainer.initializationComplete = False
     rootContainer.recalculateFlag = False
     db=system.tag.read("[Client]Database").value
-    print "The database is: ", db
     
     post = rootContainer.post
     fetchAndSetDownloadActiveFlag(rootContainer, post, db)
@@ -50,7 +51,6 @@ def initialize(rootContainer):
             else:
                 actionValue = 1
             applicationRow = ['app',i,0,0,downloadAction,actionValue,application,'','',0,False,0,0,'','','']
-            print "App row: ", applicationRow
             rows.append(applicationRow)
             i = i + 1
 
@@ -94,11 +94,9 @@ def initialize(rootContainer):
                 actionValue = 1
             row = ['row',i,0,record['QuantOutputId'],action,actionValue,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],
                    record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,record['DownloadStatus'],numberPattern]
-            print "Output Row: ", row
             rows.append(row)
             i = i + 1
 
-    print rows
     ds = system.dataset.toDataSet(header, rows)
     repeater.templateParams=ds
     repeater.selectedRow = -1
@@ -109,12 +107,12 @@ def initialize(rootContainer):
         rootContainer.initializationComplete = True
     #----------------------------------------------------------
 
-    print "Invoking later..."
     system.util.invokeLater(initializationComplete, 1000)
 
 # This is called by a timer script that runs when a download is active.  It determines if the download is complete by checking for a terminal
 # download status (Error or Success) in each of the outputs that are marked as GO 
-def checkIfDownloadComplete(rootContainer):
+def checkIfDownloadComplete(event):
+    rootContainer = event.source.parent
     print "Checking if the download is complete..."
     downloadComplete = True
     repeater=rootContainer.getComponent("Template Repeater")
@@ -126,16 +124,38 @@ def checkIfDownloadComplete(rootContainer):
             if string.upper(command) == 'GO':
                 downloadStatus=ds.getValueAt(row, "downloadStatus")
                 if downloadStatus not in ['Error', 'Success']:
-                    print "Found an output still working: ", downloadStatus
+                    print "   ...found an output still working on row ", row
                     downloadComplete = False
 
     # Only update the database if downloadComplete is True, we assume it is True since this is running
     if downloadComplete:
-        print "Hey - the download is done!"
+        print "...the download is complete..."
         rootContainer.downloadActive = False
         db=system.tag.read("[Client]Database").value
+        db=getDatabaseClient()
+        tagProvider=getTagProviderClient()
         updateDownloadActiveFlag(rootContainer.post, False, db)
-
+        
+        # If all of the downloads were successful, then dismiss the setpoint spreadsheet
+        writesWereSuccessful = True
+        ds = repeater.templateParams
+        for row in range(ds.rowCount):
+            rowType=ds.getValueAt(row, "type")
+            if rowType == "row":
+                command=ds.getValueAt(row, "command")
+                if string.upper(command) == 'GO':
+                    downloadStatus=ds.getValueAt(row, "downloadStatus")
+                    if downloadStatus <> 'Success':
+                        writesWereSuccessful = False
+                else:
+                    writesWereSuccessful = False
+        if writesWereSuccessful:
+            print "...all of the writes were successful, resetting diagrams and checking if all applications were processed..."
+            allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
+        
+            # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
+            if allApplicationsProcessed:
+                system.nav.closeParentWindow(event)
     
 # This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
 def updateQuantOutputAction(rootContainer, ds, row, action):
@@ -330,6 +350,88 @@ def recalcCallback(event):
     system.util.sendMessage(projectName, "recalc", payload, "G")  
 
 
+# This is called from the Recalc Refresh Timer on the setpoint spreadsheet.  It runs every 10 seconds or so.
+# If it fins any Final Diagnosis on the spreadsheet it will recalculate all active FDs.  It is possibl that multipme FDs
+# are active, I don't think I can do any harm by recalculating too often.  In reality, most problems all have the same 
+# refresh time anyway.
+def recalcTimer(event):
+    rootContainer = event.source.parent
+    print "Checking the recalculation timer..." 
+    
+    # Don't do a recalc if there is a download in progress
+    if rootContainer.downloadActive:
+        return
+    
+    from ils.common.config import getDatabaseClient
+    db=getDatabaseClient()
+    repeater=rootContainer.getComponent("Template Repeater")
+    
+    activeApplication = isThereAnActiveApplication(repeater)
+    if not(activeApplication):
+        return
+    
+    ds=repeater.templateParams
+        
+    applicationActive=False
+    application=""
+    finalDiagnosisIds=[]
+    quantOutputIds=[]
+    
+    for row in range(ds.rowCount):
+        rowType=ds.getValueAt(row, "type")
+
+        if string.upper(rowType) == "APP":
+            command=ds.getValueAt(row, "command")
+
+            if string.upper(command) == 'ACTIVE':
+                applicationActive=True
+                application=ds.getValueAt(row, "application")
+            else:
+                applicationActive=False
+
+        elif string.upper(rowType) == "ROW":
+            if applicationActive:
+                quantOutputId=ds.getValueAt(row, "qoId")
+                if quantOutputId not in quantOutputIds:
+                    quantOutputIds.append(quantOutputId)
+                    
+                    from ils.diagToolkit.common import fetchActiveFinalDiagnosisForAnOutput
+                    pds=fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, db)
+                    for rec in pds:
+                        if rec["FinalDiagnosisId"] not in finalDiagnosisIds:
+                            finalDiagnosisIds.append(rec["FinalDiagnosisId"])
+
+    print "The active final diagnosis ids are: "
+    recalculateFlag = False
+    for finalDiagnosisId in finalDiagnosisIds:
+        print "   ", finalDiagnosisId
+        SQL = "select LastRecommendationTime, RefreshRate from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+        pds = system.db.runQuery(SQL, db)
+        if len(pds) == 1:
+            record = pds[0]
+        else:
+            raise ValueError, "Fetched %d records when exactly one was expected" % (len(pds))
+
+        lastRecommendationTime = record["LastRecommendationTime"]
+        refreshRate = record["RefreshRate"]
+        print "       ", lastRecommendationTime, refreshRate
+        secondsSinceLastCalc = system.date.secondsBetween(lastRecommendationTime, system.date.now())
+        print "The seconds since last recalc is: ", secondsSinceLastCalc
+        if secondsSinceLastCalc > refreshRate:
+            print "It is time to recalc"
+            recalculateFlag = True
+
+    
+    if recalculateFlag:
+        rootContainer.recalculateFlag=True
+        post=rootContainer.post
+        tagProvider=system.tag.read("[Client]Tag Provider").value
+        
+        print "Sending a RECALC message to the gateway for all applications for post: %s (database: %s)" % (post, db)
+        projectName=system.util.getProjectName()
+        payload={"post": post, "database": db, "provider": tagProvider}
+        system.util.sendMessage(projectName, "recalc", payload, "G")  
+    
 # This is called from the WAIT button on the set-point spreadsheet
 def waitCallback(event):
     print "Processing a WAIT-FOR-MORE-DATA..."
@@ -361,7 +463,6 @@ def noDownloadCallback(event):
     
     hideDetailMap()
 
-    from ils.common.config import getDatabaseClient, getTagProviderClient
     db=getDatabaseClient()
     tagProvider=getTagProviderClient()
     repeater=rootContainer.getComponent("Template Repeater")
@@ -442,27 +543,6 @@ def isThereAnActiveApplication(repeater):
 # Reset the database tables and the BLT diagrams for every application that is active.
 # We do not consider individual outputs that the operator may have chosen to not download.   
 def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, recommendationStatus):
-    
-    #--------------
-    def resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider):
-        if len(finalDiagnosisIds) == 0:
-            print "...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones..."
-            from ils.diagToolkit.common import fetchActiveDiagnosis
-            pds = fetchActiveDiagnosis(application, db)
-            finalDiagnosisIds=[]
-            for record in pds:
-                finalDiagnosisIds.append(record["FinalDiagnosisId"])
-
-        print "Resetting: "
-        print "  Application: ", application
-        print "  Families:    ", families
-        print "  FDs:         ", finalDiagnosisIds
-        
-        quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
-
-        resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
-    #-------------
-    from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
     print "...performing generic post callback cleanup..." 
     allApplicationsProcessed=True
     post=rootContainer.post
@@ -506,7 +586,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
                         if rec["FamilyName"] not in families:
                             families.append(rec["FamilyName"])
 
-    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
+    resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
     print "...done post action processing!"
     
     # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
@@ -518,6 +598,28 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     payload={"post": post, "database": db, "provider": tagProvider}
     system.util.sendMessage(projectName, "recalc", payload, "G")
     return allApplicationsProcessed
+
+
+def resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider):
+    from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
+        
+    if len(finalDiagnosisIds) == 0:
+        print "...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones..."
+        from ils.diagToolkit.common import fetchActiveDiagnosis
+        pds = fetchActiveDiagnosis(application, db)
+        finalDiagnosisIds=[]
+        for record in pds:
+            finalDiagnosisIds.append(record["FinalDiagnosisId"])
+
+    print "Resetting: "
+    print "  Application: ", application
+    print "  Families:    ", families
+    print "  FDs:         ", finalDiagnosisIds
+    
+    quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
+
+    resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
+
 
 def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database, provider):
     log.info("In %s resetting application %s because %s - %s" % (__name__, application, actionMessage, recommendationStatus))

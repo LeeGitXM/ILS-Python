@@ -287,13 +287,13 @@ def activate(scopeContext, stepProperties, state):
                                 
                         # check dead time - assume that immediate writes coincide with starting the timer.      
                         if configRow.download == IMMEDIATE:
-                            print "Setting the reference time to the timer start time", timerStart
+                            logger.tracef("Setting the reference time to the timer start time", timerStart)
                             referenceTime = timerStart
                         else:
-                            print "Setting the reference time as the download time"
+                            logger.tracef("Setting the reference time as the download time")
                             referenceTime = configRow.downloadTime
 
-                        print "Checking if the dead time has been exceeded:: Elapsed Minutes: %f, referenceTime: %d, allowed dead time: %d" % (elapsedMinutes, referenceTime, configRow.deadTime)
+                        logger.tracef("Checking if the dead time has been exceeded:: Elapsed Minutes: %f, referenceTime: %s, allowed dead time: %f", elapsedMinutes, str(referenceTime), configRow.deadTime)
                         deadTimeExceeded = (elapsedMinutes - referenceTime) > configRow.deadTime 
 
                         # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   

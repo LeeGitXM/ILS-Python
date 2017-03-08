@@ -20,10 +20,10 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
-def notifyClients(project, post, clientId=-1, notificationText="", numOutputs=0, database=""):
+def notifyClients(project, post, clientId=-1, notificationText="", notificationMode="loud", numOutputs=0, database=""):
     log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, numOutputs: <%s>..." % (project, post, str(numOutputs)))
     messageHandler="consoleManager"
-    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId}
+    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId, 'notificationMode': notificationMode}
     notifier(project, post, messageHandler, payload, database)
 
     # If we are going to notify client to update their spreadsheet then maybe they should also update their recommendation maps...    
@@ -235,7 +235,7 @@ def recalcMessageHandler(payload):
         if postTextRecommendation:
             notifyClientsOfTextRecommendation(project, post, applicationName, explanation, diagnosisEntryId, database, provider)
         else:
-            notifyClients(project, post, notificationText="", numOutputs=totalActiveOutputs, database=database)
+            notifyClients(project, post, notificationText="", numOutputs=totalActiveOutputs, database=database, notificationMode="quiet")
 
     
 # This is based on the original G2 procedure outout-msg-core()

@@ -457,7 +457,7 @@ def setRecipeData(stepUUID, key, attribute, val, db):
         elif attribute in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
             attrName="%sID" % (attribute)
             SQL = "select ValueType, %s from SfcRecipeDataOutputView where RecipeDataId = %s" % (attrName, recipeDataId)
-            print SQL
+            logger.trace(SQL)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
                 raise ValueError, "Unable to find the value type for Output recipe data"
@@ -470,7 +470,7 @@ def setRecipeData(stepUUID, key, attribute, val, db):
                 SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
             else:
                 SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)
-            print SQL
+            logger.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d value records', rows)
 
@@ -493,13 +493,13 @@ def setRecipeData(stepUUID, key, attribute, val, db):
             now = formatDateTime(now, format='MM/dd/yy HH:mm:ss')
             val=val.upper()
             if val == PAUSE_TIMER.upper():
-                print "Pausing..."
+                logger.trace("Pausing timer...")
                 SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_PAUSED, recipeDataId)
             elif val == START_TIMER.upper():
-                print "Starting..."
+                logger.trace("Starting timer...")
                 SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_RUNNING, recipeDataId)
             elif val == RESUME_TIMER.upper():
-                print "Resuming..."
+                logger.trace("Resuming timer...")
                 SQL = "select * from sfcRecipeDataTimerView where RecipeDataId = %d" % (recipeDataId)
                 pds = system.db.runQuery(SQL, db)
                 record = pds[0]
@@ -514,15 +514,15 @@ def setRecipeData(stepUUID, key, attribute, val, db):
                 
                 SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = %f where RecipeDataId = %d" % (now, TIMER_RUNNING, cumulativeMinutes, recipeDataId)
             elif val == CLEAR_TIMER.upper():
-                print "Clearing..."
+                logger.trace("Clearing timer...")
                 SQL = "update SfcRecipeDataTimer set StartTime = NULL, StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (TIMER_CLEARED, recipeDataId)
             elif val == STOP_TIMER.upper():
-                print "Stopping..."
+                logger.trace("Stopping timer...")
                 SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_STOPPED, recipeDataId)
             else:
                 raise ValueError, "Unsupported timer command <%s> for timer recipe data" % (val)
 
-            print SQL
+            logger.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d timer records', rows)
         

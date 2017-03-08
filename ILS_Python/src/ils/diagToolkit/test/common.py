@@ -35,13 +35,16 @@ def run():
             "delete from DtRecommendation", \
             "delete from QueueDetail", \
             "delete from DtDiagnosisEntry", \
-            "delete from DtRecommendationDefinition where FinalDiagnosisId in (select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%')",
+            "delete from DtRecommendationDefinition where FinalDiagnosisId in (select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%')", \
             "delete from DtQuantOutput where QuantOutputName like 'TEST%'",\
             "delete from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%'", \
             "delete from DtFamily where FamilyName like 'TEST%'", \
             "delete from DtApplication where ApplicationName like 'TEST%'"
             ]:
-            system.db.runUpdateQuery(SQL, db=db)
+
+            print "   ", SQL
+            rows=system.db.runPrepUpdate(SQL, db=db)
+            print "   ...deleted %d rows" % rows
         
         logger.trace("...done initializing the database")
         

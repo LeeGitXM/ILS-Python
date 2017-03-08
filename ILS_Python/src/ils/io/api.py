@@ -74,17 +74,17 @@ def getMonitoredTagPath(targetStepUUID, pvKey, tagProvider, db):
     tagPath = recipeDataRecord["TAG"]
     tagPath = "[" + tagProvider + "]" + tagPath
 
-    print "The monitored item for %s is a %s" % (pvKey, recipeDataType)
+    log.tracef("The monitored item for %s is a %s", pvKey, recipeDataType)
 
     if string.upper(recipeDataType) == "OUTPUT":
-        print "The recipe data IS an OUTPUT class (for %s)" % tagPath
+        log.tracef("The recipe data IS an OUTPUT class (for %s)", tagPath)
         outputType = string.upper(recipeDataRecord["OUTPUTTYPE"])
         if outputType == "MODE":
             attributePath = "/mode/value"
         elif outputType == "SETPOINT":
-            attributePath = "/sp/value"
+            attributePath = "/value"
         elif outputType == "OUTPUT":
-            attributePath = "/op/value"
+            attributePath = "/value"
         else:
             attributePath = "/value"
 
@@ -374,6 +374,7 @@ def validateValueType(valueType):
 # Get the string that will typically be displayed in the DCS Tag Id column of the download monitor
 def getDisplayName(provider, tagPath, valueType, displayAttribute):
     fullTagPath='[%s]%s' % (provider, tagPath)
+    log.trace("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s", fullTagPath, displayAttribute)
 
     # Check if the tag exists
     tagExists = system.tag.exists(fullTagPath)
@@ -385,14 +386,16 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
         displayName=fullTagPath[fullTagPath.rfind('/')+1:]
     
     elif string.upper(displayAttribute) == 'ITEMID':
+        log.trace("Using Item Id...")
         # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
-
-        valueType=validateValueType(valueType)
-        if isUDT(fullTagPath):    
-            if string.upper(valueType) == "VALUE":
+        if isUDT(fullTagPath):
+            pythonClass = system.tag.read(fullTagPath + '/pythonClass').value
+            if string.upper(pythonClass) in ["OPCTAG", "OPCConditionalOutput"]:
                 displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
+            elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSACECONTROLLER"]:
+                displayName = system.tag.read(fullTagPath + '/sp//value.OPCItemPath').value
             else:
-                displayName = system.tag.read(fullTagPath + '/' + valueType + '/value.OPCItemPath').value        
+                raise ValueError, "Unknown I/O class: %s" % (pythonClass)      
         else:
             displayName = system.tag.read(fullTagPath + '.OPCItemPath').value
 

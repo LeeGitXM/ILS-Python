@@ -383,8 +383,8 @@ e.g. put in a message queue. Then cancel the chart.
 '''    
 def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.util import logExceptionCause
-    from ils.sfc.common.constants import MESSAGE, CONTROL_PANEL_ID, ORIGINATOR
-    from  ils.sfc.gateway.api import cancelChart, getProject
+    from ils.sfc.common.constants import MESSAGE
+    from  ils.sfc.gateway.api import cancelChart
 
     fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
     chartPath = chartScope.get("chartPath", "")
@@ -392,14 +392,19 @@ def handleUnexpectedGatewayError(chartScope, msg, logger=None):
     payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
     payload = dict()
     payload[MESSAGE] = payloadMsg
+
     sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+    if logger <> None:
+        logger.error("Canceling the chart due to an error.")
+    else:
+        print "Canceling the chart due to an error."
     cancelChart(chartScope)
 
     
 def notifyGatewayError(chartScope, msg, logger=None):
     from ils.sfc.common.util import logExceptionCause
     from ils.sfc.common.constants import MESSAGE, CONTROL_PANEL_ID, ORIGINATOR
-    from  ils.sfc.gateway.api import cancelChart, getProject
+    from  ils.sfc.gateway.api import getProject
     '''
     Report an unexpected error so that it is visible to the operator
     '''
