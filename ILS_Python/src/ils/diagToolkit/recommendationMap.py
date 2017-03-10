@@ -198,7 +198,7 @@ def fetchRecommendations(diagnoses, outputs, recDefs, db):
     
     print SQL
     pds = system.db.runQuery(SQL, database=db)
-    print "  ...fetched %i recommendations!"
+    print "  ...fetched %i recommendations!" % (len(pds))
     
     headers=["DiagnosisId","OutputId","Auto", "Manual", "AutoOrManual", "RecommendationId"]
     data = []
@@ -318,6 +318,11 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
     multiplier = ds.getValueAt(finalDiagnosisIdx, "Multiplier")
     finalDiagnosisName = ds.getValueAt(finalDiagnosisIdx, "Name")
     
+    # Final Diagnosis may be displayed on the map even when there are no recommendations, when this happens the multiplier will be None
+    if multiplier == None:
+        system.gui.messageBox("There are no recommendations for this final diagnosis, unable to enter a multiplier.")
+        return
+    
     newMultiplier = system.gui.inputBox("The current Multiplier is (%f), enter a new multiplier:" % (multiplier), "%f" % (multiplier))
     print "The new multiplier is: ", newMultiplier
     
@@ -331,17 +336,18 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
             "(select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName = '%s')" % (newMultiplier, finalDiagnosisName)
         print SQL
         rows = system.db.runUpdateQuery(SQL, db)
-        print "Updated %i Final Diagnosis" % (rows)
+        print "Updated %i Final Diagnosis Entries" % (rows)
         
         # Update each recommendation connected to the final diagnosis
         if float(newMultiplier) == 1.0:
-            print "Updating the recommendations to 'AUTO' because a multiplier of 1.0 was detected!"
+            print "Updating the recommendations to 'AUTO' because a multiplier of 1.0 was entered!"
             SQL = "Update DtRecommendation set AutoOrManual = 'Auto', ManualRecommendation = NULL, "\
                 " Recommendation = AutoRecommendation "\
                 " where RecommendationDefinitionId in (select RecommendationDefinitionId "\
                 " from DtRecommendationDefinition RD, DtFinalDiagnosis FD "\
                 "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (finalDiagnosisName)
         else: 
+            print "Updating the recommendations to a user specified multiplier of %s..." % (str(newMultiplier))
             SQL = "Update DtRecommendation set AutoOrManual = 'Manual', ManualRecommendation = AutoRecommendation * %s, "\
                 " Recommendation = AutoRecommendation * %s "\
                 " where RecommendationDefinitionId in (select RecommendationDefinitionId "\
@@ -353,10 +359,14 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         
         # If there are no current recommendations then why did the user change the multiplier?  It doesn't make any sense, but 
         # regardless the outputs don't need to be updated.
+        print "Now updating quantoutputs..."
         if rows > 0:
             # Update the Total change for the quant output - remember that the output may be affected my multiple FDs
-            SQL = "select QuantOutputId from DtFinalDiagnosis FD, DtRecommendationDefinition RD "\
-                " where FD.FinalDiagnosisId = RD.FinalDiagnosisId and FinalDiagnosisName = '%s'" % finalDiagnosisName
+            # By involving DtRecommendation in this query, I will only get Outputs that have a recommendation.  A FD may have more
+            # outputs than recommendations, a calculation method does not always need to manipulate all of the possible outputs.
+            SQL = "select QuantOutputId from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtRecommendation R "\
+                " where FD.FinalDiagnosisId = RD.FinalDiagnosisId and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
+                " and FinalDiagnosisName = '%s'" % finalDiagnosisName
             pds = system.db.runQuery(SQL, db)
             numOutputs = 0
             for record in pds:
@@ -388,9 +398,9 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         clientId = system.util.getClientId()
         
         from ils.diagToolkit.finalDiagnosis import notifyClients
-        notifyClients(project, post, clientId, "", numOutputs, db)        
+        notifyClients(project, post, clientId=clientId, notificationText="", notificationMode="quiet", numOutputs=numOutputs, database=db)        
         print "Done"
-        
+
     except:
         print "Caught an exception"
         from ils.common.error import catch
@@ -460,6 +470,7 @@ def update(rootContainer):
     
     # Update the Outputs Dataset
     ds = theMap.outputs
+    print "...updating the outputs dataset..."
     for row in range(ds.rowCount):
         quantOutputName = ds.getValueAt(row, "Name")
 
@@ -479,9 +490,11 @@ def update(rootContainer):
     theMap.outputs = ds
     
     # Update the Final Diagnosis Dataset
+    print "...updating the final diagnosis dataset..."
     ds = theMap.diagnoses
     for row in range(ds.rowCount):
         finalDiagnosisName = ds.getValueAt(row, "Name")
+        print "  ...updating multiplier for %s..." % (finalDiagnosisName)
 
         SQL = "select DE.Multiplier from DtDiagnosisEntry DE, DtFinalDiagnosis FD "\
             " where FD.FinalDiagnosisName = '%s' "\
@@ -492,6 +505,10 @@ def update(rootContainer):
             record = pds[0]
             multiplier = record["Multiplier"]
             ds = system.dataset.setValue(ds, row, "Multiplier", multiplier)
+            print "  ...updated %i rows with %s" % (len(pds), str(multiplier))
+        else:
+            print "  WARNING: Unexpected number of final diagnosis records: %i" % (len(pds))
+
     theMap.diagnoses = ds
     
     recDefs=theMap.connections
