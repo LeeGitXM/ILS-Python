@@ -24,12 +24,17 @@ def activate(scopeContext, stepProperties, state):
     stepScope = scopeContext.getStepScope()
     chartLogger = getChartLogger(chartScope)
     stepName = getStepProperty(stepProperties, STEP_NAME)
+    chartLogger.trace("%s - %s" % (stepName, state))
 
+    # This really does not do what I expect.  First of all, if I cancel the chart while this step is running, this is not called.
+    # Second, This is called when this block is placed in a loop AFTER the first time through.  This behavior does not make any sense, 
+    # I'm not sure if this is getting screwed up in our Java layer or is the engine a little wonky.
     if state == DEACTIVATED:
         chartLogger.trace("Handling deactivate request for a TimedDelay block named %s" %(stepName))
+        stepScope['_endTime'] = None
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepScope, stepProperties)
-        return False
+        return True
        
     try:
         # Recover state from work in progress:
@@ -112,8 +117,6 @@ def activate(scopeContext, stepProperties, state):
                 
                 #sendOpenWindow(chartScope, windowId, stepId, database)
         else:
-            chartLogger.trace("Executing TimedDelay block %s - checking for work done..." % (stepName))
-            
             secondsLeft = system.date.secondsBetween(system.date.now(), endTime)
             if secondsLeft > 60 * 60:
                 hoursLeft = round(10.0 * secondsLeft / (60.0 * 60.0)) / 10.0
@@ -125,13 +128,21 @@ def activate(scopeContext, stepProperties, state):
                 tooltip = "%s seconds left..." % (str(secondsLeft))
                 
             stepScope['tooltip'] = tooltip
+            chartLogger.trace("Executing TimedDelay block %s - %s..." % (stepName, tooltip))
+            
             workIsDone = system.date.now() >= endTime
+            if workIsDone:
+                chartLogger.trace("TimedDelay block %s IS DONE!" % (stepName))
+            
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in timedDelay.py', chartLogger)        
         workIsDone = True
     finally:
         if workIsDone:
             cleanup(chartScope, stepScope, stepProperties)
+            
+            # This will get the block ready in the event it is in a loop
+            stepScope['_endTime'] = None
         return workIsDone
         
 def cleanup(chartScope, stepScope, stepProperties):

@@ -11,7 +11,6 @@ from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUM
     TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED, \
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
-from com.jidesoft.utils import AccumulativeRunnable
 
 # Recipe data types
 ARRAY = "Array"
@@ -31,7 +30,10 @@ logger=system.util.getLogger("com.ils.sfc.recipeData.core")
 
 # Return the UUID of the step  
 def getTargetStep(chartProperties, stepProperties, scope):
+#    print "=============="
     logger.tracef("Getting target step for scope %s...", scope)
+#    print "Chart Properties: ", chartProperties
+#    print "Step Properties:  ", stepProperties
     
     scope.lower()
     
@@ -65,6 +67,17 @@ def getTargetStep(chartProperties, stepProperties, scope):
         
     return -1 
 
+def getTargetStepFromName(chartPath, stepName, db):
+    SQL = "select StepUUID from SfcChart C, SfcStep S "\
+        " where S.ChartId = C.ChartId and C.ChartPath = '%s' and S.StepName = '%s' " % (chartPath, stepName)
+    pds = system.db.runQuery(SQL, database=db)
+    if len(pds) == 0:
+        raise ValueError, "Unable to find recipe data for %s - %s, chart/step not found" % (chartPath, stepName)
+    if len(pds) > 1:
+        raise ValueError, "Unable to find recipe data for %s - %s, multiple steps found" % (chartPath, stepName)
+    record = pds[0]
+    stepUUID = record["StepUUID"]
+    return stepUUID
 
 def walkUpHieracrchy(chartProperties, stepType):
     logger.trace("Walking up the hierarchy looking for %s" % (stepType))
@@ -79,9 +92,10 @@ def walkUpHieracrchy(chartProperties, stepType):
             superiorUUID = enclosingStepScope.get(STEP_UUID, None)
             superiorName = enclosingStepScope.get(STEP_NAME, None)
             thisStepType = enclosingStepScope.get(S88_LEVEL)
+            chartPath = enclosingStepScope.get("chartPath", None)
             
             chartProperties = chartProperties.get(PARENT)
-            logger.trace("  The superior step: %s - %s - %s" % (superiorUUID, superiorName, thisStepType))
+            logger.trace("  The superior step: %s - %s - %s - %s" % (chartPath, superiorName, superiorUUID, thisStepType))
         else:
             print "Throw an error here - we are at the top"
             return None, None
