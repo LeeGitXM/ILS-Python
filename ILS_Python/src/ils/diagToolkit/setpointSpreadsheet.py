@@ -798,6 +798,7 @@ def resetDiagram(finalDiagnosisIds, database):
                     UUID=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
+                    blockId=block.getIdString()
                     parentUUID=block.getAttributes().get("parent")
 
                     if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
@@ -806,10 +807,9 @@ def resetDiagram(finalDiagnosisIds, database):
                         
                         # Resetting a block sets its state to UNSET, which does not propagate. 
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
-                        
-                        # Now set the state to UNKNOWN, which does propagate
+                        # Now set the state to UNKNOWN, then propagate
                         system.ils.blt.diagram.setBlockState(diagramUUID, blockName, "UNKNOWN")
-
+                        system.ils.blt.diagram.propagateBlockState(diagramUUID, blockId)
 
                     if blockClass == "com.ils.block.Inhibitor":
                         log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, UUID))

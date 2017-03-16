@@ -8,6 +8,8 @@ INTEGER="INTEGER"
 TIMESTAMP="TIMESTAMP"
 VARCHAR="VARCHAR"
 
+READ_UNCOMMITTED = 1
+
 def beginTransaction(SQL):
     return True
 

@@ -28,6 +28,9 @@ def toCSV(ds, flag1, flag2, flag3):
 def toDataSet(header, rows):
     pass
 
+def toDataSet(pds):
+    pass
+
 def toPyDataSet(dataset):
     return True
 
