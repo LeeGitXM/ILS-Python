@@ -10,6 +10,15 @@ def addMonths(date1,months):
 def addWeeks(date1,weeks):
     return date1
 
+def addHours(date1,hours):
+    return date1
+
+def addMinutes(date1,minutes):
+    return date1
+
+def addSeconds(date1,seconds):
+    return date1
+
 def format(theDate):
     return True
 

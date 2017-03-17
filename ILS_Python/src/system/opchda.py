@@ -23,6 +23,10 @@ def isServerAvailable(serverName):
     Bool=True
     return Bool
 
+def insert(serverName, itemId, value, valueTime, valueQuality=192):
+    quality=1
+    return quality
+
 def readAttributes(serverName, itemId, attributeIds, startDate, endDate):
     List=""
     return List
