@@ -786,8 +786,9 @@ def resetDiagram(finalDiagnosisIds, database):
             # Resetting a block sets its state to UNSET, which does not propagate. 
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
             
-            # Now set the state to UNKNOWN, which does propagate
+            # Now set the state to UNKNOWN and propagate it
             system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
+            system.ils.blt.diagram.propagateBlockState(diagramUUID, finalDiagnosisUUID)
                         
             log.info("... fetching upstream blocks ...")
 
@@ -807,9 +808,10 @@ def resetDiagram(finalDiagnosisIds, database):
                         
                         # Resetting a block sets its state to UNSET, which does not propagate. 
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
+                        
                         # Now set the state to UNKNOWN, then propagate
-                        system.ils.blt.diagram.setBlockState(diagramUUID, blockName, "UNKNOWN")
-                        system.ils.blt.diagram.propagateBlockState(diagramUUID, blockId)
+                        system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
+                        system.ils.blt.diagram.propagateBlockState(parentUUID, blockId)
 
                     if blockClass == "com.ils.block.Inhibitor":
                         log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, UUID))
