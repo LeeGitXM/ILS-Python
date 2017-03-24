@@ -11,6 +11,8 @@ from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from mailbox import fcntl
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
+from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
+
     
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
 def internalFrameOpened(rootContainer, db=""):
@@ -20,7 +22,7 @@ def internalFrameOpened(rootContainer, db=""):
     
     if recipeDataId > 0:
         
-        if recipeDataType == "Simple Value":
+        if recipeDataType == SIMPLE_VALUE:
             print "Fetching a simple value..."
             SQL = "select * from SfcRecipeDataSimpleValueView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
@@ -29,7 +31,7 @@ def internalFrameOpened(rootContainer, db=""):
             record = pds[0]
             rootContainer.simpleValueDataset = pds
 
-        elif recipeDataType == "Array":
+        elif recipeDataType == ARRAY:
             print "Fetching an Array"
             SQL = "select * from SfcRecipeDataArrayView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
@@ -46,7 +48,26 @@ def internalFrameOpened(rootContainer, db=""):
             pds = system.db.runQuery(SQL, db)
             rootContainer.arrayValuesDataset = pds
             
-        elif recipeDataType == "Input":
+        elif recipeDataType == MATRIX:
+            print "Fetching an Matrix"
+            SQL = "select * from SfcRecipeDataMatrixView where recipeDataId = %s" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to fetch a Matrix recipe data with id: %s" % (recipeDataId)
+            record = pds[0]
+            rootContainer.matrixDataset = pds
+            
+            # Set the visibility of the values columns so only the one for the target valueType is shown
+            valueType = record["ValueType"]
+            setArrayTableColumnVisibility(rootContainer, valueType)
+            
+            SQL = "select * from SfcRecipeDataMatrixElementView where recipeDataId = %s order by RowIndex, ColumnIndex" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            rootContainer.matrixValuesDataset = pds
+            
+            updateMatrixTable(rootContainer, pds)
+            
+        elif recipeDataType == INPUT:
             print "Fetching an Input"
             SQL = "select * from SfcRecipeDataInputView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
@@ -55,7 +76,7 @@ def internalFrameOpened(rootContainer, db=""):
             record = pds[0]
             rootContainer.inputDataset = pds
 
-        elif recipeDataType == "Output":
+        elif recipeDataType == OUTPUT:
             print "Fetching an Output"
             SQL = "select * from SfcRecipeDataOutputView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
@@ -64,7 +85,7 @@ def internalFrameOpened(rootContainer, db=""):
             record = pds[0]
             rootContainer.outputDataset = pds
 
-        elif recipeDataType == "Timer":
+        elif recipeDataType == TIMER:
             print "Fetching a Timer"
             SQL = "select * from SfcRecipeDataTimerView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
@@ -82,7 +103,7 @@ def internalFrameOpened(rootContainer, db=""):
         print "Setting the units to: ", string.upper(record["Units"])
         
     else:
-        if recipeDataType == "Simple Value":
+        if recipeDataType == SIMPLE_VALUE:
             print "Initializing a simple value..."
             ds = rootContainer.simpleValueDataset
             ds = system.dataset.setValue(ds, 0, "RecipeDataKey", "")
@@ -94,7 +115,7 @@ def internalFrameOpened(rootContainer, db=""):
             ds = system.dataset.setValue(ds, 0, "BooleanValue", 0)
             rootContainer.simpleValueDataset = ds
 
-        elif recipeDataType == "Output":
+        elif recipeDataType == OUTPUT:
             print "Initializing an Output..."
             ds = rootContainer.outputDataset
             ds = system.dataset.setValue(ds, 0, "OutputFloatValue", 0.0)
@@ -121,9 +142,9 @@ def internalFrameOpened(rootContainer, db=""):
             ds = system.dataset.setValue(ds, 0, "PVMonitorActive", 0)
             rootContainer.outputDataset = ds
             
-        elif recipeDataType == "Input":
+        elif recipeDataType == INPUT:
             print "Initializing a new Input..."
-            ds = rootContainer.outputDataset
+            ds = rootContainer.inputDataset
             ds = system.dataset.setValue(ds, 0, "TargetFloatValue", 0.0)
             ds = system.dataset.setValue(ds, 0, "TargetIntegerValue", 0)
             ds = system.dataset.setValue(ds, 0, "TargetStringValue", "")
@@ -139,27 +160,67 @@ def internalFrameOpened(rootContainer, db=""):
             ds = system.dataset.setValue(ds, 0, "PVMonitorActive", 0)
             rootContainer.inputDataset = ds
 
-        elif recipeDataType == "Timer":
+        elif recipeDataType == TIMER:
             print "Initializing a Timer..."
-            ds = rootContainer.outputDataset
-            rootContainer.outputDataset = ds
+            ds = rootContainer.timerDataset
+            rootContainer.timerDataset = ds
         
-        elif recipeDataType == "Array":
+        elif recipeDataType == ARRAY:
             print "Initializing an Array..."
-            ds = rootContainer.outputDataset
-            rootContainer.outputDataset = ds
+            ds = rootContainer.arrayDataset
+            rootContainer.arrayDataset = ds
             
             header = ["RecipeDataId", "ArrayIndex","FloatValue","IntegerValue","StringValue","BooleanValue"]
             ds = system.dataset.toDataSet(header, [])
-            rootContainer.arrayValuesDataset = ds           
+            rootContainer.arrayValuesDataset = ds
+            
+        elif recipeDataType == MATRIX:
+            print "Initializing an Matrix..."
+            ds = rootContainer.matrixDataset
+            rootContainer.matrixDataset = ds
+            
+            header = ["RecipeDataId", "RowIndex", "ColumnIndex", "FloatValue","IntegerValue","StringValue","BooleanValue"]
+            ds = system.dataset.toDataSet(header, [[-1,0,0,0.0,0,"", False]])
+            pds = system.dataset.toPyDataSet(ds)
+            updateMatrixTable(rootContainer, pds)   
 
         else:
-            raise ValueError, "Unexpected recipe data type <%s>" % (recipeDataType)
+            raise ValueError, "Unexpected NEW recipe data type <%s>" % (recipeDataType)
         
         rootContainer.description = ""
         rootContainer.label = ""
         rootContainer.units = ""
+
+def updateMatrixTable(rootContainer, pds):
+    container = rootContainer.getComponent("Matrix Container")
+    table = container.getComponent("Matrix Table")
+    
+    header = ['row']
+    data = []
+    lastRow = 0
+    row = 0
+    rowData = [0]
+    for record in pds:
+        row = record["RowIndex"]
+        column = record["ColumnIndex"]
+        val = record["FloatValue"]
         
+        if row == 0:
+            header.append(column)
+            
+        if row <> lastRow:
+            data.append(rowData)
+            rowData = [row, val]
+        else:
+            rowData.append(val)
+        lastRow = row
+    
+    data.append(rowData)
+    print header
+    print data
+    ds = system.dataset.toDataSet(header, data)
+    table.data = ds
+
 def setArrayTableColumnVisibility(rootContainer, valueType):
     print "Setting the table column visibility"
     container = rootContainer.getComponent("Array Container")
@@ -178,6 +239,16 @@ def setArrayTableColumnVisibility(rootContainer, valueType):
                 columnAttributes = system.dataset.setValue(columnAttributes, row, "hidden", hidden)
     
     table.columnAttributesData = columnAttributes
+
+def renumberMatrixRows(ds):
+    for row in range(ds.rowCount):
+        ds = system.dataset.setValue(ds, row, "Row", row)
+    return ds
+
+def renumberMatrixColumns(ds):
+#    for row in range(ds.rowCount):
+#        ds = system.dataset.setValue(ds, row, "ArrayIndex", row)
+    return ds
     
 def addArrayRow(table):
     print "Adding a Row"
@@ -628,6 +699,93 @@ def saveArray(rootContainer, db=""):
             
             SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, row, valueId)
             system.db.runUpdateQuery(SQL, tx=tx)
+
+        system.db.commitTransaction(tx)
+        system.db.closeTransaction(tx) 
+    except:
+        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        system.db.rollbackTransaction(tx)
+        system.db.closeTransaction(tx) 
+    
+    print "Done!"
+
+def saveMatrix(rootContainer, db=""):
+    print "Saving an matrix...."
+
+    recipeDataId = rootContainer.recipeDataId
+    stepId = rootContainer.stepId
+    
+    key = rootContainer.getComponent("Key").text
+    description = rootContainer.getComponent("Description").text
+    label = rootContainer.getComponent("Label").text
+    units = rootContainer.getComponent("Units Dropdown").selectedStringValue
+    matrixContainer=rootContainer.getComponent("Matrix Container")
+    
+    valueType = matrixContainer.getComponent("Value Type Dropdown").selectedStringValue
+    valueTypeId = matrixContainer.getComponent("Value Type Dropdown").selectedValue
+    
+    table = matrixContainer.getComponent("Matrix Table")
+    ds = table.data
+    rows = ds.rowCount
+    columns = ds.columnCount - 1
+    
+    tx = system.db.beginTransaction(db)
+    
+    try:
+        if recipeDataId < 0:
+            print "Inserting a new matrix..."
+            
+            recipeDataType = rootContainer.recipeDataType
+            recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
+            
+            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
+                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
+            print SQL
+            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            rootContainer.recipeDataId = recipeDataId
+            
+            SQL = "Insert into SfcRecipeDataMatrix (RecipeDataId, ValueTypeId, Rows, Columns) values (%d, %d, %d, %d)" % (recipeDataId, valueTypeId, rows, columns)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+        else:
+            print "Updating an matrix..."
+            recipeDataId = rootContainer.recipeDataId
+            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+            SQL = "Update SfcRecipeDataMatrix set ValueTypeId=%d, rows=%d, columns=%d where RecipeDataId = %d" % (valueTypeId, rows, columns, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+        # Now deal with the matrix.  First delete all of the rows than insert new ones.  There are no foreign keys or ids so this should be fast and easy.
+        # There is a cascade delete to the SFcRecipeDataValue table, but the PK is there, not here
+        # First delete everything...
+        SQL = "select ValueId from SfcRecipeDataMatrixElement where RecipeDataId = %d" % (recipeDataId)
+        pds = system.db.runQuery(SQL, tx=tx)
+        
+        SQL = "delete from SfcRecipeDataMatrixElement where RecipeDataId = %d" % (recipeDataId)
+        cnt = system.db.runUpdateQuery(SQL, tx=tx)
+        print "...deleted %d matrix elements..." % (rows)
+        
+        rows=0
+        for record in pds:
+            SQL = "delete from SfcRecipeDataValue where valueId = %d" % record["ValueId"]
+            cnt = system.db.runUpdateQuery(SQL, tx=tx)
+            rows = rows + cnt
+        print "...deleted %d data value elements..." % (rows)
+        
+        # Now insert everything...
+        for rowIndex in range(ds.rowCount):
+            for columnIndex in range(1,ds.columnCount):
+                val = ds.getValueAt(rowIndex, columnIndex)
+                SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % ("FloatValue", val)
+                print SQL
+                valueId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+                
+                print "Inserting %s at  (%d, %d)..." % (str(val), rowIndex, columnIndex)
+                SQL = "insert into SfcRecipeDataMatrixElement (RecipeDataId, RowIndex, ColumnIndex, ValueId) values (%d, %d, %d, %d)" % (recipeDataId, rowIndex, columnIndex, valueId)
+                system.db.runUpdateQuery(SQL, tx=tx)
 
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 

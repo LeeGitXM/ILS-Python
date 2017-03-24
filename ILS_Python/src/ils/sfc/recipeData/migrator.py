@@ -10,7 +10,6 @@ from ils.common.error import catch
 from ils.common.cast import toBit
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
 from ils.common.config import getTagProvider
-from com.sun.org.apache.xalan.internal.xslt import Process
 log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
 
 def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
@@ -99,6 +98,10 @@ def processStep(step, db, tx):
                     simpleValue(stepName, stepType, stepId, recipeData, db, tx)
                 elif recipeDataType == "Timer":
                     timer(stepName, stepType, stepId, recipeData, db, tx)
+                elif recipeDataType == "Array":
+                    arrayData(stepName, stepType, stepId, recipeData, db, tx)
+                elif recipeDataType == "Matrix":
+                    matrixData(stepName, stepType, stepId, recipeData, db, tx)
     
                 elif recipeDataType == None:
                     log.trace("Skipping a NULL value")
@@ -120,6 +123,116 @@ def getRecipeDataTypeFromAssociatedData(recipeData):
         
     return recipeDataType
 
+def matrixData(stepName, stepType, stepId, recipeData, db, tx):
+    key = recipeData.get("key","")
+    
+    log.infof("  Migrating a MATRIX with key: %s for step: %s", key, stepName)
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    rows = recipeData.get("rows","")
+    columns = recipeData.get("columns","")
+    recipeDataTypeId=fetchRecipeDataTypeId("Matrix", db)
+    
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
+    
+    valueType = recipeData.get("valueType","Float")
+    valueType = convertValueType(valueType)
+    valueTypeId = fetchValueTypeId(valueType, db)
+    valueMatrix = recipeData.get("value", None)
+    
+    SQL = "insert into SfcRecipeDataMatrix (RecipeDataId, ValueTypeId, Rows, Columns) values (%d, %d, %s, %s)" % (recipeDataId, valueTypeId, str(rows), str(columns))
+    system.db.runUpdateQuery(SQL, tx=tx)
+    
+    print "Matrix Value 1: ", valueMatrix
+    valueMatrix = string.lstrip(valueMatrix, "[")
+    valueMatrix = string.rstrip(valueMatrix, "]")
+    print "Matrix Value 2: ", valueMatrix
+    
+    rowIdx = 0
+    for row in valueMatrix.split("],["):
+        print "Row: ", row
+        colIdx = 0
+        for val in row.split(","):
+            print "Parsed values: ", val
+            if valueType == "Float":
+                val = float(val)
+                SQL = "insert into SfcRecipeDataValue (FloatValue) values (%s)" % (str(val))
+            elif valueType == "Integer":
+                val = int(val)
+                SQL = "insert into SfcRecipeDataValue (IntegerValue) values (%s)" % (str(val))
+            elif valueType == "String":
+                SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (str(val))
+            elif valueType == "Boolean":
+                val=toBit(val)
+                SQL = "insert into SfcRecipeDataValue (BooleanValue) values (%d)" % (val)
+            else:
+                errorTxt = "Unknown value type: %s" % str(valueType)
+                raise ValueError, errorTxt
+        
+            log.tracef(SQL)
+            valueId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    
+            SQL = "insert into SfcRecipeDataMatrixElement (RecipeDataId, RowIndex, ColumnIndex, ValueId) values (%d, %d, %d, %d)" % (recipeDataId, rowIdx, colIdx, valueId)
+            system.db.runUpdateQuery(SQL, tx=tx)
+            colIdx = colIdx + 1
+
+        rowIdx = rowIdx + 1
+        
+    log.tracef("   ...done inserting an Array!")
+    
+
+
+def arrayData(stepName, stepType, stepId, recipeData, db, tx):
+    key = recipeData.get("key","")
+    log.infof("  Migrating an ARRAY with key: %s for step: %s", key, stepName)
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    recipeDataTypeId=fetchRecipeDataTypeId("Array", db)
+    
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
+    
+    valueType = recipeData.get("valueType","String")
+    valueType = convertValueType(valueType)
+    valueTypeId = fetchValueTypeId(valueType, db)
+    valueArray = recipeData.get("value", None)
+    
+    SQL = "insert into SfcRecipeDataArray (RecipeDataId, ValueTypeId) values (%d, %d)" % (recipeDataId, valueTypeId)
+    system.db.runUpdateQuery(SQL, tx=tx)
+    
+    print "Array Value: ", valueArray
+    valueArray = string.lstrip(valueArray, "[")
+    valueArray = string.rstrip(valueArray, "]")
+    
+    idx = 0
+    for val in valueArray.split(","):
+        if valueType == "Float":
+            val = float(val)
+            SQL = "insert into SfcRecipeDataValue (FloatValue) values (%s)" % (str(val))
+        elif valueType == "Integer":
+            val = int(val)
+            SQL = "insert into SfcRecipeDataValue (IntegerValue) values (%s)" % (str(val))
+        elif valueType == "String":
+            SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (str(val))
+        elif valueType == "Boolean":
+            val=toBit(val)
+            SQL = "insert into SfcRecipeDataValue (BooleanValue) values (%d)" % (val)
+        else:
+            errorTxt = "Unknown value type: %s" % str(valueType)
+            raise ValueError, errorTxt
+        
+        log.tracef(SQL)
+        valueId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+        
+        SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, idx, valueId)
+        system.db.runUpdateQuery(SQL, tx=tx)
+
+        idx = idx + 1
+        
+    log.tracef("   ...done inserting an Array!")
+
+
 def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")
     log.infof("  Migrating a SIMPLE VALUE with key: %s for step: %s", key, stepName)
@@ -134,6 +247,8 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     valueType = convertValueType(valueType)
     valueTypeId = fetchValueTypeId(valueType, db)
     val = recipeData.get("value", None)
+    if val == "NO-VALUE":
+        val = "NULL"
     
     if valueType == "Float":
         SQL = "insert into SfcRecipeDataValue (FloatValue) values (%s)" % (str(val))
@@ -290,6 +405,8 @@ def convertValueType(valueType):
         valueType = "Float"
     elif valueType == "string":
         valueType = "String"
+    elif valueType == "boolean":
+        valueType = "Boolean"
     else:
         log.warnf("Substituting value type String for unexpected type <%s>" % (valueType))
         valueType = "String"

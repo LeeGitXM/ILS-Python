@@ -136,6 +136,8 @@ def activate(scopeContext, stepProperties, state):
         logger.trace("...performing write output work...")
         try:
             timerNeeded=stepScope[TIMER_NEEDED]
+            downloadRows=stepScope.get(DOWNLOAD_ROWS,[])
+            
             if timerNeeded:
                 # Monitor for the specified period, possibly extended by persistence time
                 # It is possible that this block starts before some other block starts the timer
@@ -148,8 +150,6 @@ def activate(scopeContext, stepProperties, state):
                     immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
                     timedRows=stepScope.get(TIMED_ROWS,[])
                     finalRows=stepScope.get(FINAL_ROWS,[])
-                    downloadRows=stepScope.get(DOWNLOAD_ROWS,[])
-                    
                     timerWasRunning=stepScope.get(TIMER_RUNNING, False)
                     
                     # Immediately after the timer starts running we need to calculate the absolute download times for each output.
@@ -245,6 +245,7 @@ def activate(scopeContext, stepProperties, state):
                 # There are no timed writes - everything should be immediate
                 # Immediately after the timer starts running we need to calculate the absolute download time.            
                 logger.info("The timer is not needed, performing immediate writes.")
+                elapsedMinutes = 0.0
                 immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
                 absTiming = system.date.now()
                 timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")

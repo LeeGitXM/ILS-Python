@@ -12,19 +12,8 @@ from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUM
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
 
-# Recipe data types
-ARRAY = "Array"
-INPUT = "Input"
-OUTPUT = "Output"
-SIMPLE_VALUE = "Simple Value"
-TIMER = "Timer"
-
-# Constants used to navigate and interrogate the chart scope property dictionary
-ENCLOSING_STEP_SCOPE_KEY = "enclosingStep"
-PARENT = "parent"
-S88_LEVEL = "s88Level"
-STEP_UUID = 'id'
-STEP_NAME = 'name'
+from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER, \
+    ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.core")
 
@@ -163,7 +152,12 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
     
     # Separate the key from the array index if there is an array index
-    attribute, arrayIndex = checkForArrayReference(attribute)
+    attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
+
+#    print "Array Check:"
+#    print "    ", arrayIndex
+#    print "    ", rowIndex
+#    print "    ", columnIndex
         
     SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
         " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
@@ -299,9 +293,33 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 valueType = record['VALUETYPE']
                 val = record["%sVALUE" % string.upper(valueType)]
                 logger.tracef("Fetched the value: %s", str(val))
+    
+    elif recipeDataType == MATRIX:
+        if attribute == "VALUE":
+            if rowIndex == None:
+                val = []
+                SQL = "select VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+                    " from SfcRecipeDataMatrixView A, SfcRecipeDataMatrixElementView E where A.RecipeDataId = E.RecipeDataId "\
+                    " and E.RecipeDataId = %d order by ROWINDEX, COLINDEX" % (recipeDataId)
+                pds = system.db.runQuery(SQL, db)
+                for record in pds:
+                    valueType = record['VALUETYPE']
+                    aVal = record["%sVALUE" % string.upper(valueType)]
+                    val.append(aVal)
+                logger.tracef("Fetched the whole array: %s", str(val))
+            else:
+                SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+                    " from SfcRecipeDataMatrixView A, SfcRecipeDataMatrixElementView E where A.RecipeDataId = E.RecipeDataId "\
+                    " and E.RecipeDataId = %d and RowIndex = %d and ColumnIndex = %d" % (recipeDataId, rowIndex, columnIndex)
+                pds = system.db.runQuery(SQL, db)
+                record = pds[0]
+                valueType = record['VALUETYPE']
+                val = record["%sVALUE" % string.upper(valueType)]
+                logger.tracef("Fetched the value: %s", str(val))
+
                 
         else:
-            raise ValueError, "Unsupported attribute: %s for an array recipe data" % (attribute)
+            raise ValueError, "Unsupported attribute: %s for an matrix recipe data" % (attribute)
     
     else:
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
@@ -379,7 +397,7 @@ def setRecipeData(stepUUID, key, attribute, val, db):
     logger.tracef("Setting recipe data value for step: stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, val)
     
     # Separate the key from the array index if there is an array index
-    attribute, arrayIndex = checkForArrayReference(attribute)
+    attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
     
     SQL = "select * from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
@@ -569,20 +587,55 @@ def setRecipeData(stepUUID, key, attribute, val, db):
 
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d array value recipe data records', rows)
+      
+    elif recipeDataType == MATRIX:
+        if rowIndex == None or columnIndex == None:
+            raise ValueError, "Matric Recipe data must specify a row and a column index - %s - %s" % (key, attribute)
+        
+        # Get the value type from the SfcRecipeDataArray table.
+        SQL = "select * from SfcRecipeDataMatrixView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        valueType = record['ValueType']
+        
+        # Now fetch the Value Id of the specific element of the array
+        SQL = "select valueId from SfcRecipeDataMatrixElement where RecipeDataId = %s and RowIndex = %s and columnIndex = %s" % (str(recipeDataId), str(rowIndex), str(columnIndex))
+        valueId = system.db.runScalarQuery(SQL, db)
+        
+        if valueType == "String":
+            SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %d" % (valueType, val, valueId)
+        else:
+            SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %d" % (valueType, val, valueId)
+
+        rows = system.db.runUpdateQuery(SQL, db)
+        logger.tracef('...updated %d matrix value recipe data records', rows)
         
     else:
         logger.errorf("Unsupported recipe data type: %s", record["RecipeDataType"])
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
 
+
 # Separate the key from the array index if there is an array index
-def checkForArrayReference(attribute):
+def checkForArrayOrMatrixReference(attribute):
     arrayIndex = None
-    if attribute.find("[") > 0:
+    rowIndex = None
+    columnIndex = None
+    
+    if string.count(attribute, "[") == 1:
         logger.tracef("There is an array index...")
         arrayIndex = attribute[attribute.find("[")+1:len(attribute)-1]
         arrayIndex = int(arrayIndex)
         attribute = attribute[:attribute.find("[")]
-    return attribute, arrayIndex
+    elif string.count(attribute, "[") == 2:
+        logger.tracef("There is an matrix reference...")
+        idx = attribute[attribute.find("[")+1:attribute.find("]")]
+        rowIndex = int(idx)
+        idx = attribute[attribute.rfind("[")+1:attribute.rfind("]")]
+        columnIndex = int(idx)
+        attribute = attribute[:attribute.find("[")]
+    
+    
+    return attribute, arrayIndex, rowIndex, columnIndex
         
 def fetchOutputTypeId(val, db):
     SQL = "select OutputTypeId from SfcRecipeDataOutputType where OutputType = '%s'" % (val)

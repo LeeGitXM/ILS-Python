@@ -5,7 +5,8 @@ Created on Feb 10, 2017
 '''
 import system
 from ils.common.windowUtil import clearTable
-log =system.util.getLogger("com.ils.sfc.recipeBrowser")
+from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
+log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
 def internalFrameOpened(rootContainer, db):
@@ -210,28 +211,39 @@ def deleteRecipeData(rootContainer, db):
     
     # Get the value ids before we delete the data
     valueIds = []
-    if recipeDataType == "Simple Value":
+    if recipeDataType == SIMPLE_VALUE:
         SQL = "select ValueId from SfcRecipeDataSimpleValue where recipeDataId = %d" % (recipeDataId)
         valueId = system.db.runScalarQuery(SQL, db)
         valueIds.append(valueId)
-    elif recipeDataType == "Output":
+    elif recipeDataType == OUTPUT:
         SQL = "select OutputValueId, TargetValueId, PVValueId from SfcRecipeDataOutput where recipeDataId = %d" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         valueIds.append(record["OutputValueId"])
         valueIds.append(record["TargetValueId"])
         valueIds.append(record["PVValueId"])
-    elif recipeDataType == "Input":
+    elif recipeDataType == INPUT:
         SQL = "select TargetValueId, PVValueId from SfcRecipeDataInput where recipeDataId = %d" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         valueIds.append(record["TargetValueId"])
         valueIds.append(record["PVValueId"])
-    elif recipeDataType == "Array":
+    elif recipeDataType == ARRAY:
         SQL = "select ValueId from SfcRecipeDataArrayElement where recipeDataId = %d" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         for record in pds:
             valueIds.append(record["ValueId"])
+        SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %d" % (recipeDataId)
+        rows = system.db.runUpdateQuery(SQL, db)
+        print "Deleted %d rows from SfcRecipeDataArrayElement..." % (rows)
+    elif recipeDataType == MATRIX:
+        SQL = "select ValueId from SfcRecipeDataMatrixElement where recipeDataId = %d" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        for record in pds:
+            valueIds.append(record["ValueId"])
+        SQL = "delete from SfcRecipeDataMatrixElement where RecipeDataId = %d" % (recipeDataId)
+        rows = system.db.runUpdateQuery(SQL, db)
+        print "Deleted %d rows from SfcRecipeDataMatrixElement..." % (rows)
     
     # The recipe data tables all have cascade delete foreign keys so we just need to delete from the main table
     SQL = "delete from SfcRecipeData where RecipeDataId = %d" % (recipeDataId)

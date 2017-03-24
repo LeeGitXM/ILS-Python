@@ -16,6 +16,10 @@ def deleteRow(dataset, row):
 def deleteRows(dataset, rows):
     return dataset
 
+def getColumnHeaders():
+    headerList = []
+    return headerList
+
 def setValue(dataset, row, columnIndexOrName, val):
     return dataset
 
