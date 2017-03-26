@@ -215,13 +215,14 @@ def createTags(rootContainer):
                 elif className == "OPC-PKS-ACE-CONTROLLER":
                     modeItemId = ds.getValueAt(row, "mode-item-id")
                     permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
+                    processingCmdItemId = ds.getValueAt(row, "processing-cmd-item-id")
                     spItemId = ds.getValueAt(row, "write-target-item-id")
                     # For som ereason that I can't figure out, I couldn't use the column name for this one column...
                     windupItemId = ds.getValueAt(row, 12)
                     print "Output Disposability: ", windupItemId
 #                    windupItemId = ds.getValueAt(row, "output-disposability-item-id")
                     createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
-                                        serverName, scanClass, permissiveScanClass, outputNames)
+                                        serverName, scanClass, permissiveScanClass, outputNames, processingCmdItemId)
                     status = "Created"
                 else:
                     print "Undefined class: ", className
@@ -307,7 +308,7 @@ def createPKSController(parentPath, outputName, itemId, modeItemId, permissiveIt
             
 
 def createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
-                        serverName, scanClass, permissiveScanClass, names):
+                        serverName, scanClass, permissiveScanClass, names, processingCmdItemId):
     UDTType='Controllers/PKS ACE Controller'
 
     print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, scanClass, serverName)
@@ -317,7 +318,7 @@ def createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiv
                         attributes={"UDTParentType":UDTType}, 
                         parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives": permissiveScanClass,
                                 "spItemId":spItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
-                                "windupItemId":windupItemId,
+                                "windupItemId":windupItemId, "processingCommandItemId": processingCmdItemId,
                                 "alternateNames": names},
                         overrides={"op": {"Enabled":"false"}})
 
