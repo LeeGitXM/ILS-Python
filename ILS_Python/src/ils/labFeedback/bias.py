@@ -25,7 +25,7 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
     biasName = tagRoot[:len(tagRoot)]
     biasName = biasName[biasName.rfind('/') + 1:]
     
-    log.infof("Calculating an exponentially filtered bias for %s (%s)", biasName, tagRoot)
+    log.tracef("Calculating an exponentially filtered bias for %s (%s)", biasName, tagRoot)
     valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
     if not(valueOk):
         return
@@ -41,7 +41,7 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
 
     # Calculate the exponentially filtered bias
     biasValue = filterConstant * rawBias + (1.0 - filterConstant) * lastBiasValue
-    log.tracef("...calculated the new biased value <%f> from <%f> and <%f> using a filter constant of <%f>", biasValue, newValue, lastBiasValue, filterConstant)
+    log.infof("...calculated the new biased value <%f> from <%f> and <%f> using a filter constant of <%f> for %s", biasValue, newValue, lastBiasValue, filterConstant, biasName)
 
     system.tag.write(tagRoot + '/biasValue', biasValue)
 
@@ -53,8 +53,6 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
 
 
 def pidFilter(tagPath, previousValue, newValue, initialchange):
-    print "In pidFilter..."
-    
     newValue = newValue.value
     
     # Find tag provider and the root of the tag by stripping off LabData
@@ -64,10 +62,10 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
     # Strip off the path and get just the name of the UDT
     biasName = tagRoot[:len(tagRoot)]
     biasName = biasName[biasName.rfind('/') + 1:]
+    log.tracef("Calculating a PID bias for %s...", biasName)
     
     valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
     if not(valueOk):
-        print "The conditions are not OK"
         return
     
     proportionalGain = system.tag.read(tagRoot + '/proportionalGain').value
@@ -75,14 +73,14 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
     previousError = system.tag.read(tagRoot + '/previousError').value
     sampleTime = system.tag.read(tagRoot + '/sampleTime').value
     lastBiasValue = system.tag.read(tagRoot + '/biasValue').value
-    print "  Last Bias: ", lastBiasValue
+    log.tracef("  Last Bias: %s", str(lastBiasValue))
     
     if lastBiasValue == None:
-        log.error("Unable to calculate a bias value for %s because the bias has not been initialized." % (tagPath))
+        log.errorf("Unable to calculate a bias value for %s because the bias has not been initialized.", tagPath)
         return
     
     biasValue = proportionalGain * (newValue - previousError) + integralGain * sampleTime * newValue + lastBiasValue
-    print "Calculated the new biased value as: %f from %f and %f" % (biasValue, newValue, lastBiasValue)
+    log.infof("Calculated the new biased value as: %f from %f and %f", biasValue, newValue, lastBiasValue)
     
     system.tag.write(tagRoot + '/biasValue', biasValue)
     system.tag.write(tagRoot + '/previousError', newValue)
@@ -97,7 +95,6 @@ This was formerly the bias-update() methods for the root class bias-value.
 It basically makes sure that the conditions are OK to calculate a new bias.
 '''
 def validateConditions(tagRoot, labValue, biasName):
-    print "Tag Root: ", tagRoot
     historyProvider = getHistoryProvider()
     rateOfChangeLimit = system.tag.read(tagRoot + '/rateOfChangeLimit')
     if not (rateOfChangeLimit.quality.isGood()) or rateOfChangeLimit.value == None:
