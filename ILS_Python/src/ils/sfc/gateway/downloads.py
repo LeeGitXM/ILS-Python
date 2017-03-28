@@ -94,7 +94,7 @@ def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation,
             s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)
 
             if errorCountKey <> "" and errorCountLocation <> "":
-                print " *** INCREMENTING THE GLOBAL ERROR COUNTER *** "
+                print " *** INCREMENTING THE GLOBAL ERROR COUNTER FOR %s *** " % (config.key)
                 errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
                 s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
     

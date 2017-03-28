@@ -596,7 +596,12 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
     projectName=system.util.getProjectName()
     payload={"post": post, "database": db, "provider": tagProvider}
-    system.util.sendMessage(projectName, "recalc", payload, "G")
+
+    print "*******************************"
+    print "******** UNCOMMENT ME *********"
+    print "*******************************"
+    
+#    system.util.sendMessage(projectName, "recalc", payload, "G")
     return allApplicationsProcessed
 
 
@@ -844,6 +849,8 @@ def partialResetDiagram(finalDiagnosisIds, database):
             
             print "   ... Resetting the final diagnosis: %s  %s..." % (finalDiagnosisName, diagramUUID)
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
+            system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
+            system.ils.blt.diagram.propagateBlockState(diagramUUID, diagramUUID)
                         
             print "Fetching upstream blocks for diagram <%s> - final diagnosis <%s>..." % (str(diagramUUID), finalDiagnosisName)
 
@@ -855,6 +862,8 @@ def partialResetDiagram(finalDiagnosisIds, database):
                     UUID=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
+                    blockId=block.getIdString()
+                    parentUUID=block.getAttributes().get("parent")
 
                     # I'm not exactly sure why we choose to do a full reset on the logic filter block, but the 
                     # reason from G2 was to allow high-frequency data to flow through the diagrams, and possibly
@@ -865,8 +874,11 @@ def partialResetDiagram(finalDiagnosisIds, database):
                         system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
                     elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
                             "com.ils.block.TrendDetector"]:
-                        print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName,diagramUUID, UUID)
-                        system.ils.blt.diagram.setBlockState(diagramUUID, blockName, "UNKNOWN")
+                        print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName, parentUUID, UUID)
+
+                                                # Now set the state to UNKNOWN, then propagate
+                        system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
+                        system.ils.blt.diagram.propagateBlockState(parentUUID, UUID)
                         # We do NOT want to send a signal to the block to evaluate in order to get the signal 
                         # to propagate because the EVALUATE signal will cause the block to reevaluate the history
                         # buffer and reach the same conclusion that we just cleared.
@@ -878,8 +890,8 @@ def partialResetDiagram(finalDiagnosisIds, database):
                                 downstreamBlocks.append(tBlockName)
                 
                 print "The blocks between the observations and the final diagnosis that need to be reset are: ", downstreamBlocks
-                for blockName in downstreamBlocks:
-                    system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
+#                for blockName in downstreamBlocks:
+#                    system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
 

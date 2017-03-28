@@ -84,7 +84,7 @@ def getMonitoredTagPath(targetStepUUID, pvKey, tagProvider, db):
         elif outputType == "SETPOINT":
             attributePath = "/value"
         elif outputType == "OUTPUT":
-            attributePath = "/value"
+            attributePath = "/op/value"
         else:
             attributePath = "/value"
 

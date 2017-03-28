@@ -75,7 +75,8 @@ def activate(scopeContext, stepProperties, state):
             if download:
                 downloadRows.append(row)
             else:
-                ++numDisabledRows
+                print row.key, " is disabled"
+                numDisabledRows = numDisabledRows + 1
                 s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "", recipeDataScope)
         
         # do the timer logic, if there are rows that need timing
@@ -243,7 +244,9 @@ def activate(scopeContext, stepProperties, state):
             
             else:
                 # There are no timed writes - everything should be immediate
-                # Immediately after the timer starts running we need to calculate the absolute download time.            
+                # Immediately after the timer starts running we need to calculate the absolute download time. 
+                # Even when all of the rows are immediate, we will call the activate several times as we await confirmation of the writes.  To make sure that we only
+                # attempt to write values once, remove them from the list to download once they have been written.           
                 logger.info("The timer is not needed, performing immediate writes.")
                 elapsedMinutes = 0.0
                 immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
@@ -256,10 +259,13 @@ def activate(scopeContext, stepProperties, state):
 
                     logger.trace("   writing an immediate write for step %s" % (row.key))
                     writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName, recipeDataScope)
+                    immediateRows.remove(row)
 
                 writeComplete = True
+                stepScope[IMMEDIATE_ROWS]=immediateRows
+                              
                 logger.info("Write output block finished all of its work, which was purely immediate!")
-                        
+                
                 #Note: write confirmations are on a separate thread and will write the result
                 
         except:

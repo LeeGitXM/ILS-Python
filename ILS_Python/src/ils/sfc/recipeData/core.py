@@ -498,7 +498,7 @@ def setRecipeData(stepUUID, key, attribute, val, db):
             valueId = record[attrName]
             theAttribute = "%sValue" % (valueType)
     
-            if valueType == 'String' and val <> string.upper(str(val)):
+            if valueType == 'String':
                 SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
             else:
                 SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)

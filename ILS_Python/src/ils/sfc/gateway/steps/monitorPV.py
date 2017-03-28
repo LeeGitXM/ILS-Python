@@ -139,7 +139,7 @@ def activate(scopeContext, stepProperties, state):
                         configRow.targetValue = qv.value
                     elif targetType == RECIPE:
                         # This means that the value will be in some property of the recipe data
-                        configRow.targetValue = s88GetFromStep(targetStepUUID, targetKey, database)           
+                        configRow.targetValue = s88GetFromStep(targetStepUUID, configRow.targetNameIdOrValue, database)           
 
                     logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
 
@@ -193,7 +193,7 @@ def activate(scopeContext, stepProperties, state):
                 extendedDuration = timeLimitMin + maxPersistence # extra time allowed for persistence checks
                 
                 if monitorActiveCount > 0 and ((elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)):
-                    logger.trace("Starting a PV monitor pass...")
+                    logger.tracef("Starting a PV monitor pass, (elapsed minutes: %s) ...", str(elapsedMinutes))
            
                     monitorActiveCount = 0
                     persistencePending = False
@@ -287,14 +287,14 @@ def activate(scopeContext, stepProperties, state):
                                 
                         # check dead time - assume that immediate writes coincide with starting the timer.      
                         if configRow.download == IMMEDIATE:
-                            logger.tracef("Setting the reference time to the timer start time", timerStart)
-                            referenceTime = timerStart
+                            logger.tracef("Using the timer elapsed minutes (%s) to check if the dead time (%s) has been exceeded.", str(elapsedMinutes), str(configRow.deadTime) )
+                            deadTimeExceeded = elapsedMinutes > configRow.deadTime
                         else:
                             logger.tracef("Setting the reference time as the download time")
                             referenceTime = configRow.downloadTime
+                            deadTimeExceeded = (elapsedMinutes - referenceTime) > configRow.deadTime 
 
-                        logger.tracef("Checking if the dead time has been exceeded:: Elapsed Minutes: %f, referenceTime: %s, allowed dead time: %f", elapsedMinutes, str(referenceTime), configRow.deadTime)
-                        deadTimeExceeded = (elapsedMinutes - referenceTime) > configRow.deadTime 
+                        logger.tracef("Checking if the dead time has been exceeded: %s", str(deadTimeExceeded))
 
                         # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
                         # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
