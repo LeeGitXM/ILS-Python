@@ -960,7 +960,7 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
 # application.  This is called from the ACK button on the loud workspace.
 def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, db, provider):
     from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
-    print "... in %s performing Text Recommendation acknowledgement..." % (__name__)
+    print "... in %s performing Text Recommendation acknowledgement for diagnosis entry %s..." % (__name__, str(diagnosisEntryId))
     
     actionMessage="No Download"
     recommendationStatus="Acknowledged"
@@ -969,6 +969,10 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     
     SQL = "select FinalDiagnosisId from DtDiagnosisEntry where DiagnosisEntryId = %i" % (diagnosisEntryId)
     finalDiagnosisId = system.db.runScalarQuery(SQL, db=db) 
+    if finalDiagnosisId == None:
+        log.warnf("Unable to acknowledge a text recommendation because the Final Diagnosis could not be found for diagnosis entry <%s>", str(diagnosisEntryId))
+        return
+    
     finalDiagnosisIds=[finalDiagnosisId]
 
     print "Resetting: "
