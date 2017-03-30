@@ -452,7 +452,11 @@ def waitCallback(event):
         logbookMessage += constructNoDownloadLogbookMessage(post, ds, db)
         insertForPost(post, logbookMessage, db)
     
-        postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=WAIT_FOR_MORE_DATA, recommendationStatus=WAIT_FOR_MORE_DATA)
+        allApplicationsProcessed = postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=WAIT_FOR_MORE_DATA, recommendationStatus=WAIT_FOR_MORE_DATA)
+
+        # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
+        if allApplicationsProcessed:
+            system.nav.closeParentWindow(event)
 
 
 # This is called from the NO DOWNLOAD button on the set-point spreadsheet
@@ -670,12 +674,11 @@ def resetOutputs(quantOutputIds, actionMessage, log, database):
     log.info("Resetting QuantOutputIds: %s" % (str(quantOutputIds)))
     rows=0
     for quantOutputId in quantOutputIds:
-        SQL = "update DtQuantOutput " \
-            " set Active = 0 where QuantOutputId = %s" % (str(quantOutputId))
-        log.trace(SQL)
+        SQL = "update DtQuantOutput set Active = 0 where QuantOutputId = %s" % (str(quantOutputId))
+        log.info(SQL)
         cnt=system.db.runUpdateQuery(SQL, database)
         rows+=cnt
-    log.trace("Reset %i QuantOutputs..." % (rows))
+    log.info("Reset %i QuantOutputs..." % (rows))
 
 
 # Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
@@ -689,10 +692,10 @@ def resetRecommendations(quantOutputIds, actionMessage, log, database):
             " from DtRecommendationDefinition RD, DtQuantOutput QO"\
             " where RD.QuantOutputId = QO.QuantOutputId "\
             " and QO.QuantOutputId = %s)" % (str(quantOutputId))
-        log.trace(SQL)
+        log.info(SQL)
         cnt=system.db.runUpdateQuery(SQL, database)
         rows+=cnt
-    log.trace("Deleted %i recommendations..." % (rows))
+    log.info("Deleted %i recommendations..." % (rows))
 
 def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, database, provider):
     log.info("Resetting Final Diagnosis for application %s" % (applicationName))
@@ -709,17 +712,17 @@ def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, 
         
         performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider)
 
-        log.trace(SQL)
+        log.info(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         totalRows = totalRows + rows
         
-    log.trace("Updated %i records for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
+    log.info("Updated %i records for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
 
 
 def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider):
     import sys, traceback
-    log.info("Checking for special actions for final Diagnosis: %i (%s)" % (finalDiagnosisId, actionMessage))
-    SQL = "select PostProcessingCallback from DtFinalDiagnosis where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    log.info("Checking for special actions for final Diagnosis: %s (%s)" % (str(finalDiagnosisId), actionMessage))
+    SQL = "select PostProcessingCallback from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
     callback = system.db.runScalarQuery(SQL, database)
     log.info("The callback is <%s>" % (callback))
 
@@ -762,11 +765,11 @@ def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recom
         SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
             " where status = 'Active' and FinalDiagnosisId = %s " % (recommendationStatus, str(finalDiagnosisId))   
             
-        log.trace(SQL)
+        log.info(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         totalRows=totalRows + rows
         
-    log.trace("Updated %i diagnosis entries for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
+    log.info("Updated %i diagnosis entries for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
 
 # Reset the BLT diagram in response to a No-Download or Download.  This runs in the client in response to an operator action.
 def resetDiagram(finalDiagnosisIds, database):
@@ -830,6 +833,7 @@ def resetDiagram(finalDiagnosisIds, database):
 def partialResetDiagram(finalDiagnosisIds, database):
     log.info("   ... performing a *partial* reset of the BLT diagrams ...")
     
+    diagramUUIDs = []
     for finalDiagnosisId in finalDiagnosisIds:
         log.info("      ...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
@@ -840,12 +844,13 @@ def partialResetDiagram(finalDiagnosisIds, database):
         for record in pds:
             finalDiagnosisName=record["FinalDiagnosisName"]
             diagramUUID=record["DiagramUUID"]
+            
+            if diagramUUID not in diagramUUIDs:
+                diagramUUIDs.append(diagramUUID)
+                
             finalDiagnosisUUID=record["FinalDiagnosisUUID"]
             
             print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(finalDiagnosisUUID))
-            
-            print "Setting the watermark"
-            system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
             
             print "   ... Resetting the final diagnosis: %s  %s..." % (finalDiagnosisName, diagramUUID)
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
@@ -872,28 +877,41 @@ def partialResetDiagram(finalDiagnosisIds, database):
                     if blockClass == "com.ils.block.LogicFilter":
                         print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, UUID)
                         system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
-                    elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
-                            "com.ils.block.TrendDetector"]:
-                        print "   ... doing a partial reset of a %s named: %s  %s  %s..." % (blockClass, blockName, parentUUID, UUID)
-
-                                                # Now set the state to UNKNOWN, then propagate
+                    
+                    elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis", "com.ils.block.TrendDetector"]:
+                        # Set the state to UNKNOWN, then propagate
+                        print "   ... setting a %s named: %s to UNKNOWN (%s  %s)..." % (blockClass, blockName, parentUUID, UUID)
                         system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
                         system.ils.blt.diagram.propagateBlockState(parentUUID, UUID)
-                        # We do NOT want to send a signal to the block to evaluate in order to get the signal 
-                        # to propagate because the EVALUATE signal will cause the block to reevaluate the history
-                        # buffer and reach the same conclusion that we just cleared.
+ 
+                        if parentUUID not in diagramUUIDs:
+                            diagramUUIDs.append(parentUUID)
+
+                        '''
+                        We do NOT want to send a signal to the block to evaluate in order to get the signal 
+                        to propagate because the EVALUATE signal will cause the block to reevaluate the history
+                        buffer and reach the same conclusion that we just cleared.
+                        '''
                         
-                        tList=system.ils.blt.diagram.listBlocksDownstreamOf(diagramUUID, blockName)
-                        for tBlock in tList:
-                            tBlockName=tBlock.getName()
-                            if tBlockName not in downstreamBlocks and tBlockName != finalDiagnosisName:
-                                downstreamBlocks.append(tBlockName)
+#                        tList=system.ils.blt.diagram.listBlocksDownstreamOf(diagramUUID, blockName)
+#                        for tBlock in tList:
+#                            tBlockName=tBlock.getName()
+#                            if tBlockName not in downstreamBlocks and tBlockName != finalDiagnosisName:
+#                                downstreamBlocks.append(tBlockName)
                 
-                print "The blocks between the observations and the final diagnosis that need to be reset are: ", downstreamBlocks
+#                print "The blocks between the observations and the final diagnosis that need to be reset are: ", downstreamBlocks
 #                for blockName in downstreamBlocks:
 #                    system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
+    
+    '''
+    I'm not 100% sure how this worked in G2, do I put the watermark just on the diagram that has the final diagnosis or on all diagrams that have a block that 
+    we set to unknown.  The key is making sure that the watermark disappears when the next datapoint arrives.
+    '''
+    for diagramUUID in diagramUUIDs:
+        print "Setting the watermark on %s", diagramUUID
+        system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
 
 def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, newValue):
     # I'm not sure if this will work out, but it would be nice to validate the manual entry and provide some 
