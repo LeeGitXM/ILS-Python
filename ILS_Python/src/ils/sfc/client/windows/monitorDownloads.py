@@ -14,7 +14,9 @@ from ils.common.util import formatDateTime
 # GUI.  The Download GUI task really does no work - all it does is display information collected by the Write 
 # Output and PV monitoring tasks. 
  
-def internalFrameOpened(rootContainer):
+def internalFrameOpened(event):
+    rootContainer = event.source.rootContainer
+    window = event.source
     print "In monitorDownloads.internalFrameOpened()"
 
     database = getDatabaseClient()
@@ -34,7 +36,31 @@ def internalFrameOpened(rootContainer):
     rootContainer.title = title
 
     update(rootContainer)
+    setWindowSize(rootContainer, window)
 
+def setWindowSize(rootContainer, window):
+    print "Setting the size of the window ..."
+    table = rootContainer.getComponent("table")
+    ds = table.data
+    rows = ds.rowCount
+    
+    header = 75
+    footer = 45
+    rowHeight = 21
+    maxAdjustment = 1.5
+    
+    windowHeight = window.getHeight()
+    windowWidth = window.getWidth()
+    requiredHeight = header + footer + (rows * rowHeight)
+    print "The window Height is: %d, there are %d rows, the required height is: %d" % (windowHeight, rows, requiredHeight)
+    if requiredHeight > windowHeight * maxAdjustment:
+        system.gui.warningBox("The Download monitor window is too small to display all of the outputs!")
+        print "The download monitor is too small to display all of the rows to be monitored, but the required size is more than %f times larger than the window, which is too much of an adjstment"
+    elif requiredHeight > windowHeight:
+        print "Adjusting the window height to fit all rows."
+        window.setSize(int(windowWidth), int(requiredHeight))
+        
+        
 def update(rootContainer):
     print "In monitorDownloads.update()"
 
@@ -128,7 +154,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 
         rawTiming = recipeRecord["TIMING"]
         tagPath = recipeRecord["TAG"]
-        setpoint = recipeRecord["TARGETFLOATVALUE"]
+        setpoint = recipeRecord["OUTPUTFLOATVALUE"]
         downloadStatus = recipeRecord["DOWNLOADSTATUS"]
         pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
         pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
@@ -140,7 +166,9 @@ def initializeDatabaseTable(windowId, database, tagProvider):
         units = recipeRecord["UNITS"]
 #        guiUnits = tagValues[12].value
 
-        if stepTimestamp <> None:
+        if stepTimestamp == None or stepTimestamp == "None":
+            stepTimestamp = ""
+        else:
             stepTimestamp = system.db.dateFormat(stepTimestamp, "dd-MMM-yy h:mm:ss a")
         
         if rawTiming >=1000.0:
@@ -190,7 +218,6 @@ def updateDatabaseTable(windowId, database):
         recipeDataKey = record["RecipeDataKey"]
         
         recipeRecord = s88GetRecord(recipeDataStepUUID, recipeDataKey, database)
-        print "Fetched recipe record: ", recipeRecord
         
         downloadStatus = recipeRecord["DOWNLOADSTATUS"]
         pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
@@ -205,8 +232,10 @@ def updateDatabaseTable(windowId, database):
             formattedPV = "%.2f" % pvValue
         else:
             formattedPV = "%.2f*" % pvValue
-            
-        if stepTimestamp <> None:
+
+        if stepTimestamp == None or stepTimestamp == "None":
+            stepTimestamp = ""
+        else:
             stepTimestamp = system.db.dateFormat(stepTimestamp, "dd-MMM-yy h:mm:ss a")
 
         SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \

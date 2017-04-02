@@ -34,6 +34,7 @@ def activate(scopeContext, stepProperties, state):
     PERSISTENCE_PENDING = "persistencePending"
     INITIALIZED = "initialized"
     MAX_PERSISTENCE = "maxPersistence"
+    WATCH_ONLY = "watchOnly"
 
     complete = False 
 
@@ -68,7 +69,7 @@ def activate(scopeContext, stepProperties, state):
             handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, RESUME_TIMER, logger)
         else:
             if not initialized:
-                logger.trace("...initializing PV Monitor step %s ..." % (stepName))
+                logger.info("...initializing PV Monitor step %s ..." % (stepName))
                 stepScope[NUMBER_OF_TIMEOUTS] = 0
                 stepScope[TIMED_OUT] = False
                 stepScope[INITIALIZED] = True
@@ -80,25 +81,30 @@ def activate(scopeContext, stepProperties, state):
                 # initialize each input
                 maxPersistence = 0
                 monitorActiveCount = 0
+                watchOnly = True
+                
                 for configRow in config.rows:
                     logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
                     configRow.status = MONITORING
                     pvKey = configRow.pvKey
                     
+                    if configRow.strategy == MONITOR:
+                        watchOnly = False
+                    
                     # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
-                    # download GUI block.  It appears that the PV of a PV monitoring block is always INPUT recipe data.  The target of a PV monitoring  
+                    # download GUI block.  The target of a PV monitoring  
                     # block can be just about anything.  If the target is an OUTPUT - then write results there, if the target is anything else then store the 
                     # results in the INPUT.
                     targetType = configRow.targetType
                     if targetType == SETPOINT:
                         targetKey = configRow.targetNameIdOrValue
-                        s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_STATUS, PV_MONITORING, database)
-                        s88SetFromStep(targetStepUUID, targetKey + "." + SETPOINT_STATUS, "", database)
-                        s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_ACTIVE, True, database)
                         s88SetFromStep(targetStepUUID, targetKey + "." + PV_VALUE, "Null", database)
                     else:
                         targetKey = configRow.pvKey
 
+                    s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_STATUS, PV_MONITORING, database)
+                    s88SetFromStep(targetStepUUID, targetKey + "." + SETPOINT_STATUS, "", database)
+                    s88SetFromStep(targetStepUUID, targetKey + "." + PV_MONITOR_ACTIVE, True, database)
                     dataType = s88GetFromStep(targetStepUUID, targetKey + "." + RECIPE_DATA_TYPE, database)
                     configRow.isOutput = (dataType == 'Output')
 
@@ -127,7 +133,7 @@ def activate(scopeContext, stepProperties, state):
                         logger.tracef("...Tagpath: %s, Output Type: %s", tagPath, outputType)
                         
                         # I'm not sure why I need to put this into the configrow PAH 2/19/17
-                        configRow.targetValue = s88GetFromStep(targetStepUUID, targetKey + '.TargetValue', database)
+                        configRow.targetValue = s88GetFromStep(targetStepUUID, targetKey + '.OutputValue', database)
 #                        targetRd.set(TARGET_VALUE, configRow.targetValue)
                         
                     elif targetType == VALUE:
@@ -148,6 +154,8 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[MONITOR_ACTIVE_COUNT] = monitorActiveCount
                 stepScope[PERSISTENCE_PENDING] = False
                 stepScope[MAX_PERSISTENCE] = maxPersistence
+                stepScope[WATCH_ONLY] = watchOnly
+                print "Watch Only: ", str(watchOnly)
                 
                 # This will clear and/or set the timer if the block is configured to do so               
                 startTimer = getStepProperty(stepProperties, TIMER_SET)
@@ -170,11 +178,13 @@ def activate(scopeContext, stepProperties, state):
                     timeLimitMin = getStepProperty(stepProperties, VALUE) 
                 else:
                     durationKey = getStepProperty(stepProperties, KEY)
-                    timeLimitMin = s88Get(chartScope, stepScope, durationKey, durationLocation)
+                    timeLimitMin = s88Get(chartScope, stepScope, durationKey + ".value", durationLocation)
                     
                 logger.trace("   PV Monitor time limit strategy: %s - minutes: %s" % (durationStrategy, str(timeLimitMin)))
                     
                 config = stepScope[PV_MONITOR_CONFIG]
+                watchOnly = stepScope[WATCH_ONLY]
+                print "Watch Only: ", str(watchOnly)
             
                 # Monitor for the specified period, possibly extended by persistence time
                 timerStart=s88Get(chartScope, stepScope, timerKey + ".StartTime", timerLocation)
@@ -192,7 +202,7 @@ def activate(scopeContext, stepProperties, state):
                 
                 extendedDuration = timeLimitMin + maxPersistence # extra time allowed for persistence checks
                 
-                if monitorActiveCount > 0 and ((elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)):
+                if monitorActiveCount > 0 and ((elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)) or watchOnly:
                     logger.tracef("Starting a PV monitor pass, (elapsed minutes: %s) ...", str(elapsedMinutes))
            
                     monitorActiveCount = 0
@@ -248,8 +258,7 @@ def activate(scopeContext, stepProperties, state):
                             logger.trace('   skipping because this output is designated to wait for a download and it has not been downloaded')
                             continue
                        
-                        # if we're just reading for display purposes, we're done with this pvInput:
-
+                        # if we're just reading for display purposes, we're done with this row
                         if configRow.strategy != MONITOR:
                             logger.trace('   skipping because the strategy is NOT monitor!')
                             continue
@@ -328,7 +337,7 @@ def activate(scopeContext, stepProperties, state):
                     complete = True
                 
                 # If the maximum time has been exceeded then count how many items did not complete their monitoring, aka Timed-Out 
-                if (elapsedMinutes > timeLimitMin) or (persistencePending and elapsedMinutes > extendedDuration):
+                if ((elapsedMinutes > timeLimitMin) or (persistencePending and elapsedMinutes > extendedDuration)) and not(watchOnly):
                     logger.info("The PV monitor is finished because the max run time has been reached...")
                     complete = True
                     
@@ -356,5 +365,8 @@ def activate(scopeContext, stepProperties, state):
     finally:
         # do cleanup here
         pass
+    
+    if complete:
+        logger.info("...PV Monitoring step %s is done!" % (stepName))
         
     return complete

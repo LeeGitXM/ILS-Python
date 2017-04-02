@@ -21,6 +21,8 @@ def insert(queueKey, status, message, db = ''):
 
 # Expected status are Info, Warning, or Error
 def _insert(queueId, status, message, db = ''):
+    from ils.common.util import escapeSqlQuotes
+    message = escapeSqlQuotes(message)
     SQL = "select statusId from QueueMessageStatus where MessageStatus = '%s'" % (status)
     statusId = system.db.runScalarQuery(SQL, db)
     

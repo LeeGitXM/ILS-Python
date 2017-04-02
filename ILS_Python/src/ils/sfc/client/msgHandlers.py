@@ -145,8 +145,9 @@ def sfcShowQueue(payload):
     queueKey=payload['queueKey']
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
+    showOverride = payload.get("showOverride", False)
 
-    if not controlPanelOpen(controlPanelName) and (originator != system.security.getUsername()):
+    if not(controlPanelOpen(controlPanelName)) and (originator != system.security.getUsername()) and not(showOverride):
         print "The control panel is not open and the originator is not this user so do not show the window here!"
         return
 

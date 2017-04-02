@@ -169,9 +169,6 @@ def isString(value):
     '''check if the given value is a string'''
     return isinstance(value, str)
 
-def escapeSqlQuotes(string):
-    return string.replace("'", "''")
-
 def getChartStatus(runId):
     '''Get the status of a running chart. Returns None if the run is not found'''
     from system.sfc import getRunningCharts

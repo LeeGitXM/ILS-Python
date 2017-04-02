@@ -374,7 +374,7 @@ def validateValueType(valueType):
 # Get the string that will typically be displayed in the DCS Tag Id column of the download monitor
 def getDisplayName(provider, tagPath, valueType, displayAttribute):
     fullTagPath='[%s]%s' % (provider, tagPath)
-    log.trace("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s", fullTagPath, displayAttribute)
+    log.tracef("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s", fullTagPath, displayAttribute)
 
     # Check if the tag exists
     tagExists = system.tag.exists(fullTagPath)

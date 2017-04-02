@@ -16,6 +16,7 @@ def notify(project, message, payload, post, db):
         clientSessionIds = getPostClientIds(post, project)
         if len(clientSessionIds) > 0:
             logger.trace("Found %i clients logged in as %s!" % (len(clientSessionIds), post))
+            payload["showOverride"] = True
             for clientSessionId in clientSessionIds:
                 system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
         else:
@@ -23,12 +24,15 @@ def notify(project, message, payload, post, db):
             from ils.common.message.interface import getConsoleClientIdsForPost
             clientSessionIds = getConsoleClientIdsForPost(post, project, db)
             if len(clientSessionIds) > 0:
+                payload["showOverride"] = True
                 for clientSessionId in clientSessionIds:
                     logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
                     system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
             else:
                 logger.trace("Notifying every client because I could not find the post logged in")
+                payload["showOverride"] = False
                 system.util.sendMessage(project, message, payload, scope="C")
     else:
         logger.trace("Sending notification to every client because this is not a targeted alert")
+        payload["showOverride"] = False
         system.util.sendMessage(project, message, payload, scope="C")

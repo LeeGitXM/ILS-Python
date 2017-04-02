@@ -9,7 +9,7 @@ from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import getChartLogger
 from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
 from ils.sfc.common.constants import SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION, TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
-    START_TIMER, PAUSE_TIMER, RESUME_TIMER,  \
+    START_TIMER, PAUSE_TIMER, RESUME_TIMER, STEP_NAME, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED
 import system
 from java.util import Date, Calendar
@@ -38,6 +38,7 @@ def activate(scopeContext, stepProperties, state):
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
     recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
+    stepName = getStepProperty(stepProperties, STEP_NAME)
     
     errorCountKey = getStepProperty(stepProperties, SHARED_ERROR_COUNT_KEY)
     errorCountLocation = getStepProperty(stepProperties, SHARED_ERROR_COUNT_LOCATION)
@@ -59,7 +60,7 @@ def activate(scopeContext, stepProperties, state):
         handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, RESUME_TIMER, logger)
     elif not initialized:
         stepScope[INITIALIZED]=True
-        logger.info("Initializing a Write Output block")
+        logger.infof("Initializing Write Output block %s", stepName)
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
         config = getWriteOutputConfig(configJson)
         logger.trace("Block Configuration: %s" % (str(config)))
@@ -130,7 +131,6 @@ def activate(scopeContext, stepProperties, state):
             writeComplete = True
             writeConfirmComplete = True
         if timerNeeded  and getStepProperty(stepProperties, TIMER_SET):
-            print "The timer key is: <%s>" % (timerKey)
             handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, START_TIMER, logger)
 
     else:
@@ -247,7 +247,7 @@ def activate(scopeContext, stepProperties, state):
                 # Immediately after the timer starts running we need to calculate the absolute download time. 
                 # Even when all of the rows are immediate, we will call the activate several times as we await confirmation of the writes.  To make sure that we only
                 # attempt to write values once, remove them from the list to download once they have been written.           
-                logger.info("The timer is not needed, performing immediate writes.")
+                logger.trace("The timer is not needed, performing immediate writes.")
                 elapsedMinutes = 0.0
                 immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
                 absTiming = system.date.now()
@@ -264,7 +264,7 @@ def activate(scopeContext, stepProperties, state):
                 writeComplete = True
                 stepScope[IMMEDIATE_ROWS]=immediateRows
                               
-                logger.info("Write output block finished all of its work, which was purely immediate!")
+                logger.trace("Write output block finished all of its work, which was purely immediate!")
                 
                 #Note: write confirmations are on a separate thread and will write the result
                 
@@ -291,5 +291,7 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef("Found at least one output that still needs to be confirmed.")
         
     logger.trace("leaving writeOutput.activate(), writeComplete=%s, writeConfirmComplete=%s... " % (str(writeComplete), str(writeConfirmComplete)))    
-        
-    return writeComplete and writeConfirmComplete
+    if writeComplete and writeConfirmComplete:
+        logger.infof("Write output step %s is complete!", stepName)
+    
+    return 

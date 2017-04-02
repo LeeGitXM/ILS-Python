@@ -96,3 +96,6 @@ def calculateXFromEquationOfLine(y, m, b):
     x = (y - b) / m
     return x
 
+def escapeSqlQuotes(string):
+    return string.replace("'", "''")
+

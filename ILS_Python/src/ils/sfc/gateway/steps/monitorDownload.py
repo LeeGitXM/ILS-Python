@@ -11,7 +11,7 @@ from ils.sfc.recipeData.api import s88Set, s88GetTargetStepUUID
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID,\
     POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
-    TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, CLEAR_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME
+    TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, TIMER_SET, CLEAR_TIMER, START_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME
 from system.ils.sfc import getMonitorDownloadsConfig
 from ils.sfc.gateway.downloads import handleTimer
 from ils.sfc.gateway.util import sendMessageToClient, getStepProperty, handleUnexpectedGatewayError, getControlPanelId, registerWindowWithControlPanel, getTopChartRunId
@@ -29,9 +29,15 @@ def activate(scopeContext, stepProperties, state):
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
         timerStepUUID = s88GetTargetStepUUID(chartScope, stepScope, timerLocation)
+        
         clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
         if clearTimer:
             handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, CLEAR_TIMER, logger)
+            
+        # This will clear and/or set the timer if the block is configured to do so               
+        startTimer = getStepProperty(stepProperties, TIMER_SET)
+        if startTimer:
+            handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, START_TIMER, logger)
         
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         recipeDataStepUUID = s88GetTargetStepUUID(chartScope, stepScope, recipeLocation)
