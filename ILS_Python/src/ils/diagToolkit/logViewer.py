@@ -17,7 +17,7 @@ def update(rootContainer):
     SQL = "select LogId, Timestamp, ApplicationName, FamilyName, FamilyPriority, FinalDiagnosisName, FinalDiagnosisPriority, State, Active "\
         " from DtFinalDiagnosisLogView " \
         " where Timestamp > ? and Timestamp < ?" \
-        " order by LogId"
+        " order by LogId DESC"
 
 
 #    SQL = "select convert(varchar(50), Timestamp, 9), ApplicationName, FamilyName, FamilyPriority, FinalDiagnosisName, FinalDiagnosisPriority, Active "\

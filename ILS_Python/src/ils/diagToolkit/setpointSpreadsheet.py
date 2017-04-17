@@ -601,11 +601,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     projectName=system.util.getProjectName()
     payload={"post": post, "database": db, "provider": tagProvider}
 
-    print "*******************************"
-    print "******** UNCOMMENT ME *********"
-    print "*******************************"
-    
-#    system.util.sendMessage(projectName, "recalc", payload, "G")
+    system.util.sendMessage(projectName, "recalc", payload, "G")
     return allApplicationsProcessed
 
 
@@ -781,7 +777,7 @@ def resetDiagram(finalDiagnosisIds, database):
         log.info("...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
         SQL = "select FinalDiagnosisName, DiagramUUID, FinalDiagnosisUUID from DtFinalDiagnosis "\
-            "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
+            "where FinalDiagnosisId = %s and DiagramUUID != 'DIAGRAM_UUID'" % (str(finalDiagnosisId))
         pds = system.db.runQuery(SQL, database)
         
         for record in pds:

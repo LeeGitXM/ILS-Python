@@ -803,7 +803,6 @@ def loadUnitParameters(container):
         provider = getTagProvider()
         scanClass = "Default"
         
-        
         parameterName = unitParameter.get("name")
         
         # Replace underscores with hyphens
@@ -819,9 +818,11 @@ def loadUnitParameters(container):
             
             unit=connection.get("unit","")
             if unit == "":
+                sampleTimeTag="{[.]../%s/sampleTime}" % (sourceTag)
                 sourceTag="{[.]../%s/value}" % (sourceTag)
             else:
-                sourceTag="{[.]../%s/%s/value}" % (unit, sourceTag)        
+                sampleTimeTag="{[.]../%s/%s/sampleTime}" % (unit, sourceTag)
+                sourceTag="{[.]../%s/%s/value}" % (unit, sourceTag)
             connections = connections + 1
 
         # At Vistalon, the only things that were ever connected to a unit parameter was lab data,
@@ -856,7 +857,10 @@ def loadUnitParameters(container):
             else:
                 system.tag.addTag(parentPath=parentPath, name=parameterName, tagType="UDT_INST", 
                                   attributes={"UDTParentType":UDTType}, 
-                                  overrides={"rawValue":{"Expression":sourceTag}})
+                                  overrides={"rawValue":{"Expression":sourceTag},
+                                             "sampleTime":{"Expression":sampleTimeTag}
+                                             }
+                                  )
 
             system.tag.write(tagPath + "/numberOfPoints", numberOfPoints)
     #-------------------------------------------------------------

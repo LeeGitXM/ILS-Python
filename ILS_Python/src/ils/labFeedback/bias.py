@@ -8,87 +8,111 @@ allowed.
 '''
 
 import system
+from ils.common.cast import toBit
 log = system.util.getLogger("com.ils.labData.labFeedback")
 MESSAGE_QUEUE_KEY = "LABFEEDBACK"
 from ils.queue.message import insert as insertMessage
 from ils.constants.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.common.config import getHistoryProvider
+from ils.common.error import catch
 
 def exponentialFilter(tagPath, previousValue, newValue, initialchange): 
-    newValue = newValue.value
+    try:
+        newValue = newValue.value
+        
+        # Find tag provider and the root of the tag by stripping off LabData
+        tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
+        tagRoot=tagPath.rstrip('/labValue')
+        
+        # Strip off the path and get just the name of the UDT
+        biasName = tagRoot[:len(tagRoot)]
+        biasName = biasName[biasName.rfind('/') + 1:]
+        
+        updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
+        if not(updatePermitted):
+            log.tracef("Skipping lab bias exponential updates for %s because updates are not permitted.", biasName)
+            return
+        
+        log.tracef("Calculating an exponentially filtered bias for %s (%s)", biasName, tagRoot)
+        valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
+        if not(valueOk):
+            return
+        
+        sampleTime = system.tag.read(tagRoot + '/labSampleTime').value
+        filterConstant = system.tag.read(tagRoot + '/filterConstant').value
+        lastBiasValue = system.tag.read(tagRoot + '/biasValue').value
+        if lastBiasValue == None:
+            log.error("Unable to calculate a bias value for %s because the bias has not been initialized." % (tagPath))
+            return
     
-    # Find tag provider and the root of the tag by stripping off LabData
-    tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
-    tagRoot=tagPath.rstrip('/labValue') 
+        log.tracef("...the last Bias was %f", lastBiasValue)
     
-    # Strip off the path and get just the name of the UDT
-    biasName = tagRoot[:len(tagRoot)]
-    biasName = biasName[biasName.rfind('/') + 1:]
+        # Calculate the exponentially filtered bias
+        biasValue = filterConstant * rawBias + (1.0 - filterConstant) * lastBiasValue
+        log.infof("...calculated the new biased value <%f> from <%f> and <%f> using a filter constant of <%f> for %s", biasValue, newValue, lastBiasValue, filterConstant, biasName)
     
-    log.tracef("Calculating an exponentially filtered bias for %s (%s)", biasName, tagRoot)
-    valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
-    if not(valueOk):
-        return
+        system.tag.write(tagRoot + '/biasValue', biasValue)
     
-    sampleTime = system.tag.read(tagRoot + '/labSampleTime').value
-    filterConstant = system.tag.read(tagRoot + '/filterConstant').value
-    lastBiasValue = system.tag.read(tagRoot + '/biasValue').value
-    if lastBiasValue == None:
-        log.error("Unable to calculate a bias value for %s because the bias has not been initialized." % (tagPath))
-        return
+        # Write this nicely calculated value to either the DCS or the PHD historian
+        txt = writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
+        
+        msg = "%s %f that is the exponential filtered bias for %s" % (txt, biasValue, biasName)
+        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, msg)
+    except:
+        txt=catch("exponentialFilter", "Caught an error calculating an exponential filter bias for %s" % (tagPath))
+        log.error(txt)
+        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 
-    log.tracef("...the last Bias was %f", lastBiasValue)
-
-    # Calculate the exponentially filtered bias
-    biasValue = filterConstant * rawBias + (1.0 - filterConstant) * lastBiasValue
-    log.infof("...calculated the new biased value <%f> from <%f> and <%f> using a filter constant of <%f> for %s", biasValue, newValue, lastBiasValue, filterConstant, biasName)
-
-    system.tag.write(tagRoot + '/biasValue', biasValue)
-
-    # Write this nicely calculated value to either the DCS or the PHD historian
-    txt = writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
-    
-    msg = "%s %f that is the exponential filtered bias for %s" % (txt, biasValue, biasName)
-    insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, msg)
 
 
 def pidFilter(tagPath, previousValue, newValue, initialchange):
-    newValue = newValue.value
-    
-    # Find tag provider and the root of the tag by stripping off LabData
-    tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
-    tagRoot=tagPath.rstrip('/labValue') 
-    
-    # Strip off the path and get just the name of the UDT
-    biasName = tagRoot[:len(tagRoot)]
-    biasName = biasName[biasName.rfind('/') + 1:]
-    log.tracef("Calculating a PID bias for %s...", biasName)
-    
-    valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
-    if not(valueOk):
-        return
-    
-    proportionalGain = system.tag.read(tagRoot + '/proportionalGain').value
-    integralGain = system.tag.read(tagRoot + '/integralGain').value
-    previousError = system.tag.read(tagRoot + '/previousError').value
-    sampleTime = system.tag.read(tagRoot + '/sampleTime').value
-    lastBiasValue = system.tag.read(tagRoot + '/biasValue').value
-    log.tracef("  Last Bias: %s", str(lastBiasValue))
-    
-    if lastBiasValue == None:
-        log.errorf("Unable to calculate a bias value for %s because the bias has not been initialized.", tagPath)
-        return
-    
-    biasValue = proportionalGain * (newValue - previousError) + integralGain * sampleTime * newValue + lastBiasValue
-    log.infof("Calculated the new biased value as: %f from %f and %f", biasValue, newValue, lastBiasValue)
-    
-    system.tag.write(tagRoot + '/biasValue', biasValue)
-    system.tag.write(tagRoot + '/previousError', newValue)
-    
-    # Write this nicely calculated value to either the DCS or the PHD historian
-    txt = writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
-    msg = "%s %f that is the PID bias for %s" % (txt, biasValue, biasName)
-    insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, msg)
+    try:
+        newValue = newValue.value
+        
+        # Find tag provider and the root of the tag by stripping off LabData
+        tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
+        tagRoot=tagPath.rstrip('/labValue') 
+        
+        # Strip off the path and get just the name of the UDT
+        biasName = tagRoot[:len(tagRoot)]
+        biasName = biasName[biasName.rfind('/') + 1:]
+        
+        updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
+        if not(updatePermitted):
+            log.tracef("Skipping lab bias PID updates for %s because updates are not permitted.", biasName)
+            return
+        
+        log.tracef("Calculating a PID bias for %s...", biasName)
+        
+        valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
+        if not(valueOk):
+            return
+        
+        proportionalGain = system.tag.read(tagRoot + '/proportionalGain').value
+        integralGain = system.tag.read(tagRoot + '/integralGain').value
+        previousError = system.tag.read(tagRoot + '/previousError').value
+        sampleTime = system.tag.read(tagRoot + '/sampleTime').value
+        lastBiasValue = system.tag.read(tagRoot + '/biasValue').value
+        log.tracef("  Last Bias: %s", str(lastBiasValue))
+        
+        if lastBiasValue == None:
+            log.errorf("Unable to calculate a bias value for %s because the bias has not been initialized.", tagPath)
+            return
+        
+        biasValue = proportionalGain * (newValue - previousError) + integralGain * sampleTime * newValue + lastBiasValue
+        log.infof("Calculated the new biased value as: %f from %f and %f", biasValue, newValue, lastBiasValue)
+        
+        system.tag.write(tagRoot + '/biasValue', biasValue)
+        system.tag.write(tagRoot + '/previousError', newValue)
+        
+        # Write this nicely calculated value to either the DCS or the PHD historian
+        txt = writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
+        msg = "%s %f that is the PID bias for %s" % (txt, biasValue, biasName)
+        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, msg)
+    except:
+        txt=catch("pidFilter", "Caught an error calculating an PID filter bias for %s" % (tagPath))
+        log.error(txt)
+        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 
 '''
 This was formerly the bias-update() methods for the root class bias-value.
@@ -160,6 +184,12 @@ def validateConditions(tagRoot, labValue, biasName):
         modelValue = ds.getValueAt(0,1)
         log.tracef("The average value of the model <%s> from <%s> to <%s> was <%f>", modelTagPath, str(startDate), str(endDate), modelValue)
 
+    if modelValue == None:
+        msg = "Unable to process model value None for model tag <%s> for bias value %s." % (modelTagPath, biasName)
+        log.warn(msg)
+        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
+        return False, 0.0
+    
     '''
     Check if this bias should be multiplicative
     '''
@@ -248,3 +278,13 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
             txt = "Error writing bias value <%f> to <%s> for <%s>." % (biasValue, itemId, biasName)
         
     return txt
+
+
+def setUpdatePermitted(tagPath, updatePermitted):
+    log.infof("...setting the updatePermitted for %s to %s", tagPath, updatePermitted)
+    
+    updatePermittedBit = toBit(updatePermitted)
+    tagPath = tagPath + "/updatePermitted"
+    status = system.tag.write(tagPath, updatePermittedBit)
+    if status == 0:
+        log.errorf("Setting the updatePermitted of %s to %s failed", tagPath, str(updatePermitted))

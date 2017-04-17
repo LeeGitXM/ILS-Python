@@ -17,6 +17,7 @@ TC100_TagName='Sandbox/Diagnostic/Outputs/TC100'
 TC101_TagName='Sandbox/Diagnostic/Outputs/TC101'
 T100_TagName='Sandbox/Diagnostic/Outputs/T100'
 T101_TagName='Sandbox/Diagnostic/Outputs/T101'
+DELAY_BETWEEN_PROBLEMS=12
 
 def test00():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
@@ -70,7 +71,7 @@ def test03a():
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -85,7 +86,7 @@ def test03b():
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -100,9 +101,9 @@ def test03c():
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -117,9 +118,9 @@ def test03d():
     initLog()
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_1', 'TESTFD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
@@ -146,7 +147,7 @@ def test04():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
         
@@ -160,7 +161,7 @@ def test05():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -174,7 +175,7 @@ def test06():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
             
@@ -188,7 +189,7 @@ def test07():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -413,7 +414,7 @@ def test14b2():
     insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_1X')
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
@@ -451,7 +452,7 @@ def test15b():
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b')
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -465,7 +466,7 @@ def test15c():
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b')
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_4', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -503,7 +504,7 @@ def test15f():
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3c')
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
     
@@ -517,7 +518,7 @@ def test15g():
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3d')
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
-    time.sleep(2.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
@@ -605,7 +606,7 @@ def test18c():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
-    time.sleep(10.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
@@ -620,7 +621,7 @@ def test18d():
     insertApp1Families(appId,T1Id,T2Id,T3Id)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
-    time.sleep(10.0)
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 

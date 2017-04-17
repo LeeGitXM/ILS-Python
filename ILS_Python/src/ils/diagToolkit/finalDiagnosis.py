@@ -142,19 +142,64 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
-    log.info("Starting to manage diagnosis...")
-    notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=False, database=database, provider=provider)
-    log.info("...back from manage!")
+    requestToManage(applicationName, database, provider)
     
-    # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
-    # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
-    post=fetchPostForApplication(applicationName, database)
+def requestToManage(applicationName, database, provider):
+    SQL = "select count(*) from DtApplicationManageQueue where applicationName = '%s'" % (applicationName)
+    cnt = system.db.runScalarQuery(SQL, db=database)
+    if cnt > 0:
+        log.info("Updating the timestamp for an existing record in DtApplicationManageQueue...")
+        SQL = "update DtApplicationManageQueue set timestamp = getdate() where applicationName = '%s'" % (applicationName)
+        system.db.runUpdateQuery(SQL, database)
+    else:
+        log.info("Inserting a new record into DtApplicationManageQueue for %s..." % (applicationName))
+        SQL = "Insert into DtApplicationManageQueue (applicationName, provider, timestamp) values ('%s', '%s', getdate())" % (applicationName, provider)
+        system.db.runUpdateQuery(SQL, database)
+
+
+'''
+This was implemented to solve the problem where a single new piece of data causes a change to a number of problems nearly simultaneously.  Previously
+a management thread was launched for each of the FDs that changed state, all of which would lead to the exact same answer.  This is effectively a semaphore
+of sorts.
+'''
+def scanner(database):
+    log.info("Checking to see if there are applications to manage...")
+    projectName = system.util.getProjectName()
+    SQL = "select * from DtApplicationManageQueue"
+    pds = system.db.runQuery(SQL, database)
     
-    if activeOutputs > 0:
-        notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
-        
-    if postTextRecommendation:
-        notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
+    for record in pds:    
+        timestamp = record["Timestamp"]
+        secondsSince = system.date.secondsBetween(timestamp, system.date.now())
+        if secondsSince < 5:
+            log.info("There is an application to be managed, but it needs to age...")
+        else:
+            applicationName = record["ApplicationName"]
+            SQL = "delete from DtApplicationManageQueue where applicationName = '%s'" % (applicationName)
+            system.db.runUpdateQuery(SQL)
+            
+            provider = record["Provider"]
+            notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
+            log.info("...back from manage!")
+            
+            # This specifically handles the case where a FD that is not the highest priority clears which should not disturb the client.
+            if noChange:
+                log.info("Nothing has changed so don't notify the clients")
+                return
+
+            # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
+            # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
+            post=fetchPostForApplication(applicationName, database)
+            
+#            if activeOutputs > 0:
+            '''
+            Changed on 4/6/17 to notify even when there are no active outputs to fix problem where a FD cleared while the setpoint spreadsheet is open, but before it was
+            acted upon.
+            '''
+            notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
+                
+            if postTextRecommendation:
+                notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
 
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
@@ -188,13 +233,17 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
 #    SQL = "update DtDiagnosisEntry set Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
 #    logSQL.trace(SQL)
 #    rows = system.db.runUpdateQuery(SQL, database)
- #   log.info("...cleared %i diagnosis entries" % (rows))
+#   log.info("...cleared %i diagnosis entries" % (rows))
     
     # Set the state of the Final Diagnosis to InActive
     SQL = "update DtFinalDiagnosis set State = 0, Active = 0 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     logSQL.trace(SQL)
     rows = system.db.runUpdateQuery(SQL, database)
     log.info("...cleared %i final diagnosis" % (rows))
+    
+    requestToManage(applicationName, database, provider)
+'''
+    *** This was commented out when I implemented a seperate thread from a timer script for managing diagnosis ***
     
     log.info("Starting to manage as a result of a cleared Final Diagnosis...")
     notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=False, database=database, provider=provider)
@@ -209,14 +258,15 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
         notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
     else:
         notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
+'''
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def recalcMessageHandler(payload):
     post=payload["post"]
     project=system.util.getProjectName()
-    log.info("Handling recalc message for project: %s, post: %s" % (project, post))
-    print "Payload: ", payload
+    log.infof("Handling recalc message for project: %s, post: %s", project, post)
+    log.infof("Payload: %s", str(payload))
     database=payload["database"]
     provider=payload["provider"]
 
@@ -229,7 +279,7 @@ def recalcMessageHandler(payload):
         applicationName=record["ApplicationName"]
         
         # I'm not sure why the first arg isn't notificationText and why it iusn't passed to notify.
-        txt,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=True, database=database, provider=provider)
+        txt,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId, noChange=manage(applicationName, recalcRequested=True, database=database, provider=provider)
         totalActiveOutputs = totalActiveOutputs + activeOutputs
  
         if postTextRecommendation:
@@ -623,6 +673,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     postTextRecommendation = False
     explanation = ""
     diagnosisEntryId = -1
+    noChange = False
     
     # Fetch the list of final diagnosis that were most important the last time we managed
     oldList=fetchPreviousHighestPriorityDiagnosis(application, database)
@@ -633,12 +684,12 @@ def manage(application, recalcRequested=False, database="", provider=""):
     from ils.diagToolkit.common import fetchActiveDiagnosis
     pds = fetchActiveDiagnosis(application, database)
     
-    # If there are no active diagnosis then there is nothing to manage
+    # If there are no active diagnosis then there is nothing to manage, but that does not mean that there as not a change.  There may have been
+    # active FDs and now they have cleared which means we need to notify clients.
     if len(pds) == 0:
         log.info("Exiting the diagnosis manager because there are no active diagnosis for %s!" % (application))
         rescindActiveDiagnosis(application, database)
-        # TODO we may need to clear something
-        return "", numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId
+        return "", numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId, noChange
 
     log.info("The active diagnosis are: ")
     for record in pds:
@@ -667,7 +718,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
     
     if not(changed) and not(recalcRequested):
         log.info("There has been no change in the most important diagnosis, nothing new to manage, so exiting!")
-        return "", numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId
+        noChange = True
+        return "", numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId, noChange
 
     # There has been a change in what the most important diagnosis is so set the active flag
     if recalcRequested:
@@ -734,7 +786,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 # Not sure if I need to reset the quant outputs here...
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
                                      actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
-                return "Error", numSignificantRecommendations, False, explanation, diagnosisEntryId
+                return "Error", numSignificantRecommendations, False, explanation, diagnosisEntryId, noChange
     
             elif recommendationStatus == RECOMMENDATION_NONE_MADE:
                 log.warn("No recommendations were made")
@@ -742,7 +794,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_NONE_MADE, diagnosisEntryId)
                 logSQL.trace(SQL)
                 system.db.runUpdateQuery(SQL, database)
-                return "None Made", numSignificantRecommendations, False, explanation, diagnosisEntryId
+                return "None Made", numSignificantRecommendations, False, explanation, diagnosisEntryId, noChange
     
             quantOutputs = mergeRecommendations(quantOutputs, recommendations)
             print "-----------------"
@@ -774,7 +826,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                          quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
 
                 # I just added this - 5/9/16, this used to continue on.
-                return RECOMMENDATION_ERROR, 0, False, explanation, diagnosisEntryId
+                return RECOMMENDATION_ERROR, 0, False, explanation, diagnosisEntryId, noChange
          
             finalQuantOutputs.append(quantOutput)
 
@@ -810,7 +862,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     else:
         log.info("Finished managing recommendations - there are %i significant Quant Outputs (There are %i quantOutputs)" % (numSignificantRecommendations, len(finalQuantOutputs)))
     
-    return notificationText, numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId
+    return notificationText, numSignificantRecommendations, postTextRecommendation, explanation, diagnosisEntryId, noChange
 
 # Check that recommendation against the bounds configured for the output
 def checkBounds(applicationName, quantOutput, quantOutputName, database, provider):

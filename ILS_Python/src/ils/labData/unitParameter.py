@@ -10,8 +10,6 @@ from ils.labData.common import getDatabaseForTag
 
 log = LogUtil.getLogger("com.ils.labData.unitParameters")
 
-
-
 # The size of the buffer has changed.  We only need to worry about correcting from a large buffer to a small buffer
 def bufferSizeChanged(tagPath, currentValue, initialChange):
     log.info("The buffer size has changed for <%s> to <%s>" % (tagPath, str(currentValue)))
@@ -75,7 +73,6 @@ def valueChanged(tagPath, currentValue, initialChange):
         log.info("Inserted a new unit parameter <%s> with id <%i> into the TkUnitParameter" % (tagPathRoot, unitParameterId))
     
     # Read the buffer size and bufferindex from the tags
-    
     tags = [tagPathRoot + '/numberOfPoints', tagPathRoot + '/bufferIndex']
     vals=system.tag.readAll(tags)
 
@@ -89,18 +86,39 @@ def valueChanged(tagPath, currentValue, initialChange):
     if not( vals[1].quality.isGood() and bufferIndex != None ):
         log.error("The bufferIndex is bad or has the value None")
         return
+    
+    '''
+    If the rawValue and the sampleTime were updated simultaneously then this may be called twice.  So make sure that we didn't just add a 
+    value in the last couple of seconds.  Note: It wasn't a problem during testing, but I'm concerned that if we get the sample time value first 
+    and then the sample value comes in a couple of seconds later, then we will use the new time with the old value.
+    '''
+    bumpIndex = True
+    SQL = "select SampleTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
+    sampleTime = system.db.runScalarQuery(SQL, database)
+    if sampleTime <> None:
+        print "The last sample was collected at ", sampleTime
+        if system.date.secondsBetween(sampleTime, system.date.now()) < 10:
+            print "A lab value has recently processed - update the last value"
+            bumpIndex = False
+
+    # Increment the buffer index
+    if bumpIndex:
+        if bufferIndex >= numberOfPoints - 1:
+            bufferIndex = 0
+        else:
+            bufferIndex = bufferIndex + 1
 
     log.trace("Unit Parameter Id: %i - Number of points: %i - Buffer Index: %i" % (unitParameterId, numberOfPoints, bufferIndex))
     
     # Now put the new value into the buffer
-    SQL = "update TkUnitParameterBuffer set RawValue = %f "\
+    SQL = "update TkUnitParameterBuffer set RawValue = %f, sampleTime = getdate() "\
         " where UnitParameterId = %i and BufferIndex = %i" % (tagVal, unitParameterId, bufferIndex)
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     
     # If no rows were updated then it probably means that the buffer has not been filled yet, so insert a row
     if rows == 0:
-        SQL = "insert into TkUnitParameterBuffer (UnitParameterId, BufferIndex, RawValue) values (%i, %i, %f)" % (unitParameterId, bufferIndex, tagVal)
+        SQL = "insert into TkUnitParameterBuffer (UnitParameterId, BufferIndex, RawValue, SampleTime) values (%i, %i, %f, getdate())" % (unitParameterId, bufferIndex, tagVal)
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         if rows != 1:
@@ -111,12 +129,6 @@ def valueChanged(tagPath, currentValue, initialChange):
     log.trace(SQL)
     filteredValue = system.db.runScalarQuery(SQL, database)
     log.trace("The filtered value is: %f" % (filteredValue))
-    
-    # Increment the buffer index so it is ready for the next value
-    if bufferIndex >= numberOfPoints - 1:
-        bufferIndex = 0
-    else:
-        bufferIndex = bufferIndex + 1
     
     # Store the mean into the UnitParameter Final Value
     # These are writing to memory tags so they should be very fast

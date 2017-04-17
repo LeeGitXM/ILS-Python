@@ -7,7 +7,7 @@ Created on Jan 9, 2017
 import system, string, time
 import xml.etree.ElementTree as ET
 from ils.common.error import catch
-from ils.common.cast import toBit
+from ils.common.cast import toBit, isFloat
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
 from ils.common.config import getTagProvider
 log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
@@ -245,11 +245,21 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     
     valueType = recipeData.get("valueType","String")
     valueType = convertValueType(valueType)
-    valueTypeId = fetchValueTypeId(valueType, db)
-    val = recipeData.get("value", None)
-    if val == "NO-VALUE":
-        val = "NULL"
     
+    val = recipeData.get("value", None)
+    if val in ["NO-VALUE", "****"]:
+        val = "NULL"
+        
+    '''
+    Just because they said it was a float, doesn't mean it is a float!
+    If they said it was a float but I can't convert it to a float, then change the type to a string
+    '''
+    if valueType == "Float" and val <> "NULL":
+        if not(isFloat(val)):
+            valueType = "String"
+            log.warnf("  Overriding the datatype for key <%s> in step <%s> because the value <%s> could not be converted to a float", key, stepName, str(val))
+
+    valueTypeId = fetchValueTypeId(valueType, db)
     if valueType == "Float":
         SQL = "insert into SfcRecipeDataValue (FloatValue) values (%s)" % (str(val))
     elif valueType == "Integer":

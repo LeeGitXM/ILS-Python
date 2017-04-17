@@ -27,3 +27,11 @@ def tagHistoryDatasetToList(ds, idx):
     for row in range(ds.rowCount):
         aList.append(ds.getValueAt(row,idx))
     return aList
+
+def isFloat(val):
+    try:
+        isFloat = True
+        floatVal = float(val)
+    except:
+        isFloat = False
+    return isFloat

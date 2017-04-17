@@ -90,7 +90,7 @@ def run():
             
     #----------------------------------------------------
     # Fetch Quant Outputs
-    def logQuantOutputs(application, filename, db):
+    def logQuantOutputs(post, filename, db):
     
         SQL = "select QuantOutputName, TagPath, MostNegativeIncrement, MostPositiveIncrement, "\
             " MinimumIncrement, SetpointHighLimit, SetpointLowLimit, L.LookupName FeedbackMethod, "\
@@ -98,12 +98,14 @@ def run():
             " FeedbackOutput, FeedbackOutputManual, FeedbackOutputConditioned, "\
             " DisplayedRecommendation, ManualOverride, QO.Active, CurrentSetpoint,  "\
             " FinalSetpoint, DisplayedRecommendation"\
-            " from DtQuantOutput QO, lookup L, DtApplication A "\
+            " from DtQuantOutput QO, lookup L, DtApplication A, TkUnit U, TkPost P "\
             " where QO.FeedbackMethodId = L.LookupId "\
             " and L.LookupTypeCode = 'FeedbackMethod' "\
             " and A.ApplicationId = QO.ApplicationId "\
-            " and A.ApplicationName = '%s' "\
-            " order by QuantOutputName" % (application)
+            " and A.UnitId = U.UnitId "\
+            " and P.PostId = U.PostId "\
+            " and P.Post = '%s' "\
+            " order by QuantOutputName" % (post)
 
         pds = system.db.runQuery(SQL, db=db)
         logger.trace("   fetched %i  QuantOutputs..." % (len(pds)))
@@ -229,7 +231,7 @@ def run():
             
             logger.trace("...done! (application = %s)" % (applicationName))
             
-            time.sleep(10)
+            time.sleep(30)
             ds = system.dataset.setValue(ds, row, 'result', 'Analyzing')
             system.tag.write(tableTagPath, ds) 
             
@@ -240,7 +242,7 @@ def run():
             # Fetch the results from the database
             logger.trace("...fetching results... (filename=%s, db=%s)" % (outputFilename, db))
             logRecommendations(post, outputFilename, db)
-            logQuantOutputs(applicationName, outputFilename, db)
+            logQuantOutputs(post, outputFilename, db)
             logDiagnosis(post, outputFilename, db)
             logger.trace("...done fetching results!")
             time.sleep(1)
