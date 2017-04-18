@@ -23,9 +23,14 @@ def getAttribute(tagPath, attr):
 
 def getTagValue(tagPath):
     return ""
-    
+
+def queryTagCalculations():
+    ds=1
+    return ds
+
 def queryTagHistory():
-    pass
+    ds=1
+    return ds
 
 def read(tagPath):
     return 0.0

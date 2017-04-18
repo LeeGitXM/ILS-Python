@@ -33,6 +33,25 @@ def s88GetFromName(chartPath, stepName, keyAndAttribute, db):
     logger.tracef("...fetched %s", str(val))
     return val
 
+def s88GetKeysForNamedBlock(chartPath, stepName, recipeDataType, db):
+    logger.tracef("s88GetKeysForNamedBlock(): %s - %s", chartPath, stepName)
+    SQL = "select RecipeDataKey "\
+        "from SfcRecipeData RD, SfcStep STEP, SfcChart CHART, SfcRecipeDataType RDT "\
+        "where Chart.ChartPath = '%s' "\
+        "and Step.StepName = '%s' "\
+        "and STEP.ChartId = CHART.ChartId "\
+        "and RDT.RecipeDataType = '%s' "\
+        "and RDT.RecipeDataTypeId = RD.RecipeDataTypeId "\
+        "and STEP.StepId = RD.StepId" % (chartPath, stepName, recipeDataType)      
+    pds = system.db.runQuery(SQL, db)
+    logger.tracef("...fetched %d rows", len(pds))
+    keys=[]
+    for record in pds:
+        keys.append(record["RecipeDataKey"])
+    logger.tracef("...fetched %s", str(keys))
+    return keys
+
+
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetRecord(stepUUID, key, db):
     logger.tracef("s88GetRecord(): %s", key)
@@ -67,7 +86,6 @@ def s88SetFromName(chartPath, stepName, keyAndAttribute, value, db):
     key,attribute = splitKey(keyAndAttribute)
     stepUUID = getTargetStepFromName(chartPath, stepName, db)
     setRecipeData(stepUUID, key, attribute, value, db)
-    
 
 '''
 These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that

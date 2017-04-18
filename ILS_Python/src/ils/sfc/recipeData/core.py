@@ -432,12 +432,21 @@ def setRecipeData(stepUUID, key, attribute, val, db):
             valueType = record['ValueType']
             valueId = record['ValueId']
             if valueType == "String":
-                SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %s" % (valueType, val, valueId)
+                if val == None:
+                    SQL = "update SfcRecipeDataValue set %sValue = NULL where ValueId = %s" % (valueType, valueId)
+                else:
+                    SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %s" % (valueType, val, valueId)
             elif valueType == "Boolean":
-                bitVal = toBit(val)
-                SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %s" % (valueType, str(bitVal), valueId)
+                if val == None:
+                    SQL = "update SfcRecipeDataValue set %sValue = NULL where ValueId = %s" % (valueType, valueId)
+                else:
+                    bitVal = toBit(val)
+                    SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %s" % (valueType, str(bitVal), valueId)
             else:
-                SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %s" % (valueType, str(val), valueId)
+                if val == None:
+                    SQL = "update SfcRecipeDataValue set %sValue = NULL where ValueId = %s" % (valueType, valueId)
+                else:
+                    SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %s" % (valueType, str(val), valueId)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d simple value recipe data records', rows)
             
