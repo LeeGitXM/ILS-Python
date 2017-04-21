@@ -96,9 +96,9 @@ def valueChanged(tagPath, currentValue, initialChange):
     SQL = "select SampleTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
     sampleTime = system.db.runScalarQuery(SQL, database)
     if sampleTime <> None:
-        print "The last sample was collected at ", sampleTime
-        if system.date.secondsBetween(sampleTime, system.date.now()) < 10:
-            print "A lab value has recently processed - update the last value"
+        log.tracef("The last sample was collected at %s", str(sampleTime))
+        if system.date.secondsBetween(sampleTime, system.date.now()) < 10.0:
+            log.tracef("A lab value has recently processed - update the last value")
             bumpIndex = False
 
     # Increment the buffer index
