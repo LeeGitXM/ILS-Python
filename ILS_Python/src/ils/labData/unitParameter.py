@@ -97,7 +97,8 @@ def valueChanged(tagPath, currentValue, initialChange):
     sampleTime = system.db.runScalarQuery(SQL, database)
     if sampleTime <> None:
         log.tracef("The last sample was collected at %s", str(sampleTime))
-        if system.date.secondsBetween(sampleTime, system.date.now()) < 10.0:
+        syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
+        if system.date.secondsBetween(sampleTime, system.date.now()) < syncSeconds:
             log.tracef("A lab value has recently processed - update the last value")
             bumpIndex = False
 
