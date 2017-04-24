@@ -47,6 +47,7 @@ def createTags(tagProvider):
     data.append([path, "itemIdPrefix", "String", ""])
     data.append([path, "diagnosticToolkitWriteEnabled", "Boolean", "True"])
     data.append([path, "downloadConfirmationEnabled", "Boolean", "False"])
+    data.append([path, "diagnosticAgeInterval", "Int8", "5"])
           
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

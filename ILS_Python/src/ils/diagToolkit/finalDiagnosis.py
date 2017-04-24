@@ -167,16 +167,18 @@ def scanner(database):
     projectName = system.util.getProjectName()
     SQL = "select * from DtApplicationManageQueue"
     pds = system.db.runQuery(SQL, database)
+    ageInterval = system.tag.read("Configuration/DiagnosticToolkit/diagnosticAgeInterval").value
+    print "The configurable age interval is: ", ageInterval
     
     for record in pds:    
         timestamp = record["Timestamp"]
         secondsSince = system.date.secondsBetween(timestamp, system.date.now())
-        if secondsSince < 5:
+        if secondsSince < ageInterval:
             log.info("There is an application to be managed, but it needs to age...")
         else:
             applicationName = record["ApplicationName"]
             SQL = "delete from DtApplicationManageQueue where applicationName = '%s'" % (applicationName)
-            system.db.runUpdateQuery(SQL)
+            system.db.runUpdateQuery(SQL, database)
             
             provider = record["Provider"]
             notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)

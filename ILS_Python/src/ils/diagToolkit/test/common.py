@@ -29,6 +29,7 @@ def run():
     #-------------------------------------------
     def initializeDatabase(db):
         #TODO Do something smarter about DtRecommendationDefinition
+        rows = -99
         logger.trace("Initializing the database...")
         for SQL in [
             "delete from DtFinalDiagnosisLog",\
@@ -36,15 +37,17 @@ def run():
             "delete from QueueDetail", \
             "delete from DtDiagnosisEntry", \
             "delete from DtRecommendationDefinition where FinalDiagnosisId in (select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%')", \
-            "delete from DtQuantOutput where QuantOutputName like 'TEST%'",\
+            "delete from DtQuantOutput where QuantOutputName = 'TESTQ1'", \
+            "delete from DtQuantOutput where QuantOutputName = 'TESTQ2'", \
+            "delete from DtQuantOutput where QuantOutputName = 'TESTQ3'", \
             "delete from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%'", \
             "delete from DtFamily where FamilyName like 'TEST%'", \
             "delete from DtApplication where ApplicationName like 'TEST%'"
             ]:
 
-            print "   ", SQL
+            logger.tracef( "   %s", SQL)
             rows=system.db.runPrepUpdate(SQL, db=db)
-            print "   ...deleted %d rows" % rows
+            logger.tracef("   ...deleted %d rows", rows)
         
         logger.trace("...done initializing the database")
         
@@ -252,7 +255,7 @@ def run():
             logger.info("Test: %s" % (functionName))
             ds=compareResults(outputFilename, goldFilename, ds, row)
             time.sleep(2)
-            
+
         
     # If we get all of the way through, and there is nothing left to run, then stop the timer.
     logger.trace("...totally done!")
