@@ -23,6 +23,7 @@ BOTTOM = "bottom"
 
 # Step Properties
 ACK_REQUIRED = "ackRequired"
+ACTIVATION_CALLBACK = "activationCallback"
 ACTUAL_TIMING = "actualTiming"
 ACTUAL_DATETIME = "actualDateTime"
 ATTRIBUTE = "attribute"

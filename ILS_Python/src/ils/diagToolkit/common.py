@@ -67,8 +67,16 @@ def insertApplicationQueueMessage(applicationName, message, status="info", db=""
     
 # Check if the timestamp of the tag is less than a certain tolerance older then theTime, or the current time if theTime 
 # is omitted.  This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
-def checkFreshness(tagPath, theTime="now", tolerance=5, recheckInterval=1.0, timeout=10):
+def checkFreshness(tagPath, theTime="now", provider="XOM", tolerance=-1, recheckInterval=1.0, timeout=-1.0):
     log = system.util.getLogger("com.ils.diagToolkit")
+    
+    if tolerance < 0.0:
+        print "Using the default freshness tolerance"
+        tolerance = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessToleranceSeconds" % (provider)).value
+    if timeout < 0.0:
+        print "Using the default freshness timeout"
+        timeout = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessTimeoutSeconds" % (provider)).value
+
     startTime = Date().getTime()
     isFresh = False
     log.trace("Checking if %s is fresh..." % (tagPath))

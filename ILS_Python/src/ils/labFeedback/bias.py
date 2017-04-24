@@ -162,7 +162,7 @@ def validateConditions(tagRoot, labValue, biasName):
     
     # Now we have all of the parameters we need to query the model value.  We either get the model value at the time of the sample or get the 
     # average model value during a time window centered around the sample time.
-    modelTagPath="%s/Model" % (tagRoot)
+    modelTagPath="%s/ModelValue" % (tagRoot)
     if averageWindow == 0:      
         ds = system.tag.queryTagHistory(paths=[modelTagPath], startDate=sampleTime, rangeMinutes=1, aggregationMode="SimpleAverage", returnSize=1)
         if ds.rowCount == 0:
