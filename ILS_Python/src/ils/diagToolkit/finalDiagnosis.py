@@ -21,7 +21,7 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
 def notifyClients(project, post, clientId=-1, notificationText="", notificationMode="loud", numOutputs=0, database=""):
-    log.info("Notifying %s-%s client to open/update the setpoint spreadsheet, numOutputs: <%s>..." % (project, post, str(numOutputs)))
+    log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, mode: %s..." % (project, post, str(clientId), str(numOutputs), notificationMode))
     messageHandler="consoleManager"
     payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId, 'notificationMode': notificationMode}
     notifier(project, post, messageHandler, payload, database)
@@ -168,7 +168,6 @@ def scanner(database):
     SQL = "select * from DtApplicationManageQueue"
     pds = system.db.runQuery(SQL, database)
     ageInterval = system.tag.read("Configuration/DiagnosticToolkit/diagnosticAgeInterval").value
-    print "The configurable age interval is: ", ageInterval
     
     for record in pds:    
         timestamp = record["Timestamp"]
@@ -266,21 +265,21 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def recalcMessageHandler(payload):
     post=payload["post"]
+    applications=payload["applications"]
     project=system.util.getProjectName()
-    log.infof("Handling recalc message for project: %s, post: %s", project, post)
     log.infof("Payload: %s", str(payload))
     database=payload["database"]
     provider=payload["provider"]
 
-    from ils.diagToolkit.common import fetchApplicationsForPost
-    pds=fetchApplicationsForPost(post, database)
+#    from ils.diagToolkit.common import fetchApplicationsForPost
+#    pds=fetchApplicationsForPost(post, database)
 
 #    needToNotifyClients=False
     totalActiveOutputs=0
-    for record in pds:
-        applicationName=record["ApplicationName"]
+    for applicationName in applications:
+        log.infof("Handling recalc message for project: %s, post: %s, application: %s", project, post, applicationName)
         
-        # I'm not sure why the first arg isn't notificationText and why it iusn't passed to notify.
+        # I'm not sure why the first arg isn't notificationText and why it isn't passed to notify.
         txt,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId, noChange=manage(applicationName, recalcRequested=True, database=database, provider=provider)
         totalActiveOutputs = totalActiveOutputs + activeOutputs
  

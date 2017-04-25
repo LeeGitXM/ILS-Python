@@ -344,20 +344,8 @@ def recalcCallback(event):
     database=system.tag.read("[Client]Database").value
     tagProvider=system.tag.read("[Client]Tag Provider").value
     
-    print "Sending a RECALC message to the gateway for all applications for post: %s (database: %s)" % (post, database)
-    projectName=system.util.getProjectName()
-    payload={"post": post, "database": database, "provider": tagProvider}
-    system.util.sendMessage(projectName, "recalc", payload, "G")  
 
 
-# This is called from the Recalc Refresh Timer on the setpoint spreadsheet.  It runs every 10 seconds or so.
-# If it fins any Final Diagnosis on the spreadsheet it will recalculate all active FDs.  It is possibl that multipme FDs
-# are active, I don't think I can do any harm by recalculating too often.  In reality, most problems all have the same 
-# refresh time anyway.
-def recalcTimer(event):
-    rootContainer = event.source.parent
-    print "Checking the recalculation timer..." 
-    
     # Don't do a recalc if there is a download in progress
     if rootContainer.downloadActive:
         return
@@ -371,12 +359,8 @@ def recalcTimer(event):
         return
     
     ds=repeater.templateParams
-        
-    applicationActive=False
-    application=""
-    finalDiagnosisIds=[]
-    quantOutputIds=[]
-    
+
+    applications = []
     for row in range(ds.rowCount):
         rowType=ds.getValueAt(row, "type")
 
@@ -384,8 +368,86 @@ def recalcTimer(event):
             command=ds.getValueAt(row, "command")
 
             if string.upper(command) == 'ACTIVE':
-                applicationActive=True
                 application=ds.getValueAt(row, "application")
+                if application not in applications:
+                    applications.append(application)
+
+    print "Sending a RECALC message to the gateway for post: %s, applications: %s (database: %s)" % (post, str(applications), database)
+    projectName=system.util.getProjectName()
+    payload={"post": post, "database": database, "provider": tagProvider, "applications": applications}
+    print "The payload is: ", payload
+    system.util.sendMessage(projectName, "recalc", payload, "G")  
+
+
+# This is called from the Recalc Refresh Timer on the setpoint spreadsheet.  It runs every 10 seconds or so.
+# If it finds any Final Diagnosis on the spreadsheet it will recalculate all active FDs.  It is possible that multiple FDs
+# are active, I don't think I can do any harm by recalculating too often.  In reality, most problems all have the same 
+# refresh time anyway.
+def recalcTimer(event):
+    rootContainer = event.source.parent
+    print "Checking the recalculation timer..." 
+    
+    #--------------------------------------------------------
+    def checkRecalcTime(projectName, applicationName, finalDiagnosisIds):
+        
+        print "Checking recalculate application: %s, FDs: %s" % (applicationName, str(finalDiagnosisIds))
+
+        recalculateFlag = False
+        for finalDiagnosisId in finalDiagnosisIds:
+            SQL = "select LastRecommendationTime, RefreshRate from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) == 1:
+                record = pds[0]
+            else:
+                raise ValueError, "Fetched %d records when exactly one was expected" % (len(pds))
+    
+            lastRecommendationTime = record["LastRecommendationTime"]
+            refreshRate = record["RefreshRate"]
+            print "    Final Diagnosis Id: %s, last Recomendation time: %s, refresh rate: %s" % (str(finalDiagnosisId), str(lastRecommendationTime), str(refreshRate))
+            secondsSinceLastCalc = system.date.secondsBetween(lastRecommendationTime, system.date.now())
+            print "    The seconds since last recalc is: ", secondsSinceLastCalc
+            if secondsSinceLastCalc > refreshRate:
+                print "*** It is time to recalc ***"
+                recalculateFlag = True
+    
+        return recalculateFlag
+        
+    #--------------------------------------------------------
+    
+    # Don't do a recalc if there is a download in progress
+    if rootContainer.downloadActive:
+        return
+
+    db=getDatabaseClient()
+    projectName=system.util.getProjectName()
+    repeater=rootContainer.getComponent("Template Repeater")
+    
+    activeApplication = isThereAnActiveApplication(repeater)
+    if not(activeApplication):
+        return
+    
+    ds=repeater.templateParams
+
+    finalDiagnosisIds=[]
+    quantOutputIds=[]
+    applicationName = ""
+    applications = []
+    applicationActive = False
+    
+    for row in range(ds.rowCount):
+        rowType=ds.getValueAt(row, "type")
+
+        if string.upper(rowType) == "APP":
+            if len(finalDiagnosisIds) > 0:
+                recalc = checkRecalcTime(projectName, applicationName, finalDiagnosisIds)
+                if recalc:
+                    applications.append(applicationName)
+            
+            command=ds.getValueAt(row, "command")
+
+            if string.upper(command) == 'ACTIVE':
+                applicationActive=True
+                applicationName=ds.getValueAt(row, "application")
             else:
                 applicationActive=False
 
@@ -396,41 +458,25 @@ def recalcTimer(event):
                     quantOutputIds.append(quantOutputId)
                     
                     from ils.diagToolkit.common import fetchActiveFinalDiagnosisForAnOutput
-                    pds=fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, db)
+                    pds=fetchActiveFinalDiagnosisForAnOutput(applicationName, quantOutputId, db)
                     for rec in pds:
                         if rec["FinalDiagnosisId"] not in finalDiagnosisIds:
                             finalDiagnosisIds.append(rec["FinalDiagnosisId"])
 
-    print "The active final diagnosis ids are: "
-    recalculateFlag = False
-    for finalDiagnosisId in finalDiagnosisIds:
-        print "   ", finalDiagnosisId
-        SQL = "select LastRecommendationTime, RefreshRate from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
-        pds = system.db.runQuery(SQL, db)
-        if len(pds) == 1:
-            record = pds[0]
-        else:
-            raise ValueError, "Fetched %d records when exactly one was expected" % (len(pds))
+    if len(finalDiagnosisIds) > 0:
+        recalc = checkRecalcTime(projectName, applicationName, finalDiagnosisIds)
+        if recalc:
+            applications.append(applicationName)
 
-        lastRecommendationTime = record["LastRecommendationTime"]
-        refreshRate = record["RefreshRate"]
-        print "       ", lastRecommendationTime, refreshRate
-        secondsSinceLastCalc = system.date.secondsBetween(lastRecommendationTime, system.date.now())
-        print "The seconds since last recalc is: ", secondsSinceLastCalc
-        if secondsSinceLastCalc > refreshRate:
-            print "It is time to recalc"
-            recalculateFlag = True
-
-    
-    if recalculateFlag:
+    # If any application needs recalculating send a message to the gateway and post the recalculating banner on the setpoint spreadsheet            
+    if len(applications):
         rootContainer.recalculateFlag=True
         post=rootContainer.post
         tagProvider=system.tag.read("[Client]Tag Provider").value
-        
-        print "Sending a RECALC message to the gateway for all applications for post: %s (database: %s)" % (post, db)
-        projectName=system.util.getProjectName()
-        payload={"post": post, "database": db, "provider": tagProvider}
+        payload={"post": post, "database": db, "provider": tagProvider, "applications": [applicationName]}
+        print "Sending a RECALC message to the gateway to manage applications: %s (database: %s)" % (str(payload), db)
         system.util.sendMessage(projectName, "recalc", payload, "G")  
+    
     
 # This is called from the WAIT button on the set-point spreadsheet
 def waitCallback(event):
