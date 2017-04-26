@@ -315,7 +315,7 @@ def dataCellEdited(table, rowIndex, colName, newValue):
 
 # Add a row to the limit table
 def insertLimitRow(event):
-    rootContainer = event.source.parent.parent
+    rootContainer = event.source.parent.parent.parent
     txId = rootContainer.txId
     valueId = rootContainer.selectedValueId
 
@@ -341,7 +341,7 @@ def insertLimitRow(event):
 
 # Delete the selected row in the limit table
 def removeLimitRow(event):
-    rootContainer = event.source.parent.parent
+    rootContainer = event.source.parent.parent.parent
     txId = rootContainer.txId
     table = rootContainer.getComponent("Lab Limit Table")
     ds = table.data
