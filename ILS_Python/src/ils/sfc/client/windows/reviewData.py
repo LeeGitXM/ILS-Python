@@ -24,28 +24,30 @@ def internalFrameOpened(rootContainer):
     print "Show Advice: ", showAdvice
     
     if showAdvice:
-        columnWidths = {"prompt": 150, "advice": 250, "value": 130, "units": 60}
+        columnWidths = {"prompt": 215, "advice": 215, "value": 100, "units": 60}
     else:
-        columnWidths = {"prompt": 400, "advice": 0, "value": 130, "units": 60}
+        columnWidths = {"prompt": 430, "advice": 0, "value": 100, "units": 60}
     
-    
+    print "Populating the primary table..."
     SQL = "select prompt, advice, value, units from SfcReviewDataTable where windowId = '%s' and isPrimary = 1 order by rowNum" % (windowId)
     pds = system.db.runQuery(SQL, database)
     table = rootContainer.getComponent("Primary Table")
     setAdviceVisibiity(table, showAdvice, columnWidths)
     table.data = pds
     
+    print "Populating the secondary table..."
     SQL = "select prompt, advice, value, units from SfcReviewDataTable where windowId = '%s' and isPrimary = 0 order by rowNum" % (windowId)
     pds = system.db.runQuery(SQL, database)
     table = rootContainer.getComponent("Secondary Table")
     setAdviceVisibiity(table, showAdvice, columnWidths)
     table.data = pds
-    
+
     if len(pds) > 0:
         rootContainer.hasSecondary = True
     else:
         rootContainer.hasSecondary = False
 
+    print "...finished"
  
 def okActionPerformed(event):
     actionPerformed(event, "OK")

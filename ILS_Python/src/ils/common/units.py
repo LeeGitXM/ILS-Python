@@ -166,6 +166,7 @@ class Unit(object):
     @staticmethod
     def lazyInitialize(database):
         if len(Unit.unitsByName.keys()) == 0:
+            print "Initializing the units object"
             Unit.readFromDb(database)
             
     @staticmethod
@@ -286,7 +287,9 @@ def parseUnitFile(unitfile):
     
     return unitsByName
     
-def convert(fromUnitName, toUnitName, value):
+# If this is run from a client or the designer, then we probably don't need a db string
+def convert(fromUnitName, toUnitName, value, db=""):
+    lazyInitialize(db)
     return Unit.convert(fromUnitName, toUnitName, value)
 
 def lazyInitialize(database):

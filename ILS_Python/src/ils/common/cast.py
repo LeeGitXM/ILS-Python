@@ -37,6 +37,13 @@ def isFloat(val):
         isFloat = False
     return isFloat
 
+def isInteger(value):
+    try:
+        int(value)
+        return True
+    except:
+        return False
+
 '''
 I think this is a general purpose routine to convert a json string that looks like a dictionary to an actual dictionary.
 It is particularly useful for the SFC environment where we are going back and forth between Java and Python.  

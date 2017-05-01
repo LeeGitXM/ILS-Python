@@ -99,3 +99,11 @@ def calculateXFromEquationOfLine(y, m, b):
 def escapeSqlQuotes(string):
     return string.replace("'", "''")
 
+def substituteProvider(tagPath, provider):
+    '''alter the given tag path to reflect the supplied provider'''
+    
+    rbIndex = tagPath.find(']')
+    if rbIndex >= 0:
+        return '[' + provider + ']' + tagPath[rbIndex+1:len(tagPath)]
+    else:
+        return '[' + provider + ']' + tagPath

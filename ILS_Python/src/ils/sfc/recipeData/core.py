@@ -5,7 +5,8 @@ Created on Nov 30, 2016
 '''
 
 import system, string
-from ils.common.cast import toBit
+from ils.common.units import convert
+from ils.common.cast import toBit, isFloat
 from ils.common.util import formatDateTime
 from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, \
     TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED, \
@@ -173,6 +174,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
     recipeDataType = record["RECIPEDATATYPE"]
+    units = record["UNITS"]
     logger.tracef("...the recipe data tyoe is: %s for id: %d", recipeDataType, recipeDataId)
     
     # These attributes are common to all recipe data classes
@@ -324,7 +326,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     else:
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
     
-    return val
+    return val, units
 
 def fetchRecipeDataRecord(stepUUID, key, db):
     logger.tracef("Fetching %s from %s", key, stepUUID)
@@ -393,7 +395,7 @@ def fetchRecipeDataRecord(stepUUID, key, db):
     return record
 
 
-def setRecipeData(stepUUID, key, attribute, val, db):
+def setRecipeData(stepUUID, key, attribute, val, db, units=""):
     logger.tracef("Setting recipe data value for step: stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, val)
     
     # Separate the key from the array index if there is an array index
@@ -412,6 +414,13 @@ def setRecipeData(stepUUID, key, attribute, val, db):
     record = pds[0]
     recipeDataId = record["RecipeDataId"]
     recipeDataType = record["RecipeDataType"]
+    targetUnits = record["Units"]
+
+    if isFloat(val) and units <> "":
+        oldVal = val
+        val = convert(units, targetUnits, float(val))
+        logger.tracef("...converted %s-%s to %s-%s...", str(oldVal), units, str(val), targetUnits)
+    
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
     if attribute in ['DESCRIPTION', 'UNITS', 'LABEL']:

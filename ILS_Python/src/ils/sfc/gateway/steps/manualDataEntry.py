@@ -7,15 +7,16 @@ Created on Dec 17, 2015
 import system, time
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
+from ils.common.cast import isFloat, isInteger
 from ils.sfc.gateway.util import getStepId, registerWindowWithControlPanel, deleteAndSendClose, \
     getControlPanelId, getControlPanelName, getStepProperty, getTimeoutTime, logStepDeactivated, \
     dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, getOriginator
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName, s88GetType, parseValue, getUnitsPath, \
-    s88SetWithUnits, s88GetWithUnits, getProject, sendMessageToClient, getProject
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, parseValue, getUnitsPath, \
+    getProject, sendMessageToClient, getProject
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88SetWithUnits, s88GetWithUnits, s88GetType
 from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT,  \
     AUTO_MODE, AUTOMATIC, DATA, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
-    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, DATABASE, CONTROL_PANEL_ID, \
+    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, DATABASE, CONTROL_PANEL_ID, IS_SFC_WINDOW, \
     CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_ID, NAME, TARGET_STEP_UUID, KEY
 
 def activate(scopeContext, stepProperties, state):    
@@ -79,7 +80,6 @@ def activate(scopeContext, stepProperties, state):
                 
                 rowNum = 0
                 for row in config.rows:
-                    tagType = s88GetType(chartScope, stepScope, row.key, row.destination)
                     existingUnitsKey = getUnitsPath(row.key)
                     existingUnitsName = s88Get(chartScope, stepScope, existingUnitsKey, row.destination)
 
@@ -95,17 +95,24 @@ def activate(scopeContext, stepProperties, state):
                         defaultValue = str(row.defaultValue)
                         logger.trace("   Row %i: using the default value: <%s>" % (rowNum, defaultValue))
 
+                    if isFloat(defaultValue):
+                        valueType = "Float"
+                    elif isInteger(defaultValue):
+                        valueType = "Integer"
+                    else:
+                        valueType = "String"
+                        
                     lowLimitDbStr = dbStringForFloat(row.lowLimit)
                     highLimitDbStr = dbStringForFloat(row.highLimit)
                     SQL = "insert into SfcManualDataEntryTable (windowId, rowNum, description, value, units, lowLimit, highLimit, dataKey, "\
                         "destination, type, recipeUnits) values ('%s', %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s')" \
-                        % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, tagType, existingUnitsName)
+                        % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, valueType, existingUnitsName)
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
 
                 # This step does not communicate back though recipe data, rather it uses the step configuration data in the Manuald Data Entry table,
                 # So we don't really need to pass the id and key but we need to keep the API happy.
-                payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: stepId, KEY: ""}
+                payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: stepId, KEY: "", IS_SFC_WINDOW: True}
                 sendMessageToClient(chartScope, messageHandler, payload)
         else:
             windowId = stepScope[WINDOW_ID]

@@ -11,7 +11,7 @@ from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPane
         logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, getProject
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
-from ils.sfc.common.constants import BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, \
+from ils.sfc.common.constants import BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, IS_SFC_WINDOW, \
     WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID
 
 def activate(scopeContext, stepProperties, state):
@@ -68,7 +68,7 @@ def activate(scopeContext, stepProperties, state):
                 handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', logger)
 
             targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey}
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey, IS_SFC_WINDOW: True}
             time.sleep(0.1)
             sendMessageToClient(chartScope, messageHandler, payload)
         

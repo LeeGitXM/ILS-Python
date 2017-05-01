@@ -5,6 +5,7 @@ Created on Dec 17, 2015
 '''
 
 import system, time
+from ils.sfc.common.util import callMethodWithParams
 from system.ils.sfc import getReviewData
 from ils.sfc.common.util import isEmpty
 from ils.common.cast import jsonToDict
@@ -16,7 +17,7 @@ from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
 from ils.sfc.common.constants import BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, \
     WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID, \
     PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \
-    BUTTON_KEY_LOCATION, BUTTON_KEY
+    BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -25,6 +26,7 @@ def activate(scopeContext, stepProperties, state):
     
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
+    
     project = getProject(chartScope)
     logger = getChartLogger(chartScope)
     windowPath = "SFC/ReviewData"
@@ -48,6 +50,7 @@ def activate(scopeContext, stepProperties, state):
             logger.trace("Initializing a Review Data step")
             
             # Clear the response recipe data so we know when the client has updated it
+            print "The response key is: ", responseKey
             s88Set(chartScope, stepScope, responseKey + ".value", "NULL", responseRecipeLocation)
             
             stepScope[WAITING_FOR_REPLY] = True
@@ -104,14 +107,36 @@ def activate(scopeContext, stepProperties, state):
                 addData(chartScope, stepScope, windowId, row, rowNum, False, showAdvice, database, logger)
                 rowNum = rowNum + 1
 
+            # Look for a custom activation callback
+            activationCallback = getStepProperty(stepProperties, ACTIVATION_CALLBACK)
+            if activationCallback <> "":
+                print "Need to call custom activationCallback: ", ACTIVATION_CALLBACK
+
+                keys = ['scopeContext', 'stepProperties']
+                values = [scopeContext, stepProperties]
+                try:
+                    callMethodWithParams(activationCallback, keys, values)
+                except Exception, e:
+                    try:
+                        cause = e.getCause()
+                        errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, cause.getMessage())
+                    except:
+                        errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, str(e))
+                    #TODO: whats the right logger here?
+                    print errMsg
+                
+            customWindowPath = getStepProperty(stepProperties, CUSTOM_WINDOW_PATH)
+            if customWindowPath <> "":
+                windowPath = customWindowPath
+
             targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey}
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey, IS_SFC_WINDOW: True}
             time.sleep(0.1)
             sendMessageToClient(chartScope, messageHandler, payload)
         
         else: # waiting for reply
             response = s88Get(chartScope, stepScope, responseKey + ".value", responseRecipeLocation)
-            logger.tracef("...the current response to a Get Input step is: %s", str(response))
+            logger.tracef("...the current response to a review Data step is: %s", str(response))
             
             if response <> None and response <> "NULL":
                 logger.tracef("Setting the workDone flag")
@@ -144,17 +169,32 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
         advice = ''
         
     units = row.get("units", None)
+    
+    configKey = row.get("configKey", None)
     key = row.get("valueKey", None)
     scope = row.get("recipeScope", "")
     prompt = row.get("prompt", "Prompt:")
     
+    if advice == "null":
+        advice = ""
+    if prompt == "null":
+        prompt = ""
+    if units == "null":
+        units = ""
+
+    print "Looking at row: %d - %s - %s" % (rowNum, configKey, key)
+    
+
+    print "Adding <%s>-<%s>-<%s>-<%s>" % (key, scope, units, prompt)
     if scope == "value":
         val = key
+    elif scope in ["", "null", None]:
+        val = ""
     else:
         val = s88Get(chartScope, stepScope, key, scope)
         
-    SQL = "insert into SfcReviewDataTable (windowId, rowNum, prompt, value, units, advice, isPrimary) "\
-        "values ('%s', %d, '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, prompt, str(val), units, advice, isPrimary)
+    SQL = "insert into SfcReviewDataTable (windowId, rowNum, configKey, prompt, value, units, advice, isPrimary) "\
+        "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, configKey, prompt, str(val), units, advice, isPrimary)
     print SQL
     system.db.runUpdateQuery(SQL, database)
 

@@ -98,14 +98,19 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
                 child = {"path": childPaths[i], "name": childNames[i], "uuid": childUUIDs[i], "factoryId": factoryIds[i]}
                 children.append(child)
                 
-            print "The children are: ", children
+            print "The children from Designer are: ", children
             
             # Now see what children are already in the database, if the current children are not in this list then insert one.
             SQL = "select * from SfcHierarchyView where ChartResourceId = %d" % (parentResourceId)
             pds = system.db.runQuery(SQL, tx=tx)
             
+            print "There are %d children in the database... " % (len(pds))
+            for record in pds:
+                print "  child: ", record["StepName"]
+            print ""
+            
             for child in children:
-                print child
+                print "Checking if <%s> is already a child..." % (str(child))
                 
                 found = False
                 for record in pds:
@@ -114,7 +119,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
                         # Update the Record
                         
                 if not(found):
-                    print "...Inserting a child into the hierarchy..."
+                    print "...Inserting a child into the hierarchy because the child does not already exist in the hierarchy..."
                     stepTypeId = fetchStepTypeIdFromFactoryId(child.get("factoryId"), tx)
                     print "The step Type Id is: ", stepTypeId
                     if stepTypeId == None:
@@ -134,6 +139,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
                     if stepTypeId <> None and childChartId <> None:
                         stepId = fetchStepIdFromUUID(child.get("uuid"), tx)
                         SQL = "Insert into SfcHierarchy (StepId, ChartId, ChildChartId) values (%d, %d, %d)" % (stepId, chartId, childChartId)
+                        print SQL
                         system.db.runUpdateQuery(SQL, tx=tx)
                         print "...inserted %d into sfcHierarchy" % (stepId)
         

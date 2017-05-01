@@ -9,6 +9,7 @@ allowed.
 
 import system
 from ils.common.cast import toBit
+from ils.common.util import substituteProvider
 log = system.util.getLogger("com.ils.labData.labFeedback")
 MESSAGE_QUEUE_KEY = "LABFEEDBACK"
 from ils.queue.message import insert as insertMessage
@@ -33,7 +34,7 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
             log.tracef("Skipping lab bias exponential updates for %s because updates are not permitted.", biasName)
             return
         
-        log.tracef("Calculating an exponentially filtered bias for %s (%s)", biasName, tagRoot)
+        log.infof("Calculating an exponentially filtered bias for %s (%s)", biasName, tagRoot)
         valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
         if not(valueOk):
             return
@@ -54,10 +55,8 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
         system.tag.write(tagRoot + '/biasValue', biasValue)
     
         # Write this nicely calculated value to either the DCS or the PHD historian
-        txt = writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
+        writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
         
-        msg = "%s %f that is the exponential filtered bias for %s" % (txt, biasValue, biasName)
-        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, msg)
     except:
         txt=catch("exponentialFilter", "Caught an error calculating an exponential filter bias for %s" % (tagPath))
         log.error(txt)
@@ -106,9 +105,8 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
         system.tag.write(tagRoot + '/previousError', newValue)
         
         # Write this nicely calculated value to either the DCS or the PHD historian
-        txt = writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
-        msg = "%s %f that is the PID bias for %s" % (txt, biasValue, biasName)
-        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, msg)
+        writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
+
     except:
         txt=catch("pidFilter", "Caught an error calculating an PID filter bias for %s" % (tagPath))
         log.error(txt)
@@ -162,7 +160,8 @@ def validateConditions(tagRoot, labValue, biasName):
     
     # Now we have all of the parameters we need to query the model value.  We either get the model value at the time of the sample or get the 
     # average model value during a time window centered around the sample time.
-    modelTagPath="%s/ModelValue" % (tagRoot)
+    modelTagPath="%s/modelValue" % (tagRoot)
+    modelTagPath = substituteProvider(modelTagPath, historyProvider)
     if averageWindow == 0:      
         ds = system.tag.queryTagHistory(paths=[modelTagPath], startDate=sampleTime, rangeMinutes=1, aggregationMode="SimpleAverage", returnSize=1)
         if ds.rowCount == 0:
@@ -231,21 +230,21 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         msg = "Unable to write bias value <%f> for <%s> because writes are inhibited for Lab Bias Feedback." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
-        return "Unable to write lab bias because lab feedback writes are inhibited!"
+        return
     
     writeEnabled = system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
     if not(writeEnabled):
         msg = "Unable to write bias value <%f> for <%s> because all writes are globally inhibited." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
-        return "Unable to write lab bias because all writes are globally inhibited!"
+        return
     
     serverType = system.tag.read(tagRoot + 'biasTargetServerType')
     if not (serverType.quality.isGood()) or (serverType.value not in ["OPC", "HDA"]):
         msg = "Unable to write bias value <%f> for <%s> because the Target Server Type is bad or not one of OPC or HDA" % (biasValue, biasName)
         log.error(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, msg)
-        return "Error writing bias because target server type was bad or not one of OPC or HDA"
+        return
     serverType = serverType.value
     
     serverName = system.tag.read(tagRoot + 'biasTargetServerName')
@@ -253,7 +252,7 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         msg = "Unable to write bias value <%f> for <%s> because the Target Server name is bad or not specified" % (biasValue, biasName)
         log.error(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, msg)
-        return "Error writing bias because target server name was bad or missing"
+        return
     serverName = serverName.value
     
     itemId = system.tag.read(tagRoot + 'biasTargetItemId')
@@ -261,23 +260,25 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         msg = "Unable to write bias value <%f> for <%s> because the Target Item-Id is bad or not specified" % (biasValue, biasName)
         log.error(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, msg)
-        return "Error writing bias because the target Item-Id was bad or missing"
+        return
     itemId = itemId.value
     
     if serverType == "HDA":
         returnQuality = system.opchda.insert(serverName, itemId, biasValue, sampleTime, 192)
         if returnQuality.isGood():
             txt = "Successfully wrote bias value <%f> at <%s> to <%s> via OPC-HDA for <%s>." % (biasValue, str(sampleTime), itemId, biasName)
+            insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, txt)
         else:
             txt = "Error writing bias value <%f> at <%s> to <%s> via OPC-HDA for <%s>." % (biasValue, str(sampleTime), itemId, biasName)
+            insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
     else:
         returnQuality = system.opc.writeValue(serverName, itemId, biasValue)
         if returnQuality.isGood():
             txt = "Successfully wrote bias value <%f> to <%s> for <%s>." % (biasValue, itemId, biasName)
+            insertMessage(MESSAGE_QUEUE_KEY, QUEUE_INFO, txt)
         else:
             txt = "Error writing bias value <%f> to <%s> for <%s>." % (biasValue, itemId, biasName)
-        
-    return txt
+            insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 
 
 def setUpdatePermitted(tagPath, updatePermitted):

@@ -10,7 +10,7 @@ to the client and let the client do most of the work.
 def activate(scopeContext, stepProperties, state):   
     from ils.sfc.gateway.util import registerWindowWithControlPanel, getControlPanelId, getControlPanelName, sendOpenWindow, getStepId, \
     handleUnexpectedGatewayError, getStepProperty, getOriginator
-    from ils.sfc.common.constants import ORIGINATOR, WINDOW, WINDOW_ID, WINDOW_PATH, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, SCALE, POSITION, SECURITY, BUTTON_LABEL
+    from ils.sfc.common.constants import ORIGINATOR, WINDOW, WINDOW_ID, WINDOW_PATH, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, SCALE, POSITION, SECURITY, BUTTON_LABEL, IS_SFC_WINDOW
     from ils.sfc.gateway.util import sendMessageToClient
     from ils.sfc.gateway.api import getChartLogger, getDatabaseName, getProject
 
@@ -24,6 +24,7 @@ def activate(scopeContext, stepProperties, state):
         scale = getStepProperty(stepProperties, SCALE)
         position = getStepProperty(stepProperties, POSITION)
         buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
+        isSfcWindow = getStepProperty(stepProperties, IS_SFC_WINDOW)
         controlPanelId = getControlPanelId(chartScope)
         
         database = getDatabaseName(chartScope)
@@ -33,7 +34,7 @@ def activate(scopeContext, stepProperties, state):
         chartRunId = getTopChartRunId(chartScope)
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
 
-        payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath}
+        payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: isSfcWindow}
         sendMessageToClient(chartScope, messageHandler, payload)
     except:
         handleUnexpectedGatewayError(chartScope, 'Unexpected error in showWindow.py', chartLogger)

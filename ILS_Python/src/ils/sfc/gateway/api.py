@@ -7,7 +7,7 @@ Created on Oct 30, 2014
 '''
 
 import system, string
-from ils.sfc.recipeData.core import getTargetStep, fetchRecipeData, getChartUUID, getStepUUID, splitKey
+from ils.sfc.recipeData.core import getTargetStep, getChartUUID, getStepUUID, splitKey
 
 logger=system.util.getLogger("com.ils.sfc.api")
     
@@ -55,13 +55,18 @@ def s88GetType(chartProperties, stepProperties, valuePath, location):
 
 def s88Set(chartProperties, stepProperties, valuePath, value, location):
     '''Set the given recipe data's value'''    
-    print "Using a deprecated API - replace gateway.api.s88Set() with recipeData.api.s88Set()"
+    print "**************************************************************************************"
+    print "* Using a deprecated API - replace gateway.api.s88Set() with recipeData.api.s88Set() *"
+    print "**************************************************************************************"
     from ils.sfc.recipeData.api import s88Set as s88SetNew
     s88SetNew(chartProperties, stepProperties, valuePath, value, location)
 
 
 def s88GetWithUnits(chartProperties, stepProperties, valuePath, location, returnUnitsName):
     '''Like s88Get, but adds a conversion to the given units'''
+    print "********************************************************************************************************"
+    print "* Using a deprecated API - replace gateway.api.s88GetWithUnits() with recipeData.api.s88GetWithUnits() *"
+    print "********************************************************************************************************"
     value = s88Get(chartProperties, stepProperties, valuePath, location)
     existingUnitsName = getAssociatedUnitName(chartProperties, stepProperties, valuePath, location)
     convertedValue = convertUnits(chartProperties, value, existingUnitsName, string.upper(returnUnitsName))
@@ -107,6 +112,9 @@ def scaleTimeForIsolationMode(chartProperties, value, unit):
 
 def s88SetWithUnits(chartProperties, stepProperties, valuePath, value, location, valueUnitsName):
     '''Like s88Set, but adds a conversion from the given units'''
+    print "********************************************************************************************************"
+    print "* Using a deprecated API - replace gateway.api.s88SetWithUnits() with recipeData.api.s88SetWithUnits() *"
+    print "********************************************************************************************************"
     from ils.sfc.common.util import isEmpty
     existingUnitsKey = getUnitsPath(valuePath)
     existingUnitsName = s88Get(chartProperties, stepProperties, existingUnitsKey, location)

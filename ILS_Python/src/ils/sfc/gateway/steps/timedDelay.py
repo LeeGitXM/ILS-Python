@@ -16,7 +16,7 @@ from ils.sfc.gateway.api import getTimeFactor
 from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
     RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, WINDOW_ID, \
     BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, \
-    DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_NAME
+    DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_NAME, IS_SFC_WINDOW
 
 
 def activate(scopeContext, stepProperties, state):
@@ -112,10 +112,9 @@ def activate(scopeContext, stepProperties, state):
                     handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
                 
                 payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
-                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath}
+                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
                 sendMessageToClient(chartScope, messageHandler, payload)
-                
-                #sendOpenWindow(chartScope, windowId, stepId, database)
+
         else:
             secondsLeft = system.date.secondsBetween(system.date.now(), endTime)
             if secondsLeft > 60 * 60:

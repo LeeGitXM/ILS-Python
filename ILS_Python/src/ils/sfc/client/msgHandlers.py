@@ -4,9 +4,12 @@ All SFC Client Message Handlers
 
 import system
 from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, SECURITY, PRIVATE, \
-    SFC_WINDOW_LIST, TARGET_STEP_UUID, KEY
+    TARGET_STEP_UUID, KEY, IS_SFC_WINDOW
 from ils.sfc.client.windowUtil import controlPanelOpen, positionWindow, shouldShowWindow, fetchWindowInfo
 
+'''
+This is the worst name in the history of bad names.  This is the handler in the client that catches the message, not the sender!
+'''
 def dispatchMessage(payload):
     '''call the appropriate method in this module and pass it the payload'''
     from ils.sfc.common.constants import HANDLER
@@ -90,6 +93,7 @@ def sfcOpenWindow(payload):
     
     windowPath = payload[WINDOW_PATH]
     windowId = payload[WINDOW_ID]
+    isSfcWindow = payload[IS_SFC_WINDOW]
     
     print "...checking if the window should be shown on this client..."
     if not(shouldShowWindow(payload)):
@@ -108,7 +112,7 @@ def sfcOpenWindow(payload):
         
     print "Path: %s, Position: %s, Scale: %s" % (windowPath, position, str(scale)) 
     
-    if windowPath in SFC_WINDOW_LIST:    
+    if isSfcWindow:    
         targetStepUUID = payload.get(TARGET_STEP_UUID, "")
         key = payload.get(KEY,"")
         print "The window is an SFC window, passing the WindowId: <%s>, targetStepUUID: <%s>, key: <%s>!" % (str(windowId), targetStepUUID, key)

@@ -2,8 +2,9 @@
 
 from ils.sfc.recipeData.core import getTargetStep, getTargetStepFromName, fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey
 from ils.sfc.gateway.api import getDatabaseName
+from ils.common.units import convert
 
-import system
+import system, string
 logger=system.util.getLogger("com.ils.sfc.recipeData.api")
 
 # Return a value only for a specific key, otherwise raise an exception.
@@ -13,15 +14,27 @@ def s88Get(chartScope, stepScope, keyAndAttribute, scope):
     stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
-    val = fetchRecipeData(stepUUID, key, attribute, db)
+    val, units = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
+
+def s88GetWithUnits(chartScope, stepScope, keyAndAttribute, scope, returnUnits):
+    logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
+    db = getDatabaseName(chartScope)
+    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    key,attribute = splitKey(keyAndAttribute)
+    val, units = fetchRecipeData(stepUUID, key, attribute, db)
+    logger.tracef("...fetched %s", str(val))
+    convertedValue = convert(units, returnUnits, val, db)
+    logger.tracef("...converted to %s", str(convertedValue))
+    return convertedValue
 
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetFromStep(stepUUID, keyAndAttribute, db):
     logger.tracef("s88GetFromStep(): %s", keyAndAttribute)
     key,attribute = splitKey(keyAndAttribute)
-    val = fetchRecipeData(stepUUID, key, attribute, db)
+    val, units = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
 
@@ -29,9 +42,19 @@ def s88GetFromStep(stepUUID, keyAndAttribute, db):
 def s88GetFromName(chartPath, stepName, keyAndAttribute, db):
     key,attribute = splitKey(keyAndAttribute)
     stepUUID = getTargetStepFromName(chartPath, stepName, db)
-    val = fetchRecipeData(stepUUID, key, attribute, db)
+    val, units = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
+
+# This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
+def s88GetFromNameWithUnits(chartPath, stepName, keyAndAttribute, returnUnits, db):
+    key,attribute = splitKey(keyAndAttribute)
+    stepUUID = getTargetStepFromName(chartPath, stepName, db)
+    val, units = fetchRecipeData(stepUUID, key, attribute, db)
+    logger.tracef("...fetched %s", str(val))
+    convertedValue = convert(units, returnUnits, val, db)
+    logger.tracef("...converted to %s", str(convertedValue))
+    return convertedValue
 
 def s88GetKeysForNamedBlock(chartPath, stepName, recipeDataType, db):
     logger.tracef("s88GetKeysForNamedBlock(): %s - %s", chartPath, stepName)
@@ -55,7 +78,7 @@ def s88GetKeysForNamedBlock(chartPath, stepName, recipeDataType, db):
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetRecord(stepUUID, key, db):
     logger.tracef("s88GetRecord(): %s", key)
-    record = fetchRecipeDataRecord(stepUUID, key, db)
+    record, units = fetchRecipeDataRecord(stepUUID, key, db)
     logger.tracef("...fetched %s", str(record))
     return record
 
@@ -64,6 +87,16 @@ def s88GetTargetStepUUID(chartScope, stepScope, scope):
     stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     return stepUUID
+
+def s88GetType(chartScope, stepScope, keyAndAttribute, scope):
+    logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
+    db = getDatabaseName(chartScope)
+    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    key,attribute = splitKey(keyAndAttribute)
+    val, units = fetchRecipeData(stepUUID, key, attribute, db)
+    logger.tracef("...fetched %s", str(val))
+    return units
 
 # This is the most popular API which should be used to access recipe data that lives in the call hierarchy of a 
 # running chart.
@@ -74,9 +107,17 @@ def s88Set(chartScope, stepScope, keyAndAttribute, value, scope):
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     setRecipeData(stepUUID, key, attribute, value, db)
+
+def s88SetWithUnits(chartScope, stepScope,  keyAndAttribute, value, scope, units):
+    logger.tracef("s88SetWithUnits(): %s - %s - %s", keyAndAttribute, scope, str(value))
+    db = getDatabaseName(chartScope)
+    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    key,attribute = splitKey(keyAndAttribute)
+    setRecipeData(stepUUID, key, attribute, value, db, units)
     
 def s88SetFromStep(stepUUID, keyAndAttribute, value, db):
-    logger.tracef("s88SetFromStep(): %s - %s - %s", keyAndAttribute, str(value))
+    logger.tracef("s88SetFromStep(): %s - %s", keyAndAttribute, str(value))
     key,attribute = splitKey(keyAndAttribute)
     setRecipeData(stepUUID, key, attribute, value, db)
     
@@ -86,6 +127,12 @@ def s88SetFromName(chartPath, stepName, keyAndAttribute, value, db):
     key,attribute = splitKey(keyAndAttribute)
     stepUUID = getTargetStepFromName(chartPath, stepName, db)
     setRecipeData(stepUUID, key, attribute, value, db)
+    
+def s88SetFromNameWithUnits(chartPath, stepName, keyAndAttribute, value, units, db):
+    logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))
+    key,attribute = splitKey(keyAndAttribute)
+    stepUUID = getTargetStepFromName(chartPath, stepName, db)
+    setRecipeData(stepUUID, key, attribute, value, db, units)
 
 '''
 These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that

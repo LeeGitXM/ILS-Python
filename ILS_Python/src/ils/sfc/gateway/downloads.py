@@ -55,8 +55,7 @@ def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation,
         from ils.io.api import write
         from ils.sfc.gateway.util import queueMessage
         from ils.sfc.common.constants import MSG_STATUS_INFO
-        from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE
-        from system.ils.sfc.common.Constants import  DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT,  WRITE_CONFIRMED, SUCCESS, FAILURE
+        from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT, WRITE_CONFIRMED, SUCCESS, FAILURE
 
         tagPath = "[%s]%s" % (providerName, config.tagPath)
         outputType = s88Get(chartScope, stepScope, config.key + "." + OUTPUT_TYPE, recipeDataScope)

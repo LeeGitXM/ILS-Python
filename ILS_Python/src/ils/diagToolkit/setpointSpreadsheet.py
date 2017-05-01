@@ -404,9 +404,11 @@ def recalcTimer(event):
             lastRecommendationTime = record["LastRecommendationTime"]
             refreshRate = record["RefreshRate"]
             print "    Final Diagnosis Id: %s, last Recomendation time: %s, refresh rate: %s" % (str(finalDiagnosisId), str(lastRecommendationTime), str(refreshRate))
-            secondsSinceLastCalc = system.date.secondsBetween(lastRecommendationTime, system.date.now())
-            print "    The seconds since last recalc is: ", secondsSinceLastCalc
-            if secondsSinceLastCalc > refreshRate:
+
+            # The refresh rate is in minutes
+            minutesSinceLastCalc = system.date.minutesBetween(lastRecommendationTime, system.date.now())
+            print "    The minutes since last recalc is: ", minutesSinceLastCalc
+            if minutesSinceLastCalc > refreshRate:
                 print "*** It is time to recalc ***"
                 recalculateFlag = True
     

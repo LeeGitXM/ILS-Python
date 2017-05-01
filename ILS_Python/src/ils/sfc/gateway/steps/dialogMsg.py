@@ -11,7 +11,7 @@ from ils.sfc.gateway.util import getControlPanelId, registerWindowWithControlPan
     handleUnexpectedGatewayError, logStepDeactivated, getTopChartRunId, deleteAndSendClose
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, s88Set, getProject
 from ils.sfc.common.util import isEmpty
-from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, WINDOW_PATH, TIMED_OUT, MESSAGE, \
+from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, WINDOW_PATH, TIMED_OUT, MESSAGE, IS_SFC_WINDOW, \
     KEY, TARGET_STEP_UUID, DEACTIVATED, POSITION, SCALE, WINDOW_TITLE, STATIC, RECIPE_LOCATION, STRATEGY, ACK_REQUIRED, BUTTON_LABEL
 from ils.sfc.gateway.util import checkForResponse
 
@@ -70,7 +70,7 @@ def activate(scopeContext, stepProperties, state):
                 handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcDialogMessage', logger)
             
             # The client side does not use recipe data, but I need to send it to keep the framework happy.
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: "", KEY: ""}
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: "", KEY: "", IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)
             
             logger.trace("...done initializing!")

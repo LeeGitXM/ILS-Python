@@ -47,33 +47,15 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
 # Alas, if they did not provide a post in the payload then display the alert everywhere.  
 def handleMessage(payload):
     logger.trace("In %s.handleMessage() - payload: %s" % (__name__, str(payload)))
+    
+    # This is a hack.  We have a common notify API that implements so good logic to figure out if a window should be shown on a client.
+    # For some reason it adds "showOverride" to the payload.  It is no longer obvious who uses this property, but it throws an error
+    # for the OC alert. 
+    if payload.has_key('showOverride'):
+        del payload['showOverride']
+        
     system.nav.openWindowInstance("Common/OC Alert", payload)
     
-    '''
-    This old code used to strategy of allowing a client to figure out if a received OC alert applies to them.
-    This worked OK except it couldn't handle the notification escalation policy desired by Mike whereby the alert
-    would only be displayed 
-    targetPost=payload.get("post","")
-    if targetPost != "" and targetPost != None:
-        post = system.tag.read("[Client]Post").value
-        if targetPost == post:
-            system.nav.openWindowInstance("Common/OC Alert", payload)
-        else:
-            windows = system.gui.getOpenedWindows()
-            print 'There are %d windows open' % len(windows)
-            found=False
-            for window in windows:
-                windowPath=string.upper(window.getPath())
-                print windowPath
-                if windowPath.find("CONSOLE") >= 0:
-                    if window.getRootContainer().getPropertyValue('post') == targetPost:
-                        system.nav.openWindowInstance("Common/OC Alert", payload)
-                        found=True
-            if not(found):
-                print "Skipping this OC alert because it was destined for a different post"
-    else:
-        system.nav.openWindowInstance("Common/OC Alert", payload)
-    '''
 
 # This is called from the button smack in the middle of the screen 
 # This runs in the client, so don't bother with loggers, just print debug messages...
