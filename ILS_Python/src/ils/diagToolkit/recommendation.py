@@ -64,8 +64,8 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         return [], "", "ERROR"
     
     else:
-        log.info("The calculation method returned explanation: %s" % (explanation))
-        log.info("Received recommendations: %s" % (str(rawRecommendationList)))
+        log.infof("The calculation method returned explanation: %s", explanation)
+        log.infof("Received recommendations: %s", str(rawRecommendationList))
     
         # Insert text returned by the calculation method into the application Queue
         if calculationSuccess:
@@ -80,17 +80,17 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
 
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
         # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
-        log.info("Screening for no-change recommendations...") 
+        log.infof("Screening for no-change recommendations...") 
         screenedRecommendationList=[]
         for recommendation in rawRecommendationList:
             if recommendation.get("Value",0.0) == 0.0:
-                log.info("...removing a no change recommendation: %s" % (str(recommendation)))
+                log.infof("...removing a no change recommendation: %s", str(recommendation))
             else:
                 screenedRecommendationList.append(recommendation)
 
         # If the FD is a text recommendation then the FD will be cleared when the loud workspace is acknowledged!
         if not(postTextRecommendation) and len(screenedRecommendationList) == 0:
-            log.info("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s..." % (str(finalDiagnosisId), finalDiagnosisName)) 
+            log.infof("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s...", str(finalDiagnosisId), finalDiagnosisName)
             from ils.diagToolkit.common import fetchPostForApplication
             post=fetchPostForApplication(application, database)
                 
@@ -103,18 +103,18 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             system.db.runUpdateQuery(SQL, database)
     
             recommendationList=[]
-            log.info("  The recommendations returned from the calculation method are: ")
+            log.infof("  The recommendations returned from the calculation method are: ")
             for recommendation in screenedRecommendationList:
                 # Validate that there is a 'QuantOutput' key and a 'Value' Key
                 quantOutput = recommendation.get('QuantOutput', None)
                 if quantOutput == None:
-                    log.error("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key" % (calculationMethod))
+                    log.errorf("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key", calculationMethod)
                 val = recommendation.get('Value', None)
                 if val == None:
-                    log.error("ERROR: A recommendation returned from %s did not contain a 'Value' key" % (calculationMethod))
+                    log.errorf("ERROR: A recommendation returned from %s did not contain a 'Value' key", calculationMethod)
         
                 if quantOutput != None and val != None:
-                    log.info("      Output: %s - Value: %s" % (quantOutput, str(val)))
+                    log.infof("      Output: %s - Value: %s", quantOutput, str(val))
                     recommendation['AutoRecommendation']=val
                     recommendation['AutoOrManual']='Auto'
                     recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
@@ -142,13 +142,13 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
         "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
     logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
-    log.info("      ...inserted recommendation id: %s for recommendation definition id: %i" % (recommendationId, recommendationDefinitionId))
+    log.infof("      ...inserted recommendation id: %s for recommendation definition id: %i", recommendationId, recommendationDefinitionId)
     return recommendationId
 
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made
 # for that QuantOutput - in the case where multiple FDs are active and of equal priority and tough the same quantOutput.
 def calculateFinalRecommendation(quantOutput):
-    log.info("Calculating the final recommendation for: %s " % (quantOutput))
+    log.infof("Calculating the final recommendation for: %s ", quantOutput)
 
     i = 0
     finalRecommendation = 0.0
@@ -250,4 +250,4 @@ def postApplicationMessage(applicationName, status, message, log, database):
     queueId = system.db.runScalarQuery(SQL, database)
     from ils.queue.message import _insert
     _insert(queueId, status, message, database)
-    log.info("%s - %s" % (status,message))
+    log.infof("%s - %s", status, message)

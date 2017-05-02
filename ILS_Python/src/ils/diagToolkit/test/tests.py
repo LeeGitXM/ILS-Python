@@ -578,7 +578,7 @@ def test18a():
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
     insertApp1Families(appId,T1Id,T2Id,T3Id,postProcessingCallback='xom.vistalon.diagToolkit.test.test.postDownloadSpecialActions')
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_6', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_5', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 # Simultaneously post two text recommendations

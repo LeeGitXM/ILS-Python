@@ -422,7 +422,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
 
     finalDiagnosis = 'TESTFD1_2_6'
     finalDiagnosisPriority=1.2
-    textRecommendation = "Final Diagnosis 1.2.6 is a high priority text recommendation.  "
+    textRecommendation = "Final Diagnosis 1.2.6 is a high priority text recommendation which is correct 95% of the time.  "
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD126calculationMethod, 
         textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback)
 

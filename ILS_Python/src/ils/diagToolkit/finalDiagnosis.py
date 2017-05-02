@@ -847,7 +847,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         log.info(" --- handling a text recommendation by posting the loud workspace ---")
         from ils.common.util import formatHTML
         explanation = formatHTML(explanation, 50)
-        log.info("     The explanation is: <%s>" % (explanation))
+        log.infof("     The explanation is: <%s>", explanation)
         SQL = "Insert into DtTextRecommendation (DiagnosisEntryId, TextRecommendation) values (%i, '%s')" % (diagnosisEntryId, explanation)
         system.db.runUpdateQuery(SQL, database=database)
 
