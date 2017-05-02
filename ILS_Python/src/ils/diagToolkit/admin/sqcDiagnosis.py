@@ -39,20 +39,26 @@ def runTest(rootContainer):
         sqcDiagnosisUUID = record["SQCDiagnosisUUID"]
     
         print "Getting SQC info for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisUUID)
-   
-        diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisUUID)
-        if diagramDescriptor == None:
-            status="Unable to locate the diagram"
-        else:
-            diagramId=diagramDescriptor.getId()
-            print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
-
-            # Now get the SQC observation blocks (There must be SQC observations upstream of a SQC diagnosis)
-            blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
-            if len(blocks) == 0:
-                status = "No upstream blocks found"
+        
+        try:
+            if sqcDiagnosisUUID in [None, ""]:
+                status="Incomplete"
             else:
-                status = "Success"
+                diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisUUID)
+                if diagramDescriptor == None:
+                    status="Unable to locate the diagram"
+                else:
+                    diagramId=diagramDescriptor.getId()
+                    print "Fetching upstream block info for chart <%s> ..." % (str(diagramId))
+        
+                    # Now get the SQC observation blocks (There must be SQC observations upstream of a SQC diagnosis)
+                    blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
+                    if len(blocks) == 0:
+                        status = "No upstream blocks found"
+                    else:
+                        status = "Success"
+        except:
+            status = "Error"
 
         ds= system.dataset.setValue(ds, row, "State", status)
         row = row + 1
