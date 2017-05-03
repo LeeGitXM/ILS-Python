@@ -35,7 +35,7 @@ def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):
         stackWindow(window, scale)
     elif mode == "CENTER":
         system.nav.centerWindow(window)
-    elif mode in ['UPPER-LEFT', 'UPPER-RIGHT', 'LOWER-LEFT', 'LOWER-RIGHT']:
+    elif mode in ['UPPER-LEFT', 'TOPLEFT', 'UPPER-CENTER', 'TOPCENTER', 'UPPER-RIGHT', 'TOPRIGHT', 'LOWER-LEFT', 'BOTTOMLEFT', 'LOWER-CENTER', 'BOTTOMCENTER','LOWER-RIGHT', 'BOTTOMRIGHT']:
         positionWindow(window, mode, scale)
         
     # Scale the window if necessary
@@ -44,7 +44,9 @@ def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):
         height = window.getHeight()
         window.setSize(int(width * scale), int(height * scale))
 
-#
+'''
+Position the upper left corner of the window.
+'''
 def positionWindow(window, mode, scale=1.0):
     print "Positioning the window to: ", mode
     mainWindow = window.parent
@@ -57,20 +59,39 @@ def positionWindow(window, mode, scale=1.0):
     xOffset,yOffset=getDockOffset()
     print "Dock Offset is (%i, %i)" % (xOffset,yOffset)
 
-    if mode == 'UPPER-LEFT':
-        window.setLocation(xOffset, 0)
-    elif mode == 'UPPER-RIGHT':
+    mode = string.upper(mode)
+    if mode in ['UPPER-LEFT', 'TOPLEFT']:
+        ulx = xOffset
+        uly = 0
+        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        window.setLocation(ulx, uly)
+    elif mode in ['UPPER-CENTER', 'TOPCENTER']:
+        ulx = xOffset + (mainWidth - xOffset) / 2 - (width * scale) / 2
+        uly = 0
+        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        window.setLocation(int(ulx), uly)
+    elif mode in ['UPPER-RIGHT', 'TOPRIGHT']:
         ulx = mainWidth - (width * scale) 
-        window.setLocation(int(ulx), 0)
-    elif mode == 'LOWER-LEFT':
+        uly = 0
+        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        window.setLocation(int(ulx), uly)
+    elif mode in ['LOWER-LEFT', 'BOTTOMLEFT']:
+        ulx = xOffset
+        uly = mainHeight - int(height * scale)
+        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        window.setLocation(int(ulx), int(uly))
+    elif mode in ['LOWER-CENTER', 'BOTTOMCENTER']:
+        ulx = xOffset + (mainWidth - xOffset) / 2 - (width * scale) / 2
         uly = mainHeight - (height * scale)
-        print "Positioning at LOWER-LEFT (%i, %i)" % (int(xOffset), int(uly))
-        window.setLocation(int(xOffset), int(uly))
-    elif mode == 'LOWER-RIGHT':
+        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        window.setLocation(int(ulx), int(uly))
+    elif mode in ['LOWER-RIGHT', 'BOTTOMRIGHT']:
         ulx = mainWidth - (width * scale)
         uly = mainHeight - (height * scale)
+        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
         window.setLocation(int(ulx), int(uly))
-        
+    elif mode in ['CENTER']:
+        system.nav.centerWindow(window)   
 
 # Tile windows that allow multiple instances.  This was specifically developed for the SQC plot window but is generic.
 # It will support docked windows that have the word "CONSOLE" and are WEST
