@@ -37,7 +37,7 @@ def activate(scopeContext, stepProperties, state):
         payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: isSfcWindow}
         sendMessageToClient(chartScope, messageHandler, payload)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in showWindow.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in showWindow.py', chartLogger)
     # No window cleanup--window is closed in CloseWindow step
     finally:
         return True

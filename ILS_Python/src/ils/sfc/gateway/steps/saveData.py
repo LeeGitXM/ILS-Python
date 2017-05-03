@@ -52,6 +52,6 @@ def activate(scopeContext, stepProperties, state):
             createSaveDataRecord(windowId, dataText, filepath, SERVER, printFile, showPrintDialog, viewFile, database)
             sendOpenWindow(chartScope, windowId, stepId, database)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in saveData.py', logger) 
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in saveData.py', logger) 
     finally:
         return True

@@ -2,13 +2,14 @@
 Created on Dec 16, 2015
 
 @author: rforbes
+
+ Pause the chart execution
 '''
+from ils.sfc.common.constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
+from ils.sfc.gateway.api import pauseChart, addControlPanelMessage, getChartLogger
+from ils.sfc.gateway.util import handleUnexpectedGatewayError
 
 def activate(scopeContext, stepProperties, state):
-    ''' Pause the chart execution'''
-    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-    from ils.sfc.gateway.api import pauseChart, addControlPanelMessage, getChartLogger
-    from ils.sfc.gateway.util import handleUnexpectedGatewayError
     chartScope = scopeContext.getChartScope()
     chartLogger = getChartLogger(chartScope)
     try:
@@ -17,6 +18,6 @@ def activate(scopeContext, stepProperties, state):
             pauseChart(chartScope)
             addControlPanelMessage(chartScope, "Chart paused", "Error", False)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in pause.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in pause.py', chartLogger)
     finally:
         return True

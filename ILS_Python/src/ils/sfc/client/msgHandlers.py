@@ -5,7 +5,8 @@ All SFC Client Message Handlers
 import system
 from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, SECURITY, PRIVATE, \
     TARGET_STEP_UUID, KEY, IS_SFC_WINDOW
-from ils.sfc.client.windowUtil import controlPanelOpen, positionWindow, shouldShowWindow, fetchWindowInfo
+from ils.sfc.client.windowUtil import controlPanelOpen, shouldShowWindow, fetchWindowInfo
+from ils.common.windowUtil import positionWindow, openWindowInstance
 
 '''
 This is the worst name in the history of bad names.  This is the handler in the client that catches the message, not the sender!
@@ -119,13 +120,12 @@ def sfcOpenWindow(payload):
         payload = {WINDOW_ID: windowId, TARGET_STEP_UUID: targetStepUUID, KEY: key}
         print "Opening <%s>" % (windowPath)
         print "Payload: ", payload
-        window = system.nav.openWindowInstance(windowPath, payload)
+        openWindowInstance(windowPath, payload, position, scale)
     else:
         print "The window is a plain window..."
         print "Opening <%s>" % (windowPath)
-        window = system.nav.openWindowInstance(windowPath)
+        system.nav.openWindowInstance(windowPath)
 
-    positionWindow(window, position, scale)
 
 def sfcCloseWindow(payload):
     windowId = payload[WINDOW_ID]

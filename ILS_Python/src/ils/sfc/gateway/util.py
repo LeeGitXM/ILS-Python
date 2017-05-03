@@ -381,14 +381,14 @@ def writeTestRamp(controllers, durationSecs, increment):
 Report an unexpected error so that it is visible to the operator--
 e.g. put in a message queue. Then cancel the chart.
 '''    
-def handleUnexpectedGatewayError(chartScope, msg, logger=None):
+def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
     from ils.sfc.common.util import logExceptionCause
-    from ils.sfc.common.constants import MESSAGE
+    from ils.sfc.common.constants import MESSAGE, NAME
     from  ils.sfc.gateway.api import cancelChart
 
     fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
     chartPath = chartScope.get("chartPath", "")
-    stepName = chartScope.get("name", "")
+    stepName = getStepProperty(stepProperties, NAME)
     payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
     payload = dict()
     payload[MESSAGE] = payloadMsg

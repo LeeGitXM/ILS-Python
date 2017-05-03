@@ -92,6 +92,6 @@ def activate(scopeContext, stepProperties, state):
         logger.tracef("   Monitor Download payload: %s", str(payload))
         logger.trace("...leaving monitorDownload.activate()")      
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorDownload.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorDownload.py', logger)
 
     return True

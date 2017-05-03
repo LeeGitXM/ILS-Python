@@ -2,20 +2,18 @@
 Created on Dec 16, 2015
 
 @author: rforbes
+
+queues the step's message
 '''
 
+from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
+from ils.sfc.gateway.api import getDatabaseName
+from ils.queue.message import insert
+from ils.sfc.common.constants import MESSAGE, PRIORITY
+from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger
+from ils.sfc.gateway.recipe import substituteScopeReferences
 
 def activate(scopeContext, stepProperties, state):
-    '''
-    action for java QueueMessageStep
-    queues the step's message
-    '''
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName
-    from ils.queue.message import insert
-    from system.ils.sfc.common.Constants import MESSAGE, PRIORITY
-    from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger
-    from ils.sfc.gateway.recipe import substituteScopeReferences
 
     try:
         chartScope = scopeContext.getChartScope()
@@ -32,6 +30,6 @@ def activate(scopeContext, stepProperties, state):
         database = getDatabaseName(chartScope)
         insert(currentMsgQueue, priority, message, database)    
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in queueInsert.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in queueInsert.py', chartLogger)
     finally:
         return True

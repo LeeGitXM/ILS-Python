@@ -23,6 +23,6 @@ def activate(scopeContext, stepProperties, state):
             project = getProject(chartScope)
             deleteAndSendClose(project, windowId, database)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in deleteDelay.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in deleteDelay.py', chartLogger)
     finally:
         return True

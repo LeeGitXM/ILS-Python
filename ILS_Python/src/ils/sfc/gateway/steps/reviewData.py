@@ -11,7 +11,7 @@ from ils.sfc.common.util import isEmpty
 from ils.common.cast import jsonToDict
 from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
 from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
-        logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError, hasStepProperty
+        logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError, hasStepProperty, deleteAndSendClose
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, getProject
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
 from ils.sfc.common.constants import BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, \
@@ -148,19 +148,17 @@ def activate(scopeContext, stepProperties, state):
                     stepScope[TIMED_OUT] = True
              
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', logger)
         workDone = True
     finally:
         if workDone:
             logger.trace("All of the work is done, cleaning up...")
-            cleanup(chartScope, stepScope)
+            cleanup(chartScope, stepProperties, stepScope)
 
     return workDone
 
          
 def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice, database, logger):
-    import system.db
-    from ils.sfc.gateway.util import dbStringForString, dbStringForFloat
     logger.tracef("Adding row: %s", str(row))
     
     if showAdvice:
@@ -199,11 +197,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     system.db.runUpdateQuery(SQL, database)
 
 
-def cleanup(chartScope, stepScope):
-    import system.db
-    from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
-    from ils.sfc.common.constants import WINDOW_ID
+def cleanup(chartScope, stepProperties, stepScope):
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
@@ -214,78 +208,5 @@ def cleanup(chartScope, stepScope):
         deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in reviewData.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in reviewData.py', chartLogger)
         
-#
-def activateOld(scopeContext, stepProperties, state):    
-    from ils.sfc.gateway.util import sendOpenWindow, getTimeoutTime, getStepId, createWindowRecord, \
-        getControlPanelId, hasStepProperty, getStepProperty,  handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import s88Set, getDatabaseName, getChartLogger
-    from ils.sfc.common.util import isEmpty 
-#    from system.ils.sfc.common.Constants import PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE
-#    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-    from ils.sfc.common.constants import PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, BUTTON_LABEL, \
-        POSITION, SCALE, WINDOW_TITLE, BUTTON_KEY_LOCATION, BUTTON_KEY
-
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, TIMED_OUT, WINDOW_ID
-    from ils.sfc.gateway.util import checkForResponse, logStepDeactivated
-    import system.db
-
-    chartScope = scopeContext.getChartScope() 
-    stepScope = scopeContext.getStepScope()
-    chartLogger = getChartLogger(chartScope)
-
-    if state == DEACTIVATED:
-        logStepDeactivated(chartScope, stepProperties)
-        cleanup(chartScope, stepScope)
-        return False
-    
-    try:                
-        workDone = False
-        waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
-        if not waitingForReply:
-            stepScope[WAITING_FOR_REPLY] = True
-            timeoutTime = getTimeoutTime(chartScope, stepProperties)
-            stepScope[TIMEOUT_TIME] = timeoutTime
-            showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
-            if showAdvice:
-                primaryConfigJson = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE) 
-                secondaryConfigJson = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA_WITH_ADVICE) 
-            else:
-                primaryConfigJson = getStepProperty(stepProperties, PRIMARY_REVIEW_DATA)        
-                secondaryConfigJson = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA)        
-        
-            database = getDatabaseName(chartScope)
-            controlPanelId = getControlPanelId(chartScope)
-            buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
-            if isEmpty(buttonLabel):
-                buttonLabel = 'Review'
-            position = getStepProperty(stepProperties, POSITION) 
-            scale = getStepProperty(stepProperties, SCALE) 
-            title = getStepProperty(stepProperties, WINDOW_TITLE) 
-            windowId = createWindowRecord(controlPanelId, 'SFC/ReviewData', buttonLabel, position, scale, title, database)
-            stepScope[WINDOW_ID] = windowId
-            stepId = getStepId(stepProperties) 
-            system.db.runUpdateQuery("insert into SfcReviewData (windowId, showAdvice) values ('%s', %d)" % (windowId, showAdvice), database)
-            primaryDataset = getReviewData(chartScope, stepScope, primaryConfigJson, showAdvice)
-            for row in range(primaryDataset.rowCount):
-                addData(windowId, primaryDataset, row, True, showAdvice, database)
-            secondaryDataset = getReviewData(chartScope, stepScope, secondaryConfigJson, showAdvice)
-            for row in range(secondaryDataset.rowCount):
-                addData(windowId, secondaryDataset, row, False, showAdvice, database)
-            sendOpenWindow(chartScope, windowId, stepId, database)
-        else:
-            response = checkForResponse(chartScope, stepScope, stepProperties)                
-            if response != None: 
-                workDone = True 
-                if response != TIMED_OUT:
-                    recipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION) 
-                    key = getStepProperty(stepProperties, BUTTON_KEY) 
-                    s88Set(chartScope, stepScope, key, response, recipeLocation)                   
-    except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in reviewData.py', chartLogger)
-        workDone = True
-    finally:
-        if workDone:
-            cleanup(chartScope, stepScope)
-        return workDone

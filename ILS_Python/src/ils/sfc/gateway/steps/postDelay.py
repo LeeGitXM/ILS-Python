@@ -5,14 +5,14 @@ Created on Dec 17, 2015
 '''
 
 import system
+from ils.sfc.gateway.util import getControlPanelId, registerWindowWithControlPanel, getStepProperty, \
+    handleUnexpectedGatewayError, getTopChartRunId
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient
+from ils.sfc.common.util import isEmpty
+from ils.sfc.common.constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_ID, WINDOW_TITLE, MESSAGE, \
+    WINDOW_PATH, TARGET_STEP_UUID, KEY, IS_SFC_WINDOW
 
 def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.util import getControlPanelId, registerWindowWithControlPanel, getStepProperty, \
-        handleUnexpectedGatewayError, getTopChartRunId
-    from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient
-    from ils.sfc.common.util import isEmpty
-    from ils.sfc.common.constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_ID, WINDOW_TITLE, MESSAGE, \
-        WINDOW_PATH, TARGET_STEP_UUID, KEY, IS_SFC_WINDOW
 
     try:
         chartScope = scopeContext.getChartScope()
@@ -42,7 +42,7 @@ def activate(scopeContext, stepProperties, state):
         payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: "", KEY: "", IS_SFC_WINDOW: True}
         sendMessageToClient(chartScope, messageHandler, payload)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in postDelay.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in postDelay.py', logger)
     finally:
         return True
     

@@ -109,7 +109,7 @@ def activate(scopeContext, stepProperties, state):
                 sql = "insert into SfcTimeDelayNotification (windowId, message, endTime) values ('%s', '%s', '%s')" % (windowId, message, formattedEndTime)
                 numInserted = system.db.runUpdateQuery(sql, database)
                 if numInserted == 0:
-                    handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
+                    handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
                 
                 payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
                        CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
@@ -134,7 +134,7 @@ def activate(scopeContext, stepProperties, state):
                 chartLogger.trace("TimedDelay block %s IS DONE!" % (stepName))
             
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in timedDelay.py', chartLogger)        
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in timedDelay.py', chartLogger)        
         workIsDone = True
     finally:
         if workIsDone:
@@ -161,5 +161,5 @@ def cleanup(chartScope, stepScope, stepProperties):
             deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in commonInput.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in commonInput.py', chartLogger)
     

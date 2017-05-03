@@ -4,13 +4,13 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
+from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getControlPanelId, createWindowRecord, createSaveDataRecord, sendOpenWindow, getStepId
+from ils.sfc.common.constants import COMPUTER, SERVER, FILENAME, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PRINT_FILE, VIEW_FILE, SHOW_PRINT_DIALOG
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName
+from ils.sfc.common.util import readFile, isEmpty
+    
 def activate(scopeContext, stepProperties, state):  
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, \
-    getControlPanelId, createWindowRecord, createSaveDataRecord, sendOpenWindow, getStepId
-    from system.ils.sfc.common.Constants import COMPUTER, SERVER, FILENAME, BUTTON_LABEL, \
-    POSITION, SCALE, WINDOW_TITLE, PRINT_FILE, VIEW_FILE, SHOW_PRINT_DIALOG
-    from ils.sfc.gateway.api import getChartLogger, getDatabaseName
-    from ils.sfc.common.util import readFile, isEmpty
+
     # extract property values
     try:
         chartScope = scopeContext.getChartScope()
@@ -41,6 +41,6 @@ def activate(scopeContext, stepProperties, state):
         sendOpenWindow(chartScope, windowId, stepId, database)
   
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in printFile.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in printFile.py', chartLogger)
     finally:
         return True

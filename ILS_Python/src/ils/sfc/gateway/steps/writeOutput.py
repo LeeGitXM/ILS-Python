@@ -269,7 +269,7 @@ def activate(scopeContext, stepProperties, state):
                 #Note: write confirmations are on a separate thread and will write the result
                 
         except:
-            handleUnexpectedGatewayError(chartScope, 'Unexpected error in writeOutput.py', logger)
+            handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in writeOutput.py', logger)
         finally:
             # TODO: handle re-entrant logic; don't return True until really done
             pass

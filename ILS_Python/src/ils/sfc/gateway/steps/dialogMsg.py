@@ -67,7 +67,7 @@ def activate(scopeContext, stepProperties, state):
             stepScope[WINDOW_ID] = windowId
             numInserted = system.db.runUpdateQuery("insert into SfcDialogMessage (windowId, message, ackRequired) values ('%s', '%s', %d)" % (windowId, message, ackRequired), database)
             if numInserted == 0:
-                handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcDialogMessage', logger)
+                handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcDialogMessage', logger)
             
             # The client side does not use recipe data, but I need to send it to keep the framework happy.
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: "", KEY: "", IS_SFC_WINDOW: True}
@@ -98,17 +98,17 @@ def activate(scopeContext, stepProperties, state):
                         workDone = True
                 
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in dialogMsg.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in dialogMsg.py', logger)
         workDone = True
     finally:
         # only close the window if we have been waiting for an acknowledgement;
         # otherwise let the chart continue and we will asynchronously get a closeWindow
         # message when the user presses the OK button on the dialog
         if workDone and ackRequired:
-            cleanup(chartScope, stepScope)
+            cleanup(chartScope, stepProperties, stepScope)
         return workDone
    
-def cleanup(chartScope, stepScope):
+def cleanup(chartScope, stepProperties, stepScope):
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
@@ -117,5 +117,5 @@ def cleanup(chartScope, stepScope):
         deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in commonInput.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in commonInput.py', chartLogger)
 

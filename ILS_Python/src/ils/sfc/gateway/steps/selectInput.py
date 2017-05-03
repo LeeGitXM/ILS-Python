@@ -28,17 +28,6 @@ def activate(scopeContext, stepProperties, state):
     stepScope = scopeContext.getStepScope()
     windowPath = "SFC/SelectInput"
     messageHandler = "sfcOpenWindow"
-    
-    
-    # Get the choices from recipe data:
-#    try:
-  
-#    except:
-#        handleUnexpectedGatewayError(chartScope, 'Unexpected error in selectInput.py', logger)
-#        return True
-    
-#    return commonInput.activate(scopeContext, stepProperties, state, buttonLabel, 'SFC/SelectInput', choices)
-
 
 
     if state == DEACTIVATED:
@@ -107,7 +96,7 @@ def activate(scopeContext, stepProperties, state):
                 if response != TIMED_OUT:
                     setResponse(chartScope, stepScope, stepProperties, response)                
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in %s' % (__name__), logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in %s' % (__name__), logger)
         workDone = True
     finally:
         if workDone:

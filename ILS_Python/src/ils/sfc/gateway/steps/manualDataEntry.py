@@ -139,11 +139,11 @@ def activate(scopeContext, stepProperties, state):
                         # If the user has partially completed the form but not hit OK the partial responses will not be used.
                         saveResponse(chartScope, stepScope, stepProperties, logger)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in manualDataEntry.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in manualDataEntry.py', logger)
         workDone = True
     finally:
         if workDone:
-            cleanup(chartScope, stepScope)
+            cleanup(chartScope, stepProperties, stepScope)
         return workDone
 
 def saveResponse(chartScope, stepScope, stepProperties, logger):
@@ -183,7 +183,7 @@ def getResponse(chartScope, stepScope, stepProperties):
     pds=system.db.runQuery("select * from SfcManualDataEntryTable where windowId = '%s'" % (windowId),database=database)
     return pds
 
-def cleanup(chartScope, stepScope):
+def cleanup(chartScope, stepProperties, stepScope):
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
@@ -193,5 +193,5 @@ def cleanup(chartScope, stepScope):
         deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in manualDataEntry.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in manualDataEntry.py', chartLogger)
 

@@ -9,8 +9,8 @@ from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPane
         checkForResponse, logStepDeactivated, getStepId, dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, \
         deleteAndSendClose, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import s88Set, getDatabaseName, getChartLogger, getProject
-from ils.sfc.common.constants import RECIPE_LOCATION, KEY, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT
-from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
+from ils.sfc.common.constants import RECIPE_LOCATION, KEY, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, \
+    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
     
 def activate(scopeContext, stepProperties, state, buttonLabel, windowType, message, choices=None, lowLimit=None, highLimit=None):
     '''
@@ -59,14 +59,14 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, messa
             sql = "insert into SfcInput (windowId, prompt, lowLimit, highLimit) values ('%s', '%s', %s, %s)" % (windowId, prompt, lowLimit, highLimit)
             numInserted = system.db.runUpdateQuery(sql, database)
             if numInserted == 0:
-                handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', chartLogger)
+                handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', chartLogger)
                 
             if choices != None:
                 choicesList = system.util.jsonDecode(choices)
                 for choice in choicesList:
                     system.db.runUpdateQuery("insert into SfcInputChoices (windowId, choice) values ('%s', '%s')" % (windowId, choice), database)                   
                 
-            sendOpenWindow(chartScope, windowId, stepId, database)
+#            sendOpenWindow(chartScope, windowId, stepId, database)
         else: # waiting for reply
             response = checkForResponse(chartScope, stepScope, stepProperties)
             if response != None: 
@@ -74,11 +74,11 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, messa
                 if response != TIMED_OUT:
                     setResponse(chartScope, stepScope, stepProperties, response)                
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', chartLogger)
         workDone = True
     finally:
         if workDone:
-            cleanup(chartScope, stepScope)
+            cleanup(chartScope, stepProperties, stepScope)
         return workDone
 
 def checkForTimeout(stepScope):
@@ -97,7 +97,7 @@ def setResponse(chartScope, stepScope, stepProperties, response):
     key = getStepProperty(stepProperties, KEY) 
     s88Set(chartScope, stepScope, key, response, recipeLocation)
     
-def cleanup(chartScope, stepScope):
+def cleanup(chartScope, stepProperties, stepScope):
     print "Cleaning up for a common input step"
     try:
         database = getDatabaseName(chartScope)
@@ -109,5 +109,5 @@ def cleanup(chartScope, stepScope):
             deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in commonInput.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in commonInput.py', chartLogger)
 

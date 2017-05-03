@@ -6,33 +6,6 @@ Created on May 3, 2015
 import system
 from ils.sfc.client.util import getDatabase
 from ils.sfc.common.constants import SFC_WINDOW_LIST
-    
-def positionWindow(window, position, scale):
-    '''Position and size a window within the main window''' 
-    from ils.sfc.common.constants import LEFT, CENTER, TOP
-    mainWindow = window.parent
-    position = position.lower()
-    
-#    width = mainWindow.getWidth() * scale
-#    height = mainWindow.getHeight() * scale    
-    # Scale of 1 should be w.r.t. how the window was designed, not the size of the parent, but this is an interesting idea
-    width = window.getWidth() * scale
-    height = window.getHeight() * scale
-    if position.endswith(LEFT):
-        ulx = 0
-    elif position.endswith(CENTER):
-        ulx = .5 * mainWindow.getWidth() - .5 * width
-    else:
-        ulx = mainWindow.getWidth() - width
-
-    if position.startswith(TOP):
-        uly = 0
-    elif position.startswith(CENTER):
-        uly = .5 * mainWindow.getHeight() - .5 * height
-    else:
-        uly = mainWindow.getHeight() - height
-    window.setSize(int(width), int(height))
-    window.setLocation(int(ulx), int(uly))
 
 def getWindowId(window):
     '''get the id of a window. Return None if it doesn't have a window id'''

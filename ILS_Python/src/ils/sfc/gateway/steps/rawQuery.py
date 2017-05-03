@@ -22,6 +22,6 @@ def activate(scopeContext, stepProperties, state):
         key = getStepProperty(stepProperties, KEY) 
         s88Set(chartScope, stepScope, key, jsonResult, recipeLocation)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in rawQuery.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in rawQuery.py', chartLogger)
     finally:
         return True

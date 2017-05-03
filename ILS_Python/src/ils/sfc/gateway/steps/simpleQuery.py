@@ -25,7 +25,7 @@ def activate(scopeContext, stepProperties, state):
             return
         simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in simpleQuery.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in simpleQuery.py', logger)
     finally:
         return True
     

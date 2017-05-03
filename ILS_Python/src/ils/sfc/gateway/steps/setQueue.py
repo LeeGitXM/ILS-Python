@@ -19,6 +19,6 @@ def activate(scopeContext, stepProperties, state):
         queue = getStepProperty(stepProperties, MESSAGE_QUEUE)
         setCurrentMessageQueue(chartScope, queue)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in setQueue.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in setQueue.py', chartLogger)
     finally:
         return True

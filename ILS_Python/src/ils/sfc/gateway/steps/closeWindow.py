@@ -5,8 +5,8 @@ Created on Dec 17, 2015
 '''
 import system
 from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getProject, getChartLogger,getDatabaseName, getPostForControlPanelName
-from ils.sfc.gateway.util import getTopChartRunId, getStepProperty
+from ils.sfc.gateway.api import getChartLogger,getDatabaseName
+from ils.sfc.gateway.util import getStepProperty
 from ils.sfc.common.constants import NAME
 
 def activate(scopeContext, stepProperties, state):       
@@ -27,6 +27,6 @@ def activate(scopeContext, stepProperties, state):
         rows=system.db.runUpdateQuery(SQL, database)
         logger.tracef("   ...deleted %d window records/toolbar buttons...", rows)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in closeWindow.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in closeWindow.py', logger)
     finally:
         return True

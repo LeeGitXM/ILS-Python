@@ -25,6 +25,6 @@ def activate(scopeContext, stepProperties, state):
         payload = {HANDLER: handler, 'queueKey': currentMsgQueue, CONTROL_PANEL_ID: controlPanelId, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator}
         sendMessageToClient(chartScope, handler, payload)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in showQueue.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in showQueue.py', chartLogger)
     finally:
         return True

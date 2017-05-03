@@ -18,6 +18,6 @@ def activate(scopeContext, stepProperties, state):
         filepath = createFilepath(chartScope, stepProperties, False)
         save(currentMsgQueue, True, filepath, database)
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in activate.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in activate.py', chartLogger)
     finally:
         return True

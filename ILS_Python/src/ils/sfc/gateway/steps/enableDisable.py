@@ -4,11 +4,12 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
+from ils.sfc.common.constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL, ENABLE_START, ENABLE_RESET, STEP_NAME
+from ils.sfc.gateway.util import getStepProperty, getControlPanelId, handleUnexpectedGatewayError
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName
+import system
+    
 def activate(scopeContext, stepProperties, state):
-    from  system.ils.sfc.common.Constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL, ENABLE_START, ENABLE_RESET, STEP_NAME
-    from ils.sfc.gateway.util import getStepProperty, getControlPanelId, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getChartLogger, getDatabaseName
-    import system.db
     
     try:
         chartScope = scopeContext.getChartScope()
@@ -31,6 +32,6 @@ def activate(scopeContext, stepProperties, state):
         rows = system.db.runUpdateQuery(SQL, database)
         logger.trace("Updated %i rows" % (rows))
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in enableDisable.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in enableDisable.py', logger)
     finally:
         return True

@@ -4,17 +4,16 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 from ils.common.error import catch
+from ils.sfc.gateway.util import standardDeviation, getTopLevelProperties, getStepProperty, getTopChartRunId, handleUnexpectedGatewayError
+from ils.sfc.gateway.api import getChartLogger, getProviderName
+from ils.sfc.recipeData.api import s88Set
+from ils.sfc.common.constants import COLLECT_DATA_CONFIG
+from ils.sfc.common.util import substituteHistoryProvider
+from system.util import jsonDecode
+import system
 
 def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.util import standardDeviation, getTopLevelProperties, getStepProperty, \
-    getTopChartRunId, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getChartLogger, getProviderName
-    from ils.sfc.recipeData.api import s88Set
-    from system.ils.sfc.common.Constants import COLLECT_DATA_CONFIG
-    from ils.sfc.common.util import substituteHistoryProvider
-    from system.util import jsonDecode
-    import system.tag 
- 
+
     try:
         chartScope = scopeContext.getChartScope()
         provider = getProviderName(chartScope)
@@ -94,6 +93,6 @@ def activate(scopeContext, stepProperties, state):
                 elif errorHandling == 'defaultValue':
                     s88Set(chartScope, stepScope, row['recipeKey'], row['defaultValue'], row['location'] )
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in collectData.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in collectData.py', logger)
     finally:
         return True

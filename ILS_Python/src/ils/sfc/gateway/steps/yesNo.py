@@ -68,7 +68,7 @@ def activate(scopeContext, stepProperties, state):
             sql = "insert into SfcInput (windowId, prompt) values ('%s', '%s')" % (windowId, prompt)
             numInserted = system.db.runUpdateQuery(sql, database)
             if numInserted == 0:
-                handleUnexpectedGatewayError(chartScope, 'Failed to insert row into SfcInput', logger)
+                handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)
 
             targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey, IS_SFC_WINDOW: True}
@@ -90,7 +90,7 @@ def activate(scopeContext, stepProperties, state):
                     stepScope[TIMED_OUT] = True
 
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in commonInput.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', logger)
         workDone = True
     finally:
         if workDone:

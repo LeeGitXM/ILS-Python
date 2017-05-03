@@ -3,8 +3,8 @@ Created on Dec 17, 2015
 
 @author: rforbes
 '''
-from system.ils.sfc.common.Constants import CONFIRM_CONTROLLERS_CONFIG, RECIPE_LOCATION, TAG_PATH, VALUE, OUTPUT_TYPE
-from ils.sfc.common.constants import NAME, NUMBER_OF_ERRORS, MSG_STATUS_ERROR
+
+from ils.sfc.common.constants import NAME, NUMBER_OF_ERRORS, MSG_STATUS_ERROR, CONFIRM_CONTROLLERS_CONFIG, RECIPE_LOCATION, TAG_PATH, VALUE, OUTPUT_TYPE
 from ils.sfc.gateway.api import getChartLogger, getIsolationMode
 from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, notifyGatewayError, queueMessage
 from system.ils.sfc import getConfirmControllersConfig, getProviderName
@@ -53,7 +53,7 @@ def activate(scopeContext, stepProperties, state):
                 numberOfErrors = numberOfErrors + 1
             
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in confirmControllers.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in confirmControllers.py', chartLogger)
     finally:
         stepScope[NUMBER_OF_ERRORS] = numberOfErrors
         return True

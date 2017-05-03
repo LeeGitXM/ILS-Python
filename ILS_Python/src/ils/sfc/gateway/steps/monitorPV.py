@@ -361,7 +361,7 @@ def activate(scopeContext, stepProperties, state):
                         stepScope[TIMED_OUT] = True
                     logger.info("...there were %i PV monitoring timeouts!" % (numTimeouts))
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in monitorPV.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorPV.py', logger)
     finally:
         # do cleanup here
         pass

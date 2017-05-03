@@ -8,8 +8,7 @@ import system
 def activate(scopeContext, stepProperties, state):
     import time
     from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getTimeoutTime, logStepDeactivated
-    from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-    from system.ils.sfc.common.Constants import MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY
+    from ils.sfc.common.constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY
     from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, MESSAGE_ID, TIMED_OUT
     from ils.queue.message import insert
     from ils.sfc.gateway.recipe import substituteScopeReferences
@@ -66,7 +65,7 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[TIMED_OUT] = True
                 workDone = True
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in controlPanelMsg.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in controlPanelMsg.py', logger)
         workDone = True
     finally:
         return workDone

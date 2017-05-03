@@ -87,11 +87,11 @@ def activate(scopeContext, stepProperties, state):
                 
 
     except:
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in reviewFlows.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in reviewFlows.py', chartLogger)
         workDone = True
     finally:
         if workDone:
-            cleanup(chartScope, stepScope)
+            cleanup(chartScope, stepScope, stepProperties)
         return workDone
         
 def addData(windowId, dataset, row, isPrimary, database):
@@ -107,7 +107,7 @@ def addData(windowId, dataset, row, isPrimary, database):
         flow3 = flow1 + flow2
     system.db.runUpdateQuery("insert into SfcReviewFlowsTable (windowId, rowNum, prompt, advice, data1, data2, data3, units, sumFlows) values ('%s', %d, '%s', '%s', %f, %f, %f, '%s', %d)" % (windowId, row, prompt, advice, flow1, flow2, flow3, units, sumFlows), database)
 
-def cleanup(chartScope, stepScope):
+def cleanup(chartScope, stepScope, stepProperties):
     import system.db
     from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
     from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
@@ -122,4 +122,4 @@ def cleanup(chartScope, stepScope):
         deleteAndSendClose(project, windowId, database)    
     except:
         chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, 'Unexpected error in cleanup in reviewFlows.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in reviewFlows.py', chartLogger)
