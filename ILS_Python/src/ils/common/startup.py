@@ -34,6 +34,7 @@ def createTags(tagProvider, log):
 
     data.append([path, "writeEnabled", "Boolean", "True"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
+    data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
