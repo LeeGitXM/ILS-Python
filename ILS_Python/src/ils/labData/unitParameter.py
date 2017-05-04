@@ -12,55 +12,48 @@ log = LogUtil.getLogger("com.ils.labData.unitParameters")
 
 # The size of the buffer has changed.  We only need to worry about correcting from a large buffer to a small buffer
 def bufferSizeChanged(tagPath, currentValue, initialChange):
-    log.info("The buffer size has changed for <%s> to <%s>" % (tagPath, str(currentValue)))
+    log.infof("The buffer size has changed for <%s> to <%s>", tagPath, str(currentValue))
     database=getDatabaseForTag(tagPath)
     tagPathRoot, tagName, tagProvider = parseTagPath(tagPath)
     log.trace("In bufferSizeChanged with <%s>, new size = %i (root: %s)" % (tagPath, currentValue.value, tagPathRoot))
     SQL = "select unitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
     unitParameterId = system.db.runScalarQuery(SQL, database)
     if unitParameterId == None:
-        log.trace("No rows found for %s" % (tagPath))
+        log.tracef("No rows found for %s", tagPath)
         return 
     SQL = "Delete from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex >= %i" % (unitParameterId, currentValue.value)
     rows = system.db.runUpdateQuery(SQL, database)
-    log.trace("...deleted %i rows" % rows)
+    log.tracef("...deleted %d rows", rows)
 
 # There is a new value, update the filtered value.  This uses a circular buffer in the database table.    
 def valueChanged(tagPath, currentValue, initialChange):
     database=getDatabaseForTag(tagPath)
     # The database must exist .
     if database==None or len(database)==0:
-        log.warn("labData.unitParameter.valueChanged: Database is empty for %s" % (tagPath))
+        log.warnf("labData.unitParameter.valueChanged: Database is empty for %s", tagPath)
         return
     
     # Check the quality here and only process good values.
     if not(currentValue.quality.isGood()):
-        log.warn("%s quality is %s - value will not be propagated!" % (tagPath, currentValue.quality))
+        log.warnf("%s quality is %s - value will not be propagated!", tagPath, currentValue.quality)
         return
-    
-    # I'm not sure if we want to ignore this on startup or not - but this does eliminate the module loading error that IA is working
-    # where BLT is not loaded when this gets called on startup.
-    # This didn't seem to work anyway
-#    if initialChange:
-#        log.warn("Ignoring new value for %s because this is an initial value change!" % (tagPath))
-#        return
-    
+        
     # We can only process numeric values
     try:
         tagVal = float(currentValue.value)
     except:
         # Silently ignore nulls
         if not (currentValue.value == None):
-            log.warn("The new value <%s> for <%s> is not numeric and cannot be processed" % (str(currentValue.value), tagPath))
+            log.warnf("The new value <%s> for <%s> is not numeric and cannot be processed", str(currentValue.value), tagPath)
         return
     
     # The first step is to get the tag name out of the full tag name.  This should end in either rawValue or manualRawValue    
     tagPathRoot, tagName, tagProvider = parseTagPath(tagPath)
     if tagPathRoot==None or len(tagPathRoot)==0:
-        log.warnf("labData.unitParameter.valueChanged: Empty root path for %s",str(tagPath))
+        log.warnf("labData.unitParameter.valueChanged: Empty root path for %s", str(tagPath))
         return
     
-    log.trace("In valueChanged with <%s> and value: %f (root: %s)" % (tagPath, tagVal, tagPathRoot))
+    log.tracef("In valueChanged with <%s> and value: %f (root: %s)", tagPath, tagVal, tagPathRoot)
     
     # Check if the buffer has ever been initialized
     SQL = "select UnitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
@@ -70,7 +63,7 @@ def valueChanged(tagPath, currentValue, initialChange):
         SQL = "insert into TkUnitParameter (UnitParameterTagName) values ('%s')" % (tagPathRoot)
         log.trace(SQL)
         unitParameterId = system.db.runUpdateQuery(SQL, database, getKey=1)
-        log.info("Inserted a new unit parameter <%s> with id <%i> into the TkUnitParameter" % (tagPathRoot, unitParameterId))
+        log.infof("Inserted a new unit parameter <%s> with id <%d> into the TkUnitParameter", tagPathRoot, unitParameterId)
     
     # Read the buffer size and bufferindex from the tags
     tags = [tagPathRoot + '/numberOfPoints', tagPathRoot + '/bufferIndex']
@@ -109,7 +102,7 @@ def valueChanged(tagPath, currentValue, initialChange):
         else:
             bufferIndex = bufferIndex + 1
 
-    log.trace("Unit Parameter Id: %i - Number of points: %i - Buffer Index: %i" % (unitParameterId, numberOfPoints, bufferIndex))
+    log.tracef("Unit Parameter Id: %d - Number of points: %d - Buffer Index: %d", unitParameterId, numberOfPoints, bufferIndex)
     
     # Now put the new value into the buffer
     SQL = "update TkUnitParameterBuffer set RawValue = %f, sampleTime = getdate() "\
@@ -123,16 +116,16 @@ def valueChanged(tagPath, currentValue, initialChange):
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         if rows != 1:
-            log.error("Unable to add value <%f> to the history buffer for tag <%s>" % (tagVal, tagName))
+            log.errorf("Unable to add value <%f> to the history buffer for tag <%s>", tagVal, tagName)
         
     #  Query the buffer for the Mean
     SQL = "select avg(RawValue) from TkUnitParameterBuffer where UnitParameterId = %s" % (str(unitParameterId))
     log.trace(SQL)
     filteredValue = system.db.runScalarQuery(SQL, database)
-    log.trace("The filtered value is: %f" % (filteredValue))
+    log.tracef("The filtered value is: %f", filteredValue)
     
     # Store the mean into the UnitParameter Final Value
     # These are writing to memory tags so they should be very fast
     system.tag.write(tagPathRoot + '/filteredValue', filteredValue, 1)
     system.tag.write(tagPathRoot + '/bufferIndex', bufferIndex, 1)
-    log.trace("Successfully wrote the filtered value <%f> to <%s>" % (filteredValue, tagPath))
+    log.tracef("Successfully wrote the filtered value <%f> to <%s>", filteredValue, tagPath)
