@@ -51,6 +51,42 @@ def removeUnwantedConsoles(bar):
         index=index+1
 
 
+def removeNonOperatorMenus(bar):
+    print "Removing the menus which are not appropriate for operators."
+
+    count = bar.getMenuCount()
+    print "Count = ", count
+    index = 0
+    while index < count:
+        menu = bar.getMenu(index)
+        name = menu.getText()
+        print "Menu:",name
+        if name == 'Admin':
+            print "Removing the Admin menu..."
+            bar.remove(menu)
+            count = count - 1
+        
+        elif name == 'View':
+            # Find the console menu
+            viewCount = menu.getItemCount()
+            viewIndex = 0
+            while viewIndex < viewCount:
+                submenu = menu.getItem(viewIndex)
+                submenuName = submenu.getText()
+                print "View Submenu: ", submenuName
+                
+                if submenuName == 'Consoles':
+                    menu.remove(submenu)
+                    viewCount = viewCount - 1
+                else:
+                    viewIndex = viewIndex + 1
+
+            index=index+1
+
+        else:
+            index=index+1
+    
+
 # Given a component, traverse the hierarchy of its parents
 # until we find a JFrame. Return it.
 def getFrame(window):

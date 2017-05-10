@@ -19,15 +19,15 @@ def notifyConsole():
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, constantFD, calculationMethod, 
                        postTextRecommendation, textRecommendation, database="", provider=""):
-    log.info("********** In %s *********" % (__name__))
+    log.infof("********** In %s *********", __name__)
 
-    log.info("Making a recommendation for final diagnosis with id: %i using calculation method: <%s>, Constant=<%s>, \
-        database: %s, provider: %s" % (finalDiagnosisId, calculationMethod, str(constantFD), database, provider))
+    log.infof("Making a recommendation for final diagnosis with id: %s using calculation method: <%s>, Constant=<%s>, \
+        database: %s, provider: %s", str(finalDiagnosisId), calculationMethod, str(constantFD), database, provider)
 
     # If the FD is constant, then it shouldn't get this far because there really isn't a recommendation to make, so this code should never get exercised.
     if constantFD == True:
         print "The FD IS a CONSTANT"
-        log.info("Detected a CONSTANT Final Diagnosis")
+        log.infof("Detected a CONSTANT Final Diagnosis")
         
         SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_POSTED, diagnosisEntryId)
         logSQL.trace(SQL)
@@ -50,17 +50,17 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     
     try:
         if calculationMethod in ["", None]:
-            log.info("Implementing a static text recommendation because there is not a calculation method.")
+            log.infof("Implementing a static text recommendation because there is not a calculation method.")
             calculationSuccess = True
             explanation = ""
             rawRecommendationList = []
         else:
             calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
-            log.info("...back from the calculation method!")
+            log.infof("...back from the calculation method!")
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
-        log.error("Caught an exception calling calculation method named %s... \n%s" % (calculationMethod, errorTxt) )
+        log.errorf("Caught an exception calling calculation method named %s... \n%s", calculationMethod, errorTxt)
         return [], "", "ERROR"
     
     else:
@@ -142,7 +142,7 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
         "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
     logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
-    log.infof("      ...inserted recommendation id: %s for recommendation definition id: %i", recommendationId, recommendationDefinitionId)
+    log.infof("      ...inserted recommendation id: %s for recommendation definition id: %s", recommendationId, str(recommendationDefinitionId))
     return recommendationId
 
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made
@@ -162,18 +162,18 @@ def calculateFinalRecommendation(quantOutput):
         return None
         
     for recommendation in recommendations:
-        log.info("  The raw recommendation is: %s" % (str(recommendation)))
+        log.infof("  The raw recommendation is: %s", str(recommendation))
             
         autoOrManual = string.upper(quantOutput.get("AutoOrManual", "Auto"))
         if autoOrManual == 'AUTO':
             recommendationValue = recommendation.get('AutoRecommendation', 0.0)
-            log.info("   ...using the auto value: %f" % (recommendationValue))
+            log.infof("   ...using the auto value: %f", recommendationValue)
         else:
             recommendationValue = recommendation.get('ManualRecommendation', 0.0)
-            log.info("   ...using the manual value: %f" % (recommendationValue))
+            log.infof("   ...using the manual value: %f", recommendationValue)
     
         feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
-        log.info("   ...using feedback method %s to combine recommendations..." % (feedbackMethod))
+        log.infof("   ...using feedback method %s to combine recommendations...", feedbackMethod)
 
         if feedbackMethod == 'MOST POSITIVE':
             if i == 0: 
@@ -208,11 +208,11 @@ def calculateFinalRecommendation(quantOutput):
     quantOutput['FeedbackOutput'] = finalRecommendation
     quantOutput['FeedbackOutputConditioned'] = finalRecommendation
 
-    log.info("  The recommendation after combining multiple recommendations but before bounds checking) is: %f" % (finalRecommendation))
+    log.infof("  The recommendation after combining multiple recommendations but before bounds checking) is: %f", finalRecommendation)
     return quantOutput
 
 def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):
-    print "*** In recommendation.test() ***"
+    log.infof("*** In recommendation.test() ***")
     # We could fetch the actual finalDiagnosis Id from the database, but for now I don't think anyone uses it...
     from ils.diagToolkit.common import fetchFinalDiagnosis
     fdDict=fetchFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
@@ -232,16 +232,16 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
         separator=string.rfind(packagemodule, ".")
         package = packagemodule[0:separator]
         module  = packagemodule[separator+1:]
-        print "   ...using External Python, the package is: <%s>.<%s>" % (package, module)
+        log.infof("   ...using External Python, the package is: <%s>.<%s>", package, module)
         exec("import %s" % (package))
         exec("from %s import %s" % (package,module))
 
     status, explanation, rawRecommendationList = eval(calculationMethod)(applicationName,finalDiagnosisName, finalDiagnosisId, provider,database)
 
     if len(rawRecommendationList) == 0:
-        print "No rec_ommendations were returned!"
+        log.infof("No recommendations were returned!")
     else:
-        print "Recommendations: ", rawRecommendationList
+        log.infof("Recommendations: %s", str(rawRecommendationList))
 
     return status, explanation, rawRecommendationList
 
@@ -250,4 +250,4 @@ def postApplicationMessage(applicationName, status, message, log, database):
     queueId = system.db.runScalarQuery(SQL, database)
     from ils.queue.message import _insert
     _insert(queueId, status, message, database)
-    log.infof("%s - %s", status, message)
+    log.infof("%s - %s", str(status), str(message))

@@ -2,16 +2,17 @@
 Created on Dec 17, 2015
 
 @author: rforbes
+
 '''
 
-import system, time
+import system, time, string
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
 from ils.common.cast import isFloat, isInteger
 from ils.sfc.gateway.util import getStepId, registerWindowWithControlPanel, deleteAndSendClose, \
     getControlPanelId, getControlPanelName, getStepProperty, getTimeoutTime, logStepDeactivated, \
     dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, getOriginator
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName, parseValue, getUnitsPath, \
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, getProviderName, parseValue, getUnitsPath, \
     getProject, sendMessageToClient, getProject
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88SetWithUnits, s88GetWithUnits, s88GetType
 from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT,  \
@@ -41,10 +42,15 @@ def activate(scopeContext, stepProperties, state):
             autoMode = getStepProperty(stepProperties, AUTO_MODE)
             configJson = getStepProperty(stepProperties, MANUAL_DATA_CONFIG)
             config = getManualDataEntryConfig(configJson)
+            provider = getProviderName(chartScope)
 
             if autoMode == AUTOMATIC:
                 for row in config.rows:
-                    s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
+                    if string.upper(row.destination) == "TAG":
+                        tagPath = "[%s]%s" % (provider, row.key)
+                        system.tag.write(tagPath, row.defaultValue)
+                    else: 
+                        s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
                 workDone = True
             else:
                 stepScope[WAITING_FOR_REPLY] = True

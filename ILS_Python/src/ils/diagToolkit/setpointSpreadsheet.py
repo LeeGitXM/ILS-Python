@@ -696,6 +696,10 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
         partialResetDiagram(finalDiagnosisIds, database)
     else:
         resetDiagram(finalDiagnosisIds, database)
+    
+    print "Updating the DownloadAction for <%s> to <%s>" % (application, actionMessage)
+    SQL = "update DtApplication set downloadAction = '%s' where ApplicationName = '%s'" % (actionMessage, application)
+    system.db.runUpdateQuery(SQL, database)
 
 
 def postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, database):

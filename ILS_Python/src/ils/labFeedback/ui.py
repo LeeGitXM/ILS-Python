@@ -5,6 +5,7 @@ Created on Mar 22, 2017
 '''
 import system
 from com.jidesoft.grid import Row
+from ils.common.util import formatDateTime
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened"
@@ -59,8 +60,9 @@ def refresh(rootContainer, udtDS):
         modelValue = tagValues[1].value
         biasValue = tagValues[2].value
         sampleTime = tagValues[3].value
+        sampleTime = formatDateTime(sampleTime)
         
-        data.append([udtPath,biasName,udtType, labValue, modelValue, biasValue, sampleTime])
+        data.append([udtPath,biasName,udtType, labValue, modelValue, biasValue, str(sampleTime)])
         
     header = ["Bias Path", "Bias Name", "Bias Type","Lab Value", "Model Value", "Bias Value", "Lab Sample Time"]
     ds = system.dataset.toDataSet(header, data)

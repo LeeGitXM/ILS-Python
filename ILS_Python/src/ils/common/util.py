@@ -47,7 +47,10 @@ def formatDate(theDate, format = 'MM/dd/yy'):
 
     
 def formatDateTime(theDate, format = 'MM/dd/yy HH:mm'):
-    theDate = system.db.dateFormat(theDate, format)
+    if theDate == None:
+        theDate = ""
+    else:
+        theDate = system.db.dateFormat(theDate, format)
     return theDate
 
 '''

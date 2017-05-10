@@ -58,7 +58,7 @@ def getTargetStep(chartProperties, stepProperties, scope):
     return -1 
 
 def getTargetStepFromName(chartPath, stepName, db):
-    SQL = "select StepUUID from SfcChart C, SfcStep S "\
+    SQL = "select StepUUID, StepId from SfcChart C, SfcStep S "\
         " where S.ChartId = C.ChartId and C.ChartPath = '%s' and S.StepName = '%s' " % (chartPath, stepName)
     pds = system.db.runQuery(SQL, database=db)
     if len(pds) == 0:
@@ -67,10 +67,11 @@ def getTargetStepFromName(chartPath, stepName, db):
         raise ValueError, "Unable to find recipe data for %s - %s, multiple steps found" % (chartPath, stepName)
     record = pds[0]
     stepUUID = record["StepUUID"]
-    return stepUUID
+    stepId = record["StepId"]
+    return stepUUID, stepId
 
 def walkUpHieracrchy(chartProperties, stepType):
-    logger.trace("Walking up the hierarchy looking for %s" % (stepType))
+    logger.tracef("Walking up the hierarchy looking for %s", stepType)
     thisStepType = ""
     RECURSION_LIMIT = 100
     i = 1
@@ -78,14 +79,14 @@ def walkUpHieracrchy(chartProperties, stepType):
         i = i + 1
         if chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) != None:
             enclosingStepScope = chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) 
-            logger.trace("  The enclosing step scope is: %s" % (str(enclosingStepScope)))
+            logger.tracef("  The enclosing step scope is: %s", str(enclosingStepScope))
             superiorUUID = enclosingStepScope.get(STEP_UUID, None)
             superiorName = enclosingStepScope.get(STEP_NAME, None)
             thisStepType = enclosingStepScope.get(S88_LEVEL)
             chartPath = enclosingStepScope.get("chartPath", None)
             
             chartProperties = chartProperties.get(PARENT)
-            logger.trace("  The superior step: %s - %s - %s - %s" % (chartPath, superiorName, superiorUUID, thisStepType))
+            logger.tracef("  The superior step: %s - %s - %s - %s", chartPath, superiorName, superiorUUID, thisStepType)
         else:
             print "Throw an error here - we are at the top"
             return None, None
@@ -98,13 +99,13 @@ def walkUpHieracrchy(chartProperties, stepType):
        
 
 def getSuperiorStep(chartProperties):
-    logger.trace("Getting the superior step...")
+    logger.tracef("Getting the superior step...")
     if chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) != None:
         enclosingStepScope = chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) 
-        logger.trace("  The enclosing step scope is: %s" % ( str(enclosingStepScope) ))
+        logger.tracef("  The enclosing step scope is: %s", str(enclosingStepScope))
         superiorUUID = enclosingStepScope.get(STEP_UUID, None)
         superiorName = enclosingStepScope.get(STEP_NAME, None)
-        logger.trace("  The superior step is %s - %s " % (superiorName, superiorUUID))
+        logger.tracef("  The superior step is %s - %s ", superiorName, superiorUUID)
     else:
         print "Throw an error here - we are at the top"
         superiorUUID = None
@@ -116,7 +117,7 @@ This is only called from a transition.  The SFC framework passes the PRIOR step'
 in stepProperties.
 '''
 def getPriorStep(chartProperties, stepProperties):
-    logger.trace("Getting the prior step UUID and Name...")
+    logger.tracef("Getting the prior step UUID and Name...")
     priorName = stepProperties.get(STEP_NAME, None) 
     priorUUID= stepProperties.get(STEP_UUID, None) 
     logger.tracef("...returning %s and %s", priorUUID, priorName)
@@ -164,7 +165,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
-        logger.errorf("Error the key was not found")
+        logger.errorf("Error the key <%s> was not found", key)
         raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
     
     if len(pds) > 1:
@@ -175,7 +176,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     recipeDataId = record["RECIPEDATAID"]
     recipeDataType = record["RECIPEDATATYPE"]
     units = record["UNITS"]
-    logger.tracef("...the recipe data tyoe is: %s for id: %d", recipeDataType, recipeDataId)
+    logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
     # These attributes are common to all recipe data classes
     if attribute in ["DESCRIPTION","UNITS","LABEL","RECIPEDATATYPE"]:
@@ -335,7 +336,7 @@ def fetchRecipeDataRecord(stepUUID, key, db):
         " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
-        logger.errorf("Error the key was not found")
+        logger.errorf("Error the key <%s> was not found", key)
         raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
     
     if len(pds) > 1:
@@ -345,7 +346,7 @@ def fetchRecipeDataRecord(stepUUID, key, db):
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
     recipeDataType = record["RECIPEDATATYPE"]
-    logger.tracef("...the recipe data tyoe is: %s for id: %d", recipeDataType, recipeDataId)
+    logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
     # These attributes are common to all recipe data classes
     if recipeDataType == SIMPLE_VALUE:
@@ -404,7 +405,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
     SQL = "select * from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
-        logger.errorf("Error the key was not found")
+        logger.errorf("Error the key <%s> was not found", key)
         raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
     
     if len(pds) > 1:
@@ -510,7 +511,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
         elif attribute in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
             attrName="%sID" % (attribute)
             SQL = "select ValueType, %s from SfcRecipeDataOutputView where RecipeDataId = %s" % (attrName, recipeDataId)
-            logger.trace(SQL)
+            logger.tracef(SQL)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
                 raise ValueError, "Unable to find the value type for Output recipe data"
@@ -523,7 +524,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
                 SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
             else:
                 SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)
-            logger.trace(SQL)
+            logger.tracef(SQL)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d value records', rows)
 
@@ -546,13 +547,13 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
             now = formatDateTime(now, format='MM/dd/yy HH:mm:ss')
             val=val.upper()
             if val == PAUSE_TIMER.upper():
-                logger.trace("Pausing timer...")
+                logger.tracef("Pausing timer...")
                 SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_PAUSED, recipeDataId)
             elif val == START_TIMER.upper():
-                logger.trace("Starting timer...")
+                logger.tracef("Starting timer...")
                 SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_RUNNING, recipeDataId)
             elif val == RESUME_TIMER.upper():
-                logger.trace("Resuming timer...")
+                logger.tracef("Resuming timer...")
                 SQL = "select * from sfcRecipeDataTimerView where RecipeDataId = %d" % (recipeDataId)
                 pds = system.db.runQuery(SQL, db)
                 record = pds[0]
@@ -567,15 +568,15 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
                 
                 SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = %f where RecipeDataId = %d" % (now, TIMER_RUNNING, cumulativeMinutes, recipeDataId)
             elif val == CLEAR_TIMER.upper():
-                logger.trace("Clearing timer...")
+                logger.tracef("Clearing timer...")
                 SQL = "update SfcRecipeDataTimer set StartTime = NULL, StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (TIMER_CLEARED, recipeDataId)
             elif val == STOP_TIMER.upper():
-                logger.trace("Stopping timer...")
+                logger.tracef("Stopping timer...")
                 SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_STOPPED, recipeDataId)
             else:
                 raise ValueError, "Unsupported timer command <%s> for timer recipe data" % (val)
 
-            logger.trace(SQL)
+            logger.tracef(SQL)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d timer records', rows)
         

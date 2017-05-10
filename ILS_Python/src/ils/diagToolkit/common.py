@@ -450,6 +450,13 @@ def fetchQuantOutput(quantOutputId, database=""):
     pds = system.db.runQuery(SQL, database)
     return pds
 
+#
+def fetchTagPathForQuantOutputName(quantOutputName, database=""):
+    SQL = "select QuantOutputName from DtQuantOutput where QuantOutputName = '%s'"  % (quantOutputName)
+    log.trace(SQL)
+    tagPath = system.db.runScalarQuery(SQL, database)
+    return tagPath
+
 
 # Fetch the post for an application
 def fetchPostForApplication(application, database=""):

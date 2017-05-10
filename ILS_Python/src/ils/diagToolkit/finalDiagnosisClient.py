@@ -6,6 +6,7 @@ Created on Jun 30, 2015
 import system
 from ils.constants.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
 from ils.sfc.common.constants import DATABASE
+from ils.common.config import getDatabaseClient
 
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
@@ -91,6 +92,11 @@ def handleNotification(payload):
     notificationMode=payload.get('notificationMode', 'loud')
     numOutputs=payload.get('numOutputs', 1)
     callback="ils.diagToolkit.finalDiagnosisClient.postSpreadsheet"
+    gatewayDatabase=payload.get("gatewayDatabase")
+    clientDatabase=getDatabaseClient()
+    if gatewayDatabase <> clientDatabase:
+        print "Exiting handleNotification() because the gateway database does not match the client database"
+        return
 
     windows = system.gui.getOpenedWindows()
     

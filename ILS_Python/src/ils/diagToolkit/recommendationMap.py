@@ -65,19 +65,18 @@ def fetchQuantOutput(applicationName, quantOutputName, db, provider):
 def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     ''' '''
     print "Fetching Final Diagnosis that touch %s..." % (quantOutputName)
+        
+    SQL = "select distinct FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FinalDiagnosisUUID, FD.DiagramUUID "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtFamily F, DtApplication A "\
+        " where F.ApplicationId = A.ApplicationId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and RD.QuantOutputId = QO.QuantOutputId "\
+        " and FD.FamilyId = F.FamilyId "\
+        " and QO.ApplicationId = A.ApplicationId "\
+        " and QO.QuantOutputName = '%s' "\
+        " and A.ApplicationName = '%s'"\
+        " order by FD.FinalDiagnosisName" % (quantOutputName, applicationName)
 
-    SQL = "select distinct DtFinalDiagnosis.FinalDiagnosisName, DtDiagnosisEntry.Multiplier, DtFinalDiagnosis.FinalDiagnosisUUID, DtFinalDiagnosis.DiagramUUID "\
-        " from DtFinalDiagnosis INNER JOIN "\
-        " DtRecommendationDefinition ON DtFinalDiagnosis.FinalDiagnosisId = DtRecommendationDefinition.FinalDiagnosisId INNER JOIN "\
-        " DtQuantOutput ON dbo.DtRecommendationDefinition.QuantOutputId = dbo.DtQuantOutput.QuantOutputId INNER JOIN "\
-        " DtFamily ON DtFinalDiagnosis.FamilyId = DtFamily.FamilyId INNER JOIN "\
-        " DtApplication ON DtQuantOutput.ApplicationId = DtApplication.ApplicationId AND "\
-        " DtFamily.ApplicationId = DtApplication.ApplicationId LEFT OUTER JOIN "\
-        " DtDiagnosisEntry ON DtFinalDiagnosis.FinalDiagnosisId = DtDiagnosisEntry.FinalDiagnosisId "\
-        " where DtQuantOutput.QuantOutputName = '%s' "\
-        " and DtApplication.ApplicationName = '%s'"\
-        " order by FinalDiagnosisName" % (quantOutputName, applicationName)
-    
     print SQL
     pds = system.db.runQuery(SQL, database=db)
     print "  ...fetched %i Final Diagnoses..." % (len(pds))
@@ -85,7 +84,12 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     headers=["Name","Problem","Multiplier", "hasSQC", "UUID", "DiagramUUID", "SqcUUID", "SqcName"]
     data = []
     for record in pds:
-        data.append([record["FinalDiagnosisName"],record["FinalDiagnosisName"],record["Multiplier"], False, record["FinalDiagnosisUUID"], record["DiagramUUID"], None, None])
+        print "Looking for the multiplier for %s..." % (record["FinalDiagnosisName"])
+        SQL = "select Multiplier from DtDiagnosisEntry where FinalDiagnosisId = %d and Status = 'Active'" % (record["FinalDiagnosisId"]) 
+        multiplier = system.db.runScalarQuery(SQL)
+        print "The multiplier is: ", multiplier
+        data.append([record["FinalDiagnosisName"], record["FinalDiagnosisName"], multiplier, False, record["FinalDiagnosisUUID"], record["DiagramUUID"], None, None])
+    
     ds = system.dataset.toDataSet(headers, data)
     return ds
 
@@ -313,6 +317,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         
     # Get the production/isolation database 
     db=system.tag.read("[Client]Database").value
+    provider=system.tag.read("[Client]Tag Provider").value
     
     ds = theMap.diagnoses
     multiplier = ds.getValueAt(finalDiagnosisIdx, "Multiplier")
@@ -360,6 +365,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         # If there are no current recommendations then why did the user change the multiplier?  It doesn't make any sense, but 
         # regardless the outputs don't need to be updated.
         print "Now updating quantoutputs..."
+        numOutputs = 0
         if rows > 0:
             # Update the Total change for the quant output - remember that the output may be affected my multiple FDs
             # By involving DtRecommendation in this query, I will only get Outputs that have a recommendation.  A FD may have more
@@ -398,7 +404,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
         clientId = system.util.getClientId()
         
         from ils.diagToolkit.finalDiagnosis import notifyClients
-        notifyClients(project, post, clientId=clientId, notificationText="", notificationMode="quiet", numOutputs=numOutputs, database=db)        
+        notifyClients(project, post, clientId=clientId, notificationText="", notificationMode="quiet", numOutputs=numOutputs, database=db, provider=provider)
         print "Done"
 
     except:

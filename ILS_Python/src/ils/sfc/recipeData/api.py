@@ -40,8 +40,10 @@ def s88GetFromStep(stepUUID, keyAndAttribute, db):
 
 # This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
 def s88GetFromName(chartPath, stepName, keyAndAttribute, db):
+    logger.tracef("s88GetFromName(): geting %s from %s step %s", keyAndAttribute, chartPath, stepName)
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
+    logger.tracef("...looking at step %s - %s", str(stepId), str(stepUUID))
     val, units = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
@@ -49,7 +51,7 @@ def s88GetFromName(chartPath, stepName, keyAndAttribute, db):
 # This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
 def s88GetFromNameWithUnits(chartPath, stepName, keyAndAttribute, returnUnits, db):
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
     val, units = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     convertedValue = convert(units, returnUnits, val, db)
@@ -125,13 +127,13 @@ def s88SetFromStep(stepUUID, keyAndAttribute, value, db):
 def s88SetFromName(chartPath, stepName, keyAndAttribute, value, db):
     logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
     setRecipeData(stepUUID, key, attribute, value, db)
     
 def s88SetFromNameWithUnits(chartPath, stepName, keyAndAttribute, value, units, db):
     logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
     setRecipeData(stepUUID, key, attribute, value, db, units)
 
 '''

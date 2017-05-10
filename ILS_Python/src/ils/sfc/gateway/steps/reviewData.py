@@ -36,7 +36,7 @@ def activate(scopeContext, stepProperties, state):
 
     if state == DEACTIVATED:
         logStepDeactivated(chartScope, stepProperties)
-        cleanup(chartScope, stepScope)
+        cleanup(chartScope, stepProperties, stepScope)
         return False
             
     try:        
@@ -47,10 +47,9 @@ def activate(scopeContext, stepProperties, state):
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
             # calculate the absolute timeout time in epoch secs:
-            logger.trace("Initializing a Review Data step")
+            logger.tracef("Initializing a Review Data step, the response key is <%s>", responseKey)
             
             # Clear the response recipe data so we know when the client has updated it
-            print "The response key is: ", responseKey
             s88Set(chartScope, stepScope, responseKey + ".value", "NULL", responseRecipeLocation)
             
             stepScope[WAITING_FOR_REPLY] = True

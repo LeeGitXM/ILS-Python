@@ -20,10 +20,10 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
-def notifyClients(project, post, clientId=-1, notificationText="", notificationMode="loud", numOutputs=0, database=""):
+def notifyClients(project, post, clientId=-1, notificationText="", notificationMode="loud", numOutputs=0, database="", provider=""):
     log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, mode: %s..." % (project, post, str(clientId), str(numOutputs), notificationMode))
     messageHandler="consoleManager"
-    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId, 'notificationMode': notificationMode}
+    payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId, 'notificationMode':notificationMode, 'gatewayDatabase':database}
     notifier(project, post, messageHandler, payload, database)
 
     # If we are going to notify client to update their spreadsheet then maybe they should also update their recommendation maps...    
@@ -36,7 +36,7 @@ def notifyClientsOfTextRecommendation(project, post, application, notificationTe
     log.info("Notifying %s-%s-%s client of a Text Recommendation..." % (project, post, application))
     messageHandler="consoleManager"
     payload={'type':'textRecommendation', 'post':post, 'application':application, 'notificationText':notificationText, 
-                 'diagnosisEntryId':diagnosisEntryId, 'database':database, 'provider':provider}
+                 'diagnosisEntryId':diagnosisEntryId, 'database':database, 'provider':provider, 'gatewayDatabase':database}
     notifier(project, post, messageHandler, payload, database)
 
 # The notification escalation is as follows:
@@ -197,8 +197,8 @@ def scanner(database):
             Changed on 4/6/17 to notify even when there are no active outputs to fix problem where a FD cleared while the setpoint spreadsheet is open, but before it was
             acted upon.
             '''
-            notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
-                
+            notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database, provider=provider)
+
             if postTextRecommendation:
                 notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
 
@@ -243,23 +243,7 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
     log.info("...cleared %i final diagnosis" % (rows))
     
     requestToManage(applicationName, database, provider)
-'''
-    *** This was commented out when I implemented a seperate thread from a timer script for managing diagnosis ***
-    
-    log.info("Starting to manage as a result of a cleared Final Diagnosis...")
-    notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId=manage(applicationName, recalcRequested=False, database=database, provider=provider)
-    log.info("...back from manage due to a cleared final diagnosis!")
- 
-    # Update the setpoint spreadsheet
-    post=fetchPostForApplication(applicationName, database)
-       
-    log.info("Sending update notification to post %s and project %s" % (post, projectName))     
-    
-    if postTextRecommendation:
-        notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
-    else:
-        notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database)
-'''
+
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -286,9 +270,9 @@ def recalcMessageHandler(payload):
         if postTextRecommendation:
             notifyClientsOfTextRecommendation(project, post, applicationName, explanation, diagnosisEntryId, database, provider)
         else:
-            notifyClients(project, post, notificationText="", numOutputs=totalActiveOutputs, database=database, notificationMode="quiet")
+            notifyClients(project, post, notificationText="", numOutputs=totalActiveOutputs, database=database, notificationMode="quiet", provider=provider)
 
-    
+
 # This is based on the original G2 procedure outout-msg-core()
 # This inserts a message into the recommendation queue which is accessed from the "M" button
 # on the common console.
