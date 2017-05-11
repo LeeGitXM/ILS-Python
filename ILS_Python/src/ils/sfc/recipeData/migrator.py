@@ -15,8 +15,8 @@ log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
 def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
 
     provider = getTagProvider()
-    migrationEnabled = system.tag.read("[%s]Configuration/SFC/sfcMigrationEnabled" % (provider)).value
-    if not(migrationEnabled):
+    recipeDataMigrationEnabled = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataMigrationEnabled" % (provider)).value
+    if not(recipeDataMigrationEnabled):
         log.tracef("Recipe Data migration is disabled!")
         return
     
@@ -102,6 +102,8 @@ def processStep(step, db, tx):
                     arrayData(stepName, stepType, stepId, recipeData, db, tx)
                 elif recipeDataType == "Matrix":
                     matrixData(stepName, stepType, stepId, recipeData, db, tx)
+                elif recipeDataType == "EMData":
+                    recipeDataMigrator(stepName, stepType, stepId, recipeData, db, tx)
     
                 elif recipeDataType == None:
                     log.trace("Skipping a NULL value")
@@ -280,6 +282,38 @@ def simpleValue(stepName, stepType, stepId, recipeData, db, tx):
     system.db.runUpdateQuery(SQL, tx=tx)
 
     log.tracef("   ...done inserting a simple value!")
+
+#
+def recipeDataMigrator(stepName, stepType, stepId, recipeData, db, tx):
+    key = recipeData.get("key","")
+    log.infof("  Migrating a RECIPE with key: %s for step: %s", key, stepName)
+    print "----------"
+    print recipeData
+    print "----------"
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    recipeDataTypeId=fetchRecipeDataTypeId("Recipe", db)
+
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
+
+    presentationOrder = recipeData.get("pres",1)
+    storeTag = recipeData.get("stag","")
+    compareTag = recipeData.get("ctag","")
+    modeAttribute = recipeData.get("modattr","")
+    modeValue = recipeData.get("modattr_val","")
+    changeLevel = recipeData.get("chg_lev","")
+    recommendedValue = recipeData.get("recc","")
+    lowLimit = recipeData.get("lolim","")
+    highLimit = recipeData.get("hilim","")
+
+    SQL = "Insert into SfcRecipeDataRecipe (RecipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
+        "values (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % \
+        (recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit)
+    
+    system.db.runUpdateQuery(SQL, tx=tx)
+
+    log.tracef("   ...done inserting a recipe value!")
 
 def output(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")

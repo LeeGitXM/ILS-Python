@@ -18,5 +18,5 @@ def client():
     from ils.common.menuBar import getMenuBar
     menubar = getMenuBar(window)
     
-    from ils.dbManager.menuBar import removeUnwantedMenus
-    removeUnwantedMenus(menubar)
+    from ils.common.menuBar import removeUnwantedMenus
+    removeUnwantedMenus(menubar, "dbManager")

@@ -6,7 +6,8 @@ Created on Nov 18, 2014
 
 import system
 from ils.common.user import isOperator
-from ils.common.menuBar import getMenuBar, removeUnwantedConsoles, removeNonOperatorMenus
+from ils.common.menuBar import getMenuBar, removeUnwantedConsoles, removeNonOperatorMenus,\
+    removeUnwantedMenus
 
 '''
 Client startup is contingent on a relationship between the username and the post name.
@@ -48,6 +49,7 @@ def client():
     if window != None:
         menubar = getMenuBar(window)
         removeUnwantedConsoles(menubar)
+        removeUnwantedMenus(menubar, "XOM") #The second argument is NOT The project name, it is the project type
 
     '''
     If this is an operator, then remove the admin menu and the View->Consoles menu.

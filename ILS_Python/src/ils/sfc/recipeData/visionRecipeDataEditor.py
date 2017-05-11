@@ -11,7 +11,7 @@ from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from mailbox import fcntl
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
-from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
+from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, RECIPE, SIMPLE_VALUE, TIMER
 
     
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
@@ -84,6 +84,15 @@ def internalFrameOpened(rootContainer, db=""):
                 raise ValueError, "Unable to fetch an Output recipe data with id: %s" % (recipeDataId)
             record = pds[0]
             rootContainer.outputDataset = pds
+        
+        elif recipeDataType == RECIPE:
+            print "Fetching a Recipe"
+            SQL = "select * from SfcRecipeDataRecipeView where recipeDataId = %s" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to fetch a Recipe recipe data with id: %s" % (recipeDataId)
+            record = pds[0]
+            rootContainer.recipeDataset = pds
 
         elif recipeDataType == TIMER:
             print "Fetching a Timer"
@@ -99,8 +108,12 @@ def internalFrameOpened(rootContainer, db=""):
 
         rootContainer.description = record["Description"]
         rootContainer.label = record["Label"]
-        rootContainer.units = string.upper(record["Units"])
-        print "Setting the units to: ", string.upper(record["Units"])
+        
+        units = record["Units"]
+        if units <> None:
+            units = string.upper(units)
+        rootContainer.units = units
+        print "Setting the units to: ", units
         
     else:
         if recipeDataType == SIMPLE_VALUE:
@@ -159,6 +172,20 @@ def internalFrameOpened(rootContainer, db=""):
             ds = system.dataset.setValue(ds, 0, "ErrorText", "")
             ds = system.dataset.setValue(ds, 0, "PVMonitorActive", 0)
             rootContainer.inputDataset = ds
+        
+        elif recipeDataType == RECIPE:
+            print "Initializing a new Recipe..."
+            ds = rootContainer.recipeDataset
+            ds = system.dataset.setValue(ds, 0, "PresentationOrder", 0)
+            ds = system.dataset.setValue(ds, 0, "StoreTag", "")
+            ds = system.dataset.setValue(ds, 0, "CompareTag", "")
+            ds = system.dataset.setValue(ds, 0, "ModeAttribute", "")
+            ds = system.dataset.setValue(ds, 0, "ModeValue", "")
+            ds = system.dataset.setValue(ds, 0, "ChangeLevel", "")
+            ds = system.dataset.setValue(ds, 0, "RecommendedValue", "")
+            ds = system.dataset.setValue(ds, 0, "LowLimit", "")
+            ds = system.dataset.setValue(ds, 0, "HighLimit", "")
+            rootContainer.recipeDataset = ds
 
         elif recipeDataType == TIMER:
             print "Initializing a Timer..."
@@ -614,6 +641,71 @@ def saveTimerValue(rootContainer, db=""):
             
             val = timerContainer.getComponent("Popup Calendar").text
             SQL = "Update SfcRecipeDataTimer set StartTime='%s' where RecipeDataId = %d" % (val, recipeDataId)
+            
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+        system.db.commitTransaction(tx)
+        system.db.closeTransaction(tx) 
+    except:
+        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        system.db.rollbackTransaction(tx)
+        system.db.closeTransaction(tx) 
+    
+    print "Done!"
+
+def saveRecipe(rootContainer, db=""):
+    print "Saving a recipe"
+
+    recipeDataId = rootContainer.recipeDataId
+    stepId = rootContainer.stepId
+    
+    key = rootContainer.getComponent("Key").text
+    description = rootContainer.getComponent("Description").text
+    label = rootContainer.getComponent("Label").text
+    units = rootContainer.getComponent("Units Dropdown").selectedStringValue
+    container=rootContainer.getComponent("Recipe Container")
+    
+    tx = system.db.beginTransaction(db)
+    
+    try:
+        presentationOrder = container.getComponent("Presentation Order").intValue
+        storeTag = container.getComponent("Store Tag").text
+        compareTag = container.getComponent("Compare Tag").text
+        modeAttribute = container.getComponent("Mode Attribute").text
+        modeValue = container.getComponent("Mode Value").text
+        changeLevel = container.getComponent("Mode Attribute").text
+        recommendedValue = container.getComponent("Recommended Value").text
+        lowLimit = container.getComponent("Low Limit").text
+        highLimit = container.getComponent("High Limit").text
+        
+        if recipeDataId < 0:
+            print "Inserting..."
+            
+            recipeDataType = rootContainer.recipeDataType
+            recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
+            
+            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
+                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
+            print SQL
+            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            rootContainer.recipeDataId = recipeDataId
+            
+            SQL = "Insert into SfcRecipeDataRecipe (RecipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
+                "values (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % \
+                (recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+        else:
+            print "Updating..."
+            recipeDataId = rootContainer.recipeDataId
+            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+            SQL = "Update SfcRecipeDataRecipe set PresentationOrder=%d, StoreTag='%s', CompareTag='%s', ModeAttribute='%s', ModeValue='%s', ChangeLevel='%s', "\
+                "RecommendedValue='%s', LowLimit='%s', HighLimit='%s' where RecipeDataId = %d" % \
+                (presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit, recipeDataId)
             
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)

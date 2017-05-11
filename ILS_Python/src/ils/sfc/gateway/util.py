@@ -298,13 +298,14 @@ def printSpace(level, out):
     for i in range(level):
         out.write('   '),
 
-def queueMessage(chartScope, msg, priority):
+def queueMessage(chartScope, msg, priority, queue="default"):
     '''insert a message in the current message queue'''
     from ils.sfc.gateway.api import getCurrentMessageQueue, getDatabaseName
     from ils.queue.message import insert
-    currentMsgQueue = getCurrentMessageQueue(chartScope)
+    if queue == "default":
+        queue = getCurrentMessageQueue(chartScope)
     database = getDatabaseName(chartScope)
-    insert(currentMsgQueue, priority, msg, database) 
+    insert(queue, priority, msg, database) 
 
 def sendOpenWindow(chartScope, windowId, stepId, database, message='sfcOpenWindow'):
     '''Message the client to open a window'''

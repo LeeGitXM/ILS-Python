@@ -9,6 +9,7 @@ ARRAY = "Array"
 INPUT = "Input"
 MATRIX = "Matrix"
 OUTPUT = "Output"
+RECIPE = "Recipe"
 SIMPLE_VALUE = "Simple Value"
 TIMER = "Timer"
 
