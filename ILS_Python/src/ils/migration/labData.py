@@ -814,22 +814,22 @@ def loadUnitParameters(container):
 
         connections=0        
         for connection in unitParameter.findall('connectedTo'):
-            sourceTag=connection.get("name")
+            sourceTagName=connection.get("name")
             
             unit=connection.get("unit","")
             if unit == "":
-                sampleTimeTag="{[.]../%s/sampleTime}" % (sourceTag)
-                sourceTag="{[.]../%s/value}" % (sourceTag)
+                sampleTimeTag="{[.]../%s/sampleTime}" % (sourceTagName)
+                sourceTag="{[.]../%s/value}" % (sourceTagName)
             else:
-                sampleTimeTag="{[.]../%s/%s/sampleTime}" % (unit, sourceTag)
-                sourceTag="{[.]../%s/%s/value}" % (unit, sourceTag)
+                sampleTimeTag="{[.]../%s/%s/sampleTime}" % (unit, sourceTagName)
+                sourceTag="{[.]../%s/%s/value}" % (unit, sourceTagName)
             connections = connections + 1
 
         # At Vistalon, the only things that were ever connected to a unit parameter was lab data,
         # therefore, if there was a connection, then put this new instance in the Lab Data folder. 
         if connections == 0:
             sourceType="Custom"
-            sourceTag="Unknown"
+            sourceTagName="Unknown"
         else:
             sourceType="Lab Data"
 
@@ -850,8 +850,8 @@ def loadUnitParameters(container):
             pass
         else:
             print " ...creating a %s\n  Name: %s\n  Path: %s\n  Scan Class: %s\n  Source Type: %s\n  Source Tag: %s\n" % \
-                (UDTType, parameterName, tagPath, scanClass, sourceType, sourceTag)
-            if sourceTag == "Unknown":
+                (UDTType, parameterName, tagPath, scanClass, sourceType, sourceTagName)
+            if sourceTagName == "Unknown":
                 system.tag.addTag(parentPath=parentPath, name=parameterName, tagType="UDT_INST", 
                                   attributes={"UDTParentType":UDTType})
             else:
@@ -863,6 +863,21 @@ def loadUnitParameters(container):
                                   )
 
             system.tag.write(tagPath + "/numberOfPoints", numberOfPoints)
+        
+        '''
+        Now insert a record into the database.  Unit Parameters do have a nice "self registering" feature where they can be
+        created and configured in the tag broser in the designer and the first time the unit parameter receives a value it will
+        register with the database i it hasn't already been registered.  The problem with the self-registering is that we can't 
+        capture the name of the Lab Data that is feeding it.  This info is not needed for the functioning of the unit parameter per se
+        but it is required if we want to clear the value buffer on a related Download or No Download.  We do that by walking upstream
+        from the final diagnosis looking for a lab entry block, then looking up in the DB for any unit parameter using that lab datum.
+        '''
+        if sourceTagName == "Unknown":
+            SQL = "insert into TkUnitParameter (UnitParameterTagName) values ('%s')" % (tagPath)
+        else:
+            SQL = "insert into TkUnitParameter (UnitParameterTagName, LabValueName) values ('%s', '%s')" % (tagPath, sourceTagName)
+        system.db.runUpdateQuery(SQL)
+        
     #-------------------------------------------------------------
 
     filename = container.getComponent('File Field').text

@@ -110,3 +110,10 @@ def substituteProvider(tagPath, provider):
         return '[' + provider + ']' + tagPath[rbIndex+1:len(tagPath)]
     else:
         return '[' + provider + ']' + tagPath
+
+'''
+A little utility for a one liner that I can b=never remember.  Clear a dataset keeping the header intact.
+'''
+def clearDataset(ds):
+    ds = system.dataset.deleteRows(ds, range(ds.rowCount))
+    return ds
