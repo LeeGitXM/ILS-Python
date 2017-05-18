@@ -25,6 +25,7 @@ def internalFrameOpened(rootContainer, db=""):
     refreshPosts(rootContainer)
     refreshConsoles(rootContainer)
     refreshLogbooks(rootContainer)
+    refreshQueues(rootContainer)
 
 '''
 Unit Related Functions
@@ -313,6 +314,16 @@ def deleteLogbook(table):
     ds = system.dataset.deleteRow(ds, selectedRow)
     table.data = ds
 
+def viewLogbook(table):
+    selectedRow = table.selectedRow
+    if selectedRow < 0:
+        return
+    ds = table.data
+    queueKey = ds.getValueAt(selectedRow, "QueueKey")
+    if queueKey <> "":
+        from ils.queue.message import view
+        view(queueKey, useCheckpoint=True)
+
 def logbookEdited(table, rowIndex, colIndex, colName, oldValue, newValue):
     rootContainer = table.parent.parent
     txId = rootContainer.txId
@@ -332,6 +343,75 @@ def logbookEdited(table, rowIndex, colIndex, colName, oldValue, newValue):
         
     else:
         rows = system.db.runPrepUpdate("update TkLogbook set %s = ? where LogbookId = %s" % (colName, str(logbookId)), [newValue], tx=txId)
+        print "Updated %d rows" % (rows)
+    
+    table.data = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
+
+'''
+Queue Processing
+'''
+def refreshQueues(rootContainer):
+    txId = rootContainer.txId
+    SQL = "select * from QueueMaster order by QueueKey"
+    pds= system.db.runQuery(SQL, tx=txId)
+    table = rootContainer.getComponent("Queues Container").getComponent("Power Table")
+    table.data = pds
+
+def addQueue(table):
+    ds = table.data
+    if ds.rowCount == 0:
+        # take extra care to add the first row
+        ds = system.dataset.toDataSet(["QueueId", "QueueKey", "Title", "CheckpointTimestamp"], [[-1, None, None, None]])
+        table.data = ds
+    else:
+        table.data = system.dataset.addRow(table.data, [-1, None, None, None])
+
+def deleteQueue(table):
+    rootContainer = table.parent.parent
+    txId = rootContainer.txId
+    selectedRow = table.selectedRow
+    if selectedRow < 0:
+        return
+    ds = table.data
+    queueId = ds.getValueAt(selectedRow, "QueueId")
+    if queueId > 0:
+        SQL = "delete from QueueMaster where QueueId = %s" % (str(queueId))
+        system.db.runUpdateQuery(SQL, tx=txId)
+
+    ds = system.dataset.deleteRow(ds, selectedRow)
+    table.data = ds
+
+
+def viewQueue(table):
+    selectedRow = table.selectedRow
+    if selectedRow < 0:
+        return
+    ds = table.data
+    queueKey = ds.getValueAt(selectedRow, "QueueKey")
+    if queueKey <> "":
+        from ils.queue.message import view
+        view(queueKey, useCheckpoint=True)
+
+
+def queueEdited(table, rowIndex, colIndex, colName, oldValue, newValue):
+    rootContainer = table.parent.parent
+    txId = rootContainer.txId
+    ds = table.data
+    queueId = ds.getValueAt(rowIndex, "QueueId")
+    if queueId < 0:
+        ds = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
+        print "New row in row: ", rowIndex
+        queueKey = ds.getValueAt(rowIndex, "QueueKey")
+        title = ds.getValueAt(rowIndex, "Title")
+        if queueKey <> None and title <> None:
+            queueId = system.db.runPrepUpdate("Insert into QueueMaster (QueueKey, Title) values (?, ?)", [queueKey, title], getKey=True, tx=txId)
+            ds = system.dataset.setValue(ds, rowIndex, "QueueId", queueId)
+            print "Inserted a new Queue with id: %d" % (queueId)
+        else:
+            system.gui.messageBox("Queue Key and Title are required")
+        
+    else:
+        rows = system.db.runPrepUpdate("update QueueMaster set %s = ? where QueueId = %s" % (colName, str(queueId)), [newValue], tx=txId)
         print "Updated %d rows" % (rows)
     
     table.data = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
