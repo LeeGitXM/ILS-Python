@@ -162,12 +162,12 @@ This was implemented to solve the problem where a single new piece of data cause
 a management thread was launched for each of the FDs that changed state, all of which would lead to the exact same answer.  This is effectively a semaphore
 of sorts.
 '''
-def scanner(database):
+def scanner(database, tagProvider):
     log.info("Checking to see if there are applications to manage...")
     projectName = system.util.getProjectName()
     SQL = "select * from DtApplicationManageQueue"
     pds = system.db.runQuery(SQL, database)
-    ageInterval = system.tag.read("Configuration/DiagnosticToolkit/diagnosticAgeInterval").value
+    ageInterval = system.tag.read("[%s]Configuration/DiagnosticToolkit/diagnosticAgeInterval" % (tagProvider)).value
     
     for record in pds:    
         timestamp = record["Timestamp"]
