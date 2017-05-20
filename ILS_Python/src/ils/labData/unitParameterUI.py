@@ -5,6 +5,7 @@ Created on May 16, 2017
 '''
 
 import system
+from ils.common.config import getDatabaseClient
 
 # Open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -14,13 +15,15 @@ def internalFrameOpened(rootContainer):
     
 def refresh(rootContainer):
     print "...refreshing..."
+    db = getDatabaseClient()
     SQL = "select * from TkUnitParameter order by UnitParameterTagName"
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
 
     table = rootContainer.getComponent("Unit Parameter Power Table")
     table.data = pds
 
 def updateBufferTable(unitParameterTable, rowIndex):
+    db = getDatabaseClient()
     rootContainer = unitParameterTable.parent
     
     ds = unitParameterTable.data
@@ -28,7 +31,7 @@ def updateBufferTable(unitParameterTable, rowIndex):
     print "Selected Unit Parameter: ", unitParameterId
     
     SQL = "select * from TkUnitParameterBuffer where UnitParameterId = %d" % (unitParameterId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     table = rootContainer.getComponent("Unit Parameter Buffer Table")
     table.data = pds
 
