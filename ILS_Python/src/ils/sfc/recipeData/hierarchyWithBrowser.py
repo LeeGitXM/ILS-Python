@@ -6,6 +6,7 @@ Created on Feb 10, 2017
 import system
 from ils.common.windowUtil import clearTable
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
+from ils.common.error import catch
 log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
@@ -179,8 +180,21 @@ def refreshSteps(rootContainer, db):
     stepTable.data = pds
     stepTable.selectedRow = -1
 
-def updateRecipeData(rootContainer, db):
-    print "Updating the recipe data table..."
+'''
+This is used to format the tooltip for the Recipe Data table.  The description can get really long and I 
+decided that the tooltop for the row should be the description, but if it is really long it needs to be word
+wrapped.  The tooltip supports HTML.
+'''
+def tooltipFormatter(desc, lineLen=80):
+    lines = []
+    for i in xrange(0, len(desc), lineLen):
+        lines.append(desc[i:i+lineLen])
+    desc = "<HTML>" + "<br>".join(lines)
+    return desc    
+    
+#
+def updateRecipeData(rootContainer, db=""):
+    log.info("Updating the recipe data table...")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
     
@@ -191,9 +205,249 @@ def updateRecipeData(rootContainer, db):
         stepId = ds.getValueAt(stepTable.selectedRow, "StepId")
         
         SQL = "select * from SfcRecipeDataView where StepId = %s order by RecipeDataKey" % (str(stepId))
-        print SQL
         pds = system.db.runQuery(SQL, db)
-        recipeDataTable.data = pds
+        
+        ds = system.dataset.toDataSet(pds)
+        row = 0
+        for record in pds:
+            desc = getRecipeDataDescription(record, db)
+            ds = system.dataset.setValue(ds, row, "Description", desc)        
+            row = row + 1
+            
+        recipeDataTable.data = ds
+
+def getRecipeDataDescription(record, db):
+    try:
+        recipeDataId = record["RecipeDataId"]
+        recipeDataType = record["RecipeDataType"]
+        desc = record["Description"]
+        log.tracef("Looking at %s - %s", recipeDataId, recipeDataType)
+        
+        if recipeDataType == "Simple Value":
+            valuePDS = system.db.runQuery("select * from SfcRecipeDataSimpleValueView where recipeDataId = %d" % (recipeDataId), db)
+            if len(valuePDS) == 1:
+                valueRecord = valuePDS[0]
+                desc = getValueDescriptionFromRecord(valueRecord, desc)
+        elif recipeDataType == "Matrix":
+            desc = getMatrixDescription(recipeDataId, desc, db)
+        elif recipeDataType == "Array":
+            desc = getArrayDescription(recipeDataId, desc, db)
+        elif recipeDataType == "Timer":
+            desc = getTimerDescription(recipeDataId, desc, db)
+        elif recipeDataType == "Recipe":
+            desc = getRecipeDescription(recipeDataId, desc, db)
+        elif recipeDataType == "Output":
+            valuePDS = system.db.runQuery("select * from SfcRecipeDataOutputView where recipeDataId = %d" % (recipeDataId), db)
+            if len(valuePDS) == 1:
+                valueRecord = valuePDS[0]
+                tag = valueRecord["Tag"]
+                tag = tag[tag.rfind('/') + 1:]
+                timing = valueRecord["Timing"]
+                outputType = valueRecord["OutputType"]
+                
+                if desc == "":
+                    desc = "Tag: %s, Type: %s, Timing: %s" % (tag, outputType, str(timing))
+                else:
+                    desc = "%s, Tag: %s, Type: %s, Timing: %s" % (desc, tag, outputType, str(timing))
+                    
+                desc = getOutputValueDescriptionFromRecord(valueRecord, desc)
+        elif recipeDataType == "Input":
+            valuePDS = system.db.runQuery("select * from SfcRecipeDataInputView where recipeDataId = %d" % (recipeDataId), db)
+            if len(valuePDS) == 1:
+                valueRecord = valuePDS[0]
+                tag = valueRecord["Tag"]
+                tag = tag[tag.rfind('/') + 1:]
+                
+                if desc == "":
+                    desc = "Tag: %s" % (tag)
+                else:
+                    desc = "%s, Tag: %s" % (desc, tag)
+                    
+                desc = getInputValueDescriptionFromRecord(valueRecord, desc)
+    except:
+        errorDesc = catch("%s.getRecipeDataDescription()" % (__name__))
+        log.errorf(errorDesc)
+
+    return desc
+
+def getMatrixDescription(recipeDataId, desc, db):
+    valuePDS = system.db.runQuery("Select * from SFcRecipeDataMatrixView where recipeDataId = %d" % (recipeDataId), db)
+    if len(valuePDS) == 1:
+        valueRecord = valuePDS[0]
+        valueType = valueRecord["ValueType"]
+        rows = valueRecord["Rows"]
+        columns = valueRecord["Columns"]
+        matrixDesc = "A %d X %d matrix" % (rows, columns)
+        
+        if desc == "":
+            desc = matrixDesc
+        else:
+            desc = "%s, %s" % (desc, matrixDesc)
+
+        SQL = "select * from SfcRecipeDataMatrixElementView where RecipeDataId = %d order by RowIndex, ColumnIndex" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        lastRowIndex = -1
+        txt = ""
+        for record in pds:
+            rowIndex = record["RowIndex"]
+            if valueType == "Float":
+                val = record["FloatValue"]
+                
+            if rowIndex <> lastRowIndex:
+                if txt == "":
+                    txt = "(%s" % (str(val))
+                else:
+                    txt = "%s), (%s" % (txt, str(val))
+            else:
+                txt = "%s, %s" % (txt, str(val))
+                
+            lastRowIndex = rowIndex
+        
+        desc = desc + txt
+
+    return desc
+
+#
+def getArrayDescription(recipeDataId, desc, db):
+    valuePDS = system.db.runQuery("Select * from SFcRecipeDataArrayView where recipeDataId = %d" % (recipeDataId), db)
+    valueRecord = valuePDS[0]
+    valueType = valueRecord["ValueType"]
+
+    SQL = "select * from SfcRecipeDataArrayElementView where RecipeDataId = %d order by ArrayIndex" % (recipeDataId)
+    pds = system.db.runQuery(SQL, db)
+    numElements = len(pds)
+
+    txt = ""
+    for record in pds:
+
+        if valueType == "Float":
+            val = record["FloatValue"]
+
+        if txt == "":
+            txt = "(%s" % (str(val))
+        else:
+            txt = "%s, %s" % (txt, str(val))
+    
+    txt = txt + ")"
+
+    if desc == "":
+        desc = txt
+    else:
+        desc = "%s, %s" % (desc, txt)    
+
+    return desc
+
+#
+def getTimerDescription(recipeDataId, desc, db):
+    valuePDS = system.db.runQuery("Select * from SFcRecipeDataTimerView where recipeDataId = %d" % (recipeDataId), db)
+    valueRecord = valuePDS[0]
+
+    txt = "State: %s, Start time: %s" % (valueRecord["TimerState"], valueRecord["StartTime"])
+    
+    if desc == "":
+        desc = txt
+    else:
+        desc = "%s, %s" % (desc, txt)    
+
+    return desc
+
+#
+def getRecipeDescription(recipeDataId, desc, db):
+    valuePDS = system.db.runQuery("Select * from SFcRecipeDataRecipeView where recipeDataId = %d" % (recipeDataId), db)
+    valueRecord = valuePDS[0]
+
+    txt = "Tag: %s, Value: %s" % (valueRecord["StoreTag"], str(valueRecord["RecommendedValue"]))
+
+    if desc == "":
+        desc = txt
+    else:
+        desc = "%s, %s" % (desc, txt)    
+
+    return desc 
+
+def getValueDescriptionFromRecord(record, desc):
+    valueType = record["ValueType"]
+    units = record["Units"]
+    
+    if valueType == "String":
+        val = record["StringValue"]
+    elif valueType == "Float":
+        val = record["FloatValue"]
+    elif valueType == "Integer":
+        val = record["IntegerValue"]
+    elif valueType == "Boolean":
+        val = record["BooleanValue"]
+        if val == 1:
+            val = "True"
+        else:
+            val = "False"
+    
+    if desc == "":
+        desc = "%s" % (str(val))
+    else:
+        desc = "%s, %s" % (desc, str(val))
+    
+    if units <> "" and units <> None:
+        desc = "%s (%s)" % (desc, units)
+
+    return desc
+
+#
+def getOutputValueDescriptionFromRecord(record, desc):
+    valueType = record["ValueType"]
+    units = record["Units"]
+    
+    if valueType == "String":
+        val = record["OutputStringValue"]
+    elif valueType == "Float":
+        val = record["OutputFloatValue"]
+    elif valueType == "Integer":
+        val = record["OutputIntegerValue"]
+    elif valueType == "Boolean":
+        val = record["OutputBooleanValue"]
+        if val == 1:
+            val = "True"
+        else:
+            val = "False"
+    
+    if desc == "":
+        desc = "%s" % (str(val))
+    else:
+        desc = "%s, %s" % (desc, str(val))
+    
+    if units <> "" and units <> None:
+        desc = "%s (%s)" % (desc, units)
+
+    return desc
+
+#
+def getInputValueDescriptionFromRecord(record, desc):
+    valueType = record["ValueType"]
+    units = record["Units"]
+    
+    if valueType == "String":
+        val = record["PVStringValue"]
+    elif valueType == "Float":
+        val = record["PVFloatValue"]
+    elif valueType == "Integer":
+        val = record["PVIntegerValue"]
+    elif valueType == "Boolean":
+        val = record["PVBooleanValue"]
+        if val == 1:
+            val = "True"
+        else:
+            val = "False"
+    
+    if desc == "":
+        desc = "%s" % (str(val))
+    else:
+        desc = "%s, %s" % (desc, str(val))
+    
+    if units <> "" and units <> None:
+        desc = "%s (%s)" % (desc, units)
+
+    return desc
+
 
 def deleteRecipeData(rootContainer, db):
     print "Deleting a recipe data..."
