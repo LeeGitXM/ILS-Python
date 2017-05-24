@@ -74,3 +74,15 @@ def idListToString(aList):
         else:
             aString="%s,%s" % (aString, str(aVal))
     return aString
+
+# Convert the Python Data Set (PDS) to a list of dictionaries 
+def toList(pds):
+    vals = []
+    if len(pds) > 0:    
+        ds = system.dataset.toDataSet(pds)
+        for row in range(ds.rowCount):
+            val=ds.getValueAt(row,0)
+            vals.append(val)
+
+    # If the dataset was empty then return an empty list
+    return vals
