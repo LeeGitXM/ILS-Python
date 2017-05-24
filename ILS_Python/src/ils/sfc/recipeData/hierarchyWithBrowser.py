@@ -322,7 +322,13 @@ def getArrayDescription(recipeDataId, desc, db):
 
         if valueType == "Float":
             val = record["FloatValue"]
-
+        elif valueType == "String":
+            val = record["StringValue"]
+        elif valueType == "Integer":
+            val = record["IntegerValue"]
+        elif valueType == "Boolean":
+            val = record["BooleanValue"]
+            
         if txt == "":
             txt = "(%s" % (str(val))
         else:

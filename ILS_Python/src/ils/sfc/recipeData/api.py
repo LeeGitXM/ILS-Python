@@ -123,6 +123,11 @@ def s88SetFromStep(stepUUID, keyAndAttribute, value, db):
     key,attribute = splitKey(keyAndAttribute)
     setRecipeData(stepUUID, key, attribute, value, db)
     
+def s88SetFromStepWithUnits(stepUUID, keyAndAttribute, value, db, units):
+    logger.tracef("s88SetFromStepWithUnits(): %s - %s - %s", keyAndAttribute, str(value), units)
+    key,attribute = splitKey(keyAndAttribute)
+    setRecipeData(stepUUID, key, attribute, value, db, units)
+    
 # This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
 def s88SetFromName(chartPath, stepName, keyAndAttribute, value, db):
     logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))

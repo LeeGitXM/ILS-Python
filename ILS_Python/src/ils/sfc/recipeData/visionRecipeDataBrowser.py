@@ -45,7 +45,7 @@ def updateSteps(rootContainer, chartId, db=""):
     stepList.data = pds
 
 def updateRecipeData(rootContainer, db=""):
-    print "Updating the recipe data table..."
+    print "**Updating the recipe data table**..."
     stepTable = rootContainer.getComponent("Steps")
     recipeDataTable = rootContainer.getComponent("Recipe Data")
     
@@ -58,8 +58,50 @@ def updateRecipeData(rootContainer, db=""):
         SQL = "select * from SfcRecipeDataView where StepId = %s order by RecipeDataKey" % (str(stepId))
         print SQL
         pds = system.db.runQuery(SQL, db)
-        recipeDataTable.data = pds
+        
+        ds = pds
+        row = 0
+        for record in pds:
+            recipeDataId = record["RecipeDataId"]
+            recipeDataType = record["RecipeDataType"]
+            print "Looking at %s - %s" % (recipeDataId, recipeDataType)
+            
+            if recipeDataType == "Simple Value":
+                SQL = "select * from SfcRecipeDataSimpleValueView"
+                valuePDS = system.db.runQuery(SQL, db)
+                if len(valuePDS) == 1:
+                    valueRecord = valuePDS[0]
+                    desc = getDescriptionFromRecord(valueRecord)
+                    ds = system.dataset.setValue(ds, row, "Description", desc)    
+            row = row + 1
+            
+        recipeDataTable.data = ds
 
+def getDescriptionFromRecord(record):
+    desc = record["Description"]
+    valueType = record["ValueType"]
+    
+    if valueType == "String":
+        val = record["StringValue"]
+    elif valueType == "Float":
+        val = record["FloatValue"]
+    elif valueType == "Integer":
+        val = record["IntegerValue"]
+    elif valueType == "Boolean":
+        val = record["BooleanValue"]
+        if val == 1:
+            val = "True"
+        else:
+            val = "False"
+    
+    if desc == "":
+        desc = "%s" % (str(val))
+    else:
+        desc = "%s, %s" % (desc, str(val))
+
+    print "Returning description: ", desc
+    return desc
+    
 def clearRecipeDataTable(recipeDataTable):
     print "Clearing table"
     ds = recipeDataTable.data
@@ -88,6 +130,3 @@ def deleteRecipeData(rootContainer, db=""):
     
     # Update the table
     updateRecipeData(rootContainer, db)
-    
-    
-    

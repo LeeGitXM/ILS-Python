@@ -120,8 +120,8 @@ def reopenWindow(windowId):
 
     
     window = system.nav.openWindowInstance(windowPath, payload)
+    system.nav.centerWindow(window)
     window.title = title
-    positionWindow(window, position, scale)
 
 def sendCloseWindow(window, table):
     from ils.sfc.common.constants import DATABASE, WINDOW_ID, TABLE, PROJECT

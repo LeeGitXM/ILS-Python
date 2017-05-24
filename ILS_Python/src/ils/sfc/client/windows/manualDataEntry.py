@@ -7,28 +7,45 @@ SfcManualDataEntryTable database table.  The gateway is reading the same table, 
 @author: rforbes
 '''
 
+import system, string
 from ils.sfc.common.util import isEmpty
-import system.gui.warningBox
-from ils.common.config import getDatabaseClient
+from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.sfc.recipeData.api import s88SetFromStep, s88SetFromStepWithUnits
+
+def internalFrameOpened(rootContainer):
+    print "In InternalFrameOpened..."
+
+    windowId = rootContainer.windowId
+    print "The windowId is: ",windowId
+    
+    SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL)
+    record=pds[0]
+    rootContainer.title = record["title"]
+    
+    SQL = "select * from SfcManualDataEntry where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL)
+    record=pds[0]
+    requireAllInputs = record["requireAllInputs"]
+    rootContainer.requireAllInputs = requireAllInputs
  
-def sendData(rootContainer, timedOut=False):
+def okCallback(rootContainer, timedOut=False):
     '''Save data to the database. If configured, check that all values have been entered, and
        don't send and warn if they have not. Return true if data was sent.'''
 
     table = rootContainer.getComponent('Power Table')
     dataset = table.data
-    
-    print "In %s" % (__name__)
-    
+
     # anywhere units are specified, check if they also exist in recipe data
     for row in range(dataset.rowCount):
-        units = dataset.getValueAt(row, 2)
-        if not isEmpty(units):
+        units = dataset.getValueAt(row, "units")
+        destination = dataset.getValueAt(row, "destination")
+        if not isEmpty(units) and string.upper(destination) <> "TAGS":
             recipeUnits = dataset.getValueAt(row, 8)
             key = dataset.getValueAt(row, 5)
             if isEmpty(recipeUnits):
                 system.gui.messageBox("Unit %s is specified but recipe data %s has no units. No conversion will be done." % (units, key), 'Warning')
-     
+
     requireAllInputs = rootContainer.requireAllInputs
     print "This window requires all inputs: %s" % (str(requireAllInputs))
     
@@ -42,20 +59,19 @@ def sendData(rootContainer, timedOut=False):
                 break
 
     if allInputsOk:
-        print "All inputs are OK - sending data to the gateway!"
+        print "All inputs are OK - saving data..."
         saveData(rootContainer, timedOut)
         return True
     else:
         system.gui.messageBox("All inputs are required", "Warning")
         return False
 
-
 # This actually does the work of saving the data to the database.
 def saveData(rootContainer, timedOut):
     print "Saving the data..."
-    database=getDatabaseClient()
+    db=getDatabaseClient()
+    provider=getTagProviderClient()
     windowId = rootContainer.windowId
-    print "The window id is: ", windowId
 
     table = rootContainer.getComponent('Power Table')
     ds = table.data
@@ -63,12 +79,25 @@ def saveData(rootContainer, timedOut):
     for record in pds:
         val = record['value']
         rowNum = record['rowNum']
-        SQL = "update SfcManualDataEntryTable set value = '%s' where windowId = '%s' and rowNum = %i" % (val, windowId, rowNum)
-        system.db.runUpdateQuery(SQL, database=database)
+        units = record['units']
+        keyAndAttribute = record['dataKey']
+        stepUUID = record['targetStepUUID']
+        destination = record['destination']
+        valueType = record['type']
+        
+        print"  %s - %s - %s - %s - %s" % (destination, keyAndAttribute, val, units, valueType)
 
+#        value = parseValue(strValue, valueType)
+        if string.upper(destination) == "TAG":
+            print "Writing %s to %s" % (val, keyAndAttribute)
+            tagPath = "[%s]%s" % (provider, keyAndAttribute)
+            system.tag.write(tagPath, val)
+        else:
+            if isEmpty(units):
+                s88SetFromStep(stepUUID, keyAndAttribute, val, db)
+            else:
+                s88SetFromStepWithUnits(stepUUID, keyAndAttribute, val, db, units)
 
-    SQL = "update SfcManualDataEntry set complete = 1, timedOut = %i where windowId = '%s'" % (timedOut, windowId)
-    print SQL
-    system.db.runUpdateQuery(SQL, database=database)        
+    SQL = "update SfcManualDataEntry set complete = 1 where windowId = '%s'" % (windowId)
+    system.db.runUpdateQuery(SQL, database=db)        
     print "--- Done ---"
-    

@@ -135,6 +135,7 @@ RECIPE_DATA = "recipeData"
 RECIPE_DATA_TYPE = "recipeDataType"
 REQUIRE_ALL_INPUTS = "requireAllInputs"
 RESPONSE = "response"
+RESPONSE_KEY_AND_ATTRIBUTE = "responseKeyAndAttribute";
 RESULTS_MODE = "resultsMode" 
 SCALE = "scale"
 SECONDARY_CONFIG = "secondaryConfig"

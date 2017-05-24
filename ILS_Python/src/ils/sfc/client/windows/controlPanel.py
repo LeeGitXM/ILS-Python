@@ -154,7 +154,6 @@ def resetDb(rootContainer):
     system.db.runUpdateQuery("delete from SfcControlPanelMessage where chartRunId = '%s'" % chartRunId, database)
     system.db.runUpdateQuery("delete from SfcDialogMessage", database)
     # order deletions so foreign key constraints are not violated:
-    system.db.runUpdateQuery("delete from SfcInputChoices", database)
     system.db.runUpdateQuery("delete from SfcInput", database)
     system.db.runUpdateQuery("delete from SfcManualDataEntryTable", database)
     system.db.runUpdateQuery("delete from SfcManualDataEntry", database)

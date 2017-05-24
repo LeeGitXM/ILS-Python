@@ -30,7 +30,7 @@ def activate(scopeContext, stepProperties, state):
 
     if state == DEACTIVATED:
         logStepDeactivated(chartScope, stepProperties)
-        cleanup(chartScope, stepScope)
+        cleanup(chartScope, stepProperties, stepScope)
         return False
             
     try:        
@@ -40,15 +40,12 @@ def activate(scopeContext, stepProperties, state):
         
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
-            # calculate the absolute timeout time in epoch secs:
             logger.trace("Initializing a getInput step")
             
             # Clear the response recipe data so we know when the client has updated it
             s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
             
             stepScope[WAITING_FOR_REPLY] = True
-            timeoutTime = getTimeoutTime(chartScope, stepProperties)
-            stepScope[TIMEOUT_TIME] = timeoutTime
             
             controlPanelId = getControlPanelId(chartScope)
             database = getDatabaseName(chartScope)
@@ -79,11 +76,6 @@ def activate(scopeContext, stepProperties, state):
             if response <> None and response <> "NULL":
                 logger.tracef("Setting the workDone flag")
                 workDone = True
-            else:
-                timeout = checkForTimeout(stepScope)
-                if timeout:
-                    logger.tracef("Setting the Timeout flag")
-                    stepScope[TIMED_OUT] = True
              
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', logger)
@@ -91,5 +83,5 @@ def activate(scopeContext, stepProperties, state):
     finally:
         if workDone:
             logger.trace("All of the work is done, cleaning up...")
-            cleanup(chartScope, stepScope)
+            cleanup(chartScope, stepProperties, stepScope)
         return workDone

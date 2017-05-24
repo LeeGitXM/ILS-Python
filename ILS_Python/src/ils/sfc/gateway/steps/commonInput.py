@@ -104,7 +104,6 @@ def cleanup(chartScope, stepProperties, stepScope):
         project = getProject(chartScope)
         windowId = stepScope.get(WINDOW_ID, None)
         if windowId != None:
-            system.db.runUpdateQuery("delete from SfcInputChoices where windowId = '%s'" % (windowId), database)
             system.db.runUpdateQuery("delete from SfcInput where windowId = '%s'" % (windowId), database)   
             deleteAndSendClose(project, windowId, database)
     except:

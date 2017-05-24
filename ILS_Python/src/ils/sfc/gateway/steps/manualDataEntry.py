@@ -30,7 +30,7 @@ def activate(scopeContext, stepProperties, state):
 
     if state == DEACTIVATED or state == CANCELLED:
         logStepDeactivated(chartScope, stepProperties)
-        cleanup(chartScope, stepScope)
+        cleanup(chartScope, stepProperties, stepScope)
         return False
         
     try:   
@@ -43,27 +43,21 @@ def activate(scopeContext, stepProperties, state):
             configJson = getStepProperty(stepProperties, MANUAL_DATA_CONFIG)
             config = getManualDataEntryConfig(configJson)
             provider = getProviderName(chartScope)
+            database = getDatabaseName(chartScope)
 
             if autoMode == AUTOMATIC:
                 for row in config.rows:
                     if string.upper(row.destination) == "TAG":
                         tagPath = "[%s]%s" % (provider, row.key)
                         system.tag.write(tagPath, row.defaultValue)
-                    else: 
+                    elif row.units == "": 
                         s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
+                    else:
+                        s88SetWithUnits(chartScope, stepScope, row.key, row.defaultValue, row.destination, row.units)
                 workDone = True
             else:
                 stepScope[WAITING_FOR_REPLY] = True
-                timeoutTime = getTimeoutTime(chartScope, stepProperties)
-                logger.trace("The timeoutTime is: %s" % (str(timeoutTime)))
-                stepScope[TIMEOUT_TIME] = timeoutTime
-                stepScope[TIMED_OUT] = False
-                
-                database = getDatabaseName(chartScope)
-                originator = getOriginator(chartScope)
-                project = getProject(chartScope)
                 controlPanelId = getControlPanelId(chartScope)
-                controlPanelName = getControlPanelName(chartScope)
                 chartRunId = getTopChartRunId(chartScope)
                 
                 buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
@@ -77,29 +71,41 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[WINDOW_ID] = windowId
                 stepId = getStepId(stepProperties) 
                 requireAllInputs = getStepProperty(stepProperties, REQUIRE_ALL_INPUTS)
-                if timeoutTime == None:
-                    logger.trace("...inserting Manual Data Entry record without a timeout...")
-                    system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, requireAllInputs, complete) values ('%s', %d, 0)" % (windowId, requireAllInputs), database)
-                else:
-                    logger.trace("...inserting Manual Data Entry record WITH a timeout...")
-                    system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, requireAllInputs, complete, timeout) values ('%s', %d, 0, %s)" % (windowId, requireAllInputs, str(timeoutTime)), database)
+
+                logger.trace("...inserting Manual Data Entry record without a timeout...")
+                system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, requireAllInputs, complete) values ('%s', %d, 0)" % (windowId, requireAllInputs), database)
                 
                 rowNum = 0
                 for row in config.rows:
-                    existingUnitsKey = getUnitsPath(row.key)
-                    existingUnitsName = s88Get(chartScope, stepScope, existingUnitsKey, row.destination)
-
-                    if row.defaultValue == None or row.defaultValue == "":
-                        if row.units == "" or existingUnitsName == "":
-                            defaultValue = s88Get(chartScope, stepScope, row.key, row.destination)
-                            logger.trace("   Row %i: using the CURRENT value: <%s>" % (rowNum, defaultValue))
+                    logger.tracef("Getting the default value for row: %d <%s>", rowNum, str(row.defaultValue))
+                    if row.defaultValue in [None, "None"]:
+                        logger.tracef("   ...using <None> as the default value... ")
+                        defaultValue = ""
+                    
+                    elif str(row.defaultValue).strip() == "":
+                        logger.tracef("...reading the current value from destination: %s", row.destination)
+                        if string.upper(row.destination) == "TAG":
+                            tagPath = "[%s]%s" % (provider, row.key)
+                            logger.tracef("...reading the current value from tagPath: %s", tagPath)
+                            qv = system.tag.read(tagPath)
+                            if qv.quality.isGood():
+                                defaultValue = qv.value
+                            else:
+                                defaultValue = ""
+                                logger.warnf("Unable to acquire a defualt value for %s whose value is bad", tagPath)
+                            logger.tracef("   ...using the CURRENT value from a tag: <%s>", str(defaultValue))
                         else:
-                            defaultValue = s88GetWithUnits(chartScope, stepScope, row.key, row.destination, row.units)
-                            defaultValue = "%.4f" % (defaultValue)
-                            logger.trace("   Row %i: using the CURRENT value: <%s> (%s)" % (rowNum, defaultValue, row.units))
+                            if row.units == "":
+                                defaultValue = s88Get(chartScope, stepScope, row.key, row.destination)
+                                logger.tracef("   ...using the CURRENT value from Recipe Data: <%s>", defaultValue)
+                            else:
+                                defaultValue = s88GetWithUnits(chartScope, stepScope, row.key, row.destination, row.units)
+                                defaultValue = "%.4f" % (defaultValue)  # Since there are units, it must be numeric??
+                                logger.tracef("   ...using the CURRENT value from Recipe Data with units: <%s> (%s)" % (defaultValue, row.units))
+
                     else:
                         defaultValue = str(row.defaultValue)
-                        logger.trace("   Row %i: using the default value: <%s>" % (rowNum, defaultValue))
+                        logger.trace("   ...using the supplied default value: <%s>" % (defaultValue))
 
                     if isFloat(defaultValue):
                         valueType = "Float"
@@ -107,12 +113,18 @@ def activate(scopeContext, stepProperties, state):
                         valueType = "Integer"
                     else:
                         valueType = "String"
+                    
+                    if string.upper(row.destination) == "TAG":
+                        targetStepUUID = ''
+                    else:
+                        targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, row.destination)
                         
                     lowLimitDbStr = dbStringForFloat(row.lowLimit)
                     highLimitDbStr = dbStringForFloat(row.highLimit)
                     SQL = "insert into SfcManualDataEntryTable (windowId, rowNum, description, value, units, lowLimit, highLimit, dataKey, "\
-                        "destination, type, recipeUnits) values ('%s', %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s')" \
-                        % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, valueType, existingUnitsName)
+                        "destination, targetStepUUID, type, recipeUnits) values ('%s', %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s', '%s')" \
+                        % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, targetStepUUID, valueType, row.units)
+                    logger.tracef(SQL)
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
 
@@ -122,28 +134,19 @@ def activate(scopeContext, stepProperties, state):
                 sendMessageToClient(chartScope, messageHandler, payload)
         else:
             windowId = stepScope[WINDOW_ID]
-            complete, timedOut = checkIfComplete(chartScope, stepScope, stepProperties)
+            database = getDatabaseName(chartScope)
+            windowId = stepScope[WINDOW_ID]
+            pds=system.db.runQuery("select complete from SfcManualDataEntry where windowId = '%s'" % (windowId), database=database)
+            if len(pds) != 1:
+                complete = True
+            else:
+                record = pds[0]
+                complete = record["complete"]
+
             if complete:
                 logger.trace("Manual Data Entry step %s has completed!" % (stepName))
                 workDone = True
-                saveResponse(chartScope, stepScope, stepProperties, logger)
-                if timedOut:
-                    stepScope[TIMED_OUT] = True
 
-            else:
-                timeoutTime = stepScope[TIMEOUT_TIME]
-                if timeoutTime <> None:
-                    cushion = 10.0
-                    logger.trace("...checking for a timeout, the block will timeout in %f seconds..." % (timeoutTime - time.time() + cushion))
-                    # The timeout is really handled at the client - the client should timeout and update the database before this even
-                    # runs because of an added 10 second time buffer.  This will handle the case where there are no clients connected.
-                    # The gateway does not have the burden of keeping track of all of the clients. 
-                    if timeoutTime < (time.time() - cushion):
-                        logger.trace("Manual Data Entry step %s has timed out..." % (stepName))
-                        workDone = True
-                        # I'm pretty sure that when a block times out we should use whatever the defaults were.
-                        # If the user has partially completed the form but not hit OK the partial responses will not be used.
-                        saveResponse(chartScope, stepScope, stepProperties, logger)
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in manualDataEntry.py', logger)
         workDone = True
@@ -152,42 +155,6 @@ def activate(scopeContext, stepProperties, state):
             cleanup(chartScope, stepProperties, stepScope)
         return workDone
 
-def saveResponse(chartScope, stepScope, stepProperties, logger):
-    logger.trace("...saving values:")
-    pds = getResponse(chartScope, stepScope, stepProperties)
-
-    # Note: all values are returned as strings; we depend on s88Set to make the conversion
-    for record in pds:
-        strValue = record['value']
-        units = record['units']
-        key = record['dataKey']
-        destination = record['destination']
-        valueType = record['type']
-        
-        logger.trace("  %s: %s %s" % (key, strValue, units))
-        
-        value = parseValue(strValue, valueType)
-        if isEmpty(units):
-            s88Set(chartScope, stepScope, key, value, destination)
-        else:
-            s88SetWithUnits(chartScope, stepScope, key, value, destination, units)
-
-def checkIfComplete(chartScope, stepScope, stepProperties):
-    database = getDatabaseName(chartScope)
-    windowId = stepScope[WINDOW_ID]
-    pds=system.db.runQuery("select complete, timedOut from SfcManualDataEntry where windowId = '%s'" % (windowId), database=database)
-    if len(pds) != 1:
-        return True, False
-    record = pds[0]
-    complete = record["complete"]
-    timedOut = record["timedOut"]
-    return complete, timedOut
-
-def getResponse(chartScope, stepScope, stepProperties):
-    database = getDatabaseName(chartScope)
-    windowId = stepScope[WINDOW_ID]
-    pds=system.db.runQuery("select * from SfcManualDataEntryTable where windowId = '%s'" % (windowId),database=database)
-    return pds
 
 def cleanup(chartScope, stepProperties, stepScope):
     try:

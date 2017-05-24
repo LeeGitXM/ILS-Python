@@ -419,7 +419,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
 
     if isFloat(val) and units <> "":
         oldVal = val
-        val = convert(units, targetUnits, float(val))
+        val = convert(units, targetUnits, float(val), db)
         logger.tracef("...converted %s-%s to %s-%s...", str(oldVal), units, str(val), targetUnits)
     
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
