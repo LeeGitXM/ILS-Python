@@ -6,7 +6,6 @@ Created on Dec 17, 2015
 
 import system, time
 from ils.sfc.common.util import callMethodWithParams
-from system.ils.sfc import getReviewData
 from ils.sfc.common.util import isEmpty
 from ils.common.cast import jsonToDict
 from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
@@ -27,7 +26,6 @@ def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     
-    project = getProject(chartScope)
     logger = getChartLogger(chartScope)
     windowPath = "SFC/ReviewData"
     messageHandler = "sfcOpenWindow"
@@ -63,12 +61,10 @@ def activate(scopeContext, stepProperties, state):
             position = getStepProperty(stepProperties, POSITION) 
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
-            prompt = getStepProperty(stepProperties, PROMPT)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-#----
             logger.trace("Starting to transfer the configuration to the database...")
             showAdvice = hasStepProperty(stepProperties, PRIMARY_REVIEW_DATA_WITH_ADVICE)
             if showAdvice:
@@ -81,8 +77,10 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef("The primary configuration: %s", str(primaryConfigJson))
             logger.tracef("The secondary configuration is: %s", str(secondaryConfigJson))
             
-            SQL = "insert into SfcReviewData (windowId, showAdvice) "\
-                "values ('%s', %d)" % (windowId, showAdvice)
+            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+            
+            SQL = "insert into SfcReviewData (windowId, showAdvice, targetStepUUID, responseKey) "\
+                "values ('%s', %d, '%s', '%s')" % (windowId, showAdvice, targetStepUUID, responseKey)
             system.db.runUpdateQuery(SQL, database)
             
             '''
@@ -127,9 +125,8 @@ def activate(scopeContext, stepProperties, state):
             customWindowPath = getStepProperty(stepProperties, CUSTOM_WINDOW_PATH)
             if customWindowPath <> "":
                 windowPath = customWindowPath
-
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey, IS_SFC_WINDOW: True}
+            
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             time.sleep(0.1)
             sendMessageToClient(chartScope, messageHandler, payload)
         

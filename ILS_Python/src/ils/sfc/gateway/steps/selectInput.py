@@ -68,11 +68,14 @@ def activate(scopeContext, stepProperties, state):
             
             choicesStepUUID = s88GetTargetStepUUID(chartScope, stepScope, choicesRecipeLocation)
             
-            sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey) values ('%s', '%s', '%s', '%s')" % (windowId, prompt, choicesStepUUID, choicesKey)
+            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+            
+            sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, keyAndAttribute) "\
+                "values ('%s', '%s', '%s', '%s', '%s', '%s')" \
+                % (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, responseKeyAndAttribute)
             system.db.runUpdateQuery(sql, database)
             
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKeyAndAttribute, IS_SFC_WINDOW: True}
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)
             
         else:

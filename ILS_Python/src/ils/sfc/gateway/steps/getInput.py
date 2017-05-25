@@ -6,12 +6,12 @@ Created on Dec 17, 2015
 
 import system, time
 from ils.sfc.common.util import isEmpty
-from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
-from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
+from ils.sfc.gateway.steps.commonInput import cleanup
+from ils.sfc.gateway.util import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, getProject
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
-from ils.sfc.common.constants import BUTTON_LABEL, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, IS_SFC_WINDOW, \
+from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
     WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID
 
 def activate(scopeContext, stepProperties, state):
@@ -21,7 +21,6 @@ def activate(scopeContext, stepProperties, state):
     
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    project = getProject(chartScope)
     logger = getChartLogger(chartScope)
     windowPath = "SFC/Input"
     messageHandler = "sfcOpenWindow"
@@ -59,13 +58,14 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            sql = "insert into SfcInput (windowId, prompt) values ('%s', '%s')" % (windowId, prompt)
+            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+
+            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute) values ('%s', '%s', '%s', '%s')" % (windowId, prompt, targetStepUUID, responseKey)
             numInserted = system.db.runUpdateQuery(sql, database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)
 
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey, IS_SFC_WINDOW: True}
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             time.sleep(0.1)
             sendMessageToClient(chartScope, messageHandler, payload)
         

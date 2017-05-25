@@ -70,17 +70,14 @@ def fetchWindowInfo(windowId):
 
 def reopenWindow(windowId):
     '''This is called from the button on the control panel.'''
-    import system.nav, system.security
-    from ils.sfc.client.util import getDatabase
     from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
     
     print "In %s.reopenWindow(), the windowId is: %s" % (__name__, windowId)
 
     database = getDatabase()
-    SQL = "select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId)
+    SQL = "select * from SfcWindow where windowId = '%s' " % (windowId)
     pds = system.db.runQuery(SQL, database)
     if len(pds) == 0:
-        # window closed already; ignore
         print "...window has been closed..."
         return
     
@@ -89,7 +86,6 @@ def reopenWindow(windowId):
     position = record[POSITION]
     scale = record[SCALE]
     title = record['title']
-    windowId = record['windowId']
     
     # Check if the window is already open.  If the window is an SFC window then we can support multiple distinct
     # instances of the window being open.  If it is a plain window, then we really don't support multiple instances
@@ -112,13 +108,12 @@ def reopenWindow(windowId):
 
     payload = {}
     if windowPath in SFC_WINDOW_LIST:
-        print "...reopening a SFC window..."
         payload = {"windowId": windowId}
+        print "...reopening a SFC window %s with payload: %s" % (windowPath, str(payload))
     else:
         payload = {}
-        print "...reopening an ordinary window: ", windowPath
+        print "...reopening an ordinary window %s with payload: %s" % (windowPath, str(payload))
 
-    
     window = system.nav.openWindowInstance(windowPath, payload)
     system.nav.centerWindow(window)
     window.title = title

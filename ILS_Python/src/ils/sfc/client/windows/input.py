@@ -11,15 +11,40 @@ Created on Jan 15, 2015
 
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
-import system.gui
+import system, time
+
+def internalFrameOpened(event):
+    print "In internalFrameOpened()"
+    rootContainer = event.source.rootContainer
+    windowId = rootContainer.windowId
+    
+    SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL)
+    record=pds[0]
+    rootContainer.title = record["title"]
+    
+    SQL = "select * from SfcInput where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL)
+    while len(pds) < 1 :
+        print "Window was not found, requerying..."    
+        time.sleep(1)
+        pds = system.db.runQuery(SQL)
+    
+    record=pds[0]
+    rootContainer.prompt = record["prompt"]
+    rootContainer.lowLimit = record["lowLimit"]
+    rootContainer.highLimit = record["highLimit"]
+    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.keyAndAttribute = record["keyAndAttribute"]
+    print "-- DONE --"
 
 def okActionPerformed(event):
     db = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
-    key = rootContainer.key
-    key,attribute = splitKey(key)
+    keyAndAttribute = rootContainer.keyAndAttribute
+    key,attribute = splitKey(keyAndAttribute)
     responseField = rootContainer.getComponent('responseField')
     response = responseField.text
     lowLimit = rootContainer.lowLimit

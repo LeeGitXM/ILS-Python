@@ -17,23 +17,25 @@ def internalFrameOpened(event):
     title = system.db.runScalarQuery("select title from sfcWindow where windowId = '%s'" % (windowId), db)
     rootContainer.title = title
     
-    SQL = "select prompt, choicesStepUUID, choicesKey from SfcSelectInput where windowId = '%s'" % (windowId)
+    SQL = "select * from SfcSelectInput where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL)
     record = pds[0]
     prompt = record["prompt"]
     choicesStepUUID = record["choicesStepUUID"]
     choicesKey = record["choicesKey"]
-    print "Prompt: ", prompt
-    print "Choices Step UUID: ", choicesStepUUID
-    print "Choices Key: ", choicesKey
+
     choices = s88GetFromStep(choicesStepUUID, choicesKey + ".value", db)
     print "The choices are: ", choices
     data = []
     for choice in choices:
         data.append([choice])
+    
+    print "The data is: ", data
     choices = system.dataset.toDataSet(["choices"], data)
     rootContainer.choices = choices
     rootContainer.prompt = prompt
+    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.keyAndAttribute = record["keyAndAttribute"]
     
 
 def okActionPerformed(event):
@@ -41,8 +43,8 @@ def okActionPerformed(event):
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
-    key = rootContainer.key
-    key,attribute = splitKey(key)
+    keyAndAttribute = rootContainer.keyAndAttribute
+    key,attribute = splitKey(keyAndAttribute)
     dropdown = rootContainer.getComponent('choices')
     response = dropdown.selectedStringValue
     setRecipeData(targetStepUUID, key, attribute, response, db)

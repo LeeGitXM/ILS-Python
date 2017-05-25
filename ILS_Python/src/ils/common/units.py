@@ -6,6 +6,7 @@ Created on Sep 16, 2014
 @author: rforbes
 '''
 import system
+from ils.common.error import catch
 
 FACTOR = 'FACtor'
 ALIAS = 'ALIas'
@@ -164,21 +165,22 @@ class Unit(object):
         return "'" + string.replace("'", "''") + "'"
 
     @staticmethod
-    def lazyInitialize(database):
+    def lazyInitialize(db):
         if len(Unit.unitsByName.keys()) == 0:
-            print "Initializing the units object"
-            Unit.readFromDb(database)
+            print "Initializing the units object..."
+            Unit.readFromDb(db)
             
     @staticmethod
-    def readFromDb(database):
+    def readFromDb(db):
         '''read unit info from the project's default '''
         import system.db
         import sys
         import string
         
         try:
-            results = system.db.runQuery("select * from Units", database)
-            print "Read %i units..." % (len(results))
+            print "Loading units..."
+            results = system.db.runQuery("select * from Units", database=db)
+            print "...read %i units..." % (len(results))
             # Read the units
             Unit.clearUnits()
             newUnits = dict()
@@ -194,7 +196,7 @@ class Unit(object):
             Unit.addUnits(newUnits)
             # Read the aliases
             newUnits = dict()
-            results = system.db.runQuery("select * from UnitAliases", database)
+            results = system.db.runQuery("select * from UnitAliases", database=db)
             print "Read %i aliases..." % (len(results))
             for row in results:
                 realUnit = Unit.getUnit(string.upper(row["name"]))
@@ -202,7 +204,8 @@ class Unit(object):
                     newUnits[string.upper(row["alias"])] = realUnit
             Unit.addUnits(newUnits)
         except:
-            print "ils.common.units.py: Exception reading units : " + str(sys.exc_info()[0])+str(sys.exc_info()[1])
+            errorTxt = catch("Error fetching Units")
+            print errorTxt
 
 def getUnits():
     return Unit.getUnits()
@@ -292,5 +295,5 @@ def convert(fromUnitName, toUnitName, value, db=""):
     lazyInitialize(db)
     return Unit.convert(fromUnitName, toUnitName, value)
 
-def lazyInitialize(database):
-    Unit.lazyInitialize(database)
+def lazyInitialize(db):
+    Unit.lazyInitialize(db)

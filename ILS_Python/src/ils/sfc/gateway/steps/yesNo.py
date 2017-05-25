@@ -58,15 +58,15 @@ def activate(scopeContext, stepProperties, state):
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
+            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            sql = "insert into SfcInput (windowId, prompt) values ('%s', '%s')" % (windowId, prompt)
+            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute) values ('%s', '%s', '%s', '%s')" % (windowId, prompt, targetStepUUID, responseKey)
             system.db.runUpdateQuery(sql, database)
-
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: targetStepUUID, KEY: responseKey, IS_SFC_WINDOW: True}
+            
+            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)
         
         else: 

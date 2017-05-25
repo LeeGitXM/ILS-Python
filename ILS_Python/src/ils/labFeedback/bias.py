@@ -19,8 +19,6 @@ from ils.common.error import catch
 
 def exponentialFilter(tagPath, previousValue, newValue, initialchange): 
     try:
-        newValue = newValue.value
-        
         # Find tag provider and the root of the tag by stripping off LabData
         tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
         tagRoot=tagPath.rstrip('/labValue')
@@ -32,6 +30,16 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
         updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
         if not(updatePermitted):
             log.tracef("Skipping lab bias exponential updates for %s because updates are not permitted.", biasName)
+            return
+        
+        if not(newValue.quality.isGood()):
+            log.warnf("Skipping lab bias exponential updates for %s because the new lab value is bad.", biasName)
+            return
+        
+        newValue = newValue.value
+        
+        if newValue == None:
+            log.warnf("Skipping lab bias exponential updates for %s because the new lab value is None.", biasName)
             return
         
         log.infof("Calculating an exponentially filtered bias for %s (%s)", biasName, tagRoot)

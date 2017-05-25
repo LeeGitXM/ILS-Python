@@ -114,10 +114,8 @@ def sfcOpenWindow(payload):
     print "Path: %s, Position: %s, Scale: %s" % (windowPath, position, str(scale)) 
     
     if isSfcWindow:    
-        targetStepUUID = payload.get(TARGET_STEP_UUID, "")
-        key = payload.get(KEY,"")
-        print "The window is an SFC window, passing the WindowId: <%s>, targetStepUUID: <%s>, key: <%s>!" % (str(windowId), targetStepUUID, key)
-        payload = {WINDOW_ID: windowId, TARGET_STEP_UUID: targetStepUUID, KEY: key}
+        print "The window is an SFC window, passing the WindowId: <%s>..." % (str(windowId))
+        payload = {WINDOW_ID: windowId}
         print "Opening <%s>" % (windowPath)
         print "Payload: ", payload
         openWindowInstance(windowPath, payload, position, scale)

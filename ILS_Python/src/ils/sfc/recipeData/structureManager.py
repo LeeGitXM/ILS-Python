@@ -98,7 +98,8 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
                     rows = system.db.runUpdateQuery(SQL, tx=tx)
                     log.tracef("...updated %d existing steps", rows)
 
-                stepsInDatabase.remove(stepUUIDs[i])
+                if stepUUIDs[i] in stepsInDatabase:
+                    stepsInDatabase.remove(stepUUIDs[i])
             
         log.infof("...done inserting steps!")
         
