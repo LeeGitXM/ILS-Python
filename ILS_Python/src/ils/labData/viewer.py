@@ -185,14 +185,37 @@ def setSeen(rootContainer):
             viewerRootContainer = window.rootContainer 
             tableChooser.populateRepeater(viewerRootContainer)
 
-
-# This is ALWAYS run from a client.  For now, the "Get History" button appears on every lab data table, regardless of its source,
-# even though it can only work for data that comes from PHD.  It can't work for DCS data, selectors, or derived values.
+'''
+This is ALWAYS run from a client.  For now, the "Get History" button appears on every lab data table, regardless of its source,
+even though it can only work for data that comes from PHD.  It can't work for DCS data, selectors, or derived values.
+'''
 def fetchHistory(container):
     valueName=container.LabValueName
     valueId=container.ValueId
     
     print "In labData.viewer.fetchHistory(), fetching missing data for %s - %i" % (valueName, valueId)
+    
+    '''
+    For now, "Get History" is not supported for derived lab values
+    '''
+    SQL = "Select * from LtDerivedValueView where ValueId = %i" % (valueId)
+    pds = system.db.runQuery(SQL)
+    
+    if len(pds) > 0:
+        print "The selected lab data is a derived value, Get History is not supported"
+        system.gui.warningBox("%s is a derived value which does not support Get History!" % (valueName))
+        return
+    
+    '''
+    Handle Selectors by redirecting the query to the source value
+    '''
+    SQL = "Select SourceValueId, SourceValueName from LtSelectorView where ValueId = %i" % (valueId)
+    pds = system.db.runQuery(SQL)
+    
+    if len(pds) > 0:
+        valueName = pds[0]["SourceValueName"]
+        valueId = pds[0]["SourceValueId"]
+        print "The selected lab data is a selector, redirecting the fetch to the source lab data: %s - %s" % (valueName, valueId)
     
     SQL = "Select InterfaceName, ItemId, UnitName from LtPHDValueView where ValueId = %i" % (valueId)
     pds = system.db.runQuery(SQL)
