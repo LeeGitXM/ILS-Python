@@ -291,7 +291,9 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef("Found at least one output that still needs to be confirmed.")
         
     logger.trace("leaving writeOutput.activate(), writeComplete=%s, writeConfirmComplete=%s... " % (str(writeComplete), str(writeConfirmComplete)))    
+    workDone = False
     if writeComplete and writeConfirmComplete:
         logger.infof("Write output step %s is complete!", stepName)
+        workDone = True
     
-    return 
+    return workDone

@@ -18,7 +18,7 @@ def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, d
 # This is called when the press the Setpoint Spreadsheet Button on a console.  This needs to check if we should show the setpoint
 # spreadsheet, with numeric recommendations or the loud workspace with text recommendations.
 def openSetpointSpreadsheetCallback(post):
-    print "Checking what to open..."
+    print "In %s.openSetpointSpreadsheetCallback() checking what to open..." % (__name__)
     
     # First, see if there is a loud workspace on this window.  If there is and I decide to press the red button instead then
     # hide the loud workspace.
@@ -227,6 +227,12 @@ def handleTextRecommendationNotification(payload):
     database=payload.get('database', '')
     provider=payload.get('provider', '')
     diagnosisEntryId=payload.get('diagnosisEntryId', '')
+    
+    gatewayDatabase=payload.get("gatewayDatabase")
+    clientDatabase=getDatabaseClient()
+    if gatewayDatabase <> clientDatabase:
+        print "Exiting handleNotification() because the gateway database does not match the client database"
+        return
 
     callback="ils.diagToolkit.finalDiagnosisClient.ackTextRecommendation"
     callbackPayloadDictionary = {"post": post, "application": application, "notificationText": notificationText, "diagnosisEntryId": diagnosisEntryId, "database": database, "provider": provider}
@@ -287,7 +293,7 @@ def handleTextRecommendationNotification(payload):
 
 
 def ackTextRecommendation(event, payload):
-    print "ACKing a text recommendation - the payload is: ", payload
+    print "In %s.ackTextRecommendation() ACKing a text recommendation - the payload is: %s" % (__name__, str(payload))
     
     post=payload.get("post", "")
     application=payload.get("application","")
@@ -326,5 +332,4 @@ def postSpreadsheet(event, payload):
     # One type of notification text is vector clamp advice.
     if notificationText != "":
         system.gui.messageBox(notificationText)
-    
     

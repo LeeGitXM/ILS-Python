@@ -12,14 +12,13 @@ log = system.util.getLogger("com.ils.labData")
 
 # History should be restored on startup, but generally the site needs to perform a site specific selector
 # configuration BEFORE the history is performed.
-def gateway():
+def gateway(provider):
     from ils.labData.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting Lab Data Toolkit gateway version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
+
     createTags("[" + provider + "]")
     resetSelectorTriggers("[" + provider + "]")    
 

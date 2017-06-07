@@ -4,27 +4,30 @@ Created on Mar 29, 2015
 @author: Pete
 '''
 import system
+from ils.common.error import catch
 from ils.common.config import getDatabase, getDatabaseClient
 log = system.util.getLogger("com.ils.labData.selector")
 
 def valueChanged(tagPath):
     import time
+    try:
+        log.trace("Detected a value change in: %s" % (tagPath))
+        database = getDatabase()
+     
+        # Find the root of the tag by stripping off the /value or /sampleTime   
+        tagRoot=tagPath.rstrip('/trigger') 
+        enabled=system.tag.read(tagRoot + '/processingEnabled').value
     
-    log.trace("Detected a value change in: %s" % (tagPath))
-    database = getDatabase()
- 
-    # Find the root of the tag by stripping off the /value or /sampleTime   
-    tagRoot=tagPath.rstrip('/trigger') 
-    enabled=system.tag.read(tagRoot + '/processingEnabled').value
-
-    if enabled:
-        # Because the value and the sampleTime tags both update nearly simultaneously, wait here 
-        # to allow them to both complete and keep the data consistent
-        time.sleep(5)
-        from ils.labData.scanner import storeSelector
-        storeSelector(tagRoot, database)
-    else:
-        log.trace("Skipping the value change because processing is not enabled")
+        if enabled:
+            # Because the value and the sampleTime tags both update nearly simultaneously, wait here 
+            # to allow them to both complete and keep the data consistent
+            time.sleep(5)
+            from ils.labData.scanner import storeSelector
+            storeSelector(tagRoot, database)
+        else:
+            log.trace("Skipping the value change because processing is not enabled")
+    except:
+        catch("%s.valueChanged" % (__name__))
         
     # Reset the trigger
     system.tag.write(tagRoot + "/trigger", False)

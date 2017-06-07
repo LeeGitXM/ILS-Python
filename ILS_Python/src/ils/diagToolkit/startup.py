@@ -8,15 +8,12 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.diagToolkit")
 
-def gateway():
+def gateway(provider, database):
     from ils.diagToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting Diagnostic Toolkit gateway version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
-    from ils.common.config import getTagProvider, getDatabase
-    provider = getTagProvider()
-    database = getDatabase()
     
     createTags("[" + provider + "]")
     

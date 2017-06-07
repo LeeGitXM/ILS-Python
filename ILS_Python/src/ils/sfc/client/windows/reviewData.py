@@ -4,24 +4,38 @@ Created on Jan 14, 2015
 @author: rforbes
 '''
 
-import system
-from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.sfc.recipeData.core import splitKey, setRecipeData
+import system, time
+from ils.common.config import getDatabaseClient
+from ils.sfc.recipeData.core import setRecipeData
 
 def internalFrameOpened(rootContainer):
     database = getDatabaseClient()
     
-    print "In reviewData.internalFrameOpened()"
-
     windowId = rootContainer.windowId
+    
+    print "In %s.internalFrameOpened(), the windowId is: <%s>" % (__name__, windowId)
     
     title = system.db.runScalarQuery("Select title from SfcWindow where windowId = '%s'" % (windowId), database)
     rootContainer.title = title
     
     tabs = rootContainer.getComponent("tabs")
     tabs.selectedTab = "primary"
-    showAdvice = system.db.runScalarQuery("select showAdvice from SfcReviewData where windowId = '%s'" % (windowId), database)
-    print "Show Advice: ", showAdvice
+    
+    pds = system.db.runQuery("select showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel from SfcReviewData where windowId = '%s'" % (windowId), database)
+    print "Fetched %d records from sfcReviewData" % (len(pds))
+    
+    record = pds[0]
+    showAdvice = record["showAdvice"]
+    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.responseKey = record["responseKey"]
+    primaryTabLabel = record["primaryTabLabel"]
+    secondaryTabLabel = record["secondaryTabLabel"]
+    
+    tabStrip = rootContainer.getComponent("tabs")
+    ds = tabStrip.tabData
+    ds = system.dataset.setValue(ds, 0, "DISPLAY_NAME", primaryTabLabel)
+    ds = system.dataset.setValue(ds, 1, "DISPLAY_NAME", secondaryTabLabel)
+    tabStrip.tabData = ds
     
     if showAdvice:
         columnWidths = {"prompt": 215, "advice": 215, "value": 100, "units": 60}
@@ -60,8 +74,8 @@ def actionPerformed(event, response):
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
-    key = rootContainer.key
-    setRecipeData(targetStepUUID, key, "value", response, db)
+    responseKey = rootContainer.responseKey
+    setRecipeData(targetStepUUID, responseKey, "value", response, db)
     system.nav.closeParentWindow(event)
 
 

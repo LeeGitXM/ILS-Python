@@ -700,7 +700,3 @@ def initializeCache(database):
         lastValueCache[valueName]={'valueId':valueId, 'rawValue': rawValue, 'sampleTime': sampleTime, 'reportTime': reportTime}
     log.trace("Loaded %i measurements into the last value cache..." % (len(pds)))
 #    print lastValueCache
-
-
-
-

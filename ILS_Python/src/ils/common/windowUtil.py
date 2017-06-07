@@ -25,6 +25,7 @@ def clearTable(table):
 # window in the standard well-known positions.
 def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):
     '''Position and size a window within the main window'''
+    print "Opening %s with %s..." % (windowPath, str(props))
     window = system.nav.openWindowInstance(windowPath, props)
     
     mode=string.upper(mode)

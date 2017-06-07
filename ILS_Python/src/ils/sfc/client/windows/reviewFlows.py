@@ -4,23 +4,60 @@ Created on Sep 22, 2015
 @author: rforbes
 '''
 
-def okActionPerformed(event):
-    from ils.sfc.client.windowUtil import sendWindowResponse
-    from ils.sfc.common.constants import VALUE, DATA, OK
-    import system.gui
-    window = system.gui.getParentWindow(event)
-    dataTable = window.getRootContainer().getComponent("dataTable")
-    payload = dict()
-    payload[VALUE] = OK
-    payload[DATA] = dataTable.data   
-    sendWindowResponse(window, payload)
+import system
+from ils.common.config import getDatabaseClient
+from ils.sfc.recipeData.core import setRecipeData
+from ils.sfc.client.windows.reviewData import setAdviceVisibiity
 
+def internalFrameOpened(rootContainer):
+    database = getDatabaseClient()
+    
+    print "In %s.internalFrameOpened()" % (__name__)
+
+    windowId = rootContainer.windowId
+    
+    title = system.db.runScalarQuery("Select title from SfcWindow where windowId = '%s'" % (windowId), database)
+    rootContainer.title = title
+    
+    pds = system.db.runQuery("select * from SfcReviewFlows where windowId = '%s'" % (windowId), database)
+    record = pds[0]
+    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.responseKey = record["responseKey"]
+    heading1 = record["heading1"]
+    heading2 = record["heading2"]
+    heading3 = record["heading3"]
+    
+    print "Setting the table column headings..."
+    table = rootContainer.getComponent("Table")
+    
+    i = 1
+    ds = table.columnAttributesData
+    for heading in [heading1, heading2, heading3]:
+        key = "data%d" % (i)
+        for row in range(ds.rowCount):
+            if ds.getValueAt(row, "name") == key:
+                ds = system.dataset.setValue(ds, row, 'label', heading)
+        i = i + 1
+    table.columnAttributesData = ds
+    
+    print "Populating the table..."
+    SQL = "select prompt, advice, data1, data2, data3, units from SfcReviewFlowsTable where windowId = '%s' order by rowNum" % (windowId)
+    pds = system.db.runQuery(SQL, database)
+    
+    table.data = pds
+    print "...finished"
+
+def okActionPerformed(event):
+    actionPerformed(event, "OK")
+  
 def cancelActionPerformed(event):
-    from ils.sfc.client.windowUtil import sendWindowResponse
-    from system.gui import getParentWindow
-    from ils.sfc.common.constants import VALUE, DATA, CANCEL
-    window = getParentWindow(event)
-    payload = dict()
-    payload[DATA] = None
-    payload[VALUE] = CANCEL
-    sendWindowResponse(window, payload)
+    actionPerformed(event, "CANCEL")
+
+def actionPerformed(event, response):
+    db = getDatabaseClient()
+    window=system.gui.getParentWindow(event)
+    rootContainer = window.getRootContainer()
+    targetStepUUID = rootContainer.targetStepUUID
+    responseKey = rootContainer.responseKey
+    setRecipeData(targetStepUUID, responseKey, "value", response, db)
+    system.nav.closeParentWindow(event)

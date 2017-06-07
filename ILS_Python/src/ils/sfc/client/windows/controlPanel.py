@@ -210,6 +210,7 @@ def setControlPanelChartPath(controlPanelId, chartPath):
 def showMsgQueue(window):
     rootContainer = window.getRootContainer()
     queueKey=rootContainer.windowData.getValueAt(0,'msgQueue')
+    print "The queue is: ", queueKey
     from ils.queue.message import view
     view(queueKey, useCheckpoint=True)
 

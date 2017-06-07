@@ -118,11 +118,12 @@ def sfcOpenWindow(payload):
         payload = {WINDOW_ID: windowId}
         print "Opening <%s>" % (windowPath)
         print "Payload: ", payload
-        openWindowInstance(windowPath, payload, position, scale)
+        window = openWindowInstance(windowPath, payload, position, scale)
     else:
         print "The window is a plain window..."
         print "Opening <%s>" % (windowPath)
-        system.nav.openWindowInstance(windowPath)
+        window = system.nav.openWindowInstance(windowPath)
+        positionWindow(window, position, scale)
 
 
 def sfcCloseWindow(payload):

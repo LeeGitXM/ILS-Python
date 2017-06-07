@@ -8,14 +8,13 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.sfc")
 
-def gateway():
+def gateway(provider):
     from ils.sfc.version import version
     version, releaseDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting SFC Python version %s - %s" % (version, releaseDate))
     log.info("---------------------------------------------------------")
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
+
     createTags("[" + provider + "]")
 
 def client():

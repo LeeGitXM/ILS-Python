@@ -6,14 +6,12 @@ Created on Dec 17, 2015
 
 import system
 from ils.sfc.gateway.api import sendMessageToClient
-from ils.sfc.gateway.steps.commonInput import cleanup, checkForTimeout
-from ils.sfc.gateway.util import getControlPanelId, registerWindowWithControlPanel, getStepProperty, getTimeoutTime, \
+from ils.sfc.gateway.util import getControlPanelId, registerWindowWithControlPanel, getStepProperty, \
     handleUnexpectedGatewayError, logStepDeactivated, getTopChartRunId, deleteAndSendClose
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, s88Set, getProject
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, s88Get, getProject
 from ils.sfc.common.util import isEmpty
-from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, WINDOW_PATH, TIMED_OUT, MESSAGE, IS_SFC_WINDOW, \
+from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, WINDOW_PATH, MESSAGE, IS_SFC_WINDOW, \
     KEY, TARGET_STEP_UUID, DEACTIVATED, POSITION, SCALE, WINDOW_TITLE, STATIC, RECIPE_LOCATION, STRATEGY, ACK_REQUIRED, BUTTON_LABEL
-from ils.sfc.gateway.util import checkForResponse
 
 def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
@@ -58,9 +56,6 @@ def activate(scopeContext, stepProperties, state):
                 recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
                 key = getStepProperty(stepProperties, KEY)
                 message = s88Get(chartScope, stepScope, key, recipeLocation)  
-            # calculate the absolute timeout time in epoch secs:
-            timeoutTime = getTimeoutTime(chartScope, stepProperties)
-            stepScope[TIMEOUT_TIME] = timeoutTime
             
             # create db window records:
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
@@ -90,12 +85,6 @@ def activate(scopeContext, stepProperties, state):
                 print "Acknowledged: ", acknowledged
                 if acknowledged:
                     workDone = True
-                else:
-                    timeout = checkForTimeout(stepScope)
-                    if timeout:
-                        logger.tracef("Setting the Timeout flag")
-                        stepScope[TIMED_OUT] = True
-                        workDone = True
                 
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in dialogMsg.py', logger)

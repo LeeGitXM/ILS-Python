@@ -60,7 +60,7 @@ def client():
             removeNonOperatorMenus(menubar)
 
 
-def gateway():
+def gateway(provider):
     # Create gateway loggers
     log = system.util.getLogger("com.ils.common")
     
@@ -68,8 +68,6 @@ def gateway():
     version, revisionDate = version()
     log.info("Starting common modules version %s - %s" % (version, revisionDate))
     
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
     createTags("[" + provider + "]", log)
 
 def createTags(tagProvider, log):
@@ -81,6 +79,7 @@ def createTags(tagProvider, log):
     data.append([path, "writeEnabled", "Boolean", "True"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
     data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
+    data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

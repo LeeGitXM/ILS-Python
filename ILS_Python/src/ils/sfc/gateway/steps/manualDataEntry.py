@@ -5,20 +5,17 @@ Created on Dec 17, 2015
 
 '''
 
-import system, time, string
+import system, string
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
 from ils.common.cast import isFloat, isInteger
-from ils.sfc.gateway.util import getStepId, registerWindowWithControlPanel, deleteAndSendClose, \
-    getControlPanelId, getControlPanelName, getStepProperty, getTimeoutTime, logStepDeactivated, \
-    dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, getOriginator
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName, getProviderName, parseValue, getUnitsPath, \
-    getProject, sendMessageToClient, getProject
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88SetWithUnits, s88GetWithUnits, s88GetType
-from ils.sfc.common.constants import WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, TIMED_OUT,  \
-    AUTO_MODE, AUTOMATIC, DATA, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
-    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, DATABASE, CONTROL_PANEL_ID, IS_SFC_WINDOW, \
-    CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_ID, NAME, TARGET_STEP_UUID, KEY
+from ils.sfc.gateway.util import getStepId, registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
+    getStepProperty, logStepDeactivated, dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88SetWithUnits, s88GetWithUnits
+from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, \
+    AUTO_MODE, AUTOMATIC, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
+    DEACTIVATED, CANCELLED, IS_SFC_WINDOW, WINDOW_PATH, NAME, TARGET_STEP_UUID, KEY
 
 def activate(scopeContext, stepProperties, state):    
     chartScope = scopeContext.getChartScope()

@@ -1008,7 +1008,7 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
 # application.  This is called from the ACK button on the loud workspace.
 def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, db, provider):
     from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
-    print "... in %s performing Text Recommendation acknowledgement for diagnosis entry %s..." % (__name__, str(diagnosisEntryId))
+    log.infof("... in %s.acknowledgeTextRecommendationProcessing() performing Text Recommendation acknowledgement for diagnosis entry %s...", __name__, str(diagnosisEntryId))
     
     actionMessage="No Download"
     recommendationStatus="Acknowledged"

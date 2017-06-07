@@ -60,13 +60,19 @@ def resetApplication(unit, database, tagProvider):
     for block in blocks:
         blockName=block.getName()
         blockClass=block.getClassName()
+        blockUUID=block.getIdString()
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
         log.trace("    Found a %s - %s " % (blockName, blockClass))
         
         if blockClass in ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.trenddiagnosis.TrendDiagnosis"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
 
+            # Resetting a block sets its state to UNSET, which does not propagate. 
             system.ils.blt.diagram.resetBlock(parentUUID, blockName)
+            
+            # Now set the state to UNKNOWN and propagate it
+            system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
+            system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
             
             # Collect all of the blocks upstream of this final diagnosis
             log.trace("      ...collecting blocks downstream from it ...")
@@ -78,6 +84,8 @@ def resetApplication(unit, database, tagProvider):
         elif blockClass in ["com.ils.block.SQC"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
             system.ils.blt.diagram.resetBlock(parentUUID, blockName)
+            system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
+            system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
         
         elif blockClass in ["com.ils.block.Inhibitor"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
@@ -106,6 +114,8 @@ def resetApplication(unit, database, tagProvider):
                 parentUUID=block.getAttributes().get("parent")
                 
                 system.ils.blt.diagram.resetBlock(parentUUID, blockName)
+                system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
+                system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
                 
                 # Collect all of the blocks upstream of this final diagnosis
                 log.trace("   ... collecting blocks upstream from it ...")
@@ -144,7 +154,7 @@ def resetApplication(unit, database, tagProvider):
 
             log.info("   ...resetting a %s named: %s on diagram: %s..." % (blockClass, blockName, parentUUID))
             system.ils.blt.diagram.sendSignal(parentUUID, blockName, "reset", "Grade Change")
-            
+
     return
 
 

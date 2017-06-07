@@ -9,15 +9,13 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit")
 
-def gateway():
+def gateway(provider):
     from ils.recipeToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting Recipe Toolkit version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
 
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
     createTags("[" + provider + "]")
 
 def client():

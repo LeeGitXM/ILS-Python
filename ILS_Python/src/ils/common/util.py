@@ -4,9 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system, string, time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-from java.util import Date
+import system
  
 def isText(val):
 
@@ -19,12 +17,12 @@ def isText(val):
     return isText
 
 
-# The input to this is expected to be a string.  It tests to see if the string is a float.  I treats
-# the text string NaN as a float.
-def isFloattOrSpecialValue(val):
+# Check if the val is one of the special values, NaN, None....
+def isaValidNumber(val):
+    sval = str(val)
     
-    if val in ['NaN', 'NAN']:
-        return True
+    if sval in ['nan', 'NaN', 'NAN', 'NONE']:
+        return False
 
     try:
         val = float(val)
@@ -51,6 +49,13 @@ def formatDateTime(theDate, format = 'MM/dd/yy HH:mm'):
         theDate = ""
     else:
         theDate = system.db.dateFormat(theDate, format)
+    return theDate
+
+'''
+String representation of a date time that is accepted by SQLServer
+'''
+def formatDateTimeForDatabase(theDate):
+    theDate = formatDateTime(theDate, 'yyyy-MM-dd HH:mm:ss')
     return theDate
 
 '''
@@ -112,7 +117,7 @@ def substituteProvider(tagPath, provider):
         return '[' + provider + ']' + tagPath
 
 '''
-A little utility for a one liner that I can b=never remember.  Clear a dataset keeping the header intact.
+A little utility for a one liner that I can never remember.  Clear a dataset keeping the header intact.
 '''
 def clearDataset(ds):
     ds = system.dataset.deleteRows(ds, range(ds.rowCount))

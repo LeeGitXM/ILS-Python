@@ -72,8 +72,10 @@ def expandRow(tree, chartDict):
     return row
 
 def fetchCharts(db):
-    SQL = "select * from SfcChart order by ChartPath"
-    pds = system.db.runQuery(SQL, db)
+    print "Fetching the charts from database %s..." % (db)
+    SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart order by ChartPath"
+    pds = system.db.runPrepQuery(SQL, [], db)
+    log.tracef("Fetched %d chart records...", len(pds))
     return pds
 
 def fetchHierarchy(db):
@@ -130,8 +132,11 @@ def fetchSfcTree(chartPDS, hierarchyPDS, db):
     trees = []
     for chartRecord in chartPDS:
         chartId = chartRecord["ChartId"]
+        print "Checking ", chartId
         if isRoot(chartId, hierarchyPDS):
             trees.append(str(chartId))
+        else:
+            print "...is NOT a root tree..."
     log.trace("...the root nodes are: %s" % (str(trees)))
 
     foundChild = True
