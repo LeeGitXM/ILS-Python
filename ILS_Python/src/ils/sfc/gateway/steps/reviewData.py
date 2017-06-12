@@ -53,6 +53,10 @@ def activate(scopeContext, stepProperties, state):
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             
+            customWindowPath = getStepProperty(stepProperties, CUSTOM_WINDOW_PATH)
+            if customWindowPath <> "":
+                windowPath = customWindowPath
+            
             primaryTabLabel = getStepProperty(stepProperties, PRIMARY_TAB_LABEL) 
             if primaryTabLabel in ["", None]:
                 primaryTabLabel = "Primary"
@@ -123,10 +127,6 @@ def activate(scopeContext, stepProperties, state):
                         errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, str(e))
 
                     logger.errorf(errMsg)
-                
-            customWindowPath = getStepProperty(stepProperties, CUSTOM_WINDOW_PATH)
-            if customWindowPath <> "":
-                windowPath = customWindowPath
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             time.sleep(0.1)
@@ -187,7 +187,6 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
         
     SQL = "insert into SfcReviewDataTable (windowId, rowNum, configKey, prompt, value, units, advice, isPrimary) "\
         "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, configKey, prompt, str(val), units, advice, isPrimary)
-    logger.tracef(SQL)
     system.db.runUpdateQuery(SQL, database)
 
 
