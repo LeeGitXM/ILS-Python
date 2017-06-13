@@ -71,6 +71,12 @@ def bufferSizeChanged(tagPath, currentValue, initialChange):
 There is a new value, update the filtered value.  This uses a circular buffer in the database table.    
 '''
 def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
+    '''
+    Not sure we always want to ignore all initial values, we'd really like to check if this initial value has already been received
+    '''
+    if initialChange:
+        return
+    
     print "----------"
     print threadName, currentValue, sampleTime
     
