@@ -5,9 +5,8 @@ Created on Dec 17, 2015
 '''
 
 import system, time
-from ils.sfc.common.util import callMethodWithParams
-from ils.sfc.common.util import isEmpty
-from ils.common.cast import jsonToDict
+from ils.sfc.common.util import callMethodWithParams, isEmpty
+from ils.common.cast import jsonToDict, isFloat
 from ils.sfc.gateway.util import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError, hasStepProperty, deleteAndSendClose
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, getProject
@@ -184,6 +183,15 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
             val = s88Get(chartScope, stepScope, key, scope)
         else:
             val = s88GetWithUnits(chartScope, stepScope, key, scope, units)
+    
+    if isFloat(val):
+        val = float(val)
+        val = "%.4f" % (val)
+        
+    if isFloat(advice):
+        advice = float(advice)
+        print "Advice: ", advice
+        advice = "%.4f" % (advice)
         
     SQL = "insert into SfcReviewDataTable (windowId, rowNum, configKey, prompt, value, units, advice, isPrimary) "\
         "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, configKey, prompt, str(val), units, advice, isPrimary)

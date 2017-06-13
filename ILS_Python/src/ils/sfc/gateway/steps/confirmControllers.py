@@ -9,6 +9,7 @@ from ils.sfc.gateway.api import getChartLogger, getIsolationMode
 from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, notifyGatewayError, queueMessage
 from system.ils.sfc import getConfirmControllersConfig, getProviderName
 from ils.io.api import confirmControllerMode
+from ils.sfc.recipeData.api import s88Get
 
 def activate(scopeContext, stepProperties, state):
     from ils.sfc.gateway.recipe import RecipeData  
@@ -20,7 +21,7 @@ def activate(scopeContext, stepProperties, state):
     # Everything will have the same tag provider - check isolation mode and get the provider
     isolationMode = getIsolationMode(chartScope)
     providerName = getProviderName(isolationMode)
-    logger.trace("Isolation mode: %s, provider: %s" % (isolationMode, providerName))
+    logger.tracef("Isolation mode: %s, provider: %s", isolationMode, providerName)
 
     try:
         numberOfErrors = 0
@@ -29,29 +30,33 @@ def activate(scopeContext, stepProperties, state):
         configJson = getStepProperty(stepProperties, CONFIRM_CONTROLLERS_CONFIG)
         config = getConfirmControllersConfig(configJson)
         stepName = getStepProperty(stepProperties, NAME)
-        logger.trace("In %s, step: %s" % (__name__, stepName))
+        logger.tracef("In %s, step: %s", __name__, stepName)
 
         for row in config.rows:
             testForZero = row.checkSPFor0
             checkPathToValve = row.checkPathToValve
-            
-            rd = RecipeData(chartScope, stepScope, row.location, row.key)
-            tagPath = rd.get(TAG_PATH)
+            recipeScope = row.location
+            key = row.key
+
+            tagPath = s88Get(chartScope, stepScope, key + ".Tag", recipeScope)
             tagPath = "[" + providerName + "]" + tagPath
-            val = rd.get(VALUE)
-            outputType = rd.get(OUTPUT_TYPE)
+#            val = rd.get(VALUE)
+            val = 0.0
+            outputType = s88Get(chartScope, stepScope, key + ".OutputType", recipeScope)
             logger.trace("Confirming controller for tagPath: %s, Check SP for 0: %s, Check Path to Valve: %s, Output type: %s" % (tagPath, str(testForZero), str(checkPathToValve), outputType))
             
             try:
-                success, errorMessage = confirmControllerMode(tagPath, val, testForZero, checkPathToValve, outputType, logger)
+                success, errorMessage = confirmControllerMode(tagPath, val, testForZero, checkPathToValve, outputType)
                 if not(success):
                     numberOfErrors = numberOfErrors + 1
                     txt = "Confirm Controller Mode Error: %s - %s.  %s" % (row.key, tagPath, errorMessage)
+                    logger.warnf("Confirm Controller Mode failed for %s because %s", tagPath, errorMessage)
                     queueMessage(chartScope, txt, MSG_STATUS_ERROR)
             except:
                 notifyGatewayError(chartScope, 'Trapped an error in confirmControllers.py', chartLogger)
                 numberOfErrors = numberOfErrors + 1
-            
+
+                        
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in confirmControllers.py', chartLogger)
     finally:
