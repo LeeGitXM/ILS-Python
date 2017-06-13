@@ -5,6 +5,13 @@ Created on Jan 12, 2016
 '''
 import system, math, string
 
+def setTableColumnHeading(table, columnName, columnLabel):
+    ds = table.columnAttributesData
+    for row in range(ds.rowCount):
+        if ds.getValueAt(row, "name") == columnName:
+            ds = system.dataset.setValue(ds, row, "label", columnLabel)
+    table.columnAttributesData = ds
+
 def getRootContainer(component):
     if component==None:
         return None
