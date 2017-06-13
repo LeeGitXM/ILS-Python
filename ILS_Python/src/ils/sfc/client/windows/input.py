@@ -29,13 +29,24 @@ def internalFrameOpened(event):
         print "Window was not found, requerying..."    
         time.sleep(1)
         pds = system.db.runQuery(SQL)
-    
+
     record=pds[0]
+    
+    lowLimit = record["lowLimit"]
+    highLimit = record["highLimit"]
+    
     rootContainer.prompt = record["prompt"]
-    rootContainer.lowLimit = record["lowLimit"]
-    rootContainer.highLimit = record["highLimit"]
+    rootContainer.lowLimit = lowLimit
+    rootContainer.highLimit = highLimit
     rootContainer.targetStepUUID = record["targetStepUUID"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
+    
+    if lowLimit == None or highLimit == None:
+        limitText = ""
+    else:
+        limitText = "Limits: %s to %s" % (str(lowLimit), str(highLimit))
+
+    rootContainer.limitText = limitText    
     print "-- DONE --"
 
 def okActionPerformed(event):
