@@ -58,7 +58,7 @@ def createChart(resourceId, chartPath, db):
 
     except:
         errorTxt = catch("%s.createChart()")
-        log.error(errorTxt)
+        log.errorf(errorTxt)
     
 def deleteChart(resourceId, chartPath, db):
     log.infof("Deleting a chart: %d", resourceId)

@@ -6,6 +6,7 @@ Created on Jan 9, 2017
 
 import system, string, time
 import xml.etree.ElementTree as ET
+from ils.sfc.recipeData.structureManager import getTxId
 from ils.common.error import catch
 from ils.common.cast import toBit, isFloat
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
@@ -29,11 +30,10 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     time.sleep(5)
     try:
         #log.tracef(chartResourceAsXML)
-        tx = ""
+        tx = getTxId(db)
         log.tracef("parsing the tree...")
         root = ET.fromstring(chartResourceAsXML)
 
-        tx = system.db.beginTransaction(db)
         for step in root.findall('step'):
             processStep(step, db, tx)
         
@@ -51,11 +51,8 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     except:
         errorTxt = catch("Migrating Recipe Data - rolling back transactions")
         log.errorf(errorTxt)
-        if tx != "":
-            system.db.rollbackTransaction(tx)
-    finally:
-        if tx != "":
-            system.db.closeTransaction(tx)
+
+
 
 def processStep(step, db, tx):
     log.tracef("==============")
@@ -110,12 +107,10 @@ def processStep(step, db, tx):
                 else:
                     raise ValueError, "Unexpected type of recipe data: %s" % (recipeDataType)
 
-        log.trace("Done with step - Committing transactions")
-        system.db.commitTransaction(tx)
+        log.trace("Done with step")
     except:
-        errorTxt = catch("Processing a step - rolling back transactions")
+        errorTxt = catch("Error migrating recipe data for a step")
         log.errorf(errorTxt)
-        system.db.rollbackTransaction(tx)
             
 def getRecipeDataTypeFromAssociatedData(recipeData):
     try:
