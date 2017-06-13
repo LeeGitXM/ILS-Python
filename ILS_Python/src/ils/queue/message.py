@@ -5,6 +5,7 @@ Created on Sep 9, 2014
 '''
 import  system, string
 from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
+from ils.common.error import catch
 log = system.util.getLogger("com.ils.queue")
 
 # Expected status are Info, Warning, or Error
@@ -72,8 +73,9 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
 
     if filepath.find('*') > -1:
         # Get the timestamp formatted for including in a filename
-        from ils.common.util import getDate
-        theDate = getDate()
+#        from ils.common.util import getDate
+#        theDate = getDate()
+        theDate = system.date.now()
     
         from ils.common.util import formatDateTime
         theDate = formatDateTime(theDate, 'yyyy-MM-dd-hh-mm-ss')
@@ -87,13 +89,16 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
     
     # Note: Noetpad does not recognize \n as a carriage return but worpad does.
     
-    header = "Created,Severity,Message\n"
-    system.file.writeFile(filepath, header, False)
-    
-    for record in pds:
-        txt = str(record["Timestamp"]) + "," + record["Status"] + "," + record["Message"] + "\n"
-        system.file.writeFile(filepath, txt, True)
+    try:
+        header = "Created,Severity,Message\n"
+        system.file.writeFile(filepath, header, False)
         
+        for record in pds:
+            txt = str(record["Timestamp"]) + "," + record["Status"] + "," + record["Message"] + "\n"
+            system.file.writeFile(filepath, txt, True)
+    except:
+        txt = catch("Error saving message queue <%s> to <%s>" % (queueKey, filepath))
+        log.error(txt)
 
 def clear(queueKey, db = ''):
     from ils.queue.commons import getQueueId
