@@ -14,12 +14,16 @@ log = system.util.getLogger("com.ils.io")
 # having to put a wild card in front of the tagPath.  I could use system.tag.read(tagPath + ".TagType.
 # but I don't know how to decode the integer enumeration that is returned.   
 def isUDT(fullTagPath):
-    isUDT = False
-    parentPath, tagPath = splitTagPath(fullTagPath)
-    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
-    for tag in tags:
-        if tag.fullPath == fullTagPath:
-            isUDT = tag.isUDT()       
+    try:
+        isUDT = False
+        parentPath, tagPath = splitTagPath(fullTagPath)
+        tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+        for tag in tags:
+            if tag.fullPath == fullTagPath:
+                isUDT = tag.isUDT()     
+    except:
+        log.errorf("Error attempting to determine if <%s> is a UDT, parent: %s, tag path: %s", fullTagPath, parentPath, tagPath)
+        isUDT = False  
     return isUDT
 
 def getOutputForTagPath(tagPath, outputType):
