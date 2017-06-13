@@ -4,9 +4,11 @@ Created on Oct 31, 2014
 @author: rforbes
 """
 
-# I know Rob defined this somewhere else but I can't find it 
+# I know Rob defined this somewhere else but I can't find it
+# Need to devise a way for customer defined SFC windows, like istalon's Rate change review data screen to get added to this list. 
 SFC_WINDOW_LIST = ["SFC/BusyNotification", "SFC/DialogMessage", "SFC/Input", "SFC/ManualDataEntry", "SFC/MonitorDownloads", "SFC/Notification", \
-                   "SFC/ReviewData", "SFC/ReviewFlows", "SFC/SelectInput", "SFC/TimeDelayNotification", "SFC/YesNo", "Test/SFC Use Case Tests/ReviewData"]
+                   "SFC/ReviewData", "SFC/ReviewFlows", "SFC/SelectInput", "SFC/TimeDelayNotification", "SFC/YesNo", \
+                   "Vistalon/SFC/Rate Change Review Data", "Test/SFC Use Case Tests/ReviewData"]
 
 # Screen Positions
 CENTER = "center"
