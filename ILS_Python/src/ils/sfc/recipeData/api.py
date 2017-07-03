@@ -80,7 +80,7 @@ def s88GetKeysForNamedBlock(chartPath, stepName, recipeDataType, db):
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetRecord(stepUUID, key, db):
     logger.tracef("s88GetRecord(): %s", key)
-    record, units = fetchRecipeDataRecord(stepUUID, key, db)
+    record = fetchRecipeDataRecord(stepUUID, key, db)
     logger.tracef("...fetched %s", str(record))
     return record
 

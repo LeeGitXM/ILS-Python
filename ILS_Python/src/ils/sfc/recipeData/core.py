@@ -397,7 +397,12 @@ def fetchRecipeDataRecord(stepUUID, key, db):
 
 
 def setRecipeData(stepUUID, key, attribute, val, db, units=""):
-    logger.tracef("Setting recipe data value for step: stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, val)
+    print stepUUID
+    print key
+    print attribute
+    print val
+    
+    logger.tracef("Setting recipe data value for step with stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, str(val))
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
@@ -589,6 +594,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
         
     
     elif recipeDataType == ARRAY:
+        print "Setting for an array"
         if arrayIndex == None:
             raise ValueError, "Array Recipe data must specify an index - %s - %s" % (key, attribute)
         

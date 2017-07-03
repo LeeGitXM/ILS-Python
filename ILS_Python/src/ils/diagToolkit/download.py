@@ -189,8 +189,12 @@ def serviceDownload(post, ds, tagProvider, db):
                 quantOutputId=ds.getValueAt(row, "qoId")
                 updateQuantOutputDownloadStatus(quantOutputId, "Pending", db)
 
+    '''
+    Not sure what the purpose of this sleep is.  Not sure if there are database transactions that we want to give time to complete.
+    This was 10 seconds, which is an eternity.  Changing to 1 second.
+    '''
     print "Sleeping..."
-    time.sleep(10)
+    time.sleep(1)
     print "Waking up..."
     
     # Now get to work on the download...

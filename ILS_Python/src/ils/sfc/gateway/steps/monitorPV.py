@@ -11,22 +11,22 @@ from java.util import Date
 from ils.sfc.gateway.api import getIsolationMode
 from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
 from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
-from ils.sfc.gateway.recipe import RecipeData
 from ils.io.api import getMonitoredTagPath
-    
+
+from ils.sfc.common.util import callMethodWithParams
 from ils.sfc.recipeData.api import s88Get, s88Set, s88GetTargetStepUUID, s88GetFromStep,s88SetFromStep
-from ils.sfc.common.constants import SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION, TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
+from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIVATION_CALLBACK, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER,  VALUE, SETPOINT, RECIPE, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
     CLASS, DATA_LOCATION, DOWNLOAD_STATUS, IMMEDIATE, KEY, MONITOR, MONITORING, STRATEGY, RECIPE_DATA_TYPE, \
     RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, STATIC, TARGET_VALUE, TIMEOUT, WAIT, \
-    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
+    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED, \
+    ERROR_COUNT_SCOPE, ERROR_COUNT_KEY, ERROR_COUNT_MODE, COUNT_ABSOLUTE, \
+    LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, \
+    NAME, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
+    PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM
 from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import getChartLogger
-
-from ils.sfc.common.constants import NAME, NUMBER_OF_TIMEOUTS, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
-    PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_OK, SETPOINT_PROBLEM, \
-    STEP_SUCCESS, STEP_FAILURE, TIMED_OUT
 
 def activate(scopeContext, stepProperties, state):
     # some local constants
@@ -70,8 +70,6 @@ def activate(scopeContext, stepProperties, state):
         else:
             if not initialized:
                 logger.info("...initializing PV Monitor step %s ..." % (stepName))
-                stepScope[NUMBER_OF_TIMEOUTS] = 0
-                stepScope[TIMED_OUT] = False
                 stepScope[INITIALIZED] = True
                 stepScope["workDone"] = False
     
@@ -113,6 +111,8 @@ def activate(scopeContext, stepProperties, state):
                     configRow.inToleranceTime = 0
                     configRow.outToleranceTime = Date().getTime()
                     monitorActiveCount = monitorActiveCount + 1
+                    
+                    print "The *ORIGINAL* tolerance is: ", configRow.tolerance
                     
                     if configRow.persistence > maxPersistence:
                         maxPersistence = configRow.persistence
@@ -157,6 +157,26 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[WATCH_ONLY] = watchOnly
                 print "Watch Only: ", str(watchOnly)
                 
+                # Look for a custom activation callback
+                activationCallback = getStepProperty(stepProperties, ACTIVATION_CALLBACK)
+                if activationCallback <> "":
+                    logger.tracef("Calling custom activationCallback: %s", ACTIVATION_CALLBACK)
+    
+                    keys = ['scopeContext', 'stepProperties', 'config']
+                    values = [scopeContext, stepProperties, config]
+                    try:
+                        config = callMethodWithParams(activationCallback, keys, values)
+                        print "Returned config: ", config
+                        stepScope[PV_MONITOR_CONFIG] = config
+                    except Exception, e:
+                        try:
+                            cause = e.getCause()
+                            errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, cause.getMessage())
+                        except:
+                            errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, str(e))
+    
+                        logger.errorf(errMsg)                
+                
                 # This will clear and/or set the timer if the block is configured to do so               
                 startTimer = getStepProperty(stepProperties, TIMER_SET)
                 if startTimer:
@@ -184,7 +204,6 @@ def activate(scopeContext, stepProperties, state):
                     
                 config = stepScope[PV_MONITOR_CONFIG]
                 watchOnly = stepScope[WATCH_ONLY]
-                print "Watch Only: ", str(watchOnly)
             
                 # Monitor for the specified period, possibly extended by persistence time
                 timerStart=s88Get(chartScope, stepScope, timerKey + ".StartTime", timerLocation)
@@ -210,6 +229,9 @@ def activate(scopeContext, stepProperties, state):
                     for configRow in config.rows:
                         if not configRow.enabled:
                             continue;
+                        
+                        # REMOVE THESE TWO LINES
+                        tolerance=configRow.tolerance
                         
                         # SUCCESS is a terminal state - once the criteria is met stop monitoring that PV
                         if configRow.status == PV_OK:
@@ -340,7 +362,9 @@ def activate(scopeContext, stepProperties, state):
                 if ((elapsedMinutes > timeLimitMin) or (persistencePending and elapsedMinutes > extendedDuration)) and not(watchOnly):
                     logger.info("The PV monitor is finished because the max run time has been reached...")
                     complete = True
-                    
+                
+                if complete:
+                    print "The PV Monitoring step is done, counting up the number of timeouts..."
                     numTimeouts = 0
                     for configRow in config.rows:
                         logger.trace("...checking row whose status is: %s" % (configRow.status))
@@ -356,9 +380,34 @@ def activate(scopeContext, stepProperties, state):
                             s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_STATUS, PV_ERROR, recipeDataLocation)
     
                         s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_ACTIVE, 0, recipeDataLocation)
-                    stepScope[NUMBER_OF_TIMEOUTS] = numTimeouts
-                    if numTimeouts > 0:
-                        stepScope[TIMED_OUT] = True
+                        
+                    errorCountScope = getStepProperty(stepProperties, ERROR_COUNT_SCOPE)
+                    errorCountKey = getStepProperty(stepProperties, ERROR_COUNT_KEY)
+                    errorCountMode = getStepProperty(stepProperties, ERROR_COUNT_MODE)
+                    
+                    print "Number of timeouts:  ", numTimeouts
+                    
+                    if errorCountScope == CHART_SCOPE:
+                        print "Setting a chart scope error counter for a PV monitor step..."
+                        if errorCountMode == COUNT_ABSOLUTE:
+                            chartScope[errorCountKey] = numTimeouts
+                        else:
+                            cnt = chartScope[errorCountKey]
+                            chartScope[errorCountKey] = cnt + numTimeouts
+                    
+                    elif errorCountScope == STEP_SCOPE:
+                        ''' For stepScope counters the mode is implicitly incremental because the data is transient '''
+                        print "Setting a step scope error counter for a PV monitor step..."
+                        stepScope[errorCountKey] = numTimeouts
+                    
+                    elif errorCountScope in [LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE]:
+                        print "Setting a recipe data scope (%s) error counter for a PV monitor step..." % (errorCountScope)
+                        if errorCountMode == COUNT_ABSOLUTE:
+                            s88Set(chartScope, stepScope, errorCountKey + ".Value", numTimeouts, errorCountScope)
+                        else:
+                            cnt = s88Get(chartScope, stepScope, errorCountKey + ".Value", errorCountScope)
+                            s88Set(chartScope, stepScope, errorCountKey + ".Value", numTimeouts + cnt, errorCountScope)
+    
                     logger.info("...there were %i PV monitoring timeouts!" % (numTimeouts))
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorPV.py', logger)

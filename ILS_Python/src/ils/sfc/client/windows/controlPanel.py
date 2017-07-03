@@ -16,11 +16,13 @@ def internalFrameOpened(event):
     rootContainer.selectedMessage=0
     rootContainer.autoIndex=True
     
-def openControlPanel(controlPanelName, startImmediately):
+def openControlPanel(controlPanelName, startImmediately, position="CENTER"):
     print "In openControlPanel..."
     cpWindow = findOpenControlPanel(controlPanelName)
     if cpWindow == None:
         cpWindow = system.nav.openWindowInstance("SFC/ControlPanel", {'controlPanelName': controlPanelName})
+        from ils.common.windowUtil import positionWindow
+        positionWindow(cpWindow, position)
     else:
         cpWindow.toFront()
     if startImmediately:
@@ -229,7 +231,7 @@ def findOpenControlPanel(controlPanelName):
             return window
     return None
 
-def openDynamicControlPanel(chartPath, startImmediately, controlPanelName):
+def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, position="CENTER"):
     '''Open a control panel to run the given chart, starting the chart
        if startImmediately is true. If no control panel is associated 
        with the given chart, use the one with the given name (creating that
@@ -245,4 +247,5 @@ def openDynamicControlPanel(chartPath, startImmediately, controlPanelName):
             controlPanelId = createControlPanel(controlPanelName)
         # re-set the panel's chart to the desired one:
         setControlPanelChartPath(controlPanelId, chartPath)
-    openControlPanel(controlPanelName, startImmediately)
+        
+    openControlPanel(controlPanelName, startImmediately, position)

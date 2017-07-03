@@ -37,19 +37,18 @@ def commandHandler(tagPath, command):
 
 
 def player(commandTagpath):
-    print "Incoming tagpath: ", commandTagpath
+    print "Starting data pump player..."
     
     dataPumpPath, tagName, provider = parseTagPath(commandTagpath)
-    print "dataPumpPath: ", dataPumpPath
+    
     print "Provider: ", provider
+    print "DataPumpPath: ", dataPumpPath
     
-    ds = system.tag.read(dataPumpPath + "/data").value
-    print "Raw dataset: ", ds
-    
+    ds = system.tag.getTagValue("%s/data" % (dataPumpPath))
     pds = system.dataset.toPyDataSet(ds)
     print "There are ", len(pds), " rows in the dataset..."
 
-    system.tag.writeToTag(dataPumpPath + "/simulationState", "Running")
+    system.tag.writeToTag("%s/simulationState" % (dataPumpPath), "Running")
     
     # We have to give these writes a chance to get there
     time.sleep(1)    
@@ -58,21 +57,21 @@ def player(commandTagpath):
     for row in pds:
         print row
         
-        command = system.tag.getTagValue(dataPumpPath + '/command')
+        command = system.tag.getTagValue("%s/command" % (dataPumpPath))
         print command
         if command == "Abort":
             print "*** ABORTING ***"
             break
 
-        system.tag.writeToTag(dataPumpPath + "/lineNumber", i)
+        system.tag.writeToTag("%s/lineNumber" % (dataPumpPath), i)
         j = 0
         for val in row:
             if (j == 0):
                 j = j
             else:
                 tagname = ds.getColumnName(j)
-#                print tagname, " = ", val
-                fullTagPath = tagname
+                print j, ": ", tagname, " = ", val
+                fullTagPath = "[%s]%s" % (provider, tagname)
                 status = system.tag.write(fullTagPath, val)
                 print "Tag: %s, Value: %s, Status: %s" % (fullTagPath, str(val), str(status) )
 
@@ -80,18 +79,18 @@ def player(commandTagpath):
 
         # I don't want to go into a long wait state because I won't be able to react to a command if I do
         startTime = system.date.now()
-        delay = system.tag.getTagValue(dataPumpPath + '/timeDelay')
+        delay = system.tag.getTagValue("%s/timeDelay" % (dataPumpPath))
         while system.date.addSeconds(startTime, delay) > system.date.now():
             print "...schnoozing..."
             time.sleep(1)
-            delay = system.tag.getTagValue(dataPumpPath + '/timeDelay')
+            delay = system.tag.getTagValue("%s/timeDelay" % (dataPumpPath))
             
         print "Waking up at ", system.date.now()        
         i = i + 1
 
     print "Done Pumping!"
-    system.tag.writeToTag(dataPumpPath + "/simulationState", "Idle")
-    system.tag.writeToTag(dataPumpPath + "/command", "Stop")
+    system.tag.writeToTag("%s/simulationState" % (dataPumpPath), "Idle")
+    system.tag.writeToTag("%s/command" % (dataPumpPath), "Stop")
 
 # The tagPath must begin with the provider surrounded by square brackets
 def parseTagPath(tagPath):

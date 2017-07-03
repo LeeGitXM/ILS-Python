@@ -133,11 +133,11 @@ def view(queueKey, useCheckpoint=False, silent=False):
     system.nav.centerWindow(window)
     
 
-def initializeView(rootContainer):
+def initializeView(rootContainer, db=""):
     queueKey = rootContainer.getPropertyValue("key")
     
     SQL = "select Title from QueueMaster where QueueKey = '%s'" % (queueKey)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, db)
     
     if len(pds) == 1:
         record = pds[0]
@@ -147,7 +147,7 @@ def initializeView(rootContainer):
     table = rootContainer.getComponent("Power Table")
     for messageStatus in ['Info', 'Warning', 'Error']:
         SQL = "select color from QueueMessageStatus where messageStatus = '%s'" % (messageStatus)
-        color = system.db.runScalarQuery(SQL)
+        color = system.db.runScalarQuery(SQL, db)
         
         if messageStatus == 'Info':
             table.setPropertyValue('infoColor', color)
@@ -155,18 +155,15 @@ def initializeView(rootContainer):
             table.setPropertyValue('warningColor', color)
         elif messageStatus == 'Error':
             table.setPropertyValue('errorColor', color)
-    
-#    ds = table.columnAttributesData
-#    ds=system.dataset.setValue(ds, 0, "", 20)
-#    table.columnAttributesData = ds
 
-def updateView(rootContainer):
+
+def updateView(rootContainer, db=""):
     table = rootContainer.getComponent('Power Table')
     queueKey = rootContainer.key
     useCheckpoint = rootContainer.useCheckpoint
     
     SQL = queueSQL(queueKey, useCheckpoint, "DESC")
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, db)
     table.data = pds
 
 def initializeSuperView(rootContainer):
@@ -214,4 +211,28 @@ def messageDetail(txt):
     print "Opening a queue window..."
     window=system.nav.openWindowInstance(windowName, {'txt': txt})
     system.nav.centerWindow(window)
-    
+
+'''
+Send a message to every client to open the message queue if they are interested in the console.
+The idea is that a client can determine on its own if it is interested in this queue without considering any other clients.
+'''
+def sendOpenMessage(console, queueKey):
+    print "Sending an open message"
+    project = system.util.getProjectName()
+    handler = "showQueue"
+    payload = {"console": console, "queueKey": queueKey}
+    system.util.sendMessage(project, handler, payload, "C")
+
+'''
+This runs in every client and is called by the messageHandler script for a showQueue message
+'''
+def handleMessage(payload):
+    print "Handling a showQueue message with payload: ", payload
+    console = payload["console"]
+    queueKey = payload["queueKey"]
+    windows = system.gui.getOpenedWindows()
+    for w in windows:
+        windowPath = w.getPath()
+        if windowPath.find(console) > -1:
+            print "Found the console, showing the queue..."
+            view(queueKey, silent=True)

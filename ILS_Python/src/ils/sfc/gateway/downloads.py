@@ -8,16 +8,15 @@ Created on Jun 18, 2015
 '''
 
 import system
-from java.util import Date, Calendar
+from java.util import Date
 from ils.sfc.recipeData.api import s88Set, s88Get
-from ils.sfc.common.constants import START_TIMER, PAUSE_TIMER, STOP_TIMER, RESUME_TIMER, CLEAR_TIMER 
-from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED, TAG_PATH, \
-    TIMER_STATE, TIMER_STATE_CANCEL, TIMER_STATE_CLEAR, TIMER_STATE_PAUSE, TIMER_STATE_RESUME, TIMER_STATE_RUN, TIMER_STATE_STOP, \
-    TIMER_LOCATION, TIMER_KEY, TIMER_SET, TIMER_CLEAR, TIMER_RUN_MINUTES, TIMER_START_TIME
-    
+from ils.sfc.common.constants import START_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, ERROR_COUNT_LOCAL, \
+    WRITE_CONFIRMED, DOWNLOAD_STATUS, SUCCESS, FAILURE
 
+'''
+perform the timer-related logic for a step
+'''
 def handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, command, logger):
-    '''perform the timer-related logic for a step'''
     logger.trace("Timer command: <%s>, the key and attribute are: %s" % (command, timerKey))
     key = timerKey + ".command"
     
@@ -45,13 +44,15 @@ def getElapsedMinutes(startTime):
     elapsedMinutes = (now.getTime() - startTime.getTime()) / 1000.0 / 60.0
     return elapsedMinutes
 
-
-# Write an output value
-# Modified this to use WriteDatum from the IO layer which automatically does a Write Confirm...
-def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation, logger, providerName, recipeDataScope):
+'''
+Write an output value
+Modified this to use WriteDatum from the IO layer which automatically does a Write Confirm...
+This updates the internal error counter in the step, it is the job of the step to update the error counter that the user specified.
+'''
+def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataScope):
     
     #----------------------------------------------------------------------------------------------------
-    def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, errorCountKey=errorCountKey, errorCountLocation=errorCountLocation, logger=logger, providerName=providerName, recipeDataScope=recipeDataScope):
+    def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, logger=logger, providerName=providerName, recipeDataScope=recipeDataScope):
         from ils.io.api import write
         from ils.sfc.gateway.util import queueMessage
         from ils.sfc.common.constants import MSG_STATUS_INFO
@@ -65,10 +66,12 @@ def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation,
             logger.info('Write bypassed for %s because SFC writes are inhibited!' % (tagPath))
             s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)
 
-            if errorCountKey <> "" and errorCountLocation <> "":
-                print " *** INCREMENTING THE GLOBAL ERROR COUNTER *** "
-                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
-                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
+            errorCount = stepScope[ERROR_COUNT_LOCAL]
+            stepScope[ERROR_COUNT_LOCAL] = errorCount + 1
+#            if errorCountKey <> "" and errorCountLocation <> "":
+#                print " *** INCREMENTING THE GLOBAL ERROR COUNTER *** "
+#                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
+#                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
     
             txt = "Write of %s to %s bypassed because SFC I/O is disabled." % (str(config.value), config.tagPath)
             queueMessage(chartScope, txt, MSG_STATUS_INFO)
@@ -92,11 +95,14 @@ def writeValue(chartScope, stepScope, config, errorCountKey, errorCountLocation,
             logger.trace("---- setting status to FAILURE ----")
             s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)
 
-            if errorCountKey <> "" and errorCountLocation <> "":
-                print " *** INCREMENTING THE GLOBAL ERROR COUNTER FOR %s *** " % (config.key)
-                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
-                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
-    
+            errorCount = stepScope[ERROR_COUNT_LOCAL]
+            stepScope[ERROR_COUNT_LOCAL] = errorCount + 1
+            
+#            if errorCountKey <> "" and errorCountLocation <> "":
+#                print " *** INCREMENTING THE GLOBAL ERROR COUNTER FOR %s *** " % (config.key)
+#                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
+#                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
+        
         queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)
     #----------------------------------------------------------------------------------------------------
     system.util.invokeAsynchronous(_writeValue)
@@ -106,7 +112,6 @@ def confirmWrite(chartScope, config, logger):
     '''confirms the write on a separate thread and writes the result back to recipe data'''
     import threading
     def worker(chartScope, config, logger):
-        from system.ils.sfc.common.Constants import WRITE_CONFIRMED, DOWNLOAD_STATUS, SUCCESS, FAILURE
         # ordinarily, exceptions are automatically caught in PythonCall but that
         # doesn't work for threads so we need to have a local handler:
         from ils.sfc.gateway.util import handleUnexpectedGatewayError
@@ -125,4 +130,3 @@ def confirmWrite(chartScope, config, logger):
             config.outputRD.set(DOWNLOAD_STATUS, FAILURE)
     t = threading.Thread(target=worker, args=(chartScope, config, logger,))
     t.start()
-

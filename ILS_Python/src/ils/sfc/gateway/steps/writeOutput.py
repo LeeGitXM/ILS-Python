@@ -7,10 +7,12 @@ Created on Dec 17, 2015
 from ils.sfc.recipeData.api import s88Get, s88Set
 from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
 from ils.sfc.gateway.api import getChartLogger
-from system.ils.sfc.common.Constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED
 from ils.sfc.common.constants import SHARED_ERROR_COUNT_KEY, SHARED_ERROR_COUNT_LOCATION, TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER, STEP_NAME, \
-    STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED
+    STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
+    ERROR_COUNT_LOCAL, ERROR_COUNT_SCOPE, ERROR_COUNT_MODE, ERROR_COUNT_KEY, \
+    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED, \
+    LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, COUNT_ABSOLUTE
 import system
 from java.util import Date, Calendar
 from ils.sfc.gateway.api import getIsolationMode
@@ -39,9 +41,6 @@ def activate(scopeContext, stepProperties, state):
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
     recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
     stepName = getStepProperty(stepProperties, STEP_NAME)
-    
-    errorCountKey = getStepProperty(stepProperties, SHARED_ERROR_COUNT_KEY)
-    errorCountLocation = getStepProperty(stepProperties, SHARED_ERROR_COUNT_LOCATION)
 
     logger = getChartLogger(chartScope)
     logger.trace("In writeOutput.activate() (state: %s)..." % (state))
@@ -60,6 +59,7 @@ def activate(scopeContext, stepProperties, state):
         handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, RESUME_TIMER, logger)
     elif not initialized:
         stepScope[INITIALIZED]=True
+        stepScope[ERROR_COUNT_LOCAL] = 0
         logger.infof("Initializing Write Output block %s", stepName)
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
         config = getWriteOutputConfig(configJson)
@@ -203,7 +203,7 @@ def activate(scopeContext, stepProperties, state):
                         logger.trace("...performing immediate writes...")
                         for row in immediateRows:
                             logger.trace("   writing a immediate write for step %s" % (row.key))
-                            writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName, recipeDataScope)
+                            writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
                          
                     logger.trace("...checking timed writes...")
                     writesPending = False
@@ -216,7 +216,7 @@ def activate(scopeContext, stepProperties, state):
     
                                 if elapsedMinutes >= row.timingMinutes:
                                     logger.trace("      writing a timed write for step %s" % (row.key))
-                                    writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName, recipeDataScope)
+                                    writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
                                     row.written = True
                                 else:
                                     writesPending = True
@@ -233,7 +233,7 @@ def activate(scopeContext, stepProperties, state):
                                 timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
                                 s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, recipeDataScope)
                                 s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, recipeDataScope)
-                                writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName, recipeDataScope)
+                                writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
                         
                         # All of the timed writes have completed and the final writes have been made so signal that the block is done
                         writeComplete = True
@@ -258,7 +258,7 @@ def activate(scopeContext, stepProperties, state):
                     s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, recipeDataScope)
 
                     logger.trace("   writing an immediate write for step %s" % (row.key))
-                    writeValue(chartScope, stepScope, row, errorCountKey, errorCountLocation, logger, providerName, recipeDataScope)
+                    writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
                     immediateRows.remove(row)
 
                 writeComplete = True
@@ -294,6 +294,33 @@ def activate(scopeContext, stepProperties, state):
     workDone = False
     if writeComplete and writeConfirmComplete:
         logger.infof("Write output step %s is complete!", stepName)
+        localErrorCount = stepScope[ERROR_COUNT_LOCAL]
+        
+        errorCountScope = getStepProperty(stepProperties, ERROR_COUNT_SCOPE)
+        errorCountKey = getStepProperty(stepProperties, ERROR_COUNT_KEY)
+        errorCountMode = getStepProperty(stepProperties, ERROR_COUNT_MODE)
+        
+        if errorCountScope == CHART_SCOPE:
+            logger.infof("Setting a chart scope error counter, %d local errors were found...", localErrorCount)
+            if errorCountMode == COUNT_ABSOLUTE:
+                chartScope[errorCountKey] = localErrorCount
+            else:
+                cnt = chartScope[errorCountKey]
+                chartScope[errorCountKey] = cnt + localErrorCount
+        
+        elif errorCountScope == STEP_SCOPE:
+            ''' For stepScope counters the mode is implicitly incremental because the data is transient '''
+            logger.infof("Setting a step scope error counter, %d local errors were found...", localErrorCount)
+            stepScope[errorCountKey] = localErrorCount
+        
+        elif errorCountScope in [LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE]:
+            logger.infof("Setting a recipe error counter (%s.%s), %d local errors were found...", errorCountScope, errorCountKey, localErrorCount)
+            if errorCountMode == COUNT_ABSOLUTE:
+                s88Set(chartScope, stepScope, errorCountKey + ".Value", localErrorCount, errorCountScope)
+            else:
+                cnt = s88Get(chartScope, stepScope, errorCountKey + ".Value", errorCountScope)
+                s88Set(chartScope, stepScope, errorCountKey + ".Value", localErrorCount + cnt, errorCountScope)
+                
         workDone = True
     
     return workDone

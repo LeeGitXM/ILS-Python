@@ -191,6 +191,7 @@ class PKSController(controller.Controller):
 
         # The quality is good so not get the values in a convenient form
         currentValue = float(currentValue.value)
+        log.tracef("The current value which will be used for the Test For Zero test is %s" % (str(currentValue)))
 
         # Check the Mode
         mode = system.tag.read(self.path + '/mode/value')
@@ -235,6 +236,9 @@ class PKSController(controller.Controller):
             if (currentValue > (float(newVal) * 0.03)) and testForZero:
                 success = False
                 errorMessage = "%s %s setpoint is not zero (it is actually %f)" % (errorMessage, self.path, currentValue)
+        else:
+            success = False
+            errorMessage = "Unknown output type: %s for %s" % (outputType, self.path)
 
         log.trace("  confirmControllerMode returned: %s - %s" % (str(success), errorMessage))
         return success, errorMessage

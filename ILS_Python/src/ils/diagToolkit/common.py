@@ -505,7 +505,7 @@ def resetFinalDiagnosis(log, database):
 # Delete the quant outputs for an applicatuon.
 def resetDiagnosisEntries(log, database):
     log.info("Resetting Diagnosis Entries...")
-    SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus = 'Restart' where Status = 'Active' "
+    SQL = "update DtDiagnosisEntry set Status = 'InActive', RecommendationStatus = 'Restart' where Status = 'Active' "
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     log.info("...reset %i Diagnosis Entries!" % (rows))

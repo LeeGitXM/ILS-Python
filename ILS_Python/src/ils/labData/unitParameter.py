@@ -77,8 +77,8 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     if initialChange:
         return
     
-    print "----------"
-    print threadName, currentValue, sampleTime
+    log.tracef("----------")
+    log.tracef("%s %s %s", threadName, str(currentValue), str(sampleTime))
     
     database=getDatabaseForTag(tagPath)
     # The database must exist .
@@ -154,7 +154,7 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
 
     secondsBetween = system.date.secondsBetween(rawValueLastChange, sampleTimeLastChange)
     if secondsBetween < 30 and threadName == "sampleTime":
-        print "Exiting the SampleTime thread where both the value and sampleTime were updated."
+        log.tracef("Exiting the SampleTime thread where both the value and sampleTime were updated.")
         return
     
     '''
@@ -165,8 +165,8 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         log.infof("...filtering out %s collected at %s for %s because it was collected before the sample time.", str(tagVal), str(sampleTime.value), tagPath)
         return
 
-    print "Raw value last change:   ", rawValueLastChange
-    print "Sample time Last change: ", sampleTimeLastChange
+    log.tracef("Raw value last change:   %s", str(rawValueLastChange))
+    log.tracef("Sample time Last change: %s", str(sampleTimeLastChange))
 
     if not( vals[0].quality.isGood() and numberOfPoints != None ):
         log.error("The numberOfPoints tag is bad or has the value None")

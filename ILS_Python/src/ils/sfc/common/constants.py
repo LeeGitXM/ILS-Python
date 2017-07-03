@@ -55,6 +55,8 @@ CONFIG = "config"
 CONFIRM_CONTROLLERS_CONFIG = "confirmControllersConfig"
 CONTROL_PANEL_ID = "controlPanelId"
 CONTROL_PANEL_NAME = "controlPanelName"
+COUNT_ABSOLUTE = "absolute"
+COUNT_INCREMENTAL = "incremental"
 CREATE_TIME = "createTime"
 CREATE = "create"
 CUSTOM_WINDOW_PATH = "customWindowPath"
@@ -75,6 +77,10 @@ ENABLE_RESUME = "enableResume"
 ENABLE_CANCEL = "enableCancel"
 ENABLE_RESET = "enableReset"
 ENABLE_START = "enableStart"
+ERROR_COUNT_KEY = "errorCountKey"
+ERROR_COUNT_MODE = "errorCountMode"
+ERROR_COUNT_SCOPE = "errorCountScope"
+ERROR_COUNT_LOCAL = "errorCountLocal"
 END_TIME = "endTime"
 EXTENSION = "extension"
 FAILURE = "Failure"
@@ -221,6 +227,10 @@ TIME_UNIT_TYPE = "TIME"
 DELAY_UNIT_SECOND = "SEC";
 DELAY_UNIT_MINUTE = "MIN";
 DELAY_UNIT_HOUR = "HR";
+
+# standard Ignition scopes:
+CHART_SCOPE = "chartScope"
+STEP_SCOPE = "stepScope"
 
 #Recipe scopes:
 LOCAL_SCOPE = "local"

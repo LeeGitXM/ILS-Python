@@ -603,6 +603,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     families=[]
     finalDiagnosisIds=[]
     quantOutputIds=[]
+    applications=[]
     
     for row in range(ds.rowCount):
         rowType=ds.getValueAt(row, "type")
@@ -612,7 +613,8 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
 
             if string.upper(command) == 'ACTIVE':
                 if application != "":
-                    resetter(application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
+                    resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
+                    applications.append(application)
 
                 families=[]
                 finalDiagnosisIds=[]
@@ -639,7 +641,6 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
                             families.append(rec["FamilyName"])
 
     resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
-    print "...done post action processing!"
     
     # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
     # that may be displayed on multiple clients.  This callback is running in a client, if I just call 
@@ -647,9 +648,13 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     # I should be able to call recalc in the gateway which will notify client to update the spreadsheet
     print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
     projectName=system.util.getProjectName()
-    payload={"post": post, "database": db, "provider": tagProvider}
-
+    payload={"post": post, "database": db, "provider": tagProvider, "applications": applications}
     system.util.sendMessage(projectName, "recalc", payload, "G")
+    
+    from ils.diagToolkit.finalDiagnosis import requestToManage
+    requestToManage(application, db, tagProvider)
+    
+    print "...done post action processing!"
     return allApplicationsProcessed
 
 
@@ -810,7 +815,7 @@ def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recom
     
     totalRows=0
     for finalDiagnosisId in finalDiagnosisIds:
-        SQL = "update DtDiagnosisEntry set Status = 'Inactive', RecommendationStatus='%s' "\
+        SQL = "update DtDiagnosisEntry set Status = 'InActive', RecommendationStatus='%s' "\
             " where status = 'Active' and FinalDiagnosisId = %s " % (recommendationStatus, str(finalDiagnosisId))   
             
         log.info(SQL)
@@ -1044,5 +1049,5 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     # I should be able to call recalc in the gateway which will notify client to update the spreadsheet
     print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
     projectName=system.util.getProjectName()
-    payload={"post": post, "database": db, "provider": provider}
+    payload={"post": post, "database": db, "provider": provider, "applications": [application]}
     system.util.sendMessage(projectName, "recalc", payload, "G")

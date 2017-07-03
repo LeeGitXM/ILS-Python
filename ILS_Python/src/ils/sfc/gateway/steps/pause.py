@@ -10,7 +10,9 @@ from ils.sfc.gateway.api import pauseChart, addControlPanelMessage, getChartLogg
 from ils.sfc.gateway.util import handleUnexpectedGatewayError
 
 def activate(scopeContext, stepProperties, state):
+    print "scopeContext: ", scopeContext
     chartScope = scopeContext.getChartScope()
+    print "chartScope: ", chartScope
     chartLogger = getChartLogger(chartScope)
     try:
         if not (state == DEACTIVATED or state == PAUSED):

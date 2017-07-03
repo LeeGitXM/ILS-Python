@@ -196,11 +196,12 @@ def postToQueue(chartScope, status, message, queueKey=None):
     from ils.queue.message import insert
     insert(queueKey, status, message, db)
 
-#
-def writeLoggerMessage(chartScope, block, unit, message):
+
+def writeLoggerMessage(chartScope, post, message):
     '''Write a message to the system log file from an SFC.'''
-    # The system logbook utility has not been implemented, when it is call it from here
-    print "Simulating a write to the system logbook: %s" % (message)
+    db = getDatabaseName(chartScope)
+    from ils.common.operatorLogbook import insertForPost
+    insertForPost(post, message, db)
 
 
 def getProject(chartProperties):

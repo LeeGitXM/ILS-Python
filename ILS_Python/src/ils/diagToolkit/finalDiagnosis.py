@@ -9,6 +9,7 @@ Created on Sep 12, 2014
 #
 
 import system, string
+from ils.common.config import getDatabase, getIsolationDatabase, getTagProvider, getIsolationTagProvider
 from ils.diagToolkit.common import fetchPostForApplication
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.common import insertApplicationQueueMessage
@@ -21,7 +22,7 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
 def notifyClients(project, post, clientId=-1, notificationText="", notificationMode="loud", numOutputs=0, database="", provider=""):
-    log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, mode: %s..." % (project, post, str(clientId), str(numOutputs), notificationMode))
+    log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, database: %s, mode: %s..." % (project, post, str(clientId), str(numOutputs), database, notificationMode))
     messageHandler="consoleManager"
     payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId, 'notificationMode':notificationMode, 'gatewayDatabase':database}
     notifier(project, post, messageHandler, payload, database)
@@ -47,7 +48,7 @@ def notifier(project, post, messageHandler, payload, database):
     print "Notifying..."
     #-------------------------------------------------------------------------------------------------
     def work(project=project, post=post, messageHandler=messageHandler, payload=payload, database=database):
-        print "...working asynchrounously..."
+        print "...working asynchrounously using database: %s..." % (database)
         from ils.common.message.interface import getPostClientIds
         clientSessionIds = getPostClientIds(post, project, database)
         if len(clientSessionIds) > 0:
@@ -162,8 +163,13 @@ This was implemented to solve the problem where a single new piece of data cause
 a management thread was launched for each of the FDs that changed state, all of which would lead to the exact same answer.  This is effectively a semaphore
 of sorts.
 '''
-def scanner(database, tagProvider):
-    log.info("Checking to see if there are applications to manage...")
+def scanner():
+    _scanner(getDatabase(), getTagProvider())
+    _scanner(getIsolationDatabase(), getIsolationTagProvider())    
+
+        
+def _scanner(database, tagProvider):
+    log.infof("Checking to see if there are applications to manage using database: %s...", database)
     projectName = system.util.getProjectName()
     SQL = "select * from DtApplicationManageQueue"
     pds = system.db.runQuery(SQL, database)
@@ -202,6 +208,7 @@ def scanner(database, tagProvider):
             if postTextRecommendation:
                 notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
 
+    log.infof("...done managing for database: %s!", database)
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
     print "Mining explanation for %s - <%s> <%s>" % (finalDiagnosisName, str(diagramUUID), str(UUID)) 
@@ -248,10 +255,11 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def recalcMessageHandler(payload):
+    log.infof("In recalcMessageHandler, the payload is: %s", str(payload))
     post=payload["post"]
     applications=payload["applications"]
     project=system.util.getProjectName()
-    log.infof("Payload: %s", str(payload))
+    
     database=payload["database"]
     provider=payload["provider"]
 
@@ -626,7 +634,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # Update the diagnosis entry and the final diagnosis for an unexpected error.
     def _setDiagnosisEntryErrorStatus(finalDiagnosisId, database):
         log.info("   ...setting error status for active diagnosis entries for final diagnosis: %i..." % (finalDiagnosisId))
-        SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s', status = 'Inactive' where FinalDiagnosisId = %i "\
+        SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s', status = 'InActive' where FinalDiagnosisId = %i "\
             " and status = 'Active'" % (RECOMMENDATION_ERROR, finalDiagnosisId)
         logSQL.trace(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
@@ -997,7 +1005,7 @@ def calculateVectorClamps(quantOutputs, provider):
         log.info("...Vector Clamps are NOT enabled")
         return quantOutputs, ""
     
-    log.info("...Vector clamping is enabled")
+    log.infof("...Vector clamp mode: %s", vectorClampMode)
 
     # There needs to be at least two outputs that are not minimum change bound for vector clamps to be appropriate
     i = 0
@@ -1026,7 +1034,7 @@ def calculateVectorClamps(quantOutputs, provider):
     log.info("All outputs will be clamped at %f pct" % (minOutputRatio))
 
     finalQuantOutputs = []
-    txt = "The most bound output is %s, %.0f pct of the total recommendation of %.4f, which equals %.4f, will be implemented." % \
+    txt = "The most bound output is %s, %.2f pct of the total recommendation of %.4f, which equals %.4f, will be implemented." % \
         (boundOutput['QuantOutput'], minOutputRatio, boundOutput['FeedbackOutput'], boundOutput['FeedbackOutputConditioned'])
         
     for quantOutput in quantOutputs:
