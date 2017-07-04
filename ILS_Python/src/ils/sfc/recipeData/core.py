@@ -595,27 +595,67 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
     
     elif recipeDataType == ARRAY:
         print "Setting for an array"
-        if arrayIndex == None:
-            raise ValueError, "Array Recipe data must specify an index - %s - %s" % (key, attribute)
         
         # Get the value type from the SfcRecipeDataArray table.
         SQL = "select * from SfcRecipeDataArrayView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         valueType = record['ValueType']
-        
-        # Now fetch the Value Id of the specific element of the array
-        SQL = "select valueId from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex = %s" % (str(recipeDataId), str(arrayIndex))
-        valueId = system.db.runScalarQuery(SQL, db)
-        
-        if valueType == "String":
-            SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %d" % (valueType, val, valueId)
+            
+        if arrayIndex == None:
+            print "Setting an entire array..."
+            SQL = "select max(ArrayIndex) from SfcRecipeDataArrayElement where RecipeDataId = %s" % (str(recipeDataId))
+            maxIdx = system.db.runScalarQuery(SQL, db)
+            
+            idx = 0
+            for el in val:
+                print "idx: ", idx, " => ", el
+                if idx > maxIdx:
+                    
+                    if valueType == 'String':
+                        SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (el)
+                    else:
+                        valueColumnName = valueType + "Value"
+                        if valueType == "Boolean":
+                            el = toBit(el)
+                        SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (valueColumnName, el)
+                    print SQL            
+                    valueId=system.db.runUpdateQuery(SQL, getKey=True, database=db)
+                    
+                    SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, idx, valueId)
+                    system.db.runUpdateQuery(SQL, db)
+                    
+                else:
+                    SQL = "select valueId from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex = %s" % (str(recipeDataId), str(idx))
+                    valueId = system.db.runScalarQuery(SQL, db)
+            
+                    if valueType == "String":
+                        SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %d" % (valueType, el, valueId)
+                    else:
+                        SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %d" % (valueType, el, valueId)
+                    system.db.runUpdateQuery(SQL, db)
+                idx = idx + 1
+                
+            if idx < maxIdx:
+                SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex > %d" % (str(recipeDataId), idx - 1)
+                rows = system.db.runUpdateQuery(SQL, db)
+                print "Deleted %d extra rows" % (rows)
+                
+#            raise ValueError, "Array Recipe data must specify an index - %s - %s" % (key, attribute)           
+            
         else:
-            SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %d" % (valueType, val, valueId)
-
-        rows = system.db.runUpdateQuery(SQL, db)
-        logger.tracef('...updated %d array value recipe data records', rows)
-      
+            # Now fetch the Value Id of the specific element of the array
+            SQL = "select valueId from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex = %s" % (str(recipeDataId), str(arrayIndex))
+            valueId = system.db.runScalarQuery(SQL, db)
+            
+            if valueType == "String":
+                SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %d" % (valueType, val, valueId)
+            else:
+                SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %d" % (valueType, val, valueId)
+    
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef('...updated %d array value recipe data records', rows)
+       
     elif recipeDataType == MATRIX:
         if rowIndex == None or columnIndex == None:
             raise ValueError, "Matric Recipe data must specify a row and a column index - %s - %s" % (key, attribute)
