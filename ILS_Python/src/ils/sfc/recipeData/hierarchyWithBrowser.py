@@ -132,11 +132,10 @@ def fetchSfcTree(chartPDS, hierarchyPDS, db):
     trees = []
     for chartRecord in chartPDS:
         chartId = chartRecord["ChartId"]
-        print "Checking ", chartId
+
         if isRoot(chartId, hierarchyPDS):
             trees.append(str(chartId))
-        else:
-            print "...is NOT a root tree..."
+
     log.trace("...the root nodes are: %s" % (str(trees)))
 
     foundChild = True
@@ -236,7 +235,7 @@ def getRecipeDataDescription(record, db):
         elif recipeDataType == "Matrix":
             desc = getMatrixDescription(recipeDataId, desc, db)
         elif recipeDataType == "Array":
-            desc = getArrayDescription(recipeDataId, desc, db)
+            desc = getArrayDescription(recipeDataId, desc, db)           
         elif recipeDataType == "Timer":
             desc = getTimerDescription(recipeDataId, desc, db)
         elif recipeDataType == "Recipe":
@@ -275,14 +274,18 @@ def getRecipeDataDescription(record, db):
 
     return desc
 
+    
 def getMatrixDescription(recipeDataId, desc, db):
-    valuePDS = system.db.runQuery("Select * from SFcRecipeDataMatrixView where recipeDataId = %d" % (recipeDataId), db)
-    if len(valuePDS) == 1:
-        valueRecord = valuePDS[0]
-        valueType = valueRecord["ValueType"]
-        rows = valueRecord["Rows"]
-        columns = valueRecord["Columns"]
-        matrixDesc = "A %d X %d matrix" % (rows, columns)
+    desc = ""
+    pds = system.db.runQuery("Select * from SFcRecipeDataMatrixView where recipeDataId = %d" % (recipeDataId), db)
+    if len(pds) == 1:
+        record = pds[0]
+        valueType = record["ValueType"]
+        rows = record["Rows"]
+        columns = record["Columns"]
+        rowKey = record["RowIndexKey"]
+        columnKey = record["ColumnIndexKey"]
+        matrixDesc = "A %d X %d matrix: " % (rows, columns)
         
         if desc == "":
             desc = matrixDesc
@@ -290,13 +293,13 @@ def getMatrixDescription(recipeDataId, desc, db):
             desc = "%s, %s" % (desc, matrixDesc)
 
         SQL = "select * from SfcRecipeDataMatrixElementView where RecipeDataId = %d order by RowIndex, ColumnIndex" % (recipeDataId)
-        pds = system.db.runQuery(SQL, db)
+        pdsValues = system.db.runQuery(SQL, db)
         lastRowIndex = -1
         txt = ""
-        for record in pds:
-            rowIndex = record["RowIndex"]
+        for valueRecord in pdsValues:
+            rowIndex = valueRecord["RowIndex"]
             if valueType == "Float":
-                val = record["FloatValue"]
+                val = valueRecord["FloatValue"]
                 
             if rowIndex <> lastRowIndex:
                 if txt == "":
@@ -308,31 +311,37 @@ def getMatrixDescription(recipeDataId, desc, db):
                 
             lastRowIndex = rowIndex
         
-        desc = desc + txt
-
+        desc = desc + txt + ")"
+        
+        if rowKey != None:
+            desc = "%s, row key: %s" % (desc, rowKey)
+        
+        if columnKey != None:
+            desc = "%s, column key: %s" % (desc, columnKey)
     return desc
 
 #
 def getArrayDescription(recipeDataId, desc, db):
-    valuePDS = system.db.runQuery("Select * from SFcRecipeDataArrayView where recipeDataId = %d" % (recipeDataId), db)
-    valueRecord = valuePDS[0]
-    valueType = valueRecord["ValueType"]
+    pds = system.db.runQuery("Select * from SFcRecipeDataArrayView where recipeDataId = %d" % (recipeDataId), db)
+    record = pds[0]
+    valueType = record["ValueType"]
+    key = record["IndexKey"]
 
     SQL = "select * from SfcRecipeDataArrayElementView where RecipeDataId = %d order by ArrayIndex" % (recipeDataId)
-    pds = system.db.runQuery(SQL, db)
-    numElements = len(pds)
+    pdsValues = system.db.runQuery(SQL, db)
+    numElements = len(pdsValues)
 
     txt = ""
-    for record in pds:
+    for valueRecord in pdsValues:
 
         if valueType == "Float":
-            val = record["FloatValue"]
+            val = valueRecord["FloatValue"]
         elif valueType == "String":
-            val = record["StringValue"]
+            val = valueRecord["StringValue"]
         elif valueType == "Integer":
-            val = record["IntegerValue"]
+            val = valueRecord["IntegerValue"]
         elif valueType == "Boolean":
-            val = record["BooleanValue"]
+            val = valueRecord["BooleanValue"]
             
         if txt == "":
             txt = "(%s" % (str(val))
@@ -344,7 +353,13 @@ def getArrayDescription(recipeDataId, desc, db):
     if desc == "":
         desc = txt
     else:
-        desc = "%s, %s" % (desc, txt)    
+        desc = "%s, %s" % (desc, txt)
+    
+    '''
+    If the array is keyed then append the name of the key
+    '''    
+    if key != None:
+        desc = "%s, key: %s" % (desc, key)   
 
     return desc
 

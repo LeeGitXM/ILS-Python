@@ -5,14 +5,17 @@ Created on Nov 3, 2014
 '''
 import system, string
 
+''' 
+We need to get the queue name out of the unit procedure and use that as the default message queue, but
+unlike in the old system, where we ran a unit procedure, here we are running a chart, and the chart had
+better have a unit procedure on the top chart.  However all this method has is a chart path, it has no
+way of knowing about the unit procedure block.  So when the unit procedure block runs we will update the 
+record in the SfcControlParameter table. 
+'''
 def startChart(chartPath, controlPanelName, project, originator, isolationMode):
-    ''' We need to get the queue name out of the unit procedure and use that as the default message queue, but
-        unlike in the old system, where we ran a unit procedure, here we are running a chart, and the chart had
-        better have a unit procedure on the top chart.  However all this method has is a chart path, it has no
-        way of knowing about the unit procedure block.  So when the unit procedure block runs we will update the 
-        record in the SfcControlParameter table. '''
     from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, PROJECT, ORIGINATOR, MESSAGE_QUEUE
     from system.ils.sfc.common.Constants import DEFAULT_MESSAGE_QUEUE
+    from ils.common.config import getDatabaseClient
     
     controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
     print "Found id %s for control panel %s" % (str(controlPanelId), controlPanelName)
@@ -29,8 +32,10 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
         isolationFlag = 1
     else:
         isolationFlag = 0
+    
+    db = getDatabaseClient()
     updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %s" % (runId, originator, project, isolationFlag, str(controlPanelId))
-    system.db.runUpdateQuery(updateSql)
+    system.db.runUpdateQuery(updateSql, database=db)
     return runId
 
 def readFile(filepath):

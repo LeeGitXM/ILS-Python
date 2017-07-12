@@ -172,6 +172,30 @@ def readInstantaneousValues(tagPaths, tagProvider, log):
     return badValue, qvs
 
 '''
+Return a the average of the current values of a list of tags. 
+'''
+def averageTags(tagPaths, tagProvider, log):
+    fullTagPaths = []
+    for tagPath in tagPaths:
+        fullTagPaths.append("[%s]%s" % (tagProvider, tagPath))
+    
+    qvs = system.tag.readAll(fullTagPaths)
+    vals = []
+    badValue = False
+    for i in range(0,len(tagPaths)):
+        qv = qvs[i]
+        print "Instantaneous value for %s is %s" % (tagPaths[i], qv)
+        if not(qv.quality.isGood()):
+            badValue = True
+            log.warnf("Read a bad value for %s - %s", tagPaths[i], str(qv))
+        else:
+            vals.append(qv.value)
+    
+    theMean = float(sum(vals)) / max(len(vals), 1)
+    
+    return badValue, theMean
+
+'''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).
 '''

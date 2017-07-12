@@ -6,6 +6,7 @@ import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 import system.ils.blt.diagram as script
+from ils.diagToolkit.common import getDiagram
 
 handler = ControllerRequestHandler.getInstance()
 
@@ -21,21 +22,3 @@ def getInputBlocks(diagramPath):
     inputs = script.listDiagramBlocksOfClass(diagid,"com.ils.block.Input")
     observations = script.listDiagramBlocksOfClass(diagid,"xom.block.sqcdiagnosis.SQCDiagnosis")
     return inputs,observations 
-    
-# -------------------------- Helper methods ----------------------
-# Return the ProcessDiagram at the specified path
-def getDiagram(dpath):
-    diagram = None
-    # The descriptor paths are :-separated, the input uses /
-    # the descriptor path starts with ":root:", 
-    # the input starts with the application
-    descriptors = script.getDiagramDescriptors()
-    print descriptors
-    handler = script.getHandler()
-    for desc in descriptors:
-        path = desc.path[6:]
-        path = path.replace(":","/")
-        print desc.id, path
-        if dpath == path:
-            diagram = handler.getDiagram(desc.id)
-    return diagram

@@ -9,13 +9,13 @@ from java.util import Date, Calendar
 import system.ils.blt.diagram as scriptingInterface
 from ils.queue.commons import getQueueForDiagnosticApplication
 
-log = system.util.getLogger("com.ils.diagToolkit.SQL")
+log = system.util.getLogger("com.ils.diagToolkit")
 
 # -------------------------- Helper methods ----------------------
 # Return the ProcessDiagram at the specified path
-def getDiagram(diagramPath):
+def getDiagram(project, diagramPath):
     print "Getting the process diagram named: %s" % (diagramPath)
-    diagram = None
+    
     # The descriptor paths are :-separated, the input uses /
     # the descriptor path starts with ":root:", 
     # the input starts with the application
@@ -27,9 +27,11 @@ def getDiagram(diagramPath):
         path = desc.path[6:]
         
         if diagramPath == path:
-            print "*** Found it ***"
+            log.trace("*** Found it ***")
             return handler.getDiagram(desc.id)
-    return diagram  
+    
+    log.errorf("Unable to find diagram: %s", diagramPath)
+    return None  
 
 
 # Check if the timestamps of two tags are consistent.  

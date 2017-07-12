@@ -6,6 +6,7 @@ Created on Mar 19, 2017
 
 # Recipe data types
 ARRAY = "Array"
+ARRAY_KEYED = "Array Keyed"
 INPUT = "Input"
 MATRIX = "Matrix"
 OUTPUT = "Output"

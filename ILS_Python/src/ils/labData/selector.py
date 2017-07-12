@@ -40,7 +40,7 @@ def configureSelector(unitName, selectorName, sourceName, database):
     provider = getTagProvider()
     parentTagPath = '[' + provider + ']LabData/' + unitName + '/'
     tagPath = parentTagPath + selectorName
-    log.trace("Configuring: %s" % (tagPath))
+    log.infof("...configuring selector: %s", tagPath)
 
     # Determine the type of the UDT   
     UDTType = system.tag.getAttribute(tagPath, "UDTParentType")

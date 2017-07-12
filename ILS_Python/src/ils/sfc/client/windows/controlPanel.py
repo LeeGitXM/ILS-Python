@@ -6,6 +6,8 @@ Created on Dec 9, 2015
 
 import system
 from ils.sfc.client.util import getDatabase
+from ils.sfc.client.util import getStartInIsolationMode
+
 immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 'SFC/RecipeDataTypeChooser',
                     'SFC/RecipeDataViewer', 'SFC/SfcHierarchy', 'SFC/SfcHierarchyWithRecipeBrowser', 'SFC/SFC Runner']
 sfcWindowPrefix = 'SFC/'
@@ -25,11 +27,16 @@ def openControlPanel(controlPanelName, startImmediately, position="CENTER"):
         positionWindow(cpWindow, position)
     else:
         cpWindow.toFront()
+        
+    isolationMode = getStartInIsolationMode()
+    rootContainer = cpWindow.rootContainer
+    rootContainer.isolationMode = isolationMode
+    
     if startImmediately:
         startChart(cpWindow.rootContainer)
         
 def startChart(rootContainer):
-    from ils.sfc.client.util import getStartInIsolationMode
+    
     from ils.sfc.common.util import startChart, chartIsRunning
     controlPanelName = rootContainer.controlPanelName
     isolationMode = getStartInIsolationMode()
@@ -37,6 +44,9 @@ def startChart(rootContainer):
     chartPath = getControlPanelChartPath(controlPanelName)
     originator = system.security.getUsername()
 
+    '''
+    There can only be one instance, regardless of isolation or production.
+    '''
     if not chartIsRunning(chartPath):
         print "In %s - starting %s" % (__name__, controlPanelName)
         chartRunId=startChart(chartPath, controlPanelName, project, originator, isolationMode)
@@ -93,6 +103,9 @@ def updateChartStatus(event):
     rootContainer.enableReset = record["EnableReset"]
     rootContainer.enableResume = record["EnableResume"]
     rootContainer.enableStart = record["EnableStart"]
+    
+    # The operation really isn't dynamic, but who knows when it gets set
+    rootContainer.operation = record["Operation"]
 
     # Presses the reset button should reset things, not cancelling the chart!
 #    if status != oldStatus and status == CANCELED:
