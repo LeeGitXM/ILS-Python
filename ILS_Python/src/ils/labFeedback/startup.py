@@ -11,15 +11,17 @@ log = system.util.getLogger("com.ils.labFeedback")
 EXPONENTIAL_FILTER_BIAS_UDT = "Lab Bias/Lab Bias Exponential Filter"
 PID_BIAS_UDT = "Lab Bias/Lab Bias PID"
 
-def gateway(provider):
+def gateway(tagProvider, isolationTagProvider):
     from ils.labFeedback.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting Lab Data Feedback Toolkit gateway version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
-    from ils.common.config import getTagProvider
 
-    initializeTags(provider)
+    createTags("[" + tagProvider + "]")
+    createTags("[" + isolationTagProvider + "]")
+
+    initializeTags(tagProvider)
 
 def createTags(tagProvider):
     print "Creating Lab Feedback configuration tags...."

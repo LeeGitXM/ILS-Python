@@ -12,15 +12,17 @@ log = system.util.getLogger("com.ils.labData")
 
 # History should be restored on startup, but generally the site needs to perform a site specific selector
 # configuration BEFORE the history is performed.
-def gateway(provider):
+def gateway(tagProvider, isolationTagProvider):
     from ils.labData.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting Lab Data Toolkit gateway version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
 
-    createTags("[" + provider + "]")
-    resetSelectorTriggers("[" + provider + "]")    
+    createTags("[" + tagProvider + "]")
+    createTags("[" + isolationTagProvider + "]")    
+    
+    resetSelectorTriggers("[" + tagProvider + "]")    
 
 
 # The Lab Selector Value UDT has a trigger tag which acts as a semaphore and needs to be reset on startup

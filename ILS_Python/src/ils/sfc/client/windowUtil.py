@@ -48,11 +48,20 @@ def shouldShowWindow(payload):
     controlPanelName = payload[CONTROL_PANEL_NAME]
     security = payload.get(SECURITY, PRIVATE)
 
-    if security == PRIVATE and not controlPanelOpen(controlPanelName) and (originator != system.security.getUsername()):
-        print "The control panel is not open and the originator is not this user so do not show the window here!"
-        return False
+    if security != PRIVATE:
+        print "...the window should be shown because it is PUBLIC!"
+        return True
+
+    if controlPanelOpen(controlPanelName):
+        print "...the window should be shown because the control panel is open!"
+        return True
+     
+    if originator == system.security.getUsername():
+        print "...the window should be shown becasue the user matches!"
+        return True
     
-    return True
+    print "   The window should NOT be shown because it is private, the control panel is not open and the originator is not this user!"
+    return False
     
 def openDbWindow(windowId):
     reopenWindow(windowId)

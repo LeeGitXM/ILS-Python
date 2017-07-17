@@ -145,6 +145,7 @@ def cancelChart(chartProperties):
     from ils.sfc.gateway.util import getTopChartRunId
     import system.sfc
     topChartRunId = getTopChartRunId(chartProperties)
+    logger.infof("Cancelling chart with id: %s", str(topChartRunId))
     system.sfc.cancelChart(topChartRunId)
 
 def addControlPanelMessage(chartProperties, message, priority, ackRequired):

@@ -98,7 +98,6 @@ def sfcOpenWindow(payload):
     
     print "...checking if the window should be shown on this client..."
     if not(shouldShowWindow(payload)):
-        print "The control panel is not open and the originator is not this user so do not show the window here!"
         return
     
     print "...the window is meant for this client..."

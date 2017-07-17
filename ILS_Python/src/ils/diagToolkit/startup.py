@@ -8,14 +8,16 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.diagToolkit")
 
-def gateway(provider, database):
+def gateway(tagProvider, isolationTagProvider, database):
     from ils.diagToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting Diagnostic Toolkit gateway version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
     
-    createTags("[" + provider + "]")
+    createTags("[" + tagProvider + "]")
+    createTags("[" + isolationTagProvider + "]")
+    
     
     #
     # Reset the database diagnosis and recommendations

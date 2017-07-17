@@ -5,7 +5,13 @@ Created on Sep 10, 2014
 '''
 
 import system
- 
+
+def listSum(numList):
+    theSum = 0.0
+    for num in numList:
+        theSum = theSum + num
+    return theSum
+
 def isText(val):
 
     try:

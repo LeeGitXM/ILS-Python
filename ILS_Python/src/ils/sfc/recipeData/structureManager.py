@@ -16,12 +16,14 @@ def getTxId(db):
     try:
         txId = system.util.getGlobals()['txId']
         if txId in ["", None, "foo"]:
-            txId = system.db.beginTransaction(database=db, isolationLevel=system.db.READ_COMMITTED, timeout=86400000)    # timeout is one day
+            print "*** Creating a fresh transaction Id ***"
+            txId = system.db.beginTransaction(database=db, isolationLevel=system.db.SERIALIZABLE, timeout=86400000)    # timeout is one day
             system.util.getGlobals()['txId'] = txId
         print "The transactionId is: ", txId
     except:
-        print "*** Getting a fresh transaction Id ***"
-        txId = system.db.beginTransaction(database=db, isolationLevel=system.db.READ_COMMITTED, timeout=86400000)    # timeout is one day
+        print "*** Creating a fresh transaction Id due to an error***"
+        print "Isolation level: ", system.db.SERIALIZABLE
+        txId = system.db.beginTransaction(database=db, isolationLevel=system.db.SERIALIZABLE, timeout=86400000)    # timeout is one day
         system.util.getGlobals()['txId'] = txId
 
     return txId
@@ -136,6 +138,20 @@ def deleteChart(resourceId, chartPath, db):
         errorTxt = catch("%s.createChart()" % (__name__))
         log.error(errorTxt)
 
+def shutdown(db):
+    import time
+    # Check if the chart already exists
+    log.infof("In %s.shutdown() with %s...", __name__, str(db))
+    filepath = "c:/temp/designerLog.txt"
+    append = True
+    
+    txt = "In shutdown at %s" % (system.date.now())
+    system.file.writeFile(filepath, txt, append)
+    
+    txId = getTxId(db)
+    system.db.rollbackTransaction(txId)
+    system.db.closeTransaction(txId)
+    time.sleep(20)
 
 def saveProject(project, db):
     # Check if the chart already exists

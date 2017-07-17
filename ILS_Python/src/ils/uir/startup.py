@@ -6,7 +6,7 @@ Created on Oct 9, 2015
 
 import system
 
-def gateway(provider):
+def gateway(tagProvider, isolationTagProvider):
     # Create gateway loggers
     log = system.util.getLogger("com.ils.uir")
     
@@ -14,7 +14,8 @@ def gateway(provider):
     version, revisionDate = version()
     log.info("Starting UIR modules version %s - %s" % (version, revisionDate))
     
-    createTags("[" + provider + "]", log)
+    createTags("[" + tagProvider + "]", log)
+    createTags("[" + isolationTagProvider + "]", log)
 
 def createTags(tagProvider, log):
     print "Creating UIR configuration tags...."

@@ -9,7 +9,7 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit")
 
-def gateway(provider):
+def gateway(provider, isolationTagProvider):
     from ils.recipeToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
@@ -17,6 +17,7 @@ def gateway(provider):
     log.info("---------------------------------------------------------")
 
     createTags("[" + provider + "]")
+    createTags("[" + isolationTagProvider + "]")
 
 def client():
     print "In recipeToolkit.startup.client()"

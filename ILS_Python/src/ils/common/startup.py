@@ -60,7 +60,7 @@ def client():
             removeNonOperatorMenus(menubar)
 
 
-def gateway(provider):
+def gateway(tagPprovider, isolationTagProvider):
     # Create gateway loggers
     log = system.util.getLogger("com.ils.common")
     
@@ -68,7 +68,9 @@ def gateway(provider):
     version, revisionDate = version()
     log.info("Starting common modules version %s - %s" % (version, revisionDate))
     
-    createTags("[" + provider + "]", log)
+    createTags("[" + tagPprovider + "]", log)
+    createTags("[" + isolationTagProvider + "]", log)
+
 
 def createTags(tagProvider, log):
     print "Creating common configuration tags...."

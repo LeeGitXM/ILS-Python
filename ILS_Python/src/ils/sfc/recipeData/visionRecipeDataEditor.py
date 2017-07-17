@@ -468,7 +468,7 @@ def updateMatrixTable(container, pds, rowLabels, columnLabels):
     
     for record in pds:
         row = record["RowIndex"]
-        column = record["ColumnIndex"]
+        column = record["ColumnIndex"] + 1
         val = record["FloatValue"]
         
         ds = system.dataset.setValue(ds, row, column, val)
@@ -1324,8 +1324,9 @@ def saveMatrix(rootContainer, db=""):
         
         # Now insert everything...
         for rowIndex in range(ds.rowCount):
-            for columnIndex in range(1,ds.columnCount):
-                val = ds.getValueAt(rowIndex, columnIndex)
+            for columnIndex in range(ds.columnCount - 1):
+                val = ds.getValueAt(rowIndex, columnIndex + 1) # The columns are offset by 1 because the key is in column 0
+                print "(%d, %d) = %s" % (rowIndex, columnIndex, str(val))
                 SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % ("FloatValue", val)
                 print SQL
                 valueId=system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
