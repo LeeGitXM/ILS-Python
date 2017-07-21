@@ -93,6 +93,7 @@ def checkForTimeout(stepScope):
     return timeout
 
 def setResponse(chartScope, stepScope, stepProperties, response):
+    print "In setResponse..."
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     s88Set(chartScope, stepScope, key, response, recipeLocation)

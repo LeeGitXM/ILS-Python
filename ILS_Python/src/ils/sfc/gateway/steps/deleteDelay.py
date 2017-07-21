@@ -2,18 +2,25 @@
 Created on Dec 17, 2015
 
 @author: rforbes
-'''
 
+Ordinarily window closing logic would be in a finally block, but since the whole business
+of this block is to close windows, there is no finally block... 
+'''
+import system
+from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
+from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
+from ils.sfc.common.constants import NAME
+    
 def activate(scopeContext, stepProperties, state):
-    import system.db
-    from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
-    from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
- 
-# NOTE: ordinarily window closing logic would be in a finally block, but since the whole business
-# of this block is to close windows, there is no finally block...   
+   
     try:
         chartScope = scopeContext.getChartScope()
-        chartLogger = getChartLogger(chartScope)
+        stepScope = scopeContext.getStepScope()
+        stepName=stepScope.get(NAME, "Unknown")
+        
+        logger = getChartLogger(chartScope)
+        logger.tracef("In %s.activate() initializing the step %s...", __name__, stepName)
+        
         # window common properties:
         database = getDatabaseName(chartScope)
         results = system.db.runQuery('select windowId from SfcBusyNotification', database)
@@ -23,6 +30,6 @@ def activate(scopeContext, stepProperties, state):
             project = getProject(chartScope)
             deleteAndSendClose(project, windowId, database)
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in deleteDelay.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in deleteDelay.py', logger)
     finally:
         return True

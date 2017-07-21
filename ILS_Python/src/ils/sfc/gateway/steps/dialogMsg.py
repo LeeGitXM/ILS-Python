@@ -23,7 +23,7 @@ def activate(scopeContext, stepProperties, state):
 
     if state == DEACTIVATED:
         logStepDeactivated(chartScope, stepProperties)
-        cleanup(chartScope, stepScope)
+        cleanup(chartScope, stepProperties, stepScope)
         return False
  
     try:

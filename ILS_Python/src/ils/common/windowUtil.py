@@ -64,6 +64,7 @@ def positionWindow(window, mode, scale=1.0):
     width = window.getWidth()
     height = window.getHeight()
     print "This window is %i X %i (Width X Height)" % (width, height)
+    window.setSize(int(width * scale), int(height * scale))
     xOffset,yOffset=getDockOffset()
     print "Dock Offset is (%i, %i)" % (xOffset,yOffset)
 

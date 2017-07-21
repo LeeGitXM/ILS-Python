@@ -1,12 +1,14 @@
 '''
-All SFC Client Message Handlers
+All SFC Client Message Handlers.
+These message handlers all run in the client (the client receives the message from the gateway)
 '''
 
 import system
 from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, SECURITY, PRIVATE, \
-    TARGET_STEP_UUID, KEY, IS_SFC_WINDOW
+    TARGET_STEP_UUID, KEY, IS_SFC_WINDOW, DATABASE
 from ils.sfc.client.windowUtil import controlPanelOpen, shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
+from ils.common.config import getDatabaseClient
 
 '''
 This is the worst name in the history of bad names.  This is the handler in the client that catches the message, not the sender!
@@ -127,6 +129,10 @@ def sfcOpenWindow(payload):
 
 def sfcCloseWindow(payload):
     windowId = payload[WINDOW_ID]
+    database = payload[DATABASE]
+    clientDatabase = getDatabaseClient()
+    if database <> clientDatabase:
+        print "Ignoring closeWindow message because database does not match (%s vs %s)" % (database, clientDatabase)
     print "Attempting to close window with id: ", windowId
     if windowId <> None:
         openWindows = system.gui.getOpenedWindows()
@@ -148,10 +154,14 @@ def sfcShowQueue(payload):
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
     showOverride = payload.get("showOverride", False)
-
-    if not(controlPanelOpen(controlPanelName)) and (originator != system.security.getUsername()) and not(showOverride):
-        print "The control panel is not open and the originator is not this user so do not show the window here!"
+    print "Payload: ", payload
+    print "...checking if the queue should be shown on this client..."
+    if not(shouldShowWindow(payload)):
         return
+    
+#    if not(controlPanelOpen(controlPanelName)) and (originator != system.security.getUsername()) and not(showOverride):
+#        print "The control panel is not open and the originator is not this user so do not show the window here!"
+#        return
 
     from ils.queue.message import view
     view(queueKey, useCheckpoint=True, silent=True)

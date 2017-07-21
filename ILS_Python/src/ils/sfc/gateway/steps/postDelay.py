@@ -10,14 +10,16 @@ from ils.sfc.gateway.util import getControlPanelId, registerWindowWithControlPan
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient
 from ils.sfc.common.util import isEmpty
 from ils.sfc.common.constants import BUTTON_LABEL, POSITION, SCALE, WINDOW_ID, WINDOW_TITLE, MESSAGE, \
-    WINDOW_PATH, TARGET_STEP_UUID, KEY, IS_SFC_WINDOW
+    WINDOW_PATH, TARGET_STEP_UUID, KEY, IS_SFC_WINDOW, NAME
 
 def activate(scopeContext, stepProperties, state):
 
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepName=stepScope.get(NAME, "Unknown")
         logger = getChartLogger(chartScope)
+        logger.tracef("In %s.activate() initializing the step %s...", __name__, stepName)
         windowPath = "SFC/BusyNotification"
         messageHandler = "sfcOpenWindow"
 

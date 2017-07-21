@@ -12,6 +12,12 @@ def listSum(numList):
         theSum = theSum + num
     return theSum
 
+def scalerMultiply(array, scaler):
+    result = []
+    for val in array:
+        result.append(val * scaler)
+    return result
+
 def isText(val):
 
     try:

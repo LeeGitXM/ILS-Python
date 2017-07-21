@@ -18,7 +18,7 @@ def internalFrameOpened(event):
     rootContainer.title = title
     
     SQL = "select * from SfcSelectInput where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, db)
     record = pds[0]
     prompt = record["prompt"]
     choicesStepUUID = record["choicesStepUUID"]
@@ -48,4 +48,3 @@ def okActionPerformed(event):
     dropdown = rootContainer.getComponent('choices')
     response = dropdown.selectedStringValue
     setRecipeData(targetStepUUID, key, attribute, response, db)
-

@@ -4,8 +4,8 @@ Created on May 3, 2015
 @author: rforbes
 '''
 import system
-from ils.sfc.client.util import getDatabase
-from ils.sfc.common.constants import SFC_WINDOW_LIST
+from ils.common.config import getDatabaseClient
+from ils.sfc.common.constants import SFC_WINDOW_LIST, DATABASE
 
 def getWindowId(window):
     '''get the id of a window. Return None if it doesn't have a window id'''
@@ -47,7 +47,13 @@ def shouldShowWindow(payload):
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
     security = payload.get(SECURITY, PRIVATE)
-
+    database = payload[DATABASE]
+    clientDatabase = getDatabaseClient()
+    
+    if database <> clientDatabase:
+        print "...the window should not be shown because the client database (%s) does not match the message database (%s)" % (clientDatabase, database)
+        return False
+    
     if security != PRIVATE:
         print "...the window should be shown because it is PUBLIC!"
         return True
@@ -67,7 +73,7 @@ def openDbWindow(windowId):
     reopenWindow(windowId)
     
 def fetchWindowInfo(windowId):
-    database = getDatabase()
+    database = getDatabaseClient()
     SQL = "select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' "\
         " and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -83,7 +89,7 @@ def reopenWindow(windowId):
     
     print "In %s.reopenWindow(), the windowId is: %s" % (__name__, windowId)
 
-    database = getDatabase()
+    database = getDatabaseClient()
     SQL = "select * from SfcWindow where windowId = '%s' " % (windowId)
     pds = system.db.runQuery(SQL, database)
     if len(pds) == 0:
@@ -132,7 +138,7 @@ def sendCloseWindow(window, table):
     from ils.sfc.client.util import sendMessageToGateway
     import system.util
     windowId = window.getRootContainer().windowId
-    database = getDatabase()
+    database = getDatabaseClient()
     project = system.util.getProjectName()
     payload = {WINDOW_ID:windowId, DATABASE: database, TABLE: table, PROJECT: project}
     sendMessageToGateway(project, 'sfcCloseWindow', payload)

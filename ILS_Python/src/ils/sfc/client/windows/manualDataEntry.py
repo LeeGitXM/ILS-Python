@@ -13,18 +13,20 @@ from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.api import s88SetFromStep, s88SetFromStepWithUnits
 
 def internalFrameOpened(rootContainer):
-    print "In InternalFrameOpened..."
+    db=getDatabaseClient()
+    rootContainer.database = db
+    print "In %s.InternalFrameOpened..." % (__name__)
 
     windowId = rootContainer.windowId
     print "The windowId is: ",windowId
     
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     record=pds[0]
     rootContainer.title = record["title"]
     
     SQL = "select * from SfcManualDataEntry where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     record=pds[0]
     requireAllInputs = record["requireAllInputs"]
     rootContainer.requireAllInputs = requireAllInputs
@@ -68,7 +70,7 @@ def okCallback(rootContainer, timedOut=False):
 
 # This actually does the work of saving the data to the database.
 def saveData(rootContainer, timedOut):
-    print "Saving the data..."
+    print "In %s.saveData(), saving the data..." % (__name__)
     db=getDatabaseClient()
     provider=getTagProviderClient()
     windowId = rootContainer.windowId

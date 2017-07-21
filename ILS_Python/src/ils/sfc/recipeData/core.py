@@ -644,13 +644,13 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
         valueType = record['ValueType']
             
         if arrayIndex == None:
-            print "Setting an entire array..."
+            logger.tracef("Setting an entire array...")
             SQL = "select max(ArrayIndex) from SfcRecipeDataArrayElement where RecipeDataId = %s" % (str(recipeDataId))
             maxIdx = system.db.runScalarQuery(SQL, db)
             
             idx = 0
             for el in val:
-                print "idx: ", idx, " => ", el
+                logger.tracef("idx: %d => %s", idx, str(el))
                 if idx > maxIdx:
                     
                     if valueType == 'String':

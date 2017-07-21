@@ -2,11 +2,8 @@
 Created on Jan 16, 2015
 
 @author: rforbes
-'''
-'''
-Created on Jan 15, 2015
 
-@author: rforbes
+This handles both the GetInput step and the GetInputWithLimits step.
 '''
 
 from ils.common.config import getDatabaseClient
@@ -16,19 +13,20 @@ import system, time
 def internalFrameOpened(event):
     print "In internalFrameOpened()"
     rootContainer = event.source.rootContainer
+    database = getDatabaseClient()
     windowId = rootContainer.windowId
     
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database)
     record=pds[0]
     rootContainer.title = record["title"]
     
     SQL = "select * from SfcInput where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database)
     while len(pds) < 1 :
         print "Window was not found, requerying..."    
         time.sleep(1)
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database)
 
     record=pds[0]
     
@@ -50,7 +48,7 @@ def internalFrameOpened(event):
     print "-- DONE --"
 
 def okActionPerformed(event):
-    db = getDatabaseClient()
+    database = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
@@ -68,12 +66,12 @@ def okActionPerformed(event):
         except ValueError:
             valueOk = False
         if valueOk:
-            setRecipeData(targetStepUUID, key, attribute, response, db)
+            setRecipeData(targetStepUUID, key, attribute, response, database)
         else:
             system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
     else:
         # return the response as a string
-        setRecipeData(targetStepUUID, key, attribute, response, db)
+        setRecipeData(targetStepUUID, key, attribute, response, database)
   
 def cancelActionPerformed(event):
     window=system.gui.getParentWindow(event)

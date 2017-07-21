@@ -143,9 +143,9 @@ def dbStringForFloat(numberValue):
 
 def deleteAndSendClose(project, windowId, database):
     '''Delete the common window record and message the client to close the window'''
-    from ils.sfc.common.constants import WINDOW_ID, HANDLER
+    from ils.sfc.common.constants import WINDOW_ID, HANDLER, DATABASE
     system.db.runUpdateQuery("delete from SfcWindow where windowId = '%s'" % (windowId), database)
-    payload = {WINDOW_ID: windowId, HANDLER: 'sfcCloseWindow'}
+    payload = {WINDOW_ID: windowId, HANDLER: 'sfcCloseWindow', DATABASE: database}
     system.util.sendMessage(project, 'sfcMessage', payload, scope="C")
     
 def dictToString(dict):

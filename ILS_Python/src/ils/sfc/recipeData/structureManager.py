@@ -151,7 +151,7 @@ def shutdown(db):
     txId = getTxId(db)
     system.db.rollbackTransaction(txId)
     system.db.closeTransaction(txId)
-    time.sleep(20)
+
 
 def saveProject(project, db):
     # Check if the chart already exists
