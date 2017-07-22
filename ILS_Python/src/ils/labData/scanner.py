@@ -5,6 +5,7 @@ Created on Mar 27, 2015
 '''
 
 import sys, system, string, traceback
+from ils.common.config import getTagProvider
 from ils.labData.common import postMessage
 from java.util import Calendar
 log = system.util.getLogger("com.ils.labData.reader")
@@ -174,7 +175,8 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
     cal = Calendar.getInstance()
     labDataWriteEnabled=system.tag.read("[" + tagProvider + "]" + "Configuration/LabData/labDataWriteEnabled").value
     globalWriteEnabled=system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
-    writeEnabled = labDataWriteEnabled and globalWriteEnabled
+    productionProviderName = getTagProvider()   # Get the Production tag provider
+    writeEnabled = tagProvider != productionProviderName or (labDataWriteEnabled and globalWriteEnabled)
     
     for d in derivedCalculationCache.values():
         valueName=d.get("valueName", "")

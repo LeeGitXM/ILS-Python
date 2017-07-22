@@ -7,6 +7,7 @@ Created on Dec 3, 2014
 import system, string, time
 from java.util import Date
 from ils.common.util import isText
+from ils.common.config import getTagProvider
 log = system.util.getLogger("com.ils.io")
 
 # Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
@@ -312,7 +313,7 @@ def splitTagPath(tagPath):
 #    print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
     return parentPath, tagName
 
-# Check for the existence of the tag and that the global write enabled flag is set.
+# Check for the existence of the tag and that the global write enabled flag is set (only for production tags).
 def checkConfig(tagPath):
     log.trace("In util.checkConfig()...")
     # Check that the tag exists
@@ -323,10 +324,11 @@ def checkConfig(tagPath):
         log.error(reason)
         return False, reason
 
-    provider = getProviderFromTagPath(tagPath)
-    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+    productionProviderName = getTagProvider()   # Get the Production tag provider
+    providerName = getProviderFromTagPath(tagPath)
+    globalWriteEnabled = system.tag.read("[" + providerName + "]/Configuration/Common/writeEnabled").value
     
-    if not(globalWriteEnabled):
+    if providerName == productionProviderName and not(globalWriteEnabled):
         log.info('Write bypassed for %s because writes are inhibited!' % (tagPath))
         return False, 'Writing is currently inhibited'
     

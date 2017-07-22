@@ -232,16 +232,18 @@ def biasControlInUse():
     return True
 
 def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime):
+    from ils.common.config import getTagProvider
+    productionProviderName = getTagProvider()   # Get the Production tag provider
     
     writeEnabled = system.tag.read("[" + tagProvider + "]/Configuration/LabData/labFeedbackWriteEnabled").value
-    if not(writeEnabled):
+    if tagProvider == productionProviderName and not(writeEnabled):
         msg = "Unable to write bias value <%f> for <%s> because writes are inhibited for Lab Bias Feedback." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
         return
     
     writeEnabled = system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
-    if not(writeEnabled):
+    if tagProvider == productionProviderName and not(writeEnabled):
         msg = "Unable to write bias value <%f> for <%s> because all writes are globally inhibited." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)

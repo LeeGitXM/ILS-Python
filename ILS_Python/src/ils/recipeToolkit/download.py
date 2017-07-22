@@ -14,6 +14,7 @@ import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.io.client import writeWithNoChecks, writeRecipeDetails
+from ils.common.config import getTagProvider
 log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 
 def automatedDownloadHandler(tagPath, grade):
@@ -55,12 +56,14 @@ def automatedDownloadHandler(tagPath, grade):
         system.util.sendMessage(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
 
 
-# Start a fully automatic lights out automatic download
+'''
+Start a fully automatic lights out automatic download.
+It looks like this only supports production.
+'''
 def fullyAutomatedDownload(post, project, database, familyName, grade, version):
     log.info("Setting up a fully automated download\n  Post: %s, Project: %s, Database: %s, Recipe Family: %s, Grade: %s, Version: %s" % (post, project, database, familyName, grade, str(version)))
     
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
+    provider = getTagProvider()     # Get the production tag provider.
     
     # fetch the recipe map which will specify the database and table containing the recipe
     recipeFamily = recipeToolkit_fetch.recipeFamily(familyName, database)
@@ -149,11 +152,13 @@ def download(rootContainer):
     familyName = rootContainer.getPropertyValue("familyName")
     table = rootContainer.getComponent("Power Table")
     
+    productionProvider = getTagProvider()     # Get the production tag provider.
+    
     localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
     recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
     globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
-    writeEnabled = recipeWriteEnabled and globalWriteEnabled
-    print "The combined write enabled status is: ", writeEnabled
+    writeEnabled = (provider != productionProvider) or (recipeWriteEnabled and globalWriteEnabled)
+    print "The combined write enabled status, considering the tag provider, is: ", writeEnabled
     
     downloadTimeout = system.tag.read("/Configuration/RecipeToolkit/downloadTimeout").value
     rootContainer.downloadTimeout = downloadTimeout

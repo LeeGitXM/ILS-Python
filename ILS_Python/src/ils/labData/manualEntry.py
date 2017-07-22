@@ -144,6 +144,12 @@ def entryFormInitialization(rootContainer):
 def entryFormEnterData(rootContainer, db = ""):
     print "In ils.labData.limits.manualEntry.entryFormEnterData()"
     
+    from ils.common.config import getTagProviderClient
+    provider = getTagProviderClient()
+    
+    from ils.common.config import getTagProvider
+    productionProvider = getTagProvider()
+    
     sampleTime = rootContainer.getComponent("Sample Time").date
     sampleValue = rootContainer.getComponent("Lab Value Field").floatValue
     
@@ -180,9 +186,6 @@ def entryFormEnterData(rootContainer, db = ""):
     storeValue(valueId, valueName, sampleValue, sampleTime, log, db)
     
     # Store the value in the Lab Data UDT memory tags, which are local to Ignition
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
-    
     from ils.labData.scanner import updateTags
     tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, True, [], [], log)
     print "Writing ", tagValues, " to ", tags
@@ -202,9 +205,9 @@ def entryFormEnterData(rootContainer, db = ""):
         serverName = record["ServerName"]
         
         # Check if writing is enabled
-        labDataWriteEnabled=system.tag.read("[]Configuration/LabData/labDataWriteEnabled").value
-        globalWriteEnabled=True
-        writeEnabled = labDataWriteEnabled and globalWriteEnabled
+        labDataWriteEnabled= system.tag.read("[" + provider + "]Configuration/LabData/labDataWriteEnabled").value
+        globalWriteEnabled = system.tag.read("[" + provider + "]Configuration/Common/writeEnabled").value
+        writeEnabled = provider != productionProvider or (labDataWriteEnabled and globalWriteEnabled)
         
         if writeEnabled:
             print "Writing local value %s for %s to %s" % (str(sampleValue), valueName, itemId)

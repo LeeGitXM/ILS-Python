@@ -5,6 +5,7 @@ Created on Sep 10, 2014
 '''
 
 import system, time
+from ils.common.config import getTagProvider
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
 
@@ -99,9 +100,12 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
 
     log.trace("  Starting project.recipe.downloadMonitor.monitor()")
     
+    
+    productionProvider = getTagProvider()     # Get the production tag provider.
+    
     recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
     globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
-    writeEnabled = recipeWriteEnabled and globalWriteEnabled
+    writeEnabled = provider != productionProvider or (recipeWriteEnabled and globalWriteEnabled)
 
     pds = system.dataset.toPyDataSet(ds)
 
