@@ -35,6 +35,7 @@ def createTags(tagProvider):
     data.append([path, "recipeMinimumDifference", "Float8", "0.00001"])
     data.append([path, "recipeMinimumRelativeDifference", "Float8", "0.00001"])
     data.append([path, "recipeWriteEnabled", "Boolean", "True"])
+    data.append([path, "requireCommentsForChangedValues", "Boolean", "True"])
     data.append([path, "downloadTimeout", "Int4", "120"])
 
     data.append([path, "backgroundColorReadOnly", "String", "lightblue"])  #'#ADD8E6'  light blue

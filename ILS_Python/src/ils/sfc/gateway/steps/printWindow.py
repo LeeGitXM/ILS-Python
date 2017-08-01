@@ -4,8 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-from ils.sfc.gateway.util import transferStepPropertiesToMessage, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getProject, getChartLogger
+from ils.sfc.gateway.api import getProject, getChartLogger, handleUnexpectedGatewayError, transferStepPropertiesToMessage, sendMessageToClient
 
 def activate(scopeContext, stepProperties, state):   
     

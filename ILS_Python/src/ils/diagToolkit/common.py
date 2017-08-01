@@ -5,7 +5,6 @@ Created on Sep 19, 2014
 '''
 
 import system, time
-from java.util import Date, Calendar
 import system.ils.blt.diagram as scriptingInterface
 from ils.queue.commons import getQueueForDiagnosticApplication
 
@@ -38,21 +37,16 @@ def getDiagram(project, diagramPath):
 # This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
 def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeout=10):
     log = system.util.getLogger("com.ils.diagToolkit")
-    startTime = Date().getTime()
+    startTime = system.date.now()
     isConsistent = False
     log.trace("Checking if %s and %s are consistent..." % (tagPath1, tagPath2))
-    while isConsistent == False and ((Date().getTime() - startTime) / 1000) < timeout:
+    while isConsistent == False and (system.date.secondsBetween(startTime, system.date.now())) < timeout:
         log.trace("Checking consistency...")
         vals = system.tag.readAll([tagPath1, tagPath2])
         timestamp1 = vals[0].timestamp
-        cal1 = Calendar.getInstance()
-        cal1.setTime(timestamp1)
-        
         timestamp2 = vals[1].timestamp
-        cal2 = Calendar.getInstance()
-        cal2.setTime(timestamp2)
 
-        if abs(cal1.getTimeInMillis() - cal2.getTimeInMillis()) < tolerance * 1000:
+        if abs(system.date.secondsBetween(timestamp1, timestamp2)) < tolerance:
             log.trace("%s and %s are consistent!" % (tagPath1, tagPath2))
             isConsistent = True
             return isConsistent
@@ -73,58 +67,58 @@ def checkFreshness(tagPath, theTime="now", provider="XOM", tolerance=-1, recheck
     log = system.util.getLogger("com.ils.diagToolkit")
     
     if tolerance < 0.0:
-        print "Using the default freshness tolerance"
         tolerance = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessToleranceSeconds" % (provider)).value
-    if timeout < 0.0:
-        print "Using the default freshness timeout"
-        timeout = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessTimeoutSeconds" % (provider)).value
+        print "Using the default freshness tolerance: ", tolerance
 
-    startTime = Date().getTime()
+    if timeout < 0.0:
+        timeout = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessTimeoutSeconds" % (provider)).value
+        print "Using the default timeout: ", timeout
+        
+    if theTime == "now" or theTime == None:
+        theTime = system.date.now()
+        print "Using the current time: ", theTime
+    
+    # Subtract the tolerance
+    theTime = system.date.addSeconds(theTime, int(-1 * tolerance))
+    print "Check the tag time against the time - the tolerance: ", theTime
+
+    startTime = system.date.now()
+    now = system.date.now()
     isFresh = False
     log.trace("Checking if %s is fresh..." % (tagPath))
-    while isFresh == False and ((Date().getTime() - startTime) / 1000) < timeout:
+    while isFresh == False and system.date.secondsBetween(startTime, now) < timeout:
         log.trace("Checking freshness...")
         qv = system.tag.read(tagPath)
         timestamp = qv.timestamp
-        cal1 = Calendar.getInstance()
-        cal1.setTime(timestamp)
 
-        cal2 = Calendar.getInstance()
-        if theTime == "now" or theTime == None:
-            cal2.setTime(Date())
-        else:
-            cal2.setTime(theTime)
-
-        if abs(cal1.getTimeInMillis()) > cal2.getTimeInMillis() - tolerance * 1000:
+        log.tracef("Comparing tag time (%s) to (%s)", str(timestamp), str(theTime))
+        if system.date.isAfter(timestamp, theTime):
             log.trace("%s is now fresh!" % (tagPath))
             isFresh = True
             return isFresh
 
         time.sleep(recheckInterval)
+        now = system.date.now()
 
     log.trace("** %s is NOT fresh **" % (tagPath))
     return isFresh
 
-
-# Check that tag1 is fresher than tag2.  
-# The timeout here is in seconds, the default time to wait is 1 minute.
+'''
+Check that tag1 is fresher than tag2.  
+The timeout here is in seconds, the default time to wait is 1 minute.
+'''
 def checkFresher(tagPath1, tagPath2, recheckInterval=1.0, timeout=60):
     log = system.util.getLogger("com.ils.diagToolkit")
-    startTime = Date().getTime()
+    startTime = system.date.now()
     isFresher = False
     log.trace("Checking if %s is fresher than %s..." % (tagPath1, tagPath2))
-    while isFresher == False and ((Date().getTime() - startTime) / 1000) < timeout:
+    while isFresher == False and (system.date.secondsBetween(startTime, system.date.now())) < timeout:
         log.trace("Checking freshness...")
         vals = system.tag.readAll([tagPath1, tagPath2])
         timestamp1 = vals[0].timestamp
-        cal1 = Calendar.getInstance()
-        cal1.setTime(timestamp1)
-        
         timestamp2 = vals[1].timestamp
-        cal2 = Calendar.getInstance()
-        cal2.setTime(timestamp2)
         
-        if cal1.getTimeInMillis() > cal2.getTimeInMillis():
+        if system.date.secondsBetween(timestamp2, timestamp1) > 0:
             log.trace("%s is now fresher than %s!" % (tagPath1, tagPath2))
             isFresher = True
             return isFresher

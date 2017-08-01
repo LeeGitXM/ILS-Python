@@ -4,16 +4,14 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.util import dictToString, getStepProperty, createFilepath, \
-        handleUnexpectedGatewayError, getControlPanelId, createWindowRecord, \
-        createSaveDataRecord, getStepId, sendOpenWindow
-    from ils.sfc.gateway.api import getChartLogger, getDatabaseName
-    from system.ils.sfc.common.Constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, \
-    SERVER, POSITION, SCALE, WINDOW_TITLE, BUTTON_LABEL, SHOW_PRINT_DIALOG
-    from ils.sfc.gateway.recipe import browseRecipeData
-    from ils.sfc.common.util import isEmpty
+from ils.sfc.gateway.api import dictToString, getStepProperty, createFilepath, \
+     getControlPanelId, createWindowRecord, createSaveDataRecord, getStepId, sendOpenWindow, getChartLogger, handleUnexpectedGatewayError, getDatabaseName
+from ils.sfc.common.constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, SERVER, POSITION, SCALE, WINDOW_TITLE, BUTTON_LABEL, SHOW_PRINT_DIALOG
+from ils.sfc.recipeData import browseRecipeData
+from ils.sfc.common.util import isEmpty
     
+def activate(scopeContext, stepProperties, state):
+
     try:
         # extract property values
         chartScope = scopeContext.getChartScope()

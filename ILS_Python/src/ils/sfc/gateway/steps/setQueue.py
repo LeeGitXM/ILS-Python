@@ -7,9 +7,8 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-from system.ils.sfc.common.Constants import MESSAGE_QUEUE
-from ils.sfc.gateway.api import setCurrentMessageQueue, getChartLogger
+from ils.sfc.common.constants import MESSAGE_QUEUE
+from ils.sfc.gateway.api import setCurrentMessageQueue, getChartLogger, handleUnexpectedGatewayError, getStepProperty
 
 def activate(scopeContext, stepProperties, state):
     try: 

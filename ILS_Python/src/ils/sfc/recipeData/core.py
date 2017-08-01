@@ -150,16 +150,48 @@ def getSubScope(scope, key):
     print "The sub scope is: ", subScope
     return subScope
 
+def fetchRecipeDataType(stepUUID, key, attribute, db):
+    logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
+    
+    # Separate the key from the array index if there is an array index
+    attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
+        
+    SQL = "select RECIPEDATATYPE from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) == 0:
+        logger.errorf("Error the key <%s> was not found", key)
+        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
+    
+    if len(pds) > 1:
+        logger.errorf("Error multiple records were found")
+        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
+    
+    record = pds[0]
+    recipeDataType = record["RECIPEDATATYPE"]
+    
+    return recipeDataType
+
+def recipeDataExists(stepUUID, key, attribute, db):
+    logger.tracef("Checking if %s.%s from %s exists...", key, attribute, stepUUID)
+    
+    # Separate the key from the array index if there is an array index
+    attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
+        
+    SQL = "select RECIPEDATATYPE from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    pds = system.db.runQuery(SQL, db)
+    
+    if len(pds) == 1:
+        logger.tracef("...it exists!")
+        return True
+    
+    logger.tracef("...it does not exist!")
+    return False
+
 def fetchRecipeData(stepUUID, key, attribute, db):
     logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-
-#    print "Array Check:"
-#    print "    ", arrayIndex
-#    print "    ", rowIndex
-#    print "    ", columnIndex
         
     SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
         " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 

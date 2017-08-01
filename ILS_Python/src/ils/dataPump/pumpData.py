@@ -17,10 +17,10 @@ def pumpData(rootContainer):
     # Write the data from the table to a dataset tag
     table = rootContainer.getComponent("Table")
     ds = table.data
-    system.tag.write("%sConfiguration/Data Pump/data" % (tagProvider), ds)
+    system.tag.write("%sData Pump/data" % (tagProvider), ds)
     
     # Write the PLAY command to the command tag
-    system.tag.write("%sConfiguration/Data Pump/command" % (tagProvider), "PLAY")
+    system.tag.write("%sData Pump/command" % (tagProvider), "PLAY")
     
 
 '''

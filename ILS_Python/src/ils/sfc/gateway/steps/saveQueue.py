@@ -4,12 +4,12 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger
-    from ils.queue.message import save
-    from ils.sfc.gateway.util import createFilepath, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName
+from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger
+from ils.queue.message import save
+from ils.sfc.gateway.api import createFilepath, handleUnexpectedGatewayError, getDatabaseName
     
+def activate(scopeContext, stepProperties, state):
+
     try:
         chartScope = scopeContext.getChartScope()
         chartLogger = getChartLogger(chartScope)

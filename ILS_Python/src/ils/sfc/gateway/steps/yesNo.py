@@ -11,12 +11,10 @@ response is received, put response in chart properties
 import system
 from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.steps.commonInput import cleanup
-from ils.sfc.gateway.util import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
-        logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError, getStepProperty, getControlPanelId, registerWindowWithControlPanel, logStepDeactivated, getTopChartRunId
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
-    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID
+    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)

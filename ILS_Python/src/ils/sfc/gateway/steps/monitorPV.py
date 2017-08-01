@@ -25,8 +25,7 @@ from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIV
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, \
     NAME, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM
-from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getChartLogger
+from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget
 
 def activate(scopeContext, stepProperties, state):
     # some local constants
@@ -291,7 +290,7 @@ def activate(scopeContext, stepProperties, state):
                         limitType=configRow.limits
                         
                         # Check if the value is within the limits
-                        from ils.sfc.gateway.util import compareValueToTarget
+
                         valueOk,txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
                         
                         # check persistence:

@@ -11,7 +11,7 @@ from system.ils.sfc.common.Constants import RECIPE_DATA_FOLDER
 from com.inductiveautomation.ignition.common.util import LogUtil
 log = LogUtil.getLogger("ils.sfc.common")
 
-def getBasicTagPath(chartProperties, stepProperties, valuePath, location):
+def getBasicTagPathCRAP(chartProperties, stepProperties, valuePath, location):
     '''Get the "basic" path to the recipe data tag. This does not include the provider or top folder'''
     from system.ils.sfc import getRecipeDataTagPath
     from system.ils.sfc.common.Constants import NAMED
@@ -24,26 +24,26 @@ def getBasicTagPath(chartProperties, stepProperties, valuePath, location):
         tagPath = stepPath + "/" + valuePath
     return tagPath
 
-def getRecipeDataTagPrefix(provider):
+def getRecipeDataTagPrefixCRAP(provider):
     '''Return the root folder for recipe data'''
     if provider == None:
         provider = ""
     return "[" + provider + "]" + RECIPE_DATA_FOLDER + "/"
 
-def getRecipeDataTagPath(provider, path):
+def getRecipeDataTagPathCRAP(provider, path):
     '''Given a recipe data "key", return the full absolute tag path'''
     # treat dot separators like slash:
     if path.find('.') != -1:
         path = path.replace(".", "/")
     return getRecipeDataTagPrefix(provider) + path 
 
-def createGroupPropertyTag(provider, folder, rdName):    
+def createGroupPropertyTagCRAP(provider, folder, rdName):    
     '''For creating simple string members of Groups'''
     fullFolder = getRecipeDataTagPath(provider, folder)
     log.infof("createGroupPropertyTag: %s in %s", rdName, fullFolder)
     system.tag.addTag(parentPath=fullFolder, name=rdName, tagType = 'MEMORY', dataType='String')
 
-def createRecipeDataTag(provider, folder, rdName, rdType, valueType):    
+def createRecipeDataTagCRAP(provider, folder, rdName, rdType, valueType):    
     fullFolder = getRecipeDataTagPath(provider, folder)
     log.infof("createRecipeDataTag: %s(%s:%s) in %s", rdName,rdType, valueType,fullFolder)
     typePath = RECIPE_DATA_FOLDER + "/" + rdType
@@ -59,7 +59,7 @@ def createRecipeDataTag(provider, folder, rdName, rdType, valueType):
             changeArrayType(fullFolder, rdName, valueType)
 
 
-def changeType(folderPath, tagName, valueType):
+def changeTypeCRAP(folderPath, tagName, valueType):
     '''For the value, input, and output tags, change the tag type to
        agree with the value type'''
     from system.ils.sfc.common.Constants import INT, FLOAT, BOOLEAN, STRING, DATE_TIME
@@ -80,7 +80,7 @@ def changeType(folderPath, tagName, valueType):
     system.tag.editTag(valuePath, overrides={"value": {"DataType":newType}})
     
 #
-def changeArrayType(folderPath, tagName, valueType):
+def changeArrayTypeCRAP(folderPath, tagName, valueType):
     '''For the array tags, change the tag array type to
        agree with the value type'''
     from system.ils.sfc.common.Constants import INT, FLOAT, BOOLEAN, STRING, DATE_TIME
@@ -102,19 +102,19 @@ def changeArrayType(folderPath, tagName, valueType):
     
 # TODO: the methods below are called form Java. Should consolidate with s88 methods
 # in api            
-def deleteRecipeDataTag(provider, tagPath):    
+def deleteRecipeDataTagCRAP(provider, tagPath):    
     fullPath = getRecipeDataTagPath(provider, tagPath)
     #print 'delete', fullPath
     system.tag.removeTag(fullPath)
 
-def getRecipeData(provider, path): 
+def getRecipeDataCRAP(provider, path): 
     raise Exception('Obsolete Python API %s.getRecipeData()' % (__name__))
     fullPath = getRecipeDataTagPath(provider, path)
     qv = system.tag.read(fullPath)
     # print 'get', fullPath, qv.value, 'quality', qv.quality
     return qv.value
     
-def setRecipeData(provider, path, value, synchronous):
+def setRecipeDataCRAP(provider, path, value, synchronous):
     fullPath = getRecipeDataTagPath(provider, path)
     log.infof("setRecipeData: %s = %s",fullPath,str(value))
     if synchronous:
@@ -122,11 +122,11 @@ def setRecipeData(provider, path, value, synchronous):
     else:
         system.tag.write(fullPath, value)
         
-def recipeDataTagExists(provider, path):
+def recipeDataTagExistsCRAP(provider, path):
     fullPath = getRecipeDataTagPath(provider, path)
     return system.tag.exists(fullPath)
 
-def cleanupRecipeData(provider, chartPath, sfcStepPaths):
+def cleanupRecipeDataCRAP(provider, chartPath, sfcStepPaths):
     '''Remove any recipe data for the given chart that does not 
     belong to one of the supplied step names. This handles
     cleaning up recipe data for deleted steps and charts. '''

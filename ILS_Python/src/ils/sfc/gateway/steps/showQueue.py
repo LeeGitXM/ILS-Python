@@ -4,14 +4,14 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
+from ils.sfc.gateway.api import getControlPanelId, getControlPanelName, getOriginator, getChartLogger, sendMessageToClient, getCurrentMessageQueue, handleUnexpectedGatewayError
+from ils.sfc.common.constants import ORIGINATOR, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, HANDLER
+
 def activate(scopeContext, stepProperties, state):
     '''
     action for java ShowQueueStep
     send a message to the client to show the current message queue
     '''
-    from ils.sfc.gateway.util import handleUnexpectedGatewayError, getControlPanelId, getControlPanelName, getOriginator
-    from ils.sfc.gateway.api import getChartLogger, sendMessageToClient, getProject, getCurrentMessageQueue, getDatabaseName, getPostForControlPanelName
-    from ils.sfc.common.constants import ORIGINATOR, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, HANDLER
 
     try:
         chartScope = scopeContext.getChartScope()

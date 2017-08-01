@@ -4,6 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
+from ils.recipeToolkit.common import checkForUncommentedChanges
 import ils.common.util as util
 import ils.recipeToolkit.common as recipeToolkit_common
 import ils.recipeToolkit.downloadMonitor as recipeToolkit_downloadMonitor
@@ -120,6 +121,14 @@ def fullyAutomatedDownload(post, project, database, familyName, grade, version):
 
 def downloadCallback(rootContainer):
     log.info("Starting a download...")
+    
+    provider = rootContainer.getPropertyValue("provider")
+    requireComments = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
+    if requireComments:
+        uncommentedChanges = checkForUncommentedChanges(rootContainer)
+        if uncommentedChanges:
+            system.gui.messageBox("Please enter comments for any changed values before downloading recipe!")
+            return
 
     familyName = rootContainer.getPropertyValue("familyName")
     

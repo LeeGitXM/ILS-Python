@@ -4,22 +4,91 @@ Created on Nov 18, 2014
 @author: Pete
 '''
 
-import system
+import system, string
 from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, removeUnwantedConsoles, removeNonOperatorMenus,\
     removeUnwantedMenus
+log = system.util.getLogger("com.ils.common.startup")
+
+'''
+These are the startup dispatchers.  They are called by the project startup scripts and then read the site specific startup scripts
+name and calls them.
+'''
+def gateway():
+    log.infof("In %s.gateway()", __name__)
+    
+    project = system.util.getProjectName()
+    log.infof("The project is: ", project)
+    
+    pds = system.db.runQuery("select * from TkSite")
+    if len(pds) <> 1:
+        print "Found %d records in TkSite, exactly one is required!"
+        return
+    
+    record = pds[0]
+    siteName = record["SiteName"]
+    gatewayStartupScript = record["GatewayStartupScript"]
+    
+    log.infof("Running gateway startup script named <%s> for %s", gatewayStartupScript, siteName)
+    
+    separator=string.rfind(gatewayStartupScript, ".")
+    packagemodule=gatewayStartupScript[0:separator]
+    separator=string.rfind(packagemodule, ".")
+    package = packagemodule[0:separator]
+    module  = packagemodule[separator+1:]
+
+    exec("import %s" % (package))
+    exec("from %s import %s" % (package,module))
+
+    eval(gatewayStartupScript)()
+    
+    print "...completed %s.gateway()" % (__name__)
+
+
+def client():
+    print "In %s.client()" % (__name__)
+    
+    '''
+    Every site needs to run this, which sets the menus, so save the user from having to call this.
+    '''
+    clientCommon()
+    
+    project = system.util.getProjectName()
+    print "The project is: ", project
+    
+    pds = system.db.runQuery("select * from TkSite")
+    if len(pds) <> 1:
+        print "Found %d records in TkSite, exactly one is required!"
+        return
+    
+    record = pds[0]
+    siteName = record["SiteName"]
+    clientStartupScript = record["ClientStartupScript"]
+    
+    print "Running client startup script named <%s> for %s" % (clientStartupScript, siteName)
+    
+    separator=string.rfind(clientStartupScript, ".")
+    packagemodule=clientStartupScript[0:separator]
+    separator=string.rfind(packagemodule, ".")
+    package = packagemodule[0:separator]
+    module  = packagemodule[separator+1:]
+
+    exec("import %s" % (package))
+    exec("from %s import %s" % (package,module))
+
+    eval(clientStartupScript)()
+    
+    print "...completed %s.gateway()" % (__name__)
+
+
 
 '''
 Client startup is contingent on a relationship between the username and the post name.
 For an operator, the username is the same as the post name.
 For an engineer there will not be a matching post.  
 '''
-def client():    
-    print "In ils.common.startup.client()"
-    
-    # Create client loggers
-    log = system.util.getLogger("com.ils.recipeToolkit.ui")
-    log.info("Initializing...")
+def clientCommon():    
+    log.infof("In %s.clientCommon()", __name__)
     
     username = system.security.getUsername()
     rows = system.db.runScalarQuery("select count(*) from TkPost where post = '%s'" % (username)) 
@@ -60,7 +129,7 @@ def client():
             removeNonOperatorMenus(menubar)
 
 
-def gateway(tagPprovider, isolationTagProvider):
+def gatewayCommon(tagPprovider, isolationTagProvider):
     # Create gateway loggers
     log = system.util.getLogger("com.ils.common")
     

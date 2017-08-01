@@ -4,12 +4,11 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger
-    from system.ils.sfc.common.Constants import SQL, RECIPE_LOCATION, KEY
-    import system.db
+import system
+from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger, handleUnexpectedGatewayError, getStepProperty
+from ils.sfc.common.constants import KEY, RECIPE_LOCATION, SQL
     
+def activate(scopeContext, stepProperties, state):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()

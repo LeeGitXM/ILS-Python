@@ -7,8 +7,8 @@ Created on Dec 16, 2015
 def activate(scopeContext, stepProperties, state):
     ''' Abort the chart execution'''
     from ils.sfc.common.constants import DEACTIVATED, CANCELLED
-    from ils.sfc.gateway.api import cancelChart, addControlPanelMessage, getChartLogger
-    from ils.sfc.gateway.util import handleUnexpectedGatewayError
+    from ils.sfc.gateway.api import cancelChart, addControlPanelMessage, getChartLogger,handleUnexpectedGatewayError
+
     try:
         print 'cancel.py', state
         chartScope = scopeContext.getChartScope()

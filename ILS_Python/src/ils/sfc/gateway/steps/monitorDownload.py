@@ -14,9 +14,8 @@ from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STA
     TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, TIMER_SET, CLEAR_TIMER, START_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME
 from system.ils.sfc import getMonitorDownloadsConfig
 from ils.sfc.gateway.downloads import handleTimer
-from ils.sfc.gateway.util import sendMessageToClient, getStepProperty, handleUnexpectedGatewayError, getControlPanelId, registerWindowWithControlPanel, getTopChartRunId
-from system.ils.sfc import getDatabaseName
-from ils.sfc.gateway.api import getIsolationMode, getChartLogger
+from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpectedGatewayError, sendMessageToClient, getStepProperty, getControlPanelId, \
+    registerWindowWithControlPanel, getTopChartRunId, getDatabaseName
 
 def activate(scopeContext, stepProperties, state): 
 
@@ -46,7 +45,7 @@ def activate(scopeContext, stepProperties, state):
         monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)
         isolationMode = getIsolationMode(chartScope)
         chartRunId = getTopChartRunId(chartScope)
-        database = getDatabaseName(isolationMode)
+        database = getDatabaseName(chartScope)
         
         # Insert a window record into the database
         controlPanelId = getControlPanelId(chartScope)

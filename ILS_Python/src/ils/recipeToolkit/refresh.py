@@ -93,7 +93,7 @@ def refresher(familyName, ds, downloadType, database = ""):
         log.trace("Step: %s <%s> <%s>" % ( str(step), writeLocation, record['Store Tag']))
 
         storTag = record['Store Tag']
-        if writeLocation != "" and writeLocation != None and storTag != "":
+        if writeLocation != "" and writeLocation != None and storTag not in ["", None, "NULL", "null"]:
             if string.upper(writeLocation) == localWriteAlias:
                 if storTag not in localTagNames:
                     localTagNames.append(storTag)
@@ -102,7 +102,7 @@ def refresher(familyName, ds, downloadType, database = ""):
                     tagNames.append(storTag)
 
         compTag = record['Comp Tag']
-        if writeLocation != "" and writeLocation != None and compTag != "":
+        if writeLocation != "" and writeLocation != None and compTag not in ["", None, "NULL", "null"]:
             if string.upper(writeLocation) == localWriteAlias:
                 if storTag not in localTagNames:
                     localTagNames.append(compTag)
@@ -148,7 +148,7 @@ def refresher(familyName, ds, downloadType, database = ""):
         planStatus = "readOnly"
 
         storTag = record['Store Tag']
-        if writeLocation != "" and writeLocation != None and storTag != "":
+        if writeLocation != "" and writeLocation != None and storTag not in ["", None, "NULL", "null"]:
             if string.upper(writeLocation) == localWriteAlias:
                 idx = localTagNames.index(storTag)
                 storVal = localValues[idx].value
@@ -161,7 +161,7 @@ def refresher(familyName, ds, downloadType, database = ""):
             ds = system.dataset.setValue(ds, i, 'Stor', storVal)
     
         compTag = record['Comp Tag']
-        if writeLocation != "" and writeLocation != None and compTag != "":
+        if writeLocation != "" and writeLocation != None and compTag not in ["", None, "NULL", "null"]:
             if string.upper(writeLocation) == localWriteAlias:
                 idx = localTagNames.index(compTag)
                 compVal = localValues[idx].value

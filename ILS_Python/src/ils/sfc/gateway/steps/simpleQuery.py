@@ -4,11 +4,10 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-from ils.sfc.gateway.util import getStepProperty,getRecipeScope, copyRowToDict, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getDatabaseName, s88Get, getChartLogger
-from system.ils.sfc.common.Constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE_OR_CREATE, STATIC, DYNAMIC
-from ils.sfc.gateway.recipe import substituteScopeReferences
-import system.db
+import system
+from ils.sfc.gateway.api import getDatabaseName, s88Get, getChartLogger, handleUnexpectedGatewayError, getStepProperty,copyRowToDict
+from ils.sfc.common.constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE_OR_CREATE, STATIC, DYNAMIC, RECIPE_LOCATION
+from ils.sfc.recipeData.api import substituteScopeReferences
 
 def activate(scopeContext, stepProperties, state):
     
@@ -34,7 +33,7 @@ def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
     stepScope = scopeContext.getStepScope()
     resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
     fetchMode = getStepProperty(stepProperties, FETCH_MODE) # SINGLE or MULTIPLE
-    recipeLocation = getRecipeScope(stepProperties) 
+    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
     key = getStepProperty(stepProperties, KEY) 
     create = (resultsMode == UPDATE_OR_CREATE)

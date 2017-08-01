@@ -1,11 +1,39 @@
-# Stub for ils.sfc.recipeData.api.py
-
-from ils.sfc.recipeData.core import getTargetStep, getTargetStepFromName, fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey
-from ils.sfc.gateway.api import getDatabaseName
+import system
+from ils.sfc.recipeData.core import getTargetStep, getTargetStepFromName, fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey,\
+    fetchRecipeDataType, recipeDataExists
+from ils.sfc.gateway.api import getDatabaseName, readTag
 from ils.common.units import convert
+from ils.sfc.common.constants import TAG, CHART, STEP
 
-import system, string
 logger=system.util.getLogger("com.ils.sfc.recipeData.api")
+
+def s88DataExists(chartScope, stepScope, keyAndAttribute, scope):
+    logger.tracef("s88GetType(): %s - %s", keyAndAttribute, scope)
+    db = getDatabaseName(chartScope)
+    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    key,attribute = splitKey(keyAndAttribute)
+    exists = recipeDataExists(stepUUID, key, attribute, db)
+    return exists
+
+def s88GetType(chartScope, stepScope, keyAndAttribute, scope):
+    logger.tracef("s88GetType(): %s - %s", keyAndAttribute, scope)
+    db = getDatabaseName(chartScope)
+    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    key,attribute = splitKey(keyAndAttribute)
+    recipeDataType = fetchRecipeDataType(stepUUID, key, attribute, db)
+    return recipeDataType
+
+def s88GetUnits(chartScope, stepScope, keyAndAttribute, scope):
+    logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
+    db = getDatabaseName(chartScope)
+    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    key,attribute = splitKey(keyAndAttribute)
+    val, units = fetchRecipeData(stepUUID, key, attribute, db)
+    logger.tracef("...fetched %s", str(val))
+    return units
 
 # Return a value only for a specific key, otherwise raise an exception.
 def s88Get(chartScope, stepScope, keyAndAttribute, scope):
@@ -90,16 +118,6 @@ def s88GetTargetStepUUID(chartScope, stepScope, scope):
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     return stepUUID
 
-def s88GetType(chartScope, stepScope, keyAndAttribute, scope):
-    logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
-    db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
-    key,attribute = splitKey(keyAndAttribute)
-    val, units = fetchRecipeData(stepUUID, key, attribute, db)
-    logger.tracef("...fetched %s", str(val))
-    return units
-
 # This is the most popular API which should be used to access recipe data that lives in the call hierarchy of a 
 # running chart.
 def s88Set(chartScope, stepScope, keyAndAttribute, value, scope):
@@ -172,4 +190,54 @@ def clearStashedRecipeData(rxConfig, database):
     SQL = "delete from SfcRecipeDataStash where RxConfigurastion = '%s'" % (rxConfig)
     rows = system.db.runUpdateQuery(SQL, database)
     logger.tracef("   ...deleted %d rows", rows)
+    
+def parseBracketedScopeReference(bracketedRef):
+    '''
+    Break a bracked reference into location and key--e.g. {local:selected-emp.val} gets
+    broken into 'local' and 'selected-emp.val'
+    '''   
+    firstDotIndex = bracketedRef.index('.')
+    location = bracketedRef[1 : firstDotIndex].strip()
+    key = bracketedRef[firstDotIndex + 1 : len(bracketedRef) - 1].strip()
+    return location, key
+
+def findBracketedScopeReference(string):
+    '''
+     Find the first bracketed reference in the string, e.g. {local:selected-emp.val}
+     or return None if not found
+     '''
+    lbIndex = string.find('{')
+    rbIndex = string.find('}')
+    firstDotIndex = string.find('.', lbIndex)
+    if lbIndex != -1 and rbIndex != -1 and firstDotIndex != -1 and rbIndex > firstDotIndex:
+        return string[lbIndex : rbIndex+1]
+    else:
+        return None
+
+'''
+Substitute for scope variable references, e.g. '{local:selected-emp.value}'
+'''
+def substituteScopeReferences(chartProperties, stepProperties, sql):
+
+    # really wish Python had a do-while loop...
+    while True:
+        ref = findBracketedScopeReference(sql)
+        if ref != None:
+            location, key = parseBracketedScopeReference(ref)
+            location = location.lower()
+            if location == TAG:
+                value = readTag(chartProperties, key)
+            elif location == CHART:
+                value = chartProperties.get(key, "<not found>")
+            elif location == STEP:
+                value = stepProperties.get(key, "<not found>")
+            else:
+                try:
+                    value = s88Get(chartProperties, stepProperties, key, location)
+                except:
+                    value = "<Error: %s.%s not found>" % (location, key)
+            sql = sql.replace(ref, str(value))
+        else:
+            break
+    return sql
     

@@ -288,7 +288,7 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
 # This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
 # provider without the brackets.
 def getProviderFromTagPath(tagPath):
-    if tagPath.find("[") < 0 or tagPath.find("]"):
+    if tagPath.find("[") < 0 or tagPath.find("]") < 0:
         from ils.common.config import getTagProvider
         provider = getTagProvider()
     else:
@@ -327,6 +327,13 @@ def checkConfig(tagPath):
     productionProviderName = getTagProvider()   # Get the Production tag provider
     providerName = getProviderFromTagPath(tagPath)
     globalWriteEnabled = system.tag.read("[" + providerName + "]/Configuration/Common/writeEnabled").value
+    
+#    print "----------"
+#    print "Tag:                 ", tagPath
+#    print "Production Provider: ", productionProviderName
+#    print "This tag provider:   ", providerName
+#    print "Global Write Enabled:", globalWriteEnabled
+#    print "----------"
     
     if providerName == productionProviderName and not(globalWriteEnabled):
         log.info('Write bypassed for %s because writes are inhibited!' % (tagPath))

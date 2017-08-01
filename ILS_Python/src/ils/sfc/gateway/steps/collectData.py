@@ -4,8 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 from ils.common.error import catch
-from ils.sfc.gateway.util import standardDeviation, getTopLevelProperties, getStepProperty, getTopChartRunId, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getChartLogger, getProviderName
+from ils.sfc.gateway.api import getChartLogger, getProviderName, handleUnexpectedGatewayError, standardDeviation, getTopLevelProperties, getStepProperty, getTopChartRunId
 from ils.sfc.recipeData.api import s88Set
 from ils.sfc.common.constants import COLLECT_DATA_CONFIG
 from ils.sfc.common.util import substituteHistoryProvider

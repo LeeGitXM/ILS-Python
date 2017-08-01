@@ -55,7 +55,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
     def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, logger=logger, providerName=providerName, recipeDataScope=recipeDataScope):
         from ils.io.api import write
         from ils.common.config import getTagProvider
-        from ils.sfc.gateway.util import queueMessage
+        from ils.sfc.gateway.api import postToQueue
         from ils.sfc.common.constants import MSG_STATUS_INFO
         from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT, WRITE_CONFIRMED, SUCCESS, FAILURE
 
@@ -79,7 +79,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
 #                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
     
             txt = "Write of %s to %s bypassed because SFC I/O is disabled." % (str(config.value), config.tagPath)
-            queueMessage(chartScope, txt, MSG_STATUS_INFO)
+            postToQueue(chartScope, MSG_STATUS_INFO, txt)
             return
         
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, outputType,str(config.confirmWrite)))
@@ -108,7 +108,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
 #                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
 #                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
         
-        queueMessage(chartScope, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt, MSG_STATUS_INFO)
+        postToQueue(chartScope, MSG_STATUS_INFO, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt)
     #----------------------------------------------------------------------------------------------------
     system.util.invokeAsynchronous(_writeValue)
 
@@ -119,7 +119,7 @@ def confirmWrite(chartScope, config, logger):
     def worker(chartScope, config, logger):
         # ordinarily, exceptions are automatically caught in PythonCall but that
         # doesn't work for threads so we need to have a local handler:
-        from ils.sfc.gateway.util import handleUnexpectedGatewayError
+        from ils.sfc.gateway.api import handleUnexpectedGatewayError
         import sys
         try:
             actualValue = config.io.getSetpoint()
