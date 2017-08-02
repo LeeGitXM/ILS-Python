@@ -1,14 +1,9 @@
 '''
 Created on June 16, 2015
 '''
-
-import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 import system.ils.blt.diagram as script
 from ils.diagToolkit.common import getDiagram
-
-handler = ControllerRequestHandler.getInstance()
 
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 

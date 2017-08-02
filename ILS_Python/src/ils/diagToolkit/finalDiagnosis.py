@@ -6,10 +6,10 @@ Created on Sep 12, 2014
 
 #
 # Everywhere provider is used here, assume it does not have square brackets
+# clc - modification here to remove diagtoolkit dependency on SFCs
 #
-
 import system, string
-from ils.common.config import getDatabase, getIsolationDatabase, getTagProvider, getIsolationTagProvider
+import system.ils.blt.diagram as scriptingInterface
 from ils.diagToolkit.common import fetchPostForApplication
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.common import insertApplicationQueueMessage
@@ -164,8 +164,8 @@ a management thread was launched for each of the FDs that changed state, all of 
 of sorts.
 '''
 def scanner():
-    _scanner(getDatabase(), getTagProvider())
-    _scanner(getIsolationDatabase(), getIsolationTagProvider())    
+    _scanner(scriptingInterface.getProductionDatabase(), scriptingInterface.getProductionTagProvider())
+    _scanner(scriptingInterface.getIsolationDatabase(), scriptingInterface.getIsolationTagProvider())    
 
         
 def _scanner(database, tagProvider):

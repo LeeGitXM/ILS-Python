@@ -12,6 +12,17 @@ def getBlockId(diagramId, blockName):
 
 def getBlockState(diagramId, blockName):
     '''Get the internal state of a block'''
+def getProductionDatabase():
+    return "DATABASE"
+
+def getIsolationDatabase(): 
+    return "ISO_DATABASE"
+
+def getProductionTagProvider(): 
+    return "PROVIDER"
+
+def getIsolationTagProvider():
+    return "ISO_PROVIDER"
 
 def getDiagramDescriptors(diagid):
     return []
