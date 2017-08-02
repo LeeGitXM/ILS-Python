@@ -6,6 +6,7 @@ Created on Oct 5, 2014
 import sys, traceback, system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.recipeToolkit.fetch import fetchFamilyId
+from ils.recipeToolkit.common import checkForUncommentedChanges
 from ils.common.error import catch
 log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 
@@ -15,6 +16,14 @@ def callback(event):
     familyName = rootContainer.familyName
     grade = rootContainer.grade
     version = rootContainer.version
+    
+    provider = rootContainer.getPropertyValue("provider")
+    requireComments = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
+    if requireComments:
+        uncommentedChanges = checkForUncommentedChanges(rootContainer)
+        if uncommentedChanges:
+            system.gui.messageBox("Please enter comments for any changed values before saving recipe!")
+            return
     
     recipeFamilyId = fetchFamilyId(familyName)
     

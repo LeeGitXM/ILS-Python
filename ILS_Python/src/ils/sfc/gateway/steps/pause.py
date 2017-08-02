@@ -6,8 +6,7 @@ Created on Dec 16, 2015
  Pause the chart execution
 '''
 from ils.sfc.common.constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
-from ils.sfc.gateway.api import pauseChart, addControlPanelMessage, getChartLogger
-from ils.sfc.gateway.util import handleUnexpectedGatewayError
+from ils.sfc.gateway.api import pauseChart, addControlPanelMessage, getChartLogger, handleUnexpectedGatewayError
 
 def activate(scopeContext, stepProperties, state):
     print "scopeContext: ", scopeContext

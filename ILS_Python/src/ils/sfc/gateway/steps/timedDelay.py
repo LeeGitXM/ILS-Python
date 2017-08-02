@@ -4,20 +4,16 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-import system, time
-from ils.sfc.gateway.util import createWindowRecord, getControlPanelId, getStepProperty, getControlPanelName, \
-    handleUnexpectedGatewayError, getDelaySeconds, sendOpenWindow, registerWindowWithControlPanel, getTopChartRunId, \
-    getOriginator
+import system
 from ils.sfc.recipeData.api import s88Get
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, getProject, sendMessageToClient
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError, sendMessageToClient, readTag, getStepId, logStepDeactivated, \
+    getControlPanelId, getStepProperty, getControlPanelName, getDelaySeconds, registerWindowWithControlPanel, getTopChartRunId, getOriginator, deleteAndSendClose
 from ils.sfc.common.util import callMethod, isEmpty
-from ils.sfc.gateway.util import getStepId, logStepDeactivated
 from ils.sfc.gateway.api import getTimeFactor
 from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
     RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, WINDOW_ID, \
-    BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, \
+    BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, MESSAGE, DEACTIVATED, \
     DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, ORIGINATOR, WINDOW_PATH, STEP_NAME, IS_SFC_WINDOW
-
 
 def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope() 
@@ -59,7 +55,6 @@ def activate(scopeContext, stepProperties, state):
                 callback = getStepProperty(stepProperties, CALLBACK) 
                 delay = callMethod(callback)
             elif timeDelayStrategy == TAG:
-                from ils.sfc.gateway.api import readTag
                 tagPath = getStepProperty(stepProperties, TAG_PATH)
                 delay = readTag(chartScope, tagPath)
             else:
@@ -85,7 +80,6 @@ def activate(scopeContext, stepProperties, state):
                 controlPanelId = getControlPanelId(chartScope)
                 controlPanelName = getControlPanelName(chartScope)
                 originator = getOriginator(chartScope)
-                project = getProject(chartScope)
                 database = getDatabaseName(chartScope)
                 chartRunId = getTopChartRunId(chartScope)
                 
@@ -146,10 +140,7 @@ def activate(scopeContext, stepProperties, state):
         
 def cleanup(chartScope, stepScope, stepProperties):
     import system.db
-    from ils.sfc.gateway.util import getStepProperty, deleteAndSendClose, handleUnexpectedGatewayError
-    from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
-    from ils.sfc.common.constants import WINDOW_ID
-    from ils.sfc.common.constants import POST_NOTIFICATION
+
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)

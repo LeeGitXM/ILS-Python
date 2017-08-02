@@ -8,9 +8,8 @@ import system, time, string
 from ils.sfc.common.util import callMethodWithParams
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88GetWithUnits
 from ils.common.cast import jsonToDict
-from ils.sfc.gateway.util import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
-        logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError, deleteAndSendClose
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, getProject
+from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
+        logStepDeactivated, getTopChartRunId, deleteAndSendClose, getDatabaseName, getChartLogger, sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, DEACTIVATED, \
     BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, HEADING1, HEADING2, HEADING3, REVIEW_FLOWS
 from ils.sfc.common.util import isEmpty

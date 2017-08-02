@@ -6,12 +6,10 @@ Created on Dec 16, 2015
 queues the step's message
 '''
 
-from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getDatabaseName
 from ils.queue.message import insert
 from ils.sfc.common.constants import MESSAGE, PRIORITY
-from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger
-from ils.sfc.gateway.recipe import substituteScopeReferences
+from ils.sfc.gateway.api import getCurrentMessageQueue, getChartLogger, getStepProperty, getDatabaseName, handleUnexpectedGatewayError
+from ils.sfc.recipeData.api import substituteScopeReferences
 
 def activate(scopeContext, stepProperties, state):
 

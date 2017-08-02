@@ -4,10 +4,9 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-from ils.sfc.common.constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL, ENABLE_START, ENABLE_RESET, STEP_NAME
-from ils.sfc.gateway.util import getStepProperty, getControlPanelId, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName
 import system
+from ils.sfc.common.constants import ENABLE_PAUSE, ENABLE_RESUME, ENABLE_CANCEL, ENABLE_START, ENABLE_RESET, STEP_NAME
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, handleUnexpectedGatewayError, getStepProperty, getControlPanelId
     
 def activate(scopeContext, stepProperties, state):
     

@@ -3,16 +3,15 @@ Created on Dec 16, 2015
 
 @author: rforbes
 '''
+
 import system
+from ils.sfc.common.constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY
+from ils.sfc.common.constants import WAITING_FOR_REPLY, MESSAGE_ID
+from ils.queue.message import insert
+from ils.sfc.recipeData.api import substituteScopeReferences
+from ils.sfc.gateway.api import getDatabaseName, addControlPanelMessage, getCurrentMessageQueue, getChartLogger, handleUnexpectedGatewayError, getStepProperty, logStepDeactivated
 
 def activate(scopeContext, stepProperties, state):
-    from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, logStepDeactivated
-    from ils.sfc.common.constants import DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, MESSAGE, ACK_REQUIRED, POST_TO_QUEUE, PRIORITY
-    from ils.sfc.common.constants import WAITING_FOR_REPLY, MESSAGE_ID
-    from ils.queue.message import insert
-    from ils.sfc.gateway.recipe import substituteScopeReferences
-    from ils.sfc.gateway.api import getDatabaseName, addControlPanelMessage, getCurrentMessageQueue, getChartLogger 
-
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)

@@ -2,6 +2,10 @@
 Created on Jul 14, 2017
 
 @author: phass
+
+There is really nothing to create here.  At one time the data pump used tags in the configuration folder that were created here
+but the command tag has a tag change script which I can't configure when I create tags in this way.  So noe the data pump tags are 
+created manually from a standard XML exort.
 '''
 
 import system
@@ -14,21 +18,20 @@ def gateway(tagProvider, isolationTagProvider):
     log.info("Starting Data Pump Toolkit ")
     log.info("---------------------------------------------------------")
 
-    createTags("[" + tagProvider + "]")
-    createTags("[" + isolationTagProvider + "]")
-
-def createTags(tagProvider):
-    print "Creating Data pump configuration tags...."
-    headers = ['Path', 'Name', 'Data Type', 'Value']
-    data = []
-    path = tagProvider + "Configuration/Data Pump/"
-
-    data.append([path, "Command", "String", ""])
-    data.append([path, "data", "DataSet", ""])
-    data.append([path, "lineNumber", "Int8", "0"])
-    data.append([path, "simulationState", "String", ""])
-    data.append([path, "timeDelay", "Int8", "60"])
-
-    ds = system.dataset.toDataSet(headers, data)
-    from ils.common.tagFactory import createConfigurationTags
-    createConfigurationTags(ds, log)
+    tagPaths = []
+    tagPaths.append("[%s]Data Pump/command" % (tagProvider))
+    tagPaths.append("[%s]Data Pump/command" % (tagProvider))
+    tagPaths.append("[%s]Data Pump/simulationState" % (tagProvider))
+    tagPaths.append("[%s]Data Pump/simulationState" % (tagProvider))
+    tagPaths.append("[%s]Data Pump/lineNumber" % (tagProvider))
+    tagPaths.append("[%s]Data Pump/lineNumber" % (tagProvider))
+    
+    tagValues = []
+    tagValues.append("Stop")
+    tagValues.append("Stop")
+    tagValues.append("Idle")
+    tagValues.append("Idle")
+    tagValues.append(0)
+    tagValues.append(0)
+    
+    system.tag.writeAll(tagPaths, tagValues)

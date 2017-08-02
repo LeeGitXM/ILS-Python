@@ -65,6 +65,10 @@ def updateTagName(tagName):
     tagName = string.replace(tagName, '.', '-')
     tagName = string.replace(tagName, ' ', '-')
     tagName = string.replace(tagName, '/', '-')
+    if tagName.find('[') >= 0:
+        print "Stripping off an array reference from <%s>" % (tagName)
+        tagName = tagName[:tagName.find('[')]
+        print "...the modified tagname is <%s>" % (tagName)
     return tagName
 
 # I have designed a tree structure for tags used in the toolkits.  This will be assumed throughout and cannot be changed.
@@ -77,3 +81,19 @@ def getTagPath(recipeKey, tagName):
 def setBackgroundColor(rootContainer, colorTagName):
     color = system.tag.read("/Configuration/RecipeToolkit/" + colorTagName)
     rootContainer.setPropertyValue("backgroundColor", color.value)
+
+def checkForUncommentedChanges(rootContainer):
+    print "Checking for uncommented changes..."
+    
+    table = rootContainer.getComponent('Power Table')
+    ds = table.data
+    pds = system.dataset.toPyDataSet(ds)
+    for record in pds:
+        descriptor = record['Descriptor']
+        reason = record['Reason']
+        
+        if reason == "Enter reason for changing the recommended value":
+            print "A comment must be entered for %s" % (descriptor)
+            return True
+    
+    return False

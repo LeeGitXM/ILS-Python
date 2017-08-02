@@ -7,13 +7,10 @@ The job of this step is to open a window on the appropriate client.  This works 
 to the client and let the client do most of the work.
 '''
 
-def activate(scopeContext, stepProperties, state):   
-    from ils.sfc.gateway.util import registerWindowWithControlPanel, getControlPanelId, getControlPanelName, sendOpenWindow, getStepId, \
-    handleUnexpectedGatewayError, getStepProperty, getOriginator
-    from ils.sfc.common.constants import ORIGINATOR, WINDOW, WINDOW_ID, WINDOW_PATH, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, SCALE, POSITION, SECURITY, BUTTON_LABEL, IS_SFC_WINDOW
-    from ils.sfc.gateway.util import sendMessageToClient
-    from ils.sfc.gateway.api import getChartLogger, getDatabaseName, getProject
-
+from ils.sfc.common.constants import WINDOW, WINDOW_ID, WINDOW_PATH, SCALE, POSITION, BUTTON_LABEL, IS_SFC_WINDOW
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, sendMessageToClient, handleUnexpectedGatewayError, registerWindowWithControlPanel, getControlPanelId, getStepProperty, getTopChartRunId
+    
+def activate(scopeContext, stepProperties, state):
     windowPath = getStepProperty(stepProperties, WINDOW)
     messageHandler = "sfcOpenWindow"
 
@@ -27,10 +24,11 @@ def activate(scopeContext, stepProperties, state):
         isSfcWindow = getStepProperty(stepProperties, IS_SFC_WINDOW)
         controlPanelId = getControlPanelId(chartScope)
         
+        chartLogger.tracef("In %s.activate(), opening window: %s, at %s at scale: %s" % (__name__, windowPath, position, str(scale)))
+        
         database = getDatabaseName(chartScope)
         title = ""
         # Register the window with the control panel
-        from ils.sfc.gateway.util import getTopChartRunId
         chartRunId = getTopChartRunId(chartScope)
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
 

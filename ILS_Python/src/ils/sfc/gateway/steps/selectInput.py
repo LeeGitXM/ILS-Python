@@ -5,9 +5,8 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getControlPanelId, \
-    registerWindowWithControlPanel, logStepDeactivated, getTopChartRunId
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName, sendMessageToClient
+from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, logStepDeactivated, getTopChartRunId, \
+    getChartLogger, getDatabaseName, sendMessageToClient, handleUnexpectedGatewayError
 from ils.sfc.common.constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY, IS_SFC_WINDOW, BUTTON_LABEL, WAITING_FOR_REPLY,\
     DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, \
     RESPONSE_KEY_AND_ATTRIBUTE

@@ -6,9 +6,9 @@ Created on Dec 17, 2015
 Ordinarily window closing logic would be in a finally block, but since the whole business
 of this block is to close windows, there is no finally block... 
 '''
+
 import system
-from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger
-from ils.sfc.gateway.util import deleteAndSendClose, handleUnexpectedGatewayError
+from ils.sfc.gateway.api import getDatabaseName, getProject, getChartLogger, handleUnexpectedGatewayError, deleteAndSendClose
 from ils.sfc.common.constants import NAME
     
 def activate(scopeContext, stepProperties, state):

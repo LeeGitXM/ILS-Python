@@ -56,7 +56,7 @@ def bufferSizeChanged(tagPath, currentValue, initialChange):
     log.infof("The buffer size has changed for <%s> to <%s>", tagPath, str(currentValue))
     database=getDatabaseForTag(tagPath)
     tagPathRoot, tagName, tagProvider = parseTagPath(tagPath)
-    log.trace("In bufferSizeChanged with <%s>, new size = %i (root: %s)" % (tagPath, currentValue.value, tagPathRoot))
+    log.trace("In bufferSizeChanged with <%s>, new size = %s (root: %s)" % (tagPath, str(currentValue.value), tagPathRoot))
     SQL = "select unitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
     unitParameterId = system.db.runScalarQuery(SQL, database)
     if unitParameterId == None:
@@ -78,22 +78,22 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         return
     
     log.tracef("----------")
-    log.tracef("%s %s %s", threadName, str(currentValue), str(sampleTime))
+    log.tracef("In %s.valueChanged() %s %s %s %s", __name__, str(threadName), str(currentValue), str(sampleTime), str(tagPath))
     
     database=getDatabaseForTag(tagPath)
     # The database must exist .
     if database==None or len(database)==0:
-        log.warnf("labData.unitParameter.valueChanged: Database is empty for %s", tagPath)
+        log.warnf("%s.valueChanged(): Database is empty for %s", __name__, str(tagPath))
         return
     
     # Check the quality here and only process good values.
     if not(currentValue.quality.isGood()):
-        log.warnf("Value %s quality is bad - value will not be propagated!", tagPath)
+        log.warnf("%s.valueChanged(): Value %s quality is bad - value will not be propagated!", __name__, str(tagPath))
         return
     
     # Check the quality here and only process good values.
     if threadName in ["rawValue", "sampleTime"] and not(sampleTime.quality.isGood()):
-        log.warnf("Sample time %s quality is bad - value will not be propagated!", tagPath)
+        log.warnf("%s.valueChanged(): Sample time %s quality is bad - value will not be propagated!", __name__, str(tagPath))
         return
         
     # We can only process numeric values
@@ -102,13 +102,13 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     except:
         # Silently ignore nulls
         if not (currentValue.value == None):
-            log.warnf("The new value <%s> for <%s> is not numeric and cannot be processed", str(currentValue.value), tagPath)
+            log.warnf("%s.valueChanged(): The new value <%s> for <%s> is not numeric and cannot be processed", __name__, str(currentValue.value), tagPath)
         return
     
     # The first step is to get the tag name out of the full tag name.  This should end in either rawValue or manualRawValue    
     tagPathRoot, tagName, tagProvider = parseTagPath(tagPath)
     if tagPathRoot==None or len(tagPathRoot)==0:
-        log.warnf("labData.unitParameter.valueChanged: Empty root path for %s", str(tagPath))
+        log.warnf("%s.valueChanged(): Empty root path for %s", __name__, str(tagPath))
         return
     
     '''
@@ -118,19 +118,20 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     '''
     if threadName in ["rawValue", "sampleTime"]:
         syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
+        log.tracef("Sleeping for %s seconds", str(syncSeconds))
         time.sleep(syncSeconds)
     
-    log.tracef("In valueChanged with <%s> and value: %f (root: %s)", tagPath, tagVal, tagPathRoot)
+    log.tracef("In valueChanged with <%s> and value: %s (root: %s)", tagPath, str(tagVal), tagPathRoot)
     
     # Check if the buffer has ever been initialized
     SQL = "select UnitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
-    log.trace(SQL)
+    log.tracef(SQL)
     unitParameterId = system.db.runScalarQuery(SQL, database)
     if unitParameterId == None:
         SQL = "insert into TkUnitParameter (UnitParameterTagName) values ('%s')" % (tagPathRoot)
-        log.trace(SQL)
+        log.tracef(SQL)
         unitParameterId = system.db.runUpdateQuery(SQL, database, getKey=1)
-        log.infof("Inserted a new unit parameter <%s> with id <%d> into the TkUnitParameter", tagPathRoot, unitParameterId)
+        log.infof("Inserted a new unit parameter <%s> with id <%s> into the TkUnitParameter", tagPathRoot, str(unitParameterId))
     
     # Read the buffer size and bufferindex from the tags
     tags = [tagPathRoot + '/numberOfPoints', tagPathRoot + '/bufferIndex', tagPathRoot + '/rawValue.LastChange', tagPathRoot + '/sampleTime.LastChange', tagPathRoot + '/configurationChangeTime']
@@ -141,7 +142,7 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     rawValueLastChange = vals[2].value
     sampleTimeLastChange = vals[3].value
     configurationChangeTime = vals[4].value
-    
+
     '''
     If the value was a manual value, then there isn't a notion of a sample time.  The acttual time is passed in as a date,
     not as a qualified value as is normally expected.
@@ -156,13 +157,13 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     if secondsBetween < 30 and threadName == "sampleTime":
         log.tracef("Exiting the SampleTime thread where both the value and sampleTime were updated.")
         return
-    
+
     '''
     Ensure that the data is consistent with the current reactor configuration / state.  If the state changed, it is their responsibility to update the 
     configurationChangeTime of the affected Unit Parameters.  If this datum was collected before the time of the state change then do not store it.
     '''
     if system.date.isBefore(sampleTime, configurationChangeTime):
-        log.infof("...filtering out %s collected at %s for %s because it was collected before the sample time.", str(tagVal), str(sampleTime.value), tagPath)
+        log.infof("...filtering out %s collected at %s for %s because it was collected before the sample time.", str(tagVal), str(sampleTime), tagPath)
         return
 
     log.tracef("Raw value last change:   %s", str(rawValueLastChange))
@@ -173,9 +174,9 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         return
 
     if not( vals[1].quality.isGood() and bufferIndex != None ):
-        log.error("The bufferIndex is bad or has the value None")
+        log.errorf("The bufferIndex is bad or has the value None")
         return
-    
+
     bumpIndex = True
     SQL = "select ReceiptTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
     receiptTime = system.db.runScalarQuery(SQL, database)
@@ -193,32 +194,32 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         else:
             bufferIndex = bufferIndex + 1
 
-    log.tracef("Unit Parameter Id: %d - Number of points: %d - Buffer Index: %d", unitParameterId, numberOfPoints, bufferIndex)
+    log.tracef("Unit Parameter Id: %s - Number of points: %s - Buffer Index: %s", str(unitParameterId), str(numberOfPoints), str(bufferIndex))
     
     # Now put the new value into the buffer
     sampleTime = formatDateTime(sampleTime)
     SQL = "update TkUnitParameterBuffer set RawValue = %f, receiptTime = getdate(), sampleTime = '%s' "\
         " where UnitParameterId = %i and BufferIndex = %i" % (tagVal, sampleTime, unitParameterId, bufferIndex)
-    log.trace(SQL)
+    log.tracef(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     
     # If no rows were updated then it probably means that the buffer has not been filled yet, so insert a row
     if rows == 0:
         SQL = "insert into TkUnitParameterBuffer (UnitParameterId, BufferIndex, RawValue, ReceiptTime, SampleTime) "\
             " values (%i, %i, %f, getdate(), '%s')" % (unitParameterId, bufferIndex, tagVal, sampleTime)
-        log.trace(SQL)
+        log.tracef(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         if rows != 1:
-            log.errorf("Unable to add value <%f> to the history buffer for tag <%s>", tagVal, tagName)
+            log.errorf("Unable to add value <%s> to the history buffer for tag <%s>", str(tagVal), tagName)
         
     #  Query the buffer for the Mean
     SQL = "select avg(RawValue) from TkUnitParameterBuffer where UnitParameterId = %s" % (str(unitParameterId))
-    log.trace(SQL)
+    log.tracef(SQL)
     filteredValue = system.db.runScalarQuery(SQL, database)
-    log.tracef("The filtered value is: %f", filteredValue)
+    log.tracef("The filtered value is: %s", str(filteredValue))
     
     # Store the mean into the UnitParameter Final Value
     # These are writing to memory tags so they should be very fast
     system.tag.write(tagPathRoot + '/filteredValue', filteredValue, 1)
     system.tag.write(tagPathRoot + '/bufferIndex', bufferIndex, 1)
-    log.tracef("Successfully wrote the filtered value <%f> to <%s>", filteredValue, tagPath)
+    log.tracef("Successfully wrote the filtered value <%s> to <%s>", str(filteredValue), tagPath)

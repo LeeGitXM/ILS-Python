@@ -47,8 +47,13 @@ def shouldShowWindow(payload):
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
     security = payload.get(SECURITY, PRIVATE)
+    showOverride = payload.get("showOverride", False)
     database = payload[DATABASE]
     clientDatabase = getDatabaseClient()
+    
+    if showOverride and database == clientDatabase:
+        print "...the window should be shown because the showOverride flag is True and isolation mode matches!"
+        return True
     
     if database <> clientDatabase:
         print "...the window should not be shown because the client database (%s) does not match the message database (%s)" % (clientDatabase, database)

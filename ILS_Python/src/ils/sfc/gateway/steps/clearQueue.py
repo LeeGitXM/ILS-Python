@@ -7,8 +7,7 @@ delete all messages from the current message queue
 '''
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger
 from ils.queue.message import clear
-from ils.sfc.gateway.api import getCurrentMessageQueue
-from ils.sfc.gateway.util import handleUnexpectedGatewayError
+from ils.sfc.gateway.api import getCurrentMessageQueue, handleUnexpectedGatewayError
 
 def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()

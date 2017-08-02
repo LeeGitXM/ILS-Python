@@ -9,8 +9,7 @@ from ils.sfc.common.constants import NAME, NUMBER_OF_ERRORS, MSG_STATUS_ERROR, C
     CHART_SCOPE, STEP_SCOPE, \
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE
     
-from ils.sfc.gateway.api import getChartLogger, getIsolationMode
-from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, notifyGatewayError, queueMessage
+from ils.sfc.gateway.api import getChartLogger, getIsolationMode, notifyGatewayError, handleUnexpectedGatewayError, getStepProperty, postToQueue
 from system.ils.sfc import getConfirmControllersConfig, getProviderName
 from ils.io.api import confirmControllerMode
 from ils.sfc.recipeData.api import s88Get, s88Set
@@ -61,9 +60,9 @@ def activate(scopeContext, stepProperties, state):
                     numberOfErrors = numberOfErrors + 1
                     txt = "Confirm Controller Mode Error: %s - %s.  %s" % (row.key, tagPath, errorMessage)
                     logger.warnf("Confirm Controller Mode failed for %s because %s", tagPath, errorMessage)
-                    queueMessage(chartScope, txt, MSG_STATUS_ERROR)
+                    postToQueue(chartScope, MSG_STATUS_ERROR, txt)
             except:
-                notifyGatewayError(chartScope, 'Trapped an error in confirmControllers.py', chartLogger)
+                notifyGatewayError(chartScope, stepProperties, 'Trapped an error in confirmControllers.py', chartLogger)
                 numberOfErrors = numberOfErrors + 1
 
         logger.infof("...%s completed with %d errors!", stepName, numberOfErrors)

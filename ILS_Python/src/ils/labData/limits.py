@@ -243,11 +243,13 @@ def fetchLimits(database = ""):
 
 #
 def parseRecipeFamilyFromGradeTagPath(tagPath):
+    print "In %s.parseRecipeFamilyFromGradeTagPath() with %s" % (__name__, tagPath)
     i=tagPath.find("Site/") + 5
     recipeFamily=tagPath[i:]
     
     i=recipeFamily.find("/")
     recipeFamily=recipeFamily[:i]
+    print "...the recipe family is ", recipeFamily
     return recipeFamily
 
 

@@ -7,9 +7,9 @@ Created on Dec 17, 2015
 import system, time
 from ils.sfc.common.util import callMethodWithParams, isEmpty
 from ils.common.cast import jsonToDict, isFloat
-from ils.sfc.gateway.util import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
-        logStepDeactivated, getTopChartRunId, handleUnexpectedGatewayError, hasStepProperty, deleteAndSendClose
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, getProject
+from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
+        logStepDeactivated, getTopChartRunId, hasStepProperty, deleteAndSendClose, getDatabaseName, getChartLogger, \
+        sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88GetWithUnits
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, \
     DEACTIVATED, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \

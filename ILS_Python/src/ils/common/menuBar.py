@@ -14,29 +14,29 @@ import system
 # The argument is a menubar component.
 def removeUnwantedConsoles(bar): 
     #
+    print "Removing unwanted consoles..."
     count = bar.getMenuCount()
     index = 0
     while index < count:
         menu = bar.getMenu(index)
         name = menu.getText()
-        print "Menu:",name
-        if name == 'View':
-            
+
+        if name == 'View':            
             # Find the console menu
             viewCount = menu.getItemCount()
             viewIndex = 0
             while viewIndex < viewCount:
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
-                print "View Submenu: ", submenuName
                 
                 if submenuName == 'Consoles':
+                    print "Found the View->Console submenu..."
                     consoleCount = submenu.getItemCount()
                     consoleIndex = 0
                     while consoleIndex < consoleCount:
                         console = submenu.getItem(consoleIndex)
                         consoleName = console.getText()
-                        print "Console menu: ", consoleName
+                        print "  Console menu: ", consoleName
                         SQL = "select count(*) from TkConsole where ConsoleName = '%s'" % (consoleName)
                         cnt=system.db.runScalarQuery(SQL)
                         if cnt == 0:
@@ -52,6 +52,7 @@ def removeUnwantedConsoles(bar):
 
 
 def removeNonOperatorMenus(bar):
+    print " "
     print "Removing the menus which are not appropriate for operators."
 
     count = bar.getMenuCount()
@@ -76,6 +77,7 @@ def removeNonOperatorMenus(bar):
                 print "View Submenu: ", submenuName
                 
                 if submenuName == 'Consoles':
+                    print "Removing the Consoles menu..."
                     menu.remove(submenu)
                     viewCount = viewCount - 1
                 else:
@@ -113,6 +115,8 @@ the same as the project name.
 ** Currently this only works with the VIEW menu **
 '''
 def removeUnwantedMenus(bar, projectType): 
+    print " "
+    print "Removing unwanted menus for this application..."
     
     # Select the configuration of the menus for this site
     pds = system.db.runQuery("Select SubMenu, Enabled from TkMenuBar where Application = '%s' and Menu = 'View'" % (projectType))

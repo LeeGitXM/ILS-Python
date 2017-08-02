@@ -5,7 +5,7 @@ Created on Feb 10, 2015
 '''
 
 from ils.sfc.gateway.api import s88Set, s88Get
-class RecipeData:
+class RecipeDataCRAP:
     '''A convenient proxy to access a particular recipe data object via the s88Get/Set api'''
    
     def  __init__(self, _chartScope, _stepScope, _location, _key):
@@ -20,58 +20,7 @@ class RecipeData:
     def get(self, attribute):
         return s88Get(self.chartScope, self.stepScope, self.key + '/' + attribute, self.location) 
 
-def parseBracketedScopeReference(bracketedRef):
-    '''
-    Break a bracked reference into location and key--e.g. {local:selected-emp.val} gets
-    broken into 'local' and 'selected-emp.val'
-    '''   
-    firstDotIndex = bracketedRef.index('.')
-    location = bracketedRef[1 : firstDotIndex].strip()
-    key = bracketedRef[firstDotIndex + 1 : len(bracketedRef) - 1].strip()
-    return location, key
-
-def findBracketedScopeReference(string):
-    '''
-     Find the first bracketed reference in the string, e.g. {local:selected-emp.val}
-     or return None if not found
-     '''
-    lbIndex = string.find('{')
-    rbIndex = string.find('}')
-    firstDotIndex = string.find('.', lbIndex)
-    if lbIndex != -1 and rbIndex != -1 and firstDotIndex != -1 and rbIndex > firstDotIndex:
-        return string[lbIndex : rbIndex+1]
-    else:
-        return None
-
-def substituteScopeReferences(chartProperties, stepProperties, sql):
-    ''' Substitute for scope variable references, e.g. '{local:selected-emp.value}'
-    '''
-    from ils.sfc.recipeData.api import s88Get
-    from ils.sfc.gateway.api import readTag
-    from ils.sfc.common.constants import TAG, CHART, STEP
-    # really wish Python had a do-while loop...
-    while True:
-        ref = findBracketedScopeReference(sql)
-        if ref != None:
-            location, key = parseBracketedScopeReference(ref)
-            location = location.lower()
-            if location == TAG:
-                value = readTag(chartProperties, key)
-            elif location == CHART:
-                value = chartProperties.get(key, "<not found>")
-            elif location == STEP:
-                value = stepProperties.get(key, "<not found>")
-            else:
-                try:
-                    value = s88Get(chartProperties, stepProperties, key, location)
-                except:
-                    value = "<Error: %s.%s not found>" % (location, key)
-            sql = sql.replace(ref, str(value))
-        else:
-            break
-    return sql
-
-def getSiblingKey(key, attribute):
+def getSiblingKeyCRAP(key, attribute):
     '''given a full key, e.g. foo.value, return a key for a sibling attribute; e.g. for attribute
     id, foo.id would be returned'''
     lastDotIndex = key.rfind(".")
@@ -79,12 +28,12 @@ def getSiblingKey(key, attribute):
         lastDotIndex = key.rfind("/")
     return key[0:lastDotIndex+1] + attribute
 
-def splitKey(key):
+def splitKeyCRAP(key):
     '''given a key, split it into the prefix and the final value attribute'''
     lastDotIndex = key.rfind(".")
     return key[0:lastDotIndex], key[lastDotIndex + 1:len(key)]
 
-def browseRecipeData(chartProperties, stepProperties, location):
+def browseRecipeDataCRAP(chartProperties, stepProperties, location):
     '''Get a dictionary of key/value info for
     all recipe data in the given scope. '''
     from ils.sfc.gateway.api import s88GetFullTagPath
@@ -98,14 +47,14 @@ def browseRecipeData(chartProperties, stepProperties, location):
         data[str(browseTag.fullPath)] = str(tagValue)
     return data
         
-def isInt(value):
+def isIntCRAP(value):
     try:
         int(value)
         return True
     except:
         return False
 
-def getKeyValues(keyName, database):
+def getKeyValuesCRAP(keyName, database):
     '''Get the individual key values for the given key index'''
     import system
     sql = "select KeyValue from SfcRecipeDataKeyMaster master, SfcRecipeDataKeyDetail detail where \
@@ -116,7 +65,7 @@ def getKeyValues(keyName, database):
         keys.append(row[0])
     return keys
 
-def getIndexFromKey(tagPath, keyAttribute, indexValue, database):
+def getIndexFromKeyCRAP(tagPath, keyAttribute, indexValue, database):
     '''get a numeric index from a string key'''
     import system
     # Get the name of the key from the recipe data UDT:
@@ -132,7 +81,7 @@ def getIndexFromKey(tagPath, keyAttribute, indexValue, database):
     print 'index of', indexValue, ' in ', keyValues, ' is ', index
     return index
     
-def parseIndices(indexedPath, database):  
+def parseIndicesCRAP(indexedPath, database):  
     '''Parse out the indices of a keyed reference, resolve symbolic indices to integers if necessary,
        and return the tag path of the dataset and integer row, and column indices'''
     import system
@@ -164,7 +113,7 @@ def parseIndices(indexedPath, database):
         colIndex = getIndexFromKey(tagPath, "columnKey", colKey, database)
     return tagPath, rowIndex, colIndex
 
-def getIndexedValue(indexedPath, database):
+def getIndexedValueCRAP(indexedPath, database):
     import system
     tagPath, rowIndex, colIndex = parseIndices(indexedPath, database)
     arrayOrDataset = system.tag.read(tagPath).value
@@ -173,7 +122,7 @@ def getIndexedValue(indexedPath, database):
     else:
         return arrayOrDataset[rowIndex]
 
-def setIndexedValue(indexedPath, value, database):
+def setIndexedValueCRAP(indexedPath, value, database):
     import system
     tagPath, rowIndex, colIndex = parseIndices(indexedPath, database)    
     arrayOrDataset = system.tag.read(tagPath).value

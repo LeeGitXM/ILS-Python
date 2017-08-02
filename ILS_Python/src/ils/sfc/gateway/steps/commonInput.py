@@ -5,10 +5,10 @@ Created on Dec 21, 2015
 '''
 
 import system, time
-from ils.sfc.gateway.util import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
-        checkForResponse, logStepDeactivated, getStepId, dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId, \
-        deleteAndSendClose, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import s88Set, getDatabaseName, getChartLogger, getProject
+from ils.sfc.recipeData.api import s88Set
+from ils.sfc.gateway.api import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
+        checkForResponse, logStepDeactivated, getStepId, dbStringForFloat, getTopChartRunId, deleteAndSendClose, \
+        getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError
 from ils.sfc.common.constants import RECIPE_LOCATION, KEY, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, \
     DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
     

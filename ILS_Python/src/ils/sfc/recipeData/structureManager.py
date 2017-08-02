@@ -8,29 +8,21 @@ import system
 from ils.common.util import formatDateTimeForDatabase
 log = system.util.getLogger("com.ils.sfc.python.structureManager")
 from ils.common.error import catch
-from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID
+from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath
 from ils.common.database import toList
 
 def getTxId(db):
-    
-    try:
-        txId = system.util.getGlobals()['txId']
-        if txId in ["", None, "foo"]:
-            print "*** Creating a fresh transaction Id ***"
-            txId = system.db.beginTransaction(database=db, isolationLevel=system.db.SERIALIZABLE, timeout=86400000)    # timeout is one day
-            system.util.getGlobals()['txId'] = txId
-        print "The transactionId is: ", txId
-    except:
-        print "*** Creating a fresh transaction Id due to an error***"
-        print "Isolation level: ", system.db.SERIALIZABLE
-        txId = system.db.beginTransaction(database=db, isolationLevel=system.db.SERIALIZABLE, timeout=86400000)    # timeout is one day
-        system.util.getGlobals()['txId'] = txId
-
+    txId = system.db.beginTransaction(database=db, timeout=86400000)    # timeout is one day
     return txId
 
 def createChart(resourceId, chartPath, db):
     # Check if the chart already exists 
     log.infof("In %s.createChart() with %s-%s...", __name__, chartPath, str(resourceId))
+    
+    print "*************************************************"
+    print "** WHY AM I HERE????"
+    print "*************************************************"
+    return
 
     txId = getTxId(db)    
     print "The transactionId is: ", txId
@@ -65,10 +57,9 @@ def createChart(resourceId, chartPath, db):
 def deleteChart(resourceId, chartPath, db):
     log.infof("Deleting a chart: %d", resourceId)
     
-    txId = getTxId(db)    
-    print "The transactionId is: ", txId
-    
     try:
+        txId = getTxId(db)    
+
         SQL = "select chartId, chartPath from SfcChart where chartResourceId = %d" % resourceId
         pds = system.db.runQuery(SQL, tx=txId)
         
@@ -134,47 +125,26 @@ def deleteChart(resourceId, chartPath, db):
                 log.errorf("I can't handle multiple resource updates")
         else:
             log.warnf("The chart was not found in SfcChart")
-    except:
-        errorTxt = catch("%s.createChart()" % (__name__))
-        log.error(errorTxt)
-
-def shutdown(db):
-    import time
-    # Check if the chart already exists
-    log.infof("In %s.shutdown() with %s...", __name__, str(db))
-    filepath = "c:/temp/designerLog.txt"
-    append = True
-    
-    txt = "In shutdown at %s" % (system.date.now())
-    system.file.writeFile(filepath, txt, append)
-    
-    txId = getTxId(db)
-    system.db.rollbackTransaction(txId)
-    system.db.closeTransaction(txId)
-
-
-def saveProject(project, db):
-    # Check if the chart already exists
-    log.infof("In %s.saveProject() with %s...", __name__, str(project))
-
-    txId = getTxId(db)
-
-    try:
-        log.tracef("...committing database transactions using %s..." % (txId))
+        
+        log.tracef("Committing and closing the transaction.")        
         system.db.commitTransaction(txId)
         system.db.closeTransaction(txId)
-        system.util.getGlobals()['txId'] = None
 
     except:
-        errorTxt = catch("%s.saveProject()")
-        log.error(errorTxt)
+        errorTxt = catch("deleting a chart - rolling back database transactions")
+        log.errorf(errorTxt)
+        system.db.rollbackTransaction(txId)
+        system.db.closeTransaction(txId)
 
 
-def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs, stepFactoryIds, childPaths, childNames, childUUIDs, factoryIds, db):
-    log.infof("Updating the chart hierarchy with the parent: %s and children: %s - %s", parentResourceId, str(childNames), str(factoryIds))
+'''
+This is only called by Java hook in designer when the user saves the project.  It is passed all of the resources that have been changed since the last time the 
+project was saved.
+'''
+def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs, stepFactoryIds, childPaths, childNames, childUUIDs, childFactoryIds, db):
+    log.infof("In %s.updateChartHierarcy() updating the steps and hierarchy with the parent: %s and children: %s - %s", __name__, parentResourceId, str(childNames), str(childFactoryIds))
     
     txId = getTxId(db)    
-    print "The transactionId is: ", txId
     
     log.tracef("Steps: %s", str(stepNames))
     log.tracef("Step UUIDs: %s", str(stepUUIDs))
@@ -182,113 +152,187 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
     
     try:
         # Fetch the chart id (the database id)
-        SQL = "select chartId from SfcChart where ChartResourceId = %d" % (parentResourceId)
-        chartId =  system.db.runScalarQuery(SQL, tx=txId)
-        print "The id for chart %s is: %d" % (parentChartPath, chartId)
+        SQL = "select * from SfcChart where ChartResourceId = %d" % (parentResourceId)
+        pds =  system.db.runQuery(SQL, tx=txId)
+        
     
         # There really shouldn't be a way that the chart is not already inserted...
-        if chartId < 0:
-            print "Surprisingly the chart did not already exist..."
+        if len(pds) == 0:
+            log.tracef("The chart did not already exist, creating a new one...")
             SQL = "insert into SfcChart (ChartPath, chartResourceId) values ('%s', %d)" % (parentChartPath, parentResourceId)
             chartId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
-            print "...inserted chart with id: %d" % (chartId)
+            log.tracef("...inserted chart with id: %d", chartId)
+        else:
+            record = pds[0]
+            chartId = record["ChartId"]
+            log.tracef("The id for chart %s is: %d", parentChartPath, chartId)
+            chartPath = record["ChartPath"]
+            if chartPath <> parentChartPath:
+                log.tracef("Updating the chart path for a renamed chart...")
+                SQL = "update SfcChart set ChartPath = '%s' where ChartId = %s" % (parentChartPath, str(chartId))
+                rows = system.db.runUpdateQuery(SQL, tx=txId)
+                log.tracef("...updated %d existing sfcChart", rows)
         
         '''
         Handle the step catalog - we need this so that we can have a recipe editor.
         '''
-        log.infof("------------------")
-        log.infof("Inserting steps...")
-        log.infof("------------------")
+        log.tracef("------------------")
+        log.tracef("Inserting steps...")
+        log.tracef("------------------")
         
-        pds = system.db.runQuery("select StepUUID from sfcStep where ChartId = %d" % (chartId), tx=txId)
-        stepsInDatabase = toList(pds)
+        databaseStepsPds = system.db.runQuery("select * from sfcStep where ChartId = %d" % (chartId), tx=txId)
+        stepsInDatabase = []
+        for record in databaseStepsPds:
+            stepsInDatabase.append(record["StepUUID"])
         
+        updateCntr = 0
+        insertCntr = 0
         for i in range(0, len(stepNames)):
             # Skip connections, notes, etc.
             if str(stepFactoryIds[i]) <> "None":
                 stepTypeId = fetchStepTypeIdFromFactoryId(stepFactoryIds[i], txId)
                 
-                log.tracef("Checking if the step %s exists...", stepUUIDs[i])
-                SQL = "select count(*) from SfcStep where StepUUID = '%s'" % (stepUUIDs[i])
-                cnt = system.db.runScalarQuery(SQL, tx=txId)
-                
-                if cnt == 0:
+                if stepUUIDs[i] in stepsInDatabase:
+                    log.tracef("Step already exists in database, checking if it needs to be updated...")
+                    
+                    for stepRecord in databaseStepsPds:
+                        if stepUUIDs[i] == stepRecord["StepUUID"]:
+                            log.tracef("...found the step in the database list...")
+                            updateIt = False
+                            if stepNames[i] <> stepRecord["StepName"]:
+                                log.tracef("...the name has been changed from %s to %s", stepRecord["StepName"], stepNames[i])
+                                updateIt = True
+                            if chartId <> stepRecord["ChartId"]:
+                                updateIt = True
+                                log.tracef("...the chartId has been changed from %s to %s", str(stepRecord["ChartId"]), str(chartId))
+                            if stepTypeId <> stepRecord["StepTypeId"]:
+                                log.tracef("...the stepType has been changed from %s to %s", str(stepRecord["StepTypeId"]), str(stepTypeId))
+                                updateIt = True
+
+                            if updateIt:
+                                SQL = "update SfcStep set StepName = '%s', StepTypeId = %d, ChartId = %d where StepUUID = '%s'" % (stepNames[i], stepTypeId, chartId, stepUUIDs[i])
+                                rows = system.db.runUpdateQuery(SQL, tx=txId)
+                                log.tracef("...updated %d existing steps", rows)
+                                updateCntr = updateCntr + 1
+                    
+                    stepsInDatabase.remove(stepUUIDs[i])
+                else:
+                    log.tracef("Inserting a new step %s, a %s into the database...", stepNames[i], stepFactoryIds[i])
                     SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepNames[i], stepUUIDs[i], stepTypeId, chartId)
                     stepId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
                     log.tracef("...inserted a %s step with id: %d", stepFactoryIds[i], stepId)
-                else:
-                    SQL = "update SfcStep set StepName = '%s', StepTypeId = %d, ChartId = %d where StepUUID = '%s'" % (stepNames[i], stepTypeId, chartId, stepUUIDs[i])
-                    rows = system.db.runUpdateQuery(SQL, tx=txId)
-                    log.tracef("...updated %d existing steps", rows)
+                    insertCntr = insertCntr + 1
 
-                if stepUUIDs[i] in stepsInDatabase:
-                    stepsInDatabase.remove(stepUUIDs[i])
-            
-        log.infof("...done inserting steps!")
+        log.tracef("...%d steps were inserted...", insertCntr)
+        log.tracef("...%d steps were updated...", updateCntr)
+                
+        log.tracef("Checking for steps to delete from the database that have been deleted from the chart...")
         
-        log.infof("Deleting steps from the database that have been deleted from the chart...")
-        
+        deleteCntr = 0
         for stepUUID in stepsInDatabase:
             SQL = "delete from SfcStep where StepUUID = '%s' and ChartId = %d" % (stepUUID, chartId)
             rows = system.db.runUpdateQuery(SQL, tx=txId)
+            deleteCntr = deleteCntr + rows
             if rows <> 1:
                 log.warnf("...error deleting step <%s> from SfcStep - %d rows were deleted", stepUUID, rows)
             else:
                 log.infof("Step <%s> was successfully deleted", stepUUID)
 
-        log.infof("...done deleting steps!")
+        log.tracef("... %d steps were deleted!", deleteCntr)
         
         '''
         Now handle the chart hierarchy
         '''
-        log.infof("------------------")
-        log.infof("Updating the chart hierarchy...")
-        log.infof("------------------")
+        log.tracef("------------------")
+        log.tracef("Updating the chart hierarchy...")
+        log.tracef("------------------")
         
-        # Start out with a clean hierarchy in the database
-
-        print "Initializing the SFC Hierarchy for parent %d ..." % (chartId)
-        SQL = "Delete from SfcHierarchy where ChartId = %d" % (chartId)
-        rows = system.db.runUpdateQuery(SQL, tx=txId)
-        print "...deleted %i children!" % (rows)
+        # Fetch what is already in the database
+        SQL = "Select * from SfcHierarchyView where ChartId = %d" % (chartId)
+        childrenInDatabasePds = system.db.runQuery(SQL, tx=txId)
+        from ils.common.database import toDictList
+        chidrenInDatabaseList = toDictList(childrenInDatabasePds, [])
+        log.tracef("...found %d children already in the database...", len(chidrenInDatabaseList))
         
-
-        # Make a list of dictionaries from the lists
+        # Make a list of dictionaries from the lists that are currently in the chart
         children = []
         for i in range(0, len(childNames)):
-            child = {"path": childPaths[i], "name": childNames[i], "uuid": childUUIDs[i], "factoryId": factoryIds[i]}
+            child = {"stepName": childNames[i], "childPath": childPaths[i], "uuid": childUUIDs[i], "factoryId": childFactoryIds[i]}
             children.append(child)
                 
-            print "The children from Designer are: ", children
+        log.tracef("The children from Designer are: %s", str(children))
 
+        childInsertCntr = 0
+        childUpdateCntr = 0
         for child in children:
-            print "...Inserting a child into the hierarchy..."
-            stepTypeId = fetchStepTypeIdFromFactoryId(child.get("factoryId"), txId)
-            print "The step Type Id is: ", stepTypeId
-            if stepTypeId == None:
-                log.errorf("Id not found for step type: %s", child.get("factoryId"))
+            log.tracef("Checking stepName: %s, childPath: %s, stepUUID: %s, factoryId: %s...", child["stepName"], child["childPath"], child["uuid"], child["factoryId"])
             
             '''
-            In the normal workflow of creating SFCs, an encapsulation task cannot reference a chart until the referenced
-            chart is created.  We will get into problems when migrating tasks where we import a whole set of charts.
+            Compare the stepName and childPath from the Designer with what is already in the database
             '''
-            from ils.sfc.recipeData.core import fetchChartIdFromChartPath
-            childChartId = fetchChartIdFromChartPath(child.get("path"), txId)
-            print "The Child Chart Id is: ", childChartId
-            if childChartId == None:
-                print "The child chart <%s> does not exist in the chart catalog." % (child.get("path"))
-                log.errorf("Id not found for child chart, it will be created later hopefully,  with path: %s", child.get("path"))
+            insertChild = True
+            for childDatabase in chidrenInDatabaseList:
+                log.tracef("...comparing to %s - %s", childDatabase["StepName"], childDatabase["ChildChartPath"])
+                if child["stepName"] == childDatabase["StepName"]:
+                 
+                    insertChild = False
+                    if child["childPath"] == childDatabase["ChildChartPath"]:
+                        log.tracef("...this child already exists...")
+                    else:
+                        log.tracef("...this child already exists but is calling a different chart...")
+                        childChartId = fetchChartIdFromChartPath(child.get("childPath"), txId)
+                        log.tracef("...the new child chart Id is: %s", str(childChartId))
+                        if childChartId == None:
+                            log.errorf("Id not found for child chart, it will be created later hopefully,  with path: %s", child.get("childPath"))
+                        
+                        else:
+                            stepId = fetchStepIdFromUUID(child.get("uuid"), txId)
+                            SQL = "Update SfcHierarchy set ChildChartId = %d where StepId = %d" % (childChartId, stepId)
+                            system.db.runUpdateQuery(SQL, tx=txId)
+                            log.tracef("...updated %d into sfcHierarchy", stepId) 
+                            childUpdateCntr = childUpdateCntr + 1
+
+                    break
+                
+            if insertChild:            
+                log.tracef("--- Inserting a child into the hierarchy ---")
+
+                stepTypeId = fetchStepTypeIdFromFactoryId(child.get("factoryId"), txId)
+                if stepTypeId == None:
+                    log.errorf("Id not found for step type: %s", child.get("factoryId"))
             
-            if stepTypeId <> None and childChartId <> None:
-                stepId = fetchStepIdFromUUID(child.get("uuid"), txId)
-                SQL = "Insert into SfcHierarchy (StepId, ChartId, ChildChartId) values (%d, %d, %d)" % (stepId, chartId, childChartId)
-                print SQL
-                system.db.runUpdateQuery(SQL, tx=txId)
-                print "...inserted %d into sfcHierarchy" % (stepId)
+                '''
+                In the normal workflow of creating SFCs, an encapsulation task cannot reference a chart until the referenced
+                chart is created.  We will get into problems when migrating tasks where we import a whole set of charts.
+                '''
+                
+                childChartId = fetchChartIdFromChartPath(child.get("childPath"), txId)
+                log.tracef("...the child chart Id is: %s", str(childChartId))
+                if childChartId == None:
+                    log.errorf("Id not found for child chart, it will be created later hopefully,  with path: %s", child.get("childPath"))
+                
+                if stepTypeId <> None and childChartId <> None:
+                    stepId = fetchStepIdFromUUID(child.get("uuid"), txId)
+                    SQL = "Insert into SfcHierarchy (StepId, ChartId, ChildChartId) values (%d, %d, %d)" % (stepId, chartId, childChartId)
+                    system.db.runUpdateQuery(SQL, tx=txId)
+                    log.tracef("...inserted %d into sfcHierarchy", stepId) 
+                    childInsertCntr = childInsertCntr + 1
 
-        log.infof("...completed adjusting the sfcHierarchy!")
-    except:
-        errorTxt = catch("Updating the Chart Hierarchy")
-        log.errorf(errorTxt)
 
+        log.tracef("...inserted %d new children", childInsertCntr)
+        log.tracef("...updated %d children", childUpdateCntr)
         
+        '''
+        Children will be automatically deleted because there is a cascade delete from the  children that are left in the list we fetched from the database.
+        Steps that have been updated to point to a different child will be updated above.
+        '''
+
+        log.tracef("Committing and closing the transaction.")        
+        system.db.commitTransaction(txId)
+        system.db.closeTransaction(txId)
+
+    except:
+        errorTxt = catch("Updating the Chart Hierarchy - rolling back database transactions")
+        log.errorf(errorTxt)
+        system.db.rollbackTransaction(txId)
+        system.db.closeTransaction(txId)

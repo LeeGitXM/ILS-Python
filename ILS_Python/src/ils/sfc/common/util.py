@@ -90,13 +90,6 @@ def substituteProvider(chartProperties, tagPath):
 def isEmpty(str):
     return str == None or str.strip() == ""
 
-def createUniqueId():
-    '''
-    create a unique id
-    '''
-    import uuid
-    return str(uuid.uuid4())
-
 def callMethod(methodPath, stringLiteral=""):
     '''given a fully qualified package.method name, call the method and return the result'''
     lastDotIndex = methodPath.rfind(".")

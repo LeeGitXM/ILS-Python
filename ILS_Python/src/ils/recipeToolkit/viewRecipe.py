@@ -4,8 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
+log = system.util.getLogger("com.ils.recipeToolkit.ui")
 
 # This runs in the client when it receives a message that an automated download message has been received.  This is in response to the Automated download tag
 # receiving a new Grade (a download is being initiated from the DCS) AND the automatedDownload tag of the download trigger UDT is set to FALSE, meaning that the 
@@ -139,8 +138,8 @@ def initialize(rootContainer):
     version = rootContainer.version
 
     # fetch the recipe family
-    from ils.recipeToolkit.fetch import recipeFamily
-    recipeFamily = recipeFamily(familyName)
+    from ils.recipeToolkit.fetch import recipeFamily as fetchRecipeFamily
+    recipeFamily = fetchRecipeFamily(familyName)
 
     status = str(recipeFamily['Status'])
     rootContainer.status = status
@@ -299,6 +298,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     # Parse the tagname from the recipe database to determine the root and the suffix (PV, SP, etc.)
     def parseRecipeTagName(recipeTagName):
     
+        log.tracef("Parsing %s...", recipeTagName)
         if len(recipeTagName) == 0:
             tagRoot = ""
             tagSuffix = ""
@@ -318,7 +318,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
             tagRoot = updateTagName(tagRoot)
             tagName = updateTagName(tagName)
 
-#        print "Input tagname: <%s> split into <%s> <%s>" % (recipeTagName, tagRoot, tagSuffix)
+        log.tracef("...returning %s %s %s", tagRoot, tagSuffix, tagName)
         return tagRoot, tagSuffix, tagName
     #------------------------------------------------------------
     def determineOPCTypeModeAndVal(modeAttribute, modeAttributeValue):
@@ -438,7 +438,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
             
             # I'm not sure we we use the store tag here and not the compare tag??
             storeTag = record['Store Tag']
-            if storeTag != "":
+            if storeTag not in ["", None, "NULL", "null"]:
                 opcServer, scanClass = determineOPCServer(writeLocation, opcServers)
                 
                 if string.upper(opcServer) == 'UNKNOWN':

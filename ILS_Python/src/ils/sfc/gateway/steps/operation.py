@@ -3,8 +3,8 @@ Created on Dec 16, 2015
 
 @author: rforbes
 '''
-from ils.sfc.gateway.util import getStepProperty, getTopChartRunId, handleUnexpectedGatewayError
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger
+
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getStepProperty, getTopChartRunId
 from ils.sfc.common.constants import NAME, MESSAGE_QUEUE
 import system
     

@@ -4,9 +4,8 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-from ils.sfc.gateway.util import getStepProperty, handleUnexpectedGatewayError, getControlPanelId, createWindowRecord, createSaveDataRecord, sendOpenWindow, getStepId
 from ils.sfc.common.constants import COMPUTER, SERVER, FILENAME, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, PRINT_FILE, VIEW_FILE, SHOW_PRINT_DIALOG
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName
+from ils.sfc.gateway.api import getChartLogger, getDatabaseName, handleUnexpectedGatewayError, getStepProperty, getControlPanelId, createWindowRecord, createSaveDataRecord, sendOpenWindow, getStepId
 from ils.sfc.common.util import readFile, isEmpty
     
 def activate(scopeContext, stepProperties, state):  

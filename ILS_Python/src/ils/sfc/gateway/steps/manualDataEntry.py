@@ -9,9 +9,8 @@ import system, string
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
 from ils.common.cast import isFloat, isInteger
-from ils.sfc.gateway.util import getStepId, registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
-    getStepProperty, logStepDeactivated, dbStringForFloat, handleUnexpectedGatewayError, getTopChartRunId
-from ils.sfc.gateway.api import getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject
+from ils.sfc.gateway.api import getStepId, registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
+    getStepProperty, logStepDeactivated, dbStringForFloat, getTopChartRunId, getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88SetWithUnits, s88GetWithUnits
 from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, \
     AUTO_MODE, AUTOMATIC, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
@@ -43,7 +42,9 @@ def activate(scopeContext, stepProperties, state):
             database = getDatabaseName(chartScope)
 
             if autoMode == AUTOMATIC:
+                logger.trace("Executing block in automatic mode...")
                 for row in config.rows:
+                    logger.tracef("...setting %s - %s - %s", row.destination, row.key, row.defaultValue)
                     if string.upper(row.destination) == "TAG":
                         tagPath = "[%s]%s" % (provider, row.key)
                         system.tag.write(tagPath, row.defaultValue)
@@ -53,9 +54,11 @@ def activate(scopeContext, stepProperties, state):
                         s88SetWithUnits(chartScope, stepScope, row.key, row.defaultValue, row.destination, row.units)
                 workDone = True
             else:
+                logger.tracef("Executing block in manual mode...")
                 stepScope[WAITING_FOR_REPLY] = True
                 controlPanelId = getControlPanelId(chartScope)
                 chartRunId = getTopChartRunId(chartScope)
+                logger.tracef("...chartRunId: %s", str(chartRunId))
                 
                 buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
                 if isEmpty(buttonLabel):
@@ -63,14 +66,16 @@ def activate(scopeContext, stepProperties, state):
 
                 position = getStepProperty(stepProperties, POSITION) 
                 scale = getStepProperty(stepProperties, SCALE) 
-                title = getStepProperty(stepProperties, WINDOW_TITLE) 
+                title = getStepProperty(stepProperties, WINDOW_TITLE)
+                logger.tracef("...registering window %s at %s scaled by %s", windowPath, position, str(scale)) 
                 windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
+                
                 stepScope[WINDOW_ID] = windowId
                 stepId = getStepId(stepProperties) 
                 requireAllInputs = getStepProperty(stepProperties, REQUIRE_ALL_INPUTS)
 
                 logger.trace("...inserting Manual Data Entry record without a timeout...")
-                system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, requireAllInputs, complete) values ('%s', %d, 0)" % (windowId, requireAllInputs), database)
+                system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, requireAllInputs, complete) values (%s, %d, 0)" % (str(windowId), requireAllInputs), database)
                 
                 rowNum = 0
                 for row in config.rows:
@@ -119,8 +124,8 @@ def activate(scopeContext, stepProperties, state):
                     lowLimitDbStr = dbStringForFloat(row.lowLimit)
                     highLimitDbStr = dbStringForFloat(row.highLimit)
                     SQL = "insert into SfcManualDataEntryTable (windowId, rowNum, description, value, units, lowLimit, highLimit, dataKey, "\
-                        "destination, targetStepUUID, type, recipeUnits) values ('%s', %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s', '%s')" \
-                        % (windowId, rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, targetStepUUID, valueType, row.units)
+                        "destination, targetStepUUID, type, recipeUnits) values (%s, %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s', '%s')" \
+                        % (str(windowId), rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, targetStepUUID, valueType, row.units)
                     logger.tracef(SQL)
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
@@ -133,7 +138,7 @@ def activate(scopeContext, stepProperties, state):
             windowId = stepScope[WINDOW_ID]
             database = getDatabaseName(chartScope)
             windowId = stepScope[WINDOW_ID]
-            pds=system.db.runQuery("select complete from SfcManualDataEntry where windowId = '%s'" % (windowId), database=database)
+            pds=system.db.runQuery("select complete from SfcManualDataEntry where windowId = %s" % (str(windowId)), database=database)
             if len(pds) != 1:
                 complete = True
             else:
@@ -157,10 +162,15 @@ def cleanup(chartScope, stepProperties, stepScope):
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
-        windowId = stepScope.get(WINDOW_ID, '???')
-        system.db.runUpdateQuery("delete from SfcManualDataEntryTable where windowId = '%s'" % (windowId), database)
-        system.db.runUpdateQuery("delete from SfcManualDataEntry where windowId = '%s'" % (windowId), database)
-        deleteAndSendClose(project, windowId, database)
+        windowId = stepScope.get(WINDOW_ID, None)
+        
+        '''
+        If we were in Automatic mode then there won't be a windowId and there will be nothing to clean up
+        '''
+        if windowId != None:
+            system.db.runUpdateQuery("delete from SfcManualDataEntryTable where windowId = %s" % (str(windowId)), database)
+            system.db.runUpdateQuery("delete from SfcManualDataEntry where windowId = %s" % (str(windowId)), database)
+            deleteAndSendClose(project, windowId, database)
     except:
         chartLogger = getChartLogger(chartScope)
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in manualDataEntry.py', chartLogger)

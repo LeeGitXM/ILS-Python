@@ -67,11 +67,13 @@ def okActionPerformed(event):
             valueOk = False
         if valueOk:
             setRecipeData(targetStepUUID, key, attribute, response, database)
+            system.nav.closeParentWindow(event)
         else:
             system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
     else:
         # return the response as a string
         setRecipeData(targetStepUUID, key, attribute, response, database)
+        system.nav.closeParentWindow(event)
   
 def cancelActionPerformed(event):
     window=system.gui.getParentWindow(event)
