@@ -23,6 +23,7 @@ def gateway(tagProvider, isolationTagProvider):
     createTags("[" + isolationTagProvider + "]")    
     
     resetSelectorTriggers("[" + tagProvider + "]")    
+    log.info("...completed Lab Data Toolkit gateway startup!")
 
 
 # The Lab Selector Value UDT has a trigger tag which acts as a semaphore and needs to be reset on startup

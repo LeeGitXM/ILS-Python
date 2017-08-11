@@ -296,9 +296,10 @@ def resumeChart(event):
     
 def getChartRunId(rootContainer):
     windowId = rootContainer.windowId
+    db = getDatabaseClient()
     SQL = "select chartRunId from sfcWindow where windowId = '%s'" % (windowId)
     print SQL
-    chartRunId = system.db.runScalarQuery(SQL)
+    chartRunId = system.db.runScalarQuery(SQL, database=db)
     return chartRunId
 
 def handleTimer(rootContainer, command):

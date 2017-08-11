@@ -40,7 +40,7 @@ def createGrade(rootContainer):
 
         # Insert rows into GradeDetail - The new grade will have an initial version of 0 
         SQL="INSERT INTO RtGradeDetail(RecipeFamilyId,Grade,ValueId,Version) " \
-                    "SELECT %s, %s, ValueId, 0 FROM RtValueDefinition " \
+                    "SELECT %s, '%s', ValueId, 0 FROM RtValueDefinition " \
                     " WHERE RecipeFamilyID=%s " % (str(familyId), newGrade, str(familyId))
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL,tx=txn)
@@ -64,7 +64,7 @@ def createGrade(rootContainer):
             
             # Insert rows into GradeDetail - The new grade will have an initial version of 0 
             SQL="INSERT INTO RtGradeDetail(RecipeFamilyId,Grade,ValueId,Version,RecommendedValue,LowLimit,HighLimit) " \
-                "SELECT %s, %s, ValueId, 0, RecommendedValue,LowLimit,HighLimit FROM RtGradeDetail " \
+                "SELECT %s, '%s', ValueId, 0, RecommendedValue,LowLimit,HighLimit FROM RtGradeDetail " \
                 " WHERE RecipeFamilyID=%s and Grade='%s' and version=%i" % (str(familyId), newGrade, str(familyId), oldGrade, oldVersion)
             log.trace(SQL)
             rows=system.db.runUpdateQuery(SQL,tx=txn)

@@ -390,10 +390,13 @@ def populateSQCTable(database,families,txId):
     print "   ...committing SQC Limits..."
     system.db.commitTransaction(txId)            
     
-#  Each row describes a kind of setting that is part of a recipe step (sub-recipe).
-def createValueDefinitionInsert(familyid,order,row,txId):
+'''
+Each row describes a kind of setting that is part of a recipe step (sub-recipe).
+Assume every value is a float.  After migration, the engineer can review the data type and change it if necessary.  For the BRCPs, the only string tags are the grade tags.
+'''
+def createValueDefinitionInsert(familyid, order, row, valueTypeId, txId):
     
-    SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,Description,StoreTag,CompareTag,ChangeLevel,ModeAttribute,ModeValue,WriteLocationId) VALUES("
+    SQL = "INSERT INTO RtValueDefinition(ValueTypeId,RecipeFamilyId,PresentationOrder,Description,StoreTag,CompareTag,ChangeLevel,ModeAttribute,ModeValue,WriteLocationId) VALUES(%s," % (str(valueTypeId))
     SQL = SQL+str(familyid)+","+str(order)
  
     if row["DSCR"]==None:
@@ -547,11 +550,12 @@ def populateMasterModifications(database,families,txId):
 # Query the list of system tables and create a table of processing units.
 # Populate the table
 def populateValueDefinitionTable(database,families,txId):
-    import system
-    
     print "Populating RtValueDefinition..."
     # Loop through the full definition tables
     # Insert rows into the combined table
+    
+    floatId = system.db.runScalarQuery("select valueTypeId from RtValueType where valueType = 'Float'")
+    
     values = {}
     rows = 0
     for family in families.keys():
@@ -570,7 +574,7 @@ def populateValueDefinitionTable(database,families,txId):
         if pds != None:
             for row in pds:
                 key = str(familyid)+":"+str(row[0])
-                SQL = createValueDefinitionInsert(familyid,order,row, txId)
+                SQL = createValueDefinitionInsert(familyid, order, row, floatId, txId)
                 pk = system.db.runUpdateQuery(SQL, getKey=True, tx=txId)
                 values[key] = pk
                 order = order+1

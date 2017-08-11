@@ -10,12 +10,11 @@ def activate(scopeContext, stepProperties, state):
 
     try:
         chartScope = scopeContext.getChartScope()
-        print "chartScope: ", chartScope
         queueName = getStepProperty(stepProperties, MESSAGE_QUEUE)
         logger = getChartLogger(chartScope)
         logger.trace("In %s.activate()" % (__name__))
         chartRunId = getTopChartRunId(chartScope)
-        print "The chart run id is: ", chartRunId
+        logger.infof("The chart run id is: %s", str(chartRunId))
         database = getDatabaseName(chartScope)
         system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where chartRunId = '%s'" % (queueName, chartRunId), database)
     except:

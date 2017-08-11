@@ -206,9 +206,6 @@ def cleanup(chartScope, stepProperties, stepScope, logger):
         windowId = stepScope.get(WINDOW_ID, '???')
         system.db.runUpdateQuery("delete from SfcReviewDataTable where windowId = '%s'" % (windowId), database)
         system.db.runUpdateQuery("delete from SfcReviewData where windowId = '%s'" % (windowId), database)
-        project = getProject(chartScope)
         deleteAndSendClose(project, windowId, database)
     except:
-        chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in reviewData.py', chartLogger)
-        
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in reviewData.py', logger)

@@ -5,6 +5,7 @@ Created on Jun 20, 2017
 '''
 
 import system, time
+log = system.util.getLogger("com.ils.dataPump")
 
 '''
 This is called from the client and it runs entirly in the client.  It's main job is to write the dataset in the table to the datapump dataset tag
@@ -12,7 +13,6 @@ and then writ eto the data pump command tag to start the data pump running in th
 '''
 def pumpData(rootContainer):
     tagProvider = rootContainer.getComponent("TagProviderField").text
-    print "The tag provider is: ", tagProvider
 
     # Write the data from the table to a dataset tag
     table = rootContainer.getComponent("Table")
@@ -29,7 +29,6 @@ If the command is PLAY then it will start the data pump which will run continuou
 we reach the end of the dataset.
 '''
 def commandHandler(tagPath, command):
-    print "The player received a command: ", command
     command = command.value
     
     if command == "PLAY":
@@ -37,16 +36,13 @@ def commandHandler(tagPath, command):
 
 
 def player(commandTagpath):
-    print "Starting data pump player..."
+    log.info("Starting data pump player...")
     
     dataPumpPath, tagName, provider = parseTagPath(commandTagpath)
     
-    print "Provider: ", provider
-    print "DataPumpPath: ", dataPumpPath
-    
     ds = system.tag.getTagValue("%s/data" % (dataPumpPath))
     pds = system.dataset.toPyDataSet(ds)
-    print "There are ", len(pds), " rows in the dataset..."
+    log.tracef("There are %d rows in the dataset...", len(pds))
 
     system.tag.writeToTag("%s/simulationState" % (dataPumpPath), "Running")
     
@@ -55,12 +51,10 @@ def player(commandTagpath):
     
     i = 0
     for row in pds:
-        print row
-        
         command = system.tag.getTagValue("%s/command" % (dataPumpPath))
-        print command
+
         if command == "Abort":
-            print "*** ABORTING ***"
+            log.infof("*** ABORTING THE DATAPUMP ***")
             break
 
         system.tag.writeToTag("%s/lineNumber" % (dataPumpPath), i)
@@ -70,10 +64,9 @@ def player(commandTagpath):
                 j = j
             else:
                 tagname = ds.getColumnName(j)
-                print j, ": ", tagname, " = ", val
                 fullTagPath = "[%s]%s" % (provider, tagname)
                 status = system.tag.write(fullTagPath, val)
-                print "Tag: %s, Value: %s, Status: %s" % (fullTagPath, str(val), str(status) )
+                log.tracef("Tag: %s, Value: %s, Status: %s", fullTagPath, str(val), str(status) )
 
             j = j + 1
 
@@ -81,14 +74,12 @@ def player(commandTagpath):
         startTime = system.date.now()
         delay = system.tag.getTagValue("%s/timeDelay" % (dataPumpPath))
         while system.date.addSeconds(startTime, delay) > system.date.now():
-            print "...schnoozing..."
             time.sleep(1)
             delay = system.tag.getTagValue("%s/timeDelay" % (dataPumpPath))
-            
-        print "Waking up at ", system.date.now()        
+
         i = i + 1
 
-    print "Done Pumping!"
+    log.infof("Done Pumping!")
     system.tag.writeToTag("%s/simulationState" % (dataPumpPath), "Idle")
     system.tag.writeToTag("%s/command" % (dataPumpPath), "Stop")
 

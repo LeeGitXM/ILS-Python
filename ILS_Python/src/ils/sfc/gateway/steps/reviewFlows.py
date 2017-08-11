@@ -118,8 +118,9 @@ def activate(scopeContext, stepProperties, state):
         workDone = True
     finally:
         if workDone:
-            cleanup(chartScope, stepScope, stepProperties, logger)
-        return workDone
+            cleanup(chartScope, stepProperties, stepScope, logger)
+
+    return workDone
         
 
 def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
@@ -188,9 +189,7 @@ def cleanup(chartScope, stepProperties, stepScope, logger):
         windowId = stepScope.get(WINDOW_ID, '???')
         system.db.runUpdateQuery("delete from SfcReviewFlowsTable where windowId = '%s'" % (windowId), database)
         system.db.runUpdateQuery("delete from SfcReviewFlows where windowId = '%s'" % (windowId), database)
-        project = getProject(chartScope)
         deleteAndSendClose(project, windowId, database)
     except:
-        chartLogger = getChartLogger(chartScope)
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in reviewData.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in %s.py' % (__name__), logger)
         

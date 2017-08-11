@@ -7,6 +7,7 @@ import system
 from ils.common.windowUtil import clearTable
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
 from ils.common.error import catch
+from ils.common.config import getTagProviderClient
 log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 
 '''
@@ -31,9 +32,11 @@ def internalFrameActivated(rootContainer, db):
 
 def updateSfcTree(rootContainer, db):
     log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+    tagProvider = getTagProviderClient()
+    sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
     txId = getTxId(db)
-    hierarchyPDS = fetchHierarchy(txId)
-    chartPDS = fetchCharts(txId)
+    hierarchyPDS = fetchHierarchy(txId, sfcRecipeDataShowProductionOnly)
+    chartPDS = fetchCharts(txId, sfcRecipeDataShowProductionOnly)
     trees = fetchSfcTree(chartPDS, hierarchyPDS)
     
     chartDict = {}
@@ -77,15 +80,24 @@ def expandRow(tree, chartDict):
     log.tracef("The expanded row is: %s", str(row))
     return row
 
-def fetchCharts(txId):
+def fetchCharts(txId, sfcRecipeDataShowProductionOnly):
     log.infof("Fetching the charts...")
-    SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart order by ChartPath"
+    
+    if sfcRecipeDataShowProductionOnly:
+        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where IsProduction = 1 order by ChartPath"
+    else:
+        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart order by ChartPath"
+        
     pds = system.db.runPrepQuery(SQL, [], tx=txId)
     log.tracef("Fetched %d chart records...", len(pds))
     return pds
 
-def fetchHierarchy(txId):
-    SQL = "select * from SfcHierarchyView order by ChartPath"
+def fetchHierarchy(txId, sfcRecipeDataShowProductionOnly):
+    if sfcRecipeDataShowProductionOnly:
+        SQL = "select * from SfcHierarchyView where IsProduction = 1 order by ChartPath"
+    else:
+        SQL = "select * from SfcHierarchyView order by ChartPath"
+
     pds = system.db.runQuery(SQL, tx=txId)
     return pds
 
@@ -210,7 +222,7 @@ def tooltipFormatter(desc, lineLen=80):
 Update the rightmost pane for a selection in the middle pane.
 '''
 def updateRecipeData(rootContainer, db=""):
-    log.infof("Updating the recipe data table...")
+    log.infof("Updating the recipe data table (%s)...", db)
     txId=getTxId(db)
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")

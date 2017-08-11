@@ -240,7 +240,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                                             'trigger': False}
                     
                 else:
-                    derivedLog.trace("      --- The related data's sample time is NOT within the sample time window! ---")
+                    derivedLog.tracef("      --- The related data's sample time is NOT within the sample time window(%s -> %s)! ---", str(sampleTimeWindowStart), str(sampleTimeWindowEnd))
                     relatedDataIsConsistent = False
             else:
                 derivedLog.error("Unable to find any value for the related data named %s for trigger value %s" % (relatedValueName, valueName))

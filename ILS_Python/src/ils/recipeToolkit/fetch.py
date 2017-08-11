@@ -73,8 +73,9 @@ def details(familyName, grade, version, database = ""):
     familyId = fetchFamilyId(familyName, database)
        
     SQL = "select VD.PresentationOrder, VD.Description, VD.ChangeLevel, VD.ModeAttribute, VD.ModeValue, WL.Alias as WriteLocation, "\
-        " GD.RecommendedValue, GD.HighLimit, GD.LowLimit, VD.StoreTag, VD.CompareTag, VD.ValueId "\
-        " from  RtValueDefinition VD INNER JOIN RtGradeDetail GD ON VD.RecipeFamilyId = GD.RecipeFamilyId "\
+        " GD.RecommendedValue, GD.HighLimit, GD.LowLimit, VD.StoreTag, VD.CompareTag, VD.ValueId, VT.ValueType "\
+        " from  RtValueDefinition VD INNER JOIN RtValueType VT ON VD.ValueTypeId = VT.ValueTypeId "\
+        " INNER JOIN RtGradeDetail GD ON VD.RecipeFamilyId = GD.RecipeFamilyId "\
         " AND VD.ValueId = GD.ValueId LEFT OUTER JOIN TkWriteLocation  WL ON VD.WriteLocationId = WL.WriteLocationId "\
         " where GD.RecipeFamilyId = %s "\
         " and GD.Grade = '%s'" \

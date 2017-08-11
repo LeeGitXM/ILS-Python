@@ -189,17 +189,17 @@ def activate(scopeContext, stepProperties, state):
                 logger.tracef("Completed the initialization phase of PV monitoring")
             
             else:    
-                logger.trace("...monitoring step %s..." % (stepName))
+                logger.trace("(%s) monitoring..." % (stepName))
                 
-                durationLocation = getStepProperty(stepProperties, DATA_LOCATION)
                 durationStrategy = getStepProperty(stepProperties, STRATEGY)
                 if durationStrategy == STATIC:
-                    timeLimitMin = getStepProperty(stepProperties, VALUE) 
+                    timeLimitMin = getStepProperty(stepProperties, VALUE)
                 else:
                     durationKey = getStepProperty(stepProperties, KEY)
+                    durationLocation = getStepProperty(stepProperties, DATA_LOCATION)
                     timeLimitMin = s88Get(chartScope, stepScope, durationKey + ".value", durationLocation)
                     
-                logger.trace("   PV Monitor time limit strategy: %s - minutes: %s" % (durationStrategy, str(timeLimitMin)))
+                logger.tracef("(%s) PV Monitor time limit strategy: %s - minutes: %s", stepName, durationStrategy, str(timeLimitMin))
                     
                 config = stepScope[PV_MONITOR_CONFIG]
                 watchOnly = stepScope[WATCH_ONLY]
@@ -209,7 +209,7 @@ def activate(scopeContext, stepProperties, state):
 
                 # It is possible that this block starts before some other block starts the timer
                 if timerStart == None:
-                    logger.trace("   ...waiting for the timer to start...")
+                    logger.tracef("(%s) waiting for the timer to start...", stepName)
                     complete = False
                     return complete
                 
@@ -221,7 +221,7 @@ def activate(scopeContext, stepProperties, state):
                 extendedDuration = timeLimitMin + maxPersistence # extra time allowed for persistence checks
                 
                 if monitorActiveCount > 0 and ((elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)) or watchOnly:
-                    logger.tracef("Starting a PV monitor pass, (elapsed minutes: %s) ...", str(elapsedMinutes))
+                    logger.tracef("(%s) Starting a PV monitor pass, (elapsed minutes: %s) ...", stepName, str(elapsedMinutes))
            
                     monitorActiveCount = 0
                     persistencePending = False
@@ -236,7 +236,7 @@ def activate(scopeContext, stepProperties, state):
                         if configRow.status == PV_OK:
                             continue
                         
-                        logger.trace('PV monitoring - PV: %s, Target type: %s, Target: %s, Strategy: %s' % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
+                        logger.tracef('(%s) PV: %s, Target type: %s, Target: %s, Strategy: %s', stepName, configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy)
     
                         pvKey = configRow.pvKey
                         dataType = s88GetFromStep(targetStepUUID, pvKey + "." + RECIPE_DATA_TYPE, database)
@@ -255,20 +255,20 @@ def activate(scopeContext, stepProperties, state):
                         monitorActiveCount = monitorActiveCount + 1
                         #TODO: how are we supposed to know about a download unless we have an Output??
                         if configRow.isOutput and not configRow.isDownloaded:
-                            logger.trace("The item is an output and it hasn't been downloaded...")
+                            logger.tracef("(%s) The item is an output and it hasn't been downloaded...", stepName)
                             downloadStatus = s88Get(chartScope, stepScope, targetKey + "." + DOWNLOAD_STATUS, recipeDataLocation)
                             configRow.isDownloaded = (downloadStatus == STEP_SUCCESS or downloadStatus == STEP_FAILURE)
                             if configRow.isDownloaded:
-                                logger.trace("...the download just completed!")
+                                logger.tracef("(%s) the download just completed!", stepName)
                                 configRow.downloadTime = elapsedMinutes
             
                         # Display the PVs as soon as the block starts running, even before the SP has been written
                         tagPath = getMonitoredTagPath(targetStepUUID, pvKey, providerName, database)
                         qv = system.tag.read(tagPath)
                         
-                        logger.trace("The present qualified value for %s is: %s-%s" % (tagPath, str(qv.value), str(qv.quality)))
+                        logger.tracef("(%s) The present qualified value for %s is: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                         if not(qv.quality.isGood()):
-                            logger.warn("The monitored value is bad: %s-%s" % (str(qv.value), str(qv.quality)))
+                            logger.warnf("(%s) The monitored value is bad: %s-%s", stepName, str(qv.value), str(qv.quality))
                             continue
     
                         pv=qv.value
@@ -276,12 +276,12 @@ def activate(scopeContext, stepProperties, state):
     
                         # If we are configured to wait for the download and it hasn't been downloaded, then don't start to monitor
                         if configRow.download == WAIT and not configRow.isDownloaded:
-                            logger.trace('   skipping because this output is designated to wait for a download and it has not been downloaded')
+                            logger.tracef("(%s) skipping because this output is designated to wait for a download and it has not been downloaded", stepName)
                             continue
                        
                         # if we're just reading for display purposes, we're done with this row
                         if configRow.strategy != MONITOR:
-                            logger.trace('   skipping because the strategy is NOT monitor!')
+                            logger.tracef('(%s) skipping because the strategy is NOT monitor!', stepName)
                             continue
                         
                         target=configRow.targetValue
@@ -317,14 +317,14 @@ def activate(scopeContext, stepProperties, state):
                                 
                         # check dead time - assume that immediate writes coincide with starting the timer.      
                         if configRow.download == IMMEDIATE:
-                            logger.tracef("Using the timer elapsed minutes (%s) to check if the dead time (%s) has been exceeded.", str(elapsedMinutes), str(configRow.deadTime) )
+                            logger.tracef("(%s) Using the timer elapsed minutes (%s) to check if the dead time (%s) has been exceeded.", stepName, str(elapsedMinutes), str(configRow.deadTime) )
                             deadTimeExceeded = elapsedMinutes > configRow.deadTime
                         else:
-                            logger.tracef("Setting the reference time as the download time")
+                            logger.tracef("(%s) Setting the reference time as the download time", stepName)
                             referenceTime = configRow.downloadTime
                             deadTimeExceeded = (elapsedMinutes - referenceTime) > configRow.deadTime 
 
-                        logger.tracef("Checking if the dead time has been exceeded: %s", str(deadTimeExceeded))
+                        logger.tracef("(%s) Checking if the dead time has been exceeded: %s", stepName, str(deadTimeExceeded))
 
                         # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
                         # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
@@ -349,24 +349,24 @@ def activate(scopeContext, stepProperties, state):
                             # Set the setpoint status to PROBLEM - this cannot be reset
                             s88Set(chartScope, stepScope, targetKey + "." + SETPOINT_STATUS, SETPOINT_PROBLEM, recipeDataLocation)
             
-                        logger.trace("  Status: %s" % configRow.status)  
+                        logger.tracef("(%s) Status: %s", stepName, configRow.status)  
                         s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_STATUS, configRow.status, recipeDataLocation)        
                 
-                logger.trace("Checking end conditions...")
+                logger.tracef("(%s) Checking end conditions...", stepName)
                 if monitorActiveCount == 0:
-                    logger.info("The PV monitor is finished because there is nothing left to monitor...")
+                    logger.infof("(%s) The PV monitor is finished because there is nothing left to monitor...", stepName)
                     complete = True
                 
                 # If the maximum time has been exceeded then count how many items did not complete their monitoring, aka Timed-Out 
                 if ((elapsedMinutes > timeLimitMin) or (persistencePending and elapsedMinutes > extendedDuration)) and not(watchOnly):
-                    logger.info("The PV monitor is finished because the max run time has been reached...")
+                    logger.infof("(%s) The PV monitor is finished because the max run time has been reached...", stepName)
                     complete = True
                 
                 if complete:
-                    print "The PV Monitoring step is done, counting up the number of timeouts..."
+                    logger.tracef("(%s) The PV Monitoring step is done, counting up the number of timeouts...", stepName)
                     numTimeouts = 0
                     for configRow in config.rows:
-                        logger.trace("...checking row whose status is: %s" % (configRow.status))
+                        logger.tracef("(%s) checking row whose status is: %s", stepName, configRow.status)
                         targetType = configRow.targetType
                         if targetType == SETPOINT:
                             targetKey = configRow.targetNameIdOrValue
@@ -384,10 +384,10 @@ def activate(scopeContext, stepProperties, state):
                     errorCountKey = getStepProperty(stepProperties, ERROR_COUNT_KEY)
                     errorCountMode = getStepProperty(stepProperties, ERROR_COUNT_MODE)
                     
-                    print "Number of timeouts:  ", numTimeouts
+                    logger.tracef("(%s) Number of timeouts:  %s", stepName, str(numTimeouts))
                     
                     if errorCountScope == CHART_SCOPE:
-                        print "Setting a chart scope error counter for a PV monitor step..."
+                        logger.tracef("(%s) Setting a chart scope error counter for a PV monitor step...", stepName)
                         if errorCountMode == COUNT_ABSOLUTE:
                             chartScope[errorCountKey] = numTimeouts
                         else:
@@ -396,18 +396,18 @@ def activate(scopeContext, stepProperties, state):
                     
                     elif errorCountScope == STEP_SCOPE:
                         ''' For stepScope counters the mode is implicitly incremental because the data is transient '''
-                        print "Setting a step scope error counter for a PV monitor step..."
+                        logger.tracef("(%s) Setting a step scope error counter for a PV monitor step...", stepName)
                         stepScope[errorCountKey] = numTimeouts
                     
                     elif errorCountScope in [LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE]:
-                        print "Setting a recipe data scope (%s) error counter for a PV monitor step..." % (errorCountScope)
+                        logger.tracef("(%s) Setting a recipe data scope (%s) error counter for a PV monitor step...", stepName, errorCountScope)
                         if errorCountMode == COUNT_ABSOLUTE:
                             s88Set(chartScope, stepScope, errorCountKey + ".Value", numTimeouts, errorCountScope)
                         else:
                             cnt = s88Get(chartScope, stepScope, errorCountKey + ".Value", errorCountScope)
                             s88Set(chartScope, stepScope, errorCountKey + ".Value", numTimeouts + cnt, errorCountScope)
     
-                    logger.info("...there were %i PV monitoring timeouts!" % (numTimeouts))
+                    logger.infof("(%s) there were %d PV monitoring timeouts!", stepName, numTimeouts)
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorPV.py', logger)
     finally:
@@ -415,6 +415,6 @@ def activate(scopeContext, stepProperties, state):
         pass
     
     if complete:
-        logger.info("...PV Monitoring step %s is done!" % (stepName))
+        logger.info("** (%s) PV Monitoring is done! **" % (stepName))
         
     return complete

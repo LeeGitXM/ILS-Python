@@ -44,7 +44,7 @@ def activate(scopeContext, stepProperties, state):
             if autoMode == AUTOMATIC:
                 logger.trace("Executing block in automatic mode...")
                 for row in config.rows:
-                    logger.tracef("...setting %s - %s - %s", row.destination, row.key, row.defaultValue)
+                    logger.tracef("...setting %s - %s - %s - %s", row.destination, row.key, row.defaultValue, str(row.units))
                     if string.upper(row.destination) == "TAG":
                         tagPath = "[%s]%s" % (provider, row.key)
                         system.tag.write(tagPath, row.defaultValue)

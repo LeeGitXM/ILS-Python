@@ -3,15 +3,13 @@ Created on Sep 10, 2014
 
 @author: Pete
 '''
-import system
-
+import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit")
 
 
 # Create a recipe data tag
 def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass, itemId, conditionalDataType):
-    import string
 
     #----------------------------------------------------
     # The permissive may actually need a suffix of .MODEATTR /enum
@@ -27,7 +25,7 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
     tagExists = system.tag.exists(tagPath)
     
     if tagExists:
-#        print tagName, " already exists!"
+        log.tracef("%s already exists!", tagPath)
         pass
     else:
         log.info("Creating a %s, Name: %s, Path: %s, Item Id: %s, Data Type: %s, Scan Class: %s, Server: %s, Conditional Data Type: %s" % (UDTType, tagName, tagPath, itemId, dataType, scanClass, serverName, conditionalDataType))
@@ -35,6 +33,11 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
             system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
                 attributes={"UDTParentType":UDTType}, 
                 parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass})
+            
+            # Now do any additional overrides that may be necessary - Remember the UDTs are floats, so if we are making int or string tags, I'll need to override the UDT
+            if string.lower(dataType) == "string":
+                log.info("Overriding the value datatype...")
+                system.tag.editTag(tagPath=tagPath, overrides={"value":{"DataType":"String"}})
         else:
             permissiveItemId = morphItemIdPermissive(itemId)
             system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
@@ -46,10 +49,10 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
                 log.info("Overriding the permissive tag datatype...")
                 system.tag.editTag(tagPath=tagPath, overrides={"permissive":{"DataType":"String"}})
 
-    # Now do any additional overrides that may be necessary - Remember the UDTs are floats, so if we are making int or string tags, I'll need to override the UDT
-    if string.lower(dataType) == "string":
-        log.info("Overriding the tag datatype...")
-        system.tag.editTag(tagPath=tagPath, overrides={"tag":{"DataType":"String"}})
+            # Now do any additional overrides that may be necessary - Remember the UDTs are floats, so if we are making int or string tags, I'll need to override the UDT
+            if string.lower(dataType) == "string":
+                log.info("Overriding the value datatype...")
+                system.tag.editTag(tagPath=tagPath, overrides={"value":{"DataType":"String"}})
 
 
 # Create a recipe detail UDT

@@ -4,6 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
+from ils.recipeToolkit.tagFactory import createUDT
 log = system.util.getLogger("com.ils.recipeToolkit.ui")
 
 # This runs in the client when it receives a message that an automated download message has been received.  This is in response to the Automated download tag
@@ -92,7 +93,7 @@ def showMidRunRecipeCallback(recipeFamilyName):
 
 
 def initialize(rootContainer):
-    print "In project.recipe.viewRecipe.initialize()..."
+    log.infof("In project.recipe.viewRecipe.initialize()...")
 
     #=============================================================================================
     # This function is definitely a workaround.  When I try to bind my custom color properties directly to a tag, they 
@@ -130,8 +131,8 @@ def initialize(rootContainer):
         table.setPropertyValue("recipeMinimumRelativeDifference", val)
     #=======================================================================================
         
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
+    from ils.common.config import getTagProviderClient
+    provider = getTagProviderClient()
     rootContainer.provider = provider
     familyName = rootContainer.familyName
     grade = rootContainer.grade
@@ -144,7 +145,7 @@ def initialize(rootContainer):
     status = str(recipeFamily['Status'])
     rootContainer.status = status
     timestamp = recipeFamily['Timestamp']
-    print "Status:", status, timestamp
+    log.tracef( "Status: %s - %s", status, str(timestamp))
     rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/yy HH:mm")
 
     # Set the background color based on the status 
@@ -185,7 +186,7 @@ def initialize(rootContainer):
 # Reset all of the recipe detail objects.  This really isn't necessary for the detail objects that
 # were newly created, but is necessary for ones that were existing
 def resetRecipeDetails(provider, familyName):
-    print "Resetting recipe details..."
+    log.infof("Resetting recipe details...")
             
     tags = []
     vals = []
@@ -216,7 +217,7 @@ def update(rawData):
 
     headers = ['Descriptor', 'Pend', 'Stor', 'Comp', 'Recc', 'High Limit', 'Low Limit', 'Reason',\
         'Store Tag', 'Comp Tag', 'Change Level', 'Write Location', 'Step', 'Mode Attribute', \
-        'Mode Attribute Value', 'Download Type', 'Download', 'Data Type', 'Plan Status', 'Download Status', 'ValueId']
+        'Mode Attribute Value', 'Download Type', 'Download', 'Data Type', 'Plan Status', 'Download Status', 'ValueId', 'ValueType']
         
     data = []
     for record in rawData:
@@ -228,6 +229,7 @@ def update(rawData):
         dataType = ''
         downloadStatus = ''
         planStatus = ''
+        valueType = record['ValueType']
         
         if descriptor != None:
             pend = record['RecommendedValue']
@@ -262,7 +264,8 @@ def update(rawData):
             reason = ''
 
         vals = [descriptor, pend, stor, comp, recommendedValue, highLimit, lowLimit, reason, storeTag, compareTag, changeLevel, \
-            writeLocation, step, modeAttribute, modeValue, downloadType, download, dataType, planStatus, downloadStatus, valueId]
+            writeLocation, step, modeAttribute, modeValue, downloadType, download, dataType, planStatus, downloadStatus, valueId, valueType]
+
         data.append(vals)
 #        print vals
 
@@ -281,7 +284,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     def fetchOPCServers(database):
         SQL = "select * from TkWriteLocation"
         pds = system.db.runQuery(SQL, database)
-        print "Fetched ", len(pds), " OPC servers..."
+        log.tracef("Fetched %d OPC servers...", len(pds))
         return pds
     #------------------------------------------------------------
     # Given an alias for a write location from the recipe database and the alias/OPC Server map,
@@ -341,17 +344,9 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
         return modeAttribute, modeAttributeValue
     #------------------------------------------------------------
     # Determine if the recommended is a float or a text - everything is stored in the table as text.
-    def determineTagClass(recc, modeAttribute, modeAttributeValue, specialValueNAN):
-    
-        try:
-            val = float(recc)
-            isText = False
-            dataType = 'Float'
-        except:
-            isText = True
-            dataType = 'String'
+    def determineTagClass(recc, valueType, modeAttribute, modeAttributeValue, specialValueNAN):
 
-        if isText:
+        if valueType == 'String':
             if modeAttribute != "":
                 className = "OPC Conditional Output"
                 if modeAttributeValue != specialValueNAN:
@@ -375,10 +370,10 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
 
 #        print "The tag class is: %s (%s - %s - %s)" % (className, recc, modeAttribute, modeAttributeValue)
         
-        return className, dataType, conditionalDataType
+        return className, conditionalDataType
     #------------------------------------------------------------
 
-    print "Creating OPC recipe tags..."
+    log.tracef("Creating OPC recipe tags...")
     
     tags = []
     recipeDetailTagNames = []
@@ -387,8 +382,8 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     localWriteAlias = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/localWriteAlias").value
     itemIdPrefix = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/itemIdPrefix").value
     
-    print "Special NAN Value: ", specialValueNAN
-    print "Local G2 Alias: ", localWriteAlias
+    log.tracef("Special NAN Value: %s", str(specialValueNAN))
+    log.tracef("Local G2 Alias: %s", str(localWriteAlias))
     
     # There needs to be at least one OPC write alias or nothing will work!
     opcServers = fetchOPCServers(database)
@@ -405,12 +400,13 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
         step = record['Step']
         changeLevel = record['Change Level']
         writeLocation = record['Write Location']
+        valueType = record['ValueType']
     
-#       print "\nStep: ", step, writeLocation
+        log.tracef("--- Step: %s - %s ---", str(step), writeLocation)
         downloadType = "Skip"
         dataType = ''
         if string.upper(str(writeLocation)) == string.upper(str(localWriteAlias)):
-#           print "Handling a local tag"
+            log.tracef("Handling a local tag")
             downloadType = "Immediate"
 
             tagName = record['Store Tag']       
@@ -420,7 +416,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
             browseTags = system.tag.browseTags(parentPath=tagPath, tagPath="*"+tagName)
             
             if len(browseTags) == 0:
-                print "The tag %s does not exist" % (tagName)
+                log.tracef("The tag %s does not exist", tagName)
                 dataType = "Float"
             else:
                 browseTag = browseTags[0]
@@ -431,7 +427,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                     dataType = "Float"
                 
         elif writeLocation != "" and writeLocation != None:
-#            print "Handling an OPC tag"
+            log.tracef("Handling an OPC tag")
             modeAttribute = record['Mode Attribute']
             modeAttributeValue = record['Mode Attribute Value']
             recc = record['Recc']
@@ -450,14 +446,14 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                 # Use the modeAttribute, modeAttributeValue and recc to determine the class of tag
                 tagRoot, tagSuffix, tagName = parseRecipeTagName(storeTag)
                 modeAttribute, modeAttributeValue = determineOPCTypeModeAndVal(modeAttribute, modeAttributeValue)
-                UDTType, dataType, conditionalDataType = determineTagClass(recc, modeAttribute, modeAttributeValue, specialValueNAN)
-#                print "The OPC server is: ", opcServer, " and class name (UDT) is: ", UDTType
+                UDTType, conditionalDataType = determineTagClass(recc, valueType, modeAttribute, modeAttributeValue, specialValueNAN)
+                log.tracef("The OPC server is: %s and class name (UDT) is: %s", opcServer,UDTType)
                 itemId = itemIdPrefix + storeTag
 
                 path = "/Recipe/" + recipeKey
-                from ils.recipeToolkit.tagFactory import createUDT
+
                 # The tag factory will check if the tag already exists
-                createUDT(UDTType, provider, path, dataType, tagName, opcServer, scanClass, itemId, conditionalDataType)
+                createUDT(UDTType, provider, path, valueType, tagName, opcServer, scanClass, itemId, conditionalDataType)
 
                 # The tags list list all of the tags that are required for this recipe.  It will be used
                 # later to determine which tags are no longer required. 

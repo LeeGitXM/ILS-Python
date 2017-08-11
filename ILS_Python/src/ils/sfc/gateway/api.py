@@ -13,22 +13,31 @@ from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
 from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider
+from ils.sfc.client.windows.controlPanel import getControlPanelIdForChartRunId
 NEWLINE = '\n\r'
 logger=system.util.getLogger("com.ils.sfc.gateway.api")
 
 
+'''
+This is called from the gateway by a running chart, it does not have a window handle or rootContainer.  In fact there may not be 
+a window.  Display a message on the control panel
+'''
 def addControlPanelMessage(chartProperties, message, priority, ackRequired):
-    '''display a message on the control panel'''    
-    print "Adding a control panel message"
     escapedMessage = escapeSingleQuotes(message)
     chartRunId = getTopChartRunId(chartProperties)
     database = getDatabaseName(chartProperties)
+    controlPanelId=getControlPanelIdForChartRunId(chartRunId, database)
     
-    sql = ("insert into SfcControlPanelMessage (chartRunId, message, priority, createTime, ackRequired) "\
-           "values ('%s','%s','%s',getdate(),%d)") % (chartRunId, escapedMessage, priority, boolToBit(ackRequired) )
+    if controlPanelId == None:
+        msgId = None
+        print "Unable to insert a control panel message because the control panel was not found, hopefully because we are in test mode."
+    else:
+        SQL = "insert into SfcControlPanelMessage (controlPanelId, message, priority, createTime, ackRequired) "\
+           "values (%s,'%s','%s',getdate(),%d)" % (str(controlPanelId), escapedMessage, priority, boolToBit(ackRequired) )
+        msgId = system.db.runUpdateQuery(SQL, database, getKey=True)
 
-    msgId = system.db.runUpdateQuery(sql, database, getKey=True)
     return msgId
+
 
 def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''

@@ -8,14 +8,16 @@ import system, string
 from ils.common.cast import toBit
 from ils.common.error import catch
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
+from ils.common.config import getDatabaseClient
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, RECIPE, SIMPLE_VALUE, TIMER
 
     
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
-def internalFrameOpened(rootContainer, db=""):
-    print "In internalFrameOpened"
+def internalFrameOpened(rootContainer):
+    db = getDatabaseClient()
+    print "In internalFrameOpened, db: ", db
     rootContainer.initialized = False
     
     recipeDataId = rootContainer.getPropertyValue("recipeDataId")
@@ -767,9 +769,10 @@ def addUnselectionChoice(combo):
     combo.data = ds
 
 
-def saveSimpleValue(rootContainer, db=""):
+def saveSimpleValue(rootContainer):
     print "Saving a simple value"
 
+    db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     key = rootContainer.getComponent("Key").text
@@ -850,9 +853,10 @@ def saveSimpleValue(rootContainer, db=""):
     
     print "Done!"
 
-def saveInput(rootContainer, db=""):
+def saveInput(rootContainer):
     print "Saving an Input"
 
+    db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     key = rootContainer.getComponent("Key").text
@@ -914,9 +918,10 @@ def saveInput(rootContainer, db=""):
     print "Done!"
 
 
-def saveOutput(rootContainer, db=""):
+def saveOutput(rootContainer):
     print "Saving an Output"
 
+    db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     key = rootContainer.getComponent("Key").text
@@ -1017,9 +1022,10 @@ def saveOutput(rootContainer, db=""):
     print "Done!"
 
 
-def saveTimerValue(rootContainer, db=""):
+def saveTimerValue(rootContainer):
     print "Saving a timer value"
 
+    db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     key = rootContainer.getComponent("Key").text
@@ -1069,9 +1075,10 @@ def saveTimerValue(rootContainer, db=""):
     
     print "Done!"
 
-def saveRecipe(rootContainer, db=""):
+def saveRecipe(rootContainer):
     print "Saving a recipe"
 
+    db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     key = rootContainer.getComponent("Key").text
@@ -1136,9 +1143,10 @@ def saveRecipe(rootContainer, db=""):
 '''
 This code is shared between an array and a Keyed array, there are seperate containers on the window.
 '''
-def saveArray(rootContainer, db=""):
+def saveArray(rootContainer):
     print "Saving an array...."
 
+    db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     key = rootContainer.getComponent("Key").text
@@ -1233,9 +1241,10 @@ def saveArray(rootContainer, db=""):
     
     print "Done!"
 
-def saveMatrix(rootContainer, db=""):
+def saveMatrix(rootContainer):
     print "Saving an matrix...."
 
+    db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     key = rootContainer.getComponent("Key").text    

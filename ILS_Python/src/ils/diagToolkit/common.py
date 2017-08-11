@@ -466,6 +466,15 @@ def fetchPostForApplication(application, database=""):
     return post
 
 
+# Fetch the post for an application
+def fetchNotificationStrategy(application, database=""):
+    SQL = "select NotificationStrategy, ClientId from DtApplication where ApplicationName = '%s' " % (application)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    record = pds[0]
+    return record["NotificationStrategy"], record["ClientId"]
+
+
 def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
     log.trace("Updating the Bound Recommendation percent")
     pds=fetchRecommendationsForOutput(quantOutputId, database)

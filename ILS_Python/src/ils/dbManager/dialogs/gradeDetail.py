@@ -39,14 +39,15 @@ def requery(component):
     table = container.getComponent("DatabaseTable")
     whereExtension = getWhereExtension(container)
     SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,GD.Grade,VD.ValueId,VD.PresentationOrder, "\
-        " GD.Version,GM.Active,VD.Description,GD.RecommendedValue,GD.LowLimit,GD.HighLimit "\
-        " FROM RtRecipeFamily F, RtGradeMaster GM, RtGradeDetail GD, RtValueDefinition VD "\
+        " GD.Version,GM.Active,VD.Description,GD.RecommendedValue,GD.LowLimit,GD.HighLimit, VT.ValueType "\
+        " FROM RtRecipeFamily F, RtGradeMaster GM, RtGradeDetail GD, RtValueDefinition VD, RtValueType VT "\
         " WHERE GD.RecipeFamilyId = F.RecipeFamilyId "\
         " AND GM.RecipeFamilyId = F.RecipeFamilyId "\
         " AND VD.RecipeFamilyId = F.RecipeFamilyId "\
         " AND GD.Grade = GM.Grade "\
         " AND GD.Version = GM.Version "\
         " AND GD.ValueId = VD.ValueId %s "\
+        " AND VD.ValueTypeId = VT.ValueTypeId "\
         " ORDER BY F.RecipeFamilyName,GM.Grade,VD.PresentationOrder,GM.Version" % (whereExtension)
     log.trace(SQL)
     
@@ -100,11 +101,19 @@ def update(table,row,colname,value):
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     familyid = ds.getValueAt(row,"RecipeFamilyId")
-    gradeid= ds.getValueAt(row,"Grade")
-    version= ds.getValueAt(row,"Version")
-    vid= ds.getValueAt(row,"ValueId")
+    gradeid = ds.getValueAt(row,"Grade")
+    version = ds.getValueAt(row,"Version")
+    vid = ds.getValueAt(row,"ValueId")
+    valueType = ds.getValueAt(row,"ValueType")
     try:
-        val = float(value)
+        if valueType == "Float":
+            msg = "Value must be a floating point number."
+            val = float(value)
+        elif valueType == "Integer":
+            msg = "Value must be a floating point number."
+            val = int(value)
+
+        msg = "Database Error."
         SQL = "UPDATE RtGradeDetail SET %s = '%s' " \
             " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %i and ValueId = %i" \
             % (colname, str(value), familyid, str(gradeid), version, vid)
@@ -112,7 +121,6 @@ def update(table,row,colname,value):
         rows = system.db.runUpdateQuery(SQL,tx=txn)
         log.trace("Updated %i rows" % (rows))
     except:
-        msg = "Value must be a floating point number."
         system.gui.warningBox(msg)
         ds = system.dataset.setValue(ds,row,colname,'')
         table.data = ds

@@ -33,6 +33,7 @@ def createTags(tagProvider):
 
     data.append([path, "sfcWriteEnabled", "Boolean", "True"])
     data.append([path, "sfcRecipeDataMigrationEnabled", "Boolean", "False"])
+    data.append([path, "sfcRecipeDataShowProductionOnly", "Boolean", "True"])
           
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

@@ -5,4 +5,4 @@ Created on Dec 31, 2014
 '''
 
 def version():
-    return "0.1r21", "Jul7 7, 2016"
+    return "0.1 r22", "August 11, 2017"

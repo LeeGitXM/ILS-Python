@@ -34,7 +34,9 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
         isolationFlag = 0
     
     db = getDatabaseClient()
-    updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d where controlPanelId = %s" % (runId, originator, project, isolationFlag, str(controlPanelId))
+    updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d, "\
+        "EnableCancel = 1, EnablePause = 1, EnableReset = 1, EnableResume = 1, EnableStart = 1 "\
+        "where controlPanelId = %s" % (runId, originator, project, isolationFlag, str(controlPanelId))
     system.db.runUpdateQuery(updateSql, database=db)
     return runId
 

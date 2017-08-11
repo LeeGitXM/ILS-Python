@@ -15,7 +15,7 @@ import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.io.client import writeWithNoChecks, writeRecipeDetails
-from ils.common.config import getTagProvider
+from ils.common.config import getTagProvider, getTagProviderClient
 log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 
 def automatedDownloadHandler(tagPath, grade):

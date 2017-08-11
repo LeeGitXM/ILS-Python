@@ -10,7 +10,7 @@ Created on Sep 12, 2014
 #
 import system, string
 import system.ils.blt.diagram as scriptingInterface
-from ils.diagToolkit.common import fetchPostForApplication
+from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.common import insertApplicationQueueMessage
 from ils.constants.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
@@ -69,6 +69,18 @@ def notifier(project, post, messageHandler, payload, database):
     #----------------------------------------------------------------------------------------------------------------      
     system.util.invokeAsynchronous(work)
 
+'''
+The notifies a specific client to open the setpoint spreadsheet.  It was implemented specifically for Rate Change where the user presses a button on the 
+Review Data window to trigger the download, and then we want the Setpoint spredsheet to come up on that window as fast as possible without the loud workspace.
+'''
+def notififySpecificClientToOpenSpreadsheet(project, post, applicationName, clientId, database, provider):
+    print "Notifying..."
+    messageHandler="consoleManager"
+    payload={'type':'openSpreadsheetForSpecificClient', 'application':applicationName, 'post': post, 
+            'database':database, 'provider':provider, 'gatewayDatabase':database}
+    system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientId)
+
+#handleOpenSpreadsheetForSpecificClientNotification
 
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
@@ -197,16 +209,27 @@ def _scanner(database, tagProvider):
             # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
             # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
             post=fetchPostForApplication(applicationName, database)
+            notificationStrategy, clientId = fetchNotificationStrategy(applicationName, database)
             
-#            if activeOutputs > 0:
-            '''
-            Changed on 4/6/17 to notify even when there are no active outputs to fix problem where a FD cleared while the setpoint spreadsheet is open, but before it was
-            acted upon.
-            '''
-            notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database, provider=provider)
-
-            if postTextRecommendation:
-                notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
+            if notificationStrategy == "ocAlert":
+    #            if activeOutputs > 0:
+                '''
+                Changed on 4/6/17 to notify even when there are no active outputs to fix problem where a FD cleared while the setpoint spreadsheet is open, but before it was
+                acted upon.
+                '''
+                notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database, provider=provider)
+    
+                if postTextRecommendation:
+                    notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
+            elif notificationStrategy == "clientId":
+                if activeOutputs > 0:
+                    print "Send a message to ", clientId
+                    notififySpecificClientToOpenSpreadsheet(projectName, post, applicationName, clientId, database, provider)
+                else:
+                    print "Skipping notification because there are no active outputs"
+            else:
+                log.errorf("ERROR: Unknown notification strategy <%s>", notificationStrategy)
+                
 
     log.infof("...done managing for database: %s!", database)
 

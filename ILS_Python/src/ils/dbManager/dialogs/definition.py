@@ -37,9 +37,11 @@ def requery(component):
     table = container.getComponent("DatabaseTable")
     whereExtension = getWhereExtension()
     print "The where extension was: ", whereExtension
+        
     SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,VD.PresentationOrder,VD.ValueId, "\
-        " VD.Description,VD.StoreTag,VD.CompareTag,VD.ChangeLevel,VD.ModeAttribute,VD.ModeValue, WL.Alias"\
+        " VD.Description,VD.StoreTag,VD.CompareTag,VD.ChangeLevel,VD.ModeAttribute,VD.ModeValue, WL.Alias, VT.ValueType"\
         " FROM RtValueDefinition VD INNER JOIN "\
+        " RtValueType VT ON VT.ValueTypeId = VD.ValueTypeId INNER JOIN "\
         " RtRecipeFamily F ON F.RecipeFamilyId = VD.RecipeFamilyId LEFT OUTER JOIN "\
         " TkWriteLocation WL ON WL.WriteLocationId = VD.WriteLocationId "\
         " %s ORDER BY F.RecipeFamilyName,VD.PresentationOrder" % (whereExtension)
@@ -201,10 +203,14 @@ def update(table,row,colname,value):
     familyid = ds.getValueAt(row,"RecipeFamilyId")
     pid = ds.getValueAt(row,"PresentationOrder")
     
-    # The Alias column requires a lookup
+    # The Alias and valueType columns requires a lookup
     if colname == "Alias":
         colname = "WriteLocationId"
         value = system.db.runScalarQuery("select WriteLocationId from TkWriteLocation where Alias = '%s'" % (value))
+
+    elif colname == "ValueType":
+        colname = "ValueTypeId"
+        value = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = '%s'" % (value))
 
     SQL = "UPDATE RtValueDefinition SET "+colname+" = '"+str(value)+"'"
     SQL = SQL+" WHERE RecipeFamilyId="+str(familyid)+" AND PresentationOrder="+str(pid)

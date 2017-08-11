@@ -75,6 +75,22 @@ def openSetpointSpreadsheetCallback(post):
     if noTextRecommendations and noQuantRecommendations:
         system.gui.messageBox("There are no recommendations pending (text or quant).", " ")
 
+
+'''
+The purpose of this notification handler is to handle directly opening the setpoint spreadsheet
+for Rate Change specifically.
+'''
+def handleOpenSpreadsheetForSpecificClientNotification(payload):
+    print "-----------------------"
+    print "In %s.handleOpenSpreadsheetForSpecificClientNotification with %s" % (__name__, str(payload))
+    
+    post=payload.get("post","")
+                    
+    system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'post': post})
+    system.nav.centerWindow('DiagToolkit/Setpoint Spreadsheet')
+
+
+
 '''
 The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 
 change in a FD / Recommendation.  The idea is that the gateway will send a message to all clients.  The payload of the 
