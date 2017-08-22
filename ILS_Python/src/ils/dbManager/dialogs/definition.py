@@ -104,6 +104,8 @@ def duplicateRow(button):
     table = container.getComponent("DatabaseTable")
     txn = getTransactionForComponent(button)
     
+    defaultValueTypeId = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = 'Float'", tx=txn) 
+    
     ds = table.data
     if ds.rowCount == 0:
         print "Adding the first row"
@@ -111,7 +113,7 @@ def duplicateRow(button):
         familyid = idForFamily(family, txn)
         print "The selected family is: ", family, " - id: ", familyid
         presOrder = 1
-        SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel) VALUES ("+str(familyid)+","+str(presOrder)+",'CC')"
+        SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel,ValueTypeId) VALUES (%s,%s,'CC',%s)" % (str(familyid), str(presOrder), str(defaultValueTypeId))
         log.trace(SQL)
         vid=system.db.runUpdateQuery(SQL,tx=txn,getKey=True)
     else:
@@ -127,7 +129,7 @@ def duplicateRow(button):
         log.infof("Renumbered %d rows", rows)
         
         # Now insert the new row in the vacated spot
-        SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel) VALUES ("+str(familyid)+","+str(presOrder)+",'CC')"
+        SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel,ValueTypeId) VALUES (%s,%s,'CC',%s)" % (str(familyid), str(presOrder), str(defaultValueTypeId))
         log.trace(SQL)
         vid=system.db.runUpdateQuery(SQL,tx=txn,getKey=True)
         log.infof("Inserted a record into RtValueDefinition with id: %s", str(vid))

@@ -1021,7 +1021,7 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     families=[]
     
     SQL = "select FinalDiagnosisId from DtDiagnosisEntry where DiagnosisEntryId = %i" % (diagnosisEntryId)
-    finalDiagnosisId = system.db.runScalarQuery(SQL, db=db) 
+    finalDiagnosisId = system.db.runScalarQuery(SQL, database=db) 
     if finalDiagnosisId == None:
         log.warnf("Unable to acknowledge a text recommendation because the Final Diagnosis could not be found for diagnosis entry <%s>", str(diagnosisEntryId))
         return

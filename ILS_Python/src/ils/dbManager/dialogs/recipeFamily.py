@@ -62,13 +62,16 @@ def deleteRow(button):
     txn = getTransactionForComponent(button)
     rownum = table.selectedRow
     ds = table.data
-    id = ds.getValueAt(rownum,'RecipeFamilyId')
-    SQL = "DELETE FROM RtRecipeFamily WHERE RecipeFamilyId="+str(id)
-    system.db.runUpdateQuery(SQL,tx=txn)
-    ds = system.dataset.deleteRow(ds,rownum)
-    table.data = ds
-    table.selectedRow = -1
-    button.setEnabled(False)
+    familtId = ds.getValueAt(rownum,'RecipeFamilyId')
+    familyName = ds.getValueAt(rownum,'RecipeFamilyName')
+    confirm = system.gui.confirm("Are you sure that you want to delete family <%s> and all of its associated recipes?" % (familyName))
+    if confirm:
+        SQL = "DELETE FROM RtRecipeFamily WHERE RecipeFamilyId="+str(familtId)
+        system.db.runUpdateQuery(SQL,tx=txn)
+        ds = system.dataset.deleteRow(ds,rownum)
+        table.data = ds
+        table.selectedRow = -1
+        button.setEnabled(False)
     
 # Add a new row to the table. The data element is a DataSet (not python)
 def insertRow(button):

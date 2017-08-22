@@ -107,6 +107,8 @@ def reopenWindow(windowId):
     scale = record[SCALE]
     title = record['title']
     
+    print "Attempting to reopen %s- %s - %s - %s" % (windowPath, position, str(scale), title)
+    
     # Check if the window is already open.  If the window is an SFC window then we can support multiple distinct
     # instances of the window being open.  If it is a plain window, then we really don't support multiple instances
     # of the same window because we don't have a mechanism to pass data to initialize it.

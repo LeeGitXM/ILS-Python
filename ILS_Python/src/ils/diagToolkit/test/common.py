@@ -46,7 +46,7 @@ def run():
             ]:
 
             logger.tracef( "   %s", SQL)
-            rows=system.db.runPrepUpdate(SQL, db=db)
+            rows=system.db.runPrepUpdate(SQL, database=db)
             logger.tracef("   ...deleted %d rows", rows)
         
         logger.trace("...done initializing the database")
@@ -70,7 +70,7 @@ def run():
             "   and RD.QuantOutputId = QO.QuantOutputId "\
             "   and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
             " order by FamilyName, FinalDiagnosisName"
-        pds = system.db.runQuery(SQL, db=db)
+        pds = system.db.runQuery(SQL, database=db)
         logger.trace("   fetched %i recommendation..." % (len(pds)))
 
         header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
@@ -110,7 +110,7 @@ def run():
             " and P.Post = '%s' "\
             " order by QuantOutputName" % (post)
 
-        pds = system.db.runQuery(SQL, db=db)
+        pds = system.db.runQuery(SQL, database=db)
         logger.trace("   fetched %i  QuantOutputs..." % (len(pds)))
 
         header = "\nQuantOutput,TagPath,MostNegativeIncrement,MostPositiveIncrement,"\
@@ -145,7 +145,7 @@ def run():
             " where FD.FinalDiagnosisId = DE.FinalDiagnosisId"\
             " order by FD.FinalDiagnosisName"
 
-        pds = system.db.runQuery(SQL, db=db)
+        pds = system.db.runQuery(SQL, database=db)
         logger.trace("   fetched %i Diagnosis..." % (len(pds)))
 
         header = "\nFinalDiagnosis,Status,TextRecommendation,RecommendationStatus, "\
@@ -243,7 +243,7 @@ def run():
             goldFilename = os.path.join(path, functionName + "-gold.csv")
             
             # Fetch the results from the database
-            logger.trace("...fetching results... (filename=%s, db=%s)" % (outputFilename, db))
+            logger.trace("...fetching results... (filename=%s, database=%s)" % (outputFilename, db))
             logRecommendations(post, outputFilename, db)
             logQuantOutputs(post, outputFilename, db)
             logDiagnosis(post, outputFilename, db)

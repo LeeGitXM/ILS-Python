@@ -159,7 +159,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     
 def requestToManage(applicationName, database, provider):
     SQL = "select count(*) from DtApplicationManageQueue where applicationName = '%s'" % (applicationName)
-    cnt = system.db.runScalarQuery(SQL, db=database)
+    cnt = system.db.runScalarQuery(SQL, database=database)
     if cnt > 0:
         log.info("Updating the timestamp for an existing record in DtApplicationManageQueue...")
         SQL = "update DtApplicationManageQueue set timestamp = getdate() where applicationName = '%s'" % (applicationName)
@@ -1098,7 +1098,7 @@ def calculateVectorClamps(quantOutputs, provider):
 def updateApplicationDownloadStatus(applicationName, downloadAction, database):
     log.tracef("Setting the downloadAction of application %s to %s", applicationName, downloadAction)
     SQL = "update DtApplication set DownloadAction = '%s' where ApplicationName = '%s'" % (downloadAction, applicationName)
-    system.db.runUpdateQuery(SQL, db=database)
+    system.db.runUpdateQuery(SQL, database=database)
 
 # Store the updated quantOutput in the database so that it will show up in the setpoint spreadsheet
 def updateQuantOutput(quantOutput, database='', provider=''):
