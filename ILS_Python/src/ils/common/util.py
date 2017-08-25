@@ -45,6 +45,13 @@ def isaValidNumber(val):
     return isFloat
 
 
+def unixTime(theTime=system.date.now()):
+    epoch = system.date.getDate(1970,0,1)
+    epoch = system.date.setTime(epoch, 0, 0, 0)
+    unixTime = system.date.secondsBetween(epoch, theTime)
+    return unixTime
+
+
 def getDate(database = ""):
     SQL = "select getdate()"
     theDate = system.db.runScalarQuery(SQL, database)
