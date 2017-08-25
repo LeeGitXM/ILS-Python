@@ -22,6 +22,10 @@ def addSeconds(date1,seconds):
 def format(theDate):
     return True
 
+def getDate(year, month, day):
+    return 45
+
+
 def getMillis(theDate):
     return True
 
@@ -71,6 +75,9 @@ def minutesBetween(date1, date2):
     return True
 
 def secondsBetween(date1, date2):
+    return 45
+
+def setTime(theDate, hour, minute, second):
     return 45
 
 def now():
