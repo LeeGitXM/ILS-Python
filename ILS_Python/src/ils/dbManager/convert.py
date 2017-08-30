@@ -16,7 +16,7 @@ The RecipeToolkit database schema must already exist!
 
 # Copyright 2014. ILS Automation. All rights reserved.
 
-import system
+import system, string
 from ils.dbManager.sql import getColumnNames, getTableNames
 
 #from java.lang   import System
@@ -69,6 +69,7 @@ def convert(recipedb,sqcdb):
         populateMasterModifications(recipedb,families, txId)
         populateGradeDetail(recipedb,families,vu,txId)
         populateGradeModifications(recipedb,families,vu,txId)
+        updateValueType(recipedb,families,txId)
 
         # Add on the SQC tables
         if sqcdb!='None' and sqcdb!='':
@@ -83,7 +84,56 @@ def convert(recipedb,sqcdb):
         system.db.closeTransaction(txId)
         
     print "Conversion complete."
+
+def isaNumber(val):
+    sval = str(val)
     
+    if string.upper(sval) in ['NAN', 'NONE']:
+        return True
+
+    try:
+        val = float(val)
+        isNumber = True
+    except:
+        isNumber = False
+    
+    return isNumber
+
+def updateValueType(database,families,txId):
+    print "Updating the value type..."
+    blankValueType = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = ' ' ", tx=txId)
+    stringValueType = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = 'String' ", tx=txId)
+    
+    SQL = "update RtValueDefinition set ValueTypeId = %d where ChangeLevel = 'CC'" % (blankValueType)
+    rows = system.db.runUpdateQuery(SQL, tx=txId)
+    print "...set %d rows to blank data type which are comments..." % (rows)
+    
+    for family in families.keys():
+        print "------------"
+        print " Checking datatype for family ", family
+        print "------------"
+        familyId = families.get(family)
+        
+        SQL = "select ValueId, Grade, ValueType, RecommendedValue from RtRecipeView "\
+            "where RecipeFamilyName = '%s' "\
+            " and ChangeLevel != 'CC' "\
+            " order by ValueId, Grade" % (family)
+        pds = system.db.runQuery(SQL, tx=txId)
+        
+        updatedValueIds = []
+        for record in pds:
+            print record["ValueId"], record["Grade"], record["ValueType"], record["RecommendedValue"]
+            valueId = record["ValueId"]
+            valueType = record["ValueType"]
+            val = record["RecommendedValue"]
+            isNumber = isaNumber(val)
+            if not(isNumber) and valueType <> "String" and valueId not in updatedValueIds:
+                updatedValueIds.append(valueId)
+                print "  Changing %d to a string" % (valueId)
+                SQL = "Update RtValueDefinition set ValueTypeId = %s where RecipeFamilyId = %s and ValueId = %s" % (str(stringValueType), str(familyId), str(valueId))
+                print SQL
+                system.db.runUpdateQuery(SQL, tx=txId)
+                
 def fetchDefaultPost():
     SQL = "select min(PostId) from TkPost"
     postId = system.db.runScalarQuery(SQL)
@@ -471,6 +521,7 @@ def populateGradeModifications(database,families,vu,txId):
     for family in families:
         rows = 0
         print "   ", family, "..."
+        familyid = families.get(family)
         SQL = "SELECT SUB_RECIPE FROM "+family+"_Master_MOD"
         masterpds = fetchRows(SQL,database)
         if masterpds != None:
@@ -480,15 +531,16 @@ def populateGradeModifications(database,families,vu,txId):
             
                 SQL = "SELECT PRES,RECC,LOLIM,HILIM FROM "+table
                 try:
-                    pds = system.db.runQuery(SQL,database)
+                    pds = system.db.runQuery(SQL,database )
                     for row in pds:
                         pres      = row['PRES']
                         recommend = row['RECC']
                         lowLimit  = row['LOLIM']
                         highLimit = row['HILIM']
                         sub = sub.ltrim("0")
+                        key = str(familyid)+":"+str(pres)
                         vid = vu[key]
-                        if vid==NULL:
+                        if vid==None:
                             print "createGradeTable.lookup failure on "+key
                         SQL = "INSERT INTO RtGradeDetail(RecipeFamilyId,Grade,ValueId,Version,RecommendedValue,LowLimit,HighLimit) VALUES ("+str(families.get(family))+",'"+sub+"',"+str(vid)+",1"
                         if recommend == None or str(recommend).lower()=="nan":
@@ -618,6 +670,7 @@ def scrubDatetime(dt):
     ts = month+" "+dom+" "+year+" "+dt+".000"
     return ts
 
+    
 # Called from the client startup script: Tool menu
 def showWindow():
     window = "Migration/MakeRecipeDatabase"

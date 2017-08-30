@@ -44,7 +44,7 @@ def fetchHighestVersion(familyName, grade, database = ""):
     if familyId == None:
         return -1
     
-    SQL = "select max(Version) from RtGradeMaster where RecipeFamilyId = %s and grade = %s and Active = 1" % (str(familyId), grade)
+    SQL = "select max(Version) from RtGradeMaster where RecipeFamilyId = %s and grade = '%s' and Active = 1" % (str(familyId), grade)
     log.trace(SQL)
     
     version = system.db.runScalarQuery(SQL, database)

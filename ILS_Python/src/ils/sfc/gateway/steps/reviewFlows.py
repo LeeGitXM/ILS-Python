@@ -7,11 +7,12 @@ Created on Dec 17, 2015
 import system, time, string
 from ils.sfc.common.util import callMethodWithParams
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88GetWithUnits
-from ils.common.cast import jsonToDict
+from ils.common.cast import jsonToDict, isFloat
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, deleteAndSendClose, getDatabaseName, getChartLogger, sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, DEACTIVATED, \
-    BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, HEADING1, HEADING2, HEADING3, REVIEW_FLOWS
+    BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, HEADING1, HEADING2, HEADING3, REVIEW_FLOWS, SECONDARY_REVIEW_DATA, \
+    PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
 from ils.sfc.common.util import isEmpty
 
 def activate(scopeContext, stepProperties, state):    
@@ -53,6 +54,14 @@ def activate(scopeContext, stepProperties, state):
             heading2 = getStepProperty(stepProperties, HEADING2) 
             heading3 = getStepProperty(stepProperties, HEADING3) 
             
+            primaryTabLabel = getStepProperty(stepProperties, PRIMARY_TAB_LABEL) 
+            if primaryTabLabel in ["", None]:
+                primaryTabLabel = "Primary"
+            
+            secondaryTabLabel = getStepProperty(stepProperties, SECONDARY_TAB_LABEL)
+            if secondaryTabLabel in ["", None]:
+                secondaryTabLabel = "Secondary"
+            
             buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
             if isEmpty(buttonLabel):
                 buttonLabel = 'Flows'
@@ -62,21 +71,30 @@ def activate(scopeContext, stepProperties, state):
 
             targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
             
-            SQL = "insert into SfcReviewFlows (windowId, heading1, heading2, heading3, targetStepUUID, responseKey) "\
-                "values ('%s', '%s', '%s', '%s', '%s', '%s')" % (windowId, heading1, heading2, heading3, targetStepUUID, responseKey)
-            system.db.runUpdateQuery(SQL, database)
+            SQL = "insert into SfcReviewFlows (windowId, heading1, heading2, heading3, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
+                "values (?, ?, ?, ?, ?, ?, ?, ?)"
+            system.db.runPrepUpdate(SQL, [windowId, heading1, heading2, heading3, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel], database)
 
             '''
             Transfer the data from the configuration structures into the database table that will be read by the clients.  If the configuration data
             points to recipe data then evaluate the recipe data and convert to GUI units.
             '''
             logger.trace("Starting to transfer the configuration to the database...")
+            
             configJson = getStepProperty(stepProperties, REVIEW_FLOWS)
             configDict = jsonToDict(configJson)
             rows = configDict.get("rows", [])
             rowNum = 0
             for row in rows:
                 addData(chartScope, stepScope, windowId, row, rowNum, database, logger)
+                rowNum = rowNum + 1
+            
+            configJson = getStepProperty(stepProperties, SECONDARY_REVIEW_DATA)
+            configDict = jsonToDict(configJson)
+            rows = configDict.get("rows", [])
+            rowNum = 0
+            for row in rows:
+                addSecondaryData(chartScope, stepScope, windowId, row, rowNum, database, logger)
                 rowNum = rowNum + 1
 
             # Look for a custom activation callback
@@ -174,10 +192,48 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
             else:
                 val3 = s88Get(chartScope, stepScope, key3, scope, units)
         
-    SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, advice, units, prompt, data1, data2, data3) "\
-        "values ('%s', %d, '%s', '%s', '%s', %s, %s, %s)"\
-         % (windowId, rowNum, advice, units, prompt, str(val1), str(val2), str(val3))
+    SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, advice, units, prompt, data1, data2, data3, isPrimary) "\
+        "values ('%s', %d, '%s', '%s', '%s', %s, %s, %s, %d)"\
+         % (windowId, rowNum, advice, units, prompt, str(val1), str(val2), str(val3), True)
+
+    print SQL
     logger.tracef(SQL)
+    system.db.runUpdateQuery(SQL, database)
+
+
+def addSecondaryData(chartScope, stepScope, windowId, row, rowNum, database, logger):
+    logger.tracef("Adding row: %s", str(row))
+        
+    units = row.get("units", None)
+    
+    configKey = row.get("configKey", None)
+    key = row.get("valueKey", None)
+    scope = row.get("recipeScope", "")
+    prompt = row.get("prompt", "Prompt:")
+    
+    if prompt == "null":
+        prompt = ""
+    if units == "null":
+        units = ""
+
+    logger.tracef("Adding <%s>-<%s>-<%s>-<%s>", key, scope, units, prompt)
+    
+    if scope == "value":
+        val = key
+    elif scope in ["", "null", None]:
+        val = ""
+    else:
+        if units == "":
+            val = s88Get(chartScope, stepScope, key, scope)
+        else:
+            val = s88GetWithUnits(chartScope, stepScope, key, scope, units)
+    
+    if isFloat(val):
+        val = float(val)
+        val = "%.4f" % (val)
+
+    SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, advice, units, prompt, data1, data2, data3, isPrimary) "\
+        "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, "", units, prompt, str(val), "", "", False)
     system.db.runUpdateQuery(SQL, database)
 
 

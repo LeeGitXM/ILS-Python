@@ -5,14 +5,20 @@ Created on Sep 10, 2014
 '''
 import system, string
 from ils.recipeToolkit.tagFactory import createUDT
+from sys import path
 log = system.util.getLogger("com.ils.recipeToolkit.ui")
 
-# This runs in the client when it receives a message that an automated download message has been received.  This is in response to the Automated download tag
-# receiving a new Grade (a download is being initiated from the DCS) AND the automatedDownload tag of the download trigger UDT is set to FALSE, meaning that the 
-# download is initiated automatically, but the operator is in charge, so this is really a semi-automatic mode.  So all we have to do is launch the Recipe Viewer
-# screen with the new grade selected.  It is up to the operator to press the Download button and actually start the download.
-def automatedDownloadMessageHandler(payload):
+'''
+This runs in the client when the operator presses the "View Recipe" button on the OC Alert.
+The OC alert is sent in response to the Automated download tag
+receiving a new Grade (a download is being initiated from the DCS) AND the automatedDownload tag of the download trigger UDT is set to FALSE, meaning that the 
+download is initiated automatically, but the operator is in charge, so this is really a semi-automatic mode.  So all we have to do is launch the Recipe Viewer
+screen with the new grade selected.  It is up to the operator to press the Download button and actually start the download.
+'''
+def semiAutomatedDownloadCallback(event, payload):
     print "In %s.automatedDownloadMessageHandler(), the payload is %s" % (__name__, payload)
+    system.nav.closeParentWindow(event)
+    
     targetPost = payload.get("post", "None")
     myPost = system.tag.read("[Client]Post").value
 
@@ -21,13 +27,25 @@ def automatedDownloadMessageHandler(payload):
         print "Bailing from a semi-automated download request because my post (%s) does not match the target post (%s)" % (string.upper(myPost), string.upper(targetPost))
         return
     
+    '''
+    There is a requirement that only one download can happen at a time, so if the recipe screen is open and a new request comes in then the old 
+    one should be dismissed.  There can only ever be one review data screen at a time.
+    '''
+    wins = system.gui.getOpenedWindows()
+    for win in wins:
+        print win.getPath()
+        if win.getPath() == "Recipe/Recipe Viewer":
+            print "Found a recipe viewer that was already open - closing it"
+            system.nav.closeWindow(win.getPath())
+        
+    
     grade = payload.get("grade", "")
     version = payload.get("version", 0)
     recipeKey = payload.get("recipeKey", "")
     downloadType = 'GradeChange'
     
     # Save the grade and type to the recipe map table.
-    SQL = "update RtRecipeFamily set CurrentGrade = %s, CurrentVersion = %s, Status = 'Initializing', "\
+    SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
         "Timestamp = getdate() where RecipeFamilyName = '%s'" \
         % (str(grade), version, recipeKey)
     

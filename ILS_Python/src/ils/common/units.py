@@ -5,8 +5,9 @@ Created on Sep 16, 2014
 
 @author: rforbes
 '''
-import system
+import system, sys, string
 from ils.common.error import catch
+logger=system.util.getLogger("com.ils.units")
 
 FACTOR = 'FACtor'
 ALIAS = 'ALIas'
@@ -89,7 +90,7 @@ class Unit(object):
             try:
                 system.db.runUpdateQuery(SQL, )
             except:
-                print "Unit insert failed: %s" % (SQL)
+                logger.errorf("Unit insert failed: %s", SQL)
                 
         for key in Unit.unitsByName.keys():
             unit = Unit.unitsByName[key]
@@ -98,7 +99,7 @@ class Unit(object):
                     SQL = "insert into UnitAliases(alias, name) values('%s', '%s')" % (key, unit.name)
                     system.db.runUpdateQuery(SQL, )
                 except:
-                    print "Failed Alias insert: %s" % (SQL)
+                    logger.errorf("Failed Alias insert: %s", SQL)
     
     @staticmethod
     def getUnitTypes():
@@ -130,6 +131,9 @@ class Unit(object):
         for unit in Unit.unitsByName.values():
             if unit.type == unitType:
                 result.append(unit.name)
+        print "Unsorted: ", result
+        result.sort()
+        print "Sorted: ", result
         return result
     
     @staticmethod
@@ -140,7 +144,7 @@ class Unit(object):
         unit = Unit.unitsByName.get(name)
         if unit == None:
             # should use a logger here
-            print 'Failed to find unit: ' + name
+            logger.errorf('Failed to find unit: %s', name)
         return unit
 
     def getInsertStatement(self):
@@ -167,20 +171,17 @@ class Unit(object):
     @staticmethod
     def lazyInitialize(db):
         if len(Unit.unitsByName.keys()) == 0:
-            print "Initializing the units object..."
+            logger.info("Initializing the units object...")
             Unit.readFromDb(db)
             
     @staticmethod
     def readFromDb(db):
         '''read unit info from the project's default '''
-        import system.db
-        import sys
-        import string
-        
+
         try:
-            print "Loading units..."
+            logger.info("Loading units...")
             results = system.db.runQuery("select * from Units", database=db)
-            print "...read %i units..." % (len(results))
+            logger.infof("...read %d units...", len(results))
             # Read the units
             Unit.clearUnits()
             newUnits = dict()
@@ -193,19 +194,21 @@ class Unit(object):
                 unit.b = row["b"]
                 unit.isBaseUnit = row["isBaseUnit"]
                 newUnits[unit.name] = unit
+                
             Unit.addUnits(newUnits)
             # Read the aliases
             newUnits = dict()
             results = system.db.runQuery("select * from UnitAliases", database=db)
-            print "Read %i aliases..." % (len(results))
+            logger.infof("...read %d aliases...", len(results))
             for row in results:
                 realUnit = Unit.getUnit(string.upper(row["name"]))
                 if realUnit != None:
                     newUnits[string.upper(row["alias"])] = realUnit
             Unit.addUnits(newUnits)
+            logger.infof("...done loading units!")
         except:
             errorTxt = catch("Error fetching Units")
-            print errorTxt
+            logger.errorf(errorTxt)
 
 def getUnits():
     return Unit.getUnits()
@@ -231,7 +234,7 @@ def unitsOfSameType(unitName):
     if unit != None:
         return Unit.getUnitsOfType(unit.type)
     else:
-        print 'No unit named ', unitName
+        logger.warnf('No unit named %s', unitName)
         return None
 
 # Read a unit file and convert it into Unit objects
@@ -292,8 +295,9 @@ def parseUnitFile(unitfile):
     
 # If this is run from a client or the designer, then we probably don't need a db string
 def convert(fromUnitName, toUnitName, value, db=""):
+    logger.tracef("Converting %s from %s to %s", str(value), fromUnitName, toUnitName)
     lazyInitialize(db)
-    return Unit.convert(fromUnitName, toUnitName, value)
+    return Unit.convert(string.upper(fromUnitName), string.upper(toUnitName), value)
 
 def lazyInitialize(db):
     Unit.lazyInitialize(db)

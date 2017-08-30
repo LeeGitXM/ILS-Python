@@ -16,6 +16,9 @@ def internalFrameOpened(rootContainer):
 
     windowId = rootContainer.windowId
     
+    tabs = rootContainer.getComponent("tabs")
+    tabs.selectedTab = "primary"
+    
     title = system.db.runScalarQuery("Select title from SfcWindow where windowId = '%s'" % (windowId), database)
     rootContainer.title = title
     
@@ -26,9 +29,16 @@ def internalFrameOpened(rootContainer):
     heading1 = record["heading1"]
     heading2 = record["heading2"]
     heading3 = record["heading3"]
+    primaryTabLabel = record["primaryTabLabel"]
+    secondaryTabLabel = record["secondaryTabLabel"]
+
+    ds = tabs.tabData
+    ds = system.dataset.setValue(ds, 0, "DISPLAY_NAME", primaryTabLabel)
+    ds = system.dataset.setValue(ds, 1, "DISPLAY_NAME", secondaryTabLabel)
+    tabs.tabData = ds
     
     print "Setting the table column headings..."
-    table = rootContainer.getComponent("Table")
+    table = rootContainer.getComponent("Primary Table")
     
     i = 1
     ds = table.columnAttributesData
@@ -40,11 +50,18 @@ def internalFrameOpened(rootContainer):
         i = i + 1
     table.columnAttributesData = ds
     
-    print "Populating the table..."
-    SQL = "select prompt, advice, data1, data2, data3, units from SfcReviewFlowsTable where windowId = '%s' order by rowNum" % (windowId)
+    print "Populating the primary table..."
+    SQL = "select prompt, advice, data1, data2, data3, units from SfcReviewFlowsTable where windowId = '%s' and isPrimary = 1 order by rowNum" % (windowId)
     pds = system.db.runQuery(SQL, database)
-    
     table.data = pds
+    
+    print "Populating the secondary table..."
+    SQL = "select prompt, data1 as value, units from SfcReviewFlowsTable where windowId = '%s' and isPrimary = 0 order by rowNum" % (windowId)
+    pds = system.db.runQuery(SQL, database)
+    table = rootContainer.getComponent("Secondary Table")
+#    setAdviceVisibiity(table, showAdvice, columnWidths)
+    table.data = pds
+    
     print "...finished"
 
 def okActionPerformed(event):

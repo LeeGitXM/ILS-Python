@@ -21,7 +21,7 @@ def internalFrameOpened(rootContainer):
     tabs = rootContainer.getComponent("tabs")
     tabs.selectedTab = "primary"
     
-    pds = system.db.runQuery("select showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel from SfcReviewData where windowId = '%s'" % (windowId), database)
+    pds = system.db.runQuery("select showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel from SfcReviewData where windowId = '%s'" % (str(windowId)), database)
     print "Fetched %d records from sfcReviewData" % (len(pds))
     
     record = pds[0]

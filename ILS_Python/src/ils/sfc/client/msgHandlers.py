@@ -133,6 +133,7 @@ def sfcCloseWindow(payload):
     clientDatabase = getDatabaseClient()
     if database <> clientDatabase:
         print "Ignoring closeWindow message because database does not match (%s vs %s)" % (database, clientDatabase)
+        
     print "Attempting to close window with id: ", windowId
     if windowId <> None:
         openWindows = system.gui.getOpenedWindows()
@@ -140,9 +141,10 @@ def sfcCloseWindow(payload):
             # Not all windows have a windowId, so be careful
             rootContainer = window.getRootContainer()
             openWindowId = rootContainer.getPropertyValue("windowId")
-            if openWindowId == windowId:
+            if str(openWindowId) == str(windowId):
                 system.nav.closeWindow(window)
-                                              
+
+           
 def sfcCloseWindowByName(payload):
     windowPath = payload[WINDOW]
     windows = system.gui.findWindow(windowPath)

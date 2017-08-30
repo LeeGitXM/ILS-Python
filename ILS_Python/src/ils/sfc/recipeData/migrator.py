@@ -15,7 +15,9 @@ log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
 
 def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
 
+    print "Made it to migrateChart!"
     provider = getTagProvider()
+    print "The provider is: ", provider
     recipeDataMigrationEnabled = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataMigrationEnabled" % (provider)).value
     if not(recipeDataMigrationEnabled):
         log.tracef("Recipe Data migration is disabled!")
@@ -23,6 +25,7 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     
     log.infof("***************")
     log.infof("Migrating a charts recipe data(PYTHON) (%s-%s) ...", chartPath, str(resourceId))
+    log.tracef(chartResourceAsXML)
     log.infof("***************")
     
     # This runs immediately after the chart hierarchy analysis which has a number of database transactions.  Give those time to get
@@ -51,7 +54,13 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
     except:
         errorTxt = catch("Migrating Recipe Data - rolling back transactions")
         log.errorf(errorTxt)
-
+        system.db.rollbackTransaction(tx)
+        
+    else:
+        system.db.commitTransaction(tx)
+    
+    finally:
+        system.db.closeTransaction(tx)
 
 
 def processStep(step, db, tx):
@@ -89,6 +98,8 @@ def processStep(step, db, tx):
                 
                 if recipeDataType == "Output":
                     output(stepName, stepType, stepId, recipeData, db, tx)
+                elif recipeDataType == "OutputRamp":
+                    outputRamp(stepName, stepType, stepId, recipeData, db, tx)
                 elif recipeDataType == "Input":
                     input(stepName, stepType, stepId, recipeData, db, tx)
                 elif recipeDataType == "Value":
@@ -370,7 +381,75 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     log.tracef(SQL)
     system.db.runUpdateQuery(SQL, tx=tx)
     log.tracef("   ...done inserting an output!")
+
+
+def outputRamp(stepName, stepType, stepId, recipeData, db, tx):
+    key = recipeData.get("key","")
     
+    log.infof("************************************************************")
+    log.infof("***  Skipping migration of an OUTPUT RAMP with key: %s for step: %s   ***", key, stepName)
+    log.infof("************************************************************")
+    
+    
+    return
+    log.infof("  Migrating an OUTPUT RAMP with key: %s for step: %s", key, stepName)
+    log.tracef("  Dictionary: %s", str(recipeData))
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    recipeDataTypeId=fetchRecipeDataTypeId("Output", db)
+
+    recipeDataId = insertRecipeData(stepName, stepType, stepId, key, recipeDataTypeId, description, label, units, tx)
+    
+    outputType = recipeData.get("outputType","Setpoint")
+    outputTypeId = fetchOutputTypeId(outputType, db)
+    if outputTypeId == None:
+        log.warnf("Overriding unknown output type <%s> to <Setpoint>", outputType)
+        outputTypeId = fetchOutputTypeId("Setpoint", db)
+    
+    valueType = recipeData.get("valueType","String")
+    valueType = convertValueType(valueType)
+    valueTypeId = fetchValueTypeId(valueType, db)
+    
+    tag = recipeData.get("tagPath","")
+    download = recipeData.get("download",False)
+    download = toBit(download)
+    timing = recipeData.get("timing",0.0)
+    maxTiming = recipeData.get("maxTiming",0.0)
+    outputValue = recipeData.get("value",0.0)
+    targetValue = recipeData.get("targetValue",0.0)
+    writeConfirm = recipeData.get("writeConfirm",False)
+    writeConfirm = toBit(writeConfirm)
+    
+    # Guard against missing string values in places where we need floats.
+    if timing == "":
+        timing = 0.0
+    if maxTiming == "":
+        maxTiming = 0.0
+    if outputValue == "":
+        outputValue = 0.0
+    if targetValue == "":
+        targetValue = 0.0        
+
+    # Insert values into the value table
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('%s')" % (valueType, outputValue)
+    log.tracef(SQL)
+    outputValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('%s')" % (valueType, targetValue)
+    log.tracef(SQL)
+    targetValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    
+    SQL = "insert into SfcRecipeDataValue (%sValue) values ('0.0')" % (valueType)
+    log.tracef(SQL)
+    pvValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+
+    SQL = "insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, Tag, Download, Timing, MaxTiming, OutputValueId, TargetValueId, PVValueId, WriteConfirm) "\
+        "values (%s, %s, %s, '%s', %s, %s, %s, %s, %s, %s, %s)"\
+        % (str(recipeDataId), str(valueTypeId), str(outputTypeId), tag, str(download), str(timing), str(maxTiming), str(outputValueId), str(targetValueId), str(pvValueId), str(writeConfirm))
+    log.tracef(SQL)
+    system.db.runUpdateQuery(SQL, tx=tx)
+    log.tracef("   ...done inserting an output!")
 
 def input(stepName, stepType, stepId, recipeData, db, tx):
     key = recipeData.get("key","")

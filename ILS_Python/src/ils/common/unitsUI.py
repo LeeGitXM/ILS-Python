@@ -53,9 +53,11 @@ def typeSelected(container):
         unitsOfSelectedType = ils.common.units.Unit.getUnitsOfType(selectedType)
     else:
         unitsOfSelectedType = []
+        
     print "The list of units is: ", unitsOfSelectedType
     fromUnitCombo = container.getComponent(FROM_UNITS)
     setComboValues(fromUnitCombo, unitsOfSelectedType)
+    
     toUnitCombo = container.getComponent(TO_UNITS)
     setComboValues(toUnitCombo, unitsOfSelectedType)
     

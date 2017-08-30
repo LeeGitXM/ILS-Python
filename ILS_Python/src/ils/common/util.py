@@ -12,6 +12,13 @@ def listSum(numList):
         theSum = theSum + num
     return theSum
 
+def listMin(numList):
+    theMin = 1000000000
+    for num in numList:
+        if num < theMin:
+            theMin = num
+    return theMin
+
 def scalerMultiply(array, scaler):
     result = []
     for val in array:
@@ -163,7 +170,6 @@ def readAverageValues(tagPaths, tagProvider, timeIntervalMinutes, log):
     badValue = False
     for i in range(0,len(tagPaths)):
         isGood = ds.getQualityAt(0, i + 1).isGood()
-        print "Average value for %s isGood %s" % (tagPaths[i], str(isGood))
         if not(isGood):
             badValue = True
             log.warnf("Unable to collect average value for %s", tagPaths[i])
@@ -183,11 +189,10 @@ def readInstantaneousValues(tagPaths, tagProvider, log):
     badValue = False
     for i in range(0,len(tagPaths)):
         qv = qvs[i]
-        print "Instantaneous value for %s is %s" % (tagPaths[i], qv)
         if not(qv.quality.isGood()):
             badValue = True
             log.warnf("Read a bad value for %s - %s", tagPaths[i], str(qv))
-            
+
     return badValue, qvs
 
 '''

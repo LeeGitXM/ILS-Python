@@ -10,7 +10,7 @@ from ils.common.cast import jsonToDict, isFloat
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, hasStepProperty, deleteAndSendClose, getDatabaseName, getChartLogger, \
         sendMessageToClient, getProject, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88GetWithUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88GetWithUnits, s88GetUnits
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, \
     DEACTIVATED, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \
     BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
@@ -140,7 +140,7 @@ def activate(scopeContext, stepProperties, state):
                 workDone = True
              
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in %s.activate' % (__name__), logger)
         workDone = True
     finally:
         if workDone:
@@ -182,7 +182,15 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
         if units == "":
             val = s88Get(chartScope, stepScope, key, scope)
         else:
-            val = s88GetWithUnits(chartScope, stepScope, key, scope, units)
+            '''
+            Because this is GUI, sometimes we want to use the units as a label rather than forcing unit conversion.  If the recipe
+            data units are blank, then don't try to convert.
+            '''
+            recipeUnits = s88GetUnits(chartScope, stepScope, key, scope)
+            if recipeUnits == "":
+                val = s88Get(chartScope, stepScope, key, scope)
+            else:
+                val = s88GetWithUnits(chartScope, stepScope, key, scope, units)
     
     if isFloat(val):
         val = float(val)

@@ -1,4 +1,4 @@
-import system
+import system, string
 from ils.sfc.recipeData.core import getTargetStep, getTargetStepFromName, fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey,\
     fetchRecipeDataType, recipeDataExists
 from ils.sfc.gateway.api import getDatabaseName, readTag
@@ -52,9 +52,9 @@ def s88GetWithUnits(chartScope, stepScope, keyAndAttribute, scope, returnUnits):
     stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
-    val, units = fetchRecipeData(stepUUID, key, attribute, db)
-    logger.tracef("...fetched %s", str(val))
-    convertedValue = convert(units, returnUnits, val, db)
+    val, fetchedUnits = fetchRecipeData(stepUUID, key, attribute, db)
+    logger.tracef("...fetched %s - %s", str(val), str(fetchedUnits))
+    convertedValue = convert(fetchedUnits, string.upper(returnUnits), val, db)
     logger.tracef("...converted to %s", str(convertedValue))
     return convertedValue
 

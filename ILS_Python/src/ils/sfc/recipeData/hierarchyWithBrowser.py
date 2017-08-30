@@ -105,7 +105,7 @@ def getChildren(chartId, hierarchyPDS):
     children = []
     log.tracef("Getting the children of chart: %s", str(chartId))
     for record in hierarchyPDS:
-        if record["ChartId"] == chartId:
+        if record["ChartId"] == chartId and record["ChildChartId"] not in children:
             children.append(record["ChildChartId"])
     log.tracef("The children of %s are %s", chartId, str(children))
     return children
@@ -115,7 +115,7 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
     
     def depthSearch(trees, depth, hierarchyPDS):
         log.tracef("------------")
-        log.tracef("Searching depth %i, the trees are %s", depth, str(trees))
+        log.tracef("Searching depth %d, the trees are %s", depth, str(trees))
 
         foundChild = False
         newTrees = []

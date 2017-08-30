@@ -13,10 +13,10 @@ import ils.recipeToolkit.log as recipeToolkit_log
 import ils.recipeToolkit.refresh as recipeToolkit_refresh
 import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.io.client import writeWithNoChecks, writeRecipeDetails
 from ils.common.config import getTagProvider, getTagProviderClient
-log = LogUtil.getLogger("com.ils.recipeToolkit.download")
+from ils.common.ocAlert import sendAlert
+log = system.util.getLogger("com.ils.recipeToolkit.download")
 
 def automatedDownloadHandler(tagPath, grade):
     
@@ -41,8 +41,11 @@ def automatedDownloadHandler(tagPath, grade):
 
     from ils.recipeToolkit.fetch import  fetchHighestVersion
     version = fetchHighestVersion(recipeKey, grade, database)
-    if version < 0:
-        log.error("Aborting the automated download because a recipe was not found for Unit: %s, Grade %s"% (str(recipeKey), str(grade)))
+    if version == None:
+        log.error("Aborting the automated download because a recipe was not found for Unit: %s, Grade: %s, Version: %s"% (str(recipeKey), str(grade), str(version)))
+        familyId = recipeToolkit_fetch.fetchFamilyId(recipeKey, database)
+        logId = recipeToolkit_log.logMaster(familyId, grade, version=-1, downloadType="Automatic", database=database)
+        recipeToolkit_log.updateLogMaster(logId, status="Failed", totalDownloads=0, passedDownloads=0, failedDownloads=0, database=database)
         return
 
     log.info("******************************")
@@ -54,7 +57,15 @@ def automatedDownloadHandler(tagPath, grade):
     else:
         # Send a message to open the 
         log.trace("Sending a message to every client to post a download GUI")
-        system.util.sendMessage(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
+        # system.util.sendMessage(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
+        
+        callbackPayloadDictionary = {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}
+        # This is generally called from the gateway, but should work from th
+        mainMessage = "Semi-automated Recipe Download for grade %s - %s" % (str(grade), str(version))
+        topBottomMessage = "Semi-automated recipe download!"
+        sendAlert(project, post, topMessage=topBottomMessage, bottomMessage=topBottomMessage, mainMessage=mainMessage, 
+                  buttonLabel="View Recipe", callback="ils.recipeToolkit.viewRecipe.semiAutomatedDownloadCallback", 
+                  callbackPayloadDictionary=callbackPayloadDictionary, db=database)    
 
 
 '''

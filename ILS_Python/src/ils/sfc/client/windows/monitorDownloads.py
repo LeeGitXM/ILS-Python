@@ -72,6 +72,9 @@ def update(rootContainer):
     
     state, secondsSinceLastUpdate = fetchWindowState(windowId, database)
     
+    if state == "Error":
+        return
+    
     # If this window hasn't discovered a starttime, then check if someone started the timer.
     if rootContainer.startTime == None:
         startTime = s88GetFromStep(timerStepUUID, timerKey + ".StartTime", database)
@@ -115,6 +118,10 @@ def fetchWindowState(windowId, database):
     SQL = "select State, DATEDIFF(second,LastUpdated,CURRENT_TIMESTAMP) SecondsSinceLastUpdate "\
         "from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
+    
+    if len(pds) == 0:
+        return "Error", 0
+    
     state = pds[0]["State"]
     secondsSinceLastUpdate = pds[0]["SecondsSinceLastUpdate"]
     print "...fetched State: %s..." % (state)
