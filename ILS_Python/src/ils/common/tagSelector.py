@@ -28,7 +28,12 @@ def setSelectedTag(rootContainer):
     ds = tagBrowser.selectedPaths
     ds = system.dataset.setValue(ds, 0, 0, tagPath)
     tagBrowser.selectedPaths = ds
-    
+
+'''
+This is tailored to work with the isolation / production tag provider where the tag provider is determined at run time.
+Specifically this is used on the recipe data editors where we specify a tag for Input or Output recipe data.  The tag
+browser selects a tag within a provider.  When they press save I will strip the tag provider off.
+'''
 def save(event, rootContainer):
     print "Saving"
     args = rootContainer.args
@@ -39,6 +44,11 @@ def save(event, rootContainer):
     tagPath = ds.getValueAt(0,0)
     
     print "The guy selected: ", tagPath
+    
+    ''' Strip off the tag provider '''
+    tagPath = tagPath[tagPath.index("]")+1:]
+    
+    print "The adjusted tagpath is <%s>" % (tagPath)
     
     component.text = tagPath
     

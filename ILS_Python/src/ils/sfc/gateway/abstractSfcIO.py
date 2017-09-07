@@ -9,7 +9,7 @@ from tagIO import TagIO
 # These are "universal" attribute names that can be given to setValue and getValue. These
 # will be internally translated into the actual names for a given controller
 
-class AbstractSfcIO:    
+class AbstractSfcIOCRAP:    
     '''An abstract superclass that encapsulates basic IO access for all controller types
     behind a uniform interface. The implementation is expected to handle the isolation mode
     flag by using the appropriate provider internally. '''

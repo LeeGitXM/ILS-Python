@@ -321,5 +321,8 @@ def activate(scopeContext, stepProperties, state):
                 s88Set(chartScope, stepScope, errorCountKey + ".Value", localErrorCount + cnt, errorCountScope)
                 
         workDone = True
+        
+        ''' Set up the step for the next time it is called if this is in a loop '''
+        stepScope[INITIALIZED]=False
     
     return workDone

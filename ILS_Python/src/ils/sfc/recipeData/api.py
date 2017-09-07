@@ -1,9 +1,10 @@
 import system, string
 from ils.sfc.recipeData.core import getTargetStep, getTargetStepFromName, fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey,\
-    fetchRecipeDataType, recipeDataExists
+    fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS
 from ils.sfc.gateway.api import getDatabaseName, readTag
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP
+from ils.sfc.recipeData.constants import SIMPLE_VALUE
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.api")
 
@@ -86,24 +87,52 @@ def s88GetFromNameWithUnits(chartPath, stepName, keyAndAttribute, returnUnits, d
     logger.tracef("...converted to %s", str(convertedValue))
     return convertedValue
 
+'''
+For some reason I can't get the stupid wild card to work with the recipe data type.
+So do an explicit test for the "%" and then run a different SQL command.
+So they can't use the wild card and a string to get a partial match.
+'''
 def s88GetKeysForNamedBlock(chartPath, stepName, recipeDataType, db):
     logger.tracef("s88GetKeysForNamedBlock(): %s - %s", chartPath, stepName)
-    SQL = "select RecipeDataKey "\
-        "from SfcRecipeData RD, SfcStep STEP, SfcChart CHART, SfcRecipeDataType RDT "\
+    if recipeDataType == "%":
+        SQL = "select RecipeDataKey "\
+        "from SfcRecipeData RD, SfcStep STEP, SfcChart CHART "\
         "where Chart.ChartPath = '%s' "\
         "and Step.StepName = '%s' "\
         "and STEP.ChartId = CHART.ChartId "\
-        "and RDT.RecipeDataType = '%s' "\
-        "and RDT.RecipeDataTypeId = RD.RecipeDataTypeId "\
-        "and STEP.StepId = RD.StepId" % (chartPath, stepName, recipeDataType)      
+        "and STEP.StepId = RD.StepId" % (chartPath, stepName) 
+    else:
+        SQL = "select RecipeDataKey "\
+            "from SfcRecipeData RD, SfcStep STEP, SfcChart CHART, SfcRecipeDataType RDT "\
+            "where Chart.ChartPath = '%s' "\
+            "and Step.StepName = '%s' "\
+            "and STEP.ChartId = CHART.ChartId "\
+            "and RDT.RecipeDataType = '%s' "\
+            "and RDT.RecipeDataTypeId = RD.RecipeDataTypeId "\
+            "and STEP.StepId = RD.StepId" % (chartPath, stepName, recipeDataType)      
     pds = system.db.runQuery(SQL, db)
     logger.tracef("...fetched %d rows", len(pds))
-    keys=[]
-    for record in pds:
-        keys.append(record["RecipeDataKey"])
-    logger.tracef("...fetched %s", str(keys))
-    return keys
+    
+'''
+Get the CSV as a list of text string for all of the recipe data for a step
+'''
+# Return a value only for a specific key, otherwise raise an exception.
+def s88GetRecipeDataDatasetFromName(chartPath, stepName, recipeDataType, db=""):
+    logger.tracef("s88GetRecipeDataDatasetFromName(): %s - %s", chartPath, stepName)
 
+    SQL = "select StepUUID from SfcHierarchyView where ChartPath = '%s' and StepName = '%s'" % (chartPath, stepName)
+    stepUUID = system.db.runScalarQuery(SQL, db)
+    print "Fetching dataset for step: ", stepUUID
+    ds = s88GetRecipeDataDS(stepUUID, recipeDataType, db)
+    return ds
+    
+# Return a value only for a specific key, otherwise raise an exception.
+def s88GetRecipeDataDataset(chartScope, stepScope, recipeDataType, scope):
+    logger.tracef("s88GetCsv(): %s", scope)
+    db = getDatabaseName(chartScope)
+    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)    
+    ds = s88GetRecipeDataDS(stepUUID, recipeDataType, db)
+    return ds
 
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetRecord(stepUUID, key, db):

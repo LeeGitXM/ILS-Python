@@ -15,7 +15,7 @@ Created on Jun 18, 2015
 import system.tag
 import abstractSfcIO
 
-class TagIO:    
+class TagIOCRAP:    
     name = ''
     
     def  __init__(self, _tagPath, isolationMode):

@@ -20,11 +20,8 @@ logger=system.util.getLogger("com.ils.sfc.recipeData.core")
 
 # Return the UUID of the step  
 def getTargetStep(chartProperties, stepProperties, scope):
-#    print "=============="
     logger.tracef("Getting target step for scope %s...", scope)
-#    print "Chart Properties: ", chartProperties
-#    print "Step Properties:  ", stepProperties
-    
+
     scope.lower()
     
     if scope == LOCAL_SCOPE:
@@ -255,7 +252,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 val = 0.0
 
         else:
-            raise ValueError, "Unsupported attribute: %s for a simple value recipe data" % (attribute)
+            raise ValueError, "Unsupported attribute: %s for a timer recipe data" % (attribute)
         
         logger.tracef("Fetched the value: %s", str(val))
         
@@ -278,7 +275,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             theAttribute = "PV%sVALUE" % (valueType)
             val = record[theAttribute]
         else:
-            raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
+            raise ValueError, "Unsupported attribute: %s for an input recipe data" % (attribute)
     
     elif recipeDataType == OUTPUT:
         SQL = "select TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
@@ -334,6 +331,8 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 valueType = record['VALUETYPE']
                 val = record["%sVALUE" % string.upper(valueType)]
                 logger.tracef("Fetched the value: %s", str(val))
+        else:
+            raise ValueError, "Unsupported attribute: %s for array recipe data" % (attribute)
     
     elif recipeDataType == MATRIX:
         if attribute == "VALUE":
@@ -379,7 +378,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 logger.tracef("Fetched the value: %s", str(val))
 
         else:
-            raise ValueError, "Unsupported attribute: %s for an matrix recipe data" % (attribute)
+            raise ValueError, "Unsupported attribute: %s for matrix recipe data" % (attribute)
     
     else:
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
@@ -430,6 +429,10 @@ def fetchRecipeDataRecord(stepUUID, key, db):
     recipeDataType = record["RECIPEDATATYPE"]
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
+    return fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db)
+    
+
+def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     # These attributes are common to all recipe data classes
     if recipeDataType == SIMPLE_VALUE:
         SQL = "select DESCRIPTION, LABEL, UNITS, VALUETYPE, RECIPEDATATYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
@@ -503,6 +506,9 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
         oldVal = val
         val = convert(units, targetUnits, float(val), db)
         logger.tracef("...converted %s-%s to %s-%s...", str(oldVal), units, str(val), targetUnits)
+    
+    if val in ["None", "NONE", "none", "NO-VALUE"]:
+        val = None
     
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
@@ -848,4 +854,48 @@ def fetchStepIdFromUUID(stepUUID, tx):
     SQL = "select stepId from SfcStep where StepUUID = '%s'" % (stepUUID)
     stepId = system.db.runScalarQuery(SQL, tx=tx)
     return stepId
+
+# Return a value only for a specific key, otherwise raise an exception.
+def s88GetRecipeDataDS(stepUUID, recipeDataType, db):
+    logger.tracef("%s.s88GetRecipeDataDS(): %s", __name__, recipeDataType)
+
+    if recipeDataType == SIMPLE_VALUE:
+        SQL = "select RecipeDataKey, Units, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+            "from SfcRecipeDataSimpleValueView  "\
+            "where StepUUID = '%s' "\
+            "order by RecipeDataKey " % (stepUUID) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows", len(pds))
+        
+        ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
+        data = []
+        header = ["KEY", "UNITS", "DATATYPE", "VALUE"]
+        for record in pds:
+            valueType = record["ValueType"]
+            val = str(record[string.upper(valueType) + "VALUE"])
+            data.append([record["RecipeDataKey"], record["Units"], valueType, val])
+        ds = system.dataset.toDataSet(header, data)
+    elif recipeDataType == OUTPUT:
+        SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE "\
+            "from SfcRecipeDataOutputView  "\
+            "where StepUUID = '%s' "\
+            "order by RecipeDataKey " % (stepUUID) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows", len(pds))
+        
+        ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
+        data = []
+        header = ["KEY", "UNITS", "TAG", "OUTPUTTYPE", "DOWNLOAD", "WRITECONFIRM", "TIMING", "MAXTIMING", "DATATYPE", "OUTPUTVALUE"]
+        for record in pds:
+            valueType = record["ValueType"]
+            outputValue = str(record["OUTPUT" + string.upper(valueType) + "VALUE"])
+            data.append([record["RecipeDataKey"], record["Units"], record["Tag"],  record["OutputType"], record["Download"], record["WriteConfirm"], record["Timing"], record["MaxTiming"], valueType, outputValue])
+        ds = system.dataset.toDataSet(header, data)
+        
+    else:
+        print "UNSUPPORTED RECIPE DATA TYPE"
+        ds = "foobar"
     
+    return ds

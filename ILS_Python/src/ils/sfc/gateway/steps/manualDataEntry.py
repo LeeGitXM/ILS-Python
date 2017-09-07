@@ -2,7 +2,6 @@
 Created on Dec 17, 2015
 
 @author: rforbes
-
 '''
 
 import system, string

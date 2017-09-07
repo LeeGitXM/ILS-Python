@@ -91,7 +91,7 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     elif limitType == "High":    
         if pv < lowLimit:
             valueOk = False
-            txt = "%s is below the low limit of %s (Target - Tolerance)" % (str(pv), str(lowLimit), str(highLimit))
+            txt = "%s is below the low limit of %s (Target - Tolerance)" % (str(pv), str(lowLimit))
     elif limitType == "Low":
         if pv > highLimit:
             valueOk = False
@@ -99,7 +99,7 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     else:
         return False, "Illegal limit type: <%s>" % (limitType)
 
-    logger.trace("Returning %s-%s" % (str(valueOk), txt))
+    logger.trace("Returning %s because %s" % (str(valueOk), txt))
     
     return valueOk, txt
 
@@ -135,8 +135,8 @@ def createFilepath(chartScope, stepProperties, includeExtension):
         timestamp = "-" + time.strftime("%Y%m%d%H%M")
     else:
         timestamp = ""
-    filepath = directory + '/' + fileName + timestamp + extension
-    return filepath
+    filepath = fileName + timestamp + extension
+    return directory, filepath
 
 def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database):
     print "********************************************************************************"
@@ -430,10 +430,11 @@ def scaleTimeForIsolationMode(chartProperties, value, unit):
         logger.debug('the scaled time is %f' % value)
     return value
 
-def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
+def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
     '''Send an OC alert'''
     project=getProject(chartProperties)
-    sendAlert(project, post, topMessage, bottomMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds)
+    db = getDatabaseName(chartProperties)
+    sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds, db)
 
 def sendMessageToClient(chartScope, messageHandler, payload):
     '''Send a message to the client(s) of this chart'''
@@ -463,7 +464,7 @@ def setCurrentMessageQueue(chartProperties, queue):
     controlPanelId = getControlPanelId(chartProperties)
     system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where controlPanelId = %d" % (queue, controlPanelId), database)
 
-def writeLoggerMessage(chartScope, post, message):
+def writeToOperatorLogbook(chartScope, post, message):
     '''Write a message to the system log file from an SFC.'''
     db = getDatabaseName(chartScope)
     from ils.common.operatorLogbook import insertForPost
