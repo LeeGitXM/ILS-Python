@@ -35,7 +35,7 @@ def activate(scopeContext, stepProperties, state):
         parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset}
         action = "save"
         actionSettings = {"path": path, "fileName": filename, "format": "pdf"}
-        system.report.executeAndDistribute(reportPath, project, parameters, action, actionSettings)
+        system.report.executeAndDistribute(path=reportPath, project=project, parameters=parameters, action=action, actionSettings=actionSettings)
         
         printFile = getStepProperty(stepProperties, PRINT_FILE) 
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 

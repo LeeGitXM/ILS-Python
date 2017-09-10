@@ -12,8 +12,9 @@ from ils.sfc.gateway.api import getStepId, registerWindowWithControlPanel, delet
     getStepProperty, logStepDeactivated, dbStringForFloat, getTopChartRunId, getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88SetWithUnits, s88GetWithUnits
 from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, \
-    AUTO_MODE, AUTOMATIC, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
+    AUTO_MODE, AUTOMATIC, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, WINDOW_HEADER, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
     DEACTIVATED, CANCELLED, IS_SFC_WINDOW, WINDOW_PATH, NAME, TARGET_STEP_UUID, KEY
+from ils.common.util import escapeSqlQuotes
 
 def activate(scopeContext, stepProperties, state):    
     chartScope = scopeContext.getChartScope()
@@ -66,6 +67,8 @@ def activate(scopeContext, stepProperties, state):
                 position = getStepProperty(stepProperties, POSITION) 
                 scale = getStepProperty(stepProperties, SCALE) 
                 title = getStepProperty(stepProperties, WINDOW_TITLE)
+                header = getStepProperty(stepProperties, WINDOW_HEADER)
+                header = escapeSqlQuotes(header)
                 logger.tracef("...registering window %s at %s scaled by %s", windowPath, position, str(scale)) 
                 windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
                 
@@ -74,58 +77,73 @@ def activate(scopeContext, stepProperties, state):
                 requireAllInputs = getStepProperty(stepProperties, REQUIRE_ALL_INPUTS)
 
                 logger.trace("...inserting Manual Data Entry record without a timeout...")
-                system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, requireAllInputs, complete) values (%s, %d, 0)" % (str(windowId), requireAllInputs), database)
+                system.db.runUpdateQuery("insert into SfcManualDataEntry (windowId, header, requireAllInputs, complete) values (%s, '%s', %d, 0)" % (str(windowId), header, requireAllInputs), database)
                 
                 rowNum = 0
                 for row in config.rows:
-                    logger.tracef("Getting the default value for row: %d <%s>", rowNum, str(row.defaultValue))
-                    if row.defaultValue in [None, "None"]:
-                        logger.tracef("   ...using <None> as the default value... ")
+                    prompt = row.prompt
+                    if prompt in [None, "None"]:
+                        prompt = ""
+                        units = ""
                         defaultValue = ""
-                    
-                    elif str(row.defaultValue).strip() == "":
-                        logger.tracef("...reading the current value from destination: %s", row.destination)
-                        if string.upper(row.destination) == "TAG":
-                            tagPath = "[%s]%s" % (provider, row.key)
-                            logger.tracef("...reading the current value from tagPath: %s", tagPath)
-                            qv = system.tag.read(tagPath)
-                            if qv.quality.isGood():
-                                defaultValue = qv.value
-                            else:
-                                defaultValue = ""
-                                logger.warnf("Unable to acquire a defualt value for %s whose value is bad", tagPath)
-                            logger.tracef("   ...using the CURRENT value from a tag: <%s>", str(defaultValue))
-                        else:
-                            if row.units == "":
-                                defaultValue = s88Get(chartScope, stepScope, row.key, row.destination)
-                                logger.tracef("   ...using the CURRENT value from Recipe Data: <%s>", defaultValue)
-                            else:
-                                defaultValue = s88GetWithUnits(chartScope, stepScope, row.key, row.destination, row.units)
-                                defaultValue = "%.4f" % (defaultValue)  # Since there are units, it must be numeric??
-                                logger.tracef("   ...using the CURRENT value from Recipe Data with units: <%s> (%s)" % (defaultValue, row.units))
-
+                        lowLimitDbStr = "null"
+                        highLimitDbStr = "null"
+                        destination = ""
+                        key = ""
                     else:
-                        defaultValue = str(row.defaultValue)
-                        logger.trace("   ...using the supplied default value: <%s>" % (defaultValue))
-
-                    if isFloat(defaultValue):
-                        valueType = "Float"
-                    elif isInteger(defaultValue):
-                        valueType = "Integer"
-                    else:
-                        valueType = "String"
-                    
-                    if string.upper(row.destination) == "TAG":
-                        targetStepUUID = ''
-                    else:
-                        targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, row.destination)
+                        logger.tracef("Getting the default value for row: %d <%s>", rowNum, str(row.defaultValue))
+                        units = row.units
+                        destination = row.destination
+                        key = row.key
                         
-                    lowLimitDbStr = dbStringForFloat(row.lowLimit)
-                    highLimitDbStr = dbStringForFloat(row.highLimit)
+                        if row.defaultValue in [None, "None"]:
+                            logger.tracef("   ...using <None> as the default value... ")
+                            defaultValue = ""
+                        
+                        elif str(row.defaultValue).strip() == "":
+                            logger.tracef("...reading the current value from destination: %s", row.destination)
+                            if string.upper(row.destination) == "TAG":
+                                tagPath = "[%s]%s" % (provider, row.key)
+                                logger.tracef("...reading the current value from tagPath: %s", tagPath)
+                                qv = system.tag.read(tagPath)
+                                if qv.quality.isGood():
+                                    defaultValue = qv.value
+                                else:
+                                    defaultValue = ""
+                                    logger.warnf("Unable to acquire a defualt value for %s whose value is bad", tagPath)
+                                logger.tracef("   ...using the CURRENT value from a tag: <%s>", str(defaultValue))
+                            else:
+                                if units == "":
+                                    defaultValue = s88Get(chartScope, stepScope, row.key, destination)
+                                    logger.tracef("   ...using the CURRENT value from Recipe Data: <%s>", defaultValue)
+                                else:
+                                    defaultValue = s88GetWithUnits(chartScope, stepScope, row.key, destination, row.units)
+                                    defaultValue = "%.4f" % (defaultValue)  # Since there are units, it must be numeric??
+                                    logger.tracef("   ...using the CURRENT value from Recipe Data with units: <%s> (%s)" % (defaultValue, row.units))
+    
+                        else:
+                            defaultValue = str(row.defaultValue)
+                            logger.trace("   ...using the supplied default value: <%s>" % (defaultValue))
+    
+                        if isFloat(defaultValue):
+                            valueType = "Float"
+                        elif isInteger(defaultValue):
+                            valueType = "Integer"
+                        else:
+                            valueType = "String"
+                        
+                        if row.destination == None or string.upper(row.destination) == "TAG":
+                            targetStepUUID = ''
+                        else:
+                            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, row.destination)
+                            
+                        lowLimitDbStr = dbStringForFloat(row.lowLimit)
+                        highLimitDbStr = dbStringForFloat(row.highLimit)
+                    
                     SQL = "insert into SfcManualDataEntryTable (windowId, rowNum, description, value, units, lowLimit, highLimit, dataKey, "\
                         "destination, targetStepUUID, type, recipeUnits) values (%s, %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s', '%s')" \
-                        % (str(windowId), rowNum, row.prompt, defaultValue, row.units, lowLimitDbStr, highLimitDbStr, row.key, row.destination, targetStepUUID, valueType, row.units)
-                    logger.tracef(SQL)
+                        % (str(windowId), rowNum, prompt, defaultValue, str(units), lowLimitDbStr, highLimitDbStr, key, destination, targetStepUUID, valueType, str(units))
+                    logger.tracef("%s", SQL)
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
 

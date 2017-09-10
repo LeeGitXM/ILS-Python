@@ -9,8 +9,8 @@ import system, sys, string
 from ils.common.error import catch
 logger=system.util.getLogger("com.ils.units")
 
-FACTOR = 'FACtor'
-ALIAS = 'ALIas'
+FACTOR = 'FACTOR'
+ALIAS = 'ALIAS'
 BASEUNIT = 'BASEUNIT'
 
 class Unit(object):
@@ -75,16 +75,16 @@ class Unit(object):
         Unit.unitTypes.clear()
     
     @staticmethod
-    def clearDBUnits():
+    def clearDBUnits(db):
         '''clear all unit information in the '''
-        system.db.runUpdateQuery("delete from Units")
-        system.db.runUpdateQuery("delete from UnitAliases")
+        system.db.runUpdateQuery("delete from UnitAliases", db)
+        system.db.runUpdateQuery("delete from Units", db)
         
     @staticmethod
     def insertDB():
         '''This used to write a file that then had to somehow be inserted into 
            the , it's much easier to just insert it here!'''
-        Unit.clearDBUnits()
+        Unit.clearDBUnits("")
         for unit in Unit.unitsByName.values():
             SQL=unit.getInsertStatement()
             try:
@@ -242,10 +242,14 @@ def parseUnitFile(unitfile):
     import ils.common.units
     
     unitsByName = dict()
+    unitsByName = Unit.unitsByName
+    print "There are currently %d units in memory..." % (len(list(unitsByName.keys())))
+    i = 0
+    j = 0
 
     for line in open(unitfile, 'r').xreadlines():
-        isFactor = line.find(FACTOR) != -1
-        isAlias = line.find(ALIAS) != -1
+        isFactor = string.upper(line).find(FACTOR) != -1
+        isAlias = string.upper(line).find(ALIAS) != -1
         isComment = line[0] == '*'
         
         if isComment or not(isFactor | isAlias):
@@ -274,10 +278,12 @@ def parseUnitFile(unitfile):
         name1 = tokens[1]
         name2 = tokens[2]
         if isFactor:
+            i = i + 1
             unit = ils.common.units.Unit()
             unit.isBaseUnit = tokens[3] == BASEUNIT
             unit.name = name1
             unit.type = name2
+            print "Loading a new factor: %s of type %s" % (name1, name2)
             unit.description = description
             unitsByName[unit.name] = unit
             if not unit.isBaseUnit:
@@ -285,12 +291,17 @@ def parseUnitFile(unitfile):
                 unit.b = float(tokens[4].replace('D', 'E'))
  
         elif isAlias:
+            j = j + 1
+            print "Loading a new alias: %s which is equivalent to %s" % (name1, name2)
             realUnit = unitsByName[name2]
             if realUnit != None:
                 unitsByName[name1] = realUnit       
             else:
                 errMsg = "unit " + name2 + " for alias " + name1 + " not found"
     
+    print "Loaded %d unit definitions" % (i)
+    print "Loaded %d unit aliases" % (j)
+
     return unitsByName
     
 # If this is run from a client or the designer, then we probably don't need a db string

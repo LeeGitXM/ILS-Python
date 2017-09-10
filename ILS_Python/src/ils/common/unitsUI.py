@@ -32,13 +32,13 @@ def loadUnitsFromFileCallback(container):
         resetUI(container)
 
 def insertIntoDatabaseCallback(rootContainer):
-    ils.common.units.Unit.insertDB("")
+    ils.common.units.Unit.insertDB()
 
 def clearMemoryCallback(rootContainer):
     ils.common.units.Unit.clearUnits()
    
 def resetUI(container):
-    unitTypes = ils.common.units.Unit.getUnitTypes("")
+    unitTypes = ils.common.units.Unit.getUnitTypes()
     typesCombo = container.getComponent(UNIT_TYPES)
     setComboValues(typesCombo, unitTypes)
     fromUnitCombo = container.getComponent(FROM_UNITS)

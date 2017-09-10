@@ -30,6 +30,10 @@ def internalFrameOpened(rootContainer):
     record=pds[0]
     requireAllInputs = record["requireAllInputs"]
     rootContainer.requireAllInputs = requireAllInputs
+    
+    header = record["header"]
+    if header not in [None, ""]:
+        rootContainer.header = header
  
 def okCallback(rootContainer, timedOut=False):
     '''Save data to the database. If configured, check that all values have been entered, and
@@ -55,10 +59,12 @@ def okCallback(rootContainer, timedOut=False):
     if requireAllInputs:
         for row in range(dataset.rowCount):
             print "Checking row ", row 
-            value = dataset.getValueAt(row, "value")
-            if (value == None) or (len(value.strip()) == 0):
-                allInputsOk = False
-                break
+            description = dataset.getValueAt(row, "description")
+            if description not in ["", None]:
+                value = dataset.getValueAt(row, "value")
+                if (value == None) or (len(value.strip()) == 0):
+                    allInputsOk = False
+                    break
 
     if allInputsOk:
         print "All inputs are OK - saving data..."
@@ -79,26 +85,28 @@ def saveData(rootContainer, timedOut):
     ds = table.data
     pds = system.dataset.toPyDataSet(ds)
     for record in pds:
-        val = record['value']
-        rowNum = record['rowNum']
-        units = record['units']
-        keyAndAttribute = record['dataKey']
-        stepUUID = record['targetStepUUID']
-        destination = record['destination']
-        valueType = record['type']
-        
-        print"  %s - %s - %s - %s - %s" % (destination, keyAndAttribute, val, units, valueType)
-
-#        value = parseValue(strValue, valueType)
-        if string.upper(destination) == "TAG":
-            print "Writing %s to %s" % (val, keyAndAttribute)
-            tagPath = "[%s]%s" % (provider, keyAndAttribute)
-            system.tag.write(tagPath, val)
-        else:
-            if isEmpty(units):
-                s88SetFromStep(stepUUID, keyAndAttribute, val, db)
+        description = record['description']
+        if description not in ["", None]:
+            val = record['value']
+            rowNum = record['rowNum']
+            units = record['units']
+            keyAndAttribute = record['dataKey']
+            stepUUID = record['targetStepUUID']
+            destination = record['destination']
+            valueType = record['type']
+            
+            print"  %s - %s - %s - %s - %s" % (destination, keyAndAttribute, val, units, valueType)
+    
+    #        value = parseValue(strValue, valueType)
+            if string.upper(destination) == "TAG":
+                print "Writing %s to %s" % (val, keyAndAttribute)
+                tagPath = "[%s]%s" % (provider, keyAndAttribute)
+                system.tag.write(tagPath, val)
             else:
-                s88SetFromStepWithUnits(stepUUID, keyAndAttribute, val, db, units)
+                if isEmpty(units):
+                    s88SetFromStep(stepUUID, keyAndAttribute, val, db)
+                else:
+                    s88SetFromStepWithUnits(stepUUID, keyAndAttribute, val, db, units)
 
     SQL = "update SfcManualDataEntry set complete = 1 where windowId = '%s'" % (windowId)
     system.db.runUpdateQuery(SQL, database=db)        

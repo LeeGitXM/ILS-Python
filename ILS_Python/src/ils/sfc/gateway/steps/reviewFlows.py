@@ -142,7 +142,7 @@ def activate(scopeContext, stepProperties, state):
         
 
 def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
-    logger.tracef("Adding row: %s", str(row))
+    logger.tracef("Adding row #%d - %s", rowNum, str(row))
     
     advice = row.get("advice", None)    
     units = row.get("units", None)
@@ -178,8 +178,15 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
 
     else:
         if units == "":
-            val1 = s88Get(chartScope, stepScope, key1, scope)
-            val2 = s88Get(chartScope, stepScope, key2, scope)
+            if key1 in ["", "null", None]:
+                val1 = ""
+            else:
+                val1 = s88Get(chartScope, stepScope, key1, scope)
+            
+            if key2 in ["", "null", None]:
+                val2 = ""
+            else:
+                val2 = s88Get(chartScope, stepScope, key2, scope)
         else:
             val1 = s88GetWithUnits(chartScope, stepScope, key1, scope, units)
             val2 = s88GetWithUnits(chartScope, stepScope, key2, scope, units)
@@ -187,17 +194,31 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
         if string.upper(key3) == "SUM":
             val3 = val1 + val2
         else:
-            if units == "":
-                val3 = s88Get(chartScope, stepScope, key3, scope)
+            if key3 in ["", "null", None]:
+                val3 = ""
             else:
-                val3 = s88Get(chartScope, stepScope, key3, scope, units)
+                if units == "":
+                    val3 = s88Get(chartScope, stepScope, key3, scope)
+                else:
+                    val3 = s88Get(chartScope, stepScope, key3, scope, units)
+                    
+    if isFloat(val1):
+        val1 = float(val1)
+        val1 = "%.4f" % (val1)
+        
+    if isFloat(val2):
+        val2 = float(val2)
+        val2 = "%.4f" % (val2)
+        
+    if isFloat(val3):
+        val3 = float(val3)
+        val3 = "%.4f" % (val3)
         
     SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, advice, units, prompt, data1, data2, data3, isPrimary) "\
-        "values ('%s', %d, '%s', '%s', '%s', %s, %s, %s, %d)"\
+        "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', '%s', %d)"\
          % (windowId, rowNum, advice, units, prompt, str(val1), str(val2), str(val3), True)
 
-    print SQL
-    logger.tracef(SQL)
+    logger.tracef("%s", SQL)
     system.db.runUpdateQuery(SQL, database)
 
 
