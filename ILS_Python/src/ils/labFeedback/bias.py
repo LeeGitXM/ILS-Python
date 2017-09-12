@@ -13,7 +13,7 @@ from ils.common.util import substituteProvider
 log = system.util.getLogger("com.ils.labData.labFeedback")
 MESSAGE_QUEUE_KEY = "LABFEEDBACK"
 from ils.queue.message import insert as insertMessage
-from ils.constants.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
+from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.common.config import getHistoryProvider
 from ils.common.error import catch
 

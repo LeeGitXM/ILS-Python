@@ -8,7 +8,7 @@ import system, string
 from ils.sfc.common.constants import SQL
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.constants.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD
+from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD
 
 log = system.util.getLogger("com.ils.diagToolkit")
 

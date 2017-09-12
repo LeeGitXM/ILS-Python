@@ -4,8 +4,7 @@ Created on Jun 30, 2015
 @author: Pete
 '''
 import system
-from ils.constants.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
-from ils.sfc.common.constants import DATABASE
+from ils.diagToolkit.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
 from ils.common.config import getDatabaseClient
 
 # Not sure if this is used in production, but it is needed for testing

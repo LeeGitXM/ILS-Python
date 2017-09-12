@@ -7,8 +7,8 @@ Created on Sep 9, 2014
 import sys, system, string, traceback
 #import project, shared
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-from ils.constants.constants import QUEUE_INFO, QUEUE_ERROR
-from ils.constants.constants import RECOMMENDATION_REC_MADE, RECOMMENDATION_NONE_MADE, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
+from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR
+from ils.diagToolkit.constants import RECOMMENDATION_REC_MADE, RECOMMENDATION_NONE_MADE, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
 log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
 logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
