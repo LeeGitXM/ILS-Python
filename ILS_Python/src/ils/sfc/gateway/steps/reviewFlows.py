@@ -188,8 +188,15 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
             else:
                 val2 = s88Get(chartScope, stepScope, key2, scope)
         else:
-            val1 = s88GetWithUnits(chartScope, stepScope, key1, scope, units)
-            val2 = s88GetWithUnits(chartScope, stepScope, key2, scope, units)
+            if key1 in ["", "null", None]:
+                val1 = ""
+            else:
+                val1 = s88GetWithUnits(chartScope, stepScope, key1, scope, units)
+                
+            if key2 in ["", "null", None]:
+                val2 = ""
+            else:
+                val2 = s88GetWithUnits(chartScope, stepScope, key2, scope, units)
             
         if string.upper(key3) == "SUM":
             val3 = val1 + val2
@@ -200,7 +207,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
                 if units == "":
                     val3 = s88Get(chartScope, stepScope, key3, scope)
                 else:
-                    val3 = s88Get(chartScope, stepScope, key3, scope, units)
+                    val3 = s88GetWithUnits(chartScope, stepScope, key3, scope, units)
                     
     if isFloat(val1):
         val1 = float(val1)
@@ -223,7 +230,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
 
 
 def addSecondaryData(chartScope, stepScope, windowId, row, rowNum, database, logger):
-    logger.tracef("Adding row: %s", str(row))
+    logger.tracef("Adding row %d: %s", rowNum, str(row))
         
     units = row.get("units", None)
     
