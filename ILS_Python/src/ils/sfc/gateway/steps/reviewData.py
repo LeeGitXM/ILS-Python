@@ -198,9 +198,9 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
         
     if isFloat(advice):
         advice = float(advice)
-        print "Advice: ", advice
         advice = "%.4f" % (advice)
-        
+    print "Advice: ", advice
+    
     SQL = "insert into SfcReviewDataTable (windowId, rowNum, configKey, prompt, value, units, advice, isPrimary) "\
         "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, configKey, prompt, str(val), units, advice, isPrimary)
     system.db.runUpdateQuery(SQL, database)
