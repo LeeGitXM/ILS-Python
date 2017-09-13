@@ -176,6 +176,10 @@ a management thread was launched for each of the FDs that changed state, all of 
 of sorts.
 '''
 def scanner():
+    projectName = system.util.getProjectName()
+    if projectName == "[global]":
+        print "Skipping the diagnostic scanner for the global project"
+        return
     _scanner(scriptingInterface.getProductionDatabase(), scriptingInterface.getProductionTagProvider())
     _scanner(scriptingInterface.getIsolationDatabase(), scriptingInterface.getIsolationTagProvider())    
 

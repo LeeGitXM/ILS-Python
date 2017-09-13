@@ -18,7 +18,7 @@ def gateway():
     log.infof("In %s.gateway()", __name__)
     
     project = system.util.getProjectName()
-    log.infof("The project is: ", project)
+    log.infof("The project is: %s (ils.common.startup.gateway)", project)
     
     pds = system.db.runQuery("select * from TkSite")
     if len(pds) <> 1:
@@ -54,7 +54,7 @@ def client():
     clientCommon()
     
     project = system.util.getProjectName()
-    print "The project is: ", project
+    print "The project is: %s (ils.common.startup.client)" % (project)
     
     pds = system.db.runQuery("select * from TkSite")
     if len(pds) <> 1:
