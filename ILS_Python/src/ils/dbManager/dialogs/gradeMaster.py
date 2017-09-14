@@ -112,6 +112,7 @@ def duplicateRow(button):
     grade = ds.getValueAt(rownum,"Grade")
     familyId = ds.getValueAt(rownum,"RecipeFamilyId")
     vers = nextVersion(familyId,grade,txn)
+    log.infof("Duplicating family: %s, grade: %s, version: %s...", str(familyId), str(grade), str(vers - 1))
     SQL = "INSERT INTO RtGradeMaster(RecipeFamilyId,Grade,Version,Active) VALUES("+str(familyId)+",'"+str(grade)+"',"+str(vers)+",0)"
     log.trace(SQL)
     rows = system.db.runUpdateQuery(SQL,tx=txn)
@@ -119,7 +120,7 @@ def duplicateRow(button):
 
     # Insert rows into GradeDetail
     SQL="INSERT INTO RtGradeDetail(RecipeFamilyId, Grade, ValueId, Version, RecommendedValue, LowLimit, HighLimit) " \
-        "SELECT %s, %s, ValueId, %i, RecommendedValue, LowLimit, HighLimit FROM RtGradeDetail " \
+        "SELECT %s, '%s', ValueId, %i, RecommendedValue, LowLimit, HighLimit FROM RtGradeDetail " \
         "WHERE RecipeFamilyId=%s and Grade='%s' and version=%i" % (str(familyId), grade, vers, str(familyId), grade, vers - 1)
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL,tx=txn)
