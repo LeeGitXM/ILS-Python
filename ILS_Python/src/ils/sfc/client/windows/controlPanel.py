@@ -191,7 +191,7 @@ def resetControlPanel(controlPanelName):
     print "Resetting the database for control panel: ", controlPanelName
     database = getDatabaseClient()
     controlPanelId = getControlPanelIdForName(controlPanelName)
-    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', msgQueue = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
+    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
     system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % controlPanelId, database)
 
 #    system.db.runUpdateQuery("delete from SfcDialogMessage", database)
@@ -257,7 +257,12 @@ def setControlPanelChartPath(controlPanelId, chartPath):
 
 def showMsgQueue(window):
     rootContainer = window.getRootContainer()
-    queueKey=rootContainer.windowData.getValueAt(0,'msgQueue')
+    controlPanelId = rootContainer.controlPanelId
+    database = getDatabaseClient()
+    
+    SQL = "Select MsgQueue from SfcControlPanel where ControlPanelId = %s" % (str(controlPanelId))
+    queueKey=system.db.runScalarQuery(SQL, database)
+    
     print "The queue is: ", queueKey
     from ils.queue.message import view
     view(queueKey, useCheckpoint=True)
