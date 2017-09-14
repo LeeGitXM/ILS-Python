@@ -210,14 +210,14 @@ def dataTypeMatch(val1, val2):
 # reasonable amount of time.  As soon as we read the value back we are done.  The tagPath must be the full path to the 
 # OPC tag that we are confirming, not the UDT that contains it. 
 def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0): 
-    log.trace("Confirming the write of <%s> to %s..." % (str(val), tagPath))
+    log.trace("%s - Confirming the write of <%s> to %s..." % (__name__, str(val), tagPath))
  
     startTime = Date().getTime()
     delta = (Date().getTime() - startTime) / 1000
     
     while (delta < timeout):
         qv = system.tag.read(tagPath)
-        log.trace("%s: comparing %s-%s to %s" % (tagPath, str(qv.value), str(qv.quality), str(val)))
+        log.trace("%s - %s: comparing <%s> (%s) to <%s>" % (__name__, tagPath, str(qv.value), str(qv.quality), str(val)))
         if string.upper(str(val)) == "NAN":
             if qv.value == None:
                 return True, ""

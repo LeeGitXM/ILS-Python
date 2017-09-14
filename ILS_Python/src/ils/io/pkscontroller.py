@@ -247,7 +247,7 @@ class PKSController(controller.Controller):
     # reasonable amount of time.  As soon as we read the value back we are done.  Figuring out the
     # amount of time to wait is the tricky part.  
     def confirmWrite(self, val, valueType):  
-        log.trace("Confirming the write of <%s> to the %s of %s..." % (str(val), valueType, self.path))
+        log.trace("%s - Confirming the write of <%s> to the %s of %s..." % (__name__, str(val), valueType, self.path))
  
         from ils.io.util import confirmWrite
         confirmation, errorMessage = confirmWrite(self.path + "/" + valueType + "/value", val)

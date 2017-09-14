@@ -8,9 +8,10 @@ import system
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.client.util import getDatabase, getStartInIsolationMode
 from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
-from ils.sfc.common.constants import CANCELED
+from ils.sfc.common.constants import CANCELED, HANDLER, WINDOW
 from ils.common.windowUtil import positionWindow
 from ils.sfc.client.windowUtil import getWindowPath
+from ils.sfc.common.notify import sfcNotify
 
 immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 'SFC/RecipeDataTypeChooser',
                     'SFC/RecipeDataViewer', 'SFC/SfcHierarchy', 'SFC/SfcHierarchyWithRecipeBrowser', 'SFC/SFC Runner']
@@ -150,9 +151,31 @@ def updateSelectedMessageText(rootContainer):
     rootContainer.selectedMessageText = txt
 
 def reset(event):
+    database = getDatabaseClient()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     rootContainer.selectedMessage = 0
+    controlPanelId = rootContainer.controlPanelId
+    controlPanelName = rootContainer.controlPanelName
+    
+    ''' 
+    Get all of the registered windows and send a message to ALL clients to close them.
+    Even though this action is started from a client we need to notify ALL clients because the gateway may have
+    asked lots of clients to show the windows
+    '''
+    project = system.util.getProjectName()
+    messageHandler = 'sfcCloseWindowByName'
+    message = 'sfcMessage'
+    post = "?"
+    
+    SQL = "select windowPath from SfcWindow where controlPanelId = %s" % (controlPanelId)
+    pds = system.db.runQuery(SQL, database) 
+    for record in pds:
+        windowPath = record["windowPath"]
+        print "Closing %s on all clients..." % (windowPath)
+        payload = {HANDLER: messageHandler, WINDOW: windowPath}
+        sfcNotify(project, message, payload, post, controlPanelName, controlPanelId, database)
+    
     resetControlPanel(rootContainer.controlPanelName)
     closeAllPopups()
 

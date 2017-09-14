@@ -453,8 +453,8 @@ def sendMessageToClient(chartScope, messageHandler, payload):
     payload[ORIGINATOR] = originator
     logger.tracef("   payload: %s" , str(payload))
 
-    from ils.common.notification import notify
-    notify(project, 'sfcMessage', payload, post, db)
+    from ils.sfc.common.notify import sfcNotify
+    sfcNotify(project, 'sfcMessage', payload, post, controlPanelName, controlPanelId, db)
 
 def setCurrentMessageQueue(chartProperties, queue):
     '''Set the currently used message queue'''

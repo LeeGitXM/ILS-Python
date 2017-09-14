@@ -54,7 +54,7 @@ class OPCTag():
     # This basic class doesn't support this method
     # Implement a simple write confirmation.  Use the standard utility routine to perform the check.
     def confirmWrite(self, val):  
-        log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
+        log.trace("%s - Confirming the write of <%s> to %s..." % (__name__, str(val), self.path))
  
         from ils.io.util import confirmWrite as confirmWriteUtil
         confirmation, errorMessage = confirmWriteUtil(self.path + "/value", val)

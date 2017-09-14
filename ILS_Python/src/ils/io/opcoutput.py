@@ -49,7 +49,7 @@ class OPCOutput(opctag.OPCTag):
  
     # Implement a simple write confirmation.  Use the standard utility routine to perform the check.
     def confirmWrite(self, val):  
-        log.trace("Confirming the write of <%s> to %s..." % (str(val), self.path))
+        log.trace("%s - Confirming the write of <%s> to %s..." % (__name__, str(val), self.path))
  
         from ils.io.util import confirmWrite as confirmWriteUtil
         system.tag.write(self.path + '/writeStatus', 'Confirming')

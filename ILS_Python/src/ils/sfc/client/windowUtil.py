@@ -64,11 +64,11 @@ def shouldShowWindow(payload):
         return True
 
     if controlPanelOpen(controlPanelName):
-        print "...the window should be shown because the control panel is open!"
+        print "...the window should be shown because the control panel (%s) is open!" % (controlPanelName)
         return True
      
     if originator == system.security.getUsername():
-        print "...the window should be shown becasue the user matches!"
+        print "...the window should be shown because the user matches!"
         return True
     
     print "   The window should NOT be shown because it is private, the control panel is not open and the originator is not this user!"

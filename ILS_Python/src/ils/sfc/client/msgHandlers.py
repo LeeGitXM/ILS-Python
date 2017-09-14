@@ -5,7 +5,7 @@ These message handlers all run in the client (the client receives the message fr
 
 import system
 from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, SECURITY, PRIVATE, \
-    TARGET_STEP_UUID, KEY, IS_SFC_WINDOW, DATABASE
+    TARGET_STEP_UUID, KEY, IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME
 from ils.sfc.client.windowUtil import controlPanelOpen, shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
 from ils.common.config import getDatabaseClient
@@ -97,6 +97,7 @@ def sfcOpenWindow(payload):
     windowPath = payload[WINDOW_PATH]
     windowId = payload[WINDOW_ID]
     isSfcWindow = payload[IS_SFC_WINDOW]
+    controlPanelName = payload[CONTROL_PANEL_NAME]
     
     print "...checking if the window should be shown on this client..."
     if not(shouldShowWindow(payload)):
@@ -126,7 +127,6 @@ def sfcOpenWindow(payload):
         window = system.nav.openWindowInstance(windowPath)
         positionWindow(window, position, scale)
 
-
 def sfcCloseWindow(payload):
     windowId = payload[WINDOW_ID]
     database = payload[DATABASE]
@@ -144,7 +144,6 @@ def sfcCloseWindow(payload):
             if str(openWindowId) == str(windowId):
                 system.nav.closeWindow(window)
 
-           
 def sfcCloseWindowByName(payload):
     windowPath = payload[WINDOW]
     windows = system.gui.findWindow(windowPath)

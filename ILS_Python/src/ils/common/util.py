@@ -152,11 +152,14 @@ def clearDataset(ds):
 '''
 return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
 It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
+I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
+testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
+in project scope.
 '''
-def readAverageValues(tagPaths, tagProvider, timeIntervalMinutes, log):
+def readAverageValues(tagPaths, historyTagProvider, timeIntervalMinutes, log):
     fullTagPaths = []
     for tagPath in tagPaths:
-        fullTagPaths.append("[%s]%s" % (tagProvider, tagPath))
+        fullTagPaths.append("[%s]%s" % (historyTagProvider, tagPath))
     
     ds = system.tag.queryTagHistory(
         paths=fullTagPaths, 
