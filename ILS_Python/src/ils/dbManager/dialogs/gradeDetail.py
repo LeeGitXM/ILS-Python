@@ -8,9 +8,11 @@ Scripts in support of the "Grade Detail" dialog
 
 import sys, system
 from ils.dbManager.ui import populateRecipeFamilyDropdown
-from ils.dbManager.sql import getRootContainer, getTransactionForComponent, rollbackTransactionForComponent, closeTransactionForComponent, commitTransactionForComponent, idForFamily
+from ils.common.util import getRootContainer
+from ils.dbManager.sql import idForFamily
 from ils.dbManager.userdefaults import get as getUserDefaults
-log = system.util.getLogger("com.ils.recipe.gradedetail")
+from ils.common.error import notifyError
+log = system.util.getLogger("com.ils.recipe.ui")
 
 def internalFrameOpened(component):
     log.trace("InternalFrameOpened")
@@ -50,19 +52,14 @@ def requery(component):
         " AND VD.ValueTypeId = VT.ValueTypeId "\
         " ORDER BY F.RecipeFamilyName,GM.Grade,VD.PresentationOrder,GM.Version" % (whereExtension)
     log.trace(SQL)
-    
-    txn = getTransactionForComponent(table)
+
     try:
-        pds = system.db.runQuery(SQL,tx=txn)
+        pds = system.db.runQuery(SQL)
         log.info("grade.gradedetail ... SQL="+SQL)
         table.data = pds
         log.info("gradedetail.requery ... COMPLETE")
     except:
-        # type,value,traceback
-        type,value,trace = sys.exc_info()
-        log.info("gradedetail.requery: SQL Exception: %s" % (str(value))) 
-        rollbackTransactionForComponent(table)
-        system.gui.messageBox("Error querying Grade Detail: %s" % (str(value)))
+        notifyError(__name__, "Fetching grade details")
     
 def getWhereExtension(root):
     where = ""
@@ -70,8 +67,7 @@ def getWhereExtension(root):
     family = getUserDefaults("FAMILY")
     if family != "ALL":
         where = " AND F.RecipeFamilyName = '"+family+"'"
-        
-    grade = root.grade
+
     grade = getUserDefaults("GRADE")
     if grade != "ALL":
         where = where+ " AND GM.Grade = '"+grade+"'"
@@ -97,7 +93,7 @@ def showWindow():
 # limits.
 def update(table,row,colname,value):
     log.info("gradedetail.update (%d:%s)=%s ..." %(row,colname,str(value)))
-    txn = getTransactionForComponent(table)
+
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     familyid = ds.getValueAt(row,"RecipeFamilyId")
@@ -118,7 +114,7 @@ def update(table,row,colname,value):
             " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %i and ValueId = %i" \
             % (colname, str(value), familyid, str(gradeid), version, vid)
         log.trace(SQL)
-        rows = system.db.runUpdateQuery(SQL,tx=txn)
+        rows = system.db.runUpdateQuery(SQL)
         log.trace("Updated %i rows" % (rows))
     except:
         system.gui.warningBox(msg)

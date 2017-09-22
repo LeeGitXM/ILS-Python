@@ -7,7 +7,7 @@ Created on Dec 29, 2016
 import system
 from ils.common.util import formatDateTimeForDatabase
 log = system.util.getLogger("com.ils.sfc.python.structureManager")
-from ils.common.error import catch
+from ils.common.error import catchError
 from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath
 from ils.common.database import toList
 
@@ -51,7 +51,7 @@ def createChart(resourceId, chartPath, db):
         log.tracef("...inserted %s into SfcChart table and got id: %d", chartPath, chartId)
 
     except:
-        errorTxt = catch("%s.createChart()")
+        errorTxt = catchError("%s.createChart()")
         log.errorf(errorTxt)
     
 def deleteChart(resourceId, chartPath, db):
@@ -131,7 +131,7 @@ def deleteChart(resourceId, chartPath, db):
         system.db.closeTransaction(txId)
 
     except:
-        errorTxt = catch("deleting a chart - rolling back database transactions")
+        errorTxt = catchError("deleting a chart - rolling back database transactions")
         log.errorf(errorTxt)
         system.db.rollbackTransaction(txId)
         system.db.closeTransaction(txId)
@@ -332,7 +332,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
         system.db.closeTransaction(txId)
 
     except:
-        errorTxt = catch("Updating the Chart Hierarchy - rolling back database transactions")
+        errorTxt = catchError("Updating the Chart Hierarchy - rolling back database transactions")
         log.errorf(errorTxt)
         system.db.rollbackTransaction(txId)
         system.db.closeTransaction(txId)

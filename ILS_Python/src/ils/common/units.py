@@ -6,7 +6,7 @@ Created on Sep 16, 2014
 @author: rforbes
 '''
 import system, sys, string
-from ils.common.error import catch
+from ils.common.error import catchError
 logger=system.util.getLogger("com.ils.units")
 
 FACTOR = 'FACTOR'
@@ -207,7 +207,7 @@ class Unit(object):
             Unit.addUnits(newUnits)
             logger.infof("...done loading units!")
         except:
-            errorTxt = catch("Error fetching Units")
+            errorTxt = catchError("Error fetching Units")
             logger.errorf(errorTxt)
 
 def getUnits():

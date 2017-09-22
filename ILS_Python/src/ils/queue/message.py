@@ -5,7 +5,7 @@ Created on Sep 9, 2014
 '''
 import  system, string
 from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
-from ils.common.error import catch
+from ils.common.error import catchError
 log = system.util.getLogger("com.ils.queue")
 
 # Expected status are Info, Warning, or Error
@@ -97,7 +97,7 @@ def save(queueKey, useCheckpoint, filepath, db = ''):
             txt = str(record["Timestamp"]) + "," + record["Status"] + "," + record["Message"] + "\n"
             system.file.writeFile(filepath, txt, True)
     except:
-        txt = catch("Error saving message queue <%s> to <%s>" % (queueKey, filepath))
+        txt = catchError("Error saving message queue <%s> to <%s>" % (queueKey, filepath))
         log.error(txt)
 
 def clear(queueKey, db = ''):

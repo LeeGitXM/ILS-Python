@@ -7,7 +7,7 @@ Created on Jan 9, 2017
 import system, string, time
 import xml.etree.ElementTree as ET
 from ils.sfc.recipeData.structureManager import getTxId
-from ils.common.error import catch
+from ils.common.error import catchError
 from ils.common.cast import toBit, isFloat
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
 from ils.common.config import getTagProvider
@@ -52,7 +52,7 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
         log.infof("***************") 
         
     except:
-        errorTxt = catch("Migrating Recipe Data - rolling back transactions")
+        errorTxt = catchError("Migrating Recipe Data - rolling back transactions")
         log.errorf(errorTxt)
         system.db.rollbackTransaction(tx)
         
@@ -120,7 +120,7 @@ def processStep(step, db, tx):
 
         log.trace("Done with step")
     except:
-        errorTxt = catch("Error migrating recipe data for a step")
+        errorTxt = catchError("Error migrating recipe data for a step")
         log.errorf(errorTxt)
             
 def getRecipeDataTypeFromAssociatedData(recipeData):

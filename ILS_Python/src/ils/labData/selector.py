@@ -4,7 +4,7 @@ Created on Mar 29, 2015
 @author: Pete
 '''
 import system
-from ils.common.error import catch
+from ils.common.error import catchError
 from ils.common.config import getDatabase, getDatabaseClient
 log = system.util.getLogger("com.ils.labData.selector")
 
@@ -27,7 +27,7 @@ def valueChanged(tagPath):
         else:
             log.trace("Skipping the value change because processing is not enabled")
     except:
-        catch("%s.valueChanged" % (__name__))
+        catchError("%s.valueChanged" % (__name__))
         
     # Reset the trigger
     system.tag.write(tagRoot + "/trigger", False)

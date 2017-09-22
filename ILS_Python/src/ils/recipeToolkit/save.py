@@ -7,7 +7,7 @@ import sys, traceback, system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.recipeToolkit.fetch import fetchFamilyId
 from ils.recipeToolkit.common import checkForUncommentedChanges
-from ils.common.error import catch
+from ils.common.error import catchError
 log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 
 def callback(event):
@@ -39,7 +39,7 @@ def callback(event):
         updateRecipe(event, recipeFamilyId, grade, newVersion, txId)
 
     except:
-        txt = catch("%s.callback" % (__name__), "Caught error while saving a new version of the recipe")
+        txt = catchError("%s.callback" % (__name__), "Caught error while saving a new version of the recipe")
         log.error(txt )
         system.db.rollbackTransaction(txId)
        

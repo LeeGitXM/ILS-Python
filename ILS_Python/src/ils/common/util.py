@@ -64,6 +64,14 @@ def getDate(database = ""):
     theDate = system.db.runScalarQuery(SQL, database)
     return theDate
 
+# Find the root container component that is, or is the parent
+# of the specified component.
+def getRootContainer(component):
+    while component != None:
+        if component.name == "Root Container":
+            break
+        component = component.parent
+    return component
 
 def formatDate(theDate, format = 'MM/dd/yy'):
     theDate = system.db.dateFormat(theDate, format)

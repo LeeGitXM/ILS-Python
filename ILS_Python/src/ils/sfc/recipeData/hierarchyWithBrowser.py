@@ -6,7 +6,7 @@ Created on Feb 10, 2017
 import system
 from ils.common.windowUtil import clearTable
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
-from ils.common.error import catch
+from ils.common.error import catchError
 from ils.common.config import getTagProviderClient
 log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 
@@ -295,7 +295,7 @@ def getRecipeDataDescription(record, txId):
                     
                 desc = getInputValueDescriptionFromRecord(valueRecord, desc)
     except:
-        errorDesc = catch("%s.getRecipeDataDescription()" % (__name__))
+        errorDesc = catchError("%s.getRecipeDataDescription()" % (__name__))
         log.errorf(errorDesc)
 
     return desc

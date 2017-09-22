@@ -6,11 +6,11 @@ Created on Jul 7, 2016
 import system, traceback
 
 
-def notify(source="", contextMsg=""):
-    txt = catch(source, contextMsg)
+def notifyError(source="", contextMsg=""):
+    txt = catchError(source, contextMsg)
     system.gui.errorBox(txt)
 
-def catch(source="", contextMsg=""):    
+def catchError(source="", contextMsg=""):    
     import sys
 
     exception = sys.exc_info()[1] 

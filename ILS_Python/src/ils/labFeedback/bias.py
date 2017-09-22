@@ -15,7 +15,7 @@ MESSAGE_QUEUE_KEY = "LABFEEDBACK"
 from ils.queue.message import insert as insertMessage
 from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.common.config import getHistoryProvider
-from ils.common.error import catch
+from ils.common.error import catchError
 
 def exponentialFilter(tagPath, previousValue, newValue, initialchange): 
     try:
@@ -66,7 +66,7 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
         writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
         
     except:
-        txt=catch("exponentialFilter", "Caught an error calculating an exponential filter bias for %s" % (tagPath))
+        txt=catchError("exponentialFilter", "Caught an error calculating an exponential filter bias for %s" % (tagPath))
         log.error(txt)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 
@@ -116,7 +116,7 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
         writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
 
     except:
-        txt=catch("pidFilter", "Caught an error calculating an PID filter bias for %s" % (tagPath))
+        txt=catchError("pidFilter", "Caught an error calculating an PID filter bias for %s" % (tagPath))
         log.error(txt)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 

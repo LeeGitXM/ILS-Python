@@ -6,7 +6,7 @@ Created on Feb 1, 2017
 
 import system, string
 from ils.common.cast import toBit
-from ils.common.error import catch
+from ils.common.error import catchError
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from ils.common.config import getDatabaseClient
 log=system.util.getLogger("com.ils.sfc.visionEditor")
@@ -847,7 +847,7 @@ def saveSimpleValue(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -911,7 +911,7 @@ def saveInput(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1015,7 +1015,7 @@ def saveOutput(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1069,7 +1069,7 @@ def saveTimerValue(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1134,7 +1134,7 @@ def saveRecipe(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1235,7 +1235,7 @@ def saveArray(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1347,7 +1347,7 @@ def saveMatrix(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catch("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     

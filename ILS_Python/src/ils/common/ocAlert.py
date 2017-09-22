@@ -5,7 +5,7 @@ Created on Mar 31, 2015
 '''
 
 import system, string, sys, traceback
-from ils.common.notification import notify
+from ils.common.notification import notifyError
 logger=system.util.getLogger("com.ils.ocAlert")
 
 # This is generally called from the gateway, but should work from th
@@ -34,7 +34,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     
     message = "ocAlert"
 
-    notify(project, message, payload, post, db)
+    notifyError(project, message, payload, post, db)
 
 
 # This runs in a client and is called when the OC alert message is sent to every client.  The first
@@ -48,7 +48,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
 def handleMessage(payload):
     logger.trace("In %s.handleMessage() - payload: %s" % (__name__, str(payload)))
     
-    # This is a hack.  We have a common notify API that implements so good logic to figure out if a window should be shown on a client.
+    # This is a hack.  We have a common notifyError API that implements so good logic to figure out if a window should be shown on a client.
     # For some reason it adds "showOverride" to the payload.  It is no longer obvious who uses this property, but it throws an error
     # for the OC alert. 
     if payload.has_key('showOverride'):

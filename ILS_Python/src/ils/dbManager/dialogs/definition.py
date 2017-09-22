@@ -8,18 +8,17 @@ For a unit these are the parameters that the operator expects.
 An empty description serves as a separator on the screen.
 '''
 
-import sys, system
+import system
 from ils.dbManager.ui import populateRecipeFamilyDropdown
-from ils.dbManager.sql import getTransactionForComponent, rollbackTransactionForComponent, closeTransactionForComponent, commitTransactionForComponent, idForFamily, getRootContainer
+from ils.dbManager.sql import idForFamily
+from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
-log = system.util.getLogger("com.ils.recipe.definition")
+from ils.common.error import notifyError
+log = system.util.getLogger("com.ils.recipe.ui")
 
 # When the screen is first displayed, set widgets for user defaults
 def internalFrameOpened(component):
     log.trace("InternalFrameOpened")
-
-    # Make sure the transaction is alive.
-    getTransactionForComponent(component)
     
     # When the screen is first displayed, set widgets for user defaults
     container = getRootContainer(component)
@@ -47,17 +46,13 @@ def requery(component):
         " %s ORDER BY F.RecipeFamilyName,VD.PresentationOrder" % (whereExtension)
     log.trace(SQL)
 
-    txn = getTransactionForComponent(table)
-
     try:
-        pds = system.db.runQuery(SQL,tx=txn)
+        pds = system.db.runQuery(SQL)
         table.data = pds
         refresh(table)
     except:
-        # type,value,traceback
-        type,value,trace = sys.exc_info()
-        log.info("definiton.requery: SQL Exception ...",value) 
-        rollbackTransactionForComponent(table)
+        notifyError(__name__, "Error requerying value definition")
+
 
 # Given the current state of the table, make sure that other widgets
 # on the screen are in-synch. 
@@ -80,21 +75,37 @@ def deleteRow(button):
     log.info("definiton.deleteRow ...")
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
-    txn = getTransactionForComponent(button)
+
     rownum = table.selectedRow
     ds = table.data
     familyid = ds.getValueAt(rownum,'RecipeFamilyId')
+    familyName = ds.getValueAt(rownum,'RecipeFamilyName')
     presOrder = ds.getValueAt(rownum,'PresentationOrder')
-    vid = ds.getValueAt(rownum,'ValueId')
-    SQL = "DELETE FROM RtValueDefinition WHERE RecipeFamilyId="+str(familyid)+" AND PresentationOrder="+str(presOrder)
-    system.db.runUpdateQuery(SQL,tx=txn)
-    # Now fix the remaining order
-    SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder-1 "
-    SQL = SQL + " WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>"+str(presOrder)
-    system.db.runUpdateQuery(SQL,tx=txn)
-    # Finally remove any references in the GradeDetail
-    SQL = "DELETE RtGradeDetail Where ValueId = "+str(vid)
-    system.db.runUpdateQuery(SQL,tx=txn)
+    
+    confirm = system.gui.confirm("Are you sure that you want to delete this value definitions for all grades in this family <%s>?" % (familyName))
+    if confirm:
+        
+        tx = system.db.beginTransaction()
+        
+        try:
+            vid = ds.getValueAt(rownum,'ValueId')
+            SQL = "DELETE FROM RtValueDefinition WHERE RecipeFamilyId="+str(familyid)+" AND PresentationOrder="+str(presOrder)
+            system.db.runUpdateQuery(SQL, tx=tx)
+            
+            # Now fix the remaining order
+            SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder-1 WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>"+str(presOrder)
+            system.db.runUpdateQuery(SQL, tx=tx)
+            
+            # Finally remove any references in the GradeDetail
+            SQL = "DELETE RtGradeDetail Where ValueId = "+str(vid)
+            system.db.runUpdateQuery(SQL, tx=tx)
+        except:
+            system.db.rollbackTransaction(tx)
+        
+        else:
+            system.db.commitTransaction(tx)
+        
+        system.db.closeTransaction(tx)
 
 # Add a new row to the table. The data element is a DataSet (not python)
 # When complete, the button will re-query
@@ -102,45 +113,54 @@ def duplicateRow(button):
     log.info("definiton.duplicateRow ...")
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
-    txn = getTransactionForComponent(button)
-    
-    defaultValueTypeId = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = 'Float'", tx=txn) 
-    
-    ds = table.data
-    if ds.rowCount == 0:
-        print "Adding the first row"
-        family = container.getComponent("FamilyDropdown").selectedStringValue
-        familyid = idForFamily(family, txn)
-        print "The selected family is: ", family, " - id: ", familyid
-        presOrder = 1
-        SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel,ValueTypeId) VALUES (%s,%s,'CC',%s)" % (str(familyid), str(presOrder), str(defaultValueTypeId))
-        log.trace(SQL)
-        vid=system.db.runUpdateQuery(SQL,tx=txn,getKey=True)
-    else:
-        rownum = table.selectedRow
-        familyid  = ds.getValueAt(rownum,"RecipeFamilyId")
-        presOrder = ds.getValueAt(rownum,'PresentationOrder')
 
-        # First fix the order of following rows
-        SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder+1 "\
-            " WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>="+str(presOrder)
+    defaultValueTypeId = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = 'Float'") 
+    
+    tx = system.db.beginTransaction()
+    
+    try:
+        ds = table.data
+        if ds.rowCount == 0:
+            print "Adding the first row"
+            family = container.getComponent("FamilyDropdown").selectedStringValue
+            familyid = idForFamily(family)
+            print "The selected family is: ", family, " - id: ", familyid
+            presOrder = 1
+            SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel,ValueTypeId) VALUES (%s,%s,'CC',%s)" % (str(familyid), str(presOrder), str(defaultValueTypeId))
+            log.trace(SQL)
+            vid=system.db.runUpdateQuery(SQL, tx=tx, getKey=True)
+        else:
+            rownum = table.selectedRow
+            familyid  = ds.getValueAt(rownum,"RecipeFamilyId")
+            presOrder = ds.getValueAt(rownum,'PresentationOrder')
+    
+            # First fix the order of following rows
+            SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder+1 "\
+                " WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>="+str(presOrder)
+            log.trace(SQL)
+            rows = system.db.runUpdateQuery(SQL, tx=tx)
+            log.infof("Renumbered %d rows", rows)
+            
+            # Now insert the new row in the vacated spot
+            SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel,ValueTypeId) VALUES (%s,%s,'CC',%s)" % (str(familyid), str(presOrder), str(defaultValueTypeId))
+            log.trace(SQL)
+            vid=system.db.runUpdateQuery(SQL,getKey=True, tx=tx)
+            log.infof("Inserted a record into RtValueDefinition with id: %s", str(vid))
+            
+        # Now add a new grade detail row for each grade
+        SQL = "INSERT INTO RtGradeDetail(RecipeFamilyId, Grade, ValueId, Version) "\
+            " SELECT DISTINCT RecipeFamilyId, Grade, %s, Version " \
+            " FROM RtGradeDetail WHERE recipeFamilyId = %s " % (str(vid), str(familyid))
         log.trace(SQL)
-        rows = system.db.runUpdateQuery(SQL,tx=txn)
-        log.infof("Renumbered %d rows", rows)
+        rows=system.db.runUpdateQuery(SQL, tx=tx)
+        log.info("Inserted %d rows into RtGradeDetail" % (rows))
+    except:
+        system.db.rollbackTransaction(tx)
+    else:
+        system.db.commitTransaction(tx)
         
-        # Now insert the new row in the vacated spot
-        SQL = "INSERT INTO RtValueDefinition(RecipeFamilyId,PresentationOrder,ChangeLevel,ValueTypeId) VALUES (%s,%s,'CC',%s)" % (str(familyid), str(presOrder), str(defaultValueTypeId))
-        log.trace(SQL)
-        vid=system.db.runUpdateQuery(SQL,tx=txn,getKey=True)
-        log.infof("Inserted a record into RtValueDefinition with id: %s", str(vid))
-        
-    # Now add a new grade detail row for each grade
-    SQL = "INSERT INTO RtGradeDetail(RecipeFamilyId, Grade, ValueId, Version) "\
-        " SELECT DISTINCT RecipeFamilyId, Grade, %s, Version " \
-        " FROM RtGradeDetail WHERE recipeFamilyId = %s " % (str(vid), str(familyid))
-    log.trace(SQL)
-    rows=system.db.runUpdateQuery(SQL,tx=txn)
-    log.info("Inserted %d rows into RtGradeDetail" % (rows))
+    system.db.closeTransaction(tx)
+    
     
 # Enhance the joining where clause with the selection
 # from the processing unit dropdown.
@@ -171,23 +191,34 @@ def moveRows(table,rows,rowData,dropIndex):
     
     if dropOrder>maxOrder:
         dropOrder = dropOrder - 1
-    txn = getTransactionForComponent(table)
-    # First of all collapse rows greater than our range
-    SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder-"+str(len(rows))
-    SQL = SQL + " WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>"+str(maxOrder)
-    system.db.runUpdateQuery(SQL,tx=txn)
-    # Now create the space for the moved row
-    SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder+"+str(len(rows))
-    SQL = SQL + " WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>="+str(dropOrder)
-    system.db.runUpdateQuery(SQL,tx=txn)
-    # Finally update the presentation order for the rows that were moved
-    po = dropOrder
-    for row in range(rowData.rowCount):
-        vid = rowData.getValueAt(row,"ValueId")
-        SQL = "UPDATE RtValueDefinition SET presentationOrder = "+str(po)
-        SQL = SQL + " WHERE RecipeFamilyId ="+str(familyid)+" AND ValueId="+str(vid)
-        system.db.runUpdateQuery(SQL,tx=txn)
-        po = po + 1
+
+    tx = system.db.beginTransaction()
+
+    try:
+        # First of all collapse rows greater than our range
+        SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder-"+str(len(rows))
+        SQL = SQL + " WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>"+str(maxOrder)
+        system.db.runUpdateQuery(SQL,tx=tx)
+        
+        # Now create the space for the moved row
+        SQL = "UPDATE RtValueDefinition SET presentationOrder = presentationOrder+"+str(len(rows))
+        SQL = SQL + " WHERE RecipeFamilyId ="+str(familyid)+" AND PresentationOrder>="+str(dropOrder)
+        system.db.runUpdateQuery(SQL,tx=tx)
+        
+        # Finally update the presentation order for the rows that were moved
+        po = dropOrder
+        for row in range(rowData.rowCount):
+            vid = rowData.getValueAt(row,"ValueId")
+            SQL = "UPDATE RtValueDefinition SET presentationOrder = " + str(po) + " WHERE RecipeFamilyId =" + str(familyid) + " AND ValueId=" + str(vid)
+            system.db.runUpdateQuery(SQL, tx=tx)
+            po = po + 1
+    except:
+        system.db.rollbackTransaction(tx)
+        
+    else:
+        system.db.commitTransaction(tx)
+        
+    system.db.closeTransaction(tx)
                 
 # Called from the client startup script: View menu
 # Note: No attempt is made at this point to reconcile with any tab strip
@@ -199,7 +230,6 @@ def showWindow():
 # Update database for a cell edit.
 def update(table,row,colname,value):
     log.info("definiton.update (%d:%s)=%s ..." %(row,colname,str(value)))
-    txn = getTransactionForComponent(table)
     ds = table.data
     # All editable columns are strings.
     familyid = ds.getValueAt(row,"RecipeFamilyId")
@@ -216,4 +246,8 @@ def update(table,row,colname,value):
 
     SQL = "UPDATE RtValueDefinition SET "+colname+" = '"+str(value)+"'"
     SQL = SQL+" WHERE RecipeFamilyId="+str(familyid)+" AND PresentationOrder="+str(pid)
-    system.db.runUpdateQuery(SQL,tx=txn)
+    
+    try:
+        system.db.runUpdateQuery(SQL)
+    except:
+        notifyError(__name__, "Error updating a value definition")

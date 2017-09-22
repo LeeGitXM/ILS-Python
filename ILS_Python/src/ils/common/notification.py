@@ -7,8 +7,8 @@ Created on Nov 5, 2016
 import system
 logger=system.util.getLogger("com.ils.common.notification")
 
-def notify(project, message, payload, post, db):
-    logger.infof("In %s.notify(), Sending <%s> message to project: <%s>, post: <%s>, payload: <%s>" % (__name__, str(message), str(project), str(post), str(payload)))
+def notifyError(project, message, payload, post, db):
+    logger.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, payload: <%s>" % (__name__, str(message), str(project), str(post), str(payload)))
     notifiedClients = []
     if post <> "":
         logger.trace("Targeting post: <%s>" % (post))

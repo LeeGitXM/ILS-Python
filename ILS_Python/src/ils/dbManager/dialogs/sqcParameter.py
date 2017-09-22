@@ -8,9 +8,11 @@ Scripts in support of the "SQC Parameter" dialog
 
 import string, system
 from ils.dbManager.ui import populateRecipeFamilyDropdown
-from ils.dbManager.sql import getRootContainer, getTransactionForComponent, rollbackTransactionForComponent, closeTransactionForComponent, commitTransactionForComponent, idForFamily
+from ils.dbManager.sql import idForFamily
+from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
-log = system.util.getLogger("com.ils.recipe.sqcparameter")
+from ils.common.error import notifyError
+log = system.util.getLogger("com.ils.recipe.ui")
 
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"
@@ -26,7 +28,6 @@ def internalFrameActivated(rootContainer):
 
 # Refresh the text field and dropdowns
 def refresh(component):
-    container = getRootContainer(component)
     log.debug("sqcparameter.refresh ... ")
     initialize(component)
 
@@ -34,28 +35,35 @@ def refresh(component):
 # By adding a new parameter, we are adding a new parameter for every grade for the family
 # Will get an error if the row exists.
 def insertRow(rootContainer):
-    txn = rootContainer.transaction
-    
     # Family
     family = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     if family == "" or string.upper(family) == "ALL":
         system.gui.messageBox("Please select a specific family!")
         return False
-    familyId = idForFamily(family,txn)
+    familyId = idForFamily(family)
     
     # Parameter
     parameter = rootContainer.getComponent("ParameterNameField").text
     if parameter!=None and len(parameter)>0:
-        SQL = "INSERT INTO RtSQCParameter(RecipeFamilyId, Parameter) VALUES(%s, '%s')" % (str(familyId), parameter)
-        log.trace(SQL)
-        parameterId = system.db.runUpdateQuery(SQL,tx=txn,getKey=True)
+        tx= system.db.beginTransaction()
         
-        # Now add a new limit row for each grade
-        SQL = "INSERT INTO RtSQCLimit(ParameterId,Grade) " \
-            " SELECT DISTINCT %i, Grade FROM RtGradeMaster WHERE RecipeFamilyId = %i " % (parameterId, familyId)
-        log.trace(SQL)
-        rows=system.db.runUpdateQuery(SQL,tx=txn)
-        log.info("Inserted %i rows into RtSQCLimit" % (rows))
+        try:
+            SQL = "INSERT INTO RtSQCParameter(RecipeFamilyId, Parameter) VALUES(%s, '%s')" % (str(familyId), parameter)
+            log.trace(SQL)
+            parameterId = system.db.runUpdateQuery(SQL,tx=tx, getKey=True)
+    
+            # Now add a new limit row for each grade
+            SQL = "INSERT INTO RtSQCLimit(ParameterId,Grade) " \
+                " SELECT DISTINCT %i, Grade FROM RtGradeMaster WHERE RecipeFamilyId = %i " % (parameterId, familyId)
+            log.trace(SQL)
+            rows=system.db.runUpdateQuery(SQL,tx=tx)
+        except:
+            system.db.rollbackTransaction(tx)
+            notifyError(__name__, "Inserting a SQC Parameter")
+        else:
+            log.info("Inserted %i rows into RtSQCLimit" % (rows))
+        system.db.closeTransaction(tx)
+        
     else:
         system.gui.messageBox("Please enter a parameter name!")
         return False

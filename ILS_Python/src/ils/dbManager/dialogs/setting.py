@@ -7,9 +7,9 @@ Scripts in support of the "Add Grade Setting" dialog
 '''
 
 import system
-from ils.dbManager.sql import getRootContainer
+from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
-log = system.util.getLogger("com.ils.recipe.setting")
+log = system.util.getLogger("com.ils.recipe.ui")
 
 # Refresh the text field and dropdowns
 def refresh(component):

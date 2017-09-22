@@ -3,7 +3,7 @@ Created on Dec 17, 2015
 
 @author: rforbes
 '''
-from ils.common.error import catch
+from ils.common.error import catchError
 from ils.sfc.gateway.api import getChartLogger, getProviderName, handleUnexpectedGatewayError, standardDeviation, getTopLevelProperties, getStepProperty, getTopChartRunId
 from ils.sfc.recipeData.api import s88Set
 from ils.sfc.common.constants import COLLECT_DATA_CONFIG
@@ -74,7 +74,7 @@ def activate(scopeContext, stepProperties, state):
                             logger.warn("queryTagHistory did not return a value")
                             readOk = False
                     except:
-                        txt=catch(__name__, "Error collecting data from %s for %s minutes using %s" % (tagPath, str(row['pastWindow']), mode))
+                        txt=catchError(__name__, "Error collecting data from %s for %s minutes using %s" % (tagPath, str(row['pastWindow']), mode))
                         logger.error(txt)
                         readOk = False
             if readOk:

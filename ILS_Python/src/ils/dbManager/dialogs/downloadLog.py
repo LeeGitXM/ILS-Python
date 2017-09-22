@@ -9,7 +9,7 @@ Created on Mar 21, 2017
 # Scripts in support of the "Recipe Output" table.
 #
 import system
-log = system.util.getLogger("com.ils.recipe.downloadLog")
+log = system.util.getLogger("com.ils.recipe.ui")
 
 # Called from the client startup script: View menu
 def showWindow():

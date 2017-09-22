@@ -409,8 +409,8 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
 
     except:
         print "Caught an exception"
-        from ils.common.error import catch
-        catch()
+        from ils.common.error import catchError
+        catchError()
 
 # Send a message to clients to update any open recommendation maps.
 def notifyRecommendationMapClients(project, post, clientId):
