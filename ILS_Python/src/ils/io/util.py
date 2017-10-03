@@ -8,20 +8,33 @@ import system, string, time
 from java.util import Date
 from ils.common.util import isText
 from ils.common.config import getTagProvider
-log = system.util.getLogger("com.ils.io")
+log = system.util.getLogger("com.ils.io.util")
 
 # Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
 # There is possibly an easier way to do this and avoid the whole broseTag API issues of 
 # having to put a wild card in front of the tagPath.  I could use system.tag.read(tagPath + ".TagType.
 # but I don't know how to decode the integer enumeration that is returned.   
 def isUDT(fullTagPath):
+    log.tracef("Checking if %s is a UDT...", fullTagPath)
     try:
         isUDT = False
         parentPath, tagPath = splitTagPath(fullTagPath)
-        tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+        log.tracef("Parent: <%s>, Tag: <%s>", parentPath, tagPath)
+#        tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+#        for tag in tags:
+#            log.tracef("Checking <%s> vs <%s>", tag.fullPath, fullTagPath)
+#            if tag.fullPath == fullTagPath:
+#                log.tracef(" --names match--")
+#                isUDT = tag.isUDT()
+#                log.tracef("  isUDT: %s", str(isUDT)) 
+        tags = system.tag.browseTagsSimple(parentPath, "ASC")
         for tag in tags:
+            log.tracef("Checking <%s> vs <%s>", tag.fullPath, fullTagPath)
             if tag.fullPath == fullTagPath:
-                isUDT = tag.isUDT()     
+                log.tracef(" --names match--")
+                isUDT = tag.isUDT()
+                log.tracef("  isUDT: %s", str(isUDT)) 
+                return isUDT
     except:
         log.errorf("Error attempting to determine if <%s> is a UDT, parent: %s, tag path: %s", fullTagPath, parentPath, tagPath)
         isUDT = False  
@@ -55,12 +68,23 @@ def getOutputForTagPath(tagPath, outputType):
 
 
 def isFolder(fullTagPath):
+    log.tracef("Checking if %s is a folder...", fullTagPath)
     isFolder = False
     parentPath, tagPath = splitTagPath(fullTagPath)
-    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+    log.tracef("Parent: <%s>, Tag: <%s>", parentPath, tagPath)
+#    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
+#    for tag in tags:
+#        if tag.fullPath == fullTagPath:
+#            isFolder = tag.isFolder()       
+    tags = system.tag.browseTagsSimple(parentPath, "ASC")
     for tag in tags:
+        log.tracef("Checking <%s> vs <%s>", tag.fullPath, fullTagPath)
         if tag.fullPath == fullTagPath:
-            isFolder = tag.isFolder()       
+            log.tracef(" --names match--")
+            isUDT = tag.isFolder()
+            log.tracef("  isFolder: %s", str(isFolder)) 
+            return isFolder    
+    
     return isFolder
 
 def getOuterUDT(fullTagPath):

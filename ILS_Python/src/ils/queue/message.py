@@ -71,6 +71,9 @@ def queueSQL(queueKey, useCheckpoint, order, db =''):
 # Write the contents of the queue to a file
 def save(queueKey, useCheckpoint, filepath, db = ''):
 
+    '''
+    If the filename contains a * then replace it with the datetime.
+    '''
     if filepath.find('*') > -1:
         # Get the timestamp formatted for including in a filename
 #        from ils.common.util import getDate

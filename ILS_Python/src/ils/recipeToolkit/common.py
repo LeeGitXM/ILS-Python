@@ -65,6 +65,8 @@ def updateTagName(tagName):
     tagName = string.replace(tagName, '.', '-')
     tagName = string.replace(tagName, ' ', '-')
     tagName = string.replace(tagName, '/', '-')
+    tagName = string.replace(tagName, '[', '(')
+    tagName = string.replace(tagName, ']', ')')
     if tagName.find('[') >= 0:
         print "Stripping off an array reference from <%s>" % (tagName)
         tagName = tagName[:tagName.find('[')]

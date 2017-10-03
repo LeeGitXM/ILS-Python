@@ -8,6 +8,11 @@ import system
 logger=system.util.getLogger("com.ils.watchdog")
 
 def scanOpcWatchdogs(arg):
+    projectName = system.util.getProjectName()
+    if projectName == "[global]":
+        print "Skipping the OPC Watchdog scanner for the global project"
+        return
+    
     logger.info("Scanning OPC watchdogs...")
     
     for udtParentType in ["OPC Read Watchdog"]:
@@ -81,4 +86,26 @@ def opcReadWatchdog(udtPath):
         system.tag.write(udtPath+"/stallCount", stallCount + 1)
     elif not(stalled) and stallCount > 0:
         system.tag.write(udtPath+"/stallCount", 0)
+
+def resetInterface(event):
+    logger.infof("In %s.resetInterface()", __name__)
+    opcInterface = getOpcInterfaceFromEvent(event)
+    if opcInterface == None:
+        return
+    print "OPC Interface: ", opcInterface
+
+def notifyOC(event):
+    logger.infof("In %s.notifyOC()", __name__)
+    opcInterface = getOpcInterfaceFromEvent(event)
+    if opcInterface == None:
+        return
+    print "OPC Interface: ", opcInterface
+
+def getOpcInterfaceFromEvent(event):
+    print "Event: ", event
+    source = event.get("source", None)
+    if source == None:
+        return None
+
+    return "foo"
         

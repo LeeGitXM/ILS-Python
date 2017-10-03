@@ -117,25 +117,37 @@ def createFilepath(chartScope, stepProperties, includeExtension):
     import time
 
     directory = getStepProperty(stepProperties, DIRECTORY) 
-    fileName = getStepProperty(stepProperties, FILENAME) 
+    filename = getStepProperty(stepProperties, FILENAME) 
     if includeExtension:
         extension = getStepProperty(stepProperties, EXTENSION) 
     else:
-        extension = ''
+        if filename.find(".") > -1:
+            extension = filename[filename.find("."):]
+            filename = filename[:filename.find(".")]
+        else:
+            extension = ''
+    
+    logger.tracef("Filename:  <%s>", filename)
+    logger.tracef("Extension: <%s>", extension)
+    
     # lookup the directory if it is a variab,e
     if directory.startswith('['):
         directory = chartScope.get(directory, None)
         if directory == None:
             print "ERROR: directory key " + directory + " not found"
+            
     doTimestamp = getStepProperty(stepProperties, TIMESTAMP) 
+    logger.tracef("Creating a filepath, doTimestamp is: %s", str(doTimestamp))
     if doTimestamp == None:
         doTimestamp = False
+    
     # create timestamp if requested
     if doTimestamp: 
         timestamp = "-" + time.strftime("%Y%m%d%H%M")
     else:
         timestamp = ""
-    filepath = fileName + timestamp + extension
+    
+    filepath = filename + timestamp + extension
     return directory, filepath
 
 def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database):

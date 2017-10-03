@@ -12,12 +12,14 @@ def activate(scopeContext, stepProperties, state):
 
     try:
         chartScope = scopeContext.getChartScope()
-        chartLogger = getChartLogger(chartScope)
+        logger = getChartLogger(chartScope)
         currentMsgQueue = getCurrentMessageQueue(chartScope)
         database = getDatabaseName(chartScope)
-        filepath = createFilepath(chartScope, stepProperties, False)
-        save(currentMsgQueue, True, filepath, database)
+        path, filename = createFilepath(chartScope, stepProperties, False)
+        filePath = path + "/" + filename
+        logger.infof("Saving message queue <%s> to <%s>", currentMsgQueue, filePath)
+        save(currentMsgQueue, True, filePath, database)
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in activate.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in activate.py', logger)
     finally:
         return True

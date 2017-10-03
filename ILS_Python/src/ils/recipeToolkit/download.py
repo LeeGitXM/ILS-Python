@@ -192,7 +192,7 @@ def download(rootContainer):
     # Save the time that the download started so that we know when to stop monitoring it.
     now = util.getDate()
     rootContainer.timestamp = util.formatDateTime(now)
-    rootContainer.downloadStartTime = now
+    rootContainer.downloadStartTime = system.date.now()
 
     # Set the background color to indicate Downloading
     recipeToolkit_common.setBackgroundColor(rootContainer, "screenBackgroundColorDownloading")

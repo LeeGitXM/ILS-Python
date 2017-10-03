@@ -81,11 +81,12 @@ def runner(rootContainer):
         downloadComplete(rootContainer)
     
     # Check to see if we have timed out
-    now = Date()
+    now = system.date.now()
     startTime = rootContainer.downloadStartTime
-    deltaTime = now.getTime() - startTime.getTime()
-    log.trace("The download has been running for: %s seconds" % (str(deltaTime / 1000.0)))
-    if deltaTime > rootContainer.downloadTimeout * 1000:
+    log.tracef("The download started at %s", str(startTime))
+    deltaSeconds = system.date.secondsBetween(startTime, now)
+    log.trace("The download has been running for: %s seconds" % (str(deltaSeconds)))
+    if deltaSeconds > rootContainer.downloadTimeout:
         log.info("The download has exceeded the allowed time, disabling the download timer and aborting the download!") 
         timer.running = False
         downloadComplete(rootContainer)
