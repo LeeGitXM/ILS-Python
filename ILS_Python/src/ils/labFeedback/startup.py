@@ -47,7 +47,7 @@ def initializeTags(provider):
             udtParentType=udtParentType,
             recursive=True)
         
-        log.tracef("   Discovered %d %s UDTs...", len(udts), udtParentType)
+        log.infof("   Discovered %d %s UDTs...", len(udts), udtParentType)
         
         for udt in udts:
             log.infof("Initializing: %s", udt.path)
@@ -59,13 +59,13 @@ def initializeTags(provider):
             itemId=vals[0].value
             opcServer=vals[1].value
             localBias=vals[2]
-            log.tracef("   Reading DCS bias from %s %s", opcServer, itemId)
+            log.infof("   Reading DCS bias from %s %s", opcServer, itemId)
 
             dcsBias = system.opc.readValue(opcServer, itemId) 
-            log.tracef("   Local bias: %s", str(localBias))
-            log.tracef("   DCS Bias:   %s", str(dcsBias))
+            log.infof("   Local bias: %s", str(localBias))
+            log.infof("   DCS Bias:   %s", str(dcsBias))
             
-            if localBias.quality.isGood() and dcsBias.quality.isGood():
+            if localBias.quality.isGood() and dcsBias.quality.isGood() and localBias.value != None and dcsBias.value != None:
                 localBias = localBias.value
                 dcsBias = dcsBias.value
                 
@@ -76,5 +76,7 @@ def initializeTags(provider):
                     log.tracef("   writing %f to the rawBias and biasValue...", dcsBias)
                     system.tag.writeAll([udtPath + "/rawBias", udtPath + "/biasValue"], [dcsBias, dcsBias])
             else:
-                log.warnf("Unable to initialize %s because the quality of the local bias or the DCS bias was bad", biasName)
+                log.warnf("Unable to initialize %s because the quality of the local bias or the DCS bias was bad or the value was None", biasName)
+                system.tag.writeAll([udtPath + "/rawBias", udtPath + "/biasValue"], [0.0, 0.0])
+                
     log.info("...done initializing Bias Feedback UDTs!")

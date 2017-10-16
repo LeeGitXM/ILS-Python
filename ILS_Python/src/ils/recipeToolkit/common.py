@@ -67,10 +67,9 @@ def updateTagName(tagName):
     tagName = string.replace(tagName, '/', '-')
     tagName = string.replace(tagName, '[', '(')
     tagName = string.replace(tagName, ']', ')')
-    if tagName.find('[') >= 0:
-        print "Stripping off an array reference from <%s>" % (tagName)
-        tagName = tagName[:tagName.find('[')]
-        print "...the modified tagname is <%s>" % (tagName)
+    tagName = string.replace(tagName, '{', '(')
+    tagName = string.replace(tagName, '}', ')')
+
     return tagName
 
 # I have designed a tree structure for tags used in the toolkits.  This will be assumed throughout and cannot be changed.

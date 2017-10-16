@@ -96,11 +96,11 @@ def s88GetKeysForNamedBlock(chartPath, stepName, recipeDataType, db):
     logger.tracef("s88GetKeysForNamedBlock(): %s - %s", chartPath, stepName)
     if recipeDataType == "%":
         SQL = "select RecipeDataKey "\
-        "from SfcRecipeData RD, SfcStep STEP, SfcChart CHART "\
-        "where Chart.ChartPath = '%s' "\
-        "and Step.StepName = '%s' "\
-        "and STEP.ChartId = CHART.ChartId "\
-        "and STEP.StepId = RD.StepId" % (chartPath, stepName) 
+            "from SfcRecipeData RD, SfcStep STEP, SfcChart CHART "\
+            "where Chart.ChartPath = '%s' "\
+            "and Step.StepName = '%s' "\
+            "and STEP.ChartId = CHART.ChartId "\
+            "and STEP.StepId = RD.StepId" % (chartPath, stepName) 
     else:
         SQL = "select RecipeDataKey "\
             "from SfcRecipeData RD, SfcStep STEP, SfcChart CHART, SfcRecipeDataType RDT "\
@@ -109,9 +109,17 @@ def s88GetKeysForNamedBlock(chartPath, stepName, recipeDataType, db):
             "and STEP.ChartId = CHART.ChartId "\
             "and RDT.RecipeDataType = '%s' "\
             "and RDT.RecipeDataTypeId = RD.RecipeDataTypeId "\
-            "and STEP.StepId = RD.StepId" % (chartPath, stepName, recipeDataType)      
+            "and STEP.StepId = RD.StepId" % (chartPath, stepName, recipeDataType)
+    
     pds = system.db.runQuery(SQL, db)
     logger.tracef("...fetched %d rows", len(pds))
+    
+    keys = []
+    for record in pds:
+        key = record["RecipeDataKey"]
+        keys.append(key)
+        
+    return keys
     
 '''
 Get the CSV as a list of text string for all of the recipe data for a step

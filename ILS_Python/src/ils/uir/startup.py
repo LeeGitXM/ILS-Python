@@ -21,14 +21,24 @@ def createTags(tagProvider, log):
     print "Creating UIR configuration tags...."
     path = tagProvider + "Configuration/UIR/"
     
-    data = []
+    
 
     # Make an empty dataset for the email list
     header=['First Name','Last Name','Email','Automatic UIR Email']
     rows=[['Fred','Smith','fredsmith@gmail.com',True]]
-    ds = system.dataset.toDataSet(header, rows)
+    emailListds = system.dataset.toDataSet(header, rows)
     
-    data.append([path, "EmailList", "DataSet", ds])
+    # Make an empty dataset for the from list
+    header=['Post Contains','From Email']
+    rows=[]
+    rows.append(['RLA','rla3@vistalon.com'])
+    rows.append(['VFU','vfu@vistalon.com'])
+    rows.append(['HFU','hfu@vistalon.com'])
+    fromListds = system.dataset.toDataSet(header, rows)
+    
+    data = []
+    data.append([path, "EmailList", "DataSet", emailListds])
+    data.append([path, "fromList", "DataSet", fromListds])
     
     headers = ['Path', 'Name', 'Data Type', 'Value']
     ds = system.dataset.toDataSet(headers, data)

@@ -6,6 +6,16 @@ Created on Sep 10, 2014
 
 import system
 
+def checkIfPrintingAllowed(providerName):
+    tagPath="[%s]Configuration/Common/printingAllowed" % (providerName)
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        printingAllowed = system.tag.read(tagPath).value
+    else:
+        printingAllowed = True
+    
+    return printingAllowed
+
 def listSum(numList):
     theSum = 0.0
     for num in numList:

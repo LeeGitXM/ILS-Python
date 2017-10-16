@@ -40,7 +40,7 @@ def requery(component):
     except:
         notifyError(__name__, "Fetching families")
 
-# Delete the selected row
+# Delete the selected row.  The family is a primary key for many of the other recipe tables.  This delete works using cascade deletes.
 def deleteRow(button):
     log.info("recipeFamily.deleteRow ...")
     container = getRootContainer(button)
