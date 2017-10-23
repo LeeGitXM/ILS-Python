@@ -276,8 +276,15 @@ def fetchApplicationsForPost(post, database=""):
     return pds
 
 # Lookup the application Id given the name
-def fetchApplicationId(application, database=""):
-    SQL = "select ApplicationId from DtApplication where Application = '%s'" % (application)
+def fetchApplicationManaged(applicationName, database=""):
+    SQL = "select Managed from DtApplication where ApplicationName = '%s'" % (applicationName)
+    log.trace(SQL)
+    managed = system.db.runScalarQuery(SQL, database)
+    return managed
+
+# Lookup the application Id given the name
+def fetchApplicationId(applicationName, database=""):
+    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
     log.trace(SQL)
     applicationId = system.db.runScalarQuery(SQL, database)
     return applicationId

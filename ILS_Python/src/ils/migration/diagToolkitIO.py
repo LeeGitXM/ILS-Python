@@ -273,8 +273,8 @@ def insertApplication(container):
         print "Ramp Method Id: ", groupRampMethodId
     
         if unitId >= 0 and messageQueueId >= 0:
-            SQL = "insert into DtApplication (ApplicationName, MessageQueueId, UnitId, IncludeInMainMenu, GroupRampMethodId) "\
-                " values ('%s', %i, %i, %i, %i)" % \
+            SQL = "insert into DtApplication (ApplicationName, MessageQueueId, UnitId, IncludeInMainMenu, GroupRampMethodId, Managed) "\
+                " values ('%s', %i, %i, %i, %i, 1)" % \
                 (application, messageQueueId, unitId, includeInMainMenu, groupRampMethodId)
             applicationId=system.db.runUpdateQuery(SQL, getKey=True)
             ds=system.dataset.setValue(ds, row, "id", applicationId) 
