@@ -207,11 +207,14 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     if not(ignoreSampleTime):
         SQL = "select SampleTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
         lastSampleTime = system.db.runScalarQuery(SQL, database)
-        theSecondsBetween = system.date.secondsBetween(sampleTime, lastSampleTime)
-        log.tracef("Comparing the sample time (%s) to the last sample time (%s) to see if an existing value is being updated (delta = %s)", str(sampleTime), str(lastSampleTime), str(theSecondsBetween))
-        if abs(theSecondsBetween) < 5:
-            log.tracef("The sample time is the same as the last sample time so overwrite the last value (do not bump the index)")
-            bumpIndex = False
+        if lastSampleTime == None:
+            log.tracef("The last sample time is None, probably becaus ethis is the first value")
+        else:
+            theSecondsBetween = system.date.secondsBetween(sampleTime, lastSampleTime)
+            log.tracef("Comparing the sample time (%s) to the last sample time (%s) to see if an existing value is being updated (delta = %s)", str(sampleTime), str(lastSampleTime), str(theSecondsBetween))
+            if abs(theSecondsBetween) < 5:
+                log.tracef("The sample time is the same as the last sample time so overwrite the last value (do not bump the index)")
+                bumpIndex = False
 
     # Increment the buffer index
     if bumpIndex:
