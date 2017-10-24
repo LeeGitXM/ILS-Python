@@ -8,8 +8,15 @@ import system
 
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit")
+from ils.common.util import getRunHours
 
 def gateway(provider, isolationTagProvider):
+    
+    runHours = getRunHours()
+    if runHours * 60.0 > 5.0:
+        log.info("Bypassing Recipe Toolkit startup for a warmboot")
+        return 
+    
     from ils.recipeToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")

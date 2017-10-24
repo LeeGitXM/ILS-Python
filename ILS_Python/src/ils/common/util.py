@@ -6,6 +6,21 @@ Created on Sep 10, 2014
 
 import system
 
+def getRunHours(db=""):
+    try:
+        SQL = "select max(eventTime) from alarm_events where source = 'evt:System Startup'"
+        eventTime = system.db.runScalarQuery(SQL, db)
+        print "The last startup was at: ", eventTime
+    except:
+        runHours = 0.0
+    else:
+        if eventTime == None:
+            runHours = 0.0
+        else:
+            runHours = system.date.minutesBetween(eventTime, system.date.now()) / 60.0
+
+    return runHours
+    
 def checkIfPrintingAllowed(providerName):
     tagPath="[%s]Configuration/Common/printingAllowed" % (providerName)
     tagExists = system.tag.exists(tagPath)
