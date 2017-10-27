@@ -6,13 +6,12 @@ Created on Feb 2, 2015
 
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-from ils.common.util import getRunHours
 log = LogUtil.getLogger("com.ils.diagToolkit")
 
 def gateway(tagProvider, isolationTagProvider, database):
     
-    runHours = getRunHours()
-    if runHours * 60.0 > 5.0:
+    from ils.common.util import isWarmboot
+    if isWarmboot():
         log.info("Bypassing Diagnostic Toolkit startup for a warmboot")
         return 
     

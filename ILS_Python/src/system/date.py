@@ -19,12 +19,14 @@ def addMinutes(date1,minutes):
 def addSeconds(date1,seconds):
     return date1
 
+def daysBetween(date1,date2):
+    return 0.0
+
 def format(theDate):
     return True
 
 def getDate(year, month, day):
     return 45
-
 
 def getMillis(theDate):
     return True
@@ -62,6 +64,9 @@ def getYear(theDate):
 def getAMorPM(theDate):
     return True
 
+def hoursBetween(date1,date2):
+    return 0.0
+
 def isAfter(date1,date2):
     return True
 
@@ -72,6 +77,12 @@ def millisBetween(date1, date2):
     return True
 
 def minutesBetween(date1, date2):
+    return 0.0
+
+def monthsBetween(date1, date2):
+    return 0.0
+
+def now():
     return True
 
 def secondsBetween(date1, date2):
@@ -80,5 +91,8 @@ def secondsBetween(date1, date2):
 def setTime(theDate, hour, minute, second):
     return 45
 
-def now():
-    return True
+def weeksBetween(date1, date2):
+    return 0.0
+
+def yearsBetween(date1, date2):
+    return 0.0

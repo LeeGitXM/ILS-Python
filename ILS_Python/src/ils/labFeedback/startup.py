@@ -7,15 +7,14 @@ The only thing we do to start LabFeedback is to make sure the write enabled tag 
 '''
 
 import system
-from ils.common.util import getRunHours
 log = system.util.getLogger("com.ils.labFeedback")
 EXPONENTIAL_FILTER_BIAS_UDT = "Lab Bias/Lab Bias Exponential Filter"
 PID_BIAS_UDT = "Lab Bias/Lab Bias PID"
 
 def gateway(tagProvider, isolationTagProvider):
     
-    runHours = getRunHours()
-    if runHours * 60.0 > 5.0:
+    from ils.common.util import isWarmboot
+    if isWarmboot():
         log.info("Bypassing Lab Feedback Toolkit startup for a warmboot")
         return 
     

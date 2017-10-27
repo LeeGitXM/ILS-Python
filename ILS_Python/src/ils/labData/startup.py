@@ -7,7 +7,6 @@ import system
 import time
 from java.util import Calendar
 import ils.common.util as util
-from ils.common.util import getRunHours
 log = system.util.getLogger("com.ils.labData")
 
 
@@ -16,8 +15,8 @@ log = system.util.getLogger("com.ils.labData")
 def gateway(tagProvider, isolationTagProvider):
     from ils.labData.version import version
     
-    runHours = getRunHours()
-    if runHours * 60.0 > 5.0:
+    from ils.common.util import isWarmboot
+    if isWarmboot():
         log.info("Bypassing Lab Data Toolkit startup for a warmboot")
         return 
     

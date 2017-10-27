@@ -79,7 +79,7 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         return
     
     log.tracef("----------")
-    log.tracef("In %s.valueChanged() %s %s %s %s", __name__, str(threadName), str(currentValue), str(sampleTime), str(tagPath))
+    log.tracef("In %s.valueChanged() %s %s %s %s", __name__, str(threadName), str(tagPath), str(currentValue), str(sampleTime))
     
     database=getDatabaseForTag(tagPath)
     # The database must exist .
