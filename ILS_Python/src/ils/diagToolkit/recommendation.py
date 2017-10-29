@@ -52,7 +52,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             errorType,value,trace = sys.exc_info()
             errorTxt = traceback.format_exception(errorType, value, trace, 500)
             log.errorf("Caught an exception importing an external reference method named %s %s", calculationMethod, errorTxt)
-            return [], "", "ERROR"
+            return [], errorTxt, "ERROR"
         else:
             log.tracef("...import of external reference was successful...")
             
@@ -68,8 +68,9 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
-        log.errorf("Caught an exception calling calculation method named %s %s", calculationMethod, errorTxt)
-        return [], "", "ERROR"
+        errorTxt = "Caught an exception calling calculation method named %s %s" % (calculationMethod, errorTxt)
+        log.errorf("%s", errorTxt)
+        return [], errorTxt, "ERROR"
     
     else:
         log.infof("The calculation method returned explanation: %s", explanation)

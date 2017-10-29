@@ -10,8 +10,7 @@ Created on Sep 12, 2014
 #
 import system, string
 import system.ils.blt.diagram as scriptingInterface
-from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,\
-    fetchApplicationManaged
+from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.common import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
@@ -907,6 +906,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 # Not sure if I need to reset the quant outputs here...
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
                                      actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
+                insertApplicationQueueMessage(applicationName, explanation, "error", database)
                 return "Error", numSignificantRecommendations, False, explanation, diagnosisEntryId, noChange
     
             elif recommendationStatus == RECOMMENDATION_NONE_MADE:
