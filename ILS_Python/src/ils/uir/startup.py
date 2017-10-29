@@ -21,19 +21,20 @@ def createTags(tagProvider, log):
     print "Creating UIR configuration tags...."
     path = tagProvider + "Configuration/UIR/"
     
-    
-
     # Make an empty dataset for the email list
-    header=['First Name','Last Name','Email','Automatic UIR Email']
-    rows=[['Fred','Smith','fredsmith@gmail.com',True]]
+    header=['First Name','Last Name','Email','Automatic UIR Email','Manual Email']
+    rows = []
+    rows.append(['Michael','Kurtz','michael.kurtz@exxonmobil.com',False, False])
+    rows.append(['Segun','Ojewole','olusegun@exxonmobil.com',True, False])
+    rows.append(['Jeffrey','DeCicco','jdecicco@ils-automation.com',True, False])
     emailListds = system.dataset.toDataSet(header, rows)
     
     # Make an empty dataset for the from list
-    header=['Post Contains','From Email']
+    header=['Post Contains','From Email', 'File Prefix']
     rows=[]
-    rows.append(['RLA','rla3@vistalon.com'])
-    rows.append(['VFU','vfu@vistalon.com'])
-    rows.append(['HFU','hfu@vistalon.com'])
+    rows.append(['RLA','rla3@vistalon.com', 'R'])
+    rows.append(['VFU','vfu@vistalon.com', 'V'])
+    rows.append(['HFU','hfu@vistalon.com', 'H'])
     fromListds = system.dataset.toDataSet(header, rows)
     
     data = []
