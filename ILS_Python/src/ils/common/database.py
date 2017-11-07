@@ -38,6 +38,13 @@ def toDictList(pds, records):
     return records
 
 # Lookup the post id given the name
+def getConsoleWindowNameForConsole(consoleName, database=""):
+    SQL = "select WindowName from TkConsole where ConsoleName = '%s'" % (consoleName)
+    log.trace(SQL)
+    consoleWindowName = system.db.runScalarQuery(SQL, database)
+    return consoleWindowName
+
+# Lookup the post id given the name
 def getPostId(post, database=""):
     SQL = "select PostId from TkPost where Post = '%s'" % (post)
     log.trace(SQL)
