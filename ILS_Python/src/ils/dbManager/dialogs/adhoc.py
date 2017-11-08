@@ -121,13 +121,15 @@ def update(table,row,colname,value):
         # datatype in the database is float or int
         try:
             x = float(value)
-            SQL = "UPDATE %s SET %s = %s WHERE Id = %i" % (tableName, colname, str(value), id)
+            SQL = "UPDATE %s SET %s = %s WHERE Id = %i" % (tableName, colname, str(value), recordId)
         except:
-            SQL = "UPDATE %s SET %s = '%s' WHERE Id = %i" % (tableName, colname, str(value), id)
+            SQL = "UPDATE %s SET %s = '%s' WHERE Id = %i" % (tableName, colname, str(value), recordId)
         
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL)
         log.info("Updated %i rows" % (rows))
+    
+    requery(rootContainer)  
     
 # Make the columns of the table editable
 def configTable(rootContainer):

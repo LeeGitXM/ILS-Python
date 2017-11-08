@@ -10,7 +10,7 @@ Created on Sep 12, 2014
 #
 import system, string
 import system.ils.blt.diagram as scriptingInterface
-from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy
+from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.common import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
@@ -18,6 +18,94 @@ from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_N
 from ils.io.util import getOutputForTagPath
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
+
+#-------------
+
+# This is called from a client to directly manage a final diagnosis.
+def manageFinalDiagnosis(applicationName, family, finalDiagnosis, database="", provider = ""):
+    log.infof("In %s.manageFinalDiagnosis()", __name__)
+    
+#    UUID=payload["UUID"]
+#    diagramUUID=payload["diagramUUID"]
+
+    projectName = system.util.getProjectName()
+ 
+    # Lookup the application Id
+    from ils.diagToolkit.common import fetchFinalDiagnosis
+    record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
+    
+    finalDiagnosisId=record.get('FinalDiagnosisId', None)
+    if finalDiagnosisId == None:
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
+        return
+    
+    unit=record.get('UnitName',None)
+    if unit == None:
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (applicationName, family, finalDiagnosis))
+        return
+    
+    # Reset the flag that indicates that minimum change requirements should be ignored.
+    resetOutputLimits(finalDiagnosisId, database)
+    
+    finalDiagnosisName=record.get('FinalDiagnosisName','Unknown Final Diagnosis')
+    
+    grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
+    log.info("The grade is: %s" % (str(grade)))
+    
+    txt = "Rate Change"
+
+    # Insert an entry into the diagnosis queue
+    SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
+        "RecommendationStatus, Multiplier) "\
+        "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
+        % (finalDiagnosisId, grade, txt, RECOMMENDATION_NONE_MADE)
+    
+    SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    
+    try:
+        system.db.runUpdateQuery(SQL, database)
+        
+        SQL = SQL2
+        system.db.runUpdateQuery(SQL, database)
+    except:
+        log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
+    
+    notificationText,activeOutputs,postTextRecommendation, explanation, diagnosisEntryId, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
+    log.info("...back from manage!")
+    
+    # This specifically handles the case where a FD that is not the highest priority clears which should not disturb the client.
+    if noChange:
+        log.info("Nothing has changed so don't notify the clients")
+        return
+
+    # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
+    # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
+    post=fetchPostForApplication(applicationName, database)
+    notificationStrategy, clientId = fetchNotificationStrategy(applicationName, database)
+    
+    if notificationStrategy == "ocAlert":
+#            if activeOutputs > 0:
+        '''
+        Changed on 4/6/17 to notify even when there are no active outputs to fix problem where a FD cleared while the setpoint spreadsheet is open, but before it was
+        acted upon.
+        '''
+        notifyClients(projectName, post, notificationText=notificationText, numOutputs=activeOutputs, database=database, provider=provider)
+
+        if postTextRecommendation:
+            notifyClientsOfTextRecommendation(projectName, post, applicationName, explanation, diagnosisEntryId, database, provider)
+    elif notificationStrategy == "clientId":
+        if activeOutputs > 0:
+            print "Send a message to ", clientId
+            notififySpecificClientToOpenSpreadsheet(projectName, post, applicationName, clientId, database, provider)
+        else:
+            print "Skipping notification because there are no active outputs"
+    else:
+        log.errorf("ERROR: Unknown notification strategy <%s>", notificationStrategy)
+    
+    
+    
+    
+#-------------
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
@@ -101,6 +189,13 @@ def postDiagnosisEntryMessageHandler(payload):
 # However, on a gateway restart, we may become True again.  There are two possibilities of how this could be handled: 1) I could ignore the Insert a record into the diagnosis queue
 def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
     projectName = system.util.getProjectName()
+    
+    managed = fetchApplicationManaged(applicationName, database)
+    
+    if not(managed):
+        log.tracef("Exiting because %s is not a managed application!", applicationName)
+        return
+    
     log.info("Posting a diagnosis entry for project: %s, application: %s, family: %s, final diagnosis: %s" % (projectName, applicationName, family, finalDiagnosis))
     
     # Lookup the application Id
@@ -187,7 +282,12 @@ def scanner():
 def _scanner(database, tagProvider):
     log.infof("Checking to see if there are applications to manage using database: %s...", database)
     projectName = system.util.getProjectName()
-    SQL = "select * from DtApplicationManageQueue"
+
+    SQL = "select AMQ.ApplicationName, Provider, Timestamp "\
+        " from DtApplicationManageQueue AMQ, DtApplication A"\
+        " where AMQ.ApplicationName = A.ApplicationName "\
+        " and A.Managed = 1"
+
     pds = system.db.runQuery(SQL, database)
     ageInterval = system.tag.read("[%s]Configuration/DiagnosticToolkit/diagnosticAgeInterval" % (tagProvider)).value
     
@@ -806,6 +906,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 # Not sure if I need to reset the quant outputs here...
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
                                      actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
+                insertApplicationQueueMessage(applicationName, explanation, "error", database)
                 return "Error", numSignificantRecommendations, False, explanation, diagnosisEntryId, noChange
     
             elif recommendationStatus == RECOMMENDATION_NONE_MADE:

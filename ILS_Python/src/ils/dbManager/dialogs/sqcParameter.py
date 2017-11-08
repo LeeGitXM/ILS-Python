@@ -61,6 +61,7 @@ def insertRow(rootContainer):
             system.db.rollbackTransaction(tx)
             notifyError(__name__, "Inserting a SQC Parameter")
         else:
+            system.db.commitTransaction(tx)
             log.info("Inserted %i rows into RtSQCLimit" % (rows))
         system.db.closeTransaction(tx)
         

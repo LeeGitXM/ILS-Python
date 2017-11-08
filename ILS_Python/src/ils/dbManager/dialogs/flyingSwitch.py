@@ -27,10 +27,9 @@ def internalFrameOpened(window):
 
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"
-def internalFrameActivated(window):
+def internalFrameActivated(rootContainer):
     log.trace("InternalFrameActivated")
-    container = window.rootContainer
-    requery(container)
+    requery(rootContainer)
 
 
 # Re-query the database and update the screen accordingly.

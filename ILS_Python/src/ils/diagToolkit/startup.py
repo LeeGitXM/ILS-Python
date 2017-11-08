@@ -9,6 +9,12 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.diagToolkit")
 
 def gateway(tagProvider, isolationTagProvider, database):
+    
+    from ils.common.util import isWarmboot
+    if isWarmboot():
+        log.info("Bypassing Diagnostic Toolkit startup for a warmboot")
+        return 
+    
     from ils.diagToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")

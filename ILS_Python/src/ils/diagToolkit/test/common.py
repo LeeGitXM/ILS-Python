@@ -30,26 +30,38 @@ def run():
     def initializeDatabase(db):
         #TODO Do something smarter about DtRecommendationDefinition
         rows = -99
-        logger.trace("Initializing the database...")
+        logger.infof("Initializing the database...")
         for SQL in [
-            "delete from DtFinalDiagnosisLog",\
-            "delete from DtRecommendation", \
-            "delete from QueueDetail", \
-            "delete from DtDiagnosisEntry", \
-            "delete from DtRecommendationDefinition where FinalDiagnosisId in (select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%')", \
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ1'", \
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ2'", \
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ3'", \
-            "delete from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%'", \
-            "delete from DtFamily where FamilyName like 'TEST%'", \
+            "delete from DtFinalDiagnosisLog",
+            "delete from DtRecommendation", 
+            "delete from QueueDetail", 
+            "delete from DtDiagnosisEntry",
+            
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ1')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TESTQ1'", 
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ2')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TESTQ2'", 
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ3')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TESTQ3'",
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q21')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q21'",
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q22')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q22'", 
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q23')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q23'", 
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q24')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q24'", 
+            
+            "delete from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%'", 
+            "delete from DtFamily where FamilyName like 'TEST%'", 
             "delete from DtApplication where ApplicationName like 'TEST%'"
             ]:
 
-            logger.tracef( "   %s", SQL)
+            logger.infof( "   %s", SQL)
             rows=system.db.runPrepUpdate(SQL, database=db)
-            logger.tracef("   ...deleted %d rows", rows)
+            logger.infof("   ...deleted %d rows", rows)
         
-        logger.trace("...done initializing the database")
+        logger.infof("...done initializing the database")
         
     #----------------
     # Fetch Recommendations
@@ -354,7 +366,8 @@ def insertApp1():
     postId = insertPost(post, logbookId)
     groupRampMethod='Simple'
     queueKey='TEST'
-    app1Id=insertApplication(application, postId, unit, groupRampMethod, queueKey)
+    managed=1
+    app1Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed)
     return app1Id
 
 def insertApp1Families(appId,T1Id,T2Id,T3Id,
@@ -436,7 +449,8 @@ def insertApp2():
     postId = insertPost(post, logbookId)
     groupRampMethod='Simple'
     queueKey='TEST'
-    app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey)
+    managed=1
+    app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed)
     return app2Id
 
 def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id,
@@ -529,13 +543,13 @@ def fetchPostId(post):
     return postId
     
 # Define an application
-def insertApplication(application, postId, unit, groupRampMethod, queueKey):
+def insertApplication(application, postId, unit, groupRampMethod, queueKey, managed):
     print "The group ramp method is: ", groupRampMethod
     unitId=insertUnit(unit, postId)
     groupRampMethodId=fetchGroupRampMethodId(groupRampMethod)
     queueId=fetchQueueId(queueKey)
-    SQL = "insert into DtApplication (applicationName, UnitId, GroupRampMethodId, IncludeInMainMenu, MessageQueueId)"\
-        " values ('%s', %s, %s, 1, %s)" % (application, str(unitId), str(groupRampMethodId), str(queueId))
+    SQL = "insert into DtApplication (applicationName, UnitId, GroupRampMethodId, IncludeInMainMenu, MessageQueueId, Managed)"\
+        " values ('%s', %s, %s, 1, %s, %s)" % (application, str(unitId), str(groupRampMethodId), str(queueId), str(managed))
     applicationId = system.db.runUpdateQuery(SQL, getKey=True)
     return applicationId
 

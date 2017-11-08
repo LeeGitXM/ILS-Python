@@ -148,6 +148,7 @@ def createTags(tagProvider, log):
     path = tagProvider + "Configuration/Common/"
 
     data.append([path, "writeEnabled", "Boolean", "True"])
+    data.append([path, "printingAllowed", "Boolean", "True"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
     data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
     data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
@@ -161,9 +162,7 @@ def createTags(tagProvider, log):
     data = []
     path = tagProvider + "Configuration/Email/"
 
-    data.append([path, "password", "String", ""])
-    data.append([path, "smtp", "String", ""])
-    data.append([path, "username", "String", ""])
+    data.append([path, "smtpProfile", "String", "mySmtpServer"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

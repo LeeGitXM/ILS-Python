@@ -1,0 +1,31 @@
+<project name="ILS-Python" default="deploy" basedir=".">
+
+	
+	<target name="clean" description="Remove previous python" >
+		<delete dir="${ignition.py.lib}/ils" />
+	</target>
+	
+	<target name="deploy" description="Install Python">
+		<echo message="Deploying python scripts to ${vistalon.py.lib}" />
+		<copy todir="${vistalon.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
+		<echo message="Deploying python scripts to ${brpo.py.lib}" />
+		<copy todir="${brpo.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
+		<echo message="Deploying python scripts to ${halobutyl.py.lib}" />
+		<copy todir="${halobutyl.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
+	</target>
+</project>

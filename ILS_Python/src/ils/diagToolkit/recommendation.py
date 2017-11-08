@@ -39,15 +39,23 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     # If they specify shared or project scope, then we don't need to do this
     if calculationMethod not in ["", None] and (not(string.find(calculationMethod, "project") == 0 or string.find(calculationMethod, "shared") == 0)):
         # The method contains a full python path, including the method name
-        separator=string.rfind(calculationMethod, ".")
-        packagemodule=calculationMethod[0:separator]
-        separator=string.rfind(packagemodule, ".")
-        package = packagemodule[0:separator]
-        module  = packagemodule[separator+1:]
-        log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
-        exec("import %s" % (package))
-        exec("from %s import %s" % (package,module))
-    
+        try:
+            separator=string.rfind(calculationMethod, ".")
+            packagemodule=calculationMethod[0:separator]
+            separator=string.rfind(packagemodule, ".")
+            package = packagemodule[0:separator]
+            module  = packagemodule[separator+1:]
+            log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
+            exec("import %s" % (package))
+            exec("from %s import %s" % (package,module))
+        except:
+            errorType,value,trace = sys.exc_info()
+            errorTxt = traceback.format_exception(errorType, value, trace, 500)
+            log.errorf("Caught an exception importing an external reference method named %s %s", calculationMethod, errorTxt)
+            return [], errorTxt, "ERROR"
+        else:
+            log.tracef("...import of external reference was successful...")
+            
     try:
         if calculationMethod in ["", None]:
             log.infof("Implementing a static text recommendation because there is not a calculation method.")
@@ -60,8 +68,9 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
-        log.errorf("Caught an exception calling calculation method named %s... \n%s", calculationMethod, errorTxt)
-        return [], "", "ERROR"
+        errorTxt = "Caught an exception calling calculation method named %s %s" % (calculationMethod, errorTxt)
+        log.errorf("%s", errorTxt)
+        return [], errorTxt, "ERROR"
     
     else:
         log.infof("The calculation method returned explanation: %s", explanation)

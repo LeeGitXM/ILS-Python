@@ -6,6 +6,38 @@ Created on Sep 10, 2014
 
 import system
 
+def isWarmboot():
+    runHours = getRunHours()
+    
+    if runHours > 5.0 / 60.0:
+        return True
+    
+    return False
+        
+def getRunHours():
+    tagPath = "[XOM]Site/Watchdogs/Ignition Uptime Minutes"
+    exists = system.tag.exists(tagPath)
+    if exists:
+        runMinutes = system.tag.read(tagPath).value
+        if runMinutes == None:
+            runHours = 0.0
+        else:
+            runHours = runMinutes / 60.0
+    else:
+        runHours = 0.0
+        print "WARNING: the Ignition uptime counter tag (%s) does not exist!" % (tagPath)
+    return runHours
+    
+def checkIfPrintingAllowed(providerName):
+    tagPath="[%s]Configuration/Common/printingAllowed" % (providerName)
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        printingAllowed = system.tag.read(tagPath).value
+    else:
+        printingAllowed = True
+    
+    return printingAllowed
+
 def listSum(numList):
     theSum = 0.0
     for num in numList:

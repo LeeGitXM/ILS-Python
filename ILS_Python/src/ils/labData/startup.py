@@ -14,6 +14,12 @@ log = system.util.getLogger("com.ils.labData")
 # configuration BEFORE the history is performed.
 def gateway(tagProvider, isolationTagProvider):
     from ils.labData.version import version
+    
+    from ils.common.util import isWarmboot
+    if isWarmboot():
+        log.info("Bypassing Lab Data Toolkit startup for a warmboot")
+        return 
+    
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
     log.info("Starting Lab Data Toolkit gateway version %s - %s" % (version, revisionDate))
@@ -60,7 +66,7 @@ def createTags(tagProvider):
     data.append([path, "labDataWriteEnabled", "Boolean", "True"])
     data.append([path, "sqcPlotFreshDataColor", "String", "Green"])
     data.append([path, "sqcPlotStaleDataColor", "String", "Gray"])
-    data.append([path, "unitParameterSyncSeconds", "Float8", "10.0"])
+    data.append([path, "unitParameterSyncSeconds", "Float8", "3.0"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

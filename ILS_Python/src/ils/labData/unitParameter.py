@@ -9,6 +9,7 @@ from ils.labData.common import parseTagPath
 from ils.labData.common import getDatabaseForTag
 from ils.common.util import formatDateTime
 from ils.io import recipe
+from system.date import secondsBetween
 
 log = LogUtil.getLogger("com.ils.labData.unitParameters")
 
@@ -78,7 +79,7 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         return
     
     log.tracef("----------")
-    log.tracef("In %s.valueChanged() %s %s %s %s", __name__, str(threadName), str(currentValue), str(sampleTime), str(tagPath))
+    log.tracef("In %s.valueChanged() %s %s %s %s", __name__, str(threadName), str(tagPath), str(currentValue), str(sampleTime))
     
     database=getDatabaseForTag(tagPath)
     # The database must exist .
@@ -111,17 +112,40 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         log.warnf("%s.valueChanged(): Empty root path for %s", __name__, str(tagPath))
         return
     
+    # Read the buffer size and bufferindex from the tags
+    tags = [tagPathRoot + '/numberOfPoints', 
+            tagPathRoot + '/bufferIndex', 
+            tagPathRoot + '/rawValue.LastChange', 
+            tagPathRoot + '/sampleTime.LastChange', 
+            tagPathRoot + '/configurationChangeTime',
+            tagPathRoot + '/ignoreSampleTime']
+    vals=system.tag.readAll(tags)
+
+    numberOfPoints = vals[0].value
+    bufferIndex = vals[1].value
+    rawValueLastChange = vals[2].value
+    sampleTimeLastChange = vals[3].value
+    configurationChangeTime = vals[4].value
+    ignoreSampleTime = vals[5].value
+    
     '''
     If the rawValue and the sampleTime were updated simultaneously then this will be called twice.  So make sure that we didn't just add a 
     value in the last couple of seconds.  Note: It wasn't a problem during testing, but I'm concerned that if we get the sample time value first 
     and then the sample value comes in a couple of seconds later, then we will use the new time with the old value.
     '''
-    if threadName in ["rawValue", "sampleTime"]:
-        syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
-        log.tracef("Sleeping for %s seconds", str(syncSeconds))
-        time.sleep(syncSeconds)
+    if not(ignoreSampleTime) and threadName in ["rawValue", "sampleTime"]:
+        theSecondsBetween = system.date.secondsBetween(rawValueLastChange, sampleTimeLastChange)
+        log.tracef("%s - seconds between the raw value and the sample time is: %s", threadName, str(theSecondsBetween))
+        consistencyThreshold = 5.0
+        if abs(theSecondsBetween) > consistencyThreshold:
+            log.tracef("%s - The value and sample time are not consistent, waiting for the sync interval", threadName)
+            syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
+            log.tracef("%s - Sleeping for %s seconds", threadName, str(syncSeconds))
+            time.sleep(syncSeconds)
+        else:
+            log.tracef("%s - The value and sample time are consistent!", threadName)
     
-    log.tracef("In valueChanged with <%s> and value: %s (root: %s)", tagPath, str(tagVal), tagPathRoot)
+    log.tracef("%s with <%s> and value: %s (root: %s)", threadName, tagPath, str(tagVal), tagPathRoot)
     
     # Check if the buffer has ever been initialized
     SQL = "select UnitParameterId from TkUnitParameter where UnitParameterTagName = '%s'" % (tagPathRoot)
@@ -133,18 +157,8 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         unitParameterId = system.db.runUpdateQuery(SQL, database, getKey=1)
         log.infof("Inserted a new unit parameter <%s> with id <%s> into the TkUnitParameter", tagPathRoot, str(unitParameterId))
     
-    # Read the buffer size and bufferindex from the tags
-    tags = [tagPathRoot + '/numberOfPoints', tagPathRoot + '/bufferIndex', tagPathRoot + '/rawValue.LastChange', tagPathRoot + '/sampleTime.LastChange', tagPathRoot + '/configurationChangeTime']
-    vals=system.tag.readAll(tags)
-
-    numberOfPoints = vals[0].value
-    bufferIndex = vals[1].value
-    rawValueLastChange = vals[2].value
-    sampleTimeLastChange = vals[3].value
-    configurationChangeTime = vals[4].value
-
     '''
-    If the value was a manual value, then there isn't a notion of a sample time.  The acttual time is passed in as a date,
+    If the value was a manual value, then there isn't a notion of a sample time.  The actual time is passed in as a date,
     not as a qualified value as is normally expected.
     '''
     if threadName == "manualRawValue":
@@ -153,8 +167,8 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     else:
         sampleTime = sampleTime.value
 
-    secondsBetween = system.date.secondsBetween(rawValueLastChange, sampleTimeLastChange)
-    if secondsBetween < 30 and threadName == "sampleTime":
+    theSecondsBetween = system.date.secondsBetween(rawValueLastChange, sampleTimeLastChange)
+    if theSecondsBetween < 30 and threadName == "sampleTime":
         log.tracef("Exiting the SampleTime thread where both the value and sampleTime were updated.")
         return
 
@@ -166,8 +180,8 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         log.infof("...filtering out %s collected at %s for %s because it was collected before the sample time.", str(tagVal), str(sampleTime), tagPath)
         return
 
-    log.tracef("Raw value last change:   %s", str(rawValueLastChange))
-    log.tracef("Sample time Last change: %s", str(sampleTimeLastChange))
+    log.tracef("(%s) Raw value last change:   %s", threadName, str(rawValueLastChange))
+    log.tracef("(%s) Sample time Last change: %s", threadName, str(sampleTimeLastChange))
 
     if not( vals[0].quality.isGood() and numberOfPoints != None ):
         log.error("The numberOfPoints tag is bad or has the value None")
@@ -178,14 +192,29 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         return
 
     bumpIndex = True
-    SQL = "select ReceiptTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
-    receiptTime = system.db.runScalarQuery(SQL, database)
-    if receiptTime <> None:
-        log.tracef("The last sample was received at %s", str(receiptTime))
-        syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
-        if system.date.secondsBetween(receiptTime, system.date.now()) < syncSeconds:
-            log.tracef("A lab value has recently processed - update the last value")
-            bumpIndex = False
+#    SQL = "select ReceiptTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
+#    receiptTime = system.db.runScalarQuery(SQL, database)
+#    if receiptTime <> None:
+#        log.tracef("The last sample was received at %s", str(receiptTime))
+#        syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
+#        if system.date.secondsBetween(receiptTime, system.date.now()) < syncSeconds:
+#            log.tracef("A lab value has recently processed - update the last value")
+#            bumpIndex = False
+
+    '''
+    If just the value was updated, then they are updating a previous value so do not bump the index
+    '''
+    if not(ignoreSampleTime):
+        SQL = "select SampleTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
+        lastSampleTime = system.db.runScalarQuery(SQL, database)
+        if lastSampleTime == None:
+            log.tracef("The last sample time is None, probably becaus ethis is the first value")
+        else:
+            theSecondsBetween = system.date.secondsBetween(sampleTime, lastSampleTime)
+            log.tracef("Comparing the sample time (%s) to the last sample time (%s) to see if an existing value is being updated (delta = %s)", str(sampleTime), str(lastSampleTime), str(theSecondsBetween))
+            if abs(theSecondsBetween) < 5:
+                log.tracef("The sample time is the same as the last sample time so overwrite the last value (do not bump the index)")
+                bumpIndex = False
 
     # Increment the buffer index
     if bumpIndex:

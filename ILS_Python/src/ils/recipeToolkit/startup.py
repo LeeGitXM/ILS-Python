@@ -10,6 +10,12 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit")
 
 def gateway(provider, isolationTagProvider):
+    
+    from ils.common.util import isWarmboot
+    if isWarmboot():
+        log.info("Bypassing Recipe Toolkit startup for a warmboot")
+        return 
+    
     from ils.recipeToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")

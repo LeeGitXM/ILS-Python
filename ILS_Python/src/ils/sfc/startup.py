@@ -9,10 +9,15 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.sfc")
 
 def gateway(tagProvider, isolationTagProvider):
+    from ils.common.util import isWarmboot
+    if isWarmboot():
+        log.info("Bypassing SFC Toolkit startup for a warmboot")
+        return 
+    
     from ils.sfc.version import version
     version, releaseDate = version()
     log.info("---------------------------------------------------------")
-    log.info("Starting SFC Python version %s - %s" % (version, releaseDate))
+    log.info("Starting SFC Toolkit version %s - %s" % (version, releaseDate))
     log.info("---------------------------------------------------------")
 
     createTags("[" + tagProvider + "]")
