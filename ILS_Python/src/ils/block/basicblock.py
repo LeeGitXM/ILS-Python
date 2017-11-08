@@ -49,8 +49,9 @@ class BasicBlock():
     # Called when a value has arrived on one of our input ports
     # By default, we do nothing
     def acceptValue(self,port,value,quality,time):
-        self.value = value
-        self.quality = quality 
+        self.value   = value
+        self.quality = quality
+        self.time    = time 
       
     # Return the class name. This is a fully qualified
     # path, including the module path 
