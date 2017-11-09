@@ -7,9 +7,9 @@ This step used to be known as Download GUI
 '''
 
 import system
-from ils.sfc.recipeData.api import s88Set, s88GetTargetStepUUID
+from ils.sfc.recipeData.api import s88Set, s88GetTargetStepUUID, s88Get
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
-    WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, \
+    WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, DOWNLOAD, \
     POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
     TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, TIMER_SET, CLEAR_TIMER, START_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME
 from system.ils.sfc import getMonitorDownloadsConfig
@@ -68,22 +68,24 @@ def activate(scopeContext, stepProperties, state):
         for row in monitorDownloadsConfig.rows:
             logger.trace("Resetting recipe data with key: %s" % (row.key))
             
-            # Initialize properties used by the write output process
-            s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, STEP_PENDING, recipeLocation)
-            s88Set(chartScope, stepScope, row.key + "." + WRITE_CONFIRMED, "NULL", recipeLocation)
+            download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeLocation)
+            if download:
+                # Initialize properties used by the write output process
+                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, STEP_PENDING, recipeLocation)
+                s88Set(chartScope, stepScope, row.key + "." + WRITE_CONFIRMED, "NULL", recipeLocation)
+                    
+                # Initialize properties used by a PV monitoring process
+                s88Set(chartScope, stepScope, row.key + "." + PV_MONITOR_ACTIVE, False, recipeLocation)
+                s88Set(chartScope, stepScope, row.key + "." + PV_VALUE, "NULL", recipeLocation)
+                s88Set(chartScope, stepScope, row.key + "." + PV_MONITOR_STATUS, PV_NOT_MONITORED, recipeLocation)
+                s88Set(chartScope, stepScope, row.key + "." + SETPOINT_STATUS, SETPOINT_OK, recipeLocation)
+                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, "NULL", recipeLocation)
+                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, "NULL", recipeLocation)
                 
-            # Initialize properties used by a PV monitoring process
-            s88Set(chartScope, stepScope, row.key + "." + PV_MONITOR_ACTIVE, False, recipeLocation)
-            s88Set(chartScope, stepScope, row.key + "." + PV_VALUE, "NULL", recipeLocation)
-            s88Set(chartScope, stepScope, row.key + "." + PV_MONITOR_STATUS, PV_NOT_MONITORED, recipeLocation)
-            s88Set(chartScope, stepScope, row.key + "." + SETPOINT_STATUS, SETPOINT_OK, recipeLocation)
-            s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, "NULL", recipeLocation)
-            s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, "NULL", recipeLocation)
-            
-            SQL = "insert into SfcDownloadGUITable (windowId, RecipeDataStepUUID, RecipeDataKey, labelAttribute) "\
-                "values ('%s', '%s', '%s', '%s')" % (windowId, recipeDataStepUUID, row.key, row.labelAttribute)
-
-            system.db.runUpdateQuery(SQL, database)
+                SQL = "insert into SfcDownloadGUITable (windowId, RecipeDataStepUUID, RecipeDataKey, labelAttribute) "\
+                    "values ('%s', '%s', '%s', '%s')" % (windowId, recipeDataStepUUID, row.key, row.labelAttribute)
+    
+                system.db.runUpdateQuery(SQL, database)
         
         payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: recipeDataStepUUID, IS_SFC_WINDOW: True}
         sendMessageToClient(chartScope, messageHandler, payload)
