@@ -75,7 +75,8 @@ def opcReadWatchdog(tagProvider, udtPath):
             logger.tracef("Passed the value changed test")
             
         system.tag.write(udtPath+"/lastValue", val)
-        
+
+# Not sure what this test is meant to do!!!!        
     if readAndCompareStrategy:
         logger.tracef("Verifying the read and compare watchdog...")
         currentVal = system.opc.readValue(serverName, itemId)
@@ -134,7 +135,9 @@ def opcWriteWatchdog(tagProvider, udtPath):
                                udtPath+"/writeValue",
                                udtPath+"/serverName",
                                udtPath+"/itemId",
-                               udtPath+"/stallCount"
+                               udtPath+"/stallCount",
+                               udtPath+"/internallyDriven",
+                               udtPath+"/maxWriteValue"
                                ])
     
     val=vals[0].value
@@ -143,8 +146,20 @@ def opcWriteWatchdog(tagProvider, udtPath):
     serverName=vals[3].value
     itemId=vals[4].value
     stallCount=vals[5].value
+    internallyDriven=vals[6].value
+    maxWriteVal=vals[7].value
 
     stalled = False
+    
+    print "Internal Drive", str(internallyDriven)
+    if internallyDriven:
+        print "Internally driven watchdog..."
+        writeValue += 1
+        print "writeValue = ", writeValue
+        if writeValue > maxWriteVal:
+            writeValue = 1
+        tagpath = udtPath + "/writeValue"
+        system.tag.write(tagpath, writeValue)
         
     logger.tracef("  Path: %s\n  Current Value: %s\n  Write Enabled %s\n  Write Value %s\n  Server Name: %s\n  Item Id: %s\n  Stall Count: %s\n", \
          udtPath, str(val), str(writeEnabled), str(writeValue), str(serverName), str(itemId), str(stallCount))
