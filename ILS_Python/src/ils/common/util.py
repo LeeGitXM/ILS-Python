@@ -263,6 +263,21 @@ def averageTags(tagPaths, tagProvider, log):
     return badValue, theMean
 
 '''
+Return the rate of change per minute for the requested tag.
+This is calculated by(firstValue - lastValue) / number of minutes from first value to last value
+'''
+def rateOfChangePerMinute(historyTagProvider, tagProvider, tagPath, startDate, endDate):
+    minutesBetween = system.date.minutesBetween(startDate, endDate)
+    fullTagPath = "[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath)
+    
+    ds = system.tag.queryTagHistory(paths=[fullTagPath], startDate=startDate, endDate=endDate, returnSize=0)
+    
+    firstVal = ds.getValueAt(0,1)
+    lastVal = ds.getValueAt(ds.rowCount - 1,1)
+    roc = (lastVal - firstVal) / minutesBetween
+    
+    return roc
+'''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).
 '''
