@@ -81,7 +81,7 @@ def activate(scopeContext, stepProperties, state):
                 watchOnly = True
                 
                 for configRow in config.rows:
-                    logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy))
+                    logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s - Deadtime: %s" % (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy, str(configRow.deadTime)))
                     configRow.status = MONITORING
                     pvKey = configRow.pvKey
                     
@@ -110,8 +110,6 @@ def activate(scopeContext, stepProperties, state):
                     configRow.inToleranceTime = 0
                     configRow.outToleranceTime = Date().getTime()
                     monitorActiveCount = monitorActiveCount + 1
-                    
-                    print "The *ORIGINAL* tolerance is: ", configRow.tolerance
                     
                     if configRow.persistence > maxPersistence:
                         maxPersistence = configRow.persistence
@@ -154,7 +152,6 @@ def activate(scopeContext, stepProperties, state):
                 stepScope[PERSISTENCE_PENDING] = False
                 stepScope[MAX_PERSISTENCE] = maxPersistence
                 stepScope[WATCH_ONLY] = watchOnly
-                print "Watch Only: ", str(watchOnly)
                 
                 # Look for a custom activation callback
                 activationCallback = getStepProperty(stepProperties, ACTIVATION_CALLBACK)

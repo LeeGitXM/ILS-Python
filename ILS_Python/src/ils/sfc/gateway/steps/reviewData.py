@@ -31,7 +31,7 @@ def activate(scopeContext, stepProperties, state):
         return False
             
     try:        
-        # Check for previous state:
+        # Check for previous state
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
         
@@ -181,6 +181,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     else:
         if units == "":
             val = s88Get(chartScope, stepScope, key, scope)
+            print "val = ", val
         else:
             '''
             Because this is GUI, sometimes we want to use the units as a label rather than forcing unit conversion.  If the recipe
@@ -192,14 +193,17 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
             else:
                 val = s88GetWithUnits(chartScope, stepScope, key, scope, units)
     
-    if isFloat(val):
+    if val is False:
+        val = "False"
+    elif val is True:
+        val = "True"
+    elif isFloat(val):
         val = float(val)
         val = "%.4f" % (val)
-        
+
     if isFloat(advice):
         advice = float(advice)
         advice = "%.4f" % (advice)
-    print "Advice: ", advice
     
     SQL = "insert into SfcReviewDataTable (windowId, rowNum, configKey, prompt, value, units, advice, isPrimary) "\
         "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, configKey, prompt, str(val), units, advice, isPrimary)

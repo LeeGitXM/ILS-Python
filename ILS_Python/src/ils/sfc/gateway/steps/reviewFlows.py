@@ -208,22 +208,34 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
                     val3 = s88Get(chartScope, stepScope, key3, scope)
                 else:
                     val3 = s88GetWithUnits(chartScope, stepScope, key3, scope, units)
-                    
-    if isFloat(val1):
+    
+    if val1 is False:
+        val1 = "False"
+    elif val1 is True:
+        val1 = "True"             
+    elif isFloat(val1):
         val1 = float(val1)
         val1 = "%.4f" % (val1)
-        
-    if isFloat(val2):
+    
+    if val2 is False:
+        val2 = "False"
+    elif val2 is True:
+        val2 = "True"
+    elif isFloat(val2):
         val2 = float(val2)
         val2 = "%.4f" % (val2)
-        
-    if isFloat(val3):
+    
+    if val3 is False:
+        val3 = "False"
+    elif val3 is True:
+        val3 = "True"
+    elif isFloat(val3):
         val3 = float(val3)
         val3 = "%.4f" % (val3)
         
-    SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, advice, units, prompt, data1, data2, data3, isPrimary) "\
-        "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', '%s', %d)"\
-         % (windowId, rowNum, advice, units, prompt, str(val1), str(val2), str(val3), True)
+    SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, configKey, advice, units, prompt, data1, data2, data3, isPrimary) "\
+        "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d)"\
+         % (windowId, rowNum, configKey, advice, units, prompt, str(val1), str(val2), str(val3), True)
 
     logger.tracef("%s", SQL)
     system.db.runUpdateQuery(SQL, database)
@@ -260,8 +272,8 @@ def addSecondaryData(chartScope, stepScope, windowId, row, rowNum, database, log
         val = float(val)
         val = "%.4f" % (val)
 
-    SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, advice, units, prompt, data1, data2, data3, isPrimary) "\
-        "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, "", units, prompt, str(val), "", "", False)
+    SQL = "insert into SfcReviewFlowsTable (windowId, rowNum, configKey, advice, units, prompt, data1, data2, data3, isPrimary) "\
+        "values ('%s', %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d)" % (windowId, rowNum, configKey, "", units, prompt, str(val), "", "", False)
     system.db.runUpdateQuery(SQL, database)
 
 

@@ -13,17 +13,19 @@ def handle(payload):
     
     requestId = payload.get("requestId", -1)
     requestType = payload.get("requestType", "unknown")
+    requestDatabase = payload.get("database", "")
     clientId = system.util.getClientId()
     
     # Get a list of all of the open windows on a client
     if requestType == "listWindows":
         db = getDatabaseClient()
-        windows=system.gui.getOpenedWindowNames()
-        reply = ",".join(map(str,windows))
-        SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId)"\
-            " values (%i, '%s', getdate(), '%s')"\
-             % (requestId, reply, clientId)
-        system.db.runUpdateQuery(SQL, database=db)
+        if db == requestDatabase:
+            windows=system.gui.getOpenedWindowNames()
+            reply = ",".join(map(str,windows))
+            SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId)"\
+                " values (%i, '%s', getdate(), '%s')"\
+                 % (requestId, reply, clientId)
+            system.db.runUpdateQuery(SQL, database=db)
 
 def openWindow(payload):
     print "Opening:", payload

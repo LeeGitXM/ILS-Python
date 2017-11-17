@@ -4,7 +4,7 @@ Created on Nov 30, 2014
 @author: Pete
 '''
 import string, system, time, traceback
-from ils.io.util import isUDT, isFolder, getOuterUDT
+from ils.io.util import isUDTorFolder, getOuterUDT
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -28,29 +28,32 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
     
     tagExists = system.tag.exists(fullTagPath)
     if not(tagExists):
+        print "No Taggy"
         return False, "%s does not exist" % (fullTagPath)
 
     success = True
     errorMessage = ""
 
-    if isUDT(fullTagPath) or isFolder(fullTagPath):
+    if isUDTorFolder(fullTagPath):
+        log.tracef("It is a UDT or a folder")
         # This could be collapsed - we don't really need to know the Python class here - leaving it in for now as 
         # an example of how to determine the Python class. 
         pythonClass = system.tag.read(fullTagPath + "/pythonClass").value
         
         if pythonClass in ["Controller", "PKSController", "PKSACEController", "TDCController"]:
-            log.trace("...writing to a controller...")
+            log.tracef("...writing to a controller (%s)...", pythonClass)
             if writeConfirm:
                 success, errorMessage = writeDatum(fullTagPath, val, valueType)
             else:
                 success, errorMessage = writeWithNoCheck(fullTagPath, val, valueType)
         else:
-            log.trace("...writing to an OPC tag UDT...")
+            log.tracef("...writing to an OPC tag UDT (%s)...", pythonClass)
             if writeConfirm:
                 success, errorMessage = writeDatum(fullTagPath, val, valueType)
             else:
                 success, errorMessage = writeWithNoCheck(fullTagPath, val, valueType)
     else:
+        log.tracef("It is a simple tag")
         # The 'Tag" is either a simple memory tag or an simple OPC tag
         log.trace("Simple write of %s to %s..." % (str(val), fullTagPath))
         if writeConfirm:
@@ -171,7 +174,7 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
     if not(tagExists):
         return False, "%s does not exist" % (tagPath)
     
-    if isUDT(tagPath) or isFolder(tagPath):
+    if isUDTorFolder(tagPath):
         log.trace("The target is a UDT - resetting...")
         
         # Get the name of the Python class that corresponds to this UDT.
@@ -213,7 +216,7 @@ def writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit):
     if not(tagExists):
         return False, "%s does not exist" % (tagPath)
     
-    if isUDT(tagPath) or isFolder(tagPath):
+    if isUDTorFolder(tagPath):
 
         # Dynamically create an object (that won't live very long)
         try:
@@ -239,7 +242,7 @@ def writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit):
 # This implements the common core write logic.  It is used by both WriteDatum and WriteWithNoCheck.
 # The reason for not just making this WriteWithNoCheck is so that I can make distinct log messages.
 def writer(tagPath, val, valueType="", command="writeDatum"):
-    log.tracef("In writer with %s-%s-%s-%s", tagPath, str(val), valueType, command)
+    log.tracef("In writer with %s - %s - %s - %s", tagPath, str(val), valueType, command)
     
     errorMessage=""
     success = False
@@ -248,7 +251,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
     if not(tagExists):
         return False, "%s does not exist" % (tagPath)
     
-    if isUDT(tagPath) or isFolder(tagPath):
+    if isUDTorFolder(tagPath):
         log.trace("The target is a UDT - resetting...")
         
         # Get the name of the Python class that corresponds to this UDT.
@@ -308,7 +311,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
 #       just monitor the write status of the UDT but for a simple tag we need to read the value in the tag.
 #       For now ALWAYS read the value in the tag. 
 def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1): 
-    if isUDT(tagPath) or isFolder(tagPath):
+    if isUDTorFolder(tagPath):
         pythonClass = system.tag.read(tagPath + "/pythonClass").value
         if pythonClass in ["PKSController", "PKSACEController"]:
             if string.upper(valueType) in ["SP", "SETPOINT"]:
@@ -386,7 +389,7 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
     elif string.upper(displayAttribute) == 'ITEMID':
         log.trace("Using Item Id...")
         # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
-        if isUDT(fullTagPath) or isFolder(fullTagPath):
+        if isUDTorFolder(fullTagPath):
             pythonClass = system.tag.read(fullTagPath + '/pythonClass').value
             if string.upper(pythonClass) in ["OPCTAG", "OPCConditionalOutput"]:
                 displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value

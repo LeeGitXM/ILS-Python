@@ -10,6 +10,95 @@ from ils.common.util import isText
 from ils.common.config import getTagProvider
 log = system.util.getLogger("com.ils.io.util")
 
+def runChecks():
+    for tagPath in [
+            "DiagnosticToolkit/CRX/CRX-BLOCK-POLYMER-FLAG",
+            "Data Pump/data",
+            "SFC IO/Fast Scan Data",
+            "SFC IO/Fast Scan Data/VRF006Z",
+            "SFC IO/Fast Scan Data/VRF006Z/permissiveValue"
+            ]:
+        
+        for provider in ["[XOM]", "[XOM_ISOLATION]"]:
+            fullTagPath = provider + tagPath
+            print "-------------------------"
+            print "Checking ", fullTagPath
+            
+            for strategy in ["TAGTYPE", "BROWSETAGS", "BROWSETAGSSIMPLE", "PYTHONCLASS"]:
+                isUDT = isUDTorFolder(fullTagPath, strategy)
+                print "Check 1: ", isUDT
+
+
+'''
+Try and figure out if the thing is a UDT or a folder (the folder support is for I/O in isolation where
+UDTs are replaced by folders).  Return True if the tag path is a UDT or a folder, false otherwise.
+I have tried lot's of different approaches to crack this nut and none of them seem to work to well.
+I have left them in here because something might change in Ignition at some point that will change the way they work,
+or maybe I am calling one of the APIs incorrectly.  The goal is to find one approach that works quickly and 
+reliably in all scopes.
+'''
+def isUDTorFolder(fullTagPath, strategy="PYTHONCLASS"):
+    log.tracef("Checking if %s is a UDT or a folder...", fullTagPath)
+    
+    '''
+    This strategy uses system.tag.read(tagPath + ".TagType") this returns an integer enumeration whose return values
+    are undocumented (I'm sure it is documented somewhere, but I don't know where).  The problem with this strategy is that 
+    I get deifferent results in client scope than I do in gateway scope. In client scope, a folder is a 6 and an opc tag is a 0
+    In gateway scope, a folder is 0 and an opc tag is a 0
+    '''
+    if strategy == "TAGTYPE":
+        tagType = system.tag.read(fullTagPath + ".TagType").value
+        log.tracef("...is of type %s", str(tagType))
+        if tagType in [6, 10]:
+            return True
+    
+    # This strategy uses the browseTags() API to get a browseTag object which has a great isUDT() and isFolder() method.
+    elif strategy == "BROWSETAGS":
+        parentPath = fullTagPath[0:fullTagPath.rfind("/")]
+        tagPath = fullTagPath[fullTagPath.rfind("/")+1:]
+        browseTags = system.tag.browseTags(parentPath, "*", recursive=False)
+        for browseTag in browseTags:
+            if browseTag.fullPath == fullTagPath:
+                if browseTag.isUDT():
+                    return True
+                elif browseTag.isFolder():
+                    return True
+                else:
+                    return False
+    
+    # This strategy uses the browseTagsSimple() API to get a browseTag object which has a great isUDT() and isFolder() method.
+    elif strategy == "BROWSETAGSSIMPLE":
+        parentPath = fullTagPath[0:fullTagPath.rfind("/")]
+        tagPath = fullTagPath[fullTagPath.rfind("/")+1:]
+        browseTags = system.tag.browseTagsSimple(parentPath, "ASC")
+        for browseTag in browseTags:
+            if browseTag.fullPath == fullTagPath:
+                if browseTag.isUDT():
+                    return True
+                elif browseTag.isFolder():
+                    return True
+                else:
+                    return False
+
+    # This implements a strategy that may work for ILS I/O but is not at all general purpose.  It relies on the
+    # conventiion that UDTs have a memory tag named "pythonClass".  This tag is copied to isolation when we make 
+    # isolation tags. 
+    elif strategy == "PYTHONCLASS":
+        tagExists = system.tag.exists(fullTagPath + "/pythonClass")
+        if tagExists:
+            return True
+        else:
+            return False
+    else:
+        print "Unexpected strategy"
+    '''
+    
+    '''
+
+
+   
+    return False
+
 # Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
 # There is possibly an easier way to do this and avoid the whole broseTag API issues of 
 # having to put a wild card in front of the tagPath.  I could use system.tag.read(tagPath + ".TagType.
@@ -72,16 +161,13 @@ def isFolder(fullTagPath):
     isFolder = False
     parentPath, tagPath = splitTagPath(fullTagPath)
     log.tracef("Parent: <%s>, Tag: <%s>", parentPath, tagPath)
-#    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
-#    for tag in tags:
-#        if tag.fullPath == fullTagPath:
-#            isFolder = tag.isFolder()       
+    
     tags = system.tag.browseTagsSimple(parentPath, "ASC")
     for tag in tags:
         log.tracef("Checking <%s> vs <%s>", tag.fullPath, fullTagPath)
         if tag.fullPath == fullTagPath:
             log.tracef(" --names match--")
-            isUDT = tag.isFolder()
+            isFolder = tag.isFolder()
             log.tracef("  isFolder: %s", str(isFolder)) 
             return isFolder    
     

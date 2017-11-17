@@ -40,6 +40,8 @@ def sendAndReceive(command, project, db, timeout=30):
         log.trace("   ..checking for %i replies..." % (numClients)) 
         pds = system.db.runQuery(SQL, database=db)
     
+    system.db.runUpdateQuery("delete from TkMessageRequest where RequestId = %s" % (str(requestId)), database=db)
+    
     log.trace("   ...the replies have been received!")
     return pds
 
@@ -51,7 +53,7 @@ def send(requestType, project, db):
     SQL = "Insert into tkMessageRequest (RequestType, RequestTime) values ('%s',  getdate())" % (requestType)
     requestId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     
-    payload={"requestId": requestId, "requestType": requestType}
+    payload={"requestId": requestId, "requestType": requestType, "database": db}
     system.util.sendMessage(project, messageHandler, payload, scope="C")
     
     return requestId

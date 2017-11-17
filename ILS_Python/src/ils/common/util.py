@@ -269,8 +269,9 @@ This is calculated by(firstValue - lastValue) / number of minutes from first val
 def rateOfChangePerMinute(historyTagProvider, tagProvider, tagPath, startDate, endDate):
     minutesBetween = system.date.minutesBetween(startDate, endDate)
     fullTagPath = "[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath)
-    
-    ds = system.tag.queryTagHistory(paths=[fullTagPath], startDate=startDate, endDate=endDate, returnSize=0)
+    paths = [fullTagPath]
+    print paths
+    ds = system.tag.queryTagHistory(paths=paths, startDate=startDate, endDate=endDate, returnSize=0)
     
     firstVal = ds.getValueAt(0,1)
     lastVal = ds.getValueAt(ds.rowCount - 1,1)

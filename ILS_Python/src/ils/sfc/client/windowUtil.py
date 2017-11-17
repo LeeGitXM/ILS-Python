@@ -41,14 +41,14 @@ def getOpenWindow(windowId):
     return None
 
 def shouldShowWindow(payload):
-    '''return if a window from the chart with given control panel and originator should show in this client'''    
+    '''return True if a window from the chart with given control panel and originator should show in this client'''    
     from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_NAME, ORIGINATOR, SECURITY, PRIVATE
 
-    originator = payload[ORIGINATOR]
-    controlPanelName = payload[CONTROL_PANEL_NAME]
+    originator = payload.get(ORIGINATOR, "")
+    controlPanelName = payload.get(CONTROL_PANEL_NAME, "")
     security = payload.get(SECURITY, PRIVATE)
     showOverride = payload.get("showOverride", False)
-    database = payload[DATABASE]
+    database = payload.get(DATABASE, "")
     clientDatabase = getDatabaseClient()
     
     if showOverride and database == clientDatabase:

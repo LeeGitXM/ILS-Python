@@ -19,11 +19,7 @@ def activate(scopeContext, stepProperties, state):
         chartLogger = getChartLogger(chartScope)
         currentMsgQueue = getCurrentMessageQueue(chartScope)
         message = getStepProperty(stepProperties, MESSAGE)
-        print "Raw: ", message
         message = substituteScopeReferences(chartScope, stepScope, message)
-        print "Local substitutions: ", message
-
-        print "Escaped: ", message
         priority = getStepProperty(stepProperties, PRIORITY)  
         database = getDatabaseName(chartScope)
         insert(currentMsgQueue, priority, message, database)    

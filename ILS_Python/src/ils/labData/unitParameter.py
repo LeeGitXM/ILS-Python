@@ -118,7 +118,8 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
             tagPathRoot + '/rawValue.LastChange', 
             tagPathRoot + '/sampleTime.LastChange', 
             tagPathRoot + '/configurationChangeTime',
-            tagPathRoot + '/ignoreSampleTime']
+            tagPathRoot + '/ignoreSampleTime',
+            "[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)]
     vals=system.tag.readAll(tags)
 
     numberOfPoints = vals[0].value
@@ -127,6 +128,7 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     sampleTimeLastChange = vals[3].value
     configurationChangeTime = vals[4].value
     ignoreSampleTime = vals[5].value
+    syncSeconds = vals[6].value    
     
     '''
     If the rawValue and the sampleTime were updated simultaneously then this will be called twice.  So make sure that we didn't just add a 
@@ -136,10 +138,8 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     if not(ignoreSampleTime) and threadName in ["rawValue", "sampleTime"]:
         theSecondsBetween = system.date.secondsBetween(rawValueLastChange, sampleTimeLastChange)
         log.tracef("%s - seconds between the raw value and the sample time is: %s", threadName, str(theSecondsBetween))
-        consistencyThreshold = 5.0
-        if abs(theSecondsBetween) > consistencyThreshold:
+        if abs(theSecondsBetween) > syncSeconds:
             log.tracef("%s - The value and sample time are not consistent, waiting for the sync interval", threadName)
-            syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
             log.tracef("%s - Sleeping for %s seconds", threadName, str(syncSeconds))
             time.sleep(syncSeconds)
         else:
@@ -192,14 +192,6 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         return
 
     bumpIndex = True
-#    SQL = "select ReceiptTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
-#    receiptTime = system.db.runScalarQuery(SQL, database)
-#    if receiptTime <> None:
-#        log.tracef("The last sample was received at %s", str(receiptTime))
-#        syncSeconds = system.tag.read("[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)).value
-#        if system.date.secondsBetween(receiptTime, system.date.now()) < syncSeconds:
-#            log.tracef("A lab value has recently processed - update the last value")
-#            bumpIndex = False
 
     '''
     If just the value was updated, then they are updating a previous value so do not bump the index
@@ -208,7 +200,7 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
         SQL = "select SampleTime from TkUnitParameterBuffer where UnitParameterId = %i and BufferIndex = %i" % (unitParameterId, bufferIndex)
         lastSampleTime = system.db.runScalarQuery(SQL, database)
         if lastSampleTime == None:
-            log.tracef("The last sample time is None, probably becaus ethis is the first value")
+            log.tracef("The last sample time is None, probably because this is the first value")
         else:
             theSecondsBetween = system.date.secondsBetween(sampleTime, lastSampleTime)
             log.tracef("Comparing the sample time (%s) to the last sample time (%s) to see if an existing value is being updated (delta = %s)", str(sampleTime), str(lastSampleTime), str(theSecondsBetween))
