@@ -14,7 +14,7 @@ from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
 from ils.io.api import getMonitoredTagPath
 
 from ils.sfc.common.util import callMethodWithParams
-from ils.sfc.recipeData.api import s88Get, s88Set, s88GetTargetStepUUID, s88GetFromStep,s88SetFromStep
+from ils.sfc.recipeData.api import s88Get, s88Set, s88GetStep, s88GetFromStep,s88SetFromStep
 from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIVATION_CALLBACK, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER,  VALUE, SETPOINT, RECIPE, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
@@ -53,7 +53,7 @@ def activate(scopeContext, stepProperties, state):
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
         recipeDataLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-        targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, recipeDataLocation)
+        targetStepUUID, stepName = s88GetStep(chartScope, stepScope, recipeDataLocation)
 
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
@@ -250,7 +250,7 @@ def activate(scopeContext, stepProperties, state):
                         else:
                             targetKey = configRow.pvKey
                         
-                        targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, recipeDataLocation)
+                        targetStepUUID, stepName = s88GetStep(chartScope, stepScope, recipeDataLocation)
                         monitorActiveCount = monitorActiveCount + 1
                         #TODO: how are we supposed to know about a download unless we have an Output??
                         if configRow.isOutput and not configRow.isDownloaded:

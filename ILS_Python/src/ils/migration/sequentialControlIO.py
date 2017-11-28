@@ -61,7 +61,7 @@ def load(rootContainer):
     print "Done Loading!"
 
 def parseRecords(records,recordType):        
-    print "Parsing %s records... " % (recordType)
+    print "Parsing %s records..." % (recordType)
 
     i = 0
     numTokens=100
@@ -71,7 +71,7 @@ def parseRecords(records,recordType):
         tokens = line.split(',')
 
         if i == 0:
-            line = "status,skip," + line
+            line = "status,skip," + line.replace(" ","")
             line=line.rstrip(',')
             header = line.split(',')
             numTokens=len(header)
@@ -201,7 +201,7 @@ def createTags(rootContainer):
                     createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, serverName, 
                                             scanClass, outputNames, "String", "String")
                     status = "Created"
-                elif className == "OPC-PKS-CONTROLLER":
+                elif className in ["OPC-PKS-CONTROLLER", "OPC-PKS-DIGITAL-CONTROLLER"]:
                     modeItemId = ds.getValueAt(row, "mode-item-id")
                     permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
                     spItemId = ds.getValueAt(row, "write-target-item-id")

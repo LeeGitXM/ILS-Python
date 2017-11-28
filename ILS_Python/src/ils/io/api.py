@@ -268,7 +268,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
             if string.upper(command) == "WRITEDATUM":
                 success, errorMessage = tag.writeDatum(val, valueType)
             elif string.upper(command) == "WRITEWITHNOCHECK":
-                success, errorMessage = tag.writeWithNoCheck(val)
+                success, errorMessage = tag.writeWithNoCheck(val, valueType)
             elif string.upper(command) == "WRITERAMP":
                 success, errorMessage = tag.writeRamp()
             elif string.upper(command) == "RESET":

@@ -11,7 +11,7 @@ from ils.sfc.common.constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY, IS_SF
     DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, \
     RESPONSE_KEY_AND_ATTRIBUTE
 from ils.sfc.common.util import isEmpty
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep
 from ils.sfc.gateway.steps.commonInput import cleanup
 
 def activate(scopeContext, stepProperties, state):
@@ -65,9 +65,9 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
             
-            choicesStepUUID = s88GetTargetStepUUID(chartScope, stepScope, choicesRecipeLocation)
+            choicesStepUUID, stepName = s88GetStep(chartScope, stepScope, choicesRecipeLocation)
             
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             
             sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, keyAndAttribute) "\
                 "values ('%s', '%s', '%s', '%s', '%s', '%s')" \

@@ -12,7 +12,7 @@ import system
 from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.steps.commonInput import cleanup
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError, getStepProperty, getControlPanelId, registerWindowWithControlPanel, logStepDeactivated, getTopChartRunId
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
     WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY
 
@@ -56,7 +56,7 @@ def activate(scopeContext, stepProperties, state):
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId

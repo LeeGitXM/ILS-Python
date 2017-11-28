@@ -10,7 +10,7 @@ from ils.common.cast import jsonToDict, isFloat
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, hasStepProperty, deleteAndSendClose, getDatabaseName, getChartLogger, \
         sendMessageToClient, getProject, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88GetWithUnits, s88GetUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88GetWithUnits, s88GetUnits
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, \
     DEACTIVATED, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \
     BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
@@ -82,7 +82,7 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef("The primary configuration: %s", str(primaryConfigJson))
             logger.tracef("The secondary configuration is: %s", str(secondaryConfigJson))
             
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             
             SQL = "insert into SfcReviewData (windowId, showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
                 "values ('%s', %d, '%s', '%s', '%s', '%s')" % (windowId, showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel)

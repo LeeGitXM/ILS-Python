@@ -6,9 +6,8 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
     
-import system, string, time
-from ils.sfc.recipeData.core import getTargetStep, getChartUUID, getStepUUID, splitKey
-from ils.sfc.common.util import isEmpty, boolToBit, logExceptionCause
+import system, time
+from ils.sfc.common.util import boolToBit, logExceptionCause
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
 from ils.common.ocAlert import sendAlert

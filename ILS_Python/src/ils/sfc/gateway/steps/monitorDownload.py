@@ -7,7 +7,7 @@ This step used to be known as Download GUI
 '''
 
 import system
-from ils.sfc.recipeData.api import s88Set, s88GetTargetStepUUID, s88Get
+from ils.sfc.recipeData.api import s88Set, s88GetStep, s88Get
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, DOWNLOAD, \
     POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
@@ -27,7 +27,7 @@ def activate(scopeContext, stepProperties, state):
     
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
-        timerStepUUID = s88GetTargetStepUUID(chartScope, stepScope, timerLocation)
+        timerStepUUID, stepName = s88GetStep(chartScope, stepScope, timerLocation)
         
         clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
         if clearTimer:
@@ -39,7 +39,7 @@ def activate(scopeContext, stepProperties, state):
             handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, START_TIMER, logger)
         
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-        recipeDataStepUUID = s88GetTargetStepUUID(chartScope, stepScope, recipeLocation)
+        recipeDataStepUUID, stepName = s88GetStep(chartScope, stepScope, recipeLocation)
         
         configJson = getStepProperty(stepProperties, MONITOR_DOWNLOADS_CONFIG)
         monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)

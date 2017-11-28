@@ -8,7 +8,7 @@ import system
 from ils.sfc.recipeData.api import s88Get
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError, sendMessageToClient, readTag, getStepId, logStepDeactivated, \
     getControlPanelId, getStepProperty, getControlPanelName, getDelaySeconds, registerWindowWithControlPanel, getTopChartRunId, getOriginator, deleteAndSendClose
-from ils.sfc.common.util import callMethod, isEmpty
+from ils.sfc.common.util import callMethod, isEmpty, callMethodWithParams
 from ils.sfc.gateway.api import getTimeFactor
 from ils.sfc.common.constants import KEY, TAG, STRATEGY, STATIC, RECIPE, DELAY, \
     RECIPE_LOCATION, CALLBACK, TAG_PATH, DELAY_UNIT, POST_NOTIFICATION, WINDOW_ID, \
@@ -53,7 +53,13 @@ def activate(scopeContext, stepProperties, state):
                 chartLogger.tracef("    ...the raw delay is %s", str(delay))
             elif timeDelayStrategy == CALLBACK:
                 callback = getStepProperty(stepProperties, CALLBACK) 
-                delay = callMethod(callback)
+#                delay = callMethod(callback)
+                
+                keys = ['scopeContext', 'stepProperties']
+                values = [scopeContext, stepProperties]
+                delay = callMethodWithParams(callback, keys, values)
+                
+                
             elif timeDelayStrategy == TAG:
                 tagPath = getStepProperty(stepProperties, TAG_PATH)
                 delay = readTag(chartScope, tagPath)

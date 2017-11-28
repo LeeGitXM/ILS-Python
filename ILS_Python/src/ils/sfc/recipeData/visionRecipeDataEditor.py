@@ -698,6 +698,7 @@ def refreshComboBoxes(event):
         # Input Combos
         container = rootContainer.getComponent("Input Container")    
         combo = container.getComponent("Value Type Dropdown")
+        ds = rootContainer.inputDataset
         valueType = ds.getValueAt(0,"ValueType")
         combo.selectedStringValue = valueType
     

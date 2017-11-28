@@ -99,8 +99,9 @@ class OPCOutput(opctag.OPCTag):
     
     # Write with NO confirmation.
     # Assume the UDT structure of an OPC Output
-    def writeWithNoCheck(self, val):
-        if val == None:
+    def writeWithNoCheck(self, val, valueType=""):
+        
+        if val == None or string.upper(str(val)) == 'NAN':
             val = float("NaN")
 
         log.info("Writing <%s> to %s, an OPCOutput with no confirmation" % (str(val), self.path))
@@ -114,7 +115,7 @@ class OPCOutput(opctag.OPCTag):
         if status == False :              
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", reason)
-            log.info("Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
+            log.warn("Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
             return status,reason
  
         # Update the status to "Writing"

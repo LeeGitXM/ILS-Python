@@ -2,6 +2,7 @@
 Created on Nov 30, 2016
 
 @author: phassler
+
 '''
 
 import system, string
@@ -17,55 +18,6 @@ from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VA
     ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.core")
-
-# Return the UUID of the step  
-def getTargetStep(chartProperties, stepProperties, scope):
-    logger.tracef("Getting target step for scope %s...", scope)
-
-    scope.lower()
-    
-    if scope == LOCAL_SCOPE:
-        stepUUID = getStepUUID(stepProperties)
-        stepName = getStepName(stepProperties)
-        return stepUUID, stepName
-    
-    elif scope == PRIOR_SCOPE:
-        stepUUID, stepName = getPriorStep(chartProperties, stepProperties)
-        return stepUUID, stepName
-    
-    elif scope == SUPERIOR_SCOPE:
-        stepUUID, stepName = getSuperiorStep(chartProperties)
-        return stepUUID, stepName
-    
-    elif scope == PHASE_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, PHASE_STEP)   
-        return stepUUID, stepName
-    
-    elif scope == OPERATION_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, OPERATION_STEP)     
-        return stepUUID, stepName
-    
-    elif scope == GLOBAL_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, UNIT_PROCEDURE_STEP)     
-        return stepUUID, stepName
-        
-    else:
-        logger.errorf("Undefined scope: %s", scope)
-        
-    return -1 
-
-def getTargetStepFromName(chartPath, stepName, db):
-    SQL = "select StepUUID, StepId from SfcChart C, SfcStep S "\
-        " where S.ChartId = C.ChartId and C.ChartPath = '%s' and S.StepName = '%s' " % (chartPath, stepName)
-    pds = system.db.runQuery(SQL, database=db)
-    if len(pds) == 0:
-        raise ValueError, "Unable to find recipe data for %s - %s, chart/step not found" % (chartPath, stepName)
-    if len(pds) > 1:
-        raise ValueError, "Unable to find recipe data for %s - %s, multiple steps found" % (chartPath, stepName)
-    record = pds[0]
-    stepUUID = record["StepUUID"]
-    stepId = record["StepId"]
-    return stepUUID, stepId
 
 def walkUpHieracrchy(chartProperties, stepType):
     logger.tracef("Walking up the hierarchy looking for %s", stepType)
@@ -435,29 +387,31 @@ def fetchRecipeDataRecord(stepUUID, key, db):
 def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     # These attributes are common to all recipe data classes
     if recipeDataType == SIMPLE_VALUE:
-        SQL = "select DESCRIPTION, LABEL, UNITS, VALUETYPE, RECIPEDATATYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
+        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, VALUETYPEID, VALUETYPE, RECIPEDATATYPE, VALUEID, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+            "from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == TIMER:
-        SQL = "select DESCRIPTION, LABEL, UNITS, RECIPEDATATYPE, STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
+        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, RECIPEDATATYPE, STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES "\
+            "from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
         
     elif recipeDataType == INPUT:
-        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, PVMONITORACTIVE, PVMONITORSTATUS, "\
-            "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
-            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
+        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, PVMONITORACTIVE, PVMONITORSTATUS, "\
+            "TARGETVALUEID, TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVVALUEID, PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
             "from SfcRecipeDataInputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == OUTPUT:
-        SQL = "select DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
+        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, OUTPUTTYPE, OUTPUTTYPEID, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
             "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, PVMONITORACTIVE, PVMONITORSTATUS, SETPOINTSTATUS,  WRITECONFIRM, WRITECONFIRMED, "\
-            "OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
-            "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
-            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
+            "OUTPUTVALUEID, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
+            "TARGETVALUEID, TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVVALUEID, PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
             "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == ARRAY:
         # This really doesn't work for an array, have some work to do...
         val = []
-        SQL = "select VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+        SQL = "select RECIPEDATAID, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
             " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
             " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
@@ -899,3 +853,79 @@ def s88GetRecipeDataDS(stepUUID, recipeDataType, db):
         ds = "foobar"
     
     return ds
+
+def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
+    # 1) Ensure that the types of recipe data are the same.
+    # 2) Call a copy method that knows which attributes of recipe data need to be copied
+    
+    ''' --------------------------------------------- Private Methods ------------------------------------------------- '''
+    def updateSfcRecipeData(recipeDataId, label, description, units, db):
+        SQL = "update SfcRecipeData set Label = ?, Description = ?, Units = ? where RecipeDataId = ?"
+        rows = system.db.runPrepUpdate(SQL, [label, description, units,recipeDataId], database=db)
+        logger.tracef("Updated %d rows in SfcRecipeData", rows)
+    
+    def updateSfcRecipeDataValue(valueId, floatValue, integerValue, stringValue, booleanValue, db):
+        SQL = "update SfcRecipeDataValue set FloatValue = ?, IntegerValue = ?, StringValue = ?, BooleanValue = ? where ValueId = ?"
+        rows = system.db.runPrepUpdate(SQL, [floatValue, integerValue, stringValue, booleanValue, valueId], database=db)
+        logger.tracef("Updated %d rows in SfcRecipeDataValue", rows)
+        
+    def updateSfcRecipeDataSimpleValue(recipeDataId, valueTypeId, db):
+        SQL = "update SfcRecipeDataSimpleValue set ValueTypeId = ? where RecipeDataId = ?"
+        rows = system.db.runPrepUpdate(SQL, [valueTypeId, recipeDataId], database=db)
+        logger.tracef("Updated %d rows in SfcRecipeDataSimpleValue", rows)
+    
+    def updateSfcRecipeDataInput(recipeDataId, valueTypeId, tag, db):
+        SQL = "update SfcRecipeDataInput set ValueTypeId = ?, tag = ? where RecipeDataId = ?"
+        rows = system.db.runPrepUpdate(SQL, [valueTypeId, tag, recipeDataId], database=db)
+        logger.tracef("Updated %d rows in updateSfcRecipeDataInput", rows)
+    
+    def updateSfcRecipeDataOutput(recipeDataId, valueTypeId, outputTypeId, tag, download, timing, maxTiming, writeConfirm, db):
+        SQL = "update SfcRecipeDataOutput set ValueTypeId = ?, outputTypeId = ?, tag = ?, download = ?, timing = ?, maxTiming = ?, writeConfirm = ? where RecipeDataId = ?"
+        rows = system.db.runPrepUpdate(SQL, [valueTypeId, outputTypeId, tag, download, timing, maxTiming, writeConfirm, recipeDataId], database=db)
+        logger.tracef("Updated %d rows in updateSfcRecipeDataOutput", rows)
+    
+    ''' --------------------------------------------- End of Private Methods ------------------------------------------------- '''
+
+    sourceRecord = fetchRecipeDataRecord(sourceUUID, sourceKey, db)
+    targetRecord = fetchRecipeDataRecord(targetUUID, targetKey, db)
+    
+    if sourceRecord["RECIPEDATATYPE"] != targetRecord["RECIPEDATATYPE"]:
+        errorText = "Unable to copy recipe data of dissimilar type!"
+        raise ValueError, errorText
+        return
+    
+    recipeDataType = sourceRecord["RECIPEDATATYPE"]
+    if recipeDataType == SIMPLE_VALUE:
+        logger.tracef('Copying simple recipe data...')
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeDataSimpleValue(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], db)
+        updateSfcRecipeDataValue(targetRecord["VALUEID"], sourceRecord["FLOATVALUE"], sourceRecord["INTEGERVALUE"], sourceRecord["STRINGVALUE"], sourceRecord["BOOLEANVALUE"], db)
+
+    elif recipeDataType == INPUT:
+        logger.tracef('Copying input recipe data...')
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeDataInput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["TAG"], db)
+        updateSfcRecipeDataValue(targetRecord["TARGETVALUEID"], sourceRecord["TARGETFLOATVALUE"], sourceRecord["TARGETINTEGERVALUE"], sourceRecord["TARGETSTRINGVALUE"], sourceRecord["TARGETBOOLEANVALUE"], db)
+        updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
+    
+    elif recipeDataType == OUTPUT:
+        logger.tracef('Copying output recipe data...')
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeDataOutput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["OUTPUTTYPEID"], sourceRecord["TAG"], 
+                                  sourceRecord["DOWNLOAD"], sourceRecord["TIMING"], sourceRecord["MAXTIMING"], sourceRecord["WRITECONFIRM"], db)
+        updateSfcRecipeDataValue(targetRecord["OUTPUTVALUEID"], sourceRecord["OUTPUTFLOATVALUE"], sourceRecord["OUTPUTINTEGERVALUE"], sourceRecord["OUTPUTSTRINGVALUE"], sourceRecord["OUTPUTBOOLEANVALUE"], db)
+        updateSfcRecipeDataValue(targetRecord["TARGETVALUEID"], sourceRecord["TARGETFLOATVALUE"], sourceRecord["TARGETINTEGERVALUE"], sourceRecord["TARGETSTRINGVALUE"], sourceRecord["TARGETBOOLEANVALUE"], db)
+        updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
+    
+    elif recipeDataType == TIMER:
+        logger.tracef("Copying timer recipe data HAS NOT BEEN IMPLEMENTED...")
+    
+    elif recipeDataType == ARRAY:
+        logger.tracef('Copying array recipe data HAS NOT BEEN IMPLEMENTED...')
+       
+    elif recipeDataType == MATRIX:
+        logger.tracef('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
+        
+    else:
+        logger.errorf("Unsupported recipe data type: %s", recipeDataType)
+        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)

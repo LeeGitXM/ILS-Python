@@ -10,7 +10,7 @@ from ils.sfc.common.util import isEmpty
 from ils.common.cast import isFloat, isInteger
 from ils.sfc.gateway.api import getStepId, registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
     getStepProperty, logStepDeactivated, dbStringForFloat, getTopChartRunId, getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88SetWithUnits, s88GetWithUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88SetWithUnits, s88GetWithUnits
 from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, \
     AUTO_MODE, AUTOMATIC, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, WINDOW_HEADER, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
     DEACTIVATED, CANCELLED, IS_SFC_WINDOW, WINDOW_PATH, NAME, TARGET_STEP_UUID, KEY
@@ -135,7 +135,7 @@ def activate(scopeContext, stepProperties, state):
                         if row.destination == None or string.upper(row.destination) == "TAG":
                             targetStepUUID = ''
                         else:
-                            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, row.destination)
+                            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, row.destination)
                             
                         lowLimitDbStr = dbStringForFloat(row.lowLimit)
                         highLimitDbStr = dbStringForFloat(row.highLimit)

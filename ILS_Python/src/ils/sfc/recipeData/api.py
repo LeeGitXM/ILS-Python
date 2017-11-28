@@ -1,9 +1,17 @@
+'''
+Created on Nov 30, 2016
+
+@author: phassler
+
+'''
+
 import system, string
-from ils.sfc.recipeData.core import getTargetStep, getTargetStepFromName, fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey,\
-    fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS
+from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
+    getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum
 from ils.sfc.gateway.api import getDatabaseName, readTag
 from ils.common.units import convert
-from ils.sfc.common.constants import TAG, CHART, STEP
+from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
+    PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
 from ils.sfc.recipeData.constants import SIMPLE_VALUE
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.api")
@@ -11,7 +19,7 @@ logger=system.util.getLogger("com.ils.sfc.recipeData.api")
 def s88DataExists(chartScope, stepScope, keyAndAttribute, scope):
     logger.tracef("s88GetType(): %s - %s", keyAndAttribute, scope)
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     exists = recipeDataExists(stepUUID, key, attribute, db)
@@ -20,7 +28,7 @@ def s88DataExists(chartScope, stepScope, keyAndAttribute, scope):
 def s88GetType(chartScope, stepScope, keyAndAttribute, scope):
     logger.tracef("s88GetType(): %s - %s", keyAndAttribute, scope)
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     recipeDataType = fetchRecipeDataType(stepUUID, key, attribute, db)
@@ -29,7 +37,7 @@ def s88GetType(chartScope, stepScope, keyAndAttribute, scope):
 def s88GetUnits(chartScope, stepScope, keyAndAttribute, scope):
     logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     val, units = fetchRecipeData(stepUUID, key, attribute, db)
@@ -40,7 +48,7 @@ def s88GetUnits(chartScope, stepScope, keyAndAttribute, scope):
 def s88Get(chartScope, stepScope, keyAndAttribute, scope):
     logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     val, units = fetchRecipeData(stepUUID, key, attribute, db)
@@ -50,7 +58,7 @@ def s88Get(chartScope, stepScope, keyAndAttribute, scope):
 def s88GetWithUnits(chartScope, stepScope, keyAndAttribute, scope, returnUnits):
     logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     val, fetchedUnits = fetchRecipeData(stepUUID, key, attribute, db)
@@ -71,16 +79,65 @@ def s88GetFromStep(stepUUID, keyAndAttribute, db):
 def s88GetFromName(chartPath, stepName, keyAndAttribute, db):
     logger.tracef("s88GetFromName(): geting %s from %s step %s", keyAndAttribute, chartPath, stepName)
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
     logger.tracef("...looking at step %s - %s", str(stepId), str(stepUUID))
     val, units = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
 
+# Return the UUID of the step  
+def s88GetStep(chartProperties, stepProperties, scope):
+    logger.tracef("Getting target step for scope %s...", scope)
+
+    scope.lower()
+    
+    if scope == LOCAL_SCOPE:
+        stepUUID = getStepUUID(stepProperties)
+        stepName = getStepName(stepProperties)
+        return stepUUID, stepName
+    
+    elif scope == PRIOR_SCOPE:
+        stepUUID, stepName = getPriorStep(chartProperties, stepProperties)
+        return stepUUID, stepName
+    
+    elif scope == SUPERIOR_SCOPE:
+        stepUUID, stepName = getSuperiorStep(chartProperties)
+        return stepUUID, stepName
+    
+    elif scope == PHASE_SCOPE:
+        stepUUID, stepName = walkUpHieracrchy(chartProperties, PHASE_STEP)   
+        return stepUUID, stepName
+    
+    elif scope == OPERATION_SCOPE:
+        stepUUID, stepName = walkUpHieracrchy(chartProperties, OPERATION_STEP)     
+        return stepUUID, stepName
+    
+    elif scope == GLOBAL_SCOPE:
+        stepUUID, stepName = walkUpHieracrchy(chartProperties, UNIT_PROCEDURE_STEP)     
+        return stepUUID, stepName
+        
+    else:
+        logger.errorf("Undefined scope: %s", scope)
+        
+    return -1 
+
+def s88GetStepFromName(chartPath, stepName, db):
+    SQL = "select StepUUID, StepId from SfcChart C, SfcStep S "\
+        " where S.ChartId = C.ChartId and C.ChartPath = '%s' and S.StepName = '%s' " % (chartPath, stepName)
+    pds = system.db.runQuery(SQL, database=db)
+    if len(pds) == 0:
+        raise ValueError, "Unable to find recipe data for %s - %s, chart/step not found" % (chartPath, stepName)
+    if len(pds) > 1:
+        raise ValueError, "Unable to find recipe data for %s - %s, multiple steps found" % (chartPath, stepName)
+    record = pds[0]
+    stepUUID = record["StepUUID"]
+    stepId = record["StepId"]
+    return stepUUID, stepId
+
 # This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
 def s88GetFromNameWithUnits(chartPath, stepName, keyAndAttribute, returnUnits, db):
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
     val, units = fetchRecipeData(stepUUID, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     convertedValue = convert(units, returnUnits, val, db)
@@ -138,7 +195,7 @@ def s88GetRecipeDataDatasetFromName(chartPath, stepName, recipeDataType, db=""):
 def s88GetRecipeDataDataset(chartScope, stepScope, recipeDataType, scope):
     logger.tracef("s88GetCsv(): %s", scope)
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)    
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)    
     ds = s88GetRecipeDataDS(stepUUID, recipeDataType, db)
     return ds
 
@@ -149,18 +206,12 @@ def s88GetRecord(stepUUID, key, db):
     logger.tracef("...fetched %s", str(record))
     return record
 
-def s88GetTargetStepUUID(chartScope, stepScope, scope):
-    logger.tracef("s88GetTargetStep(): %s", scope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
-    return stepUUID
-
 # This is the most popular API which should be used to access recipe data that lives in the call hierarchy of a 
 # running chart.
 def s88Set(chartScope, stepScope, keyAndAttribute, value, scope):
     logger.tracef("s88Set(): %s - %s - %s", keyAndAttribute, scope, str(value))
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     setRecipeData(stepUUID, key, attribute, value, db)
@@ -168,7 +219,7 @@ def s88Set(chartScope, stepScope, keyAndAttribute, value, scope):
 def s88SetWithUnits(chartScope, stepScope,  keyAndAttribute, value, scope, units):
     logger.tracef("s88SetWithUnits(): %s - %s - %s", keyAndAttribute, scope, str(value))
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = getTargetStep(chartScope, stepScope, scope)
+    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)
     logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
     key,attribute = splitKey(keyAndAttribute)
     setRecipeData(stepUUID, key, attribute, value, db, units)
@@ -187,14 +238,17 @@ def s88SetFromStepWithUnits(stepUUID, keyAndAttribute, value, db, units):
 def s88SetFromName(chartPath, stepName, keyAndAttribute, value, db):
     logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
     setRecipeData(stepUUID, key, attribute, value, db)
     
 def s88SetFromNameWithUnits(chartPath, stepName, keyAndAttribute, value, units, db):
     logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))
     key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = getTargetStepFromName(chartPath, stepName, db)
+    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
     setRecipeData(stepUUID, key, attribute, value, db, units)
+    
+def s88CopyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
+    copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db)
 
 '''
 These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that

@@ -332,3 +332,111 @@ class PKSController(controller.Controller):
 
         log.info("EPKS Controller <%s> done ramping!" % (self.path))
         return success, errorMessage
+    
+    # WiteWithNoCheck for a controller supports writing values to the OP, SP, or MODE, one at a time.
+    def writeWithNoCheck(self, val, valueType):      
+        log.trace("pkscontroller.writeWithNoCheck() %s - %s - %s" % (self.path, str(val), valueType))
+        if string.upper(valueType) in ["SP", "SETPOINT"]:
+            tagRoot = self.path + '/sp'
+            targetTag = self.spTag
+            valueType = 'sp'
+        elif string.upper(valueType) in ["OP", "OUTPUT"]:
+            tagRoot = self.path + '/op'
+            targetTag = self.opTag
+            valueType = 'op'
+        elif string.upper(valueType) in ["MODE"]:
+            tagRoot = self.path + '/mode'
+            targetTag = self.modeTag
+            valueType = 'mode'
+        else:
+            log.error("Unexpected value Type: <%s>" % (valueType))
+            raise Exception("Unexpected value Type: <%s>" % (valueType))
+
+        # Check the basic configuration of the tag we are trying to write to.
+        success, errorMessage = self.checkConfig(tagRoot + "/value")
+        if not(success):
+            system.tag.write(self.path + "/writeStatus", "Failure")
+            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            log.info("Aborting write to %s, checkConfig failed due to: %s" % (tagRoot, errorMessage))
+            return False, errorMessage
+
+        # Check the basic configuration of the permissive of the controller we are writing to.
+        success, errorMessage = self.checkConfig(self.path + '/permissive')
+        if not(success):
+            system.tag.write(self.path + "/writeStatus", "Failure")
+            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            log.info("Aborting write to %s, checkConfig failed due to: %s" % (self.path + '/permissive', errorMessage))
+            return False, errorMessage
+        
+        # reset the UDT
+        self.reset()
+        time.sleep(1)
+        
+        #----------------------
+        # Set the permissive
+        #----------------------
+        
+        log.trace("Writing permissive...")
+        
+        # Update the status to "Writing"
+        system.tag.write(self.path + "/writeStatus", "Writing Permissive")
+ 
+        # Read the current permissive and save it so that we can put it back the way is was when we are done
+        permissiveAsFound = system.tag.read(self.path + "/permissive").value
+        log.trace("   permisive as found: %s" % (permissiveAsFound))
+        
+        # Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed
+        permissiveValue = system.tag.read(self.path + "/permissiveValue").value
+        permissiveConfirmation = system.tag.read(self.path + "/permissiveConfirmation").value
+        
+        # Write the permissive value to the permissive tag and wait until it gets there
+        log.trace("   writing permissive value: %s" % (permissiveValue))
+        system.tag.write(self.path + "/permissive", permissiveValue)
+        
+        # Confirm the permissive if necessary.  If the UDT is configured for confirmation, then it MUST be confirmed 
+        # for the write to proceed.  This has nothing to do with confirming the write.
+        if permissiveConfirmation:
+            log.trace("   confirming permissive...")
+            system.tag.write(self.path + "/writeStatus", "Confirming Permissive")
+            from ils.io.util import confirmWrite
+            confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue)
+ 
+            if confirmed:
+                log.trace("   confirmed Permissive write: %s - %s" % (self.path, permissiveValue))
+            else:
+                errorMessage = "Failed to confirm permissive write of <%s> to %s because %s" % (str(permissiveValue), self.path, errorMessage)
+                log.error(errorMessage)
+                system.tag.write(self.path + "/writeStatus", "Failure")
+                system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+                return confirmed, errorMessage
+            
+        # If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
+        # write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
+        # the write so this needs to just wait around for the answer
+
+        log.trace("Writing %s to %s" % (str(val), tagRoot))
+        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        confirmed, errorMessage = targetTag.writeWithNoCheck(val, valueType)
+        if not(confirmed):
+            log.error(errorMessage)
+            system.tag.write(self.path + "/writeStatus", "Failure")
+            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            return confirmed, errorMessage
+         
+        # Return the permissive to its original value.  Don't let the success or failure of this override the result of the 
+        # overall write.
+        # TODO wait for a latency time
+        log.trace("Restoring permissive")
+        system.tag.write(self.path + "/permissive", permissiveAsFound)
+        if permissiveConfirmation:
+            confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound)
+            
+            if confirmed:    
+                log.trace("Confirmed Permissive restore: %s" % (self.path))
+            else:
+                txt = "Failed to confirm permissive write of <%s> to %s because %s" % (str(val), self.path, confirmMessage)
+                log.error(txt)
+                system.tag.write(self.path + "/writeStatus", "Failure")
+                system.tag.write(self.path + "/writeErrorMessage", txt)
+        
+        return confirmed, errorMessage

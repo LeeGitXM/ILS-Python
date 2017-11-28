@@ -6,7 +6,7 @@ Created on Dec 17, 2015
 
 import system, time, string
 from ils.sfc.common.util import callMethodWithParams
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetTargetStepUUID, s88GetWithUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88GetWithUnits
 from ils.common.cast import jsonToDict, isFloat
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, deleteAndSendClose, getDatabaseName, getChartLogger, sendMessageToClient, getProject, handleUnexpectedGatewayError
@@ -69,7 +69,7 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            targetStepUUID = s88GetTargetStepUUID(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             
             SQL = "insert into SfcReviewFlows (windowId, heading1, heading2, heading3, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
                 "values (?, ?, ?, ?, ?, ?, ?, ?)"
