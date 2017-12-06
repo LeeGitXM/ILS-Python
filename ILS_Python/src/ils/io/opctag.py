@@ -37,7 +37,7 @@ class OPCTag():
         if not(status):
             return status, reason
         
-        # Read the value and check the quality.  I don't think that there is a way that an OPC tag can be bad.
+        # Read the value and check the quality.  
         # If NaN causes the tag to appear bad then we will need to look at the specific reason
         val = system.tag.read(self.path + "/value")
         if val.quality.isGood() or str(val.quality) in ['Tag Evaluation Error', 'foo']:

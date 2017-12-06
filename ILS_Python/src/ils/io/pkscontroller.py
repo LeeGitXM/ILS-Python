@@ -153,11 +153,19 @@ class PKSController(controller.Controller):
         if not(configOK):
             return configOK, errorMsg
         
+        '''
+        The I/O module is designer for OPC I/O, if we are writing to memory tags then we don't use the I/O API.
+        However, if we are using isolation tags then we DO write to memory tags!  If we are writing to memory tags then 
+        it doesn't make sense to check for an item id or OPC server.
+        '''
+        tagType = system.tag.read(tagRoot + ".TagType").value
+        if tagType == 1:
+            return True, ""
+        
         itemPath = system.tag.getAttribute(tagRoot, "OPCItemPath")
-
         if itemPath == "":
             return False, "%s OPCItemPath is not configured" % (tagRoot)
-        
+
         server = system.tag.getAttribute(tagRoot, "OPCServer")
         if server == "":
             return False, "%s OPCServer is not configured" % (tagRoot)

@@ -461,7 +461,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
         val = convert(units, targetUnits, float(val), db)
         logger.tracef("...converted %s-%s to %s-%s...", str(oldVal), units, str(val), targetUnits)
     
-    if val in ["None", "NONE", "none", "NO-VALUE"]:
+    if str(val) in ["None", "NONE", "none", "NO-VALUE"]:
         val = None
     
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
@@ -561,9 +561,16 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
             theAttribute = "%sValue" % (valueType)
     
             if valueType == 'String':
-                SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
+                if val == None:
+                    SQL = "update SfcRecipeDataValue set %s = NULL where valueId = %s" % (theAttribute, valueId)
+                else:
+                    SQL = "update SfcRecipeDataValue set %s = '%s' where valueId = %s" % (theAttribute, val, valueId)
             else:
-                SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)
+                if val == None:
+                    SQL = "update SfcRecipeDataValue set %s = NULL where valueId = %s" % (theAttribute, valueId)
+                else:
+                    SQL = "update SfcRecipeDataValue set %s = %s where valueId = %s" % (theAttribute, val, valueId)
+
             logger.tracef(SQL)
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d value records', rows)

@@ -299,4 +299,10 @@ def test():
     
     badValue, qvs = readInstantaneousValues(tagPaths, "XOM", log)
     print "Reading current values, isBad = ", badValue
+
+def mathTest():
+    import math
+    x = math.ceil(10.01)
+    print x
     
+#    from apache.commons.org import XYTextAnnotation

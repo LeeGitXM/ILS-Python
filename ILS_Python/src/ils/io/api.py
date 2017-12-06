@@ -207,7 +207,7 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
 # guarantees the correct order of writing when the limits and the target all change ensuring that there isn't
 # a momentary limit violation.
 def writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit):
-    log.trace("In writeRecipeDetail with %s-%s-%s-%s" % (tagPath, str(newValue), str(newHighLimit),str(newLowLimit)))
+    log.info("In writeRecipeDetail with %s-%s-%s-%s" % (tagPath, str(newValue), str(newHighLimit),str(newLowLimit)))
       
     errorMessage=""
     success = False
@@ -220,7 +220,10 @@ def writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit):
 
         # Dynamically create an object (that won't live very long)
         try:
-            # This requires that I explicitly import everything up above
+            '''
+            This requires that I explicitly import everything up above
+            Create a tag object s that I can call a method
+            '''
             cmd = "ils.io.recipedetail.RecipeDetail('"+tagPath+"')"
             log.trace("Creating a tag object using: <%s>" % (cmd))
             tag = eval(cmd)
@@ -236,6 +239,7 @@ def writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit):
         success = False
         errorMessage = "WriteRecipeDetail is only appropriate for recipe detail UDTs"
 
+    log.tracef("Success: %s - %s", str(success), errorMessage)
     return success, errorMessage
 
 

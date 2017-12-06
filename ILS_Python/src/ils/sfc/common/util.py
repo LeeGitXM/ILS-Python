@@ -235,3 +235,15 @@ def logExceptionCause(contextMsg, logger=None):
         print tracebackMsg
  
     return fullMsg, tracebackMsg, javaCauseMsg
+
+def getChartPathForStepUUID(stepUUID, db):
+        
+    SQL = "select chartPath "\
+        " from sfcChart C, sfcStep S"\
+        " where S.ChartId = C.ChartId "\
+        " and S.StepUUID = '%s'" % (stepUUID)
+        
+    chartPath = system.db.runScalarQuery(SQL, db)
+    
+    return chartPath
+        
