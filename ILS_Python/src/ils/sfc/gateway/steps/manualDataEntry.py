@@ -96,11 +96,15 @@ def activate(scopeContext, stepProperties, state):
                         destination = row.destination
                         key = row.key
                         
-                        if row.defaultValue in [None, "None"]:
+                        '''
+                        If the engineer wants the default value to be blank, then they either need to type None into the default value field
+                        or clear out the tag or recipe data.
+                        '''
+                        if row.defaultValue in ["None"]:
                             logger.tracef("   ...using <None> as the default value... ")
                             defaultValue = ""
                         
-                        elif str(row.defaultValue).strip() == "":
+                        elif str(row.defaultValue).strip() == "" or row.defaultValue == None:
                             logger.tracef("...reading the current value from destination: %s", row.destination)
                             if string.upper(row.destination) == "TAG":
                                 tagPath = "[%s]%s" % (provider, row.key)
@@ -110,20 +114,25 @@ def activate(scopeContext, stepProperties, state):
                                     defaultValue = qv.value
                                 else:
                                     defaultValue = ""
-                                    logger.warnf("Unable to acquire a defualt value for %s whose value is bad", tagPath)
+                                    logger.warnf("Unable to acquire a default value for %s whose value is bad", tagPath)
                                 logger.tracef("   ...using the CURRENT value from a tag: <%s>", str(defaultValue))
                             else:
                                 if units == "":
                                     defaultValue = s88Get(chartScope, stepScope, row.key, destination)
+                                    if defaultValue in ["None", None]:
+                                        defaultValue = ""
                                     logger.tracef("   ...using the CURRENT value from Recipe Data: <%s>", defaultValue)
                                 else:
                                     defaultValue = s88GetWithUnits(chartScope, stepScope, row.key, destination, row.units)
-                                    defaultValue = "%.4f" % (defaultValue)  # Since there are units, it must be numeric??
-                                    logger.tracef("   ...using the CURRENT value from Recipe Data with units: <%s> (%s)" % (defaultValue, row.units))
+                                    if defaultValue in ["None", None]:
+                                        defaultValue = ""
+                                    else:
+                                        defaultValue = "%.4f" % (defaultValue)  # Since there are units, it must be numeric??
+                                    logger.tracef("   ...using the CURRENT value from Recipe Data with units: <%s> (%s)", str(defaultValue), str(row.units))
     
                         else:
                             defaultValue = str(row.defaultValue)
-                            logger.trace("   ...using the supplied default value: <%s>" % (defaultValue))
+                            logger.tracef("   ...using the supplied default value: <%s>", defaultValue)
     
                         if isFloat(defaultValue):
                             valueType = "Float"
@@ -163,7 +172,7 @@ def activate(scopeContext, stepProperties, state):
                 complete = record["complete"]
 
             if complete:
-                logger.trace("Manual Data Entry step %s has completed!" % (stepName))
+                logger.tracef("Manual Data Entry step %s has completed!", stepName)
                 workDone = True
 
     except:

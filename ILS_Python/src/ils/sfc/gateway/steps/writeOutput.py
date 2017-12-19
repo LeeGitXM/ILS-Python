@@ -5,7 +5,7 @@ Created on Dec 17, 2015
 '''
 
 from ils.sfc.recipeData.api import s88Get, s88Set
-from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty
+from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, getTopChartRunId
 from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER, STEP_NAME, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
@@ -34,6 +34,7 @@ def activate(scopeContext, stepProperties, state):
     writeConfirmComplete = False
     stepScope = scopeContext.getStepScope()
     chartScope = scopeContext.getChartScope()
+    runId = getTopChartRunId(chartScope)
     isolationMode = getIsolationMode(chartScope)
     providerName = getProviderName(isolationMode)
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 

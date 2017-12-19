@@ -5,9 +5,10 @@ Created on Dec 17, 2015
 '''
 
 import system
+from ils.queue.constants import QUEUE_ERROR
 from ils.sfc.gateway.api import getIsolationMode
 from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
-from ils.sfc.gateway.api import dictToString, getStepProperty, createFilepath, \
+from ils.sfc.gateway.api import dictToString, getStepProperty, createFilepath, postToQueue, \
      getControlPanelId, createWindowRecord, createSaveDataRecord, getStepId, getChartLogger, handleUnexpectedGatewayError, getDatabaseName
 from ils.sfc.common.constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, SERVER, POSITION, SCALE, WINDOW_TITLE, BUTTON_LABEL, SHOW_PRINT_DIALOG, NAME
 from ils.sfc.recipeData.api import s88GetRecipeDataDataset
@@ -24,10 +25,13 @@ def activate(scopeContext, stepProperties, state):
         
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
         path, filename = createFilepath(chartScope, stepProperties, True)
+        logger.tracef("The recipe data report will be saved to: %s file: %s", path, filename)
 
         # get the data at the given location
         simpleValueDataset = s88GetRecipeDataDataset(chartScope, stepScope, SIMPLE_VALUE, recipeLocation)
+        logger.tracef("Found %d simple value recipe data items", simpleValueDataset.rowCount)
         outputDataset = s88GetRecipeDataDataset(chartScope, stepScope, OUTPUT, recipeLocation)
+        logger.tracef("Found %d output recipe data items", outputDataset.rowCount)
         
         ''' Always save the report to a file '''
         reportPath = "Recipe Data"
@@ -35,8 +39,13 @@ def activate(scopeContext, stepProperties, state):
         parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset}
         action = "save"
         actionSettings = {"path": path, "fileName": filename, "format": "pdf"}
-        system.report.executeAndDistribute(path=reportPath, project=project, parameters=parameters, action=action, actionSettings=actionSettings)
-        
+        try:
+            system.report.executeAndDistribute(path=reportPath, project=project, parameters=parameters, action=action, actionSettings=actionSettings)
+        except:
+            txt = "Error saving recipe data to: %s file: %s" % (path, filename)
+            logger.error(txt)
+            postToQueue(chartScope, QUEUE_ERROR, txt)
+            
         printFile = getStepProperty(stepProperties, PRINT_FILE) 
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 
         # write the file

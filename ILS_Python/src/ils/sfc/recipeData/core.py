@@ -192,7 +192,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 startTime = record["STARTTIME"]
                 stopTime = record['STOPTIME']
                 cumulativeMinutes = record['CUMULATIVEMINUTES']
-                runTimeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, stopTime) / 60.0
+                runTimeMinutes = cumulativeMinutes
                 val = runTimeMinutes
             elif timerState in [TIMER_RUNNING]:
                 startTime = record["STARTTIME"]
@@ -595,31 +595,51 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
             val=val.upper()
             if val == PAUSE_TIMER.upper():
                 logger.tracef("Pausing timer...")
-                SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_PAUSED, recipeDataId)
-            elif val == START_TIMER.upper():
-                logger.tracef("Starting timer...")
-                SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_RUNNING, recipeDataId)
-            elif val == RESUME_TIMER.upper():
-                logger.tracef("Resuming timer...")
                 SQL = "select * from sfcRecipeDataTimerView where RecipeDataId = %d" % (recipeDataId)
                 pds = system.db.runQuery(SQL, db)
                 record = pds[0]
                 cumulativeMinutes = record["CumulativeMinutes"]
                 startTime = record['StartTime']
-                stopTime = record['StopTime']
+                timerState = record['TimerState']
                 
-                if stopTime == None or startTime == None:
-                    cumulativeMinutes = 0.0
+                if timerState == "running":
+                    cumulativeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, system.date.now()) / 60.0
+                    SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = %f where RecipeDataId = %d" % (now, TIMER_PAUSED, cumulativeMinutes, recipeDataId)
                 else:
-                    cumulativeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, stopTime) / 60.0
+                    logger.warnf("The timer cannot be paused because it is not running, the timer state is: %s", timerState)
+                    return
                 
-                SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = %f where RecipeDataId = %d" % (now, TIMER_RUNNING, cumulativeMinutes, recipeDataId)
+            elif val == START_TIMER.upper():
+                logger.tracef("Starting timer...")
+                SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_RUNNING, recipeDataId)
+            
+            elif val == RESUME_TIMER.upper():
+                logger.tracef("Resuming timer...")
+                SQL = "select * from sfcRecipeDataTimerView where RecipeDataId = %d" % (recipeDataId)
+                pds = system.db.runQuery(SQL, db)
+                record = pds[0]
+                startTime = record['StartTime']
+                
+                SQL = "update SfcRecipeDataTimer set StartTime = '%s', StopTime = NULL, TimerState = '%s' where RecipeDataId = %d" % (now, TIMER_RUNNING, recipeDataId)
+            
             elif val == CLEAR_TIMER.upper():
                 logger.tracef("Clearing timer...")
                 SQL = "update SfcRecipeDataTimer set StartTime = NULL, StopTime = NULL, TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (TIMER_CLEARED, recipeDataId)
+            
             elif val == STOP_TIMER.upper():
                 logger.tracef("Stopping timer...")
-                SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = 0.0 where RecipeDataId = %d" % (now, TIMER_STOPPED, recipeDataId)
+                SQL = "select * from sfcRecipeDataTimerView where RecipeDataId = %d" % (recipeDataId)
+                pds = system.db.runQuery(SQL, db)
+                record = pds[0]
+                cumulativeMinutes = record["CumulativeMinutes"]
+                startTime = record['StartTime']
+                timerState = record['TimerState']
+                if timerState == "running":
+                    cumulativeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, system.date.now()) / 60.0
+                    SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s', CumulativeMinutes = %f where RecipeDataId = %d" % (now, TIMER_PAUSED, cumulativeMinutes, recipeDataId)
+                else:
+                    SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s' where RecipeDataId = %d" % (now, TIMER_PAUSED, recipeDataId)
+  
             else:
                 raise ValueError, "Unsupported timer command <%s> for timer recipe data" % (val)
 

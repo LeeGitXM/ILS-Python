@@ -5,7 +5,8 @@ Created on May 29, 2015
 '''
 import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord
+from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName,\
+    s88SetFromStep
 from ils.common.util import formatDateTime
 
 # This is called when the Download GUI window is opened.  The window is opened in response to a message sent 
@@ -300,6 +301,7 @@ def resumeChart(event):
     
     from system.sfc import resumeChart
     resumeChart(chartRunId)
+
     
 def getChartRunId(rootContainer):
     windowId = rootContainer.windowId
@@ -311,4 +313,8 @@ def getChartRunId(rootContainer):
 
 def handleTimer(rootContainer, command):
     print command + "ing the timer"
+    db = getDatabaseClient()
+    timerStepUUID = rootContainer.timerStepUUID
+    timerKey = rootContainer.timerKey
+    s88SetFromStep(timerStepUUID, timerKey + ".command", command, db)
 
