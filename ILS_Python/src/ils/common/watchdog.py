@@ -96,7 +96,8 @@ def opcReadWatchdog(tagProvider, udtPath):
         system.tag.write(udtPath+"/stallCount", 0)
 
 '''
-This is called from a gateway timer script
+This is called from a gateway timer script.  It doesn't make sense to call this for isolation.
+One thing is that the UDTS do not exist in isolation as they get converted to folders. 
 '''
 def scanOpcWriteWatchdogs(tagProvider):
     projectName = system.util.getProjectName()
@@ -107,9 +108,9 @@ def scanOpcWriteWatchdogs(tagProvider):
     logger.info("Scanning OPC write watchdogs...")
     
     udtParentType = "OPC Write Watchdog"
-        
+    
     udts = system.tag.browseTags(
-        parentPath="[XOM]Site/Watchdogs", 
+        parentPath="[%s]Site/Watchdogs" % (tagProvider), 
         tagType="UDT_INST", 
         udtParentType="Watchdogs/" + udtParentType,
         recursive=True)

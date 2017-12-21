@@ -5,6 +5,7 @@ Created on Sep 10, 2014
 '''
 
 import system
+from ils.common.config import getTagProvider
 
 def isWarmboot():
     runHours = getRunHours()
@@ -15,7 +16,8 @@ def isWarmboot():
     return False
         
 def getRunHours():
-    tagPath = "[XOM]Site/Watchdogs/Ignition Uptime Minutes"
+    tagProvider = getTagProvider()
+    tagPath = "[%s]Site/Watchdogs/Ignition Uptime Minutes" % (tagProvider)
     exists = system.tag.exists(tagPath)
     if exists:
         runMinutes = system.tag.read(tagPath).value

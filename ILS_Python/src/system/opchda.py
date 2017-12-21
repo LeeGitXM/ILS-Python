@@ -27,6 +27,11 @@ def insert(serverName, itemId, value, valueTime, valueQuality=192):
     quality=1
     return quality
 
+def insertReplace(serverName, itemId, value, valueTime, valueQuality=192):
+    quality=1
+    return quality
+
+
 def readAttributes(serverName, itemId, attributeIds, startDate, endDate):
     List=""
     return List

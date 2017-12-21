@@ -4,13 +4,14 @@ Created on Mar 22, 2017
 @author: phass
 '''
 import system
-from com.jidesoft.grid import Row
 from ils.common.util import formatDateTime
+from ils.common.config import getTagProviderClient
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened"
+    tagProvider = getTagProviderClient()
     
-    def initialize(rootContainer=rootContainer):
+    def initialize(rootContainer=rootContainer, tagProvider=tagProvider):
         print "Initializing in an asynchronous thread..."
         udtList = []
         
@@ -20,7 +21,7 @@ def internalFrameOpened(rootContainer):
         for udtParentType in ["Lab Bias/Lab Bias Exponential Filter", "Lab Bias/Lab Bias PID"]:
             
             udts = system.tag.browseTags(
-                parentPath="[XOM]LabData", 
+                parentPath="[%s]LabData" % (tagProvider), 
                 tagType="UDT_INST", 
                 udtParentType=udtParentType,
                 recursive=True)
@@ -40,6 +41,7 @@ def internalFrameOpened(rootContainer):
         print "...done initializing!"
         
     rootContainer.mode = "initializing"
+    
     system.util.invokeAsynchronous(initialize)
 
 

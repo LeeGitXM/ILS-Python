@@ -7,7 +7,7 @@ Created on Dec 3, 2014
 import system, string, time
 from java.util import Date
 from ils.common.util import isText
-from ils.common.config import getTagProvider
+from ils.common.config import getTagProvider, getIsolationTagProvider
 log = system.util.getLogger("com.ils.io.util")
 
 def runChecks():
@@ -18,8 +18,12 @@ def runChecks():
             "SFC IO/Fast Scan Data/VRF006Z",
             "SFC IO/Fast Scan Data/VRF006Z/permissiveValue"
             ]:
-        
-        for provider in ["[XOM]", "[XOM_ISOLATION]"]:
+
+        providers = []
+        providers.append(getTagProvider())
+        providers.append(getIsolationTagProvider())
+
+        for provider in providers:
             fullTagPath = provider + tagPath
             print "-------------------------"
             print "Checking ", fullTagPath
