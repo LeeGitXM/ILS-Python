@@ -5,7 +5,7 @@ Created on Dec 9, 2015
 '''
 
 import system
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.common.config import getDatabaseClient, getTagProviderClient, getIsolationModeClient
 from ils.sfc.client.util import getDatabase, getStartInIsolationMode
 from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
 from ils.sfc.common.constants import CANCELED, HANDLER, WINDOW
@@ -22,9 +22,11 @@ def internalFrameOpened(event):
     rootContainer = event.source.rootContainer
     rootContainer.selectedMessage=0
     rootContainer.autoIndex=True
+    isolationMode = getIsolationModeClient()
+    rootContainer.isolationMode = isolationMode
     
 def openControlPanel(controlPanelName, controlPanelId, startImmediately, position="CENTER"):
-    print "In openControlPanel..."
+    print "In openControlPanel()..."
     
     chartPath = getControlPanelChartPath(controlPanelName)
     if not chartIsRunning(chartPath):
@@ -84,7 +86,13 @@ def updateChartStatus(event):
     database = getDatabaseClient()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
-    chartRunId = rootContainer.windowData.getValueAt(0,'chartRunId')
+    
+    ds = rootContainer.windowData
+    if ds.rowCount < 1:
+        print "Exiting updateChartStatus() because there is no window data"
+        return
+    
+    chartRunId = ds.getValueAt(0,'chartRunId')
     status = getChartStatus(chartRunId)
     statusField = window.rootContainer.getComponent('statusLabel')
     if statusField.text == '':
@@ -216,11 +224,13 @@ def getControlPanelIdForChartRunId(chartRunId, db):
     
 def getControlPanelIdForName(controlPanelName):
     '''Get the control panel id given the name, or None'''
+    print "Fetching the id for controlPanel named: ", controlPanelName
     database = getDatabaseClient()
     results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database)
     if len(results) == 1:
         return results[0][0]
     else:
+        print "A control panel was not found!"
         return None
 
 def createControlPanel(controlPanelName):    
@@ -291,7 +301,7 @@ def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, posit
        control panel is used to run many different ad-hoc charts'''
     # First, check for an existing panel associated with this chart:
     controlPanelId = getControlPanelIdForChartPath(chartPath)
-    print "The id for chart %s is %s" % (chartPath, str(controlPanelId)) 
+    print "In openDynamicControlPanel() - The id for chart %s is %s" % (chartPath, str(controlPanelId)) 
 
     if controlPanelId == None:
         # next, check for an existing panel with the given name, creating if not found:
