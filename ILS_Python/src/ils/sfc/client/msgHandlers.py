@@ -3,10 +3,10 @@ All SFC Client Message Handlers.
 These message handlers all run in the client (the client receives the message from the gateway)
 '''
 
-import system
-from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, SECURITY, PRIVATE, \
-    TARGET_STEP_UUID, KEY, IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME
-from ils.sfc.client.windowUtil import controlPanelOpen, shouldShowWindow, fetchWindowInfo
+import system, string
+from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, \
+    KEY, IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTROL_PANEL_WINDOW_PATH
+from ils.sfc.client.windowUtil import shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
 from ils.common.config import getDatabaseClient
 
@@ -22,6 +22,8 @@ def dispatchMessage(payload):
     try:
         if handlerMethod == "sfcOpenWindow":
             sfcOpenWindow(payload) 
+        elif handlerMethod == "sfcOpenControlPanel":
+            sfcOpenControlPanel(payload)
         elif handlerMethod == "sfcCloseWindow":
             sfcCloseWindow(payload)
         elif handlerMethod == "sfcShowQueue":
@@ -126,6 +128,42 @@ def sfcOpenWindow(payload):
         print "Opening <%s>" % (windowPath)
         window = system.nav.openWindowInstance(windowPath)
         positionWindow(window, position, scale)
+
+''' This opens the control panel.  This is generally used when starting an SFC from a tag change script running in the gateway. '''
+def sfcOpenControlPanel(payload):
+    print "In sfcOpenControlPanel()..."
+    print payload
+
+    controlPanelWindowPath = payload.get(CONTROL_PANEL_WINDOW_PATH, "SFC/ControlPanel")
+    windowNames = system.gui.getOpenedWindowNames()
+    for windowName in windowNames:
+        print "Checking: ", windowName
+        ''' This may need an enhancement to support multiple control panels for different consoles on the same window. '''
+        if windowName == controlPanelWindowPath:
+            print "The control panel is already open..."
+            return
+    
+    controlPanelName = payload.get(CONTROL_PANEL_NAME, "")
+    originator = payload.get(ORIGINATOR, "")
+    database = payload.get(DATABASE, "")
+    clientDatabase = getDatabaseClient()
+    
+    print "...checking if the control panel should be shown on this client..."
+    if database <> clientDatabase:
+        print "...the window should NOT be shown because the client database (%s) does not match the message database (%s)" % (clientDatabase, database)
+        return
+     
+    if string.upper(originator) <> string.upper(system.security.getUsername()):
+        print "...the window should NOT be shown because the user does not match!"
+        return
+    
+    print "...the control panel should be shown on this client..."
+
+    position = payload[POSITION]
+    scale = payload[SCALE]    
+    window = system.nav.openWindowInstance(controlPanelWindowPath, {"controlPanelName": controlPanelName})
+    positionWindow(window, position, scale)
+        
 
 def sfcCloseWindow(payload):
     windowId = payload[WINDOW_ID]

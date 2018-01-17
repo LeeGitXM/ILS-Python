@@ -4,6 +4,39 @@ Created on Nov 3, 2014
 @author: rforbes
 '''
 import system, string
+from ils.sfc.common.notify import sfcNotify
+from ils.common.config import getDatabaseClient
+from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTROL_PANEL_WINDOW_PATH, DATABASE, DEFAULT_MESSAGE_QUEUE, ISOLATION_MODE, \
+    HANDLER, MESSAGE_QUEUE, ORIGINATOR, POSITION, PROJECT, SCALE
+
+'''
+This is designed to be called from a tag change script that will trigger the execution of a SFC.   
+An SFC will run just fine without the control panel, even if control panel messages are used.  If the SFC 
+is designed assuming that there is a control panel then this will send a message to clients to open a control panel.
+'''
+def startChartAndOpenControlPanel(chartPath, controlPanelName, project, post, isolationMode, showControlPanel, db, 
+                                  controlPanelWindowPath="SFC/ControlPanel", position = "LOWER-LEFT", scale = 1.0):
+    
+    print "In %s.startChartAndOpenControlPanel" % (__name__)
+    
+    if chartIsRunning(chartPath):
+        print "Exiting because the chart is already running!"
+        return
+    
+    if showControlPanel:
+        print "Sending message to all clients to open a control panel..."
+        
+        messageHandler = "sfcOpenControlPanel"
+        from ils.sfc.client.windows.controlPanel import getControlPanelIdForName
+        controlPanelId = getControlPanelIdForName(controlPanelName)
+        
+        payload = {HANDLER: messageHandler, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: post, POSITION: position, SCALE: scale, DATABASE: db,
+                CONTROL_PANEL_WINDOW_PATH: controlPanelWindowPath}
+        
+        print payload
+        sfcNotify(project, 'sfcMessage', payload, post, controlPanelName, controlPanelId, db)
+        
+    startChart(chartPath, controlPanelName, project, post, isolationMode)
 
 ''' 
 We need to get the queue name out of the unit procedure and use that as the default message queue, but
@@ -13,9 +46,10 @@ way of knowing about the unit procedure block.  So when the unit procedure block
 record in the SfcControlParameter table. 
 '''
 def startChart(chartPath, controlPanelName, project, originator, isolationMode):
-    from ils.sfc.common.constants import ISOLATION_MODE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, PROJECT, ORIGINATOR, MESSAGE_QUEUE
-    from system.ils.sfc.common.Constants import DEFAULT_MESSAGE_QUEUE
-    from ils.common.config import getDatabaseClient
+    print "Trying to start a chart..."
+    if chartIsRunning(chartPath):
+        print "Exiting because the chart is already running!"
+        return
     
     controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
     print "Found id %s for control panel %s" % (str(controlPanelId), controlPanelName)
@@ -56,8 +90,8 @@ def readFile(filepath):
     out.close()
     return result   
 
-def boolToBit(bool):
-    if bool:
+def boolToBit(aBool):
+    if aBool:
         return 1
     else:
         return 0
@@ -88,9 +122,8 @@ def substituteProvider(chartProperties, tagPath):
         else:
             return '[' + provider + ']' + tagPath
     
-
-def isEmpty(str):
-    return str == None or str.strip() == ""
+def isEmpty(aStr):
+    return aStr == None or aStr.strip() == ""
 
 def callMethod(methodPath, stringLiteral=""):
     '''given a fully qualified package.method name, call the method and return the result'''
@@ -183,13 +216,9 @@ def getChartStatus(runId):
 
 def chartIsRunning(chartPath):
     '''Check if the given chart is running. '''
-    from system.sfc import getRunningCharts
-    runningCharts = getRunningCharts()
-    for row in range(runningCharts.rowCount):
-        if chartPath == runningCharts.getValueAt(row, 'chartPath'):
-            chartState = runningCharts.getValueAt(row, 'chartState')
-            if not chartState.isTerminal():
-                return True
+    ds = system.sfc.getRunningCharts(chartPath)
+    if ds.rowCount > 0:
+        return True
     return False
 
 def logExceptionCause(contextMsg, logger=None):
@@ -246,4 +275,3 @@ def getChartPathForStepUUID(stepUUID, db):
     chartPath = system.db.runScalarQuery(SQL, db)
     
     return chartPath
-        

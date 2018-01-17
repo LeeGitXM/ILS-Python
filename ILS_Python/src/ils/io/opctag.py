@@ -14,7 +14,6 @@
 #          Could it be from the import * in util.py? 
 # NOTE: Subclasses must be added to __init__.py.
 import system, string
-from ils.io.util import getProviderFromTagPath
 log = system.util.getLogger("com.ils.io")
 
 class OPCTag():

@@ -8,10 +8,11 @@ migrationDatabase = "XOMMigration"
 
 def lookupOPCServerAndScanClass(site, gsiInterface):
     SQL = "select newServerName, newScanClass, newPermissiveScanClass from InterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
+    print SQL
     pds = system.db.runQuery(SQL, migrationDatabase)
     if len(pds) != 1:
         print "Error looking up GSI interface <%s> in the InterfaceTranslation table" % (gsiInterface)
-        return -1, -1, -1
+        return -1, -1, -1, -1
     record = pds[0]
     serverName=record["newServerName"]
     scanClass=record["newScanClass"]

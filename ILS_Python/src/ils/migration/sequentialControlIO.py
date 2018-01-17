@@ -137,6 +137,7 @@ def createTags(rootContainer):
             
             className =  ds.getValueAt(row, "class")
             outputName = ds.getValueAt(row, "name")
+            outputName = filterName(outputName)
             outputNames = ds.getValueAt(row, "names")
             gsiInterface = ds.getValueAt(row, "gsi-interface")
             initialValue = ds.getValueAt(row, "initial-value")
@@ -201,7 +202,7 @@ def createTags(rootContainer):
                     createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, serverName, 
                                             scanClass, outputNames, "String", "String")
                     status = "Created"
-                elif className in ["OPC-PKS-CONTROLLER", "OPC-PKS-DIGITAL-CONTROLLER"]:
+                elif className in ["OPC-PKS-CONTROLLER", "OPC-PKS-DIGITAL-CONTROLLER", "OPC-PKS-EHG-CONTROLLER", "OPC-PKS-EHG-DIGITAL-CONTROLLER"]:
                     modeItemId = ds.getValueAt(row, "mode-item-id")
                     permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
                     spItemId = ds.getValueAt(row, "write-target-item-id")
@@ -224,6 +225,25 @@ def createTags(rootContainer):
                     createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
                                         serverName, scanClass, permissiveScanClass, outputNames, processingCmdItemId)
                     status = "Created"
+                    
+                elif className == "OPC-PKS-ACE-RAMP-CONTROLLER":
+                    print "Parsing a OPC-PKS-ACE-RAMP-CONTROLLER record..."
+                    modeItemId = ds.getValueAt(row, "mode-item-id")
+                    permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
+                    rampProcessingCmdItemId = ds.getValueAt(row, "ramp-processing-cmd-item-id")
+                    rampStateItemId = ds.getValueAt(row, "ramp-state-item-id")
+                    rampAttributeItemId = ds.getValueAt(row, "ramp-attr-item-id")
+                    rampSetpointItemId = ds.getValueAt(row, "ramp-setpoint-item-id")
+                    rampItemId = ds.getValueAt(row, "ramp-item-id")
+                    # For some reason that I can't figure out, I couldn't use the column name for this one column...
+                    windupItemId = ds.getValueAt(row, 12)
+                    print "Output Disposability: ", windupItemId
+#                    windupItemId = ds.getValueAt(row, "output-disposability-item-id")
+                    createPKSACERampController(parentPath, outputName, itemId, modeItemId, permissiveItemId, rampItemId, windupItemId, 
+                                        serverName, scanClass, permissiveScanClass, outputNames, rampProcessingCmdItemId, rampStateItemId,
+                                        rampAttributeItemId, rampSetpointItemId)
+                    status = "Created"
+                    
                 else:
                     print "Undefined class: ", className
                     status = "Error"
@@ -231,6 +251,12 @@ def createTags(rootContainer):
         if status != "":
             ds=system.dataset.setValue(ds, row, "status", status)
     table.data=ds
+
+def filterName(tagName):
+    tagName = string.replace(tagName, ".", "_")
+    tagName = string.replace(tagName, "-", "_")
+    tagName = string.replace(tagName, " ", "")
+    return tagName
 
 def createParameter(parentPath, tagName, scanClass, dataType, initialValue):
     print "Creating a memory tag named: %s, Path: %s, Scan Class: %s" % (tagName, parentPath, scanClass)
@@ -322,3 +348,18 @@ def createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiv
                                 "alternateNames": names},
                         overrides={"op": {"Enabled":"false"}})
 
+
+def createPKSACERampController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, serverName,
+            scanClass, permissiveScanClass, names, processingCmdItemId, rampStateItemId, rampAttributeItemId, rampSetpointItemId):
+    UDTType='Ramp Controllers/PKS ACE Ramp Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, scanClass, serverName)
+    # Because this generic controller definition is being used by the Diagnostic Toolkit it does not use the PV and OP attributes.  
+    # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives": permissiveScanClass,
+                                "spItemId":spItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
+                                "windupItemId":windupItemId, "processingCommandItemId": processingCmdItemId, "rampStateItemId": rampStateItemId,
+                                "rampAttributeItemId": rampAttributeItemId, "targetValueItemId": rampSetpointItemId, "alternateNames": names},
+                        overrides={"op": {"Enabled":"false"}})

@@ -1,6 +1,11 @@
 
+def getClientId():
+    pass
 
-def sendMessage(project, handler, payload, scope):
+def getGlobals():
+    pass
+
+def getLogger(path):
     pass
 
 def getProjectName():
@@ -10,23 +15,21 @@ def getSessionInfo():
     pds=""
     return pds
 
-def getClientId():
+def getSystemFlags():
+    flags = 24
+    return flags
+
+def invokeAsynchronous(fn):
     pass
 
 def invokeLater(func):
     return True
 
-def jsonDecode(str):
+def jsonDecode(jsonStr):
     pass
 
 def jsonEncode(obj):
     pass
 
-def getLogger(path):
-    pass
-
-def invokeAsynchronous(fn):
-    pass
-
-def getGlobals():
+def sendMessage(project, handler, payload, scope):
     pass

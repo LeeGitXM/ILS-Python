@@ -8,7 +8,7 @@ import system
 
 def internalFrameOpened(rootContainer, db=""):
     tabStrip = rootContainer.getComponent("Tab Strip")
-    tabStrip.selectedTab = "Units"
+    tabStrip.selectedTab = "Queues"
     
     txId = rootContainer.txId
     if txId != "":
@@ -403,15 +403,19 @@ def queueEdited(table, rowIndex, colIndex, colName, oldValue, newValue):
         print "New row in row: ", rowIndex
         queueKey = ds.getValueAt(rowIndex, "QueueKey")
         title = ds.getValueAt(rowIndex, "Title")
-        if queueKey <> None and title <> None:
+        if queueKey == None:
+            system.gui.messageBox("Queue Key is required")
+        else:
+            if title == None:
+                title = queueKey + " Console Queue"
+                ds = system.dataset.setValue(ds, rowIndex, "Title", title)
+                
             queueId = system.db.runPrepUpdate("Insert into QueueMaster (QueueKey, Title) values (?, ?)", [queueKey, title], getKey=True, tx=txId)
             ds = system.dataset.setValue(ds, rowIndex, "QueueId", queueId)
             print "Inserted a new Queue with id: %d" % (queueId)
-        else:
-            system.gui.messageBox("Queue Key and Title are required")
         
     else:
-        rows = system.db.runPrepUpdate("update QueueMaster set %s = ? where QueueId = %s" % (colName, str(queueId)), [newValue], tx=txId)
+        rows = system.db.runPrepUpdate("update QueueMaster set %s = ? whe+re QueueId = %s" % (colName, str(queueId)), [newValue], tx=txId)
         print "Updated %d rows" % (rows)
     
     table.data = system.dataset.setValue(ds, rowIndex, colIndex, newValue)

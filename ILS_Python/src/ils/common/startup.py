@@ -58,7 +58,7 @@ def client():
     
     pds = system.db.runQuery("select * from TkSite")
     if len(pds) <> 1:
-        print "Found %d records in TkSite, exactly one is required!"
+        print "Found %d records in TkSite, exactly one is required!" % (len(pds))
         return
     
     record = pds[0]

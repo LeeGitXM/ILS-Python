@@ -39,7 +39,3 @@ def internalFrameActivated(rootContainer):
     rootContainer.RecipeToolkitVersion=version
     rootContainer.RecipeToolkitReleaseDate=releaseDate
     
-    import xom.vistalon.version as vistalon 
-    version, releaseDate = vistalon.version()
-    rootContainer.XOMVistalonVersion=version
-    rootContainer.XOMVistalonReleaseDate=releaseDate
