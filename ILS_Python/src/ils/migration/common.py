@@ -36,8 +36,8 @@ def lookupHDAServer(site, gsiInterface):
     SQL = "select newServerName from HDAInterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
     pds = system.db.runQuery(SQL, migrationDatabase)
     if len(pds) != 1:
-        print "Error looking up GSI interface <%s> in the InterfaceTranslation table" % (gsiInterface)
-        return -1, -1, -1
+        print "Error looking up GSI interface <%s> for <%s> in the InterfaceTranslation table" % (gsiInterface, site)
+        return -1, -1
     record = pds[0]
     serverName=record["newServerName"]
     

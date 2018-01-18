@@ -107,7 +107,9 @@ def insertIntoDB(container):
         for labData in root.findall('lab-data'):
             name=labData.get("name")
     
-            if not(alreadyLoaded(name)):
+            if alreadyLoaded(name):
+                print "<%s> is already loaded" % (name)
+            else:
                 className = labData.get("class")
                 unitName = labData.get("unit-name")
                 print "Processing %s, a %s (unit: %s)" % (name, className, unitName)
@@ -391,8 +393,10 @@ def insertSQCLimit(labData, valueId):
     # For the actual limits, these will be overwritten as soon as the first grade change occurs, so they are not terribly important.  
     # The upper and lower limit values are not in the export, so just use the validity limits as the SQC limits for starters.
     for limit in labData.findall('upperValidityLimit'):
+        print "      ...found an upper validity limit..."
         upperValidityLimit = limit.get("value")
     for limit in labData.findall('lowerValidityLimit'):
+        print "      ...found an lower validity limit..."
         lowerValidityLimit = limit.get("value")
     
     # The upper and lower SQC limits may either come from recipe (ODBC) or from the DCS (OPC).  If it comes from recipe, then the upper and 
