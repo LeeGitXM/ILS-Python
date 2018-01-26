@@ -38,10 +38,11 @@ def internalFrameActivated(rootContainer):
     print "The table being displayed is: ", displayTableTitle
     
     SQL = "select V.ValueName LabValueName, V.ValueId, V.Description, V.DisplayDecimals "\
-        " from LtValue V, LtDisplayTable T "\
-        " where V.displayTableId = T.DisplayTableId "\
-        " and T.DisplayTableTitle = '%s' "\
-        " order by ValueName" % (displayTableTitle)
+        " from LtValue V, LtDisplayTable DT, LtDisplayTableDetails DTD "\
+        " where DT.displayTableId = DTD.DisplayTableId "\
+        " and DTD.valueId = V.ValueId "\
+        " and DT.DisplayTableTitle = '%s' "\
+        " order by DTD.DisplayOrder" % (displayTableTitle)
     print SQL
     pds = system.db.runQuery(SQL)
     for record in pds:

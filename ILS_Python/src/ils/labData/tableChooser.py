@@ -137,11 +137,12 @@ def checkForNewData(displayTableTitle):
 
     username = system.security.getUsername()
     
-    # Select the tables
+    # Select the values in the table of interest
     SQL = "select V.ValueId, V.ValueName "\
-        " from LtValue V, LtDisplayTable T "\
-        " where V.displayTableId = T.DisplayTableId "\
-        " and T.DisplayTableTitle = '%s' "\
+        " from LtValue V, LtDisplayTable DT, LtDisplayTableDetails DTD "\
+        " where DTD.displayTableId = DT.DisplayTableId "\
+        " and DTD.ValueId = V.ValueId"\
+        " and DT.DisplayTableTitle = '%s' "\
         " order by ValueName" % (displayTableTitle)
     pds = system.db.runQuery(SQL)
     
