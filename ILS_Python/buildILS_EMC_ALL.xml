@@ -27,5 +27,19 @@
 			</fileset>
 		</copy>
 		
+		<echo message="Deploying python scripts to ${escorez.py.lib}" />
+		<copy todir="${escorez.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
+		<echo message="Deploying python scripts to ${demo.py.lib}" />
+		<copy todir="${demo.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
 	</target>
 </project>
