@@ -353,6 +353,15 @@ def setArrayTableColumnVisibility(rootContainer, valueType):
     
     table.columnAttributesData = columnAttributes
     
+    if valueType == "String":
+        system.gui.transform(table, newX=50, newY=48, newWidth=377, newHeight=330)
+        
+        # This attempt at settin column width doesn't seem to work...
+        table.setColumnWidth(0,20)
+        table.setColumnWidth(1,20)
+    else:
+        system.gui.transform(table, newX=265, newY=48, newWidth=162, newHeight=330)
+    
 '''
 The user has just selected a new array Key (or maybe this is called on startup)
 This only applies to KEYED arrays, there are some shared data structures so make sure we are KEYED!

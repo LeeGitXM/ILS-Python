@@ -223,7 +223,7 @@ def getControlPanelName(chartScope):
     controlPanelName=topScope.get(CONTROL_PANEL_NAME,None)
     #TODO This is a hack to facilitate testing from the designer - need to do something better
     if controlPanelName == None:
-        controlPanelName = "PolymerizeEpdm"
+        controlPanelName = "E1000 Dilution"
     return controlPanelName
 
 def getCurrentMessageQueue(chartProperties):

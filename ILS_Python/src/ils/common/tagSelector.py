@@ -6,12 +6,12 @@ Created on Feb 17, 2017
 
 import system
 
-def launch(window, component, tagProvider, tagPath):
+def launch(window, component, tagProvider, tagPath, stripTagProvider=True):
     print "Launching the tag selector popup"
     header = ["window", "component"]
     rows = [[window, component]]
     args = system.dataset.toDataSet(header, rows)
-    payload = {"args": args, "tagProvider": tagProvider, "tagPath": tagPath}
+    payload = {"args": args, "tagProvider": tagProvider, "tagPath": tagPath, 'stripTagProvider': stripTagProvider}
     window = system.nav.openWindow("Common/Tag Selector Popup", payload)
     system.nav.centerWindow(window)
 
@@ -37,6 +37,7 @@ browser selects a tag within a provider.  When they press save I will strip the 
 def save(event, rootContainer):
     print "Saving"
     args = rootContainer.args
+    stripTagProvider = rootContainer.stripTagProvider
     window = args.getValueAt(0, "window")
     component = args.getValueAt(0, "component")
     
@@ -46,7 +47,8 @@ def save(event, rootContainer):
     print "The guy selected: ", tagPath
     
     ''' Strip off the tag provider '''
-    tagPath = tagPath[tagPath.index("]")+1:]
+    if stripTagProvider:
+        tagPath = tagPath[tagPath.index("]")+1:]
     
     print "The adjusted tagpath is <%s>" % (tagPath)
     

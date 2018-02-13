@@ -6,6 +6,7 @@ Created on Feb 2, 2015
 
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from time import sleep
 log = LogUtil.getLogger("com.ils.diagToolkit")
 
 def gateway(tagProvider, isolationTagProvider, database):
@@ -23,12 +24,32 @@ def gateway(tagProvider, isolationTagProvider, database):
     
     createTags("[" + tagProvider + "]")
     createTags("[" + isolationTagProvider + "]")
-    
-    
-    #
+
+
+    # Make sure the database is ready, if this startup is following a reboot, Ignition can be ready before the database.
+    sleepSeconds = 5
+    for i in range(10):
+        ds = system.db.getConnectionInfo(database)
+        pds = system.dataset.toPyDataSet(ds)
+        if len(pds) == 1:
+            status = ds.getValueAt(0, "Status")        
+            log.infof("The status of %s is: %s", database, status)
+            if status == "Valid":
+                break
+            else:
+                if i == 10:
+                    log.warnf("Aborting the diagnostic toolkit startup because the database is still bad after 10 checks.")
+                    return
+                log.info("Sleeping...")
+                sleep(sleepSeconds)
+                log.info("...waking")
+                sleepSeconds = sleepSeconds * 2
+                if sleepSeconds > 30:
+                    sleepSeconds = 30
+            log.errorf("Error: Unable to determine the status of database <%s>", database)
+
+    log.info("...Database is OK, resetting...")
     # Reset the database diagnosis and recommendations
-    #
-    
     from ils.diagToolkit.finalDiagnosis import resetRecommendations, resetOutputs
     from ils.diagToolkit.common import resetFinalDiagnosis, resetDiagnosisEntries
 

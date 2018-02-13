@@ -32,9 +32,10 @@ def getDiagram(project, diagramPath):
     log.errorf("Unable to find diagram: %s", diagramPath)
     return None  
 
-
-# Check if the timestamps of two tags are consistent.  
-# This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
+'''
+Check if the timestamps of two tags are consistent.  
+This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
+'''
 def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeout=10):
     log = system.util.getLogger("com.ils.diagToolkit")
     startTime = system.date.now()
@@ -45,12 +46,14 @@ def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeo
         vals = system.tag.readAll([tagPath1, tagPath2])
         timestamp1 = vals[0].timestamp
         timestamp2 = vals[1].timestamp
+        secondsBetween = abs(system.date.secondsBetween(timestamp1, timestamp2))
 
-        if abs(system.date.secondsBetween(timestamp1, timestamp2)) < tolerance:
+        if secondsBetween < tolerance:
             log.trace("%s and %s are consistent!" % (tagPath1, tagPath2))
             isConsistent = True
             return isConsistent
         
+        log.tracef("The seconds between the two values is %s and the tolerance is %s", str(secondsBetween), str(tolerance))
         time.sleep(recheckInterval)
 
     log.trace("** %s and %s are NOT consistent **" % (tagPath1, tagPath2))

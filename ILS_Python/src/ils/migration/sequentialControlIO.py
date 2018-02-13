@@ -140,7 +140,6 @@ def createTags(rootContainer):
             outputName = filterName(outputName)
             outputNames = ds.getValueAt(row, "names")
             gsiInterface = ds.getValueAt(row, "gsi-interface")
-            initialValue = ds.getValueAt(row, "initial-value")
             itemId = ds.getValueAt(row, "itemId")
 #            conditionalItemId = ds.getValueAt(row, "Conditional ItemId")
             
@@ -171,6 +170,7 @@ def createTags(rootContainer):
                     createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "String")
                     status = "Created"
                 elif className == "FLOAT-PARAMETER":
+                    initialValue = ds.getValueAt(row, "initial-value")
                     createParameter(parentPath, outputName, scanClass, "Float8", initialValue)
                     status = "Created"
                 elif className == "OPC-FLOAT-OUTPUT":

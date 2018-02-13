@@ -389,7 +389,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
             sqlLog.trace("   ...updated %i rows" % (rows))
         
         else: 
-            log.info("Loading new SQC limits for %s: %f to %f" % (valueName, lowerSQCLimit, upperSQCLimit))
+            log.infof("Loading new SQC limits for %s: %s to %s", valueName, str(lowerSQCLimit), str(upperSQCLimit))
             try:
                 target = (upperSQCLimit + lowerSQCLimit) / 2.0
                 standardDeviation = (upperSQCLimit - lowerSQCLimit) / (2.0 * maxStandardDeviations)
@@ -409,7 +409,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
                 rows=system.db.runUpdateQuery(SQL, database)
                 sqlLog.trace("   ...updated %i rows" % (rows))
             except:
-                log.error("Caught error calculating SQC limits for %s: %f to %f (%s - %s)" % (valueName, lowerSQCLimit, upperSQCLimit, str(maxStandardDeviations), str(standardDeviationsToValidityLimits) ))
+                log.errorf("Caught error calculating SQC limits for %s: %s to %s (%s - %s)", valueName, str(lowerSQCLimit), str(upperSQCLimit), str(maxStandardDeviations), str(standardDeviationsToValidityLimits))
                 target=float("NaN")
                 standardDeviation=float("NaN")
                 lowerValidityLimit=float("NaN")

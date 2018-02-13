@@ -360,7 +360,17 @@ def output(stepName, stepType, stepId, recipeData, db, tx):
     if outputValue == "":
         outputValue = 0.0
     if targetValue == "":
-        targetValue = 0.0        
+        targetValue = 0.0
+        
+        '''
+    Just because they said it was a float, doesn't mean it is a float!
+    If they said it was a float but I can't convert it to a float, then change the type to a string
+    '''
+    if valueType == "Float" and outputValue <> "NULL":
+        if not(isFloat(outputValue)):
+            valueType = "String"
+            log.warnf("  Overriding the datatype for key <%s> in step <%s> because the value <%s> could not be converted to a float", key, stepName, str(outputValue))
+     
 
     # Insert values into the value table
     SQL = "insert into SfcRecipeDataValue (%sValue) values ('%s')" % (valueType, outputValue)

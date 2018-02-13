@@ -32,6 +32,7 @@ def main(database, tagProvider):
     
     from ils.labData.limits import fetchLimits
     limits=fetchLimits(database)
+
     writeTags=[]
     writeTagValues=[] 
     writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
@@ -298,32 +299,48 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
 
     return writeTags, writeTagValues
 
-#----------------------------------------------------------------------
-def checkIfValueIsNew(valueName, rawValue, sampleTime, log):
-    log.trace("...checking if it is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
-        
-    if lastValueCache.has_key(valueName):
-        lastValue=lastValueCache.get(valueName)
-        log.trace("...there is a value in the cache")
-        if lastValue.get('rawValue') != rawValue or lastValue.get('sampleTime') != sampleTime:
-            log.trace("...found a new value because it does not match what is in the cache (%s - %s)..." % 
-                      (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime'))))
-            new = True
-        else:
-            new = False
-            log.trace("...this value is already in the cache so it will be ignored...")
-    else:
-        log.trace("...found a new value because %s does not exist in the cache..." % (valueName))
-        new = True
-    
-    return new
-
 
 #-------------
 def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues):
+    
+    #----------------------------------------------------------------------
+    def checkIfValueIsNew(valueName, rawValue, sampleTime, minimumSampleIntervalSeconds, log):
+        log.trace("...checking if it is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
+            
+        if lastValueCache.has_key(valueName):
+            lastValue=lastValueCache.get(valueName)
+            log.tracef("...there is a value in the cache: <%s>", str(lastValue))
+            
+            if lastValue.get('rawValue') != rawValue:
+                log.tracef("The VALUE is different: %s & %s", str(lastValue.get('rawValue')), str(rawValue))
+            
+            if system.date.secondsBetween(lastValue.get('sampleTime'), sampleTime) != 0:
+                log.tracef("The sample time is different %s & %s", str(lastValue.get('sampleTime')), str(sampleTime))
+            
+            if lastValue.get('rawValue') != rawValue or system.date.secondsBetween(lastValue.get('sampleTime'), sampleTime) != 0:
+                # Calculate the time between this sample and the last sample
+                lastSampleTime = lastValue.get("sampleTime")
+                secondsBetween = system.date.secondsBetween(lastSampleTime, sampleTime)
+                if secondsBetween > minimumSampleIntervalSeconds:
+                    log.trace("...found a new value because it does not match what is in the cache and has met the minimum time between samples (%s - %s)..." % 
+                          (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime'))))
+                    new = True
+                else:
+                    log.trace("...found a new value (%s - %s) that has NOT met the minimum time between samples, the last sample was recived %s seconds ago ..." % 
+                          (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime')), str(secondsBetween)))
+                    new = False
+            else:
+                new = False
+                log.trace("...this value is already in the cache so it will be ignored...")
+        else:
+            log.trace("...found a new value because %s does not exist in the cache..." % (valueName))
+            new = True
+        
+        return new
+        
     dcsLog.trace("Checking for new DCS Lab values ... ")    
     
-    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, WL.ServerName, U.UnitName, P.Post "\
+    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, WL.ServerName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds "\
         "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, TkWriteLocation WL "\
         "WHERE V.ValueId = DV.ValueId "\
         " and V.UnitId = U.UnitId "\
@@ -340,6 +357,8 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         itemId = record["ItemId"]
         post = record["Post"]
         validationProcedure = record["ValidationProcedure"]
+        minimumSampleIntervalSeconds  = record["MinimumSampleIntervalSeconds"]
+        
         tagName = "LabData/%s/DCS-Lab-Values/%s" % (unitName, valueName)
         dcsLog.trace("Reading: %s " % (tagName))    
         qv = system.tag.read(tagName)
@@ -347,7 +366,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         dcsLog.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
         
         if str(qv.quality) == 'Good':
-            new = checkIfValueIsNew(valueName, qv.value, qv.timestamp, dcsLog)
+            new = checkIfValueIsNew(valueName, qv.value, qv.timestamp, minimumSampleIntervalSeconds, dcsLog)
             if new:
                 writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, qv.value, qv.timestamp, \
                      database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, dcsLog)
@@ -361,6 +380,26 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
     
 def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues):
     
+    #----------------------------------------------------------------------
+    def checkIfValueIsNew(valueName, rawValue, sampleTime, log):
+        log.trace("...checking if it is new: %s - %s - %s..." % (str(valueName), str(rawValue), str(sampleTime)))
+            
+        if lastValueCache.has_key(valueName):
+            lastValue=lastValueCache.get(valueName)
+            log.trace("...there is a value in the cache")
+            if lastValue.get('rawValue') != rawValue or lastValue.get('sampleTime') != sampleTime:
+                log.trace("...found a new value because it does not match what is in the cache (%s - %s)..." % 
+                          (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime'))))
+                new = True
+            else:
+                new = False
+                log.trace("...this value is already in the cache so it will be ignored...")
+        else:
+            log.trace("...found a new value because %s does not exist in the cache..." % (valueName))
+            new = True
+        
+        return new
+
     #----------------------------------------------------------------
     def checkForANewPHDLabValue(valueName, itemId, valueList, endDate):
         phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))

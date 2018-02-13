@@ -42,6 +42,9 @@ def messageBox(a):
 def reshapeComponent(component, x, y, width, height):
     return "Nothing"
 
+def transform(a):
+    pass
+
 def warningBox(a):
     return "True"
 

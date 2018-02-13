@@ -13,8 +13,10 @@ from ils.common.windowUtil import positionWindow
 from ils.sfc.client.windowUtil import getWindowPath
 from ils.sfc.common.notify import sfcNotify
 
-immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 'SFC/RecipeDataTypeChooser',
-                    'SFC/RecipeDataViewer', 'SFC/SfcHierarchy', 'SFC/SfcHierarchyWithRecipeBrowser', 'SFC/SFC Runner']
+immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 
+                    'SFC/RecipeDataTypeChooser', 'SFC/RecipeDataViewer', 'SFC/SfcHierarchy', 'SFC/SfcHierarchyWithRecipeBrowser', 'SFC/SFC Runner',
+                    'SFC/ControlPanelSFCViewer']
+
 sfcWindowPrefix = 'SFC/'
 
 def internalFrameOpened(event):
@@ -159,6 +161,7 @@ def updateSelectedMessageText(rootContainer):
     rootContainer.selectedMessageText = txt
 
 def reset(event):
+    print "In %s.reset()" % (__name__)
     database = getDatabaseClient()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
@@ -201,21 +204,8 @@ def resetControlPanel(controlPanelName):
     controlPanelId = getControlPanelIdForName(controlPanelName)
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
     system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % controlPanelId, database)
-
-#    system.db.runUpdateQuery("delete from SfcDialogMessage", database)
-
-    # order deletions so foreign key constraints are not violated:
-#    system.db.runUpdateQuery("delete from SfcInput", database)
-#    system.db.runUpdateQuery("delete from SfcManualDataEntryTable", database)
-#    system.db.runUpdateQuery("delete from SfcManualDataEntry", database)
-#    system.db.runUpdateQuery("delete from SfcReviewFlowsTable", database)
-#    system.db.runUpdateQuery("delete from SfcReviewFlows", database)
-#    system.db.runUpdateQuery("delete from SfcReviewDataTable", database)
-#    system.db.runUpdateQuery("delete from SfcReviewData", database)
-#    system.db.runUpdateQuery("delete from SfcSaveData", database)
-#    system.db.runUpdateQuery("delete from SfcTimeDelayNotification", database)
     system.db.runUpdateQuery("delete from SfcWindow where chartRunId = chartRunId ", database)
-    #TODO: should we close all open SFC*  windows except for control panel?
+
 
 def getControlPanelIdForChartRunId(chartRunId, db):
     '''Get the control panel id given the name, or None'''
@@ -238,7 +228,7 @@ def createControlPanel(controlPanelName):
        This name must be unique'''
     database = getDatabaseClient()
     system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName, chartPath) values ('%s', '')" % (controlPanelName), database)
-    return getControlPanelIdForName(controlPanelName, False)
+    return getControlPanelIdForName(controlPanelName)
 
 def getControlPanelChartPath(controlPanelName):
     '''get the name of the SFC chart associated with the given control panel'''
