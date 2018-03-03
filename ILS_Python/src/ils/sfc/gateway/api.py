@@ -277,6 +277,14 @@ def getProject(chartProperties):
     from ils.sfc.common.constants import PROJECT
     return str(getTopLevelProperties(chartProperties)[PROJECT])
 
+def getConsoleName(chartProperties, db):
+    controlPanelId = getControlPanelId(chartProperties)
+    SQL = "select ConsoleName from TkConsole C, SfcControlPanel CP "\
+        " where CP.PostId = C.PostId and CP.ControlPanelId = %d" % (controlPanelId)
+    consoleName = system.db.runScalarQuery(SQL, db) 
+    return consoleName
+
+
 def getProviderName(chartProperties):
     '''Get the name of the tag provider for this chart, taking isolation mode into account'''
     from system.ils.sfc import getProviderName, getIsolationMode
@@ -405,8 +413,10 @@ def postToQueue(chartScope, status, message, queueKey=None):
         queueKey=getCurrentMessageQueue(chartScope)
 
     db=getDatabaseName(chartScope)
+    project=getProject(chartScope)
+    consoleName=getConsoleName(chartScope, db)
     from ils.queue.message import insert as insertQueueMessage
-    insertQueueMessage(queueKey, status, message, db)
+    insertQueueMessage(queueKey, status, message, db, project, consoleName)
 
 def printSpace(level, out):
     for i in range(level):

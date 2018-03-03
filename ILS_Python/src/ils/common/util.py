@@ -198,14 +198,16 @@ I've gone back and forth on how to use queryTagHistory, it seems like Ignition s
 testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
 in project scope.
 '''
-def readAverageValues(tagPaths, historyTagProvider, timeIntervalMinutes, log):
+def readAverageValues(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, log):
     fullTagPaths = []
     for tagPath in tagPaths:
-        fullTagPaths.append("[%s]%s" % (historyTagProvider, tagPath))
+        fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
+    
+    endDate = system.date.addMinutes(system.date.now(), -1)
     
     ds = system.tag.queryTagHistory(
         paths=fullTagPaths, 
-        endDate=system.date.now(), 
+        endDate=endDate, 
         rangeMinutes=-1*timeIntervalMinutes, 
         aggregationMode="Average", 
         returnSize=1, 
@@ -277,6 +279,10 @@ def rateOfChangePerMinute(historyTagProvider, tagProvider, tagPath, startDate, e
     
     firstVal = ds.getValueAt(0,1)
     lastVal = ds.getValueAt(ds.rowCount - 1,1)
+    
+    print "First value: ", firstVal
+    print "Last value: ", lastVal
+    
     roc = (lastVal - firstVal) / minutesBetween
     
     return roc
@@ -296,7 +302,7 @@ def test():
     tagPaths.append("SFC IO/Cold Stick General/VRT700S-3/value") #OUTLET-TEMP-PV
     tagPaths.append("SFC IO/Cold Stick General/VCF262R-2/value") #AL-TO-VA
 
-    badValue, ds = readAverageValues(tagPaths, "XOMhistory", 30, log)
+    badValue, ds = readAverageValues(tagPaths, "XOMhistory", "XOM", 30, log)
     print "Reading historic average, isBad = ", badValue
     
     badValue, qvs = readInstantaneousValues(tagPaths, "XOM", log)

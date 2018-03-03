@@ -4,7 +4,7 @@ Created on Nov 30, 2014
 @author: Pete
 '''
 import string, system, time, traceback
-from ils.io.util import isUDTorFolder, getOuterUDT
+from ils.io.util import isUDTorFolder
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -344,23 +344,25 @@ def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1):
 # This is a method dispatcher to the method appropriate for the class of controller.
 # This is called from Python and runs in the client.
 # I used to trap errors here, but I think it is best to let errors pass up to a higher level where they can be dealt 
-# with better (7/20/16_
-def confirmControllerMode(tagpath, val, testForZero, checkPathToValve, valueType):
-    log.trace("In %s, checking %s" % (__name__, tagpath))
-
-    controllerUDTType, controllerTagpath=getOuterUDT(tagpath)
+# with better (7/20/16)
+# Revised to assume that the path is a controller or folder, i.e., don't pass the mode of the controller, ass the controller
+def confirmControllerMode(tagPath, val, testForZero, checkPathToValve, valueType):
+    log.trace("In %s, checking %s" % (__name__, tagPath))
     
-    if controllerUDTType == None:
+    tagExists = system.tag.exists(tagPath)
+    if not(tagExists):
+        return False, "%s does not exist" % (tagPath)
+    
+    if not(isUDTorFolder(tagPath)):
         log.trace("The target is not a controller so assume it is reachable")
         return True, "The target is not a Controller"
 
-    log.trace("The UDT is: %s, the path to the UDT is: %s" % (controllerUDTType, controllerTagpath))
     # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = system.tag.read(controllerTagpath + "/pythonClass").value
-    pythonClass = pythonClass.lower() + "." + pythonClass
+    pyc = system.tag.read(tagPath + "/pythonClass").value
+    pythonClass = pyc.lower()+"."+pyc
 
     # Dynamically create an object (that won't live very long) and then call its reset method
-    cmd = "ils.io." + pythonClass + "('" + controllerTagpath + "')"
+    cmd = "ils.io." + pythonClass + "('" + tagPath + "')"
     log.trace("Command: %s" % (cmd))
     controller = eval(cmd)
     success, errorMessage = controller.confirmControllerMode(val, testForZero, checkPathToValve, valueType)

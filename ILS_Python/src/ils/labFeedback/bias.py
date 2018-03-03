@@ -27,6 +27,10 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
         biasName = tagRoot[:len(tagRoot)]
         biasName = biasName[biasName.rfind('/') + 1:]
         
+        if initialchange:
+            log.tracef("Skipping lab bias exponential updates for %s because this was an initial change.", biasName)
+            return
+        
         updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
         if not(updatePermitted):
             log.tracef("Skipping lab bias exponential updates for %s because updates are not permitted.", biasName)
@@ -83,6 +87,10 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
         # Strip off the path and get just the name of the UDT
         biasName = tagRoot[:len(tagRoot)]
         biasName = biasName[biasName.rfind('/') + 1:]
+        
+        if initialchange:
+            log.tracef("Skipping lab bias PID updates for %s because this was an initial change.", biasName)
+            return
         
         updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
         if not(updatePermitted):

@@ -3,7 +3,7 @@ Created on Jun 30, 2015
 
 @author: Pete
 '''
-import system
+import system, string
 from ils.diagToolkit.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
 from ils.common.config import getDatabaseClient
 
@@ -132,6 +132,7 @@ def handleNotification(payload):
     print "Checking to see if the setpoint spreadsheet or Loud Workspace is already open..."
     for window in windows:
         windowPath=window.getPath()
+        rootContainer=window.rootContainer
         
         pos = windowPath.find('Setpoint Spreadsheet')
         if pos >= 0:
@@ -152,12 +153,26 @@ def handleNotification(payload):
             if notificationMode == "quiet":
                 # This should trigger the spreadsheet to refresh
                 print "...skipping the OC alert because we are in quiet mode..."
-                rootContainer=window.rootContainer
                 rootContainer.refresh=True
                 return
             else:
-                print "...closing the setpoint spreadsheet so we can regain the operators attention..."
-                system.nav.closeWindow(windowPath)
+                lastAction = rootContainer.lastAction
+                
+                '''
+                If we found a setpoint spreadsheet and its lastAction is "noDownload" then this is the client that just pressed the NO DOWNLOAD buuton,
+                so we don't need to get the OC's attention, but we do need to refresh the SS.
+                '''
+                if string.upper(lastAction) == "NODOWNLOAD":
+                    rootContainer.lastAction = "notified"
+
+                    ''' Reset any applications that are in the SS, for us to get here there must have been at least one INACTIVE '''
+                    from ils.diagToolkit.setpointSpreadsheet import resetAllApplicationAndOutputActions, initialize
+                    resetAllApplicationAndOutputActions(rootContainer)
+                    initialize(rootContainer)
+                    return
+                else:
+                    print "...closing the setpoint spreadsheet so we can regain the operators attention..."
+                    system.nav.closeWindow(windowPath)
                 
         pos = windowPath.find('OC Alert')
         if pos >= 0:

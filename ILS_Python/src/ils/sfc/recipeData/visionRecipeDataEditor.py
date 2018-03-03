@@ -11,7 +11,7 @@ from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from ils.common.config import getDatabaseClient
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
-from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, RECIPE, SIMPLE_VALUE, TIMER
+from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER
 
     
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
@@ -30,7 +30,7 @@ def internalFrameOpened(rootContainer):
             SQL = "select * from SfcRecipeDataSimpleValueView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch a Simple Value recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch a Simple Value recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.simpleValueDataset = pds
 
@@ -39,7 +39,7 @@ def internalFrameOpened(rootContainer):
             SQL = "select * from SfcRecipeDataArrayView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch an Array recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch an Array recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.arrayDataset = pds
             
@@ -47,8 +47,9 @@ def internalFrameOpened(rootContainer):
             valueType = record["ValueType"]
             setArrayTableColumnVisibility(rootContainer, valueType)
 
-            indexRecipeDataId = record["IndexRecipeDataId"]
-            if indexRecipeDataId == None:
+            indexKeyId = record["IndexKeyId"]
+            if indexKeyId == None:
+                print "The array is not keyed..."
                 SQL = "select convert(varchar(25), ArrayIndex) as ArrayIndex, FloatValue, IntegerValue, StringValue, BooleanValue from SfcRecipeDataArrayElementView where recipeDataId = %s order by ArrayIndex" % (recipeDataId)
                 pds = system.db.runQuery(SQL, db)
             else:
@@ -61,7 +62,7 @@ def internalFrameOpened(rootContainer):
                 
                 # Now Fetch the array Key
                 print "Fetching the key..."
-                SQL = "select * from SfcRecipeDataArrayElementView where recipeDataId = %s order by ArrayIndex" % (indexRecipeDataId)
+                SQL = "select * from SfcRecipeDataKeyView where KeyId = %s order by KeyIndex" % (indexKeyId)
                 pds = system.db.runQuery(SQL, db)
                 dsKey = system.dataset.toDataSet(pds)
                 
@@ -73,7 +74,7 @@ def internalFrameOpened(rootContainer):
                 data = []
                 for i in range(dsKey.rowCount):
                     if i <= ds.rowCount:
-                        key = dsKey.getValueAt(i, "StringValue")
+                        key = dsKey.getValueAt(i, "KeyValue")
                         print "Overwriting the index with ", key
                         floatValue = ds.getValueAt(i, "FloatValue")
                         integerValue = ds.getValueAt(i, "IntegerValue")
@@ -94,7 +95,7 @@ def internalFrameOpened(rootContainer):
             SQL = "select * from SfcRecipeDataMatrixView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch a Matrix recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch a Matrix recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.matrixDataset = pds
             numRows = record["Rows"]
@@ -172,13 +173,12 @@ def internalFrameOpened(rootContainer):
             container = rootContainer.getComponent("Matrix Container")
             updateMatrixTable(container, pds, rowLabels, columnLabels)
 
-            
         elif recipeDataType == INPUT:
             print "Fetching an Input"
             SQL = "select * from SfcRecipeDataInputView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch an Input recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch an Input recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.inputDataset = pds
 
@@ -187,16 +187,25 @@ def internalFrameOpened(rootContainer):
             SQL = "select * from SfcRecipeDataOutputView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch an Output recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch an Output recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
-            rootContainer.outputDataset = pds
+            rootContainer.outputDataset = pds            
+        
+        elif recipeDataType == OUTPUT_RAMP:
+            print "Fetching an Output Ramp"
+            SQL = "select * from SfcRecipeDataOutputRampView where recipeDataId = %s" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to fetch an Output Ramp recipe data with id: %s" % (str(recipeDataId))
+            record = pds[0]
+            rootContainer.outputRampDataset = pds
         
         elif recipeDataType == RECIPE:
             print "Fetching a Recipe"
             SQL = "select * from SfcRecipeDataRecipeView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch a Recipe recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch a Recipe recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.recipeDataset = pds
 
@@ -205,12 +214,12 @@ def internalFrameOpened(rootContainer):
             SQL = "select * from SfcRecipeDataTimerView where recipeDataId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to fetch a Timer recipe data with id: %s" % (recipeDataId)
+                raise ValueError, "Unable to fetch a Timer recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.timerDataset = pds
 
         else:
-            raise ValueError, "Unexpected recipe data type <%s>" % (recipeDataType)
+            raise ValueError, "Unexpected recipe data type <%s>" % (str(recipeDataType))
 
         rootContainer.description = record["Description"]
         rootContainer.label = record["Label"]
@@ -260,6 +269,37 @@ def internalFrameOpened(rootContainer):
             ds = system.dataset.setValue(ds, 0, "WriteConfirmed", 0)
             ds = system.dataset.setValue(ds, 0, "PVMonitorActive", 0)
             rootContainer.outputDataset = ds
+            
+        elif recipeDataType == OUTPUT_RAMP:
+            print "Initializing an Output Ramp..."
+            ds = rootContainer.outputRampDataset
+            ds = system.dataset.setValue(ds, 0, "OutputFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "OutputIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "OutputStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "OutputBooleanValue", False)
+            ds = system.dataset.setValue(ds, 0, "TargetFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "TargetIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "TargetStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "TargetBooleanValue", False)
+            ds = system.dataset.setValue(ds, 0, "PVFloatValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "PVIntegerValue", 0)
+            ds = system.dataset.setValue(ds, 0, "PVStringValue", "")
+            ds = system.dataset.setValue(ds, 0, "PVBooleanValue", False)
+            ds = system.dataset.setValue(ds, 0, "Timing", 0.0)
+            ds = system.dataset.setValue(ds, 0, "MaxTiming", 0.0)
+            ds = system.dataset.setValue(ds, 0, "ActualTiming", 0.0)
+            ds = system.dataset.setValue(ds, 0, "Tag", "")
+            ds = system.dataset.setValue(ds, 0, "DownloadStatus", "")
+            ds = system.dataset.setValue(ds, 0, "PVMonitorStatus", "")
+            ds = system.dataset.setValue(ds, 0, "ErrorCode", "")
+            ds = system.dataset.setValue(ds, 0, "ErrorText", "")
+            ds = system.dataset.setValue(ds, 0, "WriteConfirmed", False)
+            ds = system.dataset.setValue(ds, 0, "PVMonitorActive", False)
+            ds = system.dataset.setValue(ds, 0, "RampTimeMinutes", 10)
+            ds = system.dataset.setValue(ds, 0, "UpdateFrequencySeconds", 30)
+            ds = system.dataset.setValue(ds, 0, "Download", True)
+            ds = system.dataset.setValue(ds, 0, "WriteConfirm", True)
+            rootContainer.outputRampDataset = ds
             
         elif recipeDataType == INPUT:
             print "Initializing a new Input..."
@@ -379,12 +419,12 @@ def setArrayIndexVisibility(rootContainer, valueType):
     columnAttributes = table.columnAttributesData
     
     combo = container.getComponent("Index Key Dropdown")
-    indexKey = combo.selectedStringValue
-    indexRecipeDataId = combo.selectedValue
+    keyName = combo.selectedStringValue
+    keyId = combo.selectedValue
     
-    print "...the indexKey is: ", indexKey
+    print "...the indexKey is: ", keyName
     
-    if indexRecipeDataId == -1:
+    if keyId == -1:
         print "The user has changed the array from a keyed to unkeyed"
         ds = table.data
 
@@ -394,7 +434,7 @@ def setArrayIndexVisibility(rootContainer, valueType):
         table.data = ds
         
     else:
-        SQL = "select StringValue From SfcRecipeDataArrayElementView where RecipeDataId = %d order by ArrayIndex" % (indexRecipeDataId)
+        SQL = "select KeyValue From SfcRecipeDataKeyView where KeyId = %d order by KeyIndex" % (keyId)
         pds = system.db.runQuery(SQL, db)
         
         print "...there are %d elements in the key..." % (len(pds))
@@ -404,7 +444,7 @@ def setArrayIndexVisibility(rootContainer, valueType):
         
         i = 0
         for record in pds:
-            key = record["StringValue"]
+            key = record["KeyValue"]
             print "Key: ", key
             
             if i < rowsInArray:
@@ -723,6 +763,18 @@ def refreshComboBoxes(event):
         valueType = ds.getValueAt(0,"ValueType")
         combo.selectedStringValue = valueType
     
+    elif recipeDataType == OUTPUT_RAMP:
+        # Output Combos
+        container = rootContainer.getComponent("Output Ramp Container")
+        combo = container.getComponent("Output Type Dropdown")
+        ds = rootContainer.outputDataset
+        outputType = ds.getValueAt(0,"OutputType")
+        combo.selectedStringValue = outputType
+        
+        combo = container.getComponent("Value Type Dropdown")
+        valueType = ds.getValueAt(0,"ValueType")
+        combo.selectedStringValue = valueType
+    
     elif recipeDataType == ARRAY:
         # Array Combos
         print "Updating the array combo boxes..."
@@ -736,11 +788,11 @@ def refreshComboBoxes(event):
         
         combo = container.getComponent("Index Key Dropdown")
         addUnselectionChoice(combo)
-        indexKey = ds.getValueAt(0,"IndexKey")
+        keyName = ds.getValueAt(0,"KeyName")
         if rows == 0:
             combo.selectedValue = -1
         else:
-            combo.selectedStringValue = indexKey
+            combo.selectedStringValue = keyName
     
     elif recipeDataType == MATRIX:
         # Matrix Combos
@@ -947,7 +999,7 @@ def saveOutput(rootContainer):
     download=toBit(download)
     timing = outputContainer.getComponent("Timing").floatValue
     maxTiming = outputContainer.getComponent("Max Timing").floatValue
-    writeConfirm = outputContainer.getComponent("Download").selected
+    writeConfirm = outputContainer.getComponent("Write Confirm").selected
     writeConfirm=toBit(writeConfirm)
     
     # For now, the valueType of an output is always a Float
@@ -1025,7 +1077,124 @@ def saveOutput(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveOutput", "Caught an error, rolling back transactions")
+        system.db.rollbackTransaction(tx)
+        system.db.closeTransaction(tx) 
+    
+    print "Done!"
+
+
+def saveOutputRamp(rootContainer):
+    print "Saving an Output Ramp"
+
+    db = getDatabaseClient()
+    recipeDataId = rootContainer.recipeDataId
+    stepId = rootContainer.stepId
+    key = rootContainer.getComponent("Key").text
+    description = rootContainer.getComponent("Description").text
+    label = rootContainer.getComponent("Label").text
+    units = rootContainer.getComponent("Units Dropdown").selectedStringValue
+    outputContainer=rootContainer.getComponent("Output Ramp Container")
+    
+    outputType = outputContainer.getComponent("Output Type Dropdown").selectedStringValue
+    outputTypeId = outputContainer.getComponent("Output Type Dropdown").selectedValue
+    tag = outputContainer.getComponent("Tag").text
+    download = outputContainer.getComponent("Download").selected
+    download=toBit(download)
+    timing = outputContainer.getComponent("Timing").floatValue
+    maxTiming = outputContainer.getComponent("Max Timing").floatValue
+    writeConfirm = outputContainer.getComponent("Write Confirm").selected
+    writeConfirm=toBit(writeConfirm)
+    
+    rampTime = outputContainer.getComponent("Ramp Time").floatValue
+    updateFrequency = outputContainer.getComponent("Update Frequency").floatValue
+    
+    # For now, the valueType of an output is always a Float
+    valueType = outputContainer.getComponent("Value Type Dropdown").selectedStringValue
+    valueTypeId = outputContainer.getComponent("Value Type Dropdown").selectedValue
+    
+    tx = system.db.beginTransaction(db)
+    
+    try:
+        if recipeDataId < 0:
+            print "Inserting a new Output Ramp..."
+            
+            recipeDataType = rootContainer.recipeDataType
+            recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
+            
+            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
+                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
+            print SQL
+            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            rootContainer.recipeDataId = recipeDataId
+            
+            valueIds=[]
+            for i in [0,1,2]:
+                # TargetValue and PV Value are dynamic values that cannot be edited.
+                if i == 0:
+                    attr = valueType + "Value"
+                    if valueType == 'String':
+                        val = outputContainer.getComponent("Output String Value").text
+                        SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (attr, val)
+                    else:
+                        if valueType == 'Float':
+                            val = outputContainer.getComponent("Output Float Value").floatValue
+                        elif valueType == 'Integer':
+                            val = outputContainer.getComponent("Output Integer Value").intValue
+                        elif valueType == 'Boolean':
+                            val = outputContainer.getComponent("Output Boolean Value").selected
+                            val = toBit(val)
+                        SQL = "insert into SfcRecipeDataValue (%s) values (%s)" % (attr, str(val))
+                else:
+                    SQL = "insert into SfcRecipeDataValue (FloatValue) values (NULL)"
+                print SQL
+                valueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+                valueIds.append(valueId)
+
+            SQL = "Insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, OutputValueId, TargetValueId, PVValueId, Tag, Download, Timing, MaxTiming, WriteConfirm) "\
+                "values (%d, %d, %d, %d, %d, %d, '%s', %d, %f, %f, %d)" \
+                % (recipeDataId, valueTypeId, outputTypeId, valueIds[0], valueIds[1], valueIds[2], tag, download, timing, maxTiming, writeConfirm)            
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+            
+            SQL = "Insert into SfcRecipeDataOutputRamp (RecipeDataId, RampTimeMinutes, UpdateFrequencySeconds) "\
+                "values (%d, %f, %f)" \
+                % (recipeDataId, rampTime, updateFrequency)            
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+        else:
+            print "Updating an existing Output Ramp..."
+            recipeDataId = rootContainer.recipeDataId
+            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label='%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+            SQL = "Update SfcRecipeDataOutput set ValueTypeId=%d, OutputTypeId=%d, Tag='%s', Download=%d, Timing=%f, MaxTiming=%f, WriteConfirm=%d "\
+                "where RecipeDataId = %d" % (valueTypeId, outputTypeId, tag, download, timing, maxTiming, writeConfirm, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+            SQL = "Update SfcRecipeDataOutputRamp set RampTimeMinutes=%f, UpdateFrequencySeconds=%f where RecipeDataId = %d" % (rampTime, updateFrequency, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+            ds = rootContainer.outputDataset
+            valueId = ds.getValueAt(0,"OutputValueId")
+            if valueType == "Float":
+                val = outputContainer.getComponent("Output Float Value").floatValue
+            elif valueType == "Integer":
+                val = outputContainer.getComponent("Output Integer Value").intValue
+            elif valueType == "String":
+                val = outputContainer.getComponent("Output String Value").text
+            elif valueType == "Boolean":
+                val = outputContainer.getComponent("Output Boolean Value").selected
+                val = toBit(val)
+            updateRecipeDataValue(valueId, valueType, val, tx)
+
+        system.db.commitTransaction(tx)
+        system.db.closeTransaction(tx) 
+    except:
+        catchError("ils.sfc.recipeData.visionEditor.saveOutputRamp", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1079,7 +1248,7 @@ def saveTimerValue(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1144,7 +1313,7 @@ def saveRecipe(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveRecipe", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1171,10 +1340,10 @@ def saveArray(rootContainer):
     valueTypeId = arrayContainer.getComponent("Value Type Dropdown").selectedValue
     
     indexKey = arrayContainer.getComponent("Index Key Dropdown").selectedStringValue
-    indexKeyRecipeDataId = arrayContainer.getComponent("Index Key Dropdown").selectedValue
+    indexKeyId = arrayContainer.getComponent("Index Key Dropdown").selectedValue
     
     print "Index Key: ", indexKey
-    print "Index Recipe Data Id: ", indexKeyRecipeDataId
+    print "Index Key Id: ", indexKeyId
     
     tx = system.db.beginTransaction(db)
     
@@ -1191,11 +1360,11 @@ def saveArray(rootContainer):
             recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
             rootContainer.recipeDataId = recipeDataId
             
-            if indexKeyRecipeDataId <= 0:
-                indexKeyRecipeDataId = None
+            if indexKeyId <= 0:
+                indexKeyId = None
                 
-            SQL = "Insert into SfcRecipeDataArray (RecipeDataId, ValueTypeId, IndexKeyRecipeDataId) values (?, ?, ?)"
-            args = [recipeDataId, valueTypeId, indexKeyRecipeDataId]
+            SQL = "Insert into SfcRecipeDataArray (RecipeDataId, ValueTypeId, IndexKeyId) values (?, ?, ?)"
+            args = [recipeDataId, valueTypeId, indexKeyId]
             
             system.db.runPrepUpdate(SQL, args, tx=tx)
         else:
@@ -1204,11 +1373,11 @@ def saveArray(rootContainer):
             SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
             system.db.runUpdateQuery(SQL, tx=tx)
 
-            if indexKeyRecipeDataId <= 0:
-                indexKeyRecipeDataId = None
+            if indexKeyId <= 0:
+                indexKeyId = None
 
-            SQL = "Update SfcRecipeDataArray set ValueTypeId=?, IndexKeyRecipeDataId=? where RecipeDataId = ?" 
-            args = [valueTypeId, indexKeyRecipeDataId, recipeDataId]
+            SQL = "Update SfcRecipeDataArray set ValueTypeId=?, IndexKeyId=? where RecipeDataId = ?" 
+            args = [valueTypeId, indexKeyId, recipeDataId]
             system.db.runPrepUpdate(SQL, args, tx=tx)
 
         # Now deal with the array.  First delete all of the rows than insert new ones.  There are no foreign keys or ids so this should be fast and easy.
@@ -1245,7 +1414,7 @@ def saveArray(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveArray", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     
@@ -1357,7 +1526,7 @@ def saveMatrix(rootContainer):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        catchError("ils.sfc.recipeData.visionEditor.saveMatrix", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
     

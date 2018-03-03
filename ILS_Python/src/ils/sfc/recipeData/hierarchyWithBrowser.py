@@ -34,10 +34,11 @@ def updateSfcTree(rootContainer, db):
     log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
     tagProvider = getTagProviderClient()
     sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
-    txId = getTxId(db)
-    hierarchyPDS = fetchHierarchy(txId, sfcRecipeDataShowProductionOnly)
-    chartPDS = fetchCharts(txId, sfcRecipeDataShowProductionOnly)
+
+    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly, db)
+    chartPDS = fetchCharts(sfcRecipeDataShowProductionOnly, db)
     trees = fetchSfcTree(chartPDS, hierarchyPDS)
+    
     
     chartDict = {}
     for record in chartPDS:
@@ -46,7 +47,7 @@ def updateSfcTree(rootContainer, db):
         
         # Chart Paths use the '/' to indicate the path structure, but the tree widget interprets that as a child.  I want to treat
         # the chart path as the name so replace "/" with ":"
-        chartDict[chartId] = chartPath.replace('/',':')
+        chartDict[chartId] = chartPath.replace('/','\\')
 
     log.tracef("The chart dictionary is %s", str(chartDict))    
     rows=[]
@@ -58,7 +59,7 @@ def updateSfcTree(rootContainer, db):
     ds = system.dataset.toDataSet(header, rows)
     treeWidget=rootContainer.getComponent("Tree Container").getComponent("Tree View")
     treeWidget.data = ds
-    system.db.closeTransaction(txId)
+
     
 def expandRow(tree, chartDict): 
     log.tracef("Expanding: %s", str(tree))
@@ -80,7 +81,7 @@ def expandRow(tree, chartDict):
     log.tracef("The expanded row is: %s", str(row))
     return row
 
-def fetchCharts(txId, sfcRecipeDataShowProductionOnly):
+def fetchCharts(sfcRecipeDataShowProductionOnly, db):
     log.infof("Fetching the charts...")
     
     if sfcRecipeDataShowProductionOnly:
@@ -88,19 +89,32 @@ def fetchCharts(txId, sfcRecipeDataShowProductionOnly):
     else:
         SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart order by ChartPath"
         
-    pds = system.db.runPrepQuery(SQL, [], tx=txId)
+    pds = system.db.runPrepQuery(SQL, [], db)
     log.tracef("Fetched %d chart records...", len(pds))
     return pds
 
-def fetchHierarchy(txId, sfcRecipeDataShowProductionOnly):
+def fetchHierarchy(sfcRecipeDataShowProductionOnly, db=""):
     if sfcRecipeDataShowProductionOnly:
         SQL = "select * from SfcHierarchyView where IsProduction = 1 order by ChartPath"
     else:
         SQL = "select * from SfcHierarchyView order by ChartPath"
 
-    pds = system.db.runQuery(SQL, tx=txId)
+    pds = system.db.runQuery(SQL, db)
     return pds
 
+def getChildrenDeep(chartId, hierarchyPDS):
+    children = []
+    log.tracef("Getting the deep children of chart: %s", str(chartId))
+'''
+    kids = getChildren(chartId, hierarchyPDS)
+    while len(kids) > 0:
+        for kid in kids:
+        if record["ChartId"] == chartId and record["ChildChartId"] not in children:
+            children.append(record["ChildChartId"])
+    log.tracef("The children of %s are %s", chartId, str(children))
+    return children
+'''
+    
 def getChildren(chartId, hierarchyPDS):
     children = []
     log.tracef("Getting the children of chart: %s", str(chartId))
@@ -168,30 +182,32 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
 '''
 These methods have to do with the list of steps
 '''
+
+'''
+This gets called in response to a node being selected in the SFC Chart Hierarchy tree.
+'''
 def refreshSteps(rootContainer, db):
-    log.infof("Updating the list of steps...")
-    txId = getTxId(db)
+    log.infof("%s.refreshSteps() - Updating the list of steps...", __name__)
     treeWidget = rootContainer.getComponent("Tree Container").getComponent("Tree View")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     
     # First get the last node in the path
     chartPath = treeWidget.selectedPath
+    log.infof("The raw selected path is: <%s>", chartPath)
     chartPath = chartPath[chartPath.rfind("/")+1:]
     
     # Now replace ":" with "/"
-    chartPath = chartPath.replace(':', '/')
+    chartPath = chartPath.replace('\\', '/')
     log.infof("The selected chart path is <%s>", chartPath)
     if chartPath == "" or chartPath == None:
         clearTable(stepTable)
-        system.db.closeTransaction(txId)
         return
     
     SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
-    chartId = system.db.runScalarQuery(SQL, tx=txId) 
+    chartId = system.db.runScalarQuery(SQL) 
     log.infof("Fetched chart id: %s", str(chartId))
     if chartId == None:
         clearTable(stepTable)
-        system.db.closeTransaction(txId)
         return
     
     SQL = " select S.StepName, T.StepType, S.StepId, "\
@@ -200,11 +216,11 @@ def refreshSteps(rootContainer, db):
         " where S.StepTypeId = T.StepTypeId "\
         " and S.ChartId = %s order by stepName" % (str(chartId))
     
-    pds = system.db.runQuery(SQL, tx=txId)
+    pds = system.db.runQuery(SQL)
 
     stepTable.data = pds
     stepTable.selectedRow = -1
-    system.db.closeTransaction(txId)
+
 
 '''
 This is used to format the tooltip for the Recipe Data table.  The description can get really long and I 
@@ -223,7 +239,6 @@ Update the rightmost pane for a selection in the middle pane.
 '''
 def updateRecipeData(rootContainer, db=""):
     log.infof("Updating the recipe data table (%s)...", db)
-    txId=getTxId(db)
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
     
@@ -234,19 +249,19 @@ def updateRecipeData(rootContainer, db=""):
         stepId = ds.getValueAt(stepTable.selectedRow, "StepId")
         
         SQL = "select * from SfcRecipeDataView where StepId = %s order by RecipeDataKey" % (str(stepId))
-        pds = system.db.runQuery(SQL, tx=txId)
+        pds = system.db.runQuery(SQL)
 
         ds = system.dataset.toDataSet(pds)
         row = 0
         for record in pds:
-            desc = getRecipeDataDescription(record, txId)
+            desc = getRecipeDataDescription(record)
             ds = system.dataset.setValue(ds, row, "Description", desc)        
             row = row + 1
             
         recipeDataTable.data = ds
-    system.db.closeTransaction(txId)
 
-def getRecipeDataDescription(record, txId):
+
+def getRecipeDataDescription(record):
     try:
         recipeDataId = record["RecipeDataId"]
         recipeDataType = record["RecipeDataType"]
@@ -254,20 +269,20 @@ def getRecipeDataDescription(record, txId):
         log.tracef("Looking at %s - %s", recipeDataId, recipeDataType)
         
         if recipeDataType == "Simple Value":
-            valuePDS = system.db.runQuery("select * from SfcRecipeDataSimpleValueView where recipeDataId = %d" % (recipeDataId), tx=txId)
+            valuePDS = system.db.runQuery("select * from SfcRecipeDataSimpleValueView where recipeDataId = %d" % (recipeDataId))
             if len(valuePDS) == 1:
                 valueRecord = valuePDS[0]
                 desc = getValueDescriptionFromRecord(valueRecord, desc)
         elif recipeDataType == "Matrix":
-            desc = getMatrixDescription(recipeDataId, desc, txId)
+            desc = getMatrixDescription(recipeDataId, desc)
         elif recipeDataType == "Array":
-            desc = getArrayDescription(recipeDataId, desc, txId)           
+            desc = getArrayDescription(recipeDataId, desc)           
         elif recipeDataType == "Timer":
-            desc = getTimerDescription(recipeDataId, desc, txId)
+            desc = getTimerDescription(recipeDataId, desc)
         elif recipeDataType == "Recipe":
-            desc = getRecipeDescription(recipeDataId, desc, txId)
+            desc = getRecipeDescription(recipeDataId, desc)
         elif recipeDataType == "Output":
-            valuePDS = system.db.runQuery("select * from SfcRecipeDataOutputView where recipeDataId = %d" % (recipeDataId), tx=txId)
+            valuePDS = system.db.runQuery("select * from SfcRecipeDataOutputView where recipeDataId = %d" % (recipeDataId))
             if len(valuePDS) == 1:
                 valueRecord = valuePDS[0]
                 tag = valueRecord["Tag"]
@@ -282,7 +297,7 @@ def getRecipeDataDescription(record, txId):
                     
                 desc = getOutputValueDescriptionFromRecord(valueRecord, desc)
         elif recipeDataType == "Input":
-            valuePDS = system.db.runQuery("select * from SfcRecipeDataInputView where recipeDataId = %d" % (recipeDataId), tx=txId)
+            valuePDS = system.db.runQuery("select * from SfcRecipeDataInputView where recipeDataId = %d" % (recipeDataId))
             if len(valuePDS) == 1:
                 valueRecord = valuePDS[0]
                 tag = valueRecord["Tag"]
@@ -301,9 +316,9 @@ def getRecipeDataDescription(record, txId):
     return desc
 
     
-def getMatrixDescription(recipeDataId, desc, txId):
+def getMatrixDescription(recipeDataId, desc):
     desc = ""
-    pds = system.db.runQuery("Select * from SFcRecipeDataMatrixView where recipeDataId = %d" % (recipeDataId), tx=txId)
+    pds = system.db.runQuery("Select * from SFcRecipeDataMatrixView where recipeDataId = %d" % (recipeDataId))
     if len(pds) == 1:
         record = pds[0]
         valueType = record["ValueType"]
@@ -319,7 +334,7 @@ def getMatrixDescription(recipeDataId, desc, txId):
             desc = "%s, %s" % (desc, matrixDesc)
 
         SQL = "select * from SfcRecipeDataMatrixElementView where RecipeDataId = %d order by RowIndex, ColumnIndex" % (recipeDataId)
-        pdsValues = system.db.runQuery(SQL, tx=txId)
+        pdsValues = system.db.runQuery(SQL)
         lastRowIndex = -1
         txt = ""
         for valueRecord in pdsValues:
@@ -347,14 +362,14 @@ def getMatrixDescription(recipeDataId, desc, txId):
     return desc
 
 #
-def getArrayDescription(recipeDataId, desc, txId):
-    pds = system.db.runQuery("Select * from SFcRecipeDataArrayView where recipeDataId = %d" % (recipeDataId), tx=txId)
+def getArrayDescription(recipeDataId, desc):
+    pds = system.db.runQuery("Select * from SFcRecipeDataArrayView where recipeDataId = %d" % (recipeDataId))
     record = pds[0]
     valueType = record["ValueType"]
-    key = record["IndexKey"]
+    key = record["KeyName"]
 
     SQL = "select * from SfcRecipeDataArrayElementView where RecipeDataId = %d order by ArrayIndex" % (recipeDataId)
-    pdsValues = system.db.runQuery(SQL, tx=txId)
+    pdsValues = system.db.runQuery(SQL)
     numElements = len(pdsValues)
 
     txt = ""
@@ -388,8 +403,8 @@ def getArrayDescription(recipeDataId, desc, txId):
     return desc
 
 #
-def getTimerDescription(recipeDataId, desc, txId):
-    valuePDS = system.db.runQuery("Select * from SFcRecipeDataTimerView where recipeDataId = %d" % (recipeDataId), tx=txId)
+def getTimerDescription(recipeDataId, desc):
+    valuePDS = system.db.runQuery("Select * from SFcRecipeDataTimerView where recipeDataId = %d" % (recipeDataId))
     valueRecord = valuePDS[0]
 
     txt = "State: %s, Start time: %s" % (valueRecord["TimerState"], valueRecord["StartTime"])
@@ -402,8 +417,8 @@ def getTimerDescription(recipeDataId, desc, txId):
     return desc
 
 #
-def getRecipeDescription(recipeDataId, desc, txId):
-    valuePDS = system.db.runQuery("Select * from SFcRecipeDataRecipeView where recipeDataId = %d" % (recipeDataId), tx=txId)
+def getRecipeDescription(recipeDataId, desc):
+    valuePDS = system.db.runQuery("Select * from SFcRecipeDataRecipeView where recipeDataId = %d" % (recipeDataId))
     valueRecord = valuePDS[0]
 
     txt = "Tag: %s, Value: %s" % (valueRecord["StoreTag"], str(valueRecord["RecommendedValue"]))
@@ -501,7 +516,7 @@ def getInputValueDescriptionFromRecord(record, desc):
 
 def deleteRecipeData(rootContainer, db):
     log.infof("Deleting a recipe data...")
-    txId = getTxId(db)
+
     recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
     
     if recipeDataTable.selectedRow < 0:
@@ -517,56 +532,50 @@ def deleteRecipeData(rootContainer, db):
     valueIds = []
     if recipeDataType == SIMPLE_VALUE:
         SQL = "select ValueId from SfcRecipeDataSimpleValue where recipeDataId = %d" % (recipeDataId)
-        valueId = system.db.runScalarQuery(SQL, tx=txId)
+        valueId = system.db.runScalarQuery(SQL)
         valueIds.append(valueId)
     elif recipeDataType == OUTPUT:
         SQL = "select OutputValueId, TargetValueId, PVValueId from SfcRecipeDataOutput where recipeDataId = %d" % (recipeDataId)
-        pds = system.db.runQuery(SQL, tx=txId)
+        pds = system.db.runQuery(SQL)
         record = pds[0]
         valueIds.append(record["OutputValueId"])
         valueIds.append(record["TargetValueId"])
         valueIds.append(record["PVValueId"])
     elif recipeDataType == INPUT:
         SQL = "select TargetValueId, PVValueId from SfcRecipeDataInput where recipeDataId = %d" % (recipeDataId)
-        pds = system.db.runQuery(SQL, tx=txId)
+        pds = system.db.runQuery(SQL)
         record = pds[0]
         valueIds.append(record["TargetValueId"])
         valueIds.append(record["PVValueId"])
     elif recipeDataType == ARRAY:
         SQL = "select ValueId from SfcRecipeDataArrayElement where recipeDataId = %d" % (recipeDataId)
-        pds = system.db.runQuery(SQL, tx=txId)
+        pds = system.db.runQuery(SQL)
         for record in pds:
             valueIds.append(record["ValueId"])
         SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %d" % (recipeDataId)
-        rows = system.db.runUpdateQuery(SQL, tx=txId)
+        rows = system.db.runUpdateQuery(SQL)
         log.infof("Deleted %d rows from SfcRecipeDataArrayElement...", rows)
     elif recipeDataType == MATRIX:
         SQL = "select ValueId from SfcRecipeDataMatrixElement where recipeDataId = %d" % (recipeDataId)
-        pds = system.db.runQuery(SQL, tx=txId)
+        pds = system.db.runQuery(SQL)
         for record in pds:
             valueIds.append(record["ValueId"])
         SQL = "delete from SfcRecipeDataMatrixElement where RecipeDataId = %d" % (recipeDataId)
-        rows = system.db.runUpdateQuery(SQL, tx=txId)
+        rows = system.db.runUpdateQuery(SQL)
         log.infof("Deleted %d rows from SfcRecipeDataMatrixElement...", rows)
     
     # The recipe data tables all have cascade delete foreign keys so we just need to delete from the main table
     SQL = "delete from SfcRecipeData where RecipeDataId = %d" % (recipeDataId)
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL)
     
     # Now delete the values
     for valueId in valueIds:
         SQL = "delete from SfcRecipeDataValue where ValueId = %d" % (valueId)
-        system.db.runUpdateQuery(SQL, tx=txId)
-    
-    system.db.commitTransaction(txId)
-    system.db.closeTransaction(txId)
+        system.db.runUpdateQuery(SQL)
     
     ''' Update the table '''
     updateRecipeData(rootContainer, db)
-    
-def getTxId(db):
-    txId = system.db.beginTransaction(database=db, isolationLevel=system.db.READ_UNCOMMITTED, timeout=5000)
-    return txId
+
 
 '''
 This is just a good text book example of recursion.

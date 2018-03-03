@@ -177,6 +177,10 @@ def isFolder(fullTagPath):
     
     return isFolder
 
+'''
+A controller is a complicated UDT with embedded UDTs.  Often we are given one of the inner UDTs, for the setpoint or mode for example and we want to 
+find the controller.  So we start at the root of the path and walk the tag path until we get a UDT.
+'''
 def getOuterUDT(fullTagPath):
     # Strip off the provider   
     if fullTagPath.find("]")>=0:
@@ -203,7 +207,7 @@ def getOuterUDT(fullTagPath):
             return UDTType, tp 
 
 #        print "There must not be a UDT in the tag path..."
-    return None, None
+    return None, tagPath
 
 def getInnerUDT(fullTagPath):
     # Strip off the provider

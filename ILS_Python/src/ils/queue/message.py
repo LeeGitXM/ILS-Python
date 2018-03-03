@@ -8,31 +8,7 @@ from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
 from ils.common.error import catchError
 log = system.util.getLogger("com.ils.queue")
 
-# Expected status are Info, Warning, or Error
-def insert(queueKey, status, message, db = ''):
-    from ils.queue.commons import getQueueId
-    queueId = getQueueId(queueKey, db)
-    
-    if queueId == None:
-        log.warn("Unable to insert a message into queue with key <%s> and id: <%s>" % (queueKey, str(queueId)))
-        return
-    
-    _insert(queueId, status, message, db)
-
-
-# Expected status are Info, Warning, or Error
-def _insert(queueId, status, message, db = ''):
-    from ils.common.util import escapeSqlQuotes
-    message = escapeSqlQuotes(message)
-    SQL = "select statusId from QueueMessageStatus where MessageStatus = '%s'" % (status)
-    statusId = system.db.runScalarQuery(SQL, db)
-    
-    message=message[:QUEUE_DETAIL_MESSAGE_LENGTH - 2]
-    SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%s, getdate(), %s, '%s')" % (str(queueId), str(statusId), message)
-
-    system.db.runUpdateQuery(SQL, db)
-
-def insertPostMessage(post, status, message, db=''):
+def insertPostMessage(post, status, message, db='', project='', console=''):
     from ils.queue.commons import getQueueForPost
     queueKey=getQueueForPost(post)
     
@@ -40,8 +16,58 @@ def insertPostMessage(post, status, message, db=''):
         log.warn("Unable to insert a message into queue for post <%s> (key: <%s>" % (post, str(queueKey)))
         return
     
+    insert(queueKey, status, message, db, project, console)
+
+# Expected status are Info, Warning, or Error
+def insert(queueKey, status, message, db='', project='', console=''):
+    from ils.queue.commons import getQueueId
+    queueId = getQueueId(queueKey, db)
     
-    insert(queueKey, status, message, db)
+    if queueId == None:
+        log.warn("Unable to insert a message into queue with key <%s> and id: <%s>" % (queueKey, str(queueId)))
+        return
+    
+    _insert(queueKey, queueId, status, message, db, project, console)
+
+
+# Expected status are Info, Warning, or Error
+def _insert(queueKey, queueId, status, message, db='', project='', console=''):
+    from ils.common.util import escapeSqlQuotes
+    message = escapeSqlQuotes(message)
+    SQL = "select statusId, severity from QueueMessageStatus where MessageStatus = '%s'" % (status)
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) <> 1:
+        return
+    
+    record = pds[0]
+    statusId = record["statusId"]
+    severity = record["severity"]
+    
+    message=message[:QUEUE_DETAIL_MESSAGE_LENGTH - 2]
+    SQL = "insert into QueueDetail (QueueId, Timestamp, StatusId, Message) values (%s, getdate(), %s, '%s')" % (str(queueId), str(statusId), message)
+
+    system.db.runUpdateQuery(SQL, db)
+    
+    autoView(queueKey, queueId, severity, project, console, db)
+
+
+def autoView(queueKey, queueId, severity, project, console, db):
+    SQL = "select autoView, autoViewSeverityThreshold from QueueMaster where queueId = %d" % (queueId)
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) <> 1:
+        return
+    
+    record = pds[0]
+    autoView = record["autoView"]
+    autoViewSeverityThreshold = record["autoViewSeverityThreshold"]
+
+    if autoView and severity >= autoViewSeverityThreshold:
+        log.tracef("The view should be auto posted...")
+        sendOpenMessage(console, queueKey, project)
+
+    else:
+        log.tracef("The view should NOT be auto posted")
+
 
 def queueSQL(queueKey, useCheckpoint, order, db =''):
     
@@ -218,10 +244,12 @@ def messageDetail(txt):
 '''
 Send a message to every client to open the message queue if they are interested in the console.
 The idea is that a client can determine on its own if it is interested in this queue without considering any other clients.
+This will not work from gateway scope.
 '''
-def sendOpenMessage(console, queueKey):
-    print "Sending an open message"
-    project = system.util.getProjectName()
+def sendOpenMessage(console, queueKey, project=''):
+    if project == '':
+        project = system.util.getProjectName()
+
     handler = "showQueue"
     payload = {"console": console, "queueKey": queueKey}
     system.util.sendMessage(project, handler, payload, "C")
@@ -235,7 +263,18 @@ def handleMessage(payload):
     queueKey = payload["queueKey"]
     windows = system.gui.getOpenedWindows()
     for w in windows:
+        windowTitle = w.title
+        if console == windowTitle:
+            print "Showing the queue because I found a window whose title matched the console name..."
+            view(queueKey, useCheckpoint=True, silent=True)
+            return
+
+    '''
+    Now use a looser check, see if the window path contains (not matches) the name of the console
+    '''
+    for w in windows:
         windowPath = w.getPath()
         if windowPath.find(console) > -1:
-            print "Found the console, showing the queue..."
-            view(queueKey, silent=True)
+            print "Showing the queue because I found a window whose path matches the console name..."
+            view(queueKey, useCheckpoint=True, silent=True)
+            return

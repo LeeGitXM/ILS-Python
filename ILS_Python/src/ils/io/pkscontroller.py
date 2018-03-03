@@ -190,7 +190,14 @@ class PKSController(controller.Controller):
             raise Exception("Unexpected value Type: <%s> for a PKS controller %s" % (outputType, self.path))
 
         # Read the current values of all of the tags we need to consider to determine if the configuration is valid.
-        currentValue = system.tag.read(tagRoot + '/value')
+        tagpaths = [tagRoot + '/value', self.path + '/mode/value', self.path + '/windup']
+        qvs = system.tag.readAll(tagpaths)
+        
+        currentValue = qvs[0]
+        mode = qvs[1]
+        windup = qvs[2]
+        
+#        currentValue = system.tag.read(tagRoot + '/value')
 
         # Check the quality of the tags to make sure we can trust their values
         if str(currentValue.quality) != 'Good': 
@@ -202,7 +209,7 @@ class PKSController(controller.Controller):
         log.tracef("The current value which will be used for the Test For Zero test is %s" % (str(currentValue)))
 
         # Check the Mode
-        mode = system.tag.read(self.path + '/mode/value')
+#        mode = system.tag.read(self.path + '/mode/value')
         
         if str(mode.quality) != 'Good': 
             log.warn("checkConfig failed for %s because the mode quality is %s" % (self.path, str(mode.quality)))
@@ -211,7 +218,7 @@ class PKSController(controller.Controller):
         mode = string.strip(mode.value)
         
         # Check the Windup
-        windup = system.tag.read(self.path + '/windup')
+#        windup = system.tag.read(self.path + '/windup')
         
         # Check the quality of the tags to make sure we can trust their values
         if str(windup.quality) != 'Good': 

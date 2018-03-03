@@ -4,11 +4,8 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-from ils.sfc.common.constants import NAME, NUMBER_OF_ERRORS, MSG_STATUS_ERROR, CONFIRM_CONTROLLERS_CONFIG, RECIPE_LOCATION, TAG_PATH, VALUE, OUTPUT_TYPE, \
-    ERROR_COUNT_KEY, ERROR_COUNT_MODE, ERROR_COUNT_SCOPE, COUNT_ABSOLUTE, COUNT_INCREMENTAL, \
-    CHART_SCOPE, STEP_SCOPE, \
-    LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE
-    
+from ils.sfc.common.constants import NAME, MSG_STATUS_ERROR, CONFIRM_CONTROLLERS_CONFIG, ERROR_COUNT_KEY, ERROR_COUNT_MODE, ERROR_COUNT_SCOPE, COUNT_ABSOLUTE, \
+    CHART_SCOPE, STEP_SCOPE, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE
 from ils.sfc.gateway.api import getChartLogger, getIsolationMode, notifyGatewayError, handleUnexpectedGatewayError, getStepProperty, postToQueue
 from system.ils.sfc import getConfirmControllersConfig, getProviderName
 from ils.io.api import confirmControllerMode
@@ -74,7 +71,7 @@ def activate(scopeContext, stepProperties, state):
         logger.tracef("Setting error count: %s - %s - %s...", errorCountScope, errorCountKey, errorCountMode)
         
         if errorCountScope == CHART_SCOPE:
-            print "Setting a chart scope error counter..."
+            logger.tracef("Setting a chart scope error counter...")
             if errorCountMode == COUNT_ABSOLUTE:
                 chartScope[errorCountKey] = numberOfErrors
             else:
@@ -83,7 +80,7 @@ def activate(scopeContext, stepProperties, state):
         
         elif errorCountScope == STEP_SCOPE:
             ''' For stepScope counters the mode is implicitly incremental because the data is transient '''
-            print "Setting a step scope error counter..."
+            logger.tracef("Setting a step scope error counter...")
             stepScope[errorCountKey] = numberOfErrors
         
         elif errorCountScope in [LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE]:
@@ -94,6 +91,6 @@ def activate(scopeContext, stepProperties, state):
                 s88Set(chartScope, stepScope, errorCountKey + ".Value", numberOfErrors + cnt, errorCountScope)
         
         else:
-            print "*** UNEXPECTED ErrorCountScope <%s> ***" % (errorCountScope)
+            logger.errorf("*** UNEXPECTED ErrorCountScope <%s> ***", str(errorCountScope))
         
         return True

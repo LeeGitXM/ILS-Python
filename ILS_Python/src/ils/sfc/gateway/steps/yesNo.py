@@ -30,6 +30,7 @@ def activate(scopeContext, stepProperties, state):
     responseRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     
     if state == DEACTIVATED:
+        logger.trace("The Yes/No state is deactivated!")
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepProperties, stepScope)
         return False

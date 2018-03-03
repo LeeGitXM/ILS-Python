@@ -112,7 +112,8 @@ The common ignition project is used by all sites.  The database used at each sit
 a common schema with site specific data.  The TkMenuBar table lists the menus that are 
 appropriate for each site.  The 2nd argument, project type, is XOM or dbManager, it is not 
 the same as the project name.
-** Currently this only works with the VIEW menu **
+
+For some reason I decided to reverse the logic between the Admin and the View menus...
 '''
 def removeUnwantedMenus(bar, projectType): 
     print " "
@@ -120,10 +121,17 @@ def removeUnwantedMenus(bar, projectType):
     
     # Select the configuration of the menus for this site
     pds = system.db.runQuery("Select SubMenu, Enabled from TkMenuBar where Application = '%s' and Menu = 'View'" % (projectType))
-    enabledMenus = []
+    enabledViewMenus = []
     for record in pds:
         if record["Enabled"] == 1:
-            enabledMenus.append(record["SubMenu"])
+            enabledViewMenus.append(record["SubMenu"])
+            
+    # Select the configuration of the menus for this site
+    pds = system.db.runQuery("Select SubMenu, Enabled from TkMenuBar where Application = '%s' and Menu = 'Admin'" % (projectType))
+    disabledAdminMenus = []
+    for record in pds:
+        if record["Enabled"] == 0:
+            disabledAdminMenus.append(record["SubMenu"])
     
     count = bar.getMenuCount()
     index = 0
@@ -131,8 +139,8 @@ def removeUnwantedMenus(bar, projectType):
         menu = bar.getMenu(index)
         name = menu.getText()
         print "Menu:",name
-        if name == 'View':
-            
+        
+        if name == 'View':    
             # Find the console menu
             viewCount = menu.getItemCount()
             viewIndex = 0
@@ -140,7 +148,21 @@ def removeUnwantedMenus(bar, projectType):
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
                 print "View Submenu: ", submenuName
-                if submenuName not in enabledMenus:
+                if submenuName not in enabledViewMenus:
+                    print "  *** REMOVING ***"
+                    menu.remove(submenu)
+                    viewCount=viewCount-1
+                else:
+                    viewIndex=viewIndex+1
+                    
+        elif name == 'Admin':
+            viewCount = menu.getItemCount()
+            viewIndex = 0
+            while viewIndex < viewCount:
+                submenu = menu.getItem(viewIndex)
+                submenuName = submenu.getText()
+                print "Admin Submenu: ", submenuName
+                if submenuName in disabledAdminMenus:
                     print "  *** REMOVING ***"
                     menu.remove(submenu)
                     viewCount=viewCount-1

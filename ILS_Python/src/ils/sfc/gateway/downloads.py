@@ -56,7 +56,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
         from ils.io.api import write
         from ils.common.config import getTagProvider
         from ils.sfc.gateway.api import postToQueue
-        from ils.sfc.common.constants import MSG_STATUS_INFO
+        from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
         from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT, WRITE_CONFIRMED, SUCCESS, FAILURE
 
         tagPath = "[%s]%s" % (providerName, config.tagPath)
@@ -79,7 +79,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
 #                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
     
             txt = "Write of %s to %s bypassed because SFC I/O is disabled." % (str(config.value), config.tagPath)
-            postToQueue(chartScope, MSG_STATUS_INFO, txt)
+            postToQueue(chartScope, MSG_STATUS_WARNING, txt)
             return
         
         logger.info("writing %s to %s - attribute %s (confirm: %s)" % (config.value, tagPath, outputType,str(config.confirmWrite)))
@@ -96,19 +96,15 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
         if writeStatus:
             logger.trace("---- setting status to SUCCESS ----")
             s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_SUCCESS, recipeDataScope)
+            postToQueue(chartScope, MSG_STATUS_INFO, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt)
         else:
             logger.trace("---- setting status to FAILURE ----")
             s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)
 
             errorCount = stepScope[ERROR_COUNT_LOCAL]
             stepScope[ERROR_COUNT_LOCAL] = errorCount + 1
-            
-#            if errorCountKey <> "" and errorCountLocation <> "":
-#                print " *** INCREMENTING THE GLOBAL ERROR COUNTER FOR %s *** " % (config.key)
-#                errorCount = s88Get(chartScope, stepScope, errorCountKey, errorCountLocation)
-#                s88Set(chartScope, stepScope, errorCountKey, errorCount + 1, errorCountLocation)
+            postToQueue(chartScope, MSG_STATUS_ERROR, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt)        
         
-        postToQueue(chartScope, MSG_STATUS_INFO, 'tag ' + config.tagPath + " written; value: " + str(config.value) + txt)
     #----------------------------------------------------------------------------------------------------
     system.util.invokeAsynchronous(_writeValue)
 

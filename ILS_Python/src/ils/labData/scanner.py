@@ -33,18 +33,27 @@ def main(database, tagProvider):
     from ils.labData.limits import fetchLimits
     limits=fetchLimits(database)
 
+    writeMode = "synch"
     writeTags=[]
     writeTagValues=[] 
     writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
+    log.debug("Writing %i new PHD lab values to local lab data tags" % (len(writeTags)))
+    tagWriter(writeTags, writeTagValues, mode=writeMode)
+    
+    writeTags=[]
+    writeTagValues=[] 
     writeTags, writeTagValues = checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues)
+    log.debug("Writing %i new DCS lab values to local lab data tags" % (len(writeTags)))
+    tagWriter(writeTags, writeTagValues, mode=writeMode)
+    
+    writeTags=[]
+    writeTagValues=[] 
     checkForDerivedValueTriggers(database)
     writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues)
-    
-    log.debug("Writing %i new lab values to local lab data tags" % (len(writeTags)))
+    log.debug("Writing %i new derived lab values to local lab data tags" % (len(writeTags)))
+    tagWriter(writeTags, writeTagValues, mode=writeMode)
 
-    log.trace("Writing %s :: %s" % (str(writeTags), str(writeTagValues)))
-    tagWriter(writeTags, writeTagValues,mode="asynchAll")
-    log.info("...finished lab data scanning!")
+    log.infof("...finished lab data scanning!")
 
 def tagWriter(tags, vals, mode="synch"):
     
@@ -295,7 +304,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 derivedLog.trace("         The  related sample has still not arrived and probably never will, time to give up!")
                 del derivedCalculationCache[valueName]
 
-    derivedLog.trace(" ...done processing the derived values for this cycle... ")
+    derivedLog.info(" ...done processing the derived values for this cycle... ")
 
     return writeTags, writeTagValues
 
@@ -311,34 +320,38 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
             lastValue=lastValueCache.get(valueName)
             log.tracef("...there is a value in the cache: <%s>", str(lastValue))
             
-            if lastValue.get('rawValue') != rawValue:
-                log.tracef("The VALUE is different: %s & %s", str(lastValue.get('rawValue')), str(rawValue))
-            
-            if system.date.secondsBetween(lastValue.get('sampleTime'), sampleTime) != 0:
-                log.tracef("The sample time is different %s & %s", str(lastValue.get('sampleTime')), str(sampleTime))
-            
-            if lastValue.get('rawValue') != rawValue or system.date.secondsBetween(lastValue.get('sampleTime'), sampleTime) != 0:
-                # Calculate the time between this sample and the last sample
-                lastSampleTime = lastValue.get("sampleTime")
-                secondsBetween = system.date.secondsBetween(lastSampleTime, sampleTime)
-                if secondsBetween > minimumSampleIntervalSeconds:
-                    log.trace("...found a new value because it does not match what is in the cache and has met the minimum time between samples (%s - %s)..." % 
-                          (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime'))))
-                    new = True
-                else:
-                    log.trace("...found a new value (%s - %s) that has NOT met the minimum time between samples, the last sample was recived %s seconds ago ..." % 
-                          (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime')), str(secondsBetween)))
-                    new = False
+            if lastValue.get('rawValue') == None or lastValue.get('sampleTime') == None:
+                log.trace("...found a new value because the last value is None...")
+                new = True
             else:
-                new = False
-                log.trace("...this value is already in the cache so it will be ignored...")
+                if lastValue.get('rawValue') != rawValue:
+                    log.tracef("The VALUE is different: %s & %s", str(lastValue.get('rawValue')), str(rawValue))
+                
+                if system.date.secondsBetween(lastValue.get('sampleTime'), sampleTime) != 0:
+                    log.tracef("The sample time is different %s & %s", str(lastValue.get('sampleTime')), str(sampleTime))
+                
+                if lastValue.get('rawValue') != rawValue or system.date.secondsBetween(lastValue.get('sampleTime'), sampleTime) != 0:
+                    # Calculate the time between this sample and the last sample
+                    lastSampleTime = lastValue.get("sampleTime")
+                    secondsBetween = system.date.secondsBetween(lastSampleTime, sampleTime)
+                    if secondsBetween > minimumSampleIntervalSeconds:
+                        log.trace("...found a new value because it does not match what is in the cache and has met the minimum time between samples (%s - %s)..." % 
+                              (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime'))))
+                        new = True
+                    else:
+                        log.trace("...found a new value (%s - %s) that has NOT met the minimum time between samples, the last sample was recived %s seconds ago ..." % 
+                              (str(lastValue.get('rawValue')), str(lastValue.get('sampleTime')), str(secondsBetween)))
+                        new = False
+                else:
+                    new = False
+                    log.trace("...this value is already in the cache so it will be ignored...")
         else:
             log.trace("...found a new value because %s does not exist in the cache..." % (valueName))
             new = True
         
         return new
         
-    dcsLog.trace("Checking for new DCS Lab values ... ")    
+    dcsLog.info("Checking for new DCS Lab values ... ")    
     
     SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, WL.ServerName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds "\
         "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, TkWriteLocation WL "\
@@ -375,6 +388,8 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
             # we'll fill the queue with errors, yet log.error isn't seen by anyone...
             dcsLog.warn("...skipping %s because its quality is %s" % (valueName, qv.quality))
 
+    dcsLog.info("...done checking for new DCS Lab values!")
+    
     return writeTags, writeTagValues
 
     
@@ -437,7 +452,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         return new, rawValue, sampleTime, ""
     #----------------------------------------------------------------
     
-    phdLog.trace("Checking for new PHD Lab values ... ")
+    phdLog.info("Checking for new PHD Lab values ... ")
     
     endDate = util.getDate()
     from java.util import Calendar
@@ -497,7 +512,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         
     phdLog.trace("Writing %s to %s" % (str(writeTagValues), str(writeTags)))
 
-    phdLog.trace("Done reading PHD lab values")
+    phdLog.info("Done reading PHD lab values")
     return writeTags, writeTagValues
     
     

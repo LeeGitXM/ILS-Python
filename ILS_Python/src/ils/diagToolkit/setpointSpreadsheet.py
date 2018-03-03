@@ -17,6 +17,7 @@ def initialize(rootContainer):
 
     rootContainer.initializationComplete = False
     rootContainer.recalculateFlag = False
+    rootContainer.lastAction = "opened"
     db=system.tag.read("[Client]Database").value
     
     post = rootContainer.post
@@ -178,6 +179,23 @@ def updateDownloadActiveFlag(post, state, db):
     state = toBit(state)
     SQL = "update TkPost set DownloadActive = %d where Post = '%s'" % (state, post)
     system.db.runUpdateQuery(SQL, db)
+
+def resetAllApplicationAndOutputActions(rootContainer):
+    print "Resetting the action of all applications"
+    repeater = rootContainer.getComponent("Template Repeater")
+    ds = repeater.templateParams
+    pds = system.dataset.toPyDataSet(ds)
+    row = 0
+    for record in pds:
+        if record[0] == 'app':
+            updateApplicationAction(rootContainer, ds, row, "ACTIVE")
+        elif record[0] == 'row':
+            updateQuantOutputAction(rootContainer, ds, row, "GO")
+        else:
+            print "skipped a ", record[0]
+            
+        row = row + 1
+
     
 # This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
 def updateApplicationAction(rootContainer, ds, row, action):
@@ -528,6 +546,9 @@ def noDownloadCallback(event):
         logbookMessage += constructNoDownloadLogbookMessage(post, ds, db)
         insertForPost(post, logbookMessage, db)
     
+        # Set a flag that will be used when the notification arrives.  This is only relevent when two applications are present but one of them was INACTIVE
+        rootContainer.lastAction = "noDownload"
+        
         # Now do the work of the NO Download
         allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
     

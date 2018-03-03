@@ -10,7 +10,8 @@ Created on Sep 12, 2014
 #
 import system, string
 import system.ils.blt.diagram as scriptingInterface
-from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged
+from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged,\
+    fetchActiveOutputsForPost
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.common import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
@@ -82,6 +83,17 @@ def manageFinalDiagnosis(applicationName, family, finalDiagnosis, database="", p
     # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
     post=fetchPostForApplication(applicationName, database)
     notificationStrategy, clientId = fetchNotificationStrategy(applicationName, database)
+    
+    '''
+    The focus for manage is an application, but we are about to send a message to a post, which may be responsible for more than 1 application.  I need to
+    be careful with the treatment of activeOutputs and consider the total for all applications going to the post.  Specifically, if they have 2 applications, 
+    press the inactive button for 1 and then do a no download on the other, only the other one is managed and it now has 0 active outputs but the other one 
+    still has active ones.
+    '''
+    pds = fetchActiveOutputsForPost(post, database)
+    activeOutputs = len(pds)
+    log.infof("There are still %d active outputs for %s", activeOutputs, post)
+    
     
     if notificationStrategy == "ocAlert":
 #            if activeOutputs > 0:
@@ -314,6 +326,16 @@ def _scanner(database, tagProvider):
             # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
             post=fetchPostForApplication(applicationName, database)
             notificationStrategy, clientId = fetchNotificationStrategy(applicationName, database)
+            
+            '''
+            The focus for manage is an application, but we are about to send a message to a post, which may be responsible for more than 1 application.  I need to
+            be careful with the treatment of activeOutputs and consider the total for all applications going to the post.  Specifically, if they have 2 applications, 
+            press the inactive button for 1 and then do a no download on the other, only the other one is managed and it now has 0 active outputs but the other one 
+            still has active ones.
+            '''
+            outputsPds = fetchActiveOutputsForPost(post, database)
+            activeOutputs = len(outputsPds)
+            log.infof("There are still %d active outputs for %s", activeOutputs, post)
             
             if notificationStrategy == "ocAlert":
     #            if activeOutputs > 0:

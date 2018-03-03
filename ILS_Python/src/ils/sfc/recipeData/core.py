@@ -831,6 +831,12 @@ def fetchChartIdFromChartPath(chartPath, tx):
     chartId = system.db.runScalarQuery(SQL, tx=tx)
     return chartId
 
+def fetchChartPathFromChartId(chartId, tx=""):
+    SQL = "select chartPath from SfcChart where ChartId = %d" % (chartId)
+    chartPath = system.db.runScalarQuery(SQL, tx=tx)
+    return chartPath
+
+
 def fetchStepIdFromUUID(stepUUID, tx):
     SQL = "select stepId from SfcStep where StepUUID = '%s'" % (stepUUID)
     stepId = system.db.runScalarQuery(SQL, tx=tx)

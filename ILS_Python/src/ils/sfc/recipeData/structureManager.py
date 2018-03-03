@@ -151,17 +151,31 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
     log.tracef("Factory Ids: %s", str(stepFactoryIds))
     
     try:
-        # Fetch the chart id (the database id)
+        # Determine if the chart exists using the resource Id.  
+        # If a chart path is changed, the resourceId does not change so update the path.
         SQL = "select * from SfcChart where ChartResourceId = %d" % (parentResourceId)
         pds =  system.db.runQuery(SQL, tx=txId)
         
-    
         # There really shouldn't be a way that the chart is not already inserted...
         if len(pds) == 0:
-            log.tracef("The chart did not already exist, creating a new one...")
-            SQL = "insert into SfcChart (ChartPath, chartResourceId) values ('%s', %d)" % (parentChartPath, parentResourceId)
-            chartId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
-            log.tracef("...inserted chart with id: %d", chartId)
+            log.tracef("The chart resource id did not exist, checking the chart path...")
+            
+            SQL = "select * from SfcChart where ChartPath = '%s'" % (parentChartPath)
+            pds =  system.db.runQuery(SQL, tx=txId)
+            
+            if len(pds) == 0:
+                log.tracef("...Neither the chart resource id nor the chart path exist...")
+                SQL = "insert into SfcChart (ChartPath, chartResourceId) values ('%s', %d)" % (parentChartPath, parentResourceId)
+                chartId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
+                log.tracef("...inserted chart with id: %d", chartId)
+            else:
+                # Update the resource Id
+                record = pds[0]
+                chartId = record["ChartId"]
+                log.tracef("Updating the resource id...")
+                SQL = "update SfcChart set ChartResourceId = '%s' where ChartPath = '%s'" % (parentResourceId, parentChartPath)
+                rows = system.db.runUpdateQuery(SQL, tx=txId)
+                log.tracef("...updated %d existing sfcChart by chartPath", rows)
         else:
             record = pds[0]
             chartId = record["ChartId"]

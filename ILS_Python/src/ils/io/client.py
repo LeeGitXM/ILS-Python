@@ -1,8 +1,8 @@
 '''
 Created on Dec 26, 2016
 
-This module defined that IO API that can be used from a client where the write will be performed in the gateway.
-If these APIswill be used it is up to the client to poll te status tags of the write targets since these APIs send
+This module defines the IO API that can be used from a client where the write will be performed in the gateway.
+It is up to the client to poll the status tags of the write targets since these APIs send
 messages to the gateway to perform the writes asynchronously.  There is no return status possible from the APIs.
 Although this API layer is intended for calling from a Vision client, it works equally from gateway scope, whether
 called from a tag change script or a SFC; thus the need to pass in the project.

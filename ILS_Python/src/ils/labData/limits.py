@@ -195,11 +195,13 @@ def fetchLimits(database = ""):
         return upperSQCLimit, lowerSQCLimit
     #------------------------------------------
         
-    
     maxStandardDeviations = 3.0
     standardDeviationsToValidityLimits = system.tag.read("Configuration/LabData/standardDeviationsToValidityLimits").value
-    log.trace("Fetching new Limits...")
-    log.trace("The old limits are: %s" % (str(limits)))
+    '''
+    These should be trace, but I'm interested in what happens on the first cycle...
+    '''
+    log.info("Fetching new Limits...")
+    log.info("The old limits are: %s" % (str(limits)))
     SQL = "select * from LtLimitView"
     sqlLog.trace(SQL)
     pds = system.db.runQuery(SQL, database)
@@ -214,9 +216,7 @@ def fetchLimits(database = ""):
             if limitType == "SQC":
                 upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation=getSQCLimits(record, oldLimit)
 
-                if oldLimit["UpperSQCLimit"] != upperSQCLimit or \
-                    oldLimit["LowerSQCLimit"] != lowerSQCLimit:
-
+                if oldLimit.get("UpperSQCLimit", None) != upperSQCLimit or oldLimit.get("LowerSQCLimit", None) != lowerSQCLimit:
                     log.trace("An existing SQC limit has changed")
                     log.trace("Old: %s" % (str(oldLimit)))
 
