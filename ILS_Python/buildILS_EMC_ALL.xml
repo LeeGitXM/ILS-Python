@@ -41,5 +41,12 @@
 			</fileset>
 		</copy>
 		
+		<echo message="Deploying python scripts to ${test.py.lib}" />
+		<copy todir="${test.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
 	</target>
 </project>
