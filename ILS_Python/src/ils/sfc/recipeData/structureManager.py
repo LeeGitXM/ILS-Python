@@ -350,3 +350,4 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
         log.errorf(errorTxt)
         system.db.rollbackTransaction(txId)
         system.db.closeTransaction(txId)
+        raise Exception("Database Update Exception in structureManager. %s", errorTxt)
