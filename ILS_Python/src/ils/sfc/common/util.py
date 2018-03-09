@@ -218,7 +218,9 @@ def chartIsRunning(chartPath):
     '''Check if the given chart is running. '''
     ds = system.sfc.getRunningCharts(chartPath)
     if ds.rowCount > 0:
-        return True
+        chartState = ds.getValueAt(0, "ChartState")
+        if chartState in ["Running", "Paused"]:
+            return True
     return False
 
 def logExceptionCause(contextMsg, logger=None):
