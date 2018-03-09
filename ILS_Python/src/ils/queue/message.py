@@ -5,6 +5,7 @@ Created on Sep 9, 2014
 '''
 import  system, string
 from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
+from ils.common.windowUtil import positionWindow
 from ils.common.error import catchError
 log = system.util.getLogger("com.ils.queue")
 
@@ -142,7 +143,7 @@ def clear(queueKey, db = ''):
     system.db.runUpdateQuery(SQL, db)
 
 
-def view(queueKey, useCheckpoint=False, silent=False):
+def view(queueKey, useCheckpoint=False, silent=False, position="center", scale=1.0):
     windowName = 'Queue/Message Queue'
     
     # First check if this queue is already displayed
@@ -159,7 +160,8 @@ def view(queueKey, useCheckpoint=False, silent=False):
 
     print "Opening a queue window..."
     window=system.nav.openWindowInstance(windowName, {'key': queueKey, 'useCheckpoint': useCheckpoint})
-    system.nav.centerWindow(window)
+#     system.nav.centerWindow(window)
+    positionWindow(window, position, scale)
     
 
 def initializeView(rootContainer, db=""):

@@ -189,6 +189,8 @@ def sfcCloseWindowByName(payload):
         system.nav.closeWindow(window)
 
 def sfcShowQueue(payload):
+    position=payload[POSITION]
+    scale=payload[SCALE]
     queueKey=payload['queueKey']
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
@@ -203,7 +205,7 @@ def sfcShowQueue(payload):
 #        return
 
     from ils.queue.message import view
-    view(queueKey, useCheckpoint=True, silent=True)
+    view(queueKey, useCheckpoint=True, silent=True, position=position, scale=scale)
         
 def sfcPrintWindow(payload):
     windowName = payload['window']
