@@ -9,48 +9,25 @@ from ils.common.config import getDatabaseClient
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened"
-    database=getDatabaseClient()
-    txId=system.db.beginTransaction(database, timeout=600000)
-    rootContainer.txId=txId
+    
     refreshMaster(rootContainer)
     refreshDetails(rootContainer)
 
 # This is called from a timer on the window and is called to keep the transaction open.
 def refreshTransaction(rootContainer):
-    txId=rootContainer.txId
+    db=getDatabaseClient()
     print "Refreshing the database transaction..."
     SQL = "select count(*) from SfcRecipeDataKeyMaster"
-    rows=system.db.runScalarQuery(SQL,tx=txId) 
+    rows=system.db.runScalarQuery(SQL,db) 
     print "There are %i key families" % (rows)
     
-def ok(event):
-    print "In ok"
-    rootContainer=event.source.parent
-    txId=rootContainer.txId
-    system.db.commitTransaction(txId)
-    system.db.closeTransaction(txId)
-    system.nav.closeParentWindow(event)
-
-def applyCallback(event):
-    print "In applyCallback"
-    rootContainer=event.source.parent
-    txId=rootContainer.txId
-    system.db.commitTransaction(txId)
-
-def cancel(event):
-    print "In cancel"
-    rootContainer=event.source.parent
-    txId=rootContainer.txId
-    system.db.rollbackTransaction(txId)
-    system.db.closeTransaction(txId)
-    system.nav.closeParentWindow(event)
     
 def refreshMaster(rootContainer):
     print "...refreshing master..."
     SQL = "SELECT KeyName FROM SfcRecipeDataKeyMaster ORDER BY KeyName"
     print SQL
-    txId=rootContainer.txId
-    pds=system.db.runQuery(SQL, tx=txId)
+    db=getDatabaseClient()
+    pds=system.db.runQuery(SQL, db)
     masterList=rootContainer.getComponent("Left List")
     masterList.data=pds
 
@@ -59,10 +36,10 @@ def addMaster(rootContainer):
     if masterKey == None or masterKey == "":
         return
     
-    txId=rootContainer.txId
+    db=getDatabaseClient()
     SQL = "insert into SFCRecipeDataKeyMaster (KeyName) values ('%s')" % (masterKey)
     print SQL
-    system.db.runUpdateQuery(SQL,tx=txId)
+    system.db.runUpdateQuery(SQL, db)
     refreshMaster(rootContainer)
 
 def deleteMaster(rootContainer):
@@ -74,11 +51,11 @@ def deleteMaster(rootContainer):
     ds=masterList.data
     selectedKey=ds.getValueAt(masterList.selectedIndex, 0)
     
-    txId=rootContainer.txId
+    db=getDatabaseClient()
     SQL = "delete from SFCRecipeDataKeyMaster where KeyName = '%s'" % (selectedKey)
     print SQL
     
-    system.db.runUpdateQuery(SQL,tx=txId)
+    system.db.runUpdateQuery(SQL, db)
     refreshMaster(rootContainer)
     refreshDetails(rootContainer)
 
@@ -94,7 +71,7 @@ def refreshDetails(rootContainer):
     if masterList.selectedIndex < 0:
         return
     
-    txId=rootContainer.txId
+    db=getDatabaseClient()
     ds=masterList.data
     selectedKey=ds.getValueAt(masterList.selectedIndex, 0)
     print "The user selected:", selectedKey
@@ -105,7 +82,7 @@ def refreshDetails(rootContainer):
         " order by KeyIndex" % (selectedKey)
     print SQL
     
-    pds=system.db.runQuery(SQL, tx=txId)
+    pds=system.db.runQuery(SQL, db)
     detailList.data=pds
     detailList.rowCount=len(pds)
     
@@ -114,7 +91,7 @@ def addDetail(rootContainer):
     if keyValue == None or keyValue == "":
         return
     
-    txId=rootContainer.txId
+    db=getDatabaseClient()
     
     # Get the Id for the family - there should be something selected.
     masterList=rootContainer.getComponent("Left List")
@@ -122,7 +99,7 @@ def addDetail(rootContainer):
         return
     ds=masterList.data
     keyName=ds.getValueAt(masterList.selectedIndex, 0)
-    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName,tx=txId)
+    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName, db)
     
     # Get the number of the elements in the right list and this will be 
     detailList=rootContainer.getComponent("Right List")
@@ -133,7 +110,7 @@ def addDetail(rootContainer):
         "values (%i, '%s', %i)" % (keyId, keyValue, idx)
     print SQL
 
-    system.db.runUpdateQuery(SQL,tx=txId)
+    system.db.runUpdateQuery(SQL, db)
     refreshMaster(rootContainer)
 
 def deleteDetail(rootContainer):
@@ -145,12 +122,12 @@ def deleteDetail(rootContainer):
     if detailList.selectedIndex < 0:
         return
     
-    txId=rootContainer.txId
+    db=getDatabaseClient()
     
     # Get the id of the family key
     ds=masterList.data
     keyName=ds.getValueAt(masterList.selectedIndex, 0)
-    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName,tx=txId)
+    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName, db)
 
     ds=detailList.data
     selectedKey=ds.getValueAt(detailList.selectedIndex, 0)
@@ -159,7 +136,7 @@ def deleteDetail(rootContainer):
     SQL = "delete from SFCRecipeDataKeyDetail where KeyId = %i and KeyValue = '%s'" % (keyId, selectedKey)
     print SQL
     
-    system.db.runUpdateQuery(SQL,tx=txId)
+    system.db.runUpdateQuery(SQL, db)
     refreshDetails(rootContainer)
     
 def moveUp(rootContainer):
@@ -173,12 +150,12 @@ def moveUp(rootContainer):
     if detailList.selectedIndex < 1:
         return
 
-    txId=rootContainer.txId
+    db=getDatabaseClient()
 
     # Get the id of the family key
     ds=masterList.data
     keyName=ds.getValueAt(masterList.selectedIndex, 0)
-    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName,tx=txId)
+    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName, db)
 
     ds=detailList.data
     keyValue=ds.getValueAt(detailList.selectedIndex, 0)
@@ -190,14 +167,14 @@ def moveUp(rootContainer):
     SQL = "update SfcRecipeDataKeyDetail set KeyIndex = %i "\
         " where keyValue = '%s' and keyId = %i" % (idx-1, keyValue, keyId)
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL, db)
     
     # Now move the previous row down 1
     keyValue=ds.getValueAt(detailList.selectedIndex - 1, 0)
     SQL = "update SfcRecipeDataKeyDetail set KeyIndex = %i "\
         " where keyValue = '%s' and keyId = %i" % (idx, keyValue, keyId)
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL, db)
 
     refreshDetails(rootContainer)
     detailList.selectedIndex = idx - 1
@@ -213,12 +190,12 @@ def moveDown(rootContainer):
     if detailList.selectedIndex < 0 or detailList.selectedIndex > detailList.data.rowCount - 2:
         return
 
-    txId=rootContainer.txId
+    db=getDatabaseClient()
 
     # Get the id of the family key
     ds=masterList.data
     keyName=ds.getValueAt(masterList.selectedIndex, 0)
-    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName,tx=txId)
+    keyId=system.db.runScalarQuery("select KeyId from SfcRecipeDataKeyMaster where KeyName = '%s' " % keyName, db)
 
     ds=detailList.data
     keyValue=ds.getValueAt(detailList.selectedIndex, 0)
@@ -230,14 +207,14 @@ def moveDown(rootContainer):
     SQL = "update SfcRecipeDataKeyDetail set KeyIndex = %i "\
         " where keyValue = '%s' and keyId = %i" % (idx+1, keyValue, keyId)
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL, db)
     
     # Now move the next row up 1
     keyValue=ds.getValueAt(detailList.selectedIndex + 1, 0)
     SQL = "update SfcRecipeDataKeyDetail set KeyIndex = %i "\
         " where keyValue = '%s' and keyId = %i" % (idx, keyValue, keyId)
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL, db)
 
     refreshDetails(rootContainer)
     detailList.selectedIndex = idx + 1

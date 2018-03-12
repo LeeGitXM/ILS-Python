@@ -35,7 +35,7 @@ def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
     runId = getTopChartRunId(chartScope)
     isolationMode = getIsolationMode(chartScope)
-    providerName = getProviderName(isolationMode)
+    providerName = getProviderName(chartScope)
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
     recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)

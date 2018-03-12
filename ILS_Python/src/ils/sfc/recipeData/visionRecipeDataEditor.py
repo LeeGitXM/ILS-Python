@@ -106,10 +106,10 @@ def internalFrameOpened(rootContainer):
             valueType = record["ValueType"]
             setArrayTableColumnVisibility(rootContainer, valueType)
             
-            rowIndexRecipeDataId = record["RowIndexRecipeDataId"]
-            columnIndexRecipeDataId = record["ColumnIndexRecipeDataId"]
+            rowIndexKeyId = record["RowIndexKeyId"]
+            columnIndexKeyId = record["ColumnIndexKeyId"]
             
-            if rowIndexRecipeDataId == None and columnIndexRecipeDataId == None:
+            if rowIndexKeyId == None and columnIndexKeyId == None:
                 SQL = "select * from SfcRecipeDataMatrixElementView where recipeDataId = %s order by RowIndex, ColumnIndex" % (recipeDataId)
                 pds = system.db.runQuery(SQL, db)
                 rootContainer.matrixValuesDataset = pds
@@ -124,6 +124,8 @@ def internalFrameOpened(rootContainer):
 
             else:
                 print "The matrix is keyed!"
+                rowLabels = []
+                columnLabels = []
                 
                 # Fetch the matrix data
                 SQL = "select * from SfcRecipeDataMatrixElementView where recipeDataId = %s order by RowIndex, ColumnIndex" % (recipeDataId)
@@ -132,9 +134,9 @@ def internalFrameOpened(rootContainer):
                 rootContainer.matrixValuesDataset = pds
                 
                 # Now Fetch the row Key
-                if rowIndexRecipeDataId != None:
+                if rowIndexKeyId != None:
                     print "Fetching the row key..."
-                    SQL = "select * from SfcRecipeDataArrayElementView where recipeDataId = %s order by ArrayIndex" % (rowIndexRecipeDataId)
+                    SQL = "select * from SfcRecipeDataKeyView where KeyId = %s order by KeyIndex" % (rowIndexKeyId)
                     pdsRow = system.db.runQuery(SQL, db)
                     dsRowKey = system.dataset.toDataSet(pdsRow)
                 
@@ -147,12 +149,16 @@ def internalFrameOpened(rootContainer):
                     rowLabels = []
                     for i in range(dsRowKey.rowCount):
                         if i <= ds.rowCount:
-                            rowLabels.append(dsRowKey.getValueAt(i, "StringValue"))
+                            rowLabels.append(dsRowKey.getValueAt(i, "KeyValue"))
+                else:
+                    for i in range(0, numRows):
+                        rowLabels.append(str(i))
+                    
                             
                 # Now Fetch the array Key
-                if columnIndexRecipeDataId != None:
+                if columnIndexKeyId != None:
                     print "Fetching the column key..."
-                    SQL = "select * from SfcRecipeDataArrayElementView where recipeDataId = %s order by ArrayIndex" % (columnIndexRecipeDataId)
+                    SQL = "select * from SfcRecipeDataKeyView where KeyId = %s order by KeyIndex" % (columnIndexKeyId)
                     pdsColumns = system.db.runQuery(SQL, db)
                     dsColumnKey = system.dataset.toDataSet(pdsColumns)
                 
@@ -165,11 +171,14 @@ def internalFrameOpened(rootContainer):
                     columnLabels = []
                     for i in range(dsColumnKey.rowCount):
                         if i <= ds.rowCount:
-                            columnLabels.append(dsColumnKey.getValueAt(i, "StringValue"))
-                            
-                print "The row labels are: ", rowLabels
-                print "The column labels are: ", columnLabels
-                
+                            columnLabels.append(dsColumnKey.getValueAt(i, "KeyValue"))
+                else:
+                    for i in range(0, numColumns):
+                        columnLabels.append(str(i))
+            
+            print "The row labels are: ", rowLabels
+            print "The column labels are: ", columnLabels
+            
             container = rootContainer.getComponent("Matrix Container")
             updateMatrixTable(container, pds, rowLabels, columnLabels)
 
@@ -350,10 +359,10 @@ def internalFrameOpened(rootContainer):
         elif recipeDataType == MATRIX:
             print "Initializing a new Matrix..."
             ds = rootContainer.matrixDataset
-            ds = system.dataset.setValue(ds, 0, "RowIndexKey", None)
-            ds = system.dataset.setValue(ds, 0, "RowIndexRecipeDataId", None)
-            ds = system.dataset.setValue(ds, 0, "ColumnIndexKey", None)
-            ds = system.dataset.setValue(ds, 0, "ColumnIndexRecipeDataId", None)
+            ds = system.dataset.setValue(ds, 0, "RowIndexKeyName", None)
+            ds = system.dataset.setValue(ds, 0, "RowIndexKeyId", None)
+            ds = system.dataset.setValue(ds, 0, "ColumnIndexKeyName", None)
+            ds = system.dataset.setValue(ds, 0, "ColumnIndexKeyId", None)
             rootContainer.matrixDataset = ds
             container = rootContainer.getComponent("Matrix Container")
             
@@ -560,7 +569,7 @@ def setMatrixRowIndexVisibility(rootContainer, valueType):
         print "Setting the row keys for a keyed matrix..."
         print "...the indexKey is: ", indexKey
         
-        SQL = "select StringValue From SfcRecipeDataArrayElementView where RecipeDataId = %d order by ArrayIndex" % (indexRecipeDataId)
+        SQL = "select KeyValue From SfcRecipeDataKeyView where KeyName = '%s' order by KeyIndex" % (indexKey)
         pds = system.db.runQuery(SQL, db)
         
         ds = table.data
@@ -568,7 +577,7 @@ def setMatrixRowIndexVisibility(rootContainer, valueType):
         
         i = 0
         for record in pds:
-            key = record["StringValue"]
+            key = record["KeyValue"]
             print "Key: ", key
             
             if i < rowsInArray:
@@ -640,11 +649,11 @@ def setMatrixColumnIndexVisibility(rootContainer, valueType):
         ds = system.dataset.toDataSet(header, data)
         table.data = ds
     else:
-        SQL = "select StringValue From SfcRecipeDataArrayElementView where RecipeDataId = %d order by ArrayIndex" % (indexRecipeDataId)
+        SQL = "select KeyValue From SfcRecipeDataKeyView where KeyName = '%s' order by KeyIndex" % (indexKey)
         pds = system.db.runQuery(SQL, db)
         header = ["row"]
         for record in pds:
-            key = record["StringValue"]
+            key = record["KeyValue"]
             header.append(key)
         print "New header: ", header
         newColumnCount = len(header)
@@ -804,7 +813,7 @@ def refreshComboBoxes(event):
         
         ds = rootContainer.matrixDataset
         rows = ds.rowCount  # Not sure what this is suppossed to do
-        indexKey = ds.getValueAt(0,"RowIndexKey")
+        indexKey = ds.getValueAt(0,"RowIndexKeyName")
         print "Setting the row index key to: ", indexKey
         if rows == 0:
             combo.selectedValue = -1
@@ -814,7 +823,7 @@ def refreshComboBoxes(event):
         combo = container.getComponent("Column Index Key Dropdown")
         addUnselectionChoice(combo)
         
-        indexKey = ds.getValueAt(0,"ColumnIndexKey")
+        indexKey = ds.getValueAt(0,"ColumnIndexKeyName")
         print "Setting the column index key to: ", indexKey
         if rows == 0:
             combo.selectedValue = -1
@@ -1437,8 +1446,8 @@ def saveMatrix(rootContainer):
     valueType = matrixContainer.getComponent("Value Type Dropdown").selectedStringValue
     valueTypeId = matrixContainer.getComponent("Value Type Dropdown").selectedValue
     
-    rowIndexRecipeDataId = matrixContainer.getComponent("Row Index Key Dropdown").selectedValue
-    columnIndexRecipeDataId = matrixContainer.getComponent("Column Index Key Dropdown").selectedValue
+    rowIndexKeyId = matrixContainer.getComponent("Row Index Key Dropdown").selectedValue
+    columnIndexKeyId = matrixContainer.getComponent("Column Index Key Dropdown").selectedValue
     
     table = matrixContainer.getComponent("Matrix Table")
     ds = table.data
@@ -1460,16 +1469,16 @@ def saveMatrix(rootContainer):
             recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
             rootContainer.recipeDataId = recipeDataId
             
-            SQL = "Insert into SfcRecipeDataMatrix (RecipeDataId, ValueTypeId, Rows, Columns, RowIndexKeyRecipeDataId, ColumnIndexKeyRecipeDataId) values (?, ?, ?, ?, ?, ?)"
+            SQL = "Insert into SfcRecipeDataMatrix (RecipeDataId, ValueTypeId, Rows, Columns, RowIndexKeyId, ColumnIndexKeyId) values (?, ?, ?, ?, ?, ?)"
             args = [recipeDataId, valueTypeId, rows, columns]
             
-            if rowIndexRecipeDataId > 0:
-                args.append(rowIndexRecipeDataId)
+            if rowIndexKeyId > 0:
+                args.append(rowIndexKeyId)
             else:
                 args.append(None)
             
-            if columnIndexRecipeDataId > 0:
-                args.append(columnIndexRecipeDataId)
+            if columnIndexKeyId > 0:
+                args.append(columnIndexKeyId)
             else:
                 args.append(None)
 
@@ -1481,16 +1490,18 @@ def saveMatrix(rootContainer):
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
 
-            if recipeDataType == "Matrix":
-                SQL = "Update SfcRecipeDataMatrix set ValueTypeId=%d, rows=%d, columns=%d where RecipeDataId = %d" % (valueTypeId, rows, columns, recipeDataId)
-            else:
-                rowIndexKeyRecipeDataId = matrixContainer.getComponent("Row Index Key Dropdown").selectedValue
-                columnIndexKeyRecipeDataId = matrixContainer.getComponent("Column Index Key Dropdown").selectedValue
-                SQL = "Update SfcRecipeDataMatrix set ValueTypeId=%d, RowIndexKeyRecipeDataId=%d, ColumnIndexKeyRecipeDataId=%d where RecipeDataId = %d" % \
-                    (valueTypeId, rowIndexKeyRecipeDataId, columnIndexKeyRecipeDataId, recipeDataId)
-
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            rowIndexKeyId = matrixContainer.getComponent("Row Index Key Dropdown").selectedValue
+            if rowIndexKeyId <= 0:
+                rowIndexKeyId = None
+                
+            columnIndexKeyId = matrixContainer.getComponent("Column Index Key Dropdown").selectedValue
+            if columnIndexKeyId <= 0:
+                columnIndexKeyId = None
+                
+            SQL = "Update SfcRecipeDataMatrix set ValueTypeId=?, RowIndexKeyId=?, ColumnIndexKeyId=? where RecipeDataId = ?"
+            args = [valueTypeId, rowIndexKeyId, columnIndexKeyId, recipeDataId]
+            print SQL, args
+            system.db.runPrepUpdate(SQL, args, tx=tx)
 
         # Now deal with the matrix.  First delete all of the rows than insert new ones.  There are no foreign keys or ids so this should be fast and easy.
         # There is a cascade delete to the SFcRecipeDataValue table, but the PK is there, not here

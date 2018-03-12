@@ -293,7 +293,7 @@ def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDiff
             return False
         
     elif val1IsText and val2IsText:
-        if val1 == val2:
+        if string.upper(val1) == string.upper(val2):
             return True
         else:
             return False

@@ -324,8 +324,8 @@ def getMatrixDescription(recipeDataId, desc):
         valueType = record["ValueType"]
         rows = record["Rows"]
         columns = record["Columns"]
-        rowKey = record["RowIndexKey"]
-        columnKey = record["ColumnIndexKey"]
+        rowKey = record["RowIndexKeyName"]
+        columnKey = record["ColumnIndexKeyName"]
         matrixDesc = "A %d X %d matrix: " % (rows, columns)
         
         if desc == "":
