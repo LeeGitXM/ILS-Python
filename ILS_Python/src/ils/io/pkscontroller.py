@@ -7,18 +7,20 @@ Created on Dec 1, 2014
 import system, string, time
 import ils.io.controller as controller
 import ils.io.opcoutput as opcoutput
-from java.util import Date
 log = system.util.getLogger("com.ils.io")
 
 class PKSController(controller.Controller):
     opTag = None
     spTag = None
+    CONFIRM_TIMEOUT = 10.0
+    PERMISSIVE_LATENCY_TIME = 0.0
     
     def __init__(self,path):
         controller.Controller.__init__(self,path)
         
         self.spTag = opcoutput.OPCOutput(path + '/sp')
         self.opTag = opcoutput.OPCOutput(path + '/op')
+        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
 
     # Reset the UDT in preparation for a write 
     def reset(self):
@@ -107,7 +109,7 @@ class PKSController(controller.Controller):
             log.trace("   confirming permissive...")
             system.tag.write(self.path + "/writeStatus", "Confirming Permissive")
             from ils.io.util import confirmWrite
-            confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue)
+            confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue, self.CONFIRM_TIMEOUT)
  
             if confirmed:
                 log.trace("   confirmed Permissive write: %s - %s" % (self.path, permissiveValue))
@@ -117,6 +119,9 @@ class PKSController(controller.Controller):
                 system.tag.write(self.path + "/writeStatus", "Failure")
                 system.tag.write(self.path + "/writeErrorMessage", errorMessage)
                 return confirmed, errorMessage
+        else:
+            log.trace("...dwelling in lieu of permissive confirmation...")
+            time.sleep(self.PERMISSIVE_LATENCY_TIME)
             
         # If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
         # write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
@@ -128,11 +133,12 @@ class PKSController(controller.Controller):
          
         # Return the permissive to its original value.  Don't let the success or failure of this override the result of the 
         # overall write.
+        
         # TODO wait for a latency time
         log.trace("Restoring permissive")
         system.tag.write(self.path + "/permissive", permissiveAsFound)
         if permissiveConfirmation:
-            confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound)
+            confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound, self.CONFIRM_TIMEOUT)
             
             if confirmed:    
                 log.trace("Confirmed Permissive restore: %s" % (self.path))
@@ -261,13 +267,14 @@ class PKSController(controller.Controller):
     # Implement a simple write confirmation.  We know the value that we tried to write, read the tag for a
     # reasonable amount of time.  As soon as we read the value back we are done.  Figuring out the
     # amount of time to wait is the tricky part.  
+    '''
     def confirmWrite(self, val, valueType):  
         log.trace("%s - Confirming the write of <%s> to the %s of %s..." % (__name__, str(val), valueType, self.path))
  
         from ils.io.util import confirmWrite
         confirmation, errorMessage = confirmWrite(self.path + "/" + valueType + "/value", val)
         return confirmation, errorMessage
-
+    '''
     # This method makes sequential writes to ramp either the SP or OP of an Experion controller.  
     # There is no native output ramping capability in EPKS and this method fills the gap.  
     # In addition, it will ramp the SP of a controller that isn't built in G2 as having native EPKS SP Ramp capability.  
@@ -414,7 +421,7 @@ class PKSController(controller.Controller):
             log.trace("   confirming permissive...")
             system.tag.write(self.path + "/writeStatus", "Confirming Permissive")
             from ils.io.util import confirmWrite
-            confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue)
+            confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue, self.CONFIRM_TIMEOUT)
  
             if confirmed:
                 log.trace("   confirmed Permissive write: %s - %s" % (self.path, permissiveValue))
@@ -424,6 +431,9 @@ class PKSController(controller.Controller):
                 system.tag.write(self.path + "/writeStatus", "Failure")
                 system.tag.write(self.path + "/writeErrorMessage", errorMessage)
                 return confirmed, errorMessage
+        else:
+            log.trace("...dwelling in lieu of permissive confirmation...")
+            time.sleep(self.PERMISSIVE_LATENCY_TIME)
             
         # If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
         # write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
@@ -440,11 +450,15 @@ class PKSController(controller.Controller):
          
         # Return the permissive to its original value.  Don't let the success or failure of this override the result of the 
         # overall write.
-        # TODO wait for a latency time
+        
+        # Since we didn't confirm the write above, we need to wait for a latency time to give the value a chance to 
+        log.trace("...dwelling after the value write and before the permissive restore...")
+        time.sleep(self.PERMISSIVE_LATENCY_TIME)
+
         log.trace("Restoring permissive")
         system.tag.write(self.path + "/permissive", permissiveAsFound)
         if permissiveConfirmation:
-            confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound)
+            confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound, self.CONFIRM_TIMEOUT)
             
             if confirmed:    
                 log.trace("Confirmed Permissive restore: %s" % (self.path))

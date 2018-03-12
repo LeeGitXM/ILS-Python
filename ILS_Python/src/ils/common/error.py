@@ -30,7 +30,7 @@ def catchError(source="", contextMsg=""):
         # This must be a Python exception which doesn't support getCause()
         pass
 
-    txt = "Caught an error %s:%s:%s:%s:%s" % \
+    txt = "Caught an error in %s.\n%s\n\n%s:%s:%s" % \
         (source, contextMsg, exception, tracebackMsg, cause)
 
     print txt

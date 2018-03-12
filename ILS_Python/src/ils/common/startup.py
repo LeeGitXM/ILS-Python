@@ -152,6 +152,7 @@ def createTags(tagProvider, log):
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
     data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
     data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
+    data.append([path, "opcPermissiveLatencySeconds", "Float4", "4.0"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

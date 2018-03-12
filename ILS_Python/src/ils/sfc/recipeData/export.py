@@ -37,24 +37,86 @@ def exportCallback(event):
     if filename == None:
         return
     
+    keyTxt = exportKeysForTree(chartId, db)
     txt = exportTree(chartId, db)
-    txt = "<data>\n" + txt + "</data>"
+    txt = "<data>\n" + keyTxt + txt + "</data>"
     system.file.writeFile(filename, txt, False)
+
+
+def exportKeysForTree(chartId, db):
+    log.infof("Exporting keys for chart Id: %d", chartId)
+    sfcRecipeDataShowProductionOnly = False
+    
+    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
+    
+    chartIds = [chartId]
+    newKids = True
+    
+    while newKids:
+        newKids = False
+        for chartId in chartIds:
+            newChildren = fetchChildren(chartId, chartIds, hierarchyPDS)
+            if len(newChildren) > 0:
+                log.tracef("Found that %d had new kids: %s", chartId, str(newChildren))
+                newKids = True
+                chartIds = chartIds + newChildren
+    
+    log.tracef("The chart ids are: %s", str(chartIds))
+    
+    txt = ""
+    keys = []
+    for chartId in chartIds:
+        SQL = "select RecipeDataId from SfcRecipeDataView where chartId = %d and RecipeDataType = 'Matrix'" % (chartId)
+        pds = system.db.runQuery(SQL, db)
+        
+        for record in pds:
+            print "Found matrix id: ", record["RecipeDataId"]
+            SQL = "select RowIndexKeyId, ColumnIndexKeyId from SfcRecipeDataMatrix where RecipeDataId = %d" % (record["RecipeDataId"])
+            keyPds = system.db.runQuery(SQL, db)
+            for record in keyPds:
+                if record["RowIndexKeyId"] != None and record["RowIndexKeyId"] not in keys:
+                    print "Found a new Matrix row key: ", record["RowIndexKeyId"]
+                    keys.append(record["RowIndexKeyId"])
+                if record["ColumnIndexKeyId"] != None and record["ColumnIndexKeyId"] not in keys:
+                    print "Found a new matrix column key: ", record["ColumnIndexKeyId"]
+                    keys.append(record["ColumnIndexKeyId"])
+        
+        SQL = "select RecipeDataId from SfcRecipeDataView where chartId = %d and RecipeDataType = 'Array'" % (chartId)
+        pds = system.db.runQuery(SQL, db)
+        
+        for record in pds:
+            print "Found array id: ", record["RecipeDataId"]
+            SQL = "select IndexKeyId from SfcRecipeDataArray where RecipeDataId = %d and IndexKeyId is not null" % (record["RecipeDataId"])
+            keyPds = system.db.runQuery(SQL, db)
+            for record in keyPds:
+                if record["IndexKeyId"] not in keys:
+                    print "Found a new Array key: ", record["IndexKeyId"]
+                    keys.append(record["IndexKeyId"])
+        
+#        txt = txt + exportKeysForChart(chartId, db)
+    print "The referenced keys are: ", keys
+    
+    for key in keys:
+        SQL = "select * from SfcRecipeDataKeyView where KeyId = %d order by KeyIndex" % (key)
+        pds = system.db.runQuery(SQL, db)
+        row = 1
+        for record in pds:
+            if row == 1:
+                txt = txt + "<key name='%s'>\n" % (record["KeyName"])
+            txt = txt + "<element value='%s' index='%d'/>\n" % (record["KeyValue"], record["KeyIndex"])
+            row = row + 1
+        txt = txt + "</key>\n"
+    
+    print "The key XML is: ", txt
+    return txt
+
+
+
 
 def exportTree(chartId, db):
     log.infof("Exporting chart Id: %d", chartId)
     sfcRecipeDataShowProductionOnly = False
 
-    def fetchChildren(chartId, visitedCharts, hierarchyPDS):
-        log.tracef("Looking for the children of chart %d", chartId)
-        kids = getChildren(chartId, hierarchyPDS)
-        newChildren = []
-        for kid in kids:
-            if kid not in visitedCharts:
-                log.tracef("Found a new kid: %d", kid)
-                newChildren.append(kid)
-        return newChildren
-    
     hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
     
     chartIds = [chartId]
@@ -75,6 +137,16 @@ def exportTree(chartId, db):
     for chartId in chartIds:
         txt = txt + exportChart(chartId, db)
     return txt
+
+def fetchChildren(chartId, visitedCharts, hierarchyPDS):
+    log.tracef("Looking for the children of chart %d", chartId)
+    kids = getChildren(chartId, hierarchyPDS)
+    newChildren = []
+    for kid in kids:
+        if kid not in visitedCharts:
+            log.tracef("Found a new kid: %d", kid)
+            newChildren.append(kid)
+    return newChildren
 
 def exportChart(chartId, db):
     print "Exporting ", chartId
@@ -235,14 +307,14 @@ def exportRecipeDataForStep(stepId, db):
             
             
         elif recipeDataType == "Matrix":
-            SQL = "select valueType, rows, columns, rowIndexKey, columnIndexKey from SfcRecipeDataMatrixView where RecipeDataId = %d" % (recipeDataId)
+            SQL = "select valueType, rows, columns, rowIndexKeyName, columnIndexKeyName from SfcRecipeDataMatrixView where RecipeDataId = %d" % (recipeDataId)
             record = fetchFirstRecord(SQL, db)
             valueType = record["valueType"]
             recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' rows='%d' columns='%d' rowIndexKey='%s' columnIndexKey='%s' >" % \
-                (valueType, record["rows"], record["columns"], record["rowIndexKey"], record["columnIndexKey"])
+                (valueType, record["rows"], record["columns"], record["rowIndexKeyName"], record["columnIndexKeyName"])
             
             '''
-            The indexKey is just another array - hopefully it is in the same scope as this.  The order of export/import doesn't matter because the array data is still stored the same, 
+            The index is just another array.  The order of export/import doesn't matter because the array data is still stored the same, 
             the index key is only used as a convenience in the UI and API.
             '''
             
