@@ -388,6 +388,7 @@ def fetchOutputsForListOfFinalDiagnosis(finalDiagnosisIdList, database=""):
         " and L.LookupId = QO.FeedbackMethodId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
+        " and QO.Active = 1 "\
         " and FD.FinalDiagnosisId in (%s) "\
         " order by QuantOutputName"  % ( ids )
     print SQL
