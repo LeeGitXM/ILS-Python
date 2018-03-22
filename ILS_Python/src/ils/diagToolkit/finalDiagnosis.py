@@ -968,6 +968,11 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], 
                          quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
 
+                '''
+                If we auto-nodownload on the highest priority problem, we should do another manage just to check if there is an active lower priority problem.
+                '''
+                requestToManage(applicationName, database, provider)
+        
                 # I just added this - 5/9/16, this used to continue on.
                 return RECOMMENDATION_ERROR, 0, False, explanation, diagnosisEntryId, noChange
          
@@ -1002,6 +1007,11 @@ def manage(application, recalcRequested=False, database="", provider=""):
                          quantOutputIds=quantOutputIds, actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, 
                          database=database, provider=provider)
         notificationText = RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS
+        
+        '''
+        If we auto-nodownload on the highest priority problem, we should do another manage just to check if there is an active lower priority problem.
+        '''
+        requestToManage(applicationName, database, provider)
     else:
         log.info("Finished managing recommendations - there are %i significant Quant Outputs (There are %i quantOutputs)" % (numSignificantRecommendations, len(finalQuantOutputs)))
     

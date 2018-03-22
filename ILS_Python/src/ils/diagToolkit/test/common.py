@@ -246,7 +246,7 @@ def run():
             
             logger.trace("...done! (application = %s)" % (applicationName))
             
-            time.sleep(30)
+            time.sleep(35)
             ds = system.dataset.setValue(ds, row, 'result', 'Analyzing')
             system.tag.write(tableTagPath, ds) 
             
@@ -378,7 +378,14 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     FD124calculationMethod='',
     FD125calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_5',
     FD126calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_6',
-    postProcessingCallback=None
+    postProcessingCallback=None,
+    FD111Priority=2.3,
+    FD121Priority=4.5,
+    FD122Priority=4.5,
+    FD123Priority=9.8,
+    FD124Priority=4.5,
+    FD125Priority=10.2,
+    FD126Priority=1.2
     ):
     
     family = 'TESTFamily1_1'
@@ -386,7 +393,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     familyId=insertFamily(family, appId, familyPriority)
 
     finalDiagnosis = 'TESTFD1_1_1'
-    finalDiagnosisPriority=2.3
+    finalDiagnosisPriority=FD111Priority
     textRecommendation = "Final Diagnosis 1.1.1"
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD111calculationMethod, 
         textRecommendation, postProcessingCallback=postProcessingCallback)
@@ -397,7 +404,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     familyId=insertFamily(family, appId, familyPriority)
     
     finalDiagnosis = 'TESTFD1_2_1'
-    finalDiagnosisPriority=4.5
+    finalDiagnosisPriority = FD121Priority
     textRecommendation = "Final Diagnosis 1.2.1"
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD121calculationMethod, 
         textRecommendation, postProcessingCallback=postProcessingCallback)
@@ -405,7 +412,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     insertRecommendationDefinition(finalDiagnosisId, T2Id)
 
     finalDiagnosis = 'TESTFD1_2_2'
-    finalDiagnosisPriority=4.5
+    finalDiagnosisPriority=FD122Priority
     textRecommendation = "Final Diagnosis 1.2.2"
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD122calculationMethod, 
         textRecommendation, postProcessingCallback=postProcessingCallback)
@@ -413,7 +420,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     insertRecommendationDefinition(finalDiagnosisId, T3Id)
     
     finalDiagnosis = 'TESTFD1_2_3'
-    finalDiagnosisPriority=9.8
+    finalDiagnosisPriority=FD123Priority
     textRecommendation = "Final Diagnosis 1.2.3"
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD123calculationMethod, 
         textRecommendation, postProcessingCallback=postProcessingCallback)
@@ -422,19 +429,19 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     insertRecommendationDefinition(finalDiagnosisId, T3Id)
     
     finalDiagnosis = 'TESTFD1_2_4'
-    finalDiagnosisPriority=4.5
+    finalDiagnosisPriority=FD124Priority
     textRecommendation = "Final Diagnosis 1.2.4 is CONstant"
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD124calculationMethod, 
         textRecommendation, constant=1, postProcessingCallback=postProcessingCallback)
     
     finalDiagnosis = 'TESTFD1_2_5'
-    finalDiagnosisPriority=10.2
+    finalDiagnosisPriority=FD125Priority
     textRecommendation = "Final Diagnosis 1.2.5 is a low priority text recommendation.  "
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD125calculationMethod, 
         textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback)
 
     finalDiagnosis = 'TESTFD1_2_6'
-    finalDiagnosisPriority=1.2
+    finalDiagnosisPriority=FD126Priority
     textRecommendation = "Final Diagnosis 1.2.6 is a high priority text recommendation which is correct 95% of the time.  "
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD126calculationMethod, 
         textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback)

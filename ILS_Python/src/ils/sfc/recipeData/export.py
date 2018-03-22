@@ -37,17 +37,18 @@ def exportCallback(event):
     if filename == None:
         return
     
-    keyTxt = exportKeysForTree(chartId, db)
-    txt = exportTree(chartId, db)
-    txt = "<data>\n" + keyTxt + txt + "</data>"
+    sfcRecipeDataShowProductionOnly = False
+    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
+    
+    keyTxt = exportKeysForTree(chartId, hierarchyPDS, db)
+    txt = exportTree(chartId, hierarchyPDS, db)
+    structureTxt = exportHierarchy(chartId, hierarchyPDS, db)
+    txt = "<data>\n" + keyTxt + txt + structureTxt + "</data>"
     system.file.writeFile(filename, txt, False)
 
 
-def exportKeysForTree(chartId, db):
+def exportKeysForTree(chartId, hierarchyPDS, db):
     log.infof("Exporting keys for chart Id: %d", chartId)
-    sfcRecipeDataShowProductionOnly = False
-    
-    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
     
     chartIds = [chartId]
     newKids = True
@@ -111,13 +112,8 @@ def exportKeysForTree(chartId, db):
     return txt
 
 
-
-
-def exportTree(chartId, db):
+def exportHierarchy(chartId, hierarchyPDS, db):
     log.infof("Exporting chart Id: %d", chartId)
-    sfcRecipeDataShowProductionOnly = False
-
-    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
     
     chartIds = [chartId]
     newKids = True
@@ -138,6 +134,30 @@ def exportTree(chartId, db):
         txt = txt + exportChart(chartId, db)
     return txt
 
+
+def exportTree(chartId, hierarchyPDS, db):
+    log.infof("Exporting chart Id: %d", chartId)
+    
+    chartIds = [chartId]
+    newKids = True
+    
+    while newKids:
+        newKids = False
+        for chartId in chartIds:
+            newChildren = fetchChildren(chartId, chartIds, hierarchyPDS)
+            if len(newChildren) > 0:
+                log.tracef("Found that %d had new kids: %s", chartId, str(newChildren))
+                newKids = True
+                chartIds = chartIds + newChildren
+    
+    log.tracef("The chart ids are: %s", str(chartIds))
+    
+    txt = ""
+    for chartId in chartIds:
+        txt = txt + exportChart(chartId, db)
+    return txt
+
+
 def fetchChildren(chartId, visitedCharts, hierarchyPDS):
     log.tracef("Looking for the children of chart %d", chartId)
     kids = getChildren(chartId, hierarchyPDS)
@@ -147,6 +167,7 @@ def fetchChildren(chartId, visitedCharts, hierarchyPDS):
             log.tracef("Found a new kid: %d", kid)
             newChildren.append(kid)
     return newChildren
+
 
 def exportChart(chartId, db):
     print "Exporting ", chartId
@@ -159,6 +180,7 @@ def exportChart(chartId, db):
     txt = txt + "</chart>\n\n"
     
     return txt
+
 
 def exportChartSteps(chartId, db):
     print "Exporting ", chartId
@@ -176,6 +198,7 @@ def exportChartSteps(chartId, db):
         stepTxt = stepTxt + "</step>\n\n"
     
     return stepTxt
+
 
 def exportRecipeDataForStep(stepId, db):
     print "Exporting recipe data for step ", stepId

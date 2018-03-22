@@ -10,14 +10,14 @@ from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 logger=system.util.getLogger("ils.test")
 
 project = "XOM"
-T1TagName='Sandbox/Diagnostic/Outputs/T1'
-T2TagName='Sandbox/Diagnostic/Outputs/T2'
-T3TagName='Sandbox/Diagnostic/Outputs/T3'
-TC100_TagName='Sandbox/Diagnostic/Outputs/TC100'
-TC101_TagName='Sandbox/Diagnostic/Outputs/TC101'
-T100_TagName='Sandbox/Diagnostic/Outputs/T100'
-T101_TagName='Sandbox/Diagnostic/Outputs/T101'
-DELAY_BETWEEN_PROBLEMS=12
+T1TagName='DiagnosticToolkit/Outputs/T1'
+T2TagName='DiagnosticToolkit/Outputs/T2'
+T3TagName='DiagnosticToolkit/Outputs/T3'
+TC100_TagName='DiagnosticToolkit/Outputs/TC100'
+TC101_TagName='DiagnosticToolkit/Outputs/TC101'
+T100_TagName='DiagnosticToolkit/Outputs/T100'
+T101_TagName='DiagnosticToolkit/Outputs/T101'
+DELAY_BETWEEN_PROBLEMS=16
 
 def test00():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
@@ -456,6 +456,41 @@ def test14c():
     insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b')
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    return applicationName
+
+def test14d():
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='TESTAPP1'
+    appId=insertApp1()
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
+    insertApp1Families(appId,T1Id,T2Id,T3Id,
+                       FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_1b',
+                       FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3b',
+                       FD121Priority=5.0, FD123Priority=5.0)
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    return applicationName
+
+'''
+The purpose of this test s to test residual recommendations that are not cleaned up when a FD is cleared or a higher priority
+FD comes in.
+'''
+def test14e():
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='TESTAPP1'
+    appId=insertApp1()
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
+    insertApp1Families(appId,T1Id,T2Id,T3Id)
+    
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    time.sleep(DELAY_BETWEEN_PROBLEMS)
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
     
 def test15a():

@@ -14,10 +14,11 @@ def delayCallback(scopeContext, stepProperties):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
 
-    delay = s88Get(chartScope, stepScope, "delay.value", GLOBAL_SCOPE)
-    print "The delay from recipe is: ", delay
+#    delay = s88Get(chartScope, stepScope, "delay.value", GLOBAL_SCOPE)
+#    print "The delay from recipe is: ", delay
     
-    myDelay = delay * 2.5
+    # I'm not really calculating anything but I could...
+    myDelay = 12.3
     print "The newly calculated delay is: ", myDelay
 
     return myDelay
