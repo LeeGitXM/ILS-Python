@@ -63,7 +63,7 @@ def importRecipeData(filename, db):
     try:
         cnt = loadKeys(root, recipeDataKeys, txId)
         system.db.commitTransaction(txId)
-        system.gui.messageBox("Successfully imported %d array / matrix keys!" % (cnt))
+        log.infof("Successfully imported %d array / matrix keys!", cnt)
     except:
         print "Caught an error inserting recipe data - rolling back and closing the transaction"
         system.db.rollbackTransaction(txId)
@@ -226,6 +226,23 @@ def importRecipeData(filename, db):
                         return
                         
         system.db.commitTransaction(txId)
+        
+        '''
+        Now insert the chart hierarchy
+        '''
+        chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", tx=txId)
+        log.tracef("Selected info for %d charts...", len(chartPDS))
+        
+        for parentChild in root.findall("parentChild"):
+            parentChartPath = parentChild.get("parent")
+            childChartPath = parentChild.get("child")
+            stepName = parentChild.get("stepName")
+            insertHierarchy(parentChartPath, stepName, childChartPath, chartPDS, txId)            
+        
+        '''
+        We are done, commit and close the transaction!
+        '''
+        system.db.commitTransaction(txId)
         system.db.closeTransaction(txId)
         system.gui.messageBox("Successfully imported %d charts, %d steps, and %d recipe datums!" % (chartCounter, stepCounter, recipeDataCounter))
     except:
@@ -261,6 +278,22 @@ def loadKeys(root, recipeDataKeys, txId):
         
     return cnt
 
+def insertHierarchy(parentChartPath, stepName, childChartPath, chartPDS, txId):
+    
+    def getChartIdFromPath(chartPath, chartPDS):
+        for chart in chartPDS:
+            if chart["ChartPath"] == chartPath:
+                return chart["ChartId"]
+        return -1
+
+    parentChartId = getChartIdFromPath(parentChartPath, chartPDS)
+    childChartId = getChartIdFromPath(childChartPath, chartPDS)
+    SQL = "Select stepId from SfcStep where ChartId = %s and StepName = '%s'" % (str(parentChartId), stepName)
+    stepId = system.db.runScalarQuery(SQL, tx=txId)
+    
+    SQL = "insert into SfcHierarchy (StepId, ChartId, ChildChartId) values (%s, %s, %s)" % (str(stepId), str(parentChartId), str(childChartId))
+    system.db.runUpdateQuery(SQL, tx=txId)
+    
 def insertChart(chartPath, txId):
     log.infof("Inserting chart: %s...", chartPath)
     

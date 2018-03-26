@@ -39,15 +39,22 @@ def exportCallback(event):
     
     sfcRecipeDataShowProductionOnly = False
     hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
+    log.tracef("Selected %d chart hierarchy records...", len(hierarchyPDS))
     
-    keyTxt = exportKeysForTree(chartId, hierarchyPDS, db)
-    txt = exportTree(chartId, hierarchyPDS, db)
-    structureTxt = exportHierarchy(chartId, hierarchyPDS, db)
+    chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", db)
+    log.tracef("Selected info for %d charts...", len(chartPDS))
+    
+    ''' Export any keys that are used by keyed arrays or matrices. '''
+    keyTxt = exportKeysForTree(chartId, hierarchyPDS, chartPDS, db)
+    
+    ''' Export the tree (Charts, steps, and recipe data) '''
+    txt, structureTxt = exportTree(chartId, hierarchyPDS, chartPDS, db)
+    
     txt = "<data>\n" + keyTxt + txt + structureTxt + "</data>"
     system.file.writeFile(filename, txt, False)
 
 
-def exportKeysForTree(chartId, hierarchyPDS, db):
+def exportKeysForTree(chartId, hierarchyPDS, chartPDS, db):
     log.infof("Exporting keys for chart Id: %d", chartId)
     
     chartIds = [chartId]
@@ -56,7 +63,7 @@ def exportKeysForTree(chartId, hierarchyPDS, db):
     while newKids:
         newKids = False
         for chartId in chartIds:
-            newChildren = fetchChildren(chartId, chartIds, hierarchyPDS)
+            newChildren, aList = fetchChildren(chartId, chartIds, [], hierarchyPDS, chartPDS)
             if len(newChildren) > 0:
                 log.tracef("Found that %d had new kids: %s", chartId, str(newChildren))
                 newKids = True
@@ -112,61 +119,68 @@ def exportKeysForTree(chartId, hierarchyPDS, db):
     return txt
 
 
-def exportHierarchy(chartId, hierarchyPDS, db):
+def getChartPathFromPDS(chartId, chartPDS):
+    for chart in chartPDS:
+        if chart["ChartId"] == chartId:
+            return chart["ChartPath"]
+    return ""
+
+
+def exportTree(chartId, hierarchyPDS, chartPDS, db):
     log.infof("Exporting chart Id: %d", chartId)
     
     chartIds = [chartId]
+    parentChildList = []
     newKids = True
     
     while newKids:
         newKids = False
         for chartId in chartIds:
-            newChildren = fetchChildren(chartId, chartIds, hierarchyPDS)
+            newChildren, parents = fetchChildren(chartId, chartIds, parentChildList, hierarchyPDS, chartPDS)
             if len(newChildren) > 0:
                 log.tracef("Found that %d had new kids: %s", chartId, str(newChildren))
                 newKids = True
                 chartIds = chartIds + newChildren
-    
+
     log.tracef("The chart ids are: %s", str(chartIds))
     
     txt = ""
+    
     for chartId in chartIds:
         txt = txt + exportChart(chartId, db)
-    return txt
+    
+    hierarchyXML = ""
+    print "The parents are:"
+    for record in parentChildList:
+        print record
+        parentChartPath = getChartPathFromPDS(record["parent"], chartPDS)
+        childChartPath = getChartPathFromPDS(record["child"], chartPDS)
+        hierarchyXML = hierarchyXML + "<parentChild parent=\"%s\" child=\"%s\" stepName=\"%s\" />\n" % (parentChartPath, childChartPath, record["stepName"])
+
+    return txt, hierarchyXML
 
 
-def exportTree(chartId, hierarchyPDS, db):
-    log.infof("Exporting chart Id: %d", chartId)
-    
-    chartIds = [chartId]
-    newKids = True
-    
-    while newKids:
-        newKids = False
-        for chartId in chartIds:
-            newChildren = fetchChildren(chartId, chartIds, hierarchyPDS)
-            if len(newChildren) > 0:
-                log.tracef("Found that %d had new kids: %s", chartId, str(newChildren))
-                newKids = True
-                chartIds = chartIds + newChildren
-    
-    log.tracef("The chart ids are: %s", str(chartIds))
-    
-    txt = ""
-    for chartId in chartIds:
-        txt = txt + exportChart(chartId, db)
-    return txt
-
-
-def fetchChildren(chartId, visitedCharts, hierarchyPDS):
+def fetchChildren(chartId, visitedCharts, parentChildList, hierarchyPDS, chartPDS):
     log.tracef("Looking for the children of chart %d", chartId)
-    kids = getChildren(chartId, hierarchyPDS)
+    
+    children = []
+    hierarchyXML = ""
+    log.tracef("Getting the children of chart: %s", str(chartId))
+    for record in hierarchyPDS:
+        if record["ChartId"] == chartId and record["ChildChartId"] not in children:
+            d = {"parent":record["ChartId"], "child": record["ChildChartId"], "stepName": record["StepName"]}
+            if d not in parentChildList:
+                parentChildList.append(d)
+            children.append(record["ChildChartId"])
+    log.tracef("The children of %s are %s", chartId, str(children))
+
     newChildren = []
-    for kid in kids:
-        if kid not in visitedCharts:
-            log.tracef("Found a new kid: %d", kid)
-            newChildren.append(kid)
-    return newChildren
+    for child in children:
+        if child not in visitedCharts:
+            log.tracef("Found a new child: %d", child)
+            newChildren.append(child)
+            
+    return newChildren, parentChildList
 
 
 def exportChart(chartId, db):

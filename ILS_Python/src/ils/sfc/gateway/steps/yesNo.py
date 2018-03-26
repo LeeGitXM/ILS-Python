@@ -22,6 +22,7 @@ def activate(scopeContext, stepProperties, state):
         buttonLabel = 'Y/N'
 
     chartScope = scopeContext.getChartScope()
+    print "YES/NO chart scope ", chartScope
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
     windowPath = "SFC/YesNo"
