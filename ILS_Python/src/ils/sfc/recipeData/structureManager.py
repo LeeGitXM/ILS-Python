@@ -179,7 +179,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
         else:
             record = pds[0]
             chartId = record["ChartId"]
-            log.tracef("The id for chart %s is: %d", parentChartPath, chartId)
+            log.tracef("The chart already exists - path: %s, chart id: %d", parentChartPath, chartId)
             chartPath = record["ChartPath"]
             if chartPath <> parentChartPath:
                 log.tracef("Updating the chart path for a renamed chart...")
@@ -196,7 +196,9 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
         
         databaseStepsPds = system.db.runQuery("select * from sfcStep where ChartId = %d" % (chartId), tx=txId)
         stepsInDatabase = []
+        log.tracef("Existing steps:")
         for record in databaseStepsPds:
+            log.tracef("  %s", record["StepUUID"])
             stepsInDatabase.append(record["StepUUID"])
         
         updateCntr = 0
@@ -231,7 +233,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, stepNames, stepUUIDs
                     
                     stepsInDatabase.remove(stepUUIDs[i])
                 else:
-                    log.tracef("Inserting a new step %s, a %s into the database...", stepNames[i], stepFactoryIds[i])
+                    log.tracef("Inserting a new step %s, a %s with UUID %s into the database...", stepNames[i], stepFactoryIds[i], stepUUIDs[i])
                     SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepNames[i], stepUUIDs[i], stepTypeId, chartId)
                     stepId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
                     log.tracef("...inserted a %s step with id: %d", stepFactoryIds[i], stepId)

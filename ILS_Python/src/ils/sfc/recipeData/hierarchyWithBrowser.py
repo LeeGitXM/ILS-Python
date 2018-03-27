@@ -101,19 +101,6 @@ def fetchHierarchy(sfcRecipeDataShowProductionOnly, db=""):
 
     pds = system.db.runQuery(SQL, db)
     return pds
-
-def getChildrenDeep(chartId, hierarchyPDS):
-    children = []
-    log.tracef("Getting the deep children of chart: %s", str(chartId))
-'''
-    kids = getChildren(chartId, hierarchyPDS)
-    while len(kids) > 0:
-        for kid in kids:
-        if record["ChartId"] == chartId and record["ChildChartId"] not in children:
-            children.append(record["ChildChartId"])
-    log.tracef("The children of %s are %s", chartId, str(children))
-    return children
-'''
     
 def getChildren(chartId, hierarchyPDS):
     children = []

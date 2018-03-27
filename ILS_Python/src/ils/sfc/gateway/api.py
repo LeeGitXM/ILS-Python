@@ -213,17 +213,26 @@ def getChartPath(chartProperties):
 def getControlPanelId(chartScope):
     topScope = getTopLevelProperties(chartScope)
     controlPanelId=topScope.get(CONTROL_PANEL_ID,None)
-    #TODO This is a hack to facilitate testing from the designer - need to do something better
+    
     if controlPanelId == None:
-        controlPanelId = 6
+        database = getDatabaseName(chartScope)
+        SQL = "select controlPanelId from SfcControlPanel where ControlPanelName = 'Test'"
+        controlPanelId = system.db.runScalarQuery(SQL, database)
+        if controlPanelId == None:
+            print "Error: Control panel named 'Test' not found in the SfcControlPanel table"
+            controlPanelId = -1
     return controlPanelId
 
 def getControlPanelName(chartScope):
     topScope = getTopLevelProperties(chartScope)
-    controlPanelName=topScope.get(CONTROL_PANEL_NAME,None)
-    #TODO This is a hack to facilitate testing from the designer - need to do something better
+    controlPanelName=topScope.get(CONTROL_PANEL_NAME, None)
+    
     if controlPanelName == None:
-        controlPanelName = "E1000 Dilution"
+        controlPanelId = getControlPanelId(chartScope)
+        database = getDatabaseName(chartScope)
+        SQL = "select controlPanelName from SfcControlPanel where ControlPanelId = %s" % (str(controlPanelId))
+        controlPanelName = system.db.runScalarQuery(SQL, database)
+
     return controlPanelName
 
 def getCurrentMessageQueue(chartProperties):

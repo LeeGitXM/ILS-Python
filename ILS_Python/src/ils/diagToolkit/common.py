@@ -8,7 +8,7 @@ import system, time
 import system.ils.blt.diagram as scriptingInterface
 from ils.queue.commons import getQueueForDiagnosticApplication
 
-log = system.util.getLogger("com.ils.diagToolkit")
+log = system.util.getLogger("com.ils.diagToolkit.common")
 
 # -------------------------- Helper methods ----------------------
 # Return the ProcessDiagram at the specified path
@@ -471,6 +471,16 @@ def fetchPostForApplication(application, database=""):
         " where P.PostId = U.PostId "\
         " and U.UnitId = A.UnitId "\
         " and A.ApplicationName = '%s' " % (application)
+    log.trace(SQL)
+    post = system.db.runScalarQuery(SQL, database)
+    return post
+
+# Fetch the post for an application
+def fetchPostForUnit(unit, database=""):
+    SQL = "select post "\
+        " from TkPost P, TkUnit U "\
+        " where P.PostId = U.PostId "\
+        " and U.UnitName = '%s' " % (unit)
     log.trace(SQL)
     post = system.db.runScalarQuery(SQL, database)
     return post

@@ -5,6 +5,12 @@ Created on Jan 12, 2016
 '''
 import system, math, string
 
+def bringWindowToFront(windowName):
+    windows = system.gui.findWindow(windowName)
+    for window in windows:
+        window.toFront()
+        system.nav.centerWindow(window)
+
 def setTableColumnHeading(table, columnName, columnLabel):
     ds = table.columnAttributesData
     for row in range(ds.rowCount):

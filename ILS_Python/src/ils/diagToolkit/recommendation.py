@@ -105,6 +105,12 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                 
             from ils.diagToolkit.setpointSpreadsheet import resetApplication
             resetApplication(post=post, application=application, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=AUTO_NO_DOWNLOAD, database=database, provider=provider)
+            
+            '''
+            If we auto-nodownload on the highest priority problem, we should do another manage just to check if there is an active lower priority problem.
+            '''
+            from ils.diagToolkit.finalDiagnosis import requestToManage
+            requestToManage(application, database, provider)
             return [], "", RECOMMENDATION_NONE_MADE
         else:
             SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
