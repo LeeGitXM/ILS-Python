@@ -27,6 +27,17 @@ def run():
     import os
     
     #-------------------------------------------
+    def initializeTags():
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T1", 20.0)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T2", 20.0)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T3", 20.0)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T4", 20.0)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T5", 20.0)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T6", 20.0)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T7", 20.0)
+        logger.infof("Initializing the database...")
+    
+    #-------------------------------------------
     def initializeDatabase(db):
         #TODO Do something smarter about DtRecommendationDefinition
         rows = -99
@@ -236,6 +247,7 @@ def run():
 
             # Start with a clean slate            
             initializeDatabase(db)
+            initializeTags()
             time.sleep(2)
             
             # Run a specific test
