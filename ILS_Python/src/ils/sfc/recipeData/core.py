@@ -14,7 +14,7 @@ from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUM
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
 
-from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER, \
+from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER, \
     ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.core")
@@ -208,6 +208,19 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         
         logger.tracef("Fetched the value: %s", str(val))
         
+    
+    elif recipeDataType == RECIPE:
+        SQL = "select PRESENTATIONORDER, STORETAG, COMPARETAG, MODEATTRIBUTE, MODEVALUE, CHANGELEVEL, RECOMMENDEDVALUE, "\
+            "LOWLIMIT, HIGHLIMIT "\
+            "from SfcRecipeDataRecipeView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        
+        if attribute in ["PRESENTATIONORDER", "STORETAG", "COMPARETAG", "MODEATTRIBUTE", "MODEVALUE", "CHANGELEVEL", "RECOMMENDEDVALUE", "LOWLIMIT", "HIGHLIMIT"]:
+            val = record[attribute]
+        else:
+            raise ValueError, "Unsupported attribute: %s for an input recipe data" % (attribute)
+    
     elif recipeDataType == INPUT:
         SQL = "select TAG, VALUETYPE, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, "\
             "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
@@ -242,6 +255,32 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         
         if attribute in ["TAG","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","TIMING","MAXTIMING",\
                          "ACTUALTIMING","ACTUALDATETIME","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED"]:
+            val = record[attribute]
+        elif attribute == "OUTPUTVALUE":
+            theAttribute = "OUTPUT%sVALUE" % (valueType)
+            val = record[theAttribute]
+        elif attribute == "TARGETVALUE":
+            theAttribute = "TARGET%sVALUE" % (valueType)
+            val = record[theAttribute]
+        elif attribute == "PVVALUE":
+            theAttribute = "PV%sVALUE" % (valueType)
+            val = record[theAttribute]
+        else:
+            raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
+    
+    elif recipeDataType == OUTPUT_RAMP:
+        SQL = "select TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
+            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
+            "TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, "\
+            "PVMONITORACTIVE, PVMONITORSTATUS, WRITECONFIRM, WRITECONFIRMED, RAMPTIMEMINUTES, UPDATEFREQUENCYSECONDS "\
+            "from SfcRecipeDataOutputRampView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        valueType = string.upper(record["VALUETYPE"])
+        
+        if attribute in ["TAG","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","TIMING","MAXTIMING",\
+                         "ACTUALTIMING","ACTUALDATETIME","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED", "RAMPTIMEMINUTES", "UPDATEFREQUENCYSECONDS"]:
             val = record[attribute]
         elif attribute == "OUTPUTVALUE":
             theAttribute = "OUTPUT%sVALUE" % (valueType)
@@ -502,6 +541,11 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
             rows = system.db.runUpdateQuery(SQL, db)
             logger.tracef('...updated %d simple value recipe data records', rows)
             
+    elif recipeDataType == RECIPE:
+        SQL = "update SfcRecipeDataRecipe set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
+        rows = system.db.runUpdateQuery(SQL, db)
+        logger.tracef('...updated %d simple value recipe data records', rows)
+            
     elif recipeDataType == INPUT:
         if attribute in ['TAG', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS']:
             SQL = "update SfcRecipeDataInput set %s = '%s' where recipeDataId = %s" % (attribute, str(val), recipeDataId)
@@ -538,7 +582,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
         logger.tracef('...updated %d input recipe data records', rows)
 
     
-    elif recipeDataType == OUTPUT:
+    elif recipeDataType in [OUTPUT, OUTPUT_RAMP]:
         if string.upper(str(val)) == "NULL" and attribute not in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
             SQL = "update SfcRecipeDataOutput set %s = NULL where recipeDataId = %s" % (attribute, recipeDataId)
         elif attribute in ['TAG', 'DOWNLOADSTATUS', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS', 'ACTUALDATETIME', 'SETPOINTSTATUS']:
@@ -581,12 +625,15 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
         elif attribute in ['OUTPUTTYPE']:
             outputTypeId = fetchOutputTypeId(val, db)
             SQL = "update SfcRecipeDataOutput set OutputTypeId = %i where recipeDataId = %s" % (outputTypeId, recipeDataId)
-        else:
+        elif recipeDataType == OUTPUT_RAMP and attribute in ['RAMPTIMEMINUTES', 'UPDATEFREQUENCYSECONDS']: 
+            SQL = "update SfcRecipeDataOutputRamp set %s = %s where recipeDataId = %s" % (attribute, str(val), recipeDataId)
+        else: 
             logger.errorf("Unsupported attribute <%s> for output recipe data", attribute)
             raise ValueError, "Unsupported attribute <%s> for output recipe data" % (attribute)
             
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d output recipe data records', rows)
+
     
     elif recipeDataType == TIMER:
         if attribute in ['COMMAND']:

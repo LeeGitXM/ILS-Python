@@ -371,6 +371,33 @@ def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisNam
         outputList.append(output)
     return pds, outputList
 
+# Fetch the outputs for a final diagnosis and return them as a list of dictionaries
+# I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
+# that are used when calculating/managing recommendations and the output of those recommendations.
+def fetchActiveOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
+    SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+        " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
+        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and L.LookupTypeCode = 'FeedbackMethod'"\
+        " and L.LookupId = QO.FeedbackMethodId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and RD.QuantOutputId = QO.QuantOutputId "\
+        " and A.ApplicationName = '%s' "\
+        " and F.FamilyName = '%s' "\
+        " and FD.FinalDiagnosisName = '%s' "\
+        " and QO.Active = 1"\
+        " order by QuantOutputName"  % (applicationName, familyName, finalDiagnosisName)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    outputList = []
+    for record in pds:
+        output=convertOutputRecordToDictionary(record)       
+        outputList.append(output)
+    return pds, outputList
+
 def convertOutputRecordToDictionary(record):
     output = {}
     output['QuantOutputId'] = record['QuantOutputId']

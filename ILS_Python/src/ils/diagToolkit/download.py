@@ -333,8 +333,8 @@ def constructDownloadLogbookMessage(post, applicationName, db):
             for rootCause in rootCauseList:
                 txt += "      %s\n" % (rootCause)
     
-            from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
-            pds, outputs=fetchOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
+            from ils.diagToolkit.common import fetchActiveOutputsForFinalDiagnosis
+            pds, outputs=fetchActiveOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
             for record in outputs:
                 print record
                 quantOutput = record.get('QuantOutput','')
