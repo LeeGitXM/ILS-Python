@@ -48,7 +48,7 @@ def activate(scopeContext, stepProperties, state):
                     if string.upper(row.destination) == "TAG":
                         tagPath = "[%s]%s" % (provider, row.key)
                         system.tag.write(tagPath, row.defaultValue)
-                    elif row.units == "": 
+                    elif row.units in ["", None]: 
                         s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
                     else:
                         s88SetWithUnits(chartScope, stepScope, row.key, row.defaultValue, row.destination, row.units)
