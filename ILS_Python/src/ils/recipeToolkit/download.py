@@ -24,6 +24,8 @@ def automatedDownloadHandler(tagPath, grade):
     tagPath = str(tagPath)
     if tagPath.endswith('/grade'):
         parentTagPath = tagPath[:len(tagPath) - 6]
+    elif tagPath.endswith('/gradeManual'):
+        parentTagPath = tagPath[:len(tagPath) - 12]
     else:
         parentTagPath = tagPath
 
@@ -38,6 +40,7 @@ def automatedDownloadHandler(tagPath, grade):
     recipeKey = system.tag.read(parentTagPath + "/recipeKey").value
     
     grade = str(grade)
+    log.infof("In %s.automatedDownloadHandler(), the recipeKey is: %s, automated download is %s", __name__, recipeKey, str(automatedDownload))
 
     from ils.recipeToolkit.fetch import  fetchHighestVersion
     version = fetchHighestVersion(recipeKey, grade, database)
