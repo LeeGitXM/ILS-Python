@@ -1,6 +1,11 @@
 '''
 
 '''
+
+def verifySLEDDataset(modelDictionary):
+    warningText = ""
+    return warningText
+
 def addModel(key,dictionary):
     pass
 
