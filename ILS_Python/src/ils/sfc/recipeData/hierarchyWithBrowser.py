@@ -283,6 +283,24 @@ def getRecipeDataDescription(record):
                     desc = "%s, Tag: %s, Type: %s, Timing: %s" % (desc, tag, outputType, str(timing))
                     
                 desc = getOutputValueDescriptionFromRecord(valueRecord, desc)
+        
+        elif recipeDataType == "Output Ramp":
+            valuePDS = system.db.runQuery("select * from SfcRecipeDataOutputRampView where recipeDataId = %d" % (recipeDataId))
+            if len(valuePDS) == 1:
+                valueRecord = valuePDS[0]
+                tag = valueRecord["Tag"]
+                tag = tag[tag.rfind('/') + 1:]
+                timing = valueRecord["Timing"]
+                outputType = valueRecord["OutputType"]
+                rampTime = valueRecord["RampTimeMinutes"]
+                
+                if desc == "":
+                    desc = "Tag: %s, Type: %s, Timing: %s" % (tag, outputType, str(timing))
+                else:
+                    desc = "%s, Tag: %s, Type: %s, Timing: %s, Ramp Time: %s" % (desc, tag, outputType, str(timing), str(rampTime))
+                    
+                desc = getOutputValueDescriptionFromRecord(valueRecord, desc)
+        
         elif recipeDataType == "Input":
             valuePDS = system.db.runQuery("select * from SfcRecipeDataInputView where recipeDataId = %d" % (recipeDataId))
             if len(valuePDS) == 1:
