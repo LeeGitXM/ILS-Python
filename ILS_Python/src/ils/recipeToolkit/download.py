@@ -150,7 +150,7 @@ def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, g
     dsProcessed = writeDeferred(dsProcessed, provider, familyName, logId, writeEnabled, project)
 
     # Start the download monitor
-    recipeToolkit_downloadMonitor.automatedRunner(dsProcessed, provider, familyName, grade, version, logId, downloadStartTime, downloadTimeout, database)
+    recipeToolkit_downloadMonitor.automatedRunner(parentTagPath, dsProcessed, provider, familyName, grade, version, logId, downloadStartTime, downloadTimeout, database)
     
     log.info("Completed automated download!")
 

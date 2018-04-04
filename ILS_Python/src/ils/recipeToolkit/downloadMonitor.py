@@ -10,7 +10,7 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
 
 # This is called for an automated download and runs in gateway scope.
-def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database):
+def automatedRunner(parentTagPath, dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database):
     from java.util import Date
     
     log.trace("Starting the automated download monitor...")
@@ -24,7 +24,7 @@ def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, dow
     # Check the status of pending downloads
     pending = 1
     deltaTime = 0
-    while pending > 0 and deltaTime < downloadTimeout * 1000:
+    while pending > 0 and deltaTime <= downloadTimeout * 1000:
         time.sleep(5)
 #        pending = monitor(rootContainer)
         pending, dsProcessed = monitor(provider, recipeKey, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, dsProcessed, database)
@@ -36,12 +36,27 @@ def automatedRunner(dsProcessed, provider, recipeKey, grade, version, logId, dow
         
     if deltaTime > downloadTimeout * 1000:
         log.info("The download has exceeded the allowed time, aborting the download monitor!") 
-        downloadCompleteRunner(dsProcessed, logId, recipeKey, grade, version, "Automated", "Grade Change", database)
-    
-    if pending == 0:
+        status, downloads, successes, failures = downloadCompleteRunner(dsProcessed, logId, recipeKey, grade, version, "Automated", "Grade Change", database)
+    else:
         log.info("All downloads have completed (there are no pending downloads), ending the download monitor!")
-        downloadCompleteRunner(dsProcessed, logId, recipeKey, grade, version,  "Automated", "Grade Change", database)
+        status, downloads, successes, failures = downloadCompleteRunner(dsProcessed, logId, recipeKey, grade, version,  "Automated", "Grade Change", database)
         
+    ''' Update the Download Trigger UDT tags  '''
+    tags = [parentTagPath + "/downloadEndTime",
+            parentTagPath + "/failedDownloads",
+            parentTagPath + "/passedDownloads",
+            parentTagPath + "/totalDownloads",
+            parentTagPath + "/status"
+        ]
+
+    vals = [str(system.date.now()),
+            failures,
+            successes,
+            downloads,
+            status
+        ]
+    
+    system.tag.writeAll(tags, vals)
 
 def start(rootContainer):
     log.info("Starting the download monitor timer...")
