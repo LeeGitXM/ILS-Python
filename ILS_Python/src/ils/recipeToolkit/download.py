@@ -56,7 +56,8 @@ def automatedDownloadHandler(tagPath, grade):
     log.info("******************************")
 
     if automatedDownload:
-        fullyAutomatedDownload(post, project, database, recipeKey, grade, version)
+        fullyAutomatedDownload(parentTagPath, post, project, database, recipeKey, grade, version)
+        log.info("...back from a fully automated download...")
     else:
         # Send a message to open the 
         log.trace("Sending a message to every client to post a download GUI")
@@ -75,7 +76,7 @@ def automatedDownloadHandler(tagPath, grade):
 Start a fully automatic lights out automatic download.
 It looks like this only supports production.
 '''
-def fullyAutomatedDownload(post, project, database, familyName, grade, version):
+def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, grade, version):
     log.info("Setting up a fully automated download\n  Post: %s, Project: %s, Database: %s, Recipe Family: %s, Grade: %s, Version: %s" % (post, project, database, familyName, grade, str(version)))
     
     provider = getTagProvider()     # Get the production tag provider.
@@ -119,6 +120,27 @@ def fullyAutomatedDownload(post, project, database, familyName, grade, version):
     # Open a master download record for this download
     familyId = recipeToolkit_fetch.fetchFamilyId(familyName, database)
     logId = recipeToolkit_log.logMaster(familyId, grade, version, "Automatic", database)
+    
+    ''' Initialize the UDT tags  '''
+    tags = [parentTagPath + "/masterId",
+            parentTagPath + "/downloadStartTime",
+            parentTagPath + "/downloadEndTime",
+            parentTagPath + "/failedDownloads",
+            parentTagPath + "/passedDownloads",
+            parentTagPath + "/totalDownloads",
+            parentTagPath + "/status"
+        ]
+
+    vals = [logId,
+            str(system.date.now()),
+            "",
+            0,
+            0,
+            0,
+            "Downloading"
+        ]
+    
+    system.tag.writeAll(tags, vals)
 
     # Normally at this time we would log skipped tags, but since this automated, there can't be skipped tags
     

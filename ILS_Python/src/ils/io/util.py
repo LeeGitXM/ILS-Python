@@ -279,6 +279,9 @@ def checkIfController(fullTagPath):
 # Compare two tag values taking into account that a float may be disguised as a text string and also
 # calling two floats the same if they are almost the same.
 def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDifference):
+    if (val1 == None and val2 != None) or (val1 != None and val2 == None):
+        return False
+ 
     val1IsText = isText(val1)
     val2IsText = isText(val2)
 

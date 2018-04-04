@@ -189,13 +189,14 @@ def sfcCloseWindowByName(payload):
         system.nav.closeWindow(window)
 
 def sfcShowQueue(payload):
-    position=payload[POSITION]
-    scale=payload[SCALE]
+    print "Payload: ", payload
     queueKey=payload['queueKey']
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
     showOverride = payload.get("showOverride", False)
-    print "Payload: ", payload
+    position = payload.get("position", "")
+    scale = payload.get("scale", 1.0)
+    
     print "...checking if the queue should be shown on this client..."
     if not(shouldShowWindow(payload)):
         return

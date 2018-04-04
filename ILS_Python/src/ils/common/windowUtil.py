@@ -75,34 +75,34 @@ def positionWindow(window, mode, scale=1.0):
     print "Dock Offset is (%i, %i)" % (xOffset,yOffset)
 
     mode = string.upper(mode)
-    if mode in ['UPPER-LEFT', 'TOPLEFT']:
+    if mode in ['UPPER-LEFT', 'UPPERLEFT', 'TOPLEFT']:
         ulx = xOffset
         uly = 0
         print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
         window.setLocation(ulx, uly)
-    elif mode in ['UPPER-CENTER', 'TOPCENTER']:
+    elif mode in ['UPPER-CENTER', 'UPPERCENTER', 'TOPCENTER']:
         ulx = xOffset + (mainWidth - xOffset) / 2 - (width * scale) / 2
         uly = 0
         print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
         window.setLocation(int(ulx), uly)
-    elif mode in ['UPPER-RIGHT', 'TOPRIGHT']:
+    elif mode in ['UPPER-RIGHT', 'UPPERRIGHT', 'TOPRIGHT']:
         ulx = mainWidth - (width * scale) 
         uly = 0
         print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
         window.setLocation(int(ulx), uly)
-    elif mode in ['LOWER-LEFT', 'BOTTOMLEFT']:
+    elif mode in ['LOWER-LEFT', 'LOWERLEFT', 'BOTTOMLEFT']:
         ulx = xOffset
         uly = mainHeight - int(height * scale)
         print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
         window.setLocation(int(ulx), int(uly))
-    elif mode in ['LOWER-CENTER', 'BOTTOMCENTER']:
+    elif mode in ['LOWER-CENTER', 'LOWERCENTER', 'BOTTOMCENTER']:
         ulx = xOffset + (mainWidth - xOffset) / 2 - (width * scale) / 2
-        uly = mainHeight - (height * scale)
+        uly = mainHeight - int(height * scale)
         print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
         window.setLocation(int(ulx), int(uly))
-    elif mode in ['LOWER-RIGHT', 'BOTTOMRIGHT']:
+    elif mode in ['LOWER-RIGHT', 'LOWERRIGHT', 'BOTTOMRIGHT']:
         ulx = mainWidth - (width * scale)
-        uly = mainHeight - (height * scale)
+        uly = mainHeight - int(height * scale)
         print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
         window.setLocation(int(ulx), int(uly))
     elif mode in ['CENTER']:

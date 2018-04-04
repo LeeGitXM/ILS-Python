@@ -10,6 +10,7 @@ def internalFrameOpened(rootContainer, db=""):
     tabStrip = rootContainer.getComponent("Tab Strip")
     tabStrip.selectedTab = "Queues"
     
+    refreshPositions(rootContainer)
     refreshUnits(rootContainer)
     refreshPosts(rootContainer)
     refreshConsoles(rootContainer)
@@ -19,6 +20,11 @@ def internalFrameOpened(rootContainer, db=""):
 '''
 Unit Related Functions
 '''
+
+def refreshPositions(rootContainer):
+    SQL = "select LookupName from Lookup where LookupTypeCode = 'WindowPosition' order by LookupName"
+    pds= system.db.runQuery(SQL)
+    rootContainer.queuePositions = pds
 
 def refreshUnits(rootContainer):
     SQL = "select * from TkUnitView order by UnitName"

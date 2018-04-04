@@ -4,11 +4,8 @@ Created on Dec 16, 2015
 @author: rforbes
 '''
 
-from ils.sfc.gateway.api import getControlPanelId, getControlPanelName, getOriginator, getStepProperty, getChartLogger, sendMessageToClient, getCurrentMessageQueue, handleUnexpectedGatewayError
-from ils.sfc.common.constants import ORIGINATOR, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, HANDLER, POSITION, SCALE
-import system
-
-logger=system.util.getLogger("com.ils.sfc.gateway.steps.showQueue")
+from ils.sfc.gateway.api import getControlPanelId, getControlPanelName, getOriginator, getChartLogger, sendMessageToClient, getCurrentMessageQueue, handleUnexpectedGatewayError, getStepProperty
+from ils.sfc.common.constants import ORIGINATOR, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, HANDLER, QUEUEPOSITION, SCALE
 
 def activate(scopeContext, stepProperties, state):
     '''
@@ -23,13 +20,11 @@ def activate(scopeContext, stepProperties, state):
         controlPanelId = getControlPanelId(chartScope)
         controlPanelName = getControlPanelName(chartScope)
         originator = getOriginator(chartScope)
-
-        position = getStepProperty(stepProperties, POSITION) 
+        position = getStepProperty(stepProperties, QUEUEPOSITION) 
         scale = getStepProperty(stepProperties, SCALE) 
 
         handler = "sfcShowQueue"
-        payload = {HANDLER: handler, 'queueKey': currentMsgQueue, CONTROL_PANEL_ID: controlPanelId, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, POSITION: position, SCALE: scale}
-        logger.infof("Handling a ************************************************* showQueue message with payload: <%s>", str(payload))
+        payload = {HANDLER: handler, 'queueKey': currentMsgQueue, CONTROL_PANEL_ID: controlPanelId, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, QUEUEPOSITION: position, SCALE: scale}
         sendMessageToClient(chartScope, handler, payload)
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in showQueue.py', chartLogger)

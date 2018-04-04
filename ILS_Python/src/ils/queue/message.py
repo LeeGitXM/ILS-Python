@@ -5,8 +5,9 @@ Created on Sep 9, 2014
 '''
 import  system, string
 from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
-from ils.common.windowUtil import positionWindow
 from ils.common.error import catchError
+from ils.common.config import getDatabaseClient
+from ils.common.windowUtil import positionWindow
 log = system.util.getLogger("com.ils.queue")
 
 def insertPostMessage(post, status, message, db='', project='', console=''):
@@ -143,7 +144,18 @@ def clear(queueKey, db = ''):
     system.db.runUpdateQuery(SQL, db)
 
 
-def view(queueKey, useCheckpoint=False, silent=False, position="center", scale=1.0):
+'''
+This is called in client scope, generally from a button 
+'''
+def view(queueKey, useCheckpoint=False, silent=False, position="", scale=1.0):
+    
+    db = getDatabaseClient()
+    
+    if position == "":
+        SQL = "select Position from QueueMaster where QueueKey = '%s'" % (queueKey)
+        position = system.db.runScalarQuery(SQL, database=db)
+        print "Using the position from QueueMaster: %s" % (position)
+
     windowName = 'Queue/Message Queue'
     
     # First check if this queue is already displayed
@@ -160,7 +172,6 @@ def view(queueKey, useCheckpoint=False, silent=False, position="center", scale=1
 
     print "Opening a queue window..."
     window=system.nav.openWindowInstance(windowName, {'key': queueKey, 'useCheckpoint': useCheckpoint})
-#     system.nav.centerWindow(window)
     positionWindow(window, position, scale)
     
 
@@ -261,6 +272,7 @@ This runs in every client and is called by the messageHandler script for a showQ
 '''
 def handleMessage(payload):
     print "Handling a showQueue message with payload: ", payload
+    shown = False
     console = payload["console"]
     queueKey = payload["queueKey"]
     windows = system.gui.getOpenedWindows()
@@ -269,7 +281,10 @@ def handleMessage(payload):
         if console == windowTitle:
             print "Showing the queue because I found a window whose title matched the console name..."
             view(queueKey, useCheckpoint=True, silent=True)
-            return
+            shown = True
+    
+    if shown:
+        return
 
     '''
     Now use a looser check, see if the window path contains (not matches) the name of the console
