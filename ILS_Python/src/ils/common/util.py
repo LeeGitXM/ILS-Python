@@ -7,6 +7,17 @@ Created on Sep 10, 2014
 import system
 from ils.common.config import getTagProvider
 
+def isUserConnected(userName):
+    sessions = system.util.getSessionInfo()
+    for session in sessions:
+        if session["username"] == userName and session["isDesigner"] == False:
+            print "The user IS connected"
+            return True
+        print session
+
+    print "The user is NOT connected"
+    return False
+
 def isWarmboot():
     runHours = getRunHours()
     
