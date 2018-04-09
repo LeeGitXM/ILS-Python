@@ -6,6 +6,7 @@ Created on Sep 10, 2014
 import system
 import ils.recipeToolkit.update as update
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.common.config import getDatabaseClient
 log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 
 # This is called once it is deemed that the download is complete.  
@@ -18,10 +19,11 @@ def downloadComplete(rootContainer):
     recipeKey = rootContainer.getPropertyValue("familyName")
     downloadType = rootContainer.getPropertyValue("downloadType")
     table = rootContainer.getComponent("Power Table")
+    database = getDatabaseClient()
 
     ds = table.processedData
     
-    status, downloads, successes, failures = downloadCompleteRunner(ds, logId, recipeKey, grade, version, "Manual", downloadType)
+    status, downloads, successes, failures = downloadCompleteRunner(ds, logId, recipeKey, grade, version, "Manual", downloadType, database)
 
     from ils.recipeToolkit.common import setBackgroundColor
     if failures == 0:
