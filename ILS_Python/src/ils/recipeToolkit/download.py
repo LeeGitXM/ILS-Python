@@ -100,7 +100,7 @@ def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, g
     dsProcessed, tags = recipeToolkit_viewRecipe.createOPCTags(dsProcessed, provider, familyName, database)
     
     # Refresh the table with data from the DCS and determine what needs to be downloaded
-    dsProcessed = recipeToolkit_refresh.automatedRefresh(familyName, dsProcessed, database)
+    dsProcessed = recipeToolkit_refresh.automatedRefresh(familyName, dsProcessed, provider, database)
 
     recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
     globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value

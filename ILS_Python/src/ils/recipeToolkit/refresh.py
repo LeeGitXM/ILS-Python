@@ -11,6 +11,7 @@ log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 def refresh(rootContainer):
     log.info("In ils.recipeToolkit.refresh.refresh()")
 
+    provider = rootContainer.getPropertyValue("provider")
     status = rootContainer.getPropertyValue("status")
     if status == 'Processing Download':
         system.gui.warningBox("Ignoring the refresh request because a download is in process!")
@@ -26,7 +27,7 @@ def refresh(rootContainer):
     
     table = rootContainer.getComponent("Power Table")
     processedData = table.processedData
-    processedData = refresher(familyName, processedData, downloadType)
+    processedData = refresher(familyName, processedData, downloadType, provider)
 
     table.processedData = processedData
 
@@ -38,19 +39,19 @@ def refresh(rootContainer):
     rootContainer.timestamp = system.db.dateFormat(timestamp, "MM/dd/yy HH:mm")
 
 
-def automatedRefresh(familyName, processedData, database):
+def automatedRefresh(familyName, processedData, provider, database):
     log.info("In ils.recipeToolkit.refresh.automatedRefresh()")
     # The downloadType is either GradeChange or MidRun
     downloadType = "GradeChange"
 
-    processedData = refresher(familyName, processedData, downloadType, database)
+    processedData = refresher(familyName, processedData, downloadType, provider, database)
     return processedData
 
 
 # Update the processedData to include the tag values and then make the subset of processed data that will
 # be shown and put it in table.data.  (If the user is an engineer then processed data is all data, but 
 # operators only see a subset of the data.
-def refresher(familyName, ds, downloadType, database = ""):
+def refresher(familyName, ds, downloadType, provider, database=""):
     log.info("In ils.recipeToolkit.refresh.refresher()")
     log.info("Refreshing Recipe Table for a %s download..." % (downloadType))
 
@@ -62,9 +63,6 @@ def refresher(familyName, ds, downloadType, database = ""):
             return False
         return True
     #===============================================
-
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
 
     from ils.recipeToolkit.update import recipeFamilyStatus
     recipeFamilyStatus(familyName, "Refreshing", database)
