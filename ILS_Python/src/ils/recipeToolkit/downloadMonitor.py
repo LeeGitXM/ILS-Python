@@ -5,7 +5,7 @@ Created on Sep 10, 2014
 '''
 
 import system, time
-from ils.common.config import getTagProvider
+from ils.common.config import getTagProvider, getDatabaseClient
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
 
@@ -73,6 +73,7 @@ def runner(rootContainer):
     from ils.recipeToolkit.downloadComplete import downloadComplete
     
     # Check the status of pending downloads
+    database = getDatabaseClient()
     provider = rootContainer.getPropertyValue("provider")
     familyName = rootContainer.getPropertyValue("familyName")
     logId = rootContainer.logId
@@ -84,7 +85,7 @@ def runner(rootContainer):
     recipeMinimumRelativeDifference = table.getPropertyValue("recipeMinimumRelativeDifference")
     ds = table.processedData
     
-    pending, ds = monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds)
+    pending, ds = monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds, database)
 
     table.processedData = ds
     from ils.recipeToolkit.refresh import refreshVisibleData
@@ -116,7 +117,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
 
     log.trace("  Starting project.recipe.downloadMonitor.monitor()")
     
-    
+    database = getDatabaseClient()
     productionProvider = getTagProvider()     # Get the production tag provider.
     
     recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value

@@ -14,7 +14,8 @@ import ils.recipeToolkit.refresh as recipeToolkit_refresh
 import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 from ils.io.client import writeWithNoChecks, writeRecipeDetails
-from ils.common.config import getTagProvider, getTagProviderClient
+from ils.common.config import getTagProvider, getTagProviderClient,\
+    getDatabaseClient
 from ils.common.ocAlert import sendAlert
 log = system.util.getLogger("com.ils.recipeToolkit.download")
 
@@ -194,6 +195,7 @@ def downloadCallback(rootContainer):
 def download(rootContainer):
     project = system.util.getProjectName()
     provider = rootContainer.getPropertyValue("provider")
+    database = getDatabaseClient()
     familyName = rootContainer.getPropertyValue("familyName")
     table = rootContainer.getComponent("Power Table")
     
@@ -230,10 +232,10 @@ def download(rootContainer):
     grade = rootContainer.grade
     version = rootContainer.version
     
-    logId = recipeToolkit_log.logMaster(familyId, grade, version)
+    logId = recipeToolkit_log.logMaster(familyId, grade, version, database=database)
     rootContainer.logId = logId
     
-    logSkippedTags(table, logId)
+    logSkippedTags(table, logId, database)
     
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
@@ -308,7 +310,7 @@ def resetRecipeDetails(provider, familyName):
     system.tag.writeAll(tags, vals)
 
 # Log any tags that are skipped by the operator
-def logSkippedTags(table, logId):
+def logSkippedTags(table, logId, database):
     log.trace("Logging skipped tags...")    
     ds = table.processedData
     pds = system.dataset.toPyDataSet(ds)
@@ -330,7 +332,7 @@ def logSkippedTags(table, logId):
                 
             from ils.recipeToolkit.log import logDetail
                 
-            logDetail(logId, storTagName, pendVal, status, storVal, compVal, recommendVal, reason, errorMessage)
+            logDetail(logId, storTagName, pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database)
 
 
 # There are two types of immediate writes: 1) writes to memory tags, and 2) writes to OPC tags that do not involve high low limits 

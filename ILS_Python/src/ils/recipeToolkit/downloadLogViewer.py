@@ -5,6 +5,7 @@ Created on Nov 9, 2014
 '''
 
 import system
+from ils.common.config import getDatabaseClient
 
 def display():
     print "Displaying the download log window"
@@ -40,6 +41,7 @@ def deferredRowSelection(rootContainer):
 def refreshMaster(rootContainer):
     print "Refreshing the master table..."
 
+    db = getDatabaseClient()
     masterTable = rootContainer.getComponent('MasterTable')
 
     SQL = "SELECT DM.MasterId, DM.RecipeFamilyId, F.RecipeFamilyName, DM.Grade, DM.Version, DM.Type, DM.DownloadStartTime, DM.DownloadEndTime, " \
@@ -50,7 +52,7 @@ def refreshMaster(rootContainer):
     
     print SQL
     
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     masterTable.data = pds
     masterTable.selectedRow = -1
 
@@ -59,6 +61,7 @@ def refreshMaster(rootContainer):
 def refreshDetail(rootContainer):
     print "Refreshing the detail table..."
 
+    db = getDatabaseClient()
     masterTable = rootContainer.getComponent('MasterTable')
     selectedRow = masterTable.selectedRow
     print "The selected row is ", selectedRow
@@ -78,5 +81,5 @@ def refreshDetail(rootContainer):
     
     print SQL
     
-    pds = system.db.runQuery(SQL)
-    detailTable.data = pds                        
+    pds = system.db.runQuery(SQL, database=db)
+    detailTable.data = pds
