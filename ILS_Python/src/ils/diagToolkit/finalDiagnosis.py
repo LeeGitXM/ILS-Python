@@ -22,7 +22,7 @@ logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 #-------------
 
-# This is called from a client to directly manage a final diagnosis.
+# This is called from a client (and runs in a client) to directly manage a final diagnosis.
 def manageFinalDiagnosis(applicationName, family, finalDiagnosis, database="", provider = ""):
     log.infof("In %s.manageFinalDiagnosis()", __name__)
     

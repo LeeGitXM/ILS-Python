@@ -7,6 +7,7 @@ import system
 import ils.recipeToolkit.update as update
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.common.config import getDatabaseClient
+from ils.recipeToolkit.log import logDetail
 log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 
 # This is called once it is deemed that the download is complete.  
@@ -55,6 +56,9 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
 
             if downloadStatus == 'SUCCESS':
                 successes = successes + 1
+            elif downloadStatus == 'PENDING':
+                logDetail(logId, record["Store Tag"], record["Pend"], "Failure", record["Stor"], record["Comp"], record["Recc"], record["Reason"], "Timed Out", database)
+                failures = failures + 1
             else:
                 failures = failures + 1
 

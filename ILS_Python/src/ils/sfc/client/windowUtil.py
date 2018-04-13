@@ -114,27 +114,21 @@ def reopenWindow(windowId):
     # of the same window because we don't have a mechanism to pass data to initialize it.
     openWindows = system.gui.findWindow(windowPath)
     if len(openWindows) > 0:
-        if windowPath in SFC_WINDOW_LIST:
-            for window in openWindows:
-                rootContainer = window.rootContainer
-                if rootContainer.windowId == windowId:
-                    print "...the window is already open, bringing it to the front..."
-                    window.toFront()
-                    return
-            
-        else:
-            for window in openWindows:
+        for window in openWindows:
+            rootContainer = window.rootContainer
+            if rootContainer.windowId == windowId:
                 print "...the window is already open, bringing it to the front..."
                 window.toFront()
-            return
+                return
+    
+    '''
+    I used to have a list of SFC windows, all of these were required to have a property "windowId" which was the key to the table sfcWindow.
+    I also allowed vanilla windows to be displayed but this caused problems when trying to reopen the window from the control panel window button.
+    It makes more sense that every window that is going to be shown from an SFC requires the property "windowId". 
+    '''
 
-    payload = {}
-    if windowPath in SFC_WINDOW_LIST:
-        payload = {"windowId": windowId}
-        print "...reopening a SFC window %s with payload: %s" % (windowPath, str(payload))
-    else:
-        payload = {}
-        print "...reopening an ordinary window %s with payload: %s" % (windowPath, str(payload))
+    payload = {"windowId": windowId}
+    print "...reopening a SFC window %s with payload: %s" % (windowPath, str(payload))
 
     window = system.nav.openWindowInstance(windowPath, payload)
     system.nav.centerWindow(window)

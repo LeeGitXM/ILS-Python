@@ -7,7 +7,7 @@ Created on Jun 18, 2015
 @author: rforbes
 '''
 
-import system
+import system, string
 from java.util import Date
 from ils.sfc.recipeData.api import s88Set, s88Get
 from ils.sfc.common.constants import START_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, ERROR_COUNT_LOCAL, \
@@ -53,11 +53,12 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
     
     #----------------------------------------------------------------------------------------------------
     def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, logger=logger, providerName=providerName, recipeDataScope=recipeDataScope):
-        from ils.io.api import write
+        from ils.io.api import write, writeRamp
         from ils.common.config import getTagProvider
         from ils.sfc.gateway.api import postToQueue
         from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
-        from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT, WRITE_CONFIRMED, SUCCESS, FAILURE
+        from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT, WRITE_CONFIRMED, SUCCESS, \
+            FAILURE, RAMP_TIME, RAMP_UPDATE_FREQUENCY
 
         tagPath = "[%s]%s" % (providerName, config.tagPath)
         outputType = s88Get(chartScope, stepScope, config.key + "." + OUTPUT_TYPE, recipeDataScope)
@@ -86,8 +87,17 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
         
         logger.trace("---- setting status to downloading ----")
         s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_DOWNLOADING, recipeDataScope)
-        writeStatus, txt = write(tagPath, config.value, config.confirmWrite, outputType)
-        logger.trace("WriteDatum returned: %s - %s" % (str(writeStatus), txt))
+        
+        if string.upper(outputType) in ["OUTPUT RAMP", "SETPOINT RAMP"]:
+            logger.tracef("Fetching ramp properties from %s recipe data", config.key)
+            rampTime = s88Get(chartScope, stepScope, config.key + "." + RAMP_TIME, recipeDataScope)
+            updateFrequency = s88Get(chartScope, stepScope, config.key + "." + RAMP_UPDATE_FREQUENCY, recipeDataScope)
+            writeStatus, txt = writeRamp(tagPath, config.value, outputType, rampTime, updateFrequency, config.confirmWrite)
+            
+            logger.trace("writeRamp() returned: %s - %s" % (str(writeStatus), txt))
+        else:
+            writeStatus, txt = write(tagPath, config.value, config.confirmWrite, outputType)
+            logger.trace("write() returned: %s - %s" % (str(writeStatus), txt))
         config.written = True
     
         if config.confirmWrite:

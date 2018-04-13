@@ -14,18 +14,37 @@ log = system.util.getLogger("com.ils.diagToolkit")
 
 def initialize(rootContainer):
     print "In %s.initialize()..." % (__name__)
-
     rootContainer.initializationComplete = False
     rootContainer.recalculateFlag = False
     rootContainer.lastAction = "opened"
+    rootContainer.initializationTime = system.date.now()
+    refresh(rootContainer)
+
+
+def refresh(rootContainer):
+    print "In %s.refresh()..." % (__name__)
     db=system.tag.read("[Client]Database").value
     
     post = rootContainer.post
     fetchAndSetDownloadActiveFlag(rootContainer, post, db)
     repeater = rootContainer.getComponent("Template Repeater")
     
+    ds = getSetpointSpreadsheetDataset(post, db)
+    repeater.templateParams=ds
+    repeater.selectedRow = -1
+
+    #----------------------------------------------------------
+    def initializationComplete(rootContainer=rootContainer):
+        print "Setting initializationComplete to TRUE"
+        rootContainer.initializationComplete = True
+    #----------------------------------------------------------
+
+    system.util.invokeLater(initializationComplete, 1000)
+    
+def getSetpointSpreadsheetDataset(post, db):
     from ils.diagToolkit.common import fetchActiveOutputsForPost
     pds = fetchActiveOutputsForPost(post, db)
+    print "...fetched %d active outputs" % (len(pds))
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
     header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus','numberFormat']
@@ -99,16 +118,7 @@ def initialize(rootContainer):
             i = i + 1
 
     ds = system.dataset.toDataSet(header, rows)
-    repeater.templateParams=ds
-    repeater.selectedRow = -1
-
-    #----------------------------------------------------------
-    def initializationComplete(rootContainer=rootContainer):
-        print "Setting initializationComplete to TRUE"
-        rootContainer.initializationComplete = True
-    #----------------------------------------------------------
-
-    system.util.invokeLater(initializationComplete, 1000)
+    return ds
 
 # This is called by a timer script that runs when a download is active.  It determines if the download is complete by checking for a terminal
 # download status (Error or Success) in each of the outputs that are marked as GO 
@@ -116,6 +126,7 @@ def checkIfDownloadComplete(event):
     rootContainer = event.source.parent
     print "Checking if the download is complete..."
     downloadComplete = True
+    
     repeater=rootContainer.getComponent("Template Repeater")
     ds = repeater.templateParams
     for row in range(ds.rowCount):
@@ -146,17 +157,20 @@ def checkIfDownloadComplete(event):
                 command=ds.getValueAt(row, "command")
                 if string.upper(command) == 'GO':
                     downloadStatus=ds.getValueAt(row, "downloadStatus")
-                    if downloadStatus <> 'Success':
+                    if downloadStatus not in ['Success', '']:
                         writesWereSuccessful = False
-                else:
-                    writesWereSuccessful = False
+
         if writesWereSuccessful:
             print "...all of the writes were successful, resetting diagrams and checking if all applications were processed..."
             allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
         
             # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
             if allApplicationsProcessed:
+                print "...all applications were processed, closing the setpoint spreadsheet..."
                 system.nav.closeParentWindow(event)
+            else:
+                print "...not all applications were processed, hide the spreadsheet but leave the window open..."
+                rootContainer.recalculateFlag = True
     
 # This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
 def updateQuantOutputAction(rootContainer, ds, row, action):
@@ -362,8 +376,6 @@ def recalcCallback(event):
     database=system.tag.read("[Client]Database").value
     tagProvider=system.tag.read("[Client]Tag Provider").value
     
-
-
     # Don't do a recalc if there is a download in progress
     if rootContainer.downloadActive:
         return
@@ -539,6 +551,7 @@ def noDownloadCallback(event):
     
     activeApplication = isThereAnActiveApplication(repeater)
     if activeApplication:
+        print "There IS an active application..."
         ds = repeater.templateParams
         
         # Write something useful to the logbook to document this No Download
@@ -557,7 +570,7 @@ def noDownloadCallback(event):
             system.nav.closeParentWindow(event)
 
 '''
-This is called when the oerator does a download or a No Download.  It closes any open recommendation maps that are open on the client.
+This is called when the operator does a download or a No Download.  It closes any open recommendation maps that are open on the client.
 It does not check other clients.  It doesn't worry about if the operator only selected one output or application.
 '''
 def hideDetailMap():
@@ -616,7 +629,7 @@ def isThereAnActiveApplication(repeater):
 # Reset the database tables and the BLT diagrams for every application that is active.
 # We do not consider individual outputs that the operator may have chosen to not download.   
 def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, recommendationStatus):
-    print "...performing generic post callback cleanup..." 
+    log.infof("...performing generic post callback cleanup for a <%s>...", actionMessage)
     allApplicationsProcessed=True
     post=rootContainer.post
     applicationActive=False
@@ -646,6 +659,9 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
             else:
                 applicationActive=False
                 allApplicationsProcessed=False
+                log.infof("Updating the DownloadAction for application <%s> to <ACTIVE>", ds.getValueAt(row, "application"))
+                SQL = "update DtApplication set downloadAction = 'ACTIVE' where ApplicationName = '%s'" % (ds.getValueAt(row, "application"))
+                system.db.runUpdateQuery(SQL, db)
 
         elif string.upper(rowType) == "ROW":
             if applicationActive:
@@ -660,6 +676,12 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
                             finalDiagnosisIds.append(rec["FinalDiagnosisId"])
                         if rec["FamilyName"] not in families:
                             families.append(rec["FamilyName"])
+            else:
+                print "Checking quant output for an application that is not active..."
+                quantOutputId=ds.getValueAt(row, "qoId")
+                log.infof("Updating the DownloadAction for quant output <%s> to <GO>", str(quantOutputId))
+                SQL = "update DtQuantOutput set downloadAction = 'GO' where QuantOutputId = %s" % ( str(quantOutputId) )
+                system.db.runUpdateQuery(SQL, db)
 
     resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
     

@@ -280,7 +280,8 @@ def fetchRecipeData(stepUUID, key, attribute, db):
         valueType = string.upper(record["VALUETYPE"])
         
         if attribute in ["TAG","VALUETYPE","OUTPUTTYPE","DOWNLOAD","DOWNLOADSTATUS","ERRORCODE","ERRORTEXT","TIMING","MAXTIMING",\
-                         "ACTUALTIMING","ACTUALDATETIME","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED", "RAMPTIMEMINUTES", "UPDATEFREQUENCYSECONDS"]:
+                         "ACTUALTIMING","ACTUALDATETIME","PVMONITORACTIVE","PVMONITORSTATUS","WRITECONFIRM","WRITECONFIRMED", \
+                         "RAMPTIMEMINUTES", "UPDATEFREQUENCYSECONDS"]:
             val = record[attribute]
         elif attribute == "OUTPUTVALUE":
             theAttribute = "OUTPUT%sVALUE" % (valueType)
@@ -292,7 +293,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             theAttribute = "PV%sVALUE" % (valueType)
             val = record[theAttribute]
         else:
-            raise ValueError, "Unsupported attribute: %s for an output recipe data" % (attribute)
+            raise ValueError, "Unsupported attribute: %s for an output ramp recipe data" % (attribute)
     
     elif recipeDataType == ARRAY:
         if attribute == "VALUE":
@@ -312,7 +313,10 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 If the array index is a string then it must be a keyed array, translate the string to an integer 
                 '''
                 if isText(arrayIndex):
-                    arrayIndex = getArrayIndexForKey(recipeDataId, arrayIndex, db)
+                    SQL = "select indexKeyId from SfcRecipeDataArray where recipeDataId = %d" % (recipeDataId)
+                    keyId = system.db.runScalarQuery(SQL, db)
+                    arrayIndex = getIndexForKey(keyId, arrayIndex, db)
+                    print "Fetched array index: ", arrayIndex
                     
                 SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
                     " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
@@ -350,9 +354,13 @@ def fetchRecipeData(stepUUID, key, attribute, db):
                 logger.tracef("Fetched the whole array: %s", str(val))
             else:
                 if isText(rowIndex):
-                    rowIndex = getMatrixIndexForKey(recipeDataId, "ROW", rowIndex, db)
+                    SQL = "select rowIndexKeyId from SfcRecipeDataMatrix where recipeDataId = %d" % (recipeDataId)
+                    keyId = system.db.runScalarQuery(SQL, db)
+                    rowIndex = getIndexForKey(keyId, rowIndex, db)
                 if isText(columnIndex):
-                    columnIndex = getMatrixIndexForKey(recipeDataId, "COLUMN", columnIndex, db)
+                    SQL = "select columnIndexKeyId from SfcRecipeDataMatrix where recipeDataId = %d" % (recipeDataId)
+                    keyId = system.db.runScalarQuery(SQL, db)
+                    columnIndex = getIndexForKey(keyId, columnIndex, db)
                 
                 SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
                     " from SfcRecipeDataMatrixView A, SfcRecipeDataMatrixElementView E where A.RecipeDataId = E.RecipeDataId "\
@@ -376,29 +384,14 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     
     return val, units
 
-def getMatrixIndexForKey(recipeDataId, rowOrColumn, indexKey, db):
-    if rowOrColumn == "ROW":
-        indexColumn = "RowIndexKeyRecipeDataId"
-    else:
-        indexColumn = "ColumnIndexKeyRecipeDataId"
-        
-    SQL = "Select arrayIndex "\
-        "from SfcRecipeDataArrayElementView AEV, SfcRecipeDataMatrix RDM "\
-        "where AEV.RecipeDataId = RDM.%s "\
-        " and RDM.RecipeDataId = %d "\
-        " and AEV.StringValue = '%s' " % (indexColumn, recipeDataId, indexKey)
-    print SQL
-    index = system.db.runScalarQuery(SQL, db)
-    return index
-
-def getArrayIndexForKey(recipeDataId, indexKey, db):
-    SQL = "Select arrayIndex "\
-        "from SfcRecipeDataArrayElementView AEV, SfcRecipeDataArray RDA "\
-        "where AEV.RecipeDataId = RDA.IndexKeyRecipeDataId "\
-        " and RDA.RecipeDataId = %d "\
-        " and AEV.StringValue = '%s' " % (recipeDataId, indexKey)
-    arrayIndex = system.db.runScalarQuery(SQL, db)
-    return arrayIndex 
+def getIndexForKey(keyId, keyValue, db):
+    print "***** Getting the index for: %d - %s" % (keyId, keyValue)
+    SQL = "Select keyIndex "\
+        "from SfcRecipeDataKeyView "\
+        "where keyId = %d "\
+        " and keyValue = '%s'" % (keyId, keyValue)
+    keyIndex = system.db.runScalarQuery(SQL, db)
+    return keyIndex 
 
 
 def fetchRecipeDataRecord(stepUUID, key, db):
@@ -755,7 +748,9 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
             If the arrayIndex is a text string, then assume that this is a keyed array and translate the string index to an integer
             '''
             if isText(arrayIndex):
-                arrayIndex = getArrayIndexForKey(recipeDataId, arrayIndex, db)
+                SQL = "select indexKeyId from SfcRecipeDataArray where recipeDataId = %d" % (recipeDataId)
+                keyId = system.db.runScalarQuery(SQL, db)
+                arrayIndex = getIndexForKey(keyId, arrayIndex, db)
             
             # Now fetch the Value Id of the specific element of the array
             SQL = "select valueId from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex = %s" % (str(recipeDataId), str(arrayIndex))
@@ -772,6 +767,16 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
     elif recipeDataType == MATRIX:
         if rowIndex == None or columnIndex == None:
             raise ValueError, "Matric Recipe data must specify a row and a column index - %s - %s" % (key, attribute)
+        
+        # Dereference array keys
+        if isText(rowIndex):
+            SQL = "select rowIndexKeyId from SfcRecipeDataMatrix where recipeDataId = %d" % (recipeDataId)
+            keyId = system.db.runScalarQuery(SQL, db)
+            rowIndex = getIndexForKey(keyId, rowIndex, db)
+        if isText(columnIndex):
+            SQL = "select columnIndexKeyId from SfcRecipeDataMatrix where recipeDataId = %d" % (recipeDataId)
+            keyId = system.db.runScalarQuery(SQL, db)
+            columnIndex = getIndexForKey(keyId, columnIndex, db)
         
         # Get the value type from the SfcRecipeDataArray table.
         SQL = "select * from SfcRecipeDataMatrixView where RecipeDataId = %s" % (recipeDataId)

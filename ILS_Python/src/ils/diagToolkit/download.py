@@ -59,6 +59,10 @@ def downloadCallback(event, rootContainer):
         
         # Set the download active flag on the UI that triggers the status message and database updates...
         rootContainer.downloadActive = True
+        
+        # Set a flag that will be used when the notification arrives.  This is only relevent when two applications are present but one of them was INACTIVE
+        rootContainer.lastAction = "download"
+        
         from ils.diagToolkit.setpointSpreadsheet import updateDownloadActiveFlag
         updateDownloadActiveFlag(post, True, db)
 #        serviceDownload(post, repeater, ds, tagProvider, db)

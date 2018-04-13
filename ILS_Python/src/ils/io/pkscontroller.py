@@ -14,6 +14,7 @@ class PKSController(controller.Controller):
     spTag = None
     CONFIRM_TIMEOUT = 10.0
     PERMISSIVE_LATENCY_TIME = 0.0
+    OPC_LATENCY_TIME = 0.0
     
     def __init__(self,path):
         controller.Controller.__init__(self,path)
@@ -21,12 +22,13 @@ class PKSController(controller.Controller):
         self.spTag = opcoutput.OPCOutput(path + '/sp')
         self.opTag = opcoutput.OPCOutput(path + '/op')
         self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
+        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
 
     # Reset the UDT in preparation for a write 
     def reset(self):
         success = True
         errorMessage = ""
-        log.trace('Resetting a PKSController...')       
+        log.tracef('Resetting a %s Controller...', __name__)       
         
         system.tag.write(self.path + '/badValue', False)
         system.tag.write(self.path + '/writeErrorMessage', '')
@@ -45,7 +47,7 @@ class PKSController(controller.Controller):
     
     # writeDatum for a controller supports writing values to the OP, SP, or MODE, one at a time.
     def writeDatum(self, val, valueType):      
-        log.trace("pkscontroller.writeDatum() %s - %s - %s" % (self.path, str(val), valueType))
+        log.tracef("In %s.writeDatum() %s - %s - %s", __name__, self.path, str(val), valueType)
         if string.upper(valueType) in ["SP", "SETPOINT"]:
             tagRoot = self.path + '/sp'
             targetTag = self.spTag
@@ -59,7 +61,7 @@ class PKSController(controller.Controller):
             targetTag = self.modeTag
             valueType = 'mode'
         else:
-            log.error("Unexpected value Type: <%s>" % (valueType))
+            log.errorf("Unexpected value Type: <%s>", valueType)
             raise Exception("Unexpected value Type: <%s>" % (valueType))
 
         # Check the basic configuration of the tag we are trying to write to.
@@ -67,7 +69,7 @@ class PKSController(controller.Controller):
         if not(success):
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", errorMessage)
-            log.info("Aborting write to %s, checkConfig failed due to: %s" % (tagRoot, errorMessage))
+            log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
 
         # Check the basic configuration of the permissive of the controller we are writing to.
@@ -75,7 +77,7 @@ class PKSController(controller.Controller):
         if not(success):
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", errorMessage)
-            log.info("Aborting write to %s, checkConfig failed due to: %s" % (self.path + '/permissive', errorMessage))
+            log.infof("Aborting write to %s, checkConfig failed due to: %s", self.path + '/permissive', errorMessage)
             return False, errorMessage
         
         # reset the UDT
@@ -93,14 +95,14 @@ class PKSController(controller.Controller):
  
         # Read the current permissive and save it so that we can put it back the way is was when we are done
         permissiveAsFound = system.tag.read(self.path + "/permissive").value
-        log.trace("   permisive as found: %s" % (permissiveAsFound))
+        log.tracef("   permisive as found: %s", permissiveAsFound)
         
         # Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed
         permissiveValue = system.tag.read(self.path + "/permissiveValue").value
         permissiveConfirmation = system.tag.read(self.path + "/permissiveConfirmation").value
         
         # Write the permissive value to the permissive tag and wait until it gets there
-        log.trace("   writing permissive value: %s" % (permissiveValue))
+        log.tracef("   writing permissive value: %s", permissiveValue)
         system.tag.write(self.path + "/permissive", permissiveValue)
         
         # Confirm the permissive if necessary.  If the UDT is configured for confirmation, then it MUST be confirmed 
@@ -112,7 +114,7 @@ class PKSController(controller.Controller):
             confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue, self.CONFIRM_TIMEOUT)
  
             if confirmed:
-                log.trace("   confirmed Permissive write: %s - %s" % (self.path, permissiveValue))
+                log.tracef("   confirmed Permissive write: %s - %s", self.path, permissiveValue)
             else:
                 errorMessage = "Failed to confirm permissive write of <%s> to %s because %s" % (str(permissiveValue), self.path, errorMessage)
                 log.error(errorMessage)
@@ -127,21 +129,19 @@ class PKSController(controller.Controller):
         # write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
         # the write so this needs to just wait around for the answer
 
-        log.trace("Writing %s to %s" % (str(val), tagRoot))
+        log.tracef("Writing %s to %s", str(val), tagRoot)
         system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeDatum(val, valueType)
          
         # Return the permissive to its original value.  Don't let the success or failure of this override the result of the 
         # overall write.
         
-        # TODO wait for a latency time
         log.trace("Restoring permissive")
         system.tag.write(self.path + "/permissive", permissiveAsFound)
         if permissiveConfirmation:
             confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound, self.CONFIRM_TIMEOUT)
-            
             if confirmed:    
-                log.trace("Confirmed Permissive restore: %s" % (self.path))
+                log.tracef("Confirmed Permissive restore: %s", self.path)
             else:
                 txt = "Failed to confirm permissive write of <%s> to %s because %s" % (str(val), self.path, confirmMessage)
                 log.error(txt)
@@ -152,7 +152,7 @@ class PKSController(controller.Controller):
 
     # Perform a really basic check of the configuration of a tag
     def checkConfig(self, tagRoot):
-        log.trace("In pkscontroller.checkConfig, checking %s" % (tagRoot))
+        log.tracef("In %s.checkConfig, checking %s", __name__, tagRoot)
         
         from ils.io.util import checkConfig
         configOK, errorMsg = checkConfig(self.path)
@@ -185,7 +185,7 @@ class PKSController(controller.Controller):
         success = True
         errorMessage = ""
         
-        log.trace("In %s checking the configuration of PKS controller %s for writing %s to %s" % (__name__, self.path, str(newVal), outputType))
+        log.tracef("In %s.confirmControllerMode checking the configuration of PKS controller %s for writing %s to %s", __name__, self.path, str(newVal), outputType)
         
         # Determine which tag in the controller we are seeking to write to
         if string.upper(outputType) in ["SP", "SETPOINT"]:
@@ -212,13 +212,13 @@ class PKSController(controller.Controller):
 
         # The quality is good so not get the values in a convenient form
         currentValue = float(currentValue.value)
-        log.tracef("The current value which will be used for the Test For Zero test is %s" % (str(currentValue)))
+        log.tracef("The current value which will be used for the Test For Zero test is %s", str(currentValue))
 
         # Check the Mode
 #        mode = system.tag.read(self.path + '/mode/value')
         
         if str(mode.quality) != 'Good': 
-            log.warn("checkConfig failed for %s because the mode quality is %s" % (self.path, str(mode.quality)))
+            log.warnf("checkConfig failed for %s because the mode quality is %s", self.path, str(mode.quality))
             return False, "The mode quality is %s" % (str(mode.quality))
         
         mode = string.strip(mode.value)
@@ -228,12 +228,12 @@ class PKSController(controller.Controller):
         
         # Check the quality of the tags to make sure we can trust their values
         if str(windup.quality) != 'Good': 
-            log.warn("checkConfig failed for %s because the windup quality is %s" % (self.path, str(windup.quality)))
+            log.warnf("checkConfig failed for %s because the windup quality is %s", self.path, str(windup.quality))
             return False, "The windup quality is %s" % (str(windup.quality))
 
         windup = string.strip(windup.value)        
 
-        log.trace("%s: %s=%s, windup=%s, mode:%s" % (self.path, outputType, str(currentValue), windup, mode))
+        log.tracef("%s: %s=%s, windup=%s, mode:%s", self.path, outputType, str(currentValue), windup, mode)
 
         # For outputs check that the mode is MANUAL - no other test is required
         if string.upper(outputType) in ["OP", "OUTPUT"]:
@@ -261,7 +261,7 @@ class PKSController(controller.Controller):
             success = False
             errorMessage = "Unknown output type: %s for %s" % (outputType, self.path)
 
-        log.trace("  confirmControllerMode returned: %s - %s" % (str(success), errorMessage))
+        log.tracef("  confirmControllerMode returned: %s - %s", str(success), errorMessage)
         return success, errorMessage
 
     # Implement a simple write confirmation.  We know the value that we tried to write, read the tag for a
@@ -283,25 +283,25 @@ class PKSController(controller.Controller):
     # *** This is called by a tag change script and runs in the gateway ***
     def writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm):       
         success = True
-        log.trace("Writing ramp for controller %s" % (self.path))
+        log.tracef("In %s.writeRamp() Writing ramp for controller %s", __name__, self.path)
 
         if val == None or rampTime == None or writeConfirm == None or valType == None or updateFrequency == None:
-            log.error("ERROR writing ramp for PKS controller: %s - One or more of the required arguments is missing" % (self.path))
+            log.errorf("ERROR writing ramp for PKS controller: %s - One or more of the required arguments is missing", self.path)
             return False, "One or more of the required arguments is missing"
-        
+
         # Change  the mode of the controller and set the desired ramp type
-        if string.upper(valType) in ["SP", "SETPOINT", "RAMP-SETPOINT", "SETPOINT-RAMP"]:
+        if string.upper(valType) == "SETPOINT RAMP":
             modeValue = 'AUTO'
             valuePathRoot = self.path + '/sp'
             targetTag = self.spTag
 
-        elif string.upper(valType) in ["OP", "OUTPUT", "RAMP-OUTPUT", "OUTPUT-RAMP"]:
+        elif string.upper(valType) == "OUTPUT RAMP":
             modeValue = 'MAN'
             valuePathRoot = self.path + '/op'
             targetTag = self.opTag
 
         else:
-            log.error("ERROR writing ramp for PKS controller: %s - Unexpected value type <%s>" % (self.path, valType))
+            log.errorf("ERROR writing ramp for PKS controller: %s - Unexpected value type <%s>", self.path, valType)
             return False, "Unexpected value type <%s>" % (valType)
         
         # Check the basic configuration of the tag we are trying to write to.
@@ -309,7 +309,7 @@ class PKSController(controller.Controller):
         if not(success):
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", errorMessage)
-            log.info("Aborting write to %s, checkConfig failed due to: %s" % (valuePathRoot, errorMessage))
+            log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
 
         
@@ -317,7 +317,7 @@ class PKSController(controller.Controller):
         modeTag = self.modeTag
         confirmed, errorMessage = modeTag.writeDatum(modeValue, 'mode')
         if not(confirmed):
-            log.warn("Warning: EPKS Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!" % (self.path, modeValue))
+            log.warnf("Warning: EPKS Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!", self.path, modeValue)
 
         # Read the starting point for the ramp which is the current value
         startValue = system.tag.read(valuePathRoot + '/value')
@@ -328,7 +328,7 @@ class PKSController(controller.Controller):
 
         startValue = startValue.value
 
-        log.info("Ramping the %s of EPKS controller <%s> from %s to %s over %s minutes" % (valType, self.path, str(startValue), str(val), str(rampTime)))
+        log.infof("Ramping the %s of EPKS controller <%s> from %s to %s over %s minutes", valType, self.path, str(startValue), str(val), str(rampTime))
         system.tag.write(self.path + "/writeStatus", "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime)))
 
         rampTimeSeconds = rampTime * 60.0
@@ -342,7 +342,7 @@ class PKSController(controller.Controller):
             from ils.common.util import calculateYFromEquationOfLine
             aVal = calculateYFromEquationOfLine(deltaSeconds, m, b)
             
-            log.trace("EPKS Controller <%s> ramping to %s (elapsed time: %s)" % (self.path, str(aVal), str(deltaSeconds)))
+            log.tracef("EPKS Controller <%s> ramping to %s (elapsed time: %s)", self.path, str(aVal), str(deltaSeconds))
             targetTag.writeWithNoCheck(aVal)
  
             # Time in seconds
@@ -352,12 +352,12 @@ class PKSController(controller.Controller):
         # Write the final point and confirm this one
         targetTag.writeDatum(val, valType)
 
-        log.info("EPKS Controller <%s> done ramping!" % (self.path))
+        log.infof("%s - <%s> done ramping!", __name__, self.path)
         return success, errorMessage
     
     # WiteWithNoCheck for a controller supports writing values to the OP, SP, or MODE, one at a time.
     def writeWithNoCheck(self, val, valueType):      
-        log.trace("pkscontroller.writeWithNoCheck() %s - %s - %s" % (self.path, str(val), valueType))
+        log.tracef("%s.writeWithNoCheck() %s - %s - %s", __name__, self.path, str(val), valueType)
         if string.upper(valueType) in ["SP", "SETPOINT"]:
             tagRoot = self.path + '/sp'
             targetTag = self.spTag
@@ -371,7 +371,7 @@ class PKSController(controller.Controller):
             targetTag = self.modeTag
             valueType = 'mode'
         else:
-            log.error("Unexpected value Type: <%s>" % (valueType))
+            log.errorf("Unexpected value Type: <%s>", valueType)
             raise Exception("Unexpected value Type: <%s>" % (valueType))
 
         # Check the basic configuration of the tag we are trying to write to.
@@ -379,7 +379,7 @@ class PKSController(controller.Controller):
         if not(success):
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", errorMessage)
-            log.info("Aborting write to %s, checkConfig failed due to: %s" % (tagRoot, errorMessage))
+            log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
 
         # Check the basic configuration of the permissive of the controller we are writing to.
@@ -387,7 +387,7 @@ class PKSController(controller.Controller):
         if not(success):
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", errorMessage)
-            log.info("Aborting write to %s, checkConfig failed due to: %s" % (self.path + '/permissive', errorMessage))
+            log.infof("Aborting write to %s, checkConfig failed due to: %s", self.path + '/permissive', errorMessage)
             return False, errorMessage
         
         # reset the UDT
@@ -405,14 +405,14 @@ class PKSController(controller.Controller):
  
         # Read the current permissive and save it so that we can put it back the way is was when we are done
         permissiveAsFound = system.tag.read(self.path + "/permissive").value
-        log.trace("   permisive as found: %s" % (permissiveAsFound))
+        log.tracef("   permisive as found: %s", permissiveAsFound)
         
         # Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed
         permissiveValue = system.tag.read(self.path + "/permissiveValue").value
         permissiveConfirmation = system.tag.read(self.path + "/permissiveConfirmation").value
         
         # Write the permissive value to the permissive tag and wait until it gets there
-        log.trace("   writing permissive value: %s" % (permissiveValue))
+        log.tracef("   writing permissive value: %s", permissiveValue)
         system.tag.write(self.path + "/permissive", permissiveValue)
         
         # Confirm the permissive if necessary.  If the UDT is configured for confirmation, then it MUST be confirmed 
@@ -424,7 +424,7 @@ class PKSController(controller.Controller):
             confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue, self.CONFIRM_TIMEOUT)
  
             if confirmed:
-                log.trace("   confirmed Permissive write: %s - %s" % (self.path, permissiveValue))
+                log.tracef("   confirmed Permissive write: %s - %s", self.path, permissiveValue)
             else:
                 errorMessage = "Failed to confirm permissive write of <%s> to %s because %s" % (str(permissiveValue), self.path, errorMessage)
                 log.error(errorMessage)
@@ -439,7 +439,7 @@ class PKSController(controller.Controller):
         # write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
         # the write so this needs to just wait around for the answer
 
-        log.trace("Writing %s to %s" % (str(val), tagRoot))
+        log.tracef("Writing %s to %s", str(val), tagRoot)
         system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeWithNoCheck(val, valueType)
         if not(confirmed):
@@ -461,7 +461,7 @@ class PKSController(controller.Controller):
             confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound, self.CONFIRM_TIMEOUT)
             
             if confirmed:    
-                log.trace("Confirmed Permissive restore: %s" % (self.path))
+                log.tracef("Confirmed Permissive restore: %s", self.path)
             else:
                 txt = "Failed to confirm permissive write of <%s> to %s because %s" % (str(val), self.path, confirmMessage)
                 log.error(txt)

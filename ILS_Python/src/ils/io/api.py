@@ -5,6 +5,7 @@ Created on Nov 30, 2014
 '''
 import string, system, time, traceback
 from ils.io.util import isUDTorFolder
+from ils.common.error import catchError
 
 # These next three lines may have warnings in eclipse, but they ARE needed!
 import ils.io
@@ -17,6 +18,7 @@ import ils.io.pksrampcontroller
 import ils.io.pksacecontroller
 import ils.io.pksacerampcontroller
 import ils.io.tdccontroller
+from ils.io.client import writeRamp
 
 log = system.util.getLogger("com.ils.io.api")
 
@@ -26,7 +28,7 @@ log = system.util.getLogger("com.ils.io.api")
 # will be used.  If the target is a UDT controller then writeOutput or writeRamp will be used.  If writing to a simple tag, 
 # then the valueType attribute is ignored.  This can run in either the client or the gateway    
 def write(fullTagPath, val, writeConfirm, valueType="value"):
-    log.info("(api.write) Writing %s to the %s of %s (Confirm write: %s)" % (str(val), valueType, fullTagPath, str(writeConfirm)))
+    log.info("(api.write) Writing <%s> to the <%s> of <%s> (Confirm write: %s)" % (str(val), valueType, fullTagPath, str(writeConfirm)))
     
     tagExists = system.tag.exists(fullTagPath)
     if not(tagExists):
@@ -38,22 +40,12 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
 
     if isUDTorFolder(fullTagPath):
         log.tracef("It is a UDT or a folder")
-        # This could be collapsed - we don't really need to know the Python class here - leaving it in for now as 
-        # an example of how to determine the Python class. 
-        pythonClass = system.tag.read(fullTagPath + "/pythonClass").value
         
-        if pythonClass in ["Controller", "PKSController", "PKSACEController", "TDCController"]:
-            log.tracef("...writing to a controller (%s)...", pythonClass)
-            if writeConfirm:
-                success, errorMessage = writeDatum(fullTagPath, val, valueType)
-            else:
-                success, errorMessage = writeWithNoCheck(fullTagPath, val, valueType)
+        if writeConfirm:
+            success, errorMessage = writeDatum(fullTagPath, val, valueType)
         else:
-            log.tracef("...writing to an OPC tag UDT (%s)...", pythonClass)
-            if writeConfirm:
-                success, errorMessage = writeDatum(fullTagPath, val, valueType)
-            else:
-                success, errorMessage = writeWithNoCheck(fullTagPath, val, valueType)
+            success, errorMessage = writeWithNoCheck(fullTagPath, val, valueType)
+
     else:
         log.tracef("It is a simple tag")
         # The 'Tag" is either a simple memory tag or an simple OPC tag
@@ -130,7 +122,8 @@ def writeDatum(tagPath, val, valueType=""):
     log.info("Writing %s to %s, type=%s (writeDatum)" % (str(val), tagPath, str(valueType)))
 
     success, errorMessage = writer(tagPath, val, valueType, "writeDatum")
-    
+    '''
+    --- I think this is redundant, there is a write confirm 
     if success:
         # The write was successful, now confirm the write by reading the value back
         success, errorMessage = simpleWriteConfirm(tagPath, val, valueType)
@@ -140,7 +133,7 @@ def writeDatum(tagPath, val, valueType=""):
             log.error("WriteDatum failed to confirm writing %s to %s because %s" % (str(val), str(tagPath), errorMessage))
     else:
         log.error("WriteDatum failed while writing %s to %s because %s" % (str(val), str(tagPath), errorMessage))
-        
+    ''' 
     return success, errorMessage
         
 
@@ -194,7 +187,7 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
             confirmed, errorMessage = tag.writeRamp(val, valType, rampTime, updateFrequency, writeConfirm)
 
         except:
-            reason = "ERROR writing to %s, a <%s> (%s)" % (tagPath, pythonClass, traceback.format_exc()) 
+            reason = catchError(__name__, "ERROR writing to %s, a <%s>" % (tagPath, pythonClass)) 
             log.error(reason)
             return False, reason
         
@@ -319,7 +312,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
 def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1): 
     if isUDTorFolder(tagPath):
         pythonClass = system.tag.read(tagPath + "/pythonClass").value
-        if pythonClass in ["PKSController", "PKSACEController"]:
+        if pythonClass in ["PKSController", "PKSACEController", "PKSACERampController", "PKSRampController"]:
             if string.upper(valueType) in ["SP", "SETPOINT"]:
                 fullTagPath = tagPath + '/sp/value'
             elif string.upper(valueType) in ["OP", "OUTPUT"]:
@@ -460,7 +453,8 @@ def writeMessageHandler(payload):
             else:
                 log.error("Unrecognized command: %s in ils.io.api.writeMessageHandler" % (command))
         except:
-            log.error("Caught an error in ils.io.api.writeMessageHandler")
+            errorText = catchError(__name__, command)
+            log.error(errorText)
         
         # This is just a short dwell that may or may not be necessary, it definetly seemed to help during 
         # testing from the standpoint of keeping log messages from getting intertwined.

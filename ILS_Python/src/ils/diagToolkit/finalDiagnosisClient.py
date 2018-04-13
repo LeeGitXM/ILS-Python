@@ -156,13 +156,33 @@ def handleNotification(payload):
                 rootContainer.refresh=True
                 return
             else:
+                
+                print "...found an existing setpoint spreadsheet, checking to see if it needs to be updated..."
+                from ils.diagToolkit.setpointSpreadsheet import getSetpointSpreadsheetDataset
+                newDs = getSetpointSpreadsheetDataset(post, clientDatabase)
+                
+                repeater = rootContainer.getComponent("Template Repeater")
+                oldDs = repeater.templateParams
+                
+                '''
+                If the contents that we are wishing to notify the operator about are the same as what is already in the setpoint spreadsheet then 
+                there is nothing we need to do.  This was added to handle the Rate Change system where we throw up the setpoint spreadsheet immediatly and the
+                normal notification comes some time later.
+                '''
+                if datasetsMatch(newDs, oldDs):
+                    print "The datasets are the same - Aborting the notifction"
+                    return
+                
+                print "The datasets are different, continuing with notification processing..."
+                
                 lastAction = rootContainer.lastAction
+                print "...the last action was: ", lastAction
                 
                 '''
                 If we found a setpoint spreadsheet and its lastAction is "noDownload" then this is the client that just pressed the NO DOWNLOAD buuton,
                 so we don't need to get the OC's attention, but we do need to refresh the SS.
                 '''
-                if string.upper(lastAction) == "NODOWNLOAD":
+                if string.upper(lastAction) in ["NODOWNLOAD", "DOWNLOAD"]:
                     rootContainer.lastAction = "notified"
 
                     ''' Reset any applications that are in the SS, for us to get here there must have been at least one INACTIVE '''
@@ -170,8 +190,9 @@ def handleNotification(payload):
                     resetAllApplicationAndOutputActions(rootContainer)
                     initialize(rootContainer)
                     return
+                        
                 else:
-                    print "...closing the setpoint spreadsheet so we can regain the operators attention..."
+                    print "...closing the setpoint spreadsheet so we can regain the operator's attention..."
                     system.nav.closeWindow(windowPath)
                 
         pos = windowPath.find('OC Alert')
@@ -362,4 +383,15 @@ def postSpreadsheet(event, payload):
     # One type of notification text is vector clamp advice.
     if notificationText != "":
         system.gui.messageBox(notificationText)
-    
+
+'''
+Compare two datasets cell by cell.
+'''
+def datasetsMatch(oldDs, newDs):
+    for row in range(oldDs.getRowCount()):
+        for col in range(oldDs.getColumnCount()):
+            oldVal = oldDs.getValueAt(row, col)
+            newVal = newDs.getValueAt(row, col)
+            if oldVal != newVal:
+                return False
+    return True

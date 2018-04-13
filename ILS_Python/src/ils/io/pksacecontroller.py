@@ -14,7 +14,7 @@ class PKSACEController(pkscontroller.PKSController):
         pkscontroller.PKSController.__init__(self,path)
     
     def writeDatum(self, val, valueType):
-        log.trace("pksAceController.writeDatum() %s - %s - %s" % (self.path, str(val), valueType))
+        log.tracef("%s.writeDatum() %s - %s - %s", __name__, self.path, str(val), valueType)
         
         # Read the value that we want to write to the Processing command
         processingCommandWait = system.tag.read(self.path + "/processingCommandWait").value
@@ -28,7 +28,7 @@ class PKSACEController(pkscontroller.PKSController):
         
         # Write the new delay - no need to confirm this.  The is a delay in seconds.  The DCS will reset it to 0 or none after it has been processed,
         # so I don't need to reset it.
-        log.trace("Writing wait value %s to the processing command..." % (str(processingCommandWait)))
+        log.tracef("Writing wait value %s to the processing command...", str(processingCommandWait))
         system.tag.write(self.path + "/processingCommand", processingCommandWait)
         
 #        confirmed, txt = confirmWrite(self.path + "/processingCommand", processingCommandWait, timeout=60, frequency=1)
@@ -48,39 +48,3 @@ class PKSACEController(pkscontroller.PKSController):
 
         return status, errorMessage
     
-    def writeDatumOriginal(self, val, valueType):
-        log.trace("pksAceController.writeDatum() %s - %s - %s" % (self.path, str(val), valueType))
-        
-        processingCommandWaitTagPath=self.path + "/processingCommandWait"
-        processingCommandValueTagPath=self.path + "/processingCommand"
-        
-        # Read the value that we want to Processing command value and the value that is currently there that we will restore at the end
-        processingCommandWait = system.tag.read(processingCommandWaitTagPath).value
-        processingCommandWaitOriginal = system.tag.read(processingCommandValueTagPath).value
-        
-        log.trace("The current wait value is %s, the value we will write is %s" % (str(processingCommandWaitOriginal), str(processingCommandWait)))
-
-        # Write the new delay
-        system.tag.write(self.path + "/processingCommand", processingCommandWait)
-        confirmed, txt = confirmWrite(self.path + "/processingCommand", processingCommandWait, timeout=60, frequency=1)
-        print "Confirmation state: ", confirmed
-        if not(confirmed):
-            return False, "Failed to confirm write of %s to %s - %s" % (str(processingCommandWait), self.path + "/processingCommand", txt)
-        
-        print "Specializing writeDatum for a PKS-ACE controller..."
-        status, errorMessage = pkscontroller.PKSController.writeDatum(self, val, valueType)
-        if not(status):
-            return status, errorMessage
-        
-        log.trace("... back in PKS ACE writeDatum()!")
-
-        log.trace("managing the processingCommand for a PKS ACE controller")
-
-        # Restore the original delay
-        system.tag.write(self.path + "/processingCommand", processingCommandWaitOriginal)
-        confirmed, txt = confirmWrite(self.path + "/processingCommand", processingCommandWaitOriginal, timeout=60, frequency=1)
-        print "Confirmation state: ", confirmed
-        if not(confirmed):
-            return False, "Failed to confirm write restoring  %s to %s - %s" % (str(processingCommandWaitOriginal), self.path + "/processingCommand", txt)
-
-        return status, errorMessage
