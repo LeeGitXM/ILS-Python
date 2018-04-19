@@ -30,9 +30,9 @@ def startChartAndOpenControlPanel(chartPath, controlPanelName, project, post, is
         from ils.sfc.client.windows.controlPanel import getControlPanelIdForName
         controlPanelId = getControlPanelIdForName(controlPanelName)
         
-        payload = {HANDLER: messageHandler, CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: post, POSITION: position, SCALE: scale, DATABASE: db,
-                CONTROL_PANEL_WINDOW_PATH: controlPanelWindowPath}
-        
+        payload = {HANDLER: messageHandler, CONTROL_PANEL_NAME: controlPanelName, CONTROL_PANEL_ID: controlPanelId, ORIGINATOR: post, POSITION: position, 
+                   SCALE: scale, DATABASE: db, CONTROL_PANEL_WINDOW_PATH: controlPanelWindowPath}
+
         print payload
         sfcNotify(project, 'sfcMessage', payload, post, controlPanelName, controlPanelId, db)
         
@@ -217,10 +217,17 @@ def getChartStatus(runId):
 def chartIsRunning(chartPath):
     '''Check if the given chart is running. '''
     ds = system.sfc.getRunningCharts(chartPath)
-    if ds.rowCount > 0:
-        chartState = ds.getValueAt(0, "ChartState")
-        if chartState in ["Running", "Paused"]:
+    print "Fetched %d running charts" % (ds.rowCount)
+    if ds.rowCount == 0:
+        return False
+    
+    for row in range(ds.rowCount):
+        chartState = str(ds.getValueAt(row, "ChartState"))
+        print "The chart state is: <%s>" % (chartState)
+        if string.upper(chartState) in ["RUNNING", "PAUSED"]:
+            print "...found a running chart..."
             return True
+
     return False
 
 def logExceptionCause(contextMsg, logger=None):

@@ -31,7 +31,9 @@ def openControlPanel(controlPanelName, controlPanelId, startImmediately, positio
     print "In openControlPanel()..."
     
     chartPath = getControlPanelChartPath(controlPanelName)
+    print "...the chart path for this control panel is: ", chartPath
     if not chartIsRunning(chartPath):
+        print "...the chart is not running so reset the control panel..."
         resetControlPanel(controlPanelName)
     
     cpWindow = findOpenControlPanel(controlPanelName)

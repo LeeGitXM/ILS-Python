@@ -144,6 +144,7 @@ def sfcOpenControlPanel(payload):
             return
     
     controlPanelName = payload.get(CONTROL_PANEL_NAME, "")
+    controlPanelId = payload.get(CONTROL_PANEL_ID, -1)
     originator = payload.get(ORIGINATOR, "")
     database = payload.get(DATABASE, "")
     clientDatabase = getDatabaseClient()
@@ -161,9 +162,9 @@ def sfcOpenControlPanel(payload):
 
     position = payload[POSITION]
     scale = payload[SCALE]    
-    window = system.nav.openWindowInstance(controlPanelWindowPath, {"controlPanelName": controlPanelName})
+    window = system.nav.openWindowInstance(controlPanelWindowPath, {"controlPanelName": controlPanelName, "controlPanelId": controlPanelId})
     positionWindow(window, position, scale)
-        
+
 
 def sfcCloseWindow(payload):
     windowId = payload[WINDOW_ID]
