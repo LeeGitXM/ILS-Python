@@ -200,8 +200,8 @@ def fetchLimits(database = ""):
     '''
     These should be trace, but I'm interested in what happens on the first cycle...
     '''
-    log.info("Fetching new Limits...")
-    log.info("The old limits are: %s" % (str(limits)))
+    #log.info("Fetching new Limits...")
+    log.trace("The old limits are: %s" % (str(limits)))
     SQL = "select * from LtLimitView"
     sqlLog.trace(SQL)
     pds = system.db.runQuery(SQL, database)

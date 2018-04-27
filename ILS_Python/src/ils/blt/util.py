@@ -35,7 +35,7 @@ def acceptValue(block,port,value,quality,time):
 #     uid    - UUID string of the block itself
 #     result - shared dictionary.
 def createBlockInstance(className,parent,uid,result):
-    log.debugf('ils.blt.util.createBlockInstance ...%s',className )
+    log.tracef('ils.blt.util.createBlockInstance ...%s',className )
     obj = getNewBlockInstance(className)
     obj.setUUID(uid)
     obj.setParentUUID(parent)
