@@ -5,16 +5,21 @@ Created on Feb 17, 2018
 '''
 
 import xml.etree.ElementTree as ET
-import system
+import system, os
 from ils.common.config import getDatabaseClient
 from ils.common.error import catchError, notifyError
 log=system.util.getLogger("com.ils.sfc.import")
 
 def importRecipeDataCallback(event):
     db = getDatabaseClient()
-    filename = system.file.openFile(".xml")
+    rootContainer = event.source.parent.parent
+    folder = rootContainer.importExportFolder
+    filename = system.file.openFile(".xml", folder)
     if filename != None:
         importRecipeData(filename, db)
+        folder = os.path.basename(filename)
+        print "The folder is: ", folder
+        rootContainer.importExportFolder = folder
 
 def importRecipeData(filename, db):
     log.infof("In %s.importRecipeData(), importing recipe data from %s", __name__, filename)

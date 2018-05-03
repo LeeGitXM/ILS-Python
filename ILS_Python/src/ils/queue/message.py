@@ -8,6 +8,7 @@ from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
 from ils.common.error import catchError
 from ils.common.config import getDatabaseClient
 from ils.common.windowUtil import positionWindow
+from system.ils.blt.diagram import getProductionDatabase
 log = system.util.getLogger("com.ils.queue")
 
 def insertPostMessage(post, status, message, db='', project='', console=''):
@@ -65,7 +66,7 @@ def autoView(queueKey, queueId, severity, project, console, db):
 
     if autoView and severity >= autoViewSeverityThreshold:
         log.tracef("The view should be auto posted...")
-        sendOpenMessage(console, queueKey, project)
+        sendOpenMessage(console, queueKey, db, project)
 
     else:
         log.tracef("The view should NOT be auto posted")
@@ -259,12 +260,12 @@ Send a message to every client to open the message queue if they are interested 
 The idea is that a client can determine on its own if it is interested in this queue without considering any other clients.
 This will not work from gateway scope.
 '''
-def sendOpenMessage(console, queueKey, project=''):
+def sendOpenMessage(console, queueKey, db, project=''):
     if project == '':
         project = system.util.getProjectName()
 
     handler = "showQueue"
-    payload = {"console": console, "queueKey": queueKey}
+    payload = {"console": console, "queueKey": queueKey, "database": db}
     system.util.sendMessage(project, handler, payload, "C")
 
 '''
@@ -275,6 +276,15 @@ def handleMessage(payload):
     shown = False
     console = payload["console"]
     queueKey = payload["queueKey"]
+    db = payload["database"]
+    if db == "":
+        db = getProductionDatabase()
+    
+    clientDB = getDatabaseClient()
+    if clientDB <> db:
+        print "Not showing the queue because the client database does not match the queue database!"
+        return
+    
     windows = system.gui.getOpenedWindows()
     for w in windows:
         windowTitle = w.title
@@ -287,7 +297,8 @@ def handleMessage(payload):
         return
 
     '''
-    Now use a looser check, see if the window path contains (not matches) the name of the console
+    Now use a looser check, see if the window path contains (not matches) the name of the console.
+    If the console arg is omitted, which it generally is, then this will be a match on every client. 
     '''
     for w in windows:
         windowPath = w.getPath()

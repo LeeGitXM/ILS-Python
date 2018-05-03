@@ -14,8 +14,8 @@ import ils.recipeToolkit.refresh as recipeToolkit_refresh
 import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 from ils.io.client import writeWithNoChecks, writeRecipeDetails
-from ils.common.config import getTagProvider, getTagProviderClient,\
-    getDatabaseClient
+from ils.common.config import getTagProvider, getTagProviderClient, getDatabaseClient,\
+    getIsolationModeClient
 from ils.common.ocAlert import sendAlert
 log = system.util.getLogger("com.ils.recipeToolkit.download")
 
@@ -196,6 +196,7 @@ def download(rootContainer):
     project = system.util.getProjectName()
     provider = rootContainer.getPropertyValue("provider")
     database = getDatabaseClient()
+    isolationMode = getIsolationModeClient()
     familyName = rootContainer.getPropertyValue("familyName")
     table = rootContainer.getComponent("Power Table")
     
@@ -207,7 +208,7 @@ def download(rootContainer):
     writeEnabled = (provider != productionProvider) or (recipeWriteEnabled and globalWriteEnabled)
     print "The combined write enabled status, considering the tag provider, is: ", writeEnabled
     
-    downloadTimeout = system.tag.read("/Configuration/RecipeToolkit/downloadTimeout").value
+    downloadTimeout = system.tag.read("[%s]/Configuration/RecipeToolkit/downloadTimeout" % (provider)).value
     rootContainer.downloadTimeout = downloadTimeout
     print "The download timeout is ", downloadTimeout, " seconds"
     
@@ -242,7 +243,7 @@ def download(rootContainer):
     ds = table.processedData 
     ds = writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnabled, project)
 
-    ds = writeDeferred(ds, provider, familyName, logId, writeEnabled, project)
+    ds = writeDeferred(ds, provider, familyName, logId, writeEnabled, project, isolationMode)
     table.processedData = ds
     
     # Update the tables visible rows from the processed Data structure
@@ -295,7 +296,7 @@ def resetTags(ds, provider, familyName, localWriteAlias):
 # Reset the command tag in all of the recipe detail objects.  This really isn't necessary for the detail objects that
 # were newly created, but is necessary for ones that were existing.  
 def resetRecipeDetails(provider, familyName):
-    print "Resetting recipe details..."
+    log.info("Resetting recipe details...")
             
     tags = []
     vals = []
@@ -306,7 +307,8 @@ def resetRecipeDetails(provider, familyName):
         for detail in details:           
             tags.append(path + detail.name + "/command")
             vals.append("")
-            
+
+    log.infof("...reset %d recipe detail UDTs", len(details))            
     system.tag.writeAll(tags, vals)
 
 # Log any tags that are skipped by the operator
@@ -410,7 +412,7 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
 # related.  We do this by finding all of the recipe detail UDTs.  Every deferred write in the recipe viewer should be referenced in a
 # recipe detail.  The recipe detail UDT contains the association between target and the high and low limits.  
 # Once we have paired things up, then we make a dictionary and send it to the gateway for processing.
-def writeDeferred(ds, provider, familyName, logId, writeEnabled, project):
+def writeDeferred(ds, provider, familyName, logId, writeEnabled, project, isolationMode=False):
     from ils.recipeToolkit.common import formatTagName
 
     log.trace("=====================================")
@@ -459,62 +461,93 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled, project):
 
     log.trace("    The root tags are:     %s" %  (str(rootTags)))
     log.trace("    The pendVals are:      %s" % (str(pendVals)))
-    log.trace("    The dwonloadTypes are: %s" % (str(downloadTypes)))
+    log.trace("    The downloadTypes are: %s" % (str(downloadTypes)))
+    log.trace("    The actual tags are:   %s" % (str(tags)))
+    log.trace("    The actual vals are:   %s" % (str(vals)))
     
     status = system.tag.writeAll(tags, vals)
     log.trace("Tag write status: %s" % (str(status)))
     
-
-    log.trace("    --- matching recipe detail UDTS with deferred tags ---")
+    if isolationMode:
+        ''' If we are in isolation mode then the recie detail UDTs have been turned into folders so none of the production logic will work in isolation,
+            furthermore, the need to be careful about writing the limits before the SP does not exist in isolation, since there are no alarms.  Therefore, 
+            if we are in isolation, we really are not testing the order of download logic, so just do immediate writes from the client. '''
+        
+        for record in pds:
+            download = record["Download"]
+            downloadType = string.upper(record["Download Type"])
+            if download and (downloadType == 'DEFERRED VALUE' or downloadType == 'DEFERRED LOW LIMIT' or downloadType == 'DEFERRED HIGH LIMIT'):
+                pendVal = record["Pend"]
+                tagName = record["Store Tag"]
+                log.trace("     %s" % (tagName))
     
-    tagDicts = []
-    path = '[' + provider + ']Recipe/' + familyName
-    for udtType in ['Recipe Data/Recipe Details']:
-        details = system.tag.browseTags(path, udtParentType=udtType)
-
-        for detail in details:
-            log.tracef("Checking recipe detail named: %s", detail.name)
-            tagName = formatTagName(provider, familyName, detail.name)
-            log.tracef("  Tag: %s", tagName)
-
-            highLimitTagName = system.tag.read(tagName+'/highLimitTagName').value
-            highLimitTagName = formatTagName(provider, familyName, highLimitTagName)
-            lowLimitTagName = system.tag.read(tagName+'/lowLimitTagName').value
-            lowLimitTagName = formatTagName(provider, familyName, lowLimitTagName)
-            valueTagName = system.tag.read(tagName+'/valueTagName').value
-            valueTagName = formatTagName(provider, familyName, valueTagName)
-            
-            if highLimitTagName in rootTags or lowLimitTagName in rootTags or valueTagName in rootTags:
-                tagDict = {"tagPath": tagName}
+                # Convert to Ignition tag name        
+                tagName = formatTagName(provider, familyName, tagName)
+                rootTags.append(str(tagName) + "/value")
+                rootTags.append(str(tagName) + "/writeStatus")
                 
-                if highLimitTagName in rootTags:
-                    idx = rootTags.index(highLimitTagName)
-                    val = pendVals[idx]
-                    log.tracef("    Changing the high limit to %s", str(val))
-                    tagDict['newHighLimit'] = val
-                    
-                if lowLimitTagName in rootTags:
-                    idx = rootTags.index(lowLimitTagName)
-                    val = pendVals[idx]
-                    log.tracef("    Changing the low limit to %s", str(val))
-                    tagDict['newLowLimit'] = val
-                
-                if valueTagName in rootTags:
-                    idx = rootTags.index(valueTagName)
-                    val = pendVals[idx]
-                    log.tracef("    Changing the SP to %s", str(val))
-                    tagDict['newValue'] = val
-                    
-                tagDicts.append(tagDict)
-                log.trace("     adding %s to the deferred value write list..." % (tagName))
+                # Save the value that we are going to write
+                pendVals.append(pendVal)
+                pendVals.append("Success")
 
-    # send the recipe detail write dictionaries to the gateway
-    if len(tagDicts) > 0:
-        if writeEnabled:
-            log.info("Sending %i recipeDetail dictionaries to the gateway..." % (len(tagDicts)))
-            writeRecipeDetails(tagDicts,project)
-        else:
-            log.info("*** Skipping write to deferred tags ***")
+        
+        log.trace("*** Writing the deferred tags immediately because we are in Isolation mode ***")
+        log.trace("    Tags:     %s" % (str(rootTags)))
+        log.trace("    Values:   %s" % (str(pendVals)))
+        status = system.tag.writeAll(rootTags, pendVals)
+        log.trace("Tag write status: %s" % (str(status)))
+        
+    else:
+        log.trace("    --- matching recipe detail UDTS with deferred tags ---")
+        
+        tagDicts = []
+        path = '[' + provider + ']Recipe/' + familyName
+        for udtType in ['Recipe Data/Recipe Details']:
+            details = system.tag.browseTags(path, udtParentType=udtType)
+    
+            for detail in details:
+                log.tracef("Checking recipe detail named: %s", detail.name)
+                tagName = formatTagName(provider, familyName, detail.name)
+                log.tracef("  Tag: %s", tagName)
+    
+                highLimitTagName = system.tag.read(tagName+'/highLimitTagName').value
+                highLimitTagName = formatTagName(provider, familyName, highLimitTagName)
+                lowLimitTagName = system.tag.read(tagName+'/lowLimitTagName').value
+                lowLimitTagName = formatTagName(provider, familyName, lowLimitTagName)
+                valueTagName = system.tag.read(tagName+'/valueTagName').value
+                valueTagName = formatTagName(provider, familyName, valueTagName)
+                
+                if highLimitTagName in rootTags or lowLimitTagName in rootTags or valueTagName in rootTags:
+                    tagDict = {"tagPath": tagName}
+                    
+                    if highLimitTagName in rootTags:
+                        idx = rootTags.index(highLimitTagName)
+                        val = pendVals[idx]
+                        log.tracef("    Changing the high limit to %s", str(val))
+                        tagDict['newHighLimit'] = val
+                        
+                    if lowLimitTagName in rootTags:
+                        idx = rootTags.index(lowLimitTagName)
+                        val = pendVals[idx]
+                        log.tracef("    Changing the low limit to %s", str(val))
+                        tagDict['newLowLimit'] = val
+                    
+                    if valueTagName in rootTags:
+                        idx = rootTags.index(valueTagName)
+                        val = pendVals[idx]
+                        log.tracef("    Changing the SP to %s", str(val))
+                        tagDict['newValue'] = val
+                        
+                    tagDicts.append(tagDict)
+                    log.trace("     adding %s to the deferred value write list..." % (tagName))
+    
+        # send the recipe detail write dictionaries to the gateway
+        if len(tagDicts) > 0:
+            if writeEnabled:
+                log.info("Sending %i recipeDetail dictionaries to the gateway..." % (len(tagDicts)))
+                writeRecipeDetails(tagDicts,project)
+            else:
+                log.info("*** Skipping write to deferred tags ***")
 
     log.trace("=====================================")
     return ds

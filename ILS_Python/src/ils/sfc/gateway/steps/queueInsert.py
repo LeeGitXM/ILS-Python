@@ -15,7 +15,6 @@ def activate(scopeContext, stepProperties, state):
 
     try:
         chartScope = scopeContext.getChartScope()
-        print "The chart properties are: ", chartScope
         stepScope = scopeContext.getStepScope()
         chartLogger = getChartLogger(chartScope)
         currentMsgQueue = getCurrentMessageQueue(chartScope)

@@ -7,7 +7,7 @@ Created on Oct 30, 2014
 '''
     
 import system, time
-from ils.sfc.common.util import boolToBit, logExceptionCause
+from ils.sfc.common.util import boolToBit, logExceptionCause, chartIsRunning, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
 from ils.common.ocAlert import sendAlert
@@ -15,6 +15,49 @@ from ils.common.util import substituteProvider
 from ils.sfc.client.windows.controlPanel import getControlPanelIdForChartRunId
 NEWLINE = '\n\r'
 logger=system.util.getLogger("com.ils.sfc.gateway.api")
+
+'''
+This is used to run a chart from the stop, cancel, or abort end handlers.
+The third argument can optionally be used to call one chart from multiple handlers, sort o like the old toolkit.
+'''
+def endHandlerRunner(chartPath, chartScope, handler=""):
+    logger.infof("In %s.endHandlerRunner(), starting %s", __name__, chartPath)
+    
+    if handler == "":
+        payload = {"callerChartScope": chartScope}
+    else:
+        payload = {"callerChartScope": chartScope, "handler": handler}
+        
+    sfcId = system.sfc.startChart(chartPath, payload)
+    
+    logger.tracef("The calling chart scope is: %s", str(chartScope))
+    logger.tracef("...started a chart with run Id: %s", sfcId)
+
+    '''
+    Wait until the chart completes.
+    '''
+    time.sleep(0.5)
+    while getChartStatus(sfcId) == "Running":
+        logger.tracef("The chart status is %s", getChartStatus(sfcId))
+        time.sleep(0.5)
+    
+    logger.tracef("The chart is done!")
+    
+def endHandlerSetup(chart):
+    logger.infof("In %s.endHandlerSetup()...", __name__)
+    
+    logger.tracef("The chart scope is: %s", str(chart))
+    logger.tracef("The caller's chart scope is: %s", str(chart.callerChartScope))
+    
+    '''
+    Get a couple of important properties out of the calling scope and overwrite the current chart scope
+    '''
+    chart.parent  = chart.callerChartScope.parent
+    enclosingStep = chart.callerChartScope.get("enclosingStep", "None")
+    if enclosingStep <> "None":
+        chart.enclosingStep = enclosingStep
+    
+    logger.tracef("The NEW chart scope is: %s", str(chart))
 
 
 '''

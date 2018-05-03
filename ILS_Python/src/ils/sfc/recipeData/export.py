@@ -4,7 +4,7 @@ Created on May 31, 2017
 @author: phass
 '''
 
-import system
+import system, os
 from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy, getChildren
 from ils.sfc.recipeData.core import fetchChartPathFromChartId
 from ils.common.config import getDatabaseClient
@@ -32,10 +32,16 @@ def exportCallback(event):
     if chartId == None:
         return
     
-    filename = "c:/temp/recipeExport.xml"
+    rootContainer = event.source.parent.parent
+    folder = rootContainer.importExportFolder
+    filename = folder + "/recipeExport.xml"
     filename = system.file.saveFile(filename, "xml", "name of xml export file")
     if filename == None:
         return
+    
+    folder = os.path.dirname(filename)
+    print "The folder is: ", folder
+    rootContainer.importExportFolder = folder
     
     sfcRecipeDataShowProductionOnly = False
     hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
