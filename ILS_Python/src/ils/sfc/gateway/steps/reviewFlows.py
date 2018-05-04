@@ -65,6 +65,10 @@ def activate(scopeContext, stepProperties, state):
             buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
             if isEmpty(buttonLabel):
                 buttonLabel = 'Flows'
+    
+            customWindowPath = getStepProperty(stepProperties, CUSTOM_WINDOW_PATH)
+            if customWindowPath <> "":
+                windowPath = customWindowPath
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
@@ -114,10 +118,6 @@ def activate(scopeContext, stepProperties, state):
                         errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, str(e))
 
                     logger.errorf(errMsg)
-                
-            customWindowPath = getStepProperty(stepProperties, CUSTOM_WINDOW_PATH)
-            if customWindowPath <> "":
-                windowPath = customWindowPath
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             time.sleep(0.1)
