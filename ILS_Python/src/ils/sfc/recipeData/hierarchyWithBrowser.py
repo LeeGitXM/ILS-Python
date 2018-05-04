@@ -126,7 +126,7 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
             node = ids[-1]
             log.tracef("The last node is: %s", node)
             children=getChildren(int(node), hierarchyPDS)
-            if len(children) == 0:
+            if len(children) == 0 or depth > 100:
                 log.tracef("...there are no children!")
                 newTrees.append(tree)
             else:
