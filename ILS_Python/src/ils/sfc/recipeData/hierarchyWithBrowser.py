@@ -127,6 +127,10 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
             log.tracef("The last node is: %s", node)
             children=getChildren(int(node), hierarchyPDS)
             if len(children) == 0 or depth > 100:
+                if depth > 100: 
+                    log.errorf("Error!, SFC Tree depth has exceeded 100 levels.  Pruning the tree at this level, please investigate for a possible loop in the branches near %s", node)
+                    
+
                 log.tracef("...there are no children!")
                 newTrees.append(tree)
             else:
