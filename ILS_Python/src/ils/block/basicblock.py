@@ -19,6 +19,8 @@ class BasicBlock():
     def __init__(self):
         # Each block has a state, whether it is meaningful or not
         self.state = "UNSET"
+        self.quality = "good"
+        self.time = 0
         # Properties are a dictionary of attributes keyed by name
         # Properties attributes: name, value, editable, type(STRING,DOUBLE,INTEGER,BOOLEAN,OBJECT)
         #            The name attribute is set automatically to the key
