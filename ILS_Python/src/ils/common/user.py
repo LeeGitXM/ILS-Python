@@ -6,14 +6,16 @@ Created on Sep 10, 2014
 
 import system
 
-# TODO This should be site specific
 def isOperator():    
     isRole = checkRole('Operator')   
     return isRole
 
-# TODO These should be site specific
 def isAE():
     isRole = checkRole('AE')   
+    return isRole
+
+def isAdmin():
+    isRole = checkRole('Admin')   
     return isRole
 
 def checkRole(ignitionRole):
@@ -21,15 +23,15 @@ def checkRole(ignitionRole):
     SQL = "Select WindowsRole from RoleTranslation where IgnitionRole = '%s'" % (ignitionRole)
     pds = system.db.runQuery(SQL)
     
-    aeRoles = []
+    theRoles = []
     for record in pds:
         role = record['WindowsRole']
-        aeRoles.append(str(role))
+        theRoles.append(str(role))
 
 #    print aeRoles
     for role in myRoles:
 #        print "Checking: ", role
-        if role in aeRoles:
+        if role in theRoles:
 #            print "Found it!!! %s is a %s" % (role, ignitionRole)
             return True
     

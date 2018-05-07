@@ -332,7 +332,9 @@ def logbookEdited(table, rowIndex, colIndex, colName, oldValue, newValue):
 Queue Processing
 '''
 def refreshQueues(rootContainer):
-    SQL = "select * from QueueMaster order by QueueKey"
+    SQL = "select QueueId, QueueKey, Title, CheckpointTimestamp, Position, AutoViewSeverityThreshold, AutoViewAdmin, AutoViewAE, AutoViewOperator"\
+        " from QueueMaster order by QueueKey"
+
     pds= system.db.runQuery(SQL)
     table = rootContainer.getComponent("Queues Container").getComponent("Power Table")
     table.data = pds
@@ -341,10 +343,11 @@ def addQueue(table):
     ds = table.data
     if ds.rowCount == 0:
         # take extra care to add the first row
-        ds = system.dataset.toDataSet(["QueueId", "QueueKey", "Title", "CheckpointTimestamp","AutoView","AutoViewSeverityThreshold"], [[-1, None, None, None, False, 10]])
+        ds = system.dataset.toDataSet(["QueueId", "QueueKey", "Title", "CheckpointTimestamp","Position", "AutoViewSeverityThreshold", "AutoViewAdmin", "AutoViewAE", "AutoViewOperator"], 
+                                      [[-1, None, None, None, False, 10, False, False, False]])
         table.data = ds
     else:
-        table.data = system.dataset.addRow(table.data, [-1, None, None, None, False, 10])
+        table.data = system.dataset.addRow(table.data, [-1, None, None, None, False, 10, False, False, False])
 
 def deleteQueue(table):
     selectedRow = table.selectedRow

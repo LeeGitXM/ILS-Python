@@ -152,7 +152,6 @@ def opcWriteWatchdog(tagProvider, udtPath):
 
     stalled = False
     
-    print "Internal Drive", str(internallyDriven)
     if internallyDriven:
         print "Internally driven watchdog..."
         writeValue += 1
@@ -174,7 +173,7 @@ def opcWriteWatchdog(tagProvider, udtPath):
             system.tag.writeSynchronous(tagpath, writeValue)
             logger.tracef("Passed the watchdog write test")
         except:
-            logger.errorf("FAILED the write test because the read value: %s and the written value %s, are not the same", str(val), str(writeValue))
+            logger.errorf("FAILED the write watchdog test because the synchronous write to (%s) failed", tagpath)
             stalled = True
             
     if stalled:

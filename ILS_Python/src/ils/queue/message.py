@@ -9,6 +9,7 @@ from ils.common.error import catchError
 from ils.common.config import getDatabaseClient
 from ils.common.windowUtil import positionWindow
 from system.ils.blt.diagram import getProductionDatabase
+from ils.common.user import isAE, isOperator, isAdmin
 log = system.util.getLogger("com.ils.queue")
 
 def insertPostMessage(post, status, message, db='', project='', console=''):
@@ -30,11 +31,11 @@ def insert(queueKey, status, message, db='', project='', console=''):
         log.warn("Unable to insert a message into queue with key <%s> and id: <%s>" % (queueKey, str(queueId)))
         return
     
-    _insert(queueKey, queueId, status, message, db, project, console)
+    _insert(queueKey, queueId, status, message, db, project)
 
 
 # Expected status are Info, Warning, or Error
-def _insert(queueKey, queueId, status, message, db='', project='', console=''):
+def _insert(queueKey, queueId, status, message, db='', project=''):
     from ils.common.util import escapeSqlQuotes
     message = escapeSqlQuotes(message)
     SQL = "select statusId, severity from QueueMessageStatus where MessageStatus = '%s'" % (status)
@@ -51,22 +52,26 @@ def _insert(queueKey, queueId, status, message, db='', project='', console=''):
 
     system.db.runUpdateQuery(SQL, db)
     
-    autoView(queueKey, queueId, severity, project, console, db)
+    autoView(queueKey, queueId, severity, project, db)
 
 
-def autoView(queueKey, queueId, severity, project, console, db):
-    SQL = "select autoView, autoViewSeverityThreshold from QueueMaster where queueId = %d" % (queueId)
+def autoView(queueKey, queueId, severity, project, db):
+    SQL = "select autoViewSeverityThreshold, autoViewAdmin, autoViewAE, autoViewOperator from QueueMaster where queueId = %d" % (queueId)
     pds = system.db.runQuery(SQL, db)
     if len(pds) <> 1:
         return
     
     record = pds[0]
-    autoView = record["autoView"]
     autoViewSeverityThreshold = record["autoViewSeverityThreshold"]
+    autoViewAdmin = record["autoViewAdmin"]
+    autoViewAE = record["autoViewAE"]
+    autoViewOperator = record["autoViewOperator"]
 
-    if autoView and severity >= autoViewSeverityThreshold:
+    log.tracef("The message severity is %f and the autoViewSeverityThreshold is %f", severity, autoViewSeverityThreshold)
+
+    if severity >= autoViewSeverityThreshold:
         log.tracef("The view should be auto posted...")
-        sendOpenMessage(console, queueKey, db, project)
+        sendOpenMessage(queueKey, autoViewAdmin, autoViewAE, autoViewOperator, db, project)
 
     else:
         log.tracef("The view should NOT be auto posted")
@@ -260,12 +265,12 @@ Send a message to every client to open the message queue if they are interested 
 The idea is that a client can determine on its own if it is interested in this queue without considering any other clients.
 This will not work from gateway scope.
 '''
-def sendOpenMessage(console, queueKey, db, project=''):
+def sendOpenMessage(queueKey, autoViewAdmin, autoViewAE, autoViewOperator, db, project=''):
     if project == '':
         project = system.util.getProjectName()
 
     handler = "showQueue"
-    payload = {"console": console, "queueKey": queueKey, "database": db}
+    payload = {"queueKey": queueKey, "database": db, "autoViewAdmin": autoViewAdmin, "autoViewAE": autoViewAE, "autoViewOperator": autoViewOperator}
     system.util.sendMessage(project, handler, payload, "C")
 
 '''
@@ -273,8 +278,7 @@ This runs in every client and is called by the messageHandler script for a showQ
 '''
 def handleMessage(payload):
     print "Handling a showQueue message with payload: ", payload
-    shown = False
-    console = payload["console"]
+
     queueKey = payload["queueKey"]
     db = payload["database"]
     if db == "":
@@ -285,24 +289,23 @@ def handleMessage(payload):
         print "Not showing the queue because the client database does not match the queue database!"
         return
     
-    windows = system.gui.getOpenedWindows()
-    for w in windows:
-        windowTitle = w.title
-        if console == windowTitle:
-            print "Showing the queue because I found a window whose title matched the console name..."
-            view(queueKey, useCheckpoint=True, silent=True)
-            shown = True
+    autoViewAdmin = payload["autoViewAdmin"]
+    autoViewAE = payload["autoViewAE"]
+    autoViewOperator = payload["autoViewOperator"]
     
-    if shown:
+    if autoViewAdmin and isAdmin():
+        print "Autoshowing because this queue is autoView enabled for Admins and this is an Admin"
+        view(queueKey, useCheckpoint=True, silent=True)
         return
 
-    '''
-    Now use a looser check, see if the window path contains (not matches) the name of the console.
-    If the console arg is omitted, which it generally is, then this will be a match on every client. 
-    '''
-    for w in windows:
-        windowPath = w.getPath()
-        if windowPath.find(console) > -1:
-            print "Showing the queue because I found a window whose path matches the console name..."
-            view(queueKey, useCheckpoint=True, silent=True)
-            return
+    if autoViewAE and isAE():
+        print "Autoshowing because this queue is autoView enabled for AEs and this is an AE"
+        view(queueKey, useCheckpoint=True, silent=True)
+        return
+    
+    if autoViewOperator and isOperator():
+        print "Autoshowing because this queue is autoView enabled for Operators and this is an Operator"
+        view(queueKey, useCheckpoint=True, silent=True)
+        return
+    
+    print "The queue will NOT be autoshown"

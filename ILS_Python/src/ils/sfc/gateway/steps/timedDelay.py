@@ -37,48 +37,16 @@ def activate(scopeContext, stepProperties, state):
         endTime = stepScope.get('_endTime', None)
         postNotification = getStepProperty(stepProperties, POST_NOTIFICATION) 
         workIsDone = False
+        firstTime = False
         
         if endTime == None:
             chartLogger.trace("Executing TimedDelay block %s - First time initialization" % (stepName))
             stepId = getStepId(stepProperties) 
             startTime = system.date.now()
             stepScope['_startTime'] = startTime
+            firstTime = True
             
-            if postNotification:
-                message = getStepProperty(stepProperties, MESSAGE) 
-                # window common properties:
-                database = getDatabaseName(chartScope)
-                controlPanelId = getControlPanelId(chartScope)
-                controlPanelName = getControlPanelName(chartScope)
-                originator = getOriginator(chartScope)
-                database = getDatabaseName(chartScope)
-                chartRunId = getTopChartRunId(chartScope)
-                
-                buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
-                if isEmpty(buttonLabel):
-                    buttonLabel = 'Delay'
-                position = getStepProperty(stepProperties, POSITION) 
-                scale = getStepProperty(stepProperties, SCALE) 
-                title = getStepProperty(stepProperties, WINDOW_TITLE) 
-                message = getStepProperty(stepProperties, MESSAGE) 
-                windowPath = 'SFC/TimeDelayNotification'
-                messageHandler = "sfcOpenWindow"
-                
-                print "Window Title:", title
-                print "Window Message: ", message
-                
-                windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
-                stepScope[WINDOW_ID] = windowId
-                
-                formattedEndTime = system.date.format(endTime, "MM/dd/yyyy HH:mm:ss")
-                sql = "insert into SfcTimeDelayNotification (windowId, message, endTime) values ('%s', '%s', '%s')" % (windowId, message, formattedEndTime)
-                numInserted = system.db.runUpdateQuery(sql, database)
-                if numInserted == 0:
-                    handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
-                
-                payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
-                       CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
-                sendMessageToClient(chartScope, messageHandler, payload)
+            
         else:
             startTime = stepScope['_startTime']
             
@@ -134,6 +102,41 @@ def activate(scopeContext, stepProperties, state):
         workIsDone = system.date.now() >= endTime
         if workIsDone:
             chartLogger.trace("TimedDelay block %s IS DONE!" % (stepName))
+        elif firstTime and postNotification:
+            message = getStepProperty(stepProperties, MESSAGE) 
+            # window common properties:
+            database = getDatabaseName(chartScope)
+            controlPanelId = getControlPanelId(chartScope)
+            controlPanelName = getControlPanelName(chartScope)
+            originator = getOriginator(chartScope)
+            database = getDatabaseName(chartScope)
+            chartRunId = getTopChartRunId(chartScope)
+            
+            buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
+            if isEmpty(buttonLabel):
+                buttonLabel = 'Delay'
+            position = getStepProperty(stepProperties, POSITION) 
+            scale = getStepProperty(stepProperties, SCALE) 
+            title = getStepProperty(stepProperties, WINDOW_TITLE) 
+            message = getStepProperty(stepProperties, MESSAGE) 
+            windowPath = 'SFC/TimeDelayNotification'
+            messageHandler = "sfcOpenWindow"
+            
+            print "Window Title:", title
+            print "Window Message: ", message
+            
+            windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
+            stepScope[WINDOW_ID] = windowId
+            
+            formattedEndTime = system.date.format(endTime, "MM/dd/yyyy HH:mm:ss")
+            sql = "insert into SfcTimeDelayNotification (windowId, message, endTime) values ('%s', '%s', '%s')" % (windowId, message, formattedEndTime)
+            numInserted = system.db.runUpdateQuery(sql, database)
+            if numInserted == 0:
+                handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcTimeDelayNotification', chartLogger)
+            
+            payload = {WINDOW_ID: windowId, DATABASE: database, CONTROL_PANEL_ID: controlPanelId,\
+                   CONTROL_PANEL_NAME: controlPanelName, ORIGINATOR: originator, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
+            sendMessageToClient(chartScope, messageHandler, payload)
             
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in timedDelay.py', chartLogger)        

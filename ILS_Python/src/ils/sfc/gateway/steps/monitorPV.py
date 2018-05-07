@@ -193,9 +193,7 @@ def activate(scopeContext, stepProperties, state):
                     timeLimitMin = getStepProperty(stepProperties, VALUE)
                 else:
                     durationKey = getStepProperty(stepProperties, KEY)
-                    print "The duration key is: ", durationKey
                     durationLocation = getStepProperty(stepProperties, DATA_LOCATION)
-                    print "The duration location is: ", durationLocation
                     timeLimitMin = s88Get(chartScope, stepScope, durationKey + ".value", durationLocation)
                     
                 logger.tracef("(%s) PV Monitor time limit strategy: %s - minutes: %s", stepName, durationStrategy, str(timeLimitMin))
