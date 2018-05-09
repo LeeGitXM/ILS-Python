@@ -382,15 +382,20 @@ def populateRecipeFamilyTable(database, postId, txId):
     system.db.commitTransaction(txId)
     return families
 
-# Populate the two SQC tables at the same time
+'''
+Populate the two SQC tables at the same time
+Load from tables whose names match the pattern <*[UNIT]*limits*> where UNIT is the name of a known unit and the name does NOT 
+begin with the letter "z" - this is a way that they make a copy of a recipe before altering it.
+'''
 def populateSQCTable(database,families,txId):
     print "Populating RtSQCParameter..."
     # Populate from the various limits tables. 
     names = getTableNames(database)
     for table in names:
+        print "...reading from %s..." % (table)
         if table.lower().find("limits") >= 0:
             for family in families.keys():
-                if table.lower().find(family[0:3].lower()) >= 0:
+                if table.lower().find(family[0:3].lower()) >= 0 and table.lower()[0] != "z":
                     rows = 0
                     columns = getColumnNames(database,table)
                     for col in columns:

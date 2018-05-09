@@ -62,18 +62,18 @@ def checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagPro
 
 # This fetches the currently active limits that are the Lab Data Toolkit tables regardless of where the
 # values came from.
-def fetchLimits(database = ""):
+def fetchLimits(tagProvider, database):
     #-------------------------------------
     # When SQC limits are loaded from recipe, the target, standard deviation and validity limits are calculated and then 
     # stored in the database so no further calculations are necessary.
-    def getSQCLimits(record, oldLimit=None):
+    def getSQCLimits(record, oldLimit, tagProvider):
         limitSource=record["LimitSource"]
         if limitSource=="DCS":
             upperSQCLimit, lowerSQCLimit=readSQCLimitsFromDCS(record)
             
             if oldLimit == None or oldLimit["UpperSQCLimit"] != upperSQCLimit or oldLimit["LowerSQCLimit"] != lowerSQCLimit:
                 log.trace("A DCS SQC limit has changed - recalculate the target & standard deviation")
-                target, standardDeviation, lowerValidityLimit, upperValidityLimit = updateSQCLimits(record["ValueName"], record["UnitName"], "SQC", record["LimitId"], upperSQCLimit, lowerSQCLimit, database)
+                target, standardDeviation, lowerValidityLimit, upperValidityLimit = updateLabLimits(record["ValueName"], record["UnitName"], "SQC", record["LimitId"], upperSQCLimit, lowerSQCLimit, tagProvider, database)
             else:
                 target=0.0
                 standardDeviation=0.0
@@ -107,7 +107,7 @@ def fetchLimits(database = ""):
             lowerReleaseLimit=record["LowerReleaseLimit"]
         return upperReleaseLimit, lowerReleaseLimit
     #-------------------------------------
-    def packLimit(record):
+    def packLimit(record, tagProvider):
         valueName=record["ValueName"]
         limitType=record["LimitType"]
         
@@ -120,7 +120,7 @@ def fetchLimits(database = ""):
            }
 
         if limitType == "SQC":
-            upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation = getSQCLimits(record)
+            upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation = getSQCLimits(record, None, tagProvider)
             d["UpperValidityLimit"]=upperValidityLimit
             d["LowerValidityLimit"]=lowerValidityLimit
             d["UpperSQCLimit"]=upperSQCLimit
@@ -141,33 +141,32 @@ def fetchLimits(database = ""):
         return d
     #-----------------------------------------------------
     # Update the limit UDT (tags) with the new limits 
-    def updateLimitTags(limit):   
+    def updateLimitTags(limit, tagProvider):   
         #-------------
-        def writeLimit(providerName, unitName, valueName, limitType, limitValue):
+        def writeLimit(tagProvider, unitName, valueName, limitType, limitValue):
             if limitValue != None:
-                tagName="[%s]LabData/%s/%s/%s" % (providerName, unitName, valueName, limitType)
+                tagName="[%s]LabData/%s/%s/%s" % (tagProvider, unitName, valueName, limitType)
                 log.trace("Writing <%s> to %s" % (limitValue, tagName))
                 result=system.tag.write(tagName, limitValue)
                 if result == 0:
                     log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
         #-------------
-        providerName=getTagProvider()
         unitName=limit.get("UnitName","")
         valueName=limit.get("ValueName", None)
         limitType=limit.get("LimitType", None)
         if limitType == "SQC":
-            writeLimit(providerName, unitName, valueName + '-SQC', "upperValidityLimit", limit.get("UpperValidityLimit", None))
-            writeLimit(providerName, unitName, valueName + '-SQC', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
-            writeLimit(providerName, unitName, valueName + '-SQC', "upperSQCLimit", limit.get("UpperSQCLimit", None))
-            writeLimit(providerName, unitName, valueName + '-SQC', "lowerSQCLimit", limit.get("LowerSQCLimit", None))
-            writeLimit(providerName, unitName, valueName + '-SQC', "target", limit.get("Target", None))
-            writeLimit(providerName, unitName, valueName + '-SQC', "standardDeviation", limit.get("StandardDeviation", None))
+            writeLimit(tagProvider, unitName, valueName + '-SQC', "upperValidityLimit", limit.get("UpperValidityLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-SQC', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-SQC', "upperSQCLimit", limit.get("UpperSQCLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-SQC', "lowerSQCLimit", limit.get("LowerSQCLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-SQC', "target", limit.get("Target", None))
+            writeLimit(tagProvider, unitName, valueName + '-SQC', "standardDeviation", limit.get("StandardDeviation", None))
         elif limitType == "Release":
-            writeLimit(providerName, unitName, valueName + '-RELEASE', "upperReleaseLimit", limit.get("UpperReleaseLimit", None))
-            writeLimit(providerName, unitName, valueName + '-RELEASE', "lowerReleaseLimit", limit.get("LowerReleaseLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-RELEASE', "upperReleaseLimit", limit.get("UpperReleaseLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-RELEASE', "lowerReleaseLimit", limit.get("LowerReleaseLimit", None))
         elif limitType == "Validity":
-            writeLimit(providerName, unitName, valueName + '-VALIDITY', "upperValidityLimit", limit.get("UpperValidityLimit", None))
-            writeLimit(providerName, unitName, valueName + '-VALIDITY', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-VALIDITY', "upperValidityLimit", limit.get("UpperValidityLimit", None))
+            writeLimit(tagProvider, unitName, valueName + '-VALIDITY', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
         else:
             log.error("Unexpected limit type: <%s> for %s" % (limitType, valueName))
     #-----------------------------------------------------------
@@ -214,7 +213,7 @@ def fetchLimits(database = ""):
             
             oldLimit=limits[valueId]
             if limitType == "SQC":
-                upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation=getSQCLimits(record, oldLimit)
+                upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation = getSQCLimits(record, oldLimit, tagProvider)
 
                 if oldLimit.get("UpperSQCLimit", None) != upperSQCLimit or oldLimit.get("LowerSQCLimit", None) != lowerSQCLimit:
                     log.trace("An existing SQC limit has changed")
@@ -226,14 +225,14 @@ def fetchLimits(database = ""):
                     oldLimit["LowerSQCLimit"]=lowerSQCLimit
                     oldLimit["Target"]=target
                     oldLimit["StandardDeviation"]=standardDeviation
-                    updateLimitTags(oldLimit)
+                    updateLimitTags(oldLimit, tagProvider)
                     limits[valueId]=oldLimit
                 else:
                     log.trace("No change to an existing SQC limit")
         else:
             log.trace("Adding a new limit to the limit data structure")
-            d=packLimit(record)
-            updateLimitTags(d)
+            d=packLimit(record, tagProvider)
+            updateLimitTags(d, tagProvider)
 
             # Now add the dictionary to the big permanent dictionary
             limits[valueId]=d
@@ -255,8 +254,8 @@ def parseRecipeFamilyFromGradeTagPath(tagPath):
 
 # This is called in response to a grade change (and also maybe on restart).  It fetches the grade specific SQC limits from recipe and 
 # updates the lab data database tables.
-def updateSQCLimitsFromRecipe(recipeFamily, grade, database=""):
-    log.info("Loading SQC limits from recipe for family: %s, grade: %s" % (recipeFamily, str(grade)))
+def updateLabLimitsFromRecipe(recipeFamily, grade, tagProvider, database):
+    log.infof("Loading SQC limits from recipe for family: %s, grade: %s, tagProvider: %s", recipeFamily, str(grade), tagProvider)
     
     if grade == None:
         log.warn("Unable to load SQC limits for an unknown grade.")
@@ -292,14 +291,12 @@ def updateSQCLimitsFromRecipe(recipeFamily, grade, database=""):
             unitName=labDataRecord['UnitName']
             limitType=labDataRecord['LimitType']
             log.trace("   ... found a matching lab data named %s (%s) with limit id: %i (unit=%s)" % (valueName, limitType, limitId, unitName))
-            updateSQCLimits(valueName, unitName, limitType, limitId, upperLimit, lowerLimit, database)
+            updateLabLimits(valueName, unitName, limitType, limitId, upperLimit, lowerLimit, tagProvider, database)
              
 
 # This calculates the target, standard deviation, and validity limits from the SQC limits.  
 # The SQC limits can come from anywhere, recipe, the DCS, or manually entered.
-def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowerSQCLimit, database):
-    
-    provider = getTagProvider()
+def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowerSQCLimit, tagProvider, database):
     target=float("NaN")
     standardDeviation=float("NaN")
     lowerValidityLimit=float("NaN")
@@ -334,7 +331,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         sqlLog.trace("   ...updated %i rows" % (rows))
         
         # Now write the fetched limits to the Lab Data UDT tags
-        path = '[' + provider + ']LabData/' + unitName + '/' + valueName + '-RELEASE'
+        path = '[' + tagProvider + ']LabData/' + unitName + '/' + valueName + '-RELEASE'
         tags = [path+'/lowerReleaseLimit', path+'/upperReleaseLimit']
         vals = [lowerSQCLimit, upperSQCLimit]
     
@@ -360,7 +357,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         sqlLog.trace("   ...updated %i rows" % (rows))
         
         # Now write the fetched limits to the Lab Data UDT tags
-        path = '[' + provider + ']LabData/' + unitName + '/' + valueName + '-VALIDITY'
+        path = '[' + tagProvider + ']LabData/' + unitName + '/' + valueName + '-VALIDITY'
         tags = [path+'/lowerValidityLimit', path+'/upperValidityLimit']
         vals = [lowerSQCLimit, upperSQCLimit]
     
@@ -417,7 +414,7 @@ def updateSQCLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
     
         # Now write the fetched and calculated limits to the Lab Data UDT tags
     
-        path = '[' + provider + ']LabData/' + unitName + '/' + valueName + '-SQC'
+        path = '[' + tagProvider + ']LabData/' + unitName + '/' + valueName + '-SQC'
     
         tags = [path+'/lowerSQCLimit', path+'/lowerValidityLimit', path+'/standardDeviation', path+'/target', path+'/upperSQCLimit', path+'/upperValidityLimit']
         vals = [lowerSQCLimit, lowerValidityLimit, standardDeviation, target, upperSQCLimit, upperValidityLimit]

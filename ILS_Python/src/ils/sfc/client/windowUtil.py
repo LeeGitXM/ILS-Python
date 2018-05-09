@@ -91,6 +91,7 @@ def fetchWindowInfo(windowId):
 def reopenWindow(windowId):
     '''This is called from the button on the control panel.'''
     from ils.sfc.common.constants import POSITION, SCALE, WINDOW_ID
+    from ils.common.windowUtil import positionWindow
     
     print "In %s.reopenWindow(), the windowId is: %s" % (__name__, windowId)
 
@@ -131,7 +132,8 @@ def reopenWindow(windowId):
     print "...reopening a SFC window %s with payload: %s" % (windowPath, str(payload))
 
     window = system.nav.openWindowInstance(windowPath, payload)
-    system.nav.centerWindow(window)
+    positionWindow(window, position, scale)
+    
     window.title = title
 
 def sendCloseWindow(window, table):

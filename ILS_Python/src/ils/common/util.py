@@ -19,15 +19,19 @@ def isUserConnected(userName):
     return False
 
 def isWarmboot():
-    runHours = getRunHours()
+    '''
+    This is called by many (all) of the toolkits during startup.  It is ok that we are using the production tag provider here since a 
+    warmboot is a warmboot regardless of tag provider.
+    '''
+    tagProvider = getTagProvider()
+    runHours = getRunHours(tagProvider)
     
     if runHours > 5.0 / 60.0:
         return True
     
     return False
         
-def getRunHours():
-    tagProvider = getTagProvider()
+def getRunHours(tagProvider):
     tagPath = "[%s]Site/Watchdogs/Ignition Uptime Minutes" % (tagProvider)
     exists = system.tag.exists(tagPath)
     if exists:

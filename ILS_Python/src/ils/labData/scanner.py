@@ -31,7 +31,7 @@ def main(database, tagProvider):
         initializeCache(database)
     
     from ils.labData.limits import fetchLimits
-    limits=fetchLimits(database)
+    limits=fetchLimits(tagProvider, database)
 
     writeMode = "synch"
     writeTags=[]

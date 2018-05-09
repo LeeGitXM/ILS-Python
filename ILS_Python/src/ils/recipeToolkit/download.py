@@ -17,6 +17,7 @@ from ils.io.client import writeWithNoChecks, writeRecipeDetails
 from ils.common.config import getTagProvider, getTagProviderClient, getDatabaseClient,\
     getIsolationModeClient
 from ils.common.ocAlert import sendAlert
+from ils.io.util import getProviderFromTagPath
 log = system.util.getLogger("com.ils.recipeToolkit.download")
 
 def automatedDownloadHandler(tagPath, grade):
@@ -80,7 +81,7 @@ It looks like this only supports production.
 def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, grade, version):
     log.info("Setting up a fully automated download\n  Post: %s, Project: %s, Database: %s, Recipe Family: %s, Grade: %s, Version: %s" % (post, project, database, familyName, grade, str(version)))
     
-    provider = getTagProvider()     # Get the production tag provider.
+    tagProvider = getProviderFromTagPath(parentTagPath) # Get the production tag provider.
     
     # fetch the recipe map which will specify the database and table containing the recipe
     recipeFamily = recipeToolkit_fetch.recipeFamily(familyName, database)
@@ -95,19 +96,19 @@ def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, g
     dsProcessed = recipeToolkit_viewRecipe.update(pds)
 
     # Reset the recipe detail objects
-    recipeToolkit_viewRecipe.resetRecipeDetails(provider, familyName)
+    recipeToolkit_viewRecipe.resetRecipeDetails(tagProvider, familyName)
 
     # Create any OPC tags that are required by the recipe
-    dsProcessed, tags = recipeToolkit_viewRecipe.createOPCTags(dsProcessed, provider, familyName, database)
+    dsProcessed, tags = recipeToolkit_viewRecipe.createOPCTags(dsProcessed, tagProvider, familyName, database)
     
     # Refresh the table with data from the DCS and determine what needs to be downloaded
-    dsProcessed = recipeToolkit_refresh.automatedRefresh(familyName, dsProcessed, provider, database)
+    dsProcessed = recipeToolkit_refresh.automatedRefresh(familyName, dsProcessed, tagProvider, database)
 
-    recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
-    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+    recipeWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+    globalWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
     writeEnabled = recipeWriteEnabled and globalWriteEnabled
-    localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
-    downloadTimeout = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/downloadTimeout").value
+    localWriteAlias = string.upper(system.tag.read("[" + tagProvider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
+    downloadTimeout = system.tag.read("[" + tagProvider + "]/Configuration/RecipeToolkit/downloadTimeout").value
     
     log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s, timeout: %s seconds)..." % (familyName, str(writeEnabled), str(downloadTimeout)))
     
@@ -116,7 +117,7 @@ def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, g
     # Save the time that the download started so that we know when to stop monitoring it.
     downloadStartTime = util.getDate(database)
 
-    resetTags(dsProcessed, provider, familyName, localWriteAlias)
+    resetTags(dsProcessed, tagProvider, familyName, localWriteAlias)
 
     # Open a master download record for this download
     familyId = recipeToolkit_fetch.fetchFamilyId(familyName, database)
@@ -147,11 +148,11 @@ def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, g
     
     # Based on the recipe and the current values in the table, determine the rows to write and update the 
     # processedData property of the table
-    dsProcessed = writeImmediate(dsProcessed, provider, familyName, logId, localWriteAlias, writeEnabled, project)
-    dsProcessed = writeDeferred(dsProcessed, provider, familyName, logId, writeEnabled, project)
+    dsProcessed = writeImmediate(dsProcessed, tagProvider, familyName, logId, localWriteAlias, writeEnabled, project)
+    dsProcessed = writeDeferred(dsProcessed, tagProvider, familyName, logId, writeEnabled, project)
 
     # Start the download monitor
-    recipeToolkit_downloadMonitor.automatedRunner(parentTagPath, dsProcessed, provider, familyName, grade, version, logId, downloadStartTime, downloadTimeout, database)
+    recipeToolkit_downloadMonitor.automatedRunner(parentTagPath, dsProcessed, tagProvider, familyName, grade, version, logId, downloadStartTime, downloadTimeout, database)
     
     log.info("Completed automated download!")
 

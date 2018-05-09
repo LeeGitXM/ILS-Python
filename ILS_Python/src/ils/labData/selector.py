@@ -33,12 +33,12 @@ def valueChanged(tagPath):
     system.tag.write(tagRoot + "/trigger", False)
 
 
-# Update the expression in the selector tag to get its values from a new source
-# This operates entirely on tags and has no database transactions
-def configureSelector(unitName, selectorName, sourceName, database):
-    from ils.common.config import getTagProvider
-    provider = getTagProvider()
-    parentTagPath = '[' + provider + ']LabData/' + unitName + '/'
+def configureSelector(unitName, selectorName, sourceName, tagProvider, database):
+    '''
+    Update the expression in the selector tag to get its values from a new source
+    This operates entirely on tags and has no database transactions
+    '''
+    parentTagPath = '[' + tagProvider + ']LabData/' + unitName + '/'
     tagPath = parentTagPath + selectorName
     log.infof("...configuring selector: %s", tagPath)
 

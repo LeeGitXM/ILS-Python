@@ -406,19 +406,24 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
     log.error("Timed out waiting for write complete of %s!" % (tagRoot))
     return False, "Timed out waiting for write complete"
 
-# This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
-# provider without the brackets.
+
 def getProviderFromTagPath(tagPath):
+    '''
+    This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
+    provider without the brackets.  If a tag provider is not included in the tag path then the production tag provider is returned.
+    '''
     if tagPath.find("[") < 0 or tagPath.find("]") < 0:
-        from ils.common.config import getTagProvider
         provider = getTagProvider()
     else:
         provider=tagPath[1:tagPath.find(']')]
     return provider
 
-# Convert a full tag path to just the tag name.
-# Full tag paths are always used internally, but just the tag name is used for display purposes.
+
 def splitTagPath(tagPath):
+    '''
+    Convert a full tag path to just the tag name.
+    Full tag paths are always used internally, but just the tag name is used for display purposes.
+    '''
     if tagPath.find('/') < 0:
         # There isn't a folder, so we either have a root folder or a tag at the root level.  
         # Return the provider as the parent and the rest as the tag

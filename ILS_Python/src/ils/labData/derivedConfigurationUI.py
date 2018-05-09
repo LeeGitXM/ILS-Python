@@ -5,7 +5,6 @@ Created on Jul 1, 2015
 '''
 import system
 from ils.sfc.common.constants import SQL
-from ils.common.config import getTagProviderClient
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -38,10 +37,6 @@ def internalFrameActivated(rootContainer):
 def internalFrameClosing(rootContainer):
     print "In %s.internalFrameClosing()" % (__name__)
 
-#    tagProvider = getTagProviderClient()
-#    unitName = rootContainer.getComponent("UnitName").selectedStringValue
-#    from ils.labData.synchronize import synchronize
-#    synchronize("[" + tagProvider + "]", unitName)
 
 #update the window
 def update(rootContainer):
