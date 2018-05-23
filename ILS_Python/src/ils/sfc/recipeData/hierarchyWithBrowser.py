@@ -36,9 +36,9 @@ def updateSfcTree(rootContainer, db):
     sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
 
     hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly, db)
+    hierarchyHandlerPDS = fetchHierarchyHandler(sfcRecipeDataShowProductionOnly, db)
     chartPDS = fetchCharts(sfcRecipeDataShowProductionOnly, db)
-    trees = fetchSfcTree(chartPDS, hierarchyPDS)
-    
+    trees = fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS)
     
     chartDict = {}
     for record in chartPDS:
@@ -101,20 +101,35 @@ def fetchHierarchy(sfcRecipeDataShowProductionOnly, db=""):
 
     pds = system.db.runQuery(SQL, db)
     return pds
+
+def fetchHierarchyHandler(sfcRecipeDataShowProductionOnly, db=""):
+    if sfcRecipeDataShowProductionOnly:
+        SQL = "select * from SfcHierarchyHandlerView where IsProduction = 1 order by ChartPath"
+    else:
+        SQL = "select * from SfcHierarchyHandlerView order by ChartPath"
+
+    pds = system.db.runQuery(SQL, db)
+    return pds
     
-def getChildren(chartId, hierarchyPDS):
+def getChildren(chartId, hierarchyPDS, hierarchyHandlerPDS):
     children = []
     log.tracef("Getting the children of chart: %s", str(chartId))
+    
     for record in hierarchyPDS:
         if record["ChartId"] == chartId and record["ChildChartId"] not in children:
             children.append(record["ChildChartId"])
+            
+    for record in hierarchyHandlerPDS:
+        if record["ChartId"] == chartId and record["HandlerChartId"] not in children:
+            children.append(record["HandlerChartId"])
+            
     log.tracef("The children of %s are %s", chartId, str(children))
     return children
 
 # This version traverses and creates a list of strings
-def fetchSfcTree(chartPDS, hierarchyPDS):
+def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     
-    def depthSearch(trees, depth, hierarchyPDS):
+    def depthSearch(trees, depth, hierarchyPDS, hierarchyHandlerPDS):
         log.tracef("------------")
         log.tracef("Searching depth %d, the trees are %s", depth, str(trees))
 
@@ -125,11 +140,10 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
             ids = tree.split(",")
             node = ids[-1]
             log.tracef("The last node is: %s", node)
-            children=getChildren(int(node), hierarchyPDS)
+            children=getChildren(int(node), hierarchyPDS, hierarchyHandlerPDS)
             if len(children) == 0 or depth > 100:
                 if depth > 100: 
                     log.errorf("Error!, SFC Tree depth has exceeded 100 levels.  Pruning the tree at this level, please investigate for a possible loop in the branches near %s", node)
-                    
 
                 log.tracef("...there are no children!")
                 newTrees.append(tree)
@@ -143,10 +157,16 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
         return newTrees, foundChild
     
     # A root is any chart that is never a child of another chart.
-    def isRoot(chartId, hierarchyPDS):
+    def isRoot(chartId, hierarchyPDS, hierarchyHandlerPDS):
         for record in hierarchyPDS:
             if chartId == record["ChildChartId"]:
                 return False
+            
+        for record in hierarchyHandlerPDS:
+            if chartId == record["HandlerChartId"]:
+                print "*** Found a EndHandler chart that is called by a chart ***"
+                return False
+
         return True
     # --------------------------
     
@@ -156,7 +176,7 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
     for chartRecord in chartPDS:
         chartId = chartRecord["ChartId"]
 
-        if isRoot(chartId, hierarchyPDS):
+        if isRoot(chartId, hierarchyPDS, hierarchyHandlerPDS):
             trees.append(str(chartId))
 
     log.tracef("...the root nodes are: %s", str(trees))
@@ -164,7 +184,7 @@ def fetchSfcTree(chartPDS, hierarchyPDS):
     foundChild = True
     depth = 0
     while foundChild:
-        trees, foundChild = depthSearch(trees, depth, hierarchyPDS)
+        trees, foundChild = depthSearch(trees, depth, hierarchyPDS, hierarchyHandlerPDS)
         depth = depth + 1
     log.tracef("The trees are: %s", str(trees))
 

@@ -73,33 +73,33 @@ When the grade changes we log a whole bunch of stuff to the operator logbook
 '''
 def logGradeChange(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db):
     
+    if initialChange:
+        return
+    
     try:
         log.infof("writing grade change information to the operator logbook for grade tag %s", tagPath)
         
-        if initialChange:
-            msg = "Grade %s has just been detected for the %s unit after a restart/reboot." % (str(currentValue.value), unit)
+        qvs = system.tag.readAll([tagPathRoot + "currentProduction", tagPathRoot + "catInHours", tagPathRoot + "timeOfMostRecentGradeChange"])
+        
+        if qvs[0].quality.isGood():
+            production = qvs[0].value
         else:
-            qvs = system.tag.readAll([tagPathRoot + "currentProduction", tagPathRoot + "catInHours", tagPathRoot + "timeOfMostRecentGradeChange"])
-            
-            if qvs[0].quality.isGood():
-                production = qvs[0].value
-            else:
-                production = "BAD QUALITY"
-            
-            if qvs[1].quality.isGood():
-                catInHours = qvs[1].value
-            else:
-                catInHours = "BAD QUALITY"
-            
-            if qvs[2].quality.isGood():
-                gradeChangeTime = qvs[2].value
-                gradeHours = system.date.hoursBetween(gradeChangeTime, system.date.now())
-            else:
-                gradeHours = "BAD QUALITY"
-            
-            msg = "Grade %s has just been downloaded for the %s unit.  A change from %s." % (str(currentValue.value), unit, str(previousValue.value))
-            msg = msg + "\nGrade %s accumulated %s cat-in run hours during %s total hours" % (str(previousValue.value), str(round(catInHours,2)), str(round(gradeHours, 2)))
-            msg = msg + "\nReactor production was %s klb for the run." % (str(production))
+            production = "BAD QUALITY"
+        
+        if qvs[1].quality.isGood():
+            catInHours = qvs[1].value
+        else:
+            catInHours = "BAD QUALITY"
+        
+        if qvs[2].quality.isGood():
+            gradeChangeTime = qvs[2].value
+            gradeHours = system.date.hoursBetween(gradeChangeTime, system.date.now())
+        else:
+            gradeHours = "BAD QUALITY"
+        
+        msg = "Grade %s has just been downloaded for the %s unit.  A change from %s." % (str(currentValue.value), unit, str(previousValue.value))
+        msg = msg + "\nGrade %s accumulated %s cat-in run hours during %s total hours" % (str(previousValue.value), str(round(catInHours,2)), str(round(gradeHours, 2)))
+        msg = msg + "\nReactor production was %s klb for the run." % (str(production))
         
         from ils.diagToolkit.common import fetchPostForUnit
         post = fetchPostForUnit(unit, db)
