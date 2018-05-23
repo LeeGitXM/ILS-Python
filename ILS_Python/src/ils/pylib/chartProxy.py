@@ -3,6 +3,10 @@
 import system
 import system.ils.sfc as ilssfc
 import system.ils.tf as testframe
+from ils.sfc.recipeData.api import s88GetFromName, s88SetFromName
+
+logger=system.util.getLogger("com.ils.pylib.chartProxy")
+
 
 # SFC Testing requires:
 #  1) [default]CurrentChartId
@@ -28,6 +32,18 @@ def updateConsoleRecord(common,path):
 	SQL = "UPDATE SfcControlPanel set chartPath='%s' "% (path)
 	SQL = SQL + " WHERE controlPanelName='scratch'"
 	system.db.runUpdateQuery(SQL,db)
+
+def getRecipeData(common,path,stepName,keyAndAttribute):
+	logger.infof("*************************************************** s88GetFromName():  %s * %s * %s", path, stepName, keyAndAttribute)
+	db = ilssfc.getDatabaseName(False)
+	data = s88GetFromName(path, stepName, keyAndAttribute, db)
+	common['result'] = str(data)
+	
+def setRecipeData(common,path,stepName,keyAndAttribute,theValue):
+	logger.infof("*************************************************** s88SetFromName():  %s * %s * %s : %s", path, stepName, keyAndAttribute, theValue)
+	db = ilssfc.getDatabaseName(False)
+	s88SetFromName(path, stepName, keyAndAttribute, theValue, db)
+
 	
 # Argument is the chart path
 def start(common,path,isolation):
@@ -52,21 +68,8 @@ def getProviderName(common,isIsolationMode):
 def getChartState(common,chartid):
 	state = ilssfc.chartState(chartid)
 	common['result'] = state
+
 		
-def getStepState(common,chartid,name):
-	state = ilssfc.stepState(chartid,name)
-	common['result'] = state
-	
-def getStepCount(common,chartid,name):
-	state = ilssfc.stepCount(chartid,name)
-	common['result'] = state
-	
-def getPendingRequestCount(common,chartid,name):
-	count = ilssfc.requestCount(chartid,name)
-	common['result'] = count
-	
-def postResponse(common,chartPath,stepName,text):
-	ilssfc.postResponse(chartPath,stepName,text)
 # --------------------------- private ------------------
 def str2bool(val):
 	return val.lower() in ("true","yes","t","1")
