@@ -468,24 +468,33 @@ def parseXML(root):
     children = []
     
     for step in root.findall("step"):
-        print "==================="
-        stepId = step.get("id")
-        stepName = step.get("name")
-        stepType = step.get("factory-id")
-        
-        stepDict = {"id": stepId, "name": stepName, "type": stepType}
-        steps.append(stepDict)
-        print "Found a step: ", stepDict
-
-        childChartPath = step.get("chart-path")
-        if (childChartPath != None):
-            log.tracef("Found an encapsulation that calls %s", childChartPath)
-            childDict = {"childPath": childChartPath, "id": stepId, "name": stepName, "type": stepType}
-            children.append(childDict)
+        steps, children = parseStep(step, steps, children)
+            
+    for parallel in root.findall("parallel"):
+        print "Found a parallel..."
+        for step in parallel.findall("step"):
+            steps, children = parseStep(step, steps, children)
 
     print "========================"
     print "Python Found: "
     print "     steps: ", steps
     print "  children: ", children
     print "========================"
+    return steps, children
+
+def parseStep(step, steps, children):
+    print "==================="
+    stepId = step.get("id")
+    stepName = step.get("name")
+    stepType = step.get("factory-id")
+    
+    stepDict = {"id": stepId, "name": stepName, "type": stepType}
+    steps.append(stepDict)
+    print "Found a step: ", stepDict
+
+    childChartPath = step.get("chart-path")
+    if (childChartPath != None):
+        log.tracef("Found an encapsulation that calls %s", childChartPath)
+        childDict = {"childPath": childChartPath, "id": stepId, "name": stepName, "type": stepType}
+        children.append(childDict)
     return steps, children
