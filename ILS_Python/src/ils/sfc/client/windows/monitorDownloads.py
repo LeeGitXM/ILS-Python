@@ -33,8 +33,15 @@ def internalFrameOpened(event):
     rootContainer.timerStepUUID = timerStepUUID
     rootContainer.timerKey = timerKey
 
-    title = system.db.runScalarQuery("Select title from SfcWindow where windowId = '%s'" % (windowId), database)
-    rootContainer.title = title
+    SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL, database)
+    if len(pds) == 1:
+        record = pds[0]
+        rootContainer.title = record["title"]
+        rootContainer.controlPanelId = record["controlPanelId"]
+        rootContainer.chartRunId = record["chartRunId"]
+    else:
+        print "ERROR: Unable to find information for the Download GUI in the SfcWindow table."
 
     update(rootContainer)
     setWindowSize(rootContainer, window)
@@ -113,6 +120,24 @@ def update(rootContainer):
     table=rootContainer.getComponent("table")
     table.data=ds
 
+def updateButtonState(rootContainer):
+    print "In %s.updateButtonState()" % (__name__)
+    
+    chartRunId = rootContainer.chartRunId
+    
+    # Fetch the enable/disable state of the control panel command buttons.
+    database = getDatabaseClient()
+    SQL = "Select * from SfcControlPanel where chartRunId = '%s'" % (chartRunId)
+    pds = system.db.runPrepQuery(SQL, database=database)
+    
+    if len(pds) <> 1:
+        return
+    
+    record = pds[0]
+    rootContainer.enableCancel = record["EnableCancel"]
+    rootContainer.enablePause = record["EnablePause"]
+    rootContainer.enableResume = record["EnableResume"]
+    
 
 def fetchWindowState(windowId, database):
     print "...fetching the window state..."

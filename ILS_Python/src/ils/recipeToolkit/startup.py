@@ -103,7 +103,7 @@ def restoreLocalRecipe(recipeFamily, grade, tagProvider = "", database=""):
         " and VD.WriteLocationId = WL.WriteLocationId "\
         " and WL.Alias = 'Local' "\
         " and GD.RecipeFamilyId = VD.RecipeFamilyId"\
-        " and GM.Grade = %s "\
+        " and GM.Grade = '%s' "\
         " and RF.RecipeFamilyName = '%s' "\
         " and GD.ValueId = VD.ValueId  "\
         " order by StoreTag" % (str(grade), recipeFamily)

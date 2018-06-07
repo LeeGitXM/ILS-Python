@@ -176,7 +176,6 @@ def view(queueKey, useCheckpoint=False, silent=False, position="", scale=1.0):
         print "found a window with key: ", qk
         if qk == queueKey:
             window.toFront()
-            system.nav.centerWindow(window)
             if silent == False:
                 system.gui.messageBox("The queue is already open!")
             return
@@ -282,22 +281,22 @@ def sendOpenMessage(queueKey, autoViewAdmin, autoViewAE, autoViewOperator, db, p
 This runs in every client and is called by the messageHandler script for a showQueue message
 '''
 def handleMessage(payload):
-    print "Handling a showQueue message with payload: ", payload
+    print "In %s.handleMessage, handling a showQueue message with payload: %s" % (__name__, payload)
 
     queueKey = payload["queueKey"]
     db = payload["database"]
     if db == "":
         db = getProductionDatabase()
-    
+
     clientDB = getDatabaseClient()
     if clientDB <> db:
         print "Not showing the queue because the client database does not match the queue database!"
         return
-    
+
     autoViewAdmin = payload["autoViewAdmin"]
     autoViewAE = payload["autoViewAE"]
     autoViewOperator = payload["autoViewOperator"]
-    
+
     if autoViewAdmin and isAdmin():
         print "Autoshowing because this queue is autoView enabled for Admins and this is an Admin"
         view(queueKey, useCheckpoint=True, silent=True)

@@ -12,7 +12,7 @@ from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWind
         sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88GetWithUnits, s88GetUnits
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, \
-    DEACTIVATED, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \
+    DEACTIVATED, CANCELLED, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \
     BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
 
 def activate(scopeContext, stepProperties, state):
@@ -25,7 +25,7 @@ def activate(scopeContext, stepProperties, state):
     responseKey = getStepProperty(stepProperties, BUTTON_KEY)
     responseRecipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
 
-    if state == DEACTIVATED:
+    if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepProperties, stepScope, logger)
         return False

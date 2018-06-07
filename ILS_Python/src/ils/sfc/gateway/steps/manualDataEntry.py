@@ -24,7 +24,7 @@ def activate(scopeContext, stepProperties, state):
     windowPath = "SFC/ManualDataEntry"
     messageHandler = "sfcOpenWindow"
 
-    if state == DEACTIVATED or state == CANCELLED:
+    if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepProperties, stepScope)
         return False

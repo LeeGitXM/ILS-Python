@@ -384,7 +384,7 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
         return "Tag does not exist!"
     
     # Use the last portion of the UDT / tag that we are writing to 
-    if string.upper(displayAttribute) == 'NAME':
+    if string.upper(displayAttribute) in ['NAME', 'NAMES']:
         displayName=fullTagPath[fullTagPath.rfind('/')+1:]
     
     elif string.upper(displayAttribute) == 'ITEMID':

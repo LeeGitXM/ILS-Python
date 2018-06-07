@@ -11,7 +11,7 @@ from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWind
         logStepDeactivated, getTopChartRunId, getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
-    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY
+    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -26,7 +26,7 @@ def activate(scopeContext, stepProperties, state):
     responseKey = getStepProperty(stepProperties, KEY)
     responseRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
 
-    if state == DEACTIVATED:
+    if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepProperties, stepScope)
         return False

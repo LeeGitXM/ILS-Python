@@ -14,7 +14,7 @@ from ils.sfc.gateway.steps.commonInput import cleanup
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError, getStepProperty, getControlPanelId, registerWindowWithControlPanel, logStepDeactivated, getTopChartRunId
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
-    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY
+    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -22,16 +22,16 @@ def activate(scopeContext, stepProperties, state):
         buttonLabel = 'Y/N'
 
     chartScope = scopeContext.getChartScope()
-    print "YES/NO chart scope ", chartScope
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
+    logger.tracef("YES/NO chart scope %s", str(chartScope))
     windowPath = "SFC/YesNo"
     messageHandler = "sfcOpenWindow"
     responseKey = getStepProperty(stepProperties, KEY)
     responseRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     
-    if state == DEACTIVATED:
-        logger.trace("The Yes/No state is deactivated!")
+    if state in [DEACTIVATED, CANCELLED]:
+        logger.tracef("The Yes/No state is %s!", state)
         logStepDeactivated(chartScope, stepProperties)
         cleanup(chartScope, stepProperties, stepScope)
         return False
