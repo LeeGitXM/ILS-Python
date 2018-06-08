@@ -19,12 +19,57 @@ class RecipeDetail(recipe.Recipe):
     writeSp = False
     pythonClass = ""
     
-    def __init__(self,path):
-        recipe.Recipe.__init__(self,path)
+    def __init__(self, path):
+        recipe.Recipe.__init__(self, path)
 
-        log.trace("Initializing the recipe detail object for %s" % (path))
+        log.tracef("%s.__init__() Initializing the recipe detail object for %s", __name__, path)
         
         rootPath=self.path[0:self.path.rfind('/')+1]
+
+#        tags = []
+#        for attr in ['highLimitTagName', 'lowLimitTagName','valueTagName']:
+#            tags.append(self.path + '/' + attr)
+ 
+#        vals = system.tag.readAll(tags)
+ 
+#        highLimitTagName = vals[0].value
+#        if highLimitTagName not in ["", "0"]:
+#            self.highLimitTag = opcoutput.OPCOutput(rootPath + highLimitTagName)
+#            self.writeHighLimit = True
+#            log.trace("  setting up to write the high limit")
+        
+#        lowLimitTagName = vals[1].value
+#        if lowLimitTagName not in ["", "0"]:
+#            self.lowLimitTag = opcoutput.OPCOutput(rootPath + lowLimitTagName)
+#            self.writeLowLimit = True
+#            log.trace("  setting up to write the low limit")
+
+        '''
+        The limits that I am setting up above here are always opcOutputs.  The SP is generally a more
+        complicated UDT.  At Vistalon, they are always OPC Conditional Outputs, but I'm not sure that will always be the case.
+        So for the sp, the first thing I need to do is to read the Python class from the UDT so I can create the proper
+        type of object here and then dispatch the method correctly
+        '''
+#        spTagName = vals[2].value
+#        print "The SP tag name is: <%s>" % (spTagName)
+#        if spTagName not in ["", "0"]:
+#            self.pythonClass = system.tag.read(rootPath + spTagName + "/pythonClass").value
+            
+#            if self.pythonClass == "OPCOutput":
+#                self.spTag = opcoutput.OPCOutput(rootPath + spTagName)
+#            elif self.pythonClass == "OPCConditionalOutput":
+#                self.spTag = opcconditionaloutput.OPCConditionalOutput(rootPath + spTagName)
+            
+#            self.writeSp = True
+#            log.trace("  setting up to write the setpoint")
+
+    def writeRecipeDetail(self, newValue, newHighLimitValue, newLowLimitValue):
+    
+        log.infof("In RecipeDetail::writeRecipeDetail() with <%s>: %s - %s - %s", self.path, str(newValue), str(newHighLimitValue), str(newLowLimitValue))
+        
+        rootPath=self.path[0:self.path.rfind('/')+1]
+
+        # start of what I moved from init
         
         tags = []
         for attr in ['highLimitTagName', 'lowLimitTagName','valueTagName']:
@@ -33,17 +78,16 @@ class RecipeDetail(recipe.Recipe):
         vals = system.tag.readAll(tags)
  
         highLimitTagName = vals[0].value
-        if highLimitTagName <> "":
+        if highLimitTagName not in ["", "0"] and newHighLimitValue not in ["", None]:
             self.highLimitTag = opcoutput.OPCOutput(rootPath + highLimitTagName)
             self.writeHighLimit = True
             log.trace("  setting up to write the high limit")
         
         lowLimitTagName = vals[1].value
-        if lowLimitTagName <> "":
+        if lowLimitTagName not in ["", "0"] and newLowLimitValue not in ["", None]:
             self.lowLimitTag = opcoutput.OPCOutput(rootPath + lowLimitTagName)
             self.writeLowLimit = True
             log.trace("  setting up to write the low limit")
-
 
         '''
         The limits that I am setting up above here are always opcOutputs.  The SP is generally a more
@@ -52,7 +96,8 @@ class RecipeDetail(recipe.Recipe):
         type of object here and then dispatch the method correctly
         '''
         spTagName = vals[2].value
-        if spTagName <> "":
+        print "The SP tag name is: <%s>" % (spTagName)
+        if spTagName not in ["", "0"] and newValue not in ["", None]:
             self.pythonClass = system.tag.read(rootPath + spTagName + "/pythonClass").value
             
             if self.pythonClass == "OPCOutput":
@@ -62,11 +107,8 @@ class RecipeDetail(recipe.Recipe):
             
             self.writeSp = True
             log.trace("  setting up to write the setpoint")
-
-    def writeRecipeDetail(self, newValue, newHighLimitValue, newLowLimitValue):
-    
-        #---------------------------------------------------------
-        log.info("In RecipeDetail::writeRecipeDetail() with <%s>" % (self.path))
+            
+        # End of what I moved from init
  
         # Get the path to this tag, the other tags will be in the same folder
         rootPath=self.path[0:self.path.rfind('/')+1]
