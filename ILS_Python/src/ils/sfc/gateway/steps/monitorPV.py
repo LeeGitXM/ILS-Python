@@ -265,7 +265,7 @@ def activate(scopeContext, stepProperties, state):
                         
                         logger.tracef("(%s) The present qualified value for %s is: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                         if not(qv.quality.isGood()):
-                            logger.warnf("(%s) The monitored value is bad: %s-%s", stepName, str(qv.value), str(qv.quality))
+                            logger.warnf("(%s) The monitored value for %s is bad: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                             continue
     
                         pv=qv.value

@@ -20,7 +20,7 @@ class OPCOutput(opctag.OPCTag):
         
     # Check some basic things about this OPC tag to determine if a write is likely to succeed!
     def checkConfig(self):
-        log.trace("In OPCOutput.checkConfig()...")
+        log.tracef("In OPCOutput.checkConfig()...")
         
         # Check that the tag exists - 
         # TODO there should be a better way to call next method
@@ -49,7 +49,7 @@ class OPCOutput(opctag.OPCTag):
  
     # Implement a simple write confirmation.  Use the standard utility routine to perform the check.
     def confirmWrite(self, val):  
-        log.trace("%s - Confirming the write of <%s> to %s..." % (__name__, str(val), self.path))
+        log.tracef("%s - Confirming the write of <%s> to %s...", __name__, str(val), self.path)
  
         from ils.io.util import confirmWrite as confirmWriteUtil
         system.tag.write(self.path + '/writeStatus', 'Confirming')
@@ -60,7 +60,7 @@ class OPCOutput(opctag.OPCTag):
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output
     def writeDatum(self, val, valueType=""):
-        log.info("Writing <%s>, <%s> to %s, an OPCOutput" % (str(val), str(valueType), self.path))
+        log.infof("%s - Writing <%s>, <%s> to %s, an OPCOutput", __name__, str(val), str(valueType), self.path)
 
         if val == None or string.upper(str(val)) == 'NAN':
             val = float("NaN")
@@ -73,25 +73,25 @@ class OPCOutput(opctag.OPCTag):
         if status == False :              
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", reason)
-            log.warn("* Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
+            log.warnf("%s - Aborting write to %s, checkConfig failed due to: %s", __name__, self.path, reason)
             return status,reason
  
         # Update the status to "Writing"
         system.tag.write(self.path + "/writeStatus", "Writing Value")
  
         # Write the value to the OPC tag
-        log.trace("  Writing value <%s> to %s/value" % (str(val), self.path))
+        log.tracef("%s - Writing value <%s> to %s/value", __name__, str(val), self.path)
         status = system.tag.write(self.path + "/value", val)
-        log.trace("  Write status: %s" % (status))
+        log.tracef("%s - Write status: %s", __name__, status)
                                
         status, msg = self.confirmWrite(val)
  
         if status:
-            log.trace("Confirmed: %s - %s - %s" % (self.path, status, msg))
+            log.tracef("%s - Confirmed: %s - %s - %s", __name__, self.path, status, msg)
             system.tag.write(self.path + "/writeStatus", "Success")
             system.tag.write(self.path + "/writeConfirmed", True)
         else:
-            log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, msg))
+            log.errorf("%s - Failed to confirm write of <%s> to %s because %s", __name__, str(val), self.path, msg)
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeMessage", msg)
  
@@ -104,7 +104,7 @@ class OPCOutput(opctag.OPCTag):
         if val == None or string.upper(str(val)) == 'NAN':
             val = float("NaN")
 
-        log.info("Writing <%s> to %s, an OPCOutput with no confirmation" % (str(val), self.path))
+        log.infof("%s.writeWithNoCheck() - Writing <%s> to %s, an OPCOutput with no confirmation", __name__, str(val), self.path)
 
         system.tag.write(self.path + "/writeConfirmed", False)
         system.tag.write(self.path + "/writeStatus", "")
@@ -115,16 +115,16 @@ class OPCOutput(opctag.OPCTag):
         if status == False :              
             system.tag.write(self.path + "/writeStatus", "Failure")
             system.tag.write(self.path + "/writeErrorMessage", reason)
-            log.warn("Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
+            log.warnf("%s - Aborting write to %s, checkConfig failed due to: %s", __name__, self.path, reason)
             return status,reason
  
         # Update the status to "Writing"
         system.tag.write(self.path + "/writeStatus", "Writing Value")
  
         # Write the value to the OPC tag
-        log.trace("  Writing value <%s> to %s/tag" % (str(val), self.path))
+        log.tracef("%s - Writing value <%s> to %s/value", __name__, str(val), self.path)
         status = system.tag.write(self.path + "/value", val)
-        log.trace("  Write status: %s" % (status))
+        log.tracef("%s - Write status: %s", __name__, status)
                                
         if status == 0:
             success = False
@@ -135,6 +135,6 @@ class OPCOutput(opctag.OPCTag):
             errorMessage = ""
             system.tag.write(self.path + "/writeStatus", "Success")
             
-        log.trace("Write Status: %s - %s - %s" % (self.path, str(success), errorMessage))
+        log.tracef("%s - Write Status: %s - %s - %s", __name__, self.path, str(success), errorMessage)
  
         return success, errorMessage

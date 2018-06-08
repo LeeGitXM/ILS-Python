@@ -55,6 +55,7 @@ def refresh(rootContainer, udtDS):
         print udtPath
         udtType = udtDS.getValueAt(row, "UDTType")
         biasName = udtPath[udtPath.rfind("/") + 1:]
+        rootPath = udtPath[:udtPath.rfind("/")]
         print "Row %d: Bias name: <%s>" % (row, biasName)
         
         tagValues = system.tag.readAll([udtPath+"/labValue", udtPath+"/modelValue", udtPath+"/biasValue", udtPath+"/labSampleTime"])
@@ -64,9 +65,9 @@ def refresh(rootContainer, udtDS):
         sampleTime = tagValues[3].value
         sampleTime = formatDateTime(sampleTime)
         
-        data.append([udtPath,biasName,udtType, labValue, modelValue, biasValue, str(sampleTime)])
+        data.append([udtPath, rootPath, biasName, udtType, labValue, modelValue, biasValue, str(sampleTime)])
         
-    header = ["Bias Path", "Bias Name", "Bias Type","Lab Value", "Model Value", "Bias Value", "Lab Sample Time"]
+    header = ["Bias Path", "Path", "Bias Name", "Bias Type","Lab Value", "Model Value", "Bias Value", "Lab Sample Time"]
     ds = system.dataset.toDataSet(header, data)
     ds = system.dataset.sort(ds, "Bias Name")
     table = rootContainer.getComponent("Table")

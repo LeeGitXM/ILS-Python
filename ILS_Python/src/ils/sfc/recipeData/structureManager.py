@@ -497,4 +497,13 @@ def parseStep(step, steps, children):
         log.tracef("Found an encapsulation that calls %s", childChartPath)
         childDict = {"childPath": childChartPath, "id": stepId, "name": stepName, "type": stepType}
         children.append(childDict)
+    
+    if stepType in ['com.ils.procedureStep', 'com.ils.operationStep', 'com.ils.phaseStep']:
+        for chartPath in step.findall("chart-path"):
+            childChartPath = chartPath.text
+            if (childChartPath != None):
+                log.tracef("Found an %s named %s that calls %s", stepType, stepName, childChartPath)
+                childDict = {"childPath": childChartPath, "id": stepId, "name": stepName, "type": stepType}
+                children.append(childDict)
+        
     return steps, children

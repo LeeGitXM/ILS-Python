@@ -279,18 +279,21 @@ def checkIfController(fullTagPath):
 # Compare two tag values taking into account that a float may be disguised as a text string and also
 # calling two floats the same if they are almost the same.
 def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDifference):
-    if (val1 == None and val2 != None) or (val1 != None and val2 == None):
-        return False
+#    if (val1 == None and val2 != None) or (val1 != None and val2 == None):
+#        print "Failed the initial check..."
+#        return False
  
     val1IsText = isText(val1)
     val2IsText = isText(val2)
 
     # When we write a NaN we read back a Null value which looks like a '' - Treat these as equal
     if string.upper(str(val1)) == "NAN" or string.upper(str(val2)) == "NAN":
+        print "One of the values is NAN..."
         val1 = string.upper(str(val1))
         val2 = string.upper(str(val2))
-
+        print "Now comparing: ", val1, val2
         if (val1 == 'NAN' or val1 == '' or val1 == 'NONE' or val1 == None) and (val2 == 'NAN' or val2 == '' or val2 == 'NONE' or val2 == None):
+            print " EQUAL "
             return True
         else:
             return False

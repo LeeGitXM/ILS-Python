@@ -29,7 +29,7 @@ class OPCTag():
         
     # Check for the existence of the tag and the global write flag
     def checkConfig(self):
-        log.trace("In OPCTag.checkConfig()...")
+        log.tracef("In OPCTag.checkConfig()...")
         
         from ils.io.util import checkConfig
         status, reason = checkConfig(self.path)
@@ -53,7 +53,7 @@ class OPCTag():
     # This basic class doesn't support this method
     # Implement a simple write confirmation.  Use the standard utility routine to perform the check.
     def confirmWrite(self, val):  
-        log.trace("%s - Confirming the write of <%s> to %s..." % (__name__, str(val), self.path))
+        log.tracef("%s - Confirming the write of <%s> to %s...", __name__, str(val), self.path)
  
         from ils.io.util import confirmWrite as confirmWriteUtil
         confirmation, errorMessage = confirmWriteUtil(self.path + "/value", val)
@@ -67,21 +67,19 @@ class OPCTag():
                                
         status,reason = self.checkConfig()
         if status == False :              
-            log.warn("* Aborting write to %s, checkConfig failed due to: %s" % (self.path, reason))
+            log.warnf("* Aborting write to %s, checkConfig failed due to: %s", self.path, reason)
             return status,reason
  
         # Write the value to the OPC tag
-        log.trace("  Writing value <%s> to %s/value" % (str(val), self.path))
+        log.tracef("%s - Writing value <%s> to %s/value", __name__, str(val), self.path)
         status = system.tag.write(self.path + "/value", val)
-        log.trace("  Write status: %s" % (status))
+        log.tracef("%s - Write status: %s", __name__, status)
                                
         status, msg = self.confirmWrite(val)
  
         if status:
-            log.trace("Confirmed: %s - %s - %s" % (self.path, status, msg))
+            log.tracef("%s - Confirmed: %s - %s - %s", __name__, self.path, status, msg)
         else:
-            log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, msg))
+            log.errorf("%s - Failed to confirm write of <%s> to %s because %s", __name__, str(val), self.path, msg)
  
         return status, msg
-
-        
