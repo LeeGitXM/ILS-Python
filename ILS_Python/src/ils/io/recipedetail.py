@@ -26,42 +26,6 @@ class RecipeDetail(recipe.Recipe):
         
         rootPath=self.path[0:self.path.rfind('/')+1]
 
-#        tags = []
-#        for attr in ['highLimitTagName', 'lowLimitTagName','valueTagName']:
-#            tags.append(self.path + '/' + attr)
- 
-#        vals = system.tag.readAll(tags)
- 
-#        highLimitTagName = vals[0].value
-#        if highLimitTagName not in ["", "0"]:
-#            self.highLimitTag = opcoutput.OPCOutput(rootPath + highLimitTagName)
-#            self.writeHighLimit = True
-#            log.trace("  setting up to write the high limit")
-        
-#        lowLimitTagName = vals[1].value
-#        if lowLimitTagName not in ["", "0"]:
-#            self.lowLimitTag = opcoutput.OPCOutput(rootPath + lowLimitTagName)
-#            self.writeLowLimit = True
-#            log.trace("  setting up to write the low limit")
-
-        '''
-        The limits that I am setting up above here are always opcOutputs.  The SP is generally a more
-        complicated UDT.  At Vistalon, they are always OPC Conditional Outputs, but I'm not sure that will always be the case.
-        So for the sp, the first thing I need to do is to read the Python class from the UDT so I can create the proper
-        type of object here and then dispatch the method correctly
-        '''
-#        spTagName = vals[2].value
-#        print "The SP tag name is: <%s>" % (spTagName)
-#        if spTagName not in ["", "0"]:
-#            self.pythonClass = system.tag.read(rootPath + spTagName + "/pythonClass").value
-            
-#            if self.pythonClass == "OPCOutput":
-#                self.spTag = opcoutput.OPCOutput(rootPath + spTagName)
-#            elif self.pythonClass == "OPCConditionalOutput":
-#                self.spTag = opcconditionaloutput.OPCConditionalOutput(rootPath + spTagName)
-            
-#            self.writeSp = True
-#            log.trace("  setting up to write the setpoint")
 
     def writeRecipeDetail(self, newValue, newHighLimitValue, newLowLimitValue):
     
