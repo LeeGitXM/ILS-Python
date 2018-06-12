@@ -7,6 +7,7 @@ Created on Jul 18, 2017
 import system
 from ils.common.config import getDatabaseClient
 
+
 def internalFrameOpened(event):
     print "In %s.internalFrameOpened()" % (__name__)
     db = getDatabaseClient()
@@ -20,3 +21,14 @@ def internalFrameOpened(event):
     SQL = "select title from SfcWindow where windowId = '%s'" % (windowId)
     title = system.db.runScalarQuery(SQL, database=db)
     rootContainer.title = title
+
+'''
+This is called from a timer on the window.
+'''
+def refresh(rootContainer):
+    db = getDatabaseClient()
+    windowId = rootContainer.windowId
+    
+    SQL = "select message from SfcBusyNotification where windowId = '%s'" % (windowId)
+    message = system.db.runScalarQuery(SQL, database=db)
+    rootContainer.message = message
