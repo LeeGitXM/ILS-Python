@@ -4,7 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system
+import system, string
 log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
 from system.date import secondsBetween
@@ -317,11 +317,11 @@ def integralOverTime(historyTagProvider, tagProvider, tagPath, startDate, endDat
     def getTimeSpan(startTime, endTime, timeInterval):
         timeSpan = system.date.secondsBetween(startTime, endTime)
         
-        if timeInterval == "minute":
+        if string.upper(timeInterval) in ["MINUTE", "MINUTES"]:
             timeSpan = timeSpan / 60.0
-        elif timeInterval == "day":
+        elif string.upper(timeInterval) in ["DAY", "DAYS"]:
             timeSpan = timeSpan / 60.0 / 60.0 / 24.0
-        elif timeInterval == "hour":
+        elif string.upper(timeInterval) in ["HOUR", "HOURS"]:
             timeSpan = timeSpan / 60.0 / 60.0
         
         return timeSpan
@@ -331,9 +331,10 @@ def integralOverTime(historyTagProvider, tagProvider, tagPath, startDate, endDat
     
     fullTagPath = "[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath)
     paths = [fullTagPath]
-    log.tracef("Calculating the integral for %s from %s to %s", tagPath, str(startDate), str(endDate))
+    log.tracef("Calculating the integral for %s from %s to %s over %s", tagPath, str(startDate), str(endDate), timeInterval)
     
     ds = system.tag.queryTagHistory(paths=paths, startDate=startDate, endDate=endDate, includeBoundingValues=True, returnSize=0)
+    log.tracef("History returned %d points...", ds.rowCount)
     
     lastTime = None
     lastValue = None
@@ -350,6 +351,8 @@ def integralOverTime(historyTagProvider, tagProvider, tagPath, startDate, endDat
             log.tracef("Calculating the area of slice from %s to %s", str(lastTime), str(currentTime))
             log.tracef("  using values %s and %s over timespan %s...", str(lastValue), str(currentValue), str(timeSpan))
             log.tracef("  the area is %s and the total area so far is %s", str(area), str(integral))
+        else:
+            log.tracef("Skipping calculation for first point...")
 
         lastValue = currentValue
         lastTime = currentTime
@@ -361,7 +364,8 @@ def integralOverTime(historyTagProvider, tagProvider, tagPath, startDate, endDat
     affected even if we miss the last slice.
     '''
     timeSpan = getTimeSpan(lastTime, endDate, timeInterval)
-    if timeSpan > 0:
+    if timeSpan > 0 and not(isNaN(lastValue)):
+        log.tracef("...adding area of final slice...")
         area = lastValue * timeSpan
         integral = integral + area
 

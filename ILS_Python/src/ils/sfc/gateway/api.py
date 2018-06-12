@@ -68,7 +68,8 @@ def addControlPanelMessage(chartProperties, message, priority, ackRequired):
     escapedMessage = escapeSingleQuotes(message)
     chartRunId = getTopChartRunId(chartProperties)
     database = getDatabaseName(chartProperties)
-    controlPanelId=getControlPanelIdForChartRunId(chartRunId, database)
+    controlPanelId = getControlPanelId(chartProperties)
+#    controlPanelId=getControlPanelIdForChartRunId(chartRunId, database)
     
     if controlPanelId == None:
         msgId = None
