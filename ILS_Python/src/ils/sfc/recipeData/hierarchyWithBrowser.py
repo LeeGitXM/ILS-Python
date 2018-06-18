@@ -10,6 +10,9 @@ from ils.common.error import catchError
 from ils.common.config import getTagProviderClient
 log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 
+#treeMode = "chartName"
+treeMode = "fullPath"
+
 '''
 Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.
 '''
@@ -47,7 +50,7 @@ def updateSfcTree(rootContainer, db):
         
         # Chart Paths use the '/' to indicate the path structure, but the tree widget interprets that as a child.  I want to treat
         # the chart path as the name so replace "/" with ":"
-        chartDict[chartId] = chartPath.replace('/','\\')
+        chartDict[chartId] = chartPath.replace('/',' \\ ')
 
     log.tracef("The chart dictionary is %s", str(chartDict))    
     rows=[]
@@ -62,6 +65,7 @@ def updateSfcTree(rootContainer, db):
 
     
 def expandRow(tree, chartDict): 
+    
     log.tracef("Expanding: %s", str(tree))
     tokens = tree.split(",")
     path=""
@@ -75,9 +79,16 @@ def expandRow(tree, chartDict):
             path = "%s/%s" % (path, chartName)
 
     token = tokens[-1]
-    node = chartDict.get(int(token),"Unknown")
+    fullPath = chartDict.get(int(token),"Unknown")
+    
+    chartName = fullPath[fullPath.rfind("\\")+1:]
+    print fullPath, "  --  ", chartName
 
-    row = [path,node,"default","color(255,255,255,255)","color(0,0,0,255)","","","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
+    if treeMode == "fullPath":
+        row = [path,fullPath,"default","color(255,255,255,255)","color(0,0,0,255)",fullPath,"","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
+    else:
+        row = [path,chartName,"default","color(255,255,255,255)","color(0,0,0,255)",fullPath,"","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
+        
     log.tracef("The expanded row is: %s", str(row))
     return row
 
@@ -208,7 +219,7 @@ def refreshSteps(rootContainer, db):
     chartPath = chartPath[chartPath.rfind("/")+1:]
     
     # Now replace ":" with "/"
-    chartPath = chartPath.replace('\\', '/')
+    chartPath = chartPath.replace(' \\ ', '/')
     log.infof("The selected chart path is <%s>", chartPath)
     if chartPath == "" or chartPath == None:
         clearTable(stepTable)

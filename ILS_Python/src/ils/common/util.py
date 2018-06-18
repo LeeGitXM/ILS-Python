@@ -4,8 +4,10 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system
+import system, string
+log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
+from system.date import secondsBetween
 
 def isUserConnected(userName):
     sessions = system.util.getSessionInfo()
@@ -301,6 +303,76 @@ def rateOfChangePerMinute(historyTagProvider, tagProvider, tagPath, startDate, e
     roc = (lastVal - firstVal) / minutesBetween
     
     return roc
+
+def isNaN(num):
+    return num != num
+
+'''
+Return the integral (area under the curve) of the tag.
+TimeInterval is one of second, minute, hour, or day
+'''
+def integralOverTime(historyTagProvider, tagProvider, tagPath, startDate, endDate, timeInterval):
+    
+    #---------------------------------------------------------------
+    def getTimeSpan(startTime, endTime, timeInterval):
+        timeSpan = system.date.secondsBetween(startTime, endTime)
+        
+        if string.upper(timeInterval) in ["MINUTE", "MINUTES"]:
+            timeSpan = timeSpan / 60.0
+        elif string.upper(timeInterval) in ["DAY", "DAYS"]:
+            timeSpan = timeSpan / 60.0 / 60.0 / 24.0
+        elif string.upper(timeInterval) in ["HOUR", "HOURS"]:
+            timeSpan = timeSpan / 60.0 / 60.0
+        
+        return timeSpan
+    #---------------------------------------------------------------
+                
+    integral = 0.0
+    
+    fullTagPath = "[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath)
+    paths = [fullTagPath]
+    log.tracef("Calculating the integral for %s from %s to %s over %s", tagPath, str(startDate), str(endDate), timeInterval)
+    
+    ds = system.tag.queryTagHistory(paths=paths, startDate=startDate, endDate=endDate, includeBoundingValues=True, returnSize=0)
+    log.tracef("History returned %d points...", ds.rowCount)
+    
+    lastTime = None
+    lastValue = None
+    
+    for row in range(ds.rowCount):
+        currentTime = ds.getValueAt(row, 0)
+        currentValue = ds.getValueAt(row, 1)
+        currentQuality = ds.getQualityAt(row, 1)
+
+        if lastTime != None and currentQuality.isGood() and not(isNaN(currentValue)):
+            timeSpan = getTimeSpan(lastTime, currentTime, timeInterval)
+            area = (lastValue + currentValue) / 2.0 * timeSpan
+            integral = integral + area
+            log.tracef("Calculating the area of slice from %s to %s", str(lastTime), str(currentTime))
+            log.tracef("  using values %s and %s over timespan %s...", str(lastValue), str(currentValue), str(timeSpan))
+            log.tracef("  the area is %s and the total area so far is %s", str(area), str(integral))
+        else:
+            log.tracef("Skipping calculation for first point...")
+
+        lastValue = currentValue
+        lastTime = currentTime
+        
+    '''
+    Add in the final slice - queryTagHistory doesn't seem to report a value at the end timer.
+    The history system seems to work slightly differently in a client versus the gateway.  In the client we need to add in this final slice, but
+    in the gateway we don't, possibly because in the gateway the last value is often a NaN.  In any event, the precision generally is not significantly
+    affected even if we miss the last slice.
+    '''
+    timeSpan = getTimeSpan(lastTime, endDate, timeInterval)
+    if timeSpan > 0 and not(isNaN(lastValue)):
+        log.tracef("...adding area of final slice...")
+        area = lastValue * timeSpan
+        integral = integral + area
+
+    log.tracef("The total integral is: %s", str(integral))
+    
+    return integral
+
 '''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).

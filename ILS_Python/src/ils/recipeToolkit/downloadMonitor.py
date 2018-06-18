@@ -162,7 +162,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                             storVal = system.tag.read(tagName).value
                             tagName = formatLocalTagName(provider, compTagName)
                             compVal = system.tag.read(tagName).value
-                            log.trace("Comparing local value %s to %s" % (str(pendVal), str(storVal)))
+                            log.trace("Comparing local value %s to %s..." % (str(pendVal), str(storVal)))
                             ds = system.dataset.setValue(ds, i, "Stor", storVal)
                             ds = system.dataset.setValue(ds, i, "Comp", compVal)
                             from ils.io.util import equalityCheck
@@ -174,7 +174,8 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                                 failures = failures + 1
                                 status = "Failure"
                                 errorMessage = "Local write error"
-                                
+                            
+                            log.tracef("...%s", status)
                             logDetail(logId, storTagName, pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database)
                             ds = system.dataset.setValue(ds, i, "Download Status", status)
                             

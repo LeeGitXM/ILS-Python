@@ -14,13 +14,13 @@ from ils.common.config import getTagProvider
 log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
 
 def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
-
-    print "Made it to migrateChart!"
     provider = getTagProvider()
-    print "The provider is: ", provider
     recipeDataMigrationEnabled = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataMigrationEnabled" % (provider)).value
     if not(recipeDataMigrationEnabled):
-        log.tracef("Recipe Data migration is disabled!")
+        log.infof("Recipe Data migration is disabled!")
+        print "========================"
+        print chartResourceAsXML
+        print "========================"
         return
     
     log.infof("***************")

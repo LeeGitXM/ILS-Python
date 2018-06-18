@@ -145,27 +145,34 @@ def notifyClientsOfTextRecommendation(project, post, application, notificationTe
 #   2) If #1 is not found then notify every client displaying the console window
 #   3) If #2 is not found then notify every client
 def notifier(project, post, messageHandler, payload, database):
-    print "Notifying..."
+    log.infof("%s.notifier() - Notifying...", __name__)
     #-------------------------------------------------------------------------------------------------
     def work(project=project, post=post, messageHandler=messageHandler, payload=payload, database=database):
-        print "...working asynchrounously using database: %s..." % (database)
+        log.tracef("...working asynchrounously using database: %s...", database)
+        
+        notifiedClients = []
+        
         from ils.common.message.interface import getPostClientIds
         clientSessionIds = getPostClientIds(post, project, database)
         if len(clientSessionIds) > 0:
-            log.trace("Found %i clients logged in as %s sending OC alert them!" % (len(clientSessionIds), post))
+            log.tracef("Found %d clients logged in as %s sending OC alert them!", len(clientSessionIds), post)
             for clientSessionId in clientSessionIds:
                 system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
-        else:
-            from ils.common.message.interface import getConsoleClientIdsForPost
-            clientSessionIds = getConsoleClientIdsForPost(post, project, database)
-            log.trace("The clients are: %s" % (str(clientSessionIds)))
-            if len(clientSessionIds) > 0:
-                for clientSessionId in clientSessionIds:
-                    log.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
+                notifiedClients.append(clientSessionId)
+
+        from ils.common.message.interface import getConsoleClientIdsForPost
+        clientSessionIds = getConsoleClientIdsForPost(post, project, database)
+        log.tracef("The clients are: %s", str(clientSessionIds))
+        if len(clientSessionIds) > 0:
+            for clientSessionId in clientSessionIds:
+                if clientSessionId not in notifiedClients:
+                    log.tracef("Found a client with the console displayed %s with client Id %s", post, str(clientSessionId))
                     system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C", clientSessionId=clientSessionId)
-            else:
-                log.trace("Notifying OC alert to every client because I could not find the post logged in")
-                system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
+                    notifiedClients.append(clientSessionId)
+
+        if len(notifiedClients) == 0:
+            log.tracef("Notifying OC alert to every client because I could not find the post logged in")
+            system.util.sendMessage(project=project, messageHandler=messageHandler, payload=payload, scope="C")
     #----------------------------------------------------------------------------------------------------------------      
     system.util.invokeAsynchronous(work)
 
