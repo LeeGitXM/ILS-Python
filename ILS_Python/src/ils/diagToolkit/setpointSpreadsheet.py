@@ -906,8 +906,13 @@ def resetDiagram(finalDiagnosisIds, database):
                     blockId=block.getIdString()
                     parentUUID=block.getAttributes().get("parent")
 
-                    if blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis",
-                                "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse"]:
+                    if blockClass in ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.subdiagnosis.SubDiagnosis",
+                                "com.ils.block.SQC", "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse", 
+                                "com.ils.block.Compare","com.ils.block.CompareAbsolute","com.ils.block.CompareDeadband",
+                                "com.ils.block.EqualityObservation","com.ils.block.HighLimitObservation","com.ils.block.HighLimitSampleCount","com.ils.block.HighLimitTimeWindow",
+                                "com.ils.block.InRangeSampleCount","com.ils.block.InRangeTimeWindow","com.ils.block.LowLimitObservation","com.ils.block.LowLimitSampleCount",
+                                "com.ils.block.OutOfRangeObservation","com.ils.block.RangeObservation","com.ils.block.ZeroCrossing"]:
+                        
                         log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, UUID, parentUUID))
                         
                         # Resetting a block sets its state to UNSET, which does not propagate. 
@@ -917,9 +922,12 @@ def resetDiagram(finalDiagnosisIds, database):
                         system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
                         system.ils.blt.diagram.propagateBlockState(parentUUID, blockId)
 
-                    if blockClass == "com.ils.block.Inhibitor":
+                    elif blockClass == "com.ils.block.Inhibitor":
                         log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, UUID))
                         system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
+                        
+                    else:
+                        log.tracef("   ...skipping a %s...", blockClass)
                         
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
