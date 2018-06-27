@@ -19,9 +19,10 @@ def exportCallback(event):
     chartPath = treeWidget.selectedPath
     log.infof("The raw selected path is: <%s>", chartPath)
     chartPath = chartPath[chartPath.rfind("/")+1:]
+    log.infof("The selected chart path is <%s>", chartPath)
     
-    # Now replace ":" with "/"
-    chartPath = chartPath.replace('\\', '/')
+    # Now replace " / " with "/"
+    chartPath = chartPath.replace(' \ ', '/')
     log.infof("The selected chart path is <%s>", chartPath)
     if chartPath == "" or chartPath == None:
         return

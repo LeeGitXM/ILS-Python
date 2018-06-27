@@ -149,6 +149,8 @@ def opcWriteWatchdog(tagProvider, udtPath):
     stallCount=vals[5].value
     internallyDriven=vals[6].value
     maxWriteVal=vals[7].value
+    
+    globalWriteEnabled = system.tag.read("[%s]Configuration/Common/writeEnabled").value
 
     stalled = False
     
@@ -164,7 +166,7 @@ def opcWriteWatchdog(tagProvider, udtPath):
     logger.tracef("  Path: %s\n  Current Value: %s\n  Write Enabled %s\n  Write Value %s\n  Server Name: %s\n  Item Id: %s\n  Stall Count: %s\n", \
          udtPath, str(val), str(writeEnabled), str(writeValue), str(serverName), str(itemId), str(stallCount))
 
-    if writeEnabled:
+    if writeEnabled and globalWriteEnabled:
         logger.tracef("Attempting watchdog write...")
         
         try:

@@ -198,8 +198,9 @@ def handleNotification(payload):
         pos = windowPath.find('OC Alert')
         if pos >= 0:
             print "... checking post and payload for an OC Alert ..."
-            rootContainer=window.rootContainer
-            if post == rootContainer.getPropertyValue("post"): 
+            rootContainer = window.rootContainer
+            notificationType = rootContainer.getPropertyValue("notificationType")
+            if post == rootContainer.getPropertyValue("post") and notificationType == "Setpoint Spreadsheet": 
                 print "...found a matching OC alert..."
                 
                 if numOutputs == 0:
