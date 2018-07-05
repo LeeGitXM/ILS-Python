@@ -150,7 +150,7 @@ def opcWriteWatchdog(tagProvider, udtPath):
     internallyDriven=vals[6].value
     maxWriteVal=vals[7].value
     
-    globalWriteEnabled = system.tag.read("[%s]Configuration/Common/writeEnabled").value
+    globalWriteEnabled = system.tag.read("[%s]Configuration/Common/writeEnabled" % (tagProvider)).value
 
     stalled = False
     
