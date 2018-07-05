@@ -873,6 +873,13 @@ def resetDiagram(finalDiagnosisIds, database):
     import system.ils.blt.diagram as diagram
     log.info("Resetting BLT diagrams...")
     
+    observationBlockList = ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.subdiagnosis.SubDiagnosis",
+        "com.ils.block.SQC", "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse", 
+        "com.ils.block.Compare","com.ils.block.CompareAbsolute","com.ils.block.CompareDeadband",
+        "com.ils.block.EqualityObservation","com.ils.block.HighLimitObservation","com.ils.block.HighLimitSampleCount","com.ils.block.HighLimitTimeWindow",
+        "com.ils.block.InRangeSampleCount","com.ils.block.InRangeTimeWindow","com.ils.block.LowLimitObservation","com.ils.block.LowLimitSampleCount",
+        "com.ils.block.OutOfRangeObservation","com.ils.block.RangeObservation","com.ils.block.ZeroCrossing"]
+    
     for finalDiagnosisId in finalDiagnosisIds:
         log.info("...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
@@ -899,7 +906,44 @@ def resetDiagram(finalDiagnosisIds, database):
             if diagramUUID != None and finalDiagnosisUUID != None:
                 blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
+                blocksToReset = []
+                blockUUIDUpstreamOfLatch = []
                 for block in blocks:
+                    blockUUID=block.getIdString()
+                    blockName=block.getName()
+                    blockClass=block.getClassName()
+                    
+                    parentUUID=block.getAttributes().get("parent")
+
+                    if blockClass in observationBlockList:
+                        log.info("   ... adding a %s named: %s to the reset list..." % (blockClass, blockName))
+                        blocksToReset.append(block)
+
+                    elif blockClass == "com.ils.block.Inhibitor":
+                        log.info("   ... setting a %s named: %s  to inhibit!..." % (blockClass, blockName))
+                        blocksToReset.append(block)
+                    
+                    elif blockClass == "com.ils.block.LogicLatch":
+                        log.info("Found a logic latch")
+                        upstreamBlocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, blockName)
+                        for upstreamBlock in upstreamBlocks:
+                            if upstreamBlock.getIdString() not in blockUUIDUpstreamOfLatch and upstreamBlock.getClassName() in observationBlockList:
+                                log.tracef("Adding a %s named %s to the list of blocks upstream of a latch...", upstreamBlock.getClassName(), upstreamBlock.getName())
+                                blockUUIDUpstreamOfLatch.append(upstreamBlock.getIdString())
+
+                    else:
+                        log.tracef("   ...skipping a %s...", blockClass)
+                
+                ''' Remove the upstream blocks from the main list '''
+                log.infof("Removing %d blocks upstream of a latch from the list of %d blocks to reset...", len(blockUUIDUpstreamOfLatch), len(blocksToReset))
+                for block in blocksToReset:
+                    UUID=block.getIdString()
+                    if UUID in blockUUIDUpstreamOfLatch:
+                        log.tracef("Removing a %s - %s that is in the latch list from the reset list...", block.getClassName(), block.getName())
+                        blocksToReset.remove(block)
+
+                ''' Now reset what is left '''        
+                for block in blocksToReset:
                     UUID=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
@@ -913,7 +957,7 @@ def resetDiagram(finalDiagnosisIds, database):
                                 "com.ils.block.InRangeSampleCount","com.ils.block.InRangeTimeWindow","com.ils.block.LowLimitObservation","com.ils.block.LowLimitSampleCount",
                                 "com.ils.block.OutOfRangeObservation","com.ils.block.RangeObservation","com.ils.block.ZeroCrossing"]:
                         
-                        log.info("   ... resetting a %s named: %s with id: %s on diagram: %s..." % (blockClass, blockName, UUID, parentUUID))
+                        log.info("   ... resetting a %s named: %s..." % (blockClass, blockName))
                         
                         # Resetting a block sets its state to UNSET, which does not propagate. 
                         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
