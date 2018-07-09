@@ -215,7 +215,7 @@ I've gone back and forth on how to use queryTagHistory, it seems like Ignition s
 testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
 in project scope.
 '''
-def readAverageValues(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, log):
+def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, aggregationMode, log):
     fullTagPaths = []
     for tagPath in tagPaths:
         fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
@@ -389,7 +389,7 @@ def test():
     tagPaths.append("SFC IO/Cold Stick General/VRT700S-3/value") #OUTLET-TEMP-PV
     tagPaths.append("SFC IO/Cold Stick General/VCF262R-2/value") #AL-TO-VA
 
-    badValue, ds = readAverageValues(tagPaths, "XOMhistory", "XOM", 30, log)
+    badValue, ds = queryHistory(tagPaths, "XOMhistory", "XOM", 30, "Average", log)
     print "Reading historic average, isBad = ", badValue
     
     badValue, qvs = readInstantaneousValues(tagPaths, "XOM", log)
