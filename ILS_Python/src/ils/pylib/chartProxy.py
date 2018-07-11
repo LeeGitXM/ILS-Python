@@ -41,8 +41,15 @@ def getRecipeData(common,path,stepName,keyAndAttribute,isolationMode):
 	
 def setRecipeData(common,path,stepName,keyAndAttribute,theValue,isolationMode):
 	logger.infof("*************************************************** s88SetFromName():  %s * %s * %s : %s", path, stepName, keyAndAttribute, theValue)
+	if isolationMode in [True, "True"]:
+		isolationMode = True
+	else:
+		isolationMode = False
 	db = ilssfc.getDatabaseName(isolationMode)
+	print "The database is: ", db
 	s88SetFromName(path, stepName, keyAndAttribute, theValue, db)
+	print "** back from setting data **"
+	
 
 	
 # Argument is the chart path
@@ -56,6 +63,21 @@ def start(common,path,isolationMode):
 	print "chartProxy.start:",path,chartid,project,user,isolationMode,str2bool(isolationMode)
 	ilssfc.watchChart(str(chartid),path)
 	common['result'] = str(chartid)
+
+# Argument is the chart path
+def startFromTop(common, chartPath, controlPanelName, isolationMode):
+	from ils.sfc.common.util import startChart
+	project = testframe.getProjectName() 
+	originator = testframe.getUserName()
+	
+	print "In startFromTop() - Isolation Mode: ", isolationMode
+	if isolationMode in [True, "True"]:
+		isolationMode = True
+	else:
+		isolationMode = False
+		
+	chartRunId = startChart(chartPath, controlPanelName, project, originator, isolationMode)
+	common['result'] = str(chartRunId)
 
 def getDatabaseName(common,isolationMode):
 	name = ilssfc.getDatabaseName(str2bool(isolationMode))
