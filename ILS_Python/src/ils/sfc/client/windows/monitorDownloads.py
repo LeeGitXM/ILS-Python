@@ -8,6 +8,7 @@ from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName,\
     s88SetFromStep
 from ils.common.util import formatDateTime
+from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
 
 # This is called when the Download GUI window is opened.  The window is opened in response to a message sent 
 # from the gateway to the client when the download GUI task runs in the gateway.  The gateway task populates the 
@@ -39,7 +40,12 @@ def internalFrameOpened(event):
         record = pds[0]
         rootContainer.title = record["title"]
         rootContainer.controlPanelId = record["controlPanelId"]
-        rootContainer.chartRunId = record["chartRunId"]
+        
+        chartRunId = record["chartRunId"]
+        rootContainer.chartRunId = chartRunId
+        
+        chartStatus = getChartStatus(chartRunId)
+        rootContainer.chartStatus = chartStatus
     else:
         print "ERROR: Unable to find information for the Download GUI in the SfcWindow table."
 
@@ -124,6 +130,8 @@ def updateButtonState(rootContainer):
     print "In %s.updateButtonState()" % (__name__)
     
     chartRunId = rootContainer.chartRunId
+    chartStatus = getChartStatus(chartRunId)
+    rootContainer.chartStatus = chartStatus
     
     # Fetch the enable/disable state of the control panel command buttons.
     database = getDatabaseClient()

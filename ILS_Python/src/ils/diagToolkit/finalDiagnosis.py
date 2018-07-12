@@ -17,6 +17,7 @@ from ils.diagToolkit.common import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
     RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD, RECOMMENDATION_TEXT_POSTED
 from ils.io.util import getOutputForTagPath
+from system.ils.blt.diagram import getProductionDatabase
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
@@ -146,14 +147,20 @@ def notifyClientsOfTextRecommendation(project, post, application, notificationTe
 #   3) If #2 is not found then notify every client
 def notifier(project, post, messageHandler, payload, database):
     log.infof("%s.notifier() - Notifying...", __name__)
+    productionDatabase = getProductionDatabase()
+    if database == productionDatabase:
+        isolationMode = True
+    else:
+        isolationMode = False
+    
     #-------------------------------------------------------------------------------------------------
-    def work(project=project, post=post, messageHandler=messageHandler, payload=payload, database=database):
+    def work(project=project, post=post, messageHandler=messageHandler, payload=payload, isolationMode=isolationMode, database=database):
         log.tracef("...working asynchrounously using database: %s...", database)
         
         notifiedClients = []
         
         from ils.common.message.interface import getPostClientIds
-        clientSessionIds = getPostClientIds(post, project, database)
+        clientSessionIds = getPostClientIds(post, project, database, isolationMode)
         if len(clientSessionIds) > 0:
             log.tracef("Found %d clients logged in as %s sending OC alert them!", len(clientSessionIds), post)
             for clientSessionId in clientSessionIds:
@@ -161,7 +168,7 @@ def notifier(project, post, messageHandler, payload, database):
                 notifiedClients.append(clientSessionId)
 
         from ils.common.message.interface import getConsoleClientIdsForPost
-        clientSessionIds = getConsoleClientIdsForPost(post, project, database)
+        clientSessionIds = getConsoleClientIdsForPost(post, project, database, isolationMode)
         log.tracef("The clients are: %s", str(clientSessionIds))
         if len(clientSessionIds) > 0:
             for clientSessionId in clientSessionIds:

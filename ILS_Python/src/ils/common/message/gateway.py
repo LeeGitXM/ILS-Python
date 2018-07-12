@@ -22,6 +22,7 @@ def sendAndReceive(command, project, db, timeout=30):
     
     # If there are no clients then there won't ever be a reply
     if numClients == 0:
+        log.tracef("There are no clients!")
         ds = system.dataset.toDataSet([], [])
         pds = system.dataset.toPyDataSet(ds)
         return pds
@@ -30,22 +31,54 @@ def sendAndReceive(command, project, db, timeout=30):
     requestId=send(command, project, db)
     
     # Poll for a reply
-    SQL = "select Reply, ReplyTime, ClientId from TkMessageReply where RequestId = %i" % requestId
+    SQL = "select Reply, ReplyTime, ClientId, IsolationMode from TkMessageReply where RequestId = %i" % requestId
     pds = system.db.runQuery(SQL, database=db)
     startTime = system.date.now()
     timeout = system.date.addSeconds(startTime, timeout)
     
     while len(pds) <> numClients and system.date.now() < timeout:
         time.sleep(1)
-        log.trace("   ..checking for %i replies..." % (numClients)) 
+        log.trace("   ...checking for %i replies..." % (numClients)) 
         pds = system.db.runQuery(SQL, database=db)
     
-    system.db.runUpdateQuery("delete from TkMessageRequest where RequestId = %s" % (str(requestId)), database=db)
+    if len(pds) <> numClients:
+        log.trace("   ...the request timed out!")
+    else:
+        log.trace("   ...the replies have been received!")
     
-    log.trace("   ...the replies have been received!")
+    system.db.runUpdateQuery("delete from TkMessageRequest where RequestId = %s" % (str(requestId)), database=db)    
+    
     return pds
 
-def send(requestType, project, db):
+# Send a request to all clients to return a list of the windows that are showing
+# This will run until a response is received from every connected window
+def sendAndReceiveToAClient(command, project, clientSessionId, db, timeout=30):
+    log.trace("%s - %s..." % (__name__, command))
+
+    # Send the message to the specific client we are interested in
+    requestId=send(command, project, db, clientSessionId)
+    
+    # Poll for a reply
+    SQL = "select Reply, ReplyTime, ClientId from TkMessageReply where RequestId = %i" % requestId
+    pds = system.db.runQuery(SQL, database=db)
+    startTime = system.date.now()
+    timeout = system.date.addSeconds(startTime, timeout)
+    
+    ''' Since we only sent it to one client, we only expect one answer '''
+    while len(pds) == 0 and system.date.now() < timeout:
+        time.sleep(1)
+        log.trace("   ...checking for a reply...") 
+        pds = system.db.runQuery(SQL, database=db)
+    
+    if len(pds) == 0:
+        log.trace("   ...request timed out!")
+    else:
+        log.trace("   ...the replies have been received!")
+
+    system.db.runUpdateQuery("delete from TkMessageRequest where RequestId = %s" % (str(requestId)), database=db)
+    return pds
+
+def send(requestType, project, db, clientSessionId=""):
     log.trace("Sending a <%s> message" % (requestType))
 
     messageHandler="MessageRequest"
@@ -54,8 +87,12 @@ def send(requestType, project, db):
     requestId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     
     payload={"requestId": requestId, "requestType": requestType, "database": db}
-    system.util.sendMessage(project, messageHandler, payload, scope="C")
     
+    if clientSessionId == "":
+        system.util.sendMessage(project, messageHandler, payload, scope="C")
+    else:
+        system.util.sendMessage(project, messageHandler, payload, scope="C", clientSessionId=clientSessionId)
+
     return requestId
 
 ''' 

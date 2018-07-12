@@ -24,7 +24,9 @@ def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
-    logger.tracef("YES/NO chart scope %s", str(chartScope))
+#    logger.tracef("YES/NO chart scope %s", str(chartScope))
+#    logger.tracef("YES/NO step scope %s", str(stepScope))
+#    logger.tracef("YES/NO step properties %s", str(stepProperties))
     windowPath = "SFC/YesNo"
     messageHandler = "sfcOpenWindow"
     responseKey = getStepProperty(stepProperties, KEY)
@@ -43,7 +45,7 @@ def activate(scopeContext, stepProperties, state):
         
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
-            logger.trace("Initializing a Yes/No step")
+            logger.tracef("Initializing a Yes/No step, the reponse key is: %s", responseKey)
             
             # Clear the response recipe data so we know when the client has updated it
             s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
@@ -58,9 +60,7 @@ def activate(scopeContext, stepProperties, state):
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
-            logger.trace("The untranslated prompt is <%s>..." % (prompt))
             prompt = substituteScopeReferences(chartScope, stepScope, prompt)
-            logger.trace("...the translated prompt is <%s>" % (prompt))
             
             targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             

@@ -288,9 +288,17 @@ def getDatabaseName(chartProperties):
     '''Get the name of the database this chart is using, taking isolation mode into account'''
     isolationMode = getIsolationMode(chartProperties)
     
+    ''' I added some strange looking Python to get this to work from the Test Framework. '''
+
+    if isolationMode:
+        IM = True
+    else:
+        IM = False
+    
     ''' Leave this include here to avoid name clash '''
-    from system.ils.sfc import getDatabaseName
-    return getDatabaseName(isolationMode)  
+    from system.ils.sfc import getDatabaseName as systemGetDatabaseName
+    db = systemGetDatabaseName(IM)
+    return db
 
 def getDelaySeconds(delay, delayUnit):
     '''get the delay time and convert to seconds'''

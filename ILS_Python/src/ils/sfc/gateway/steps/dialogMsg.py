@@ -76,13 +76,13 @@ def activate(scopeContext, stepProperties, state):
             SQL = "select acknowledged from SfcDialogMessage where windowId = '%s'" % (windowId)
             pds = system.db.runQuery(SQL, database)
             if len(pds) == 0:
-                logger.trace("...no rows found for this window, assuming that the window has been acknowledged!")
+                logger.info("...no rows found for this window, assuming that the window has been acknowledged!")
                 workDone = True
             else:
                 record = pds[0]
                 acknowledged = record["acknowledged"]
-                print "Acknowledged: ", acknowledged
                 if acknowledged:
+                    logger.info("The message dialog has been acknowledged!")
                     workDone = True
                 
     except:

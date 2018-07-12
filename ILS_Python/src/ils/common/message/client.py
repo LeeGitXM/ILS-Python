@@ -18,14 +18,24 @@ def handle(payload):
     
     # Get a list of all of the open windows on a client
     if requestType == "listWindows":
-        db = getDatabaseClient()
-        if db == requestDatabase:
-            windows=system.gui.getOpenedWindowNames()
-            reply = ",".join(map(str,windows))
-            SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId)"\
-                " values (%i, '%s', getdate(), '%s')"\
-                 % (requestId, reply, clientId)
-            system.db.runUpdateQuery(SQL, database=db)
+        isolationMode = system.tag.read("[Client]Isolation Mode").value
+        windows=system.gui.getOpenedWindowNames()
+        reply = ",".join(map(str,windows))
+        SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
+            " values (%i, '%s', getdate(), '%s', %d)"\
+             % (requestId, reply, clientId, isolationMode)
+        system.db.runUpdateQuery(SQL, database=requestDatabase)
+        
+    elif requestType == "listUserAndIsolationMode":
+        isolationMode = system.tag.read("[Client]Isolation Mode").value
+        username = system.tag.read("[System]Client/User/Username").value
+        SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
+            " values (%i, '%s', getdate(), '%s', %d)"\
+             % (requestId, username, clientId, isolationMode)
+        system.db.runUpdateQuery(SQL, database=requestDatabase)
+    
+    else:
+        print "Unexpected request type: <%s>" % (requestType)
 
 def openWindow(payload):
     print "Opening:", payload
