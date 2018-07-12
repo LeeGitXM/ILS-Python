@@ -19,7 +19,7 @@ def prepareForTest(common, isolationMode):
 	if not(system.tag.exists(tagPath)):
 		system.tag.addTag(parentPath="[default]",name="CurrentChartPath",tagType="MEMORY",dataType="String")
 		
-	db = ilssfc.getDatabaseName(isolationMode)  # Assume isolation
+	db = ilssfc.getDatabaseName(str2bool(isolationMode))  # Don't assume isolation
 	try:
 		SQL = "INSERT INTO SfcControlPanel(controlPanelId,controlPanelName,chartPath,isolationMode,enablePause,enableResume,enableCancel) VALUES(-42,'scratch','tbd',1,1,1,1)"
 		system.db.runUpdateQuery(SQL,db)
@@ -28,14 +28,14 @@ def prepareForTest(common, isolationMode):
 
 # Update the standard console record for the given chart
 def updateConsoleRecord(common,path,controlPanelName,isolationMode):
-	db = ilssfc.getDatabaseName(isolationMode)  # Assume isolation
+	db = ilssfc.getDatabaseName(str2bool(isolationMode))  # Don't assume isolation
 	SQL = "UPDATE SfcControlPanel set chartPath='%s' "\
 		" WHERE controlPanelName='%s'" % (path, controlPanelName)
 	system.db.runUpdateQuery(SQL,db)
 
 def getRecipeData(common,path,stepName,keyAndAttribute,isolationMode):
 	logger.infof("*************************************************** s88GetFromName():  %s * %s * %s", path, stepName, keyAndAttribute)
-	db = ilssfc.getDatabaseName(isolationMode)
+	db = ilssfc.getDatabaseName(str2bool(isolationMode))
 	data = s88GetFromName(path, stepName, keyAndAttribute, db)
 	common['result'] = str(data)
 	

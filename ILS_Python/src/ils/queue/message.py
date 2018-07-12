@@ -161,6 +161,11 @@ def view(queueKey, useCheckpoint=False, silent=False, position="", scale=1.0):
         SQL = "select Position from QueueMaster where QueueKey = '%s'" % (queueKey)
         position = system.db.runScalarQuery(SQL, database=db)
         print "Using the position from QueueMaster: %s" % (position)
+        
+    #just to make sure it's set to something :-)
+    if position == "":
+        position = "center"
+    
 
     windowName = 'Queue/Message Queue'
     
