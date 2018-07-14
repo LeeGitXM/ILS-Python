@@ -56,3 +56,5 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # so I don't need to reset it.
         log.tracef("Writing wait value %s to the processing command...", str(processingCommandWait))
         system.tag.write(self.path + "/processingCommand", processingCommandWait)
+        
+        return status, errorMessage
