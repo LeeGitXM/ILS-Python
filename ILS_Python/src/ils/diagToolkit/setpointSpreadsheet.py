@@ -906,10 +906,9 @@ def resetDiagram(finalDiagnosisIds, database):
             if diagramUUID != None and finalDiagnosisUUID != None:
                 blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
 
-                blocksToReset = []
+                upstreamBlocks = []
                 blockUUIDUpstreamOfLatch = []
                 for block in blocks:
-                    blockUUID=block.getIdString()
                     blockName=block.getName()
                     blockClass=block.getClassName()
                     
@@ -917,16 +916,16 @@ def resetDiagram(finalDiagnosisIds, database):
 
                     if blockClass in observationBlockList:
                         log.info("   ... adding a %s named: %s to the reset list..." % (blockClass, blockName))
-                        blocksToReset.append(block)
+                        upstreamBlocks.append(block)
 
                     elif blockClass == "com.ils.block.Inhibitor":
                         log.info("   ... setting a %s named: %s  to inhibit!..." % (blockClass, blockName))
-                        blocksToReset.append(block)
+                        upstreamBlocks.append(block)
                     
                     elif blockClass == "com.ils.block.LogicLatch":
                         log.info("Found a logic latch")
-                        upstreamBlocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, blockName)
-                        for upstreamBlock in upstreamBlocks:
+                        blocksUpstreamofLatch=diagram.listBlocksGloballyUpstreamOf(diagramUUID, blockName)
+                        for upstreamBlock in blocksUpstreamofLatch:
                             if upstreamBlock.getIdString() not in blockUUIDUpstreamOfLatch and upstreamBlock.getClassName() in observationBlockList:
                                 log.tracef("Adding a %s named %s to the list of blocks upstream of a latch...", upstreamBlock.getClassName(), upstreamBlock.getName())
                                 blockUUIDUpstreamOfLatch.append(upstreamBlock.getIdString())
@@ -935,12 +934,14 @@ def resetDiagram(finalDiagnosisIds, database):
                         log.tracef("   ...skipping a %s...", blockClass)
                 
                 ''' Remove the upstream blocks from the main list '''
-                log.infof("Removing %d blocks upstream of a latch from the list of %d blocks to reset...", len(blockUUIDUpstreamOfLatch), len(blocksToReset))
-                for block in blocksToReset:
+                log.infof("Removing %d blocks upstream of a latch from the list of %d blocks to reset...", len(blockUUIDUpstreamOfLatch), len(upstreamBlocks))
+                blocksToReset = []
+                for block in upstreamBlocks:
                     UUID=block.getIdString()
-                    if UUID in blockUUIDUpstreamOfLatch:
+                    if UUID not in blockUUIDUpstreamOfLatch:
+                        blocksToReset.append(block)
+                    else:
                         log.tracef("Removing a %s - %s that is in the latch list from the reset list...", block.getClassName(), block.getName())
-                        blocksToReset.remove(block)
 
                 ''' Now reset what is left '''        
                 for block in blocksToReset:
