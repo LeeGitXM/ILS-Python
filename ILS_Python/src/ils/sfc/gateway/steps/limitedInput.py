@@ -8,9 +8,9 @@ import system, time
 from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.steps.commonInput import cleanup
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError, getStepProperty, getControlPanelId, registerWindowWithControlPanel, logStepDeactivated, getTopChartRunId
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, MINIMUM_VALUE, MAXIMUM_VALUE, \
-    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID
+    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, DEFAULT_VALUE, WINDOW_PATH, DEACTIVATED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -52,6 +52,9 @@ def activate(scopeContext, stepProperties, state):
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
+            prompt = substituteScopeReferences(chartScope, stepScope, prompt)
+            defaultValue = getStepProperty(stepProperties, DEFAULT_VALUE)
+            defaultValue = substituteScopeReferences(chartScope, stepScope, defaultValue)
             minValue = getStepProperty(stepProperties, MINIMUM_VALUE)
             maxValue = getStepProperty(stepProperties, MAXIMUM_VALUE) 
             
@@ -60,8 +63,9 @@ def activate(scopeContext, stepProperties, state):
 
             targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             
-            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, lowLimit, highLimit) values ('%s', '%s', '%s', '%s', %s, %s)" \
-                % (windowId, prompt, targetStepUUID, responseKey, str(minValue), str(maxValue))
+            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, lowLimit, highLimit, defaultValue) "\
+                " values ('%s', '%s', '%s', '%s', %s, %s, '%s')" \
+                % (windowId, prompt, targetStepUUID, responseKey, str(minValue), str(maxValue), defaultValue)
             numInserted = system.db.runUpdateQuery(sql, database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)

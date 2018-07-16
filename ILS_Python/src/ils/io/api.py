@@ -160,7 +160,7 @@ def writeWithNoCheck(tagPath, val, valueType=""):
 # In both cases, the ramp is executed by writing sequentially based on a linear ramp.  
 # Ramp time is in minutes, update frequency is in seconds.
 def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
-    log.info("Writing a controller ramp for %s" % (tagPath))
+    log.infof("In %s.writeRamp() for %s", __name__, tagPath)
         
     errorMessage=""
     confirmed = False

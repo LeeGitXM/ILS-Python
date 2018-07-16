@@ -11,7 +11,7 @@ from ils.sfc.common.constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY, IS_SF
     DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY, TARGET_STEP_UUID, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, \
     RESPONSE_KEY_AND_ATTRIBUTE
 from ils.sfc.common.util import isEmpty
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
 from ils.sfc.gateway.steps.commonInput import cleanup
 
 def activate(scopeContext, stepProperties, state):
@@ -41,8 +41,7 @@ def activate(scopeContext, stepProperties, state):
             # first call; do initialization and cache info in step scope for subsequent calls:
             logger.trace("Initializing a Select Input step")
         
-            # Clear the response recipe data so we know when the client has updated it
-            s88Set(chartScope, stepScope, responseKeyAndAttribute, "NULL", responseRecipeLocation)
+
             
             # Get the choices from recipe data:
             choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
@@ -61,6 +60,10 @@ def activate(scopeContext, stepProperties, state):
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
+            prompt = substituteScopeReferences(chartScope, stepScope, prompt)
+            
+            # Clear the response recipe data so we know when the client has updated it
+            s88Set(chartScope, stepScope, responseKeyAndAttribute, "NULL", responseRecipeLocation)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId

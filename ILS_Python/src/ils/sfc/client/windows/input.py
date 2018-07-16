@@ -38,6 +38,7 @@ def internalFrameOpened(event):
     rootContainer.highLimit = highLimit
     rootContainer.targetStepUUID = record["targetStepUUID"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
+    rootContainer.defaultValue = record["defaultValue"]
     
     if lowLimit == None or highLimit == None:
         limitText = ""
@@ -56,6 +57,10 @@ def okActionPerformed(event):
     key,attribute = splitKey(keyAndAttribute)
     responseField = rootContainer.getComponent('responseField')
     response = responseField.text
+    if response == "":
+        system.gui.warningBox("Please enter a value and press OK!")
+        return
+    
     lowLimit = rootContainer.lowLimit
     highLimit = rootContainer.highLimit
     if (lowLimit != None) and (response != None):

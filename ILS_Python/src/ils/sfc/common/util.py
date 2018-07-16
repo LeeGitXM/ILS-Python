@@ -5,7 +5,8 @@ Created on Nov 3, 2014
 '''
 import system, string
 from ils.sfc.common.notify import sfcNotify
-from ils.common.config import getDatabaseClient
+from ils.common.config import getDatabaseClient, getDatabase,\
+    getIsolationDatabase
 from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTROL_PANEL_WINDOW_PATH, DATABASE, DEFAULT_MESSAGE_QUEUE, ISOLATION_MODE, \
     HANDLER, MESSAGE_QUEUE, ORIGINATOR, POSITION, PROJECT, SCALE
 
@@ -46,12 +47,19 @@ way of knowing about the unit procedure block.  So when the unit procedure block
 record in the SfcControlParameter table. 
 '''
 def startChart(chartPath, controlPanelName, project, originator, isolationMode):
-    print "Trying to start a chart..."
+    print "Trying to start a chart...", controlPanelName, project, originator, isolationMode
     if chartIsRunning(chartPath):
         print "Exiting because the chart is already running!"
         return
     
-    controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName))
+    if isolationMode:
+        db = getIsolationDatabase()
+    else:
+        db = getDatabase()
+
+    print "Fetching control panel id for: ", controlPanelName, " using db: ", db
+    controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), db)
+    print "...fetched ", controlPanelId
     print "Found id %s for control panel %s" % (str(controlPanelId), controlPanelName)
     
     initialChartParams = dict()
@@ -61,13 +69,15 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
     initialChartParams[CONTROL_PANEL_ID] = controlPanelId
     initialChartParams[ORIGINATOR] = originator
     initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
+    
+    print "Starting a chart with: ", initialChartParams
     runId = system.sfc.startChart(chartPath, initialChartParams)
+    
     if isolationMode:
         isolationFlag = 1
     else:
         isolationFlag = 0
     
-    db = getDatabaseClient()
     updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d, "\
         "EnableCancel = 1, EnablePause = 1, EnableReset = 1, EnableResume = 1, EnableStart = 1 "\
         "where controlPanelId = %s" % (runId, originator, project, isolationFlag, str(controlPanelId))

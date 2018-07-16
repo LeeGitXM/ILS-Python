@@ -9,9 +9,9 @@ from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.steps.commonInput import cleanup
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
-    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY
+    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, DEFAULT_VALUE, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -40,9 +40,6 @@ def activate(scopeContext, stepProperties, state):
             # first call; do initialization and cache info in step scope for subsequent calls:
             logger.trace("Initializing a getInput step")
             
-            # Clear the response recipe data so we know when the client has updated it
-            s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
-            
             stepScope[WAITING_FOR_REPLY] = True
             
             controlPanelId = getControlPanelId(chartScope)
@@ -52,14 +49,21 @@ def activate(scopeContext, stepProperties, state):
             position = getStepProperty(stepProperties, POSITION) 
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
+            defaultValue = getStepProperty(stepProperties, DEFAULT_VALUE)
+            defaultValue = substituteScopeReferences(chartScope, stepScope, defaultValue)
             prompt = getStepProperty(stepProperties, PROMPT)
+            prompt = substituteScopeReferences(chartScope, stepScope, prompt)
+            
+            # Clear the response recipe data so we know when the client has updated it
+            s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
             targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
 
-            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute) values ('%s', '%s', '%s', '%s')" % (windowId, prompt, targetStepUUID, responseKey)
+            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, defaultValue) "\
+                "values ('%s', '%s', '%s', '%s', '%s')" % (windowId, prompt, targetStepUUID, responseKey, defaultValue)
             numInserted = system.db.runUpdateQuery(sql, database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)

@@ -7,33 +7,48 @@ Created on Nov 5, 2016
 import system
 logger=system.util.getLogger("com.ils.common.notification")
 
-def notifyError(project, message, payload, post, db):
-    logger.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, payload: <%s>" % (__name__, str(message), str(project), str(post), str(payload)))
+def notifyError(project, message, payload, post, db, isolationMode):
+    logger.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, isolation: %s, payload: <%s>" % (__name__, str(message), str(project), str(post), str(isolationMode), str(payload)))
     notifiedClients = []
+    
+    '''
+    If a post is specified, then:
+    1) Notify every client where the username = the post and the isolation mode matched
+    2) Notify every client that was not in #1 that is showing the console window and the isolation mode matched.
+    3) If no windows matched 1 or 2, then blast it everywhere.
+    '''
     if post <> "":
-        logger.trace("Targeting post: <%s>" % (post))
+        logger.tracef("Targeting post: <%s>, Isolation mode: %s", post, isolationMode)
         
+        foundClient = False
+        
+        ''' Implement rule #1 '''
+        logger.tracef("Rule #1 - looking for clients logged in as %s that are in isolation mode: %s!", post, str(isolationMode))
         from ils.common.message.interface import getPostClientIds
-        clientSessionIds = getPostClientIds(post, project)
+        clientSessionIds = getPostClientIds(post, project, db, isolationMode)
         if len(clientSessionIds) > 0:
-            logger.trace("Found %i clients logged in as %s!" % (len(clientSessionIds), post))
+            foundClient = True
+            logger.tracef("Found %d clients logged in as %s that are in isolation mode: %s!", len(clientSessionIds), post, str(isolationMode))
             payload["showOverride"] = True
             for clientSessionId in clientSessionIds:
                 if clientSessionId not in notifiedClients:
                     notifiedClients.append(clientSessionId)
                     system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
 
-        logger.trace("...now looking for clients with consoles displayed...")
+        ''' Implement Rule #2 '''
+        logger.tracef("Rule #2 - looking for clients with consoles displayed...")
         from ils.common.message.interface import getConsoleClientIdsForPost
-        clientSessionIds = getConsoleClientIdsForPost(post, project, db)
+        clientSessionIds = getConsoleClientIdsForPost(post, project, db, isolationMode)
         if len(clientSessionIds) > 0:
             payload["showOverride"] = True
+            foundClient = True
             for clientSessionId in clientSessionIds:
                 if clientSessionId not in notifiedClients:
                     logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
                     notifiedClients.append(clientSessionId)
                     system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
-        else:
+        
+        if not(foundClient):
             logger.trace("Notifying every client because I could not find the post logged in")
             payload["showOverride"] = False
             system.util.sendMessage(project, message, payload, scope="C")

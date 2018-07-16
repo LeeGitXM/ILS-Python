@@ -53,90 +53,105 @@ def createChart(resourceId, chartPath, db):
     except:
         errorTxt = catchError("%s.createChart()")
         log.errorf(errorTxt)
-    
-def deleteChart(resourceId, chartPath, db):
-    log.infof("Deleting a chart: %d", resourceId)
-    
-    try:
-        txId = getTxId(db)    
 
-        SQL = "select chartId, chartPath from SfcChart where chartResourceId = %d" % resourceId
-        pds = system.db.runQuery(SQL, tx=txId)
-        
-        if len(pds) == 1:
-            record = pds[0]
-            chartId = record["chartId"]
-            chartPath = record["chartPath"]
-            log.tracef("...the corresponding chart id / path is: %s / %s", str(chartId), chartPath)
-            
-            '''
-            If a chart is moved in the project tree then we get a create message for a new resource and then a delete message for the original resource.
-            I'd like to update the original record in the database for the new path and resource Id to keep the step catalog intact.  Since there is no connection
-            between the create and delete messages, I am going to look for a chart that was just created.  (If a whole folder is moved then there will be n creates 
-            followed by n deletes - I am not going to address this.
-            '''
-            aBit = -15
-            aBitAgo = system.date.addSeconds(system.date.now(), aBit)
-            dateTimeString = formatDateTimeForDatabase(aBitAgo)
-            SQL = "select * from SfcChart where CreateTime > '%s'" % (dateTimeString)
-            pds = system.db.runQuery(SQL, tx=txId)
-            
-            if len(pds) == 0:
-                log.infof("...cleaning up for a deleted chart...")
-                SQL = "delete from SfcHierarchy where childChartId = %d" % chartId
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
-                log.tracef( "...deleted %d children from SfcChartHierarchy...", rows)
-                            
-                SQL = "delete from SfcHierarchy where ChartId = %d" % chartId
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
-                log.tracef( "...deleted %d parents from SfcChartHierarchy...", rows)
+def deleteCharts(resourceMap, db):
+    log.infof("Deleting %d charts with database %s...", len(resourceMap), db) 
     
-                SQL = "delete from SfcChart where chartResourceId = %d" % resourceId
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
-                log.tracef("...deleted %d rows from SfcChart...", rows)
-            elif len(pds) == 1:
-                log.infof("...handling a moved / renamed chart...")
+    i = 0
+    for resourceId in resourceMap.keySet():
+        chartPath = resourceMap.get(resourceId)
+        log.infof("Deleting a chart (%s) with resourceId: %d", chartPath, resourceId) 
+    
+        try:
+            SQL = "select chartId, chartPath from SfcChart where chartResourceId = %d" % resourceId
+            pds = system.db.runQuery(SQL, database=db)
+            
+            if len(pds) == 1:
                 record = pds[0]
-                newChartPath = record["ChartPath"]
-                newResourceId = record["ChartResourceId"]
-                newChartId = record["ChartId"]
-                print "The New info for this chart is: %s - %s - %s" % (str(newChartId), newChartPath, str(newResourceId))
-                
+                chartId = record["chartId"]
+                chartPath = record["chartPath"]
+                log.tracef("...the corresponding chart id / path is: %s / %s", str(chartId), chartPath)
+
                 '''
-                Instead of deleting the old record, update it and delete the new one.
-                Need to delete first to avoid a duplicate key error
+                If a chart is moved in the project tree then we get a create message for a new resource and then a delete message for the original resource.
+                I'd like to update the original record in the database for the new path and resource Id to keep the step catalog intact.  Since there is no connection
+                between the create and delete messages, I am going to look for a chart that was just created.  (If a whole folder is moved then there will be n creates 
+                followed by n deletes - I am not going to address this.
                 '''
+                aBit = -15
+                aBitAgo = system.date.addSeconds(system.date.now(), aBit)
+                dateTimeString = formatDateTimeForDatabase(aBitAgo)
+                SQL = "select * from SfcChart where CreateTime > '%s'" % (dateTimeString)
+                pds = system.db.runQuery(SQL, database=db)
                 
-                SQL = "delete from sfcChart where ChartId = %d" % (newChartId)
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
-                if rows == 1:
-                    log.trace("Successfully deleted the new chart")
-                else:
-                    log.errorf("Error deleting the new chart - %s", SQL)
-                
-                SQL = "update SfcChart set ChartResourceId = %d, ChartPath = '%s' where ChartId = %d" % (newResourceId, newChartPath, chartId)
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
-                if rows == 1:
-                    log.trace("Successfully updated the old chart")
-                else:
-                    log.errorf("Error updating the old chart - %s", SQL)
-                
-            else:
-                log.errorf("I can't handle multiple resource updates")
-        else:
-            log.warnf("The chart was not found in SfcChart")
+                if len(pds) == 0:
+                    i = i + 1
+                    log.infof("...deleting chart Id: %d", chartId)
+                    
+                    SQL = "delete from SfcHierarchy where childChartId = %d" % chartId
+                    rows = system.db.runUpdateQuery(SQL, database=db)
+                    log.tracef( "...deleted %d children from SfcChartHierarchy...", rows)
+                                
+                    SQL = "delete from SfcHierarchy where ChartId = %d" % chartId
+                    rows = system.db.runUpdateQuery(SQL, database=db)
+                    log.tracef( "...deleted %d parents from SfcChartHierarchy...", rows)
         
-        log.tracef("Committing and closing the transaction.")        
-        system.db.commitTransaction(txId)
-        system.db.closeTransaction(txId)
+                    SQL = "delete from SfcChart where chartId = %d" % chartId
+                    rows = system.db.runUpdateQuery(SQL, database=db)
+                    log.tracef("...deleted %d rows from SfcChart...", rows)
+                    
+                    SQL = "delete from SfcHierarchyHandler where chartId = %d" % chartId
+                    rows = system.db.runUpdateQuery(SQL, database=db)
+                    log.tracef("...deleted %d caller rows from SfcHierarchyHandler...", rows)
+                    
+                    SQL = "delete from SfcHierarchyHandler where HandlerChartId = %d" % chartId
+                    rows = system.db.runUpdateQuery(SQL, database=db)
+                    log.tracef("...deleted %d handler rows from SfcHierarchyHandler...", rows)
+                elif len(pds) == 1:
+                    log.infof("...handling a moved / renamed chart...")
+                    record = pds[0]
+                    newChartPath = record["ChartPath"]
+                    newResourceId = record["ChartResourceId"]
+                    newChartId = record["ChartId"]
+                    print "The New info for this chart is: %s - %s - %s" % (str(newChartId), newChartPath, str(newResourceId))
+                    
+                    '''
+                    Instead of deleting the old record, update it and delete the new one.
+                    Need to delete first to avoid a duplicate key error
+                    '''
+                    
+                    SQL = "delete from sfcChart where ChartId = %d" % (newChartId)
+                    rows = system.db.runUpdateQuery(SQL, database=db)
+                    if rows == 1:
+                        log.trace("Successfully deleted the new chart")
+                    else:
+                        log.errorf("Error deleting the new chart - %s", SQL)
+                    
+                    SQL = "update SfcChart set ChartResourceId = %d, ChartPath = '%s' where ChartId = %d" % (newResourceId, newChartPath, chartId)
+                    rows = system.db.runUpdateQuery(SQL, database=db)
+                    if rows == 1:
+                        log.trace("Successfully updated the old chart")
+                    else:
+                        log.errorf("Error updating the old chart - %s", SQL)
+                    
+                else:
+                    log.errorf("I can't handle multiple resource updates")
+    
+            else:
+                '''
+                When charts are deleted via the designer, the chartPath doesn't exist so if we can't find it by the resource id then we are screwed!
+                '''
+                log.errorf("...unable to find the chart by resource id, this chart will need to be manually deleted from SQL*Server...")
 
-    except:
-        errorTxt = catchError("deleting a chart - rolling back database transactions")
-        log.errorf(errorTxt)
-        system.db.rollbackTransaction(txId)
-        system.db.closeTransaction(txId)
+        except:
+            ''' This will catch the error and then go on to the next chart '''
+            txt = "deleting a chart - this chart will need to be manually deleted from SQL*Server (resourceId = %d)" % (resourceId)
+            errorTxt = catchError(txt)
+            log.errorf(errorTxt)
 
+    log.infof("Done - deleted %d charts!", i)
 
+    
 '''
 This is only called by Java hook in designer when the user saves the project.  It is passed all of the resources that have been changed since the last time the 
 project was saved.

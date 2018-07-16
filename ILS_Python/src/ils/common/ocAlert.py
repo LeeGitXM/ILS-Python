@@ -10,8 +10,8 @@ logger=system.util.getLogger("com.ils.ocAlert")
 
 # This is generally called from the gateway, but should work from th
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
-              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db=""):
-    logger.trace("In %s" % (__name__))
+              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db="", isolationMode=False):
+    logger.trace("In %s.sendAlert() to post: %s (Isolation: %s)" % (__name__, post, isolationMode))
     
     if callbackPayloadDictionary == None:
         callbackPayloadDataset = None
@@ -34,7 +34,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     
     message = "ocAlert"
 
-    notifyError(project, message, payload, post, db)
+    notifyError(project, message, payload, post, db, isolationMode)
 
 
 # This runs in a client and is called when the OC alert message is sent to every client.  The first

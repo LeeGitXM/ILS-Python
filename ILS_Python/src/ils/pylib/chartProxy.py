@@ -8,9 +8,9 @@ from ils.sfc.recipeData.api import s88GetFromName, s88SetFromName
 logger=system.util.getLogger("com.ils.pylib.chartProxy")
 
 
-# SFC Testing requires:
-#  1) [default]CurrentChartId
-#  2) Database row for "scratch" 
+'''
+If we are starting a chart from the top then we don't need to call this.
+'''
 def prepareForTest(common, isolationMode):
 	tagPath="[default]CurrentChartId"
 	if not(system.tag.exists(tagPath)):
@@ -26,7 +26,9 @@ def prepareForTest(common, isolationMode):
 	except:
 		pass # Ignore error
 
-# Update the standard console record for the given chart
+'''
+Update the standard console record for the given chart
+'''
 def updateConsoleRecord(common,path,controlPanelName,isolationMode):
 	db = ilssfc.getDatabaseName(str2bool(isolationMode))  # Don't assume isolation
 	SQL = "UPDATE SfcControlPanel set chartPath='%s' "\
@@ -34,37 +36,40 @@ def updateConsoleRecord(common,path,controlPanelName,isolationMode):
 	system.db.runUpdateQuery(SQL,db)
 
 def getRecipeData(common,path,stepName,keyAndAttribute,isolationMode):
-	logger.infof("*************************************************** s88GetFromName():  %s * %s * %s", path, stepName, keyAndAttribute)
+	logger.tracef("s88GetFromName():  %s * %s * %s", path, stepName, keyAndAttribute)
 	db = ilssfc.getDatabaseName(str2bool(isolationMode))
 	data = s88GetFromName(path, stepName, keyAndAttribute, db)
 	common['result'] = str(data)
 	
 def setRecipeData(common,path,stepName,keyAndAttribute,theValue,isolationMode):
-	logger.infof("*************************************************** s88SetFromName():  %s * %s * %s : %s", path, stepName, keyAndAttribute, theValue)
+	logger.tracef("s88SetFromName():  %s * %s * %s : %s", path, stepName, keyAndAttribute, theValue)
 	if isolationMode in [True, "True"]:
 		isolationMode = True
 	else:
 		isolationMode = False
 	db = ilssfc.getDatabaseName(isolationMode)
-	print "The database is: ", db
 	s88SetFromName(path, stepName, keyAndAttribute, theValue, db)
-	print "** back from setting data **"
 	
-
-	
-# Argument is the chart path
-def start(common,path,isolationMode):
+'''
+Use this when starting a test at any chart other than the top.  This requires that the call stack be mocked up to simulate what is
+built by the engine when running from the top.  This environment is necessary for the operation and global scope locators to work.
+'''
+def start(common,chartPath,isolationMode):
 	project = testframe.getProjectName() 
 	user = testframe.getUserName()
 	try:
-		chartid = ilssfc.debugChart(path,project,user,str2bool(isolationMode))
+		chartid = ilssfc.debugChart(chartPath,project,user,str2bool(isolationMode))
 	except:
 		chartid = "none"
-	print "chartProxy.start:",path,chartid,project,user,isolationMode,str2bool(isolationMode)
-	ilssfc.watchChart(str(chartid),path)
+	print "chartProxy.start:",chartPath,chartid,project,user,isolationMode,str2bool(isolationMode)
+	ilssfc.watchChart(str(chartid),chartPath)
 	common['result'] = str(chartid)
 
-# Argument is the chart path
+'''
+If starting from the top, i.e., the chart that has the Unit rocedure then use this.
+This starts the chart in the exact same way as the console buttons start a chart, so the test framework is doing less, the hope being
+that this will produce a more genuine test.
+'''
 def startFromTop(common, chartPath, controlPanelName, isolationMode):
 	from ils.sfc.common.util import startChart
 	project = testframe.getProjectName() 
@@ -88,7 +93,11 @@ def getProviderName(common,isolationMode):
 	common['result'] = name
 
 def getChartState(common,chartid):
-	state = ilssfc.chartState(chartid)
+	state = "NOT-FOUND"
+	ds = system.sfc.getRunningCharts()
+	for row in range(ds.rowCount):
+		if ds.getValueAt(row, "instanceId") == chartid:
+			state = ds.getValueAt(row, "chartState")
 	common['result'] = state
 
 # --------------------------- private ------------------
