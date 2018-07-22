@@ -183,7 +183,7 @@ def entryFormEnterData(rootContainer, db = ""):
 
     # Store the value locally in the X O M database
     from ils.labData.scanner import storeValue 
-    storeValue(valueId, valueName, sampleValue, sampleTime, log, db)
+    storeValue(valueId, valueName, sampleValue, sampleTime, unitName, log, provider, db)
     
     # Store the value in the Lab Data UDT memory tags, which are local to Ignition
     from ils.labData.scanner import updateTags
@@ -219,7 +219,7 @@ def entryFormEnterData(rootContainer, db = ""):
         else:
             print "*** Skipping *** Write of local value %s for %s to %s" % (str(sampleValue), valueName, itemId)
     else:
-        print "Skipping write of manual lab data because it is not LOCAL (%s %s %s %s)" % (str(sampleValue), serverName, itemId, valueName)
+        print "Skipping write of manual lab data because it is not LOCAL (%s %s)" % (str(sampleValue), valueName)
     
     # There is a cache of last values but we can't update it from here because the cache is in the gateway...
     
