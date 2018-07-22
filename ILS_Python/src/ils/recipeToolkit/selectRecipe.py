@@ -53,7 +53,7 @@ def okCallback(event):
     rows = system.db.runUpdateQuery(SQL)
     print "Successfully updated %i rows" % (rows)
 
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade, 'version': version,'downloadType':'GradeChange'})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade, 'version': version,'downloadType':'GradeChange', 'mode': 'manual'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
     
     system.nav.closeParentWindow(event)

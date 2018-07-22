@@ -42,6 +42,7 @@ def semiAutomatedDownloadCallback(event, payload):
     grade = payload.get("grade", "")
     version = payload.get("version", 0)
     recipeKey = payload.get("recipeKey", "")
+    triggerTagPath = payload.get("triggerTagPath", "")
     downloadType = 'GradeChange'
     
     # Save the grade and type to the recipe map table.
@@ -53,11 +54,12 @@ def semiAutomatedDownloadCallback(event, payload):
     rows = system.db.runUpdateQuery(SQL)
     print "Successfully updated %i rows" % (rows)
 
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType, 
+                                                   'mode': 'semi-automatic', 'triggerTagPath': triggerTagPath})
     system.nav.centerWindow('Recipe/Recipe Viewer')
     
 def showCurrentRecipeCallback(familyName):
-    print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
+    log.info("In %S.showCurrentRecipeCallback()", __name__)
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
     # but it is probably a string
     SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
@@ -78,7 +80,7 @@ def showCurrentRecipeCallback(familyName):
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade,'downloadType':'GradeChange'})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade,'downloadType':'GradeChange', 'mode': 'manual'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
     return
@@ -104,14 +106,14 @@ def showMidRunRecipeCallback(recipeFamilyName):
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeFamilyName, 'grade': grade,'downloadType':'MidRun'})
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeFamilyName, 'grade': grade, 'downloadType':'MidRun', 'mode': 'manual'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
     return
 
 
 def initialize(rootContainer):
-    log.infof("In project.recipe.viewRecipe.initialize()...")
+    log.infof("In %s.initialize()...", __name__)
 
     #=============================================================================================
     # This function is definitely a workaround.  When I try to bind my custom color properties directly to a tag, they 
