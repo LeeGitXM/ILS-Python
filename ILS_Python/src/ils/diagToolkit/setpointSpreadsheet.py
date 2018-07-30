@@ -8,7 +8,7 @@ import system, string
 from ils.sfc.common.constants import SQL
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD
+from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 
 log = system.util.getLogger("com.ils.diagToolkit")
 
@@ -162,7 +162,7 @@ def checkIfDownloadComplete(event):
 
         if writesWereSuccessful:
             print "...all of the writes were successful, resetting diagrams and checking if all applications were processed..."
-            allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
+            allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=DOWNLOAD, recommendationStatus=DOWNLOAD)
         
             # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
             if allApplicationsProcessed:
@@ -229,7 +229,8 @@ def fetchApplicationDownloadAction(applicationName, database):
 def writeFileCallback(rootContainer):
     print "In writeFileCallback()..."
     logFileName=system.file.openFile('*.log')
-    writeFile(rootContainer, logFileName)
+    if logFileName <> None:
+        writeFile(rootContainer, logFileName)
 
 # The state of the diagnosis / recommendations are written to a file for various reasons, including from the toolbar button 
 # and as part of a download request.  The contents of the file are not simply the lines of the spreadsheet, in order to keep
@@ -563,7 +564,7 @@ def noDownloadCallback(event):
         rootContainer.lastAction = "noDownload"
         
         # Now do the work of the NO Download
-        allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage="No Download", recommendationStatus="No Download")
+        allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=NO_DOWNLOAD, recommendationStatus=NO_DOWNLOAD)
     
         # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
         if allApplicationsProcessed:
@@ -629,7 +630,7 @@ def isThereAnActiveApplication(repeater):
 # Reset the database tables and the BLT diagrams for every application that is active.
 # We do not consider individual outputs that the operator may have chosen to not download.   
 def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, recommendationStatus):
-    log.infof("...performing generic post callback cleanup for a <%s>...", actionMessage)
+    log.infof("In %s.postCallbackProcessing(), performing generic post callback cleanup for a <%s>...", __name__, actionMessage)
     allApplicationsProcessed=True
     post=rootContainer.post
     applicationActive=False
@@ -703,6 +704,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
 
 def resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider):
     from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
+    log.infof("In %s.resetter(), the action is %s", __name__, actionMessage)
         
     if len(finalDiagnosisIds) == 0:
         print "...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones..."
@@ -717,13 +719,20 @@ def resetter(post, application, families, finalDiagnosisIds, quantOutputIds, act
     print "  Families:    ", families
     print "  FDs:         ", finalDiagnosisIds
     
+    ''' I'm not sure why I am fetching these since they are passed in '''
     quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
 
     resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
 
-
-def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database, provider):
-    log.info("In %s resetting application %s because %s - %s" % (__name__, application, actionMessage, recommendationStatus))
+'''
+July 25, 2018 - I ran into a infinite loop problem when I try and reset everything after a rate change download.  The reset is triggered from each of the 4 
+rate change final diagnosis.  So when any one of them is active and the operator presses download and the download completes, we call its postProcessing callback
+which collects all FDs in RLA3 and resets them all.  Part of resetting a FD is to call its postProcessingFinalDiagnosis... and so on and so on!
+So I'm not sure if it is really appropriate to do this here or not, seems like there might be a better place to call this from, but I don't want to break a 
+bunch of stuff, so I am going to add an optional argument: enablePostProcessingCallback with a default value of True
+'''
+def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database, provider, enablePostProcessingCallback=True):
+    log.infof("In %s.resetApplication() resetting application %s because %s - %s", __name__, application, actionMessage, recommendationStatus)
     log.trace("  Families: %s" % (str(families)))
     log.trace("  Final Diagnosis Ids: %s" % (str(finalDiagnosisIds)))
     log.trace("  Quant Output Ids: %s" % (str(quantOutputIds)))
@@ -736,7 +745,7 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
 
     resetOutputs(quantOutputIds, actionMessage, log, database)
     resetRecommendations(quantOutputIds, actionMessage, log, database)
-    resetFinalDiagnosis(application, actionMessage, finalDiagnosisIds, log, database, provider)
+    resetFinalDiagnosis(application, actionMessage, finalDiagnosisIds, log, database, provider, enablePostProcessingCallback)
     resetDiagnosisEntry(application, actionMessage, finalDiagnosisIds, recommendationStatus, log, database)
                 
     # Reset the BLT blocks - this varies slightly depending on the action
@@ -744,13 +753,14 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
         partialResetDiagram(finalDiagnosisIds, database)
     else:
         resetDiagram(finalDiagnosisIds, database)
-    
+
     print "Updating the DownloadAction for <%s> to <%s>" % (application, actionMessage)
     SQL = "update DtApplication set downloadAction = '%s' where ApplicationName = '%s'" % (actionMessage, application)
     system.db.runUpdateQuery(SQL, database)
 
 
 def postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, database):
+    log.infof("In %s.postSetpointSpreadsheetActionMessage() - action: %s", __name__, actionMessage)
     from ils.queue.commons import getQueueForPost
     queueKey=getQueueForPost(post, database)
 
@@ -793,7 +803,7 @@ def resetRecommendations(quantOutputIds, actionMessage, log, database):
         rows+=cnt
     log.info("Deleted %i recommendations..." % (rows))
 
-def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, database, provider):
+def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, database, provider, enablePostProcessingCallback=True):
     log.info("Resetting Final Diagnosis for application %s" % (applicationName))
 
     totalRows = 0    
@@ -806,7 +816,8 @@ def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, 
     
         SQL = "%s where FinalDiagnosisId = %s" % (SQL, str(finalDiagnosisId))
         
-        performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider)
+        if enablePostProcessingCallback:
+            performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log, database, provider)
 
         log.info(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
@@ -854,7 +865,7 @@ def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log,
     
 
 def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recommendationStatus, log, database):
-    log.info("Resetting Diagnosis Entries for application %s with final diagnosis %s" % (applicationName, str(finalDiagnosisIds)))
+    log.infof("In %s.resetDiagnosisEntry() - Resetting Diagnosis Entries for application %s with final diagnosis %s, status = %s", __name__, applicationName, str(finalDiagnosisIds), recommendationStatus)
     
     totalRows=0
     for finalDiagnosisId in finalDiagnosisIds:
@@ -871,7 +882,7 @@ def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recom
 def resetDiagram(finalDiagnosisIds, database):
 #    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     import system.ils.blt.diagram as diagram
-    log.info("Resetting BLT diagrams...")
+    log.infof("In %s.resetDiagram() - Resetting BLT diagrams...", __name__)
     
     observationBlockList = ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.subdiagnosis.SubDiagnosis",
         "com.ils.block.SQC", "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse", 
@@ -1111,7 +1122,7 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
     log.infof("... in %s.acknowledgeTextRecommendationProcessing() performing Text Recommendation acknowledgement for diagnosis entry %s...", __name__, str(diagnosisEntryId))
     
-    actionMessage="No Download"
+    actionMessage=NO_DOWNLOAD
     recommendationStatus="Acknowledged"
 
     families=[]

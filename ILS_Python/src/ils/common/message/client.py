@@ -2,6 +2,7 @@
 Created on Sep 5, 2016
 
 @author: ils
+
 '''
 import system, string
 from ils.common.config import getDatabaseClient
@@ -24,6 +25,7 @@ def handle(payload):
         SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
             " values (%i, '%s', getdate(), '%s', %d)"\
              % (requestId, reply, clientId, isolationMode)
+        print SQL
         system.db.runUpdateQuery(SQL, database=requestDatabase)
         
     elif requestType == "listUserAndIsolationMode":
@@ -32,6 +34,7 @@ def handle(payload):
         SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
             " values (%i, '%s', getdate(), '%s', %d)"\
              % (requestId, username, clientId, isolationMode)
+        print SQL
         system.db.runUpdateQuery(SQL, database=requestDatabase)
     
     else:

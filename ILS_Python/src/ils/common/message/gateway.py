@@ -22,7 +22,7 @@ def sendAndReceive(command, project, db, timeout=30):
     
     # If there are no clients then there won't ever be a reply
     if numClients == 0:
-        log.tracef("There are no clients!")
+        log.warnf("There are no clients!")
         ds = system.dataset.toDataSet([], [])
         pds = system.dataset.toPyDataSet(ds)
         return pds

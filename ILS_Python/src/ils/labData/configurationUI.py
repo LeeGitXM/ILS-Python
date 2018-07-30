@@ -15,11 +15,11 @@ def internalFrameOpened(rootContainer):
     rootContainer.getComponent("Tab Strip").selectedTab = "PHD"
     
     # Configure the static datasets that drive some combo boxes
-    SQL = "select InterfaceName from LtHDAInterface order by InterfaceId"
+    SQL = "select InterfaceName from LtHDAInterface order by InterfaceName"
     pds = system.db.runQuery(SQL)
     rootContainer.hdaInterfaceDataset = pds
     
-    SQL = "select ServerName from TkWriteLocation order by ServerName"
+    SQL = "select InterfaceName from LtOPCInterface order by InterfaceName"
     pds = system.db.runQuery(SQL)
     rootContainer.opcInterfaceDataset = pds
 
@@ -178,26 +178,27 @@ def insertDataRow(rootContainer):
         itemId = rootContainer.getComponent("itemId").text
         sql = "INSERT INTO LtPHDValue (ValueId, ItemId, InterfaceId)"\
             "VALUES (%s, '%s', %s)" %(str(valueId), str(itemId), str(interfaceId))
-        print sql
         system.db.runUpdateQuery(sql)
+        
     elif labDataType == "DCS":
-        writeLocationId = rootContainer.getComponent("opcServerDropdown").selectedValue
+        interfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
         minimumTimeBetweenSamples = rootContainer.getComponent("minimumTimeBetweenSamples").intValue
         itemId = rootContainer.getComponent("itemId").text
-        sql = "INSERT INTO LtDCSValue (ValueId, WriteLocationId, ItemId, MinimumSampleIntervalSeconds)"\
-            "VALUES (%s, %s, '%s', %s)" %(str(valueId), str(writeLocationId), str(itemId), str(minimumTimeBetweenSamples))
+        sql = "INSERT INTO LtDCSValue (ValueId, InterfaceId, ItemId, MinimumSampleIntervalSeconds)"\
+            "VALUES (%s, %s, '%s', %s)" %(str(valueId), str(interfaceId), str(itemId), str(minimumTimeBetweenSamples))
         system.db.runUpdateQuery(sql)
+        
     elif labDataType == "Local":
-        writeLocationId = rootContainer.getComponent("opcServerDropdown").selectedValue
+        interfaceId = rootContainer.getComponent("hdaInterfaceDropdown").selectedValue
         itemId = rootContainer.getComponent("itemId").text
         
-        if writeLocationId == -1 or itemId == "": 
+        if interfaceId == -1 or itemId == "": 
             sql = "INSERT INTO LtLocalValue (ValueId)"\
                 "VALUES (%s)" %(str(valueId))    
         else:
-            sql = "INSERT INTO LtLocalValue (ValueId, WriteLocationId, ItemId)"\
-                "VALUES (%s, %s, '%s')" %(str(valueId), str(writeLocationId), str(itemId))
-        print sql
+            sql = "INSERT INTO LtLocalValue (ValueId, InterfaceId, ItemId)"\
+                "VALUES (%s, %s, '%s')" %(str(valueId), str(interfaceId), str(itemId))
+
         system.db.runUpdateQuery(sql)
     else:
         print "Unexpected lab data type: ", labDataType
@@ -211,7 +212,7 @@ def update(rootContainer):
     unitId = rootContainer.getComponent("UnitName").selectedValue
     
     if rootContainer.dataType == "PHD":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, I.InterfaceName, PV.ItemId, V.ValidationProcedure "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, PV.AllowManualEntry, I.InterfaceName, PV.ItemId, V.ValidationProcedure "\
             "FROM LtValue V, LtPHDValue PV,  LtHDAInterface I "\
             "WHERE V.ValueId = PV.ValueId "\
             "AND PV.InterfaceID = I.InterfaceId "\
@@ -224,11 +225,11 @@ def update(rootContainer):
         table.data = pds
         table.updateInProgress = False
     elif rootContainer.dataType == "DCS":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, DS.MinimumSampleIntervalSeconds, V.UnitId, WL.ServerName, DS.ItemId, V.ValidationProcedure "\
-            " FROM LtValue V, LtDCSValue DS, TkWriteLocation WL "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, DS.MinimumSampleIntervalSeconds, V.UnitId, DS.AllowManualEntry, OPC.InterfaceName, DS.ItemId, V.ValidationProcedure "\
+            " FROM LtValue V, LtDCSValue DS, LtOpcInterface OPC "\
             " WHERE V.ValueId = DS.ValueId "\
             " AND V.UnitId = %i "\
-            " and WL.WriteLocationId = DS.WriteLocationId "\
+            " and OPC.InterfaceId = DS.InterfaceId "\
             " ORDER BY ValueName" % (unitId)
         print SQL
         pds = system.db.runQuery(SQL)
@@ -237,15 +238,9 @@ def update(rootContainer):
         table.data = pds
         table.updateInProgress = False
     elif rootContainer.dataType == "Local":
-        #SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, LV.ItemId, V.ValidationProcedure "\
-        #    " FROM LtValue V, LtLocalValue LV, TkWriteLocation WL "\
-        #    " WHERE V.ValueId = LV.ValueId "\
-        #    " AND V.UnitId = %i "\
-        #    " AND WL.WriteLocationId = LV.WriteLocationId "\
-        #    " ORDER BY ValueName" % (unitId)
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, WL.ServerName, LV.ItemId, V.ValidationProcedure "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, HDA.InterfaceName, LV.ItemId, V.ValidationProcedure "\
             " FROM LtValue V INNER JOIN LtLocalValue LV ON V.ValueId = LV.ValueId LEFT OUTER JOIN "\
-            " TkWriteLocation WL ON LV.WriteLocationId = WL.WriteLocationId "\
+            " LtHDAInterface HDA ON LV.InterfaceId = HDA.InterfaceId "\
             " WHERE V.UnitId = %i "\
             " ORDER BY ValueName" %(unitId)
         print SQL
@@ -314,6 +309,14 @@ def dataCellEdited(table, rowIndex, colName, newValue):
     
     elif colName == "MinimumSampleIntervalSeconds":
         SQL = "UPDATE LtDCSValue SET MinimumSampleIntervalSeconds = %d WHERE ValueId = %d " % (newValue, valueId)
+        
+    elif colName == "AllowManualEntry":
+        if dataType == "PHD":
+            SQL = "UPDATE LtPHDValue SET AllowManualEntry = %d WHERE ValueId = %d " % (newValue, valueId)
+        elif dataType == "DCS":
+            SQL = "UPDATE LtDCSValue SET AllowManualEntry = %d WHERE ValueId = %d " % (newValue, valueId)
+        else:
+            print "Unknown data type for AllowedManualEntry"
     
     else:
         print "Unsupported column name: ", colName

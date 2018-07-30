@@ -8,11 +8,11 @@ from ils.sfc.common.constants import SQL
 
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):
-    #clear related Table
+    # clear related Table
     print "Calling updateRelatedTable() from internalFrameOpened()..."
     updateRelatedTable(rootContainer)
     
-    #initialize datasets
+    # initialize datasets
     SQL = "SELECT ValueName FROM LtValue ORDER BY ValueName"
     pds = system.db.runQuery(SQL)
     rootContainer.triggerValueNameDataset = pds
@@ -24,6 +24,11 @@ def internalFrameOpened(rootContainer):
     SQL = "SELECT ValueName FROM LtValue ORDER BY ValueName"
     pds = system.db.runQuery(SQL)
     rootContainer.valueNameDataset = pds
+    
+    # Configure the static datasets that drive some combo boxes
+    SQL = "select InterfaceName from LtHDAInterface order by InterfaceName"
+    pds = system.db.runQuery(SQL)
+    rootContainer.hdaInterfaceDataset = pds
     
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
@@ -50,10 +55,10 @@ def update(rootContainer):
     SQL = "SELECT LtValue.ValueId, LtValue.ValueName, LtValue.Description, LtValue_1.ValueName AS TriggerValueName,  "\
         " LtValue.DisplayDecimals, LtDerivedValue.DerivedValueId, LtDerivedValue.TriggerValueId, "\
         " LtDerivedValue.Callback, LtDerivedValue.SampleTimeTolerance, LtDerivedValue.NewSampleWaitTime, "\
-        " TkWriteLocation.ServerName, LtDerivedValue.ResultItemId "\
+        " LtHdaInterface.InterfaceName, LtDerivedValue.ResultItemId "\
         " FROM LtValue INNER JOIN LtDerivedValue ON LtValue.ValueId = LtDerivedValue.ValueId INNER JOIN "\
         " LtValue AS LtValue_1 ON LtDerivedValue.TriggerValueId = LtValue_1.ValueId LEFT OUTER JOIN "\
-        " TkWriteLocation ON LtDerivedValue.ResultWriteLocationId = TkWriteLocation.WriteLocationId "\
+        " LtHdaInterface ON LtDerivedValue.ResultInterfaceId = LtHdaInterface.InterfaceId "\
         " WHERE LtValue.UnitId = %i ORDER BY LtValue.ValueName " % (unitId)
         
     print SQL
@@ -130,7 +135,7 @@ def updateDatabase(rootContainer):
                
 #update the database when user directly changes table 
 def cellEdited(table, rowIndex, colName, newValue):
-    print "A cell has been edited so update the database..."
+    print "A cell has been edited (%s) so update the database..." % (colName)
     ds = table.data
     valueId =  ds.getValueAt(rowIndex, "ValueId")
     
@@ -183,15 +188,17 @@ def cellEdited(table, rowIndex, colName, newValue):
             "WHERE ValueId = %i " % (triggerValueId, valueId)
         print SQL
         system.db.runUpdateQuery(SQL)
-    elif colName == "ServerName":
-        SQL = "SELECT WriteLocationId FROM TkWriteLocation "\
-            " WHERE ServerName = '%s' " % (newValue)
-        writeLocationId = system.db.runScalarQuery(SQL)
-        print "writeLocationId = ", writeLocationId
-        SQL = "UPDATE LtDerivedValue SET ResultWriteLocationId = %i "\
-            "WHERE ValueId = %i " % (writeLocationId, valueId)
+    elif colName == "InterfaceName":
+        SQL = "SELECT InterfaceId FROM LtHdaInterface "\
+            " WHERE InterfaceName = '%s' " % (newValue)
+        interfaceId = system.db.runScalarQuery(SQL)
+        print "interfaceId = ", interfaceId
+        SQL = "UPDATE LtDerivedValue SET ResultInterfaceId = %i "\
+            "WHERE ValueId = %i " % (interfaceId, valueId)
         print SQL
         system.db.runUpdateQuery(SQL)
+    else:
+        print "Found a column that I don't know how to update!"
                  
 #remove the selected row
 def removeRow(event):

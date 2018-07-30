@@ -4,6 +4,7 @@ Created on Apr 30, 2015
 @author: Pete
 '''
 import system
+from ils.common.config import getDatabaseClient
 log = system.util.getLogger("com.ils.labData")
 
 # Everything in this module runs in the client, so the use of loggers isn't too important since nothing will go 
@@ -20,34 +21,54 @@ def launchChooser(rootContainer):
 def chooserInitialization(rootContainer):
     print "In ils.labData.manualEntry.chooserInitialization()..."
     post = rootContainer.post
+    db = getDatabaseClient()
+    
+    def appendDatasets(ds, pds):
+        for record in pds:
+            vals = [record["ValueName"], record["ValueId"]]
+            ds = system.dataset.addRow(ds, vals)
+        return ds
     
     communicationHealthy = system.tag.read("Configuration/LabData/communicationHealthy").value
     manualEntryPermitted = system.tag.read("Configuration/LabData/manualEntryPermitted").value
     from ils.common.user import isAE
     isAE = isAE()
     
-    if not(communicationHealthy) or manualEntryPermitted or isAE:
-        # Select every lab data value EXCEPT derived date
-        SQL = "select V.ValueName, V.ValueId "\
-            " from LtValue V, TkUnit U, TkPost P "\
-            " where V.UnitId = U.UnitId "\
-            " and U.PostId = P.PostId "\
-            " and P.Post = '%s' "\
-            " and V.ValueId not in (select ValueId from LtDerivedValue) "\
-            " order by ValueName" % (post) 
-    else: 
-        SQL = "select V.ValueName, V.ValueId "\
-            " from LtLocalValue LV, LtValue V, TkUnit U, TkPost P "\
-            " where LV.ValueId = V.ValueId "\
-            " and V.UnitId = U.UnitId "\
-            " and U.PostId = P.PostId "\
-            " and P.Post = '%s' "\
-            " order by ValueName" % (post) 
+    ''' We always present the local lab values. '''
+    print "Selecting the local lab values..."
+    SQL = "select V.ValueName, V.ValueId "\
+        " from LtLocalValue LV, LtValue V, TkUnit U, TkPost P "\
+        " where LV.ValueId = V.ValueId "\
+        " and V.UnitId = U.UnitId "\
+        " and U.PostId = P.PostId "\
+        " and P.Post = '%s' "\
+        " order by ValueName" % (post) 
     
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
+    ds = system.dataset.toDataSet(pds)
+    
+    ''' If the user is an AE or comms are down or the manualEntry has been enabled, then add in DCS, and HDA lab values. '''
+    if not(communicationHealthy) or manualEntryPermitted or isAE:
+        
+        print "...adding lab data from PHD..."
+        SQL = "select ValueName, ValueId "\
+            " from LtPHDValueView "\
+            " where Post = '%s' and AllowManualEntry = 1 "\
+            " order by ValueName" % (post)
+        pds = system.db.runQuery(SQL, database=db)
+        ds = appendDatasets(ds, pds)
+        
+        print "...adding lab data from the DCS..."
+        SQL = "select ValueName, ValueId "\
+            " from LtDCSValueView "\
+            " where Post = '%s' and AllowManualEntry = 1 "\
+            " order by ValueName" % (post)
+        pds = system.db.runQuery(SQL, database=db)
+        ds = appendDatasets(ds, pds)
+        ds = system.dataset.sort(ds, "ValueName")
     
     chooseList = rootContainer.getComponent("List")
-    chooseList.data = pds
+    chooseList.data = ds
     chooseList.selectedIndex = -1
 
 # This is call from the "Enter Data" button on the "Manual Entry Value Chooser" screen
@@ -70,13 +91,14 @@ def launchEntryForm(rootContainer):
 def entryFormInitialization(rootContainer):
     print "In ils.labData.manualEntry.entryFormInitialization()..."
     
+    db = getDatabaseClient()
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     
     # Fetch the unit for this value
     SQL = "select UnitName from TkUnit U, LtValue V "\
         " where V.UnitId = U.UnitId and V.ValueId = %s" % (str(valueId))
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     if len(pds) != 1:
         system.gui.errorBox("Error fetching the unit for this lab data!")
         return
@@ -87,7 +109,7 @@ def entryFormInitialization(rootContainer):
     # Fetch the limits for this value
     SQL = "select * from LtLimit where ValueId = %s" % (str(valueId))
     print SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
 
     if len(pds) == 1:
         record=pds[0]
@@ -140,6 +162,19 @@ def entryFormInitialization(rootContainer):
         rootContainer.upperReleaseLimitEnabled=False
         rootContainer.lowerReleaseLimitEnabled=False
 
+    refreshRecentValues(rootContainer, valueId, db)
+
+
+'''
+Now select the recent values for this lab datum
+'''
+def refreshRecentValues(rootContainer, valueId, db):    
+    SQL = "select top 10  SampleTime, RawValue from LtValueView where ValueId = %d order by SampleTime DESC" % (valueId) 
+    pds = system.db.runQuery(SQL, database=db)
+    table = rootContainer.getComponent("Recent Value Container").getComponent("Value Table")
+    table.data = pds
+    
+
 # This is called when the operator presses the 'Enter' button on the Manual Entry screen
 def entryFormEnterData(rootContainer, db = ""):
     print "In ils.labData.limits.manualEntry.entryFormEnterData()"
@@ -157,20 +192,24 @@ def entryFormEnterData(rootContainer, db = ""):
     valueName = rootContainer.valueName
     unitName = rootContainer.unitName
     
+    upperValidityLimitEnabled = rootContainer.upperValidityLimitEnabled
     upperValidityLimit = rootContainer.upperValidityLimit
+    lowerValidityLimitEnabled = rootContainer.lowerValidityLimitEnabled
     lowerValidityLimit = rootContainer.lowerValidityLimit
 
-    print "The validity limits are from ", lowerValidityLimit, " to ", upperValidityLimit
+    print "The validity limits are from %s to %s (enabled = %s, %s)" % (str(lowerValidityLimit), str(upperValidityLimit), str(upperValidityLimitEnabled), str(lowerValidityLimitEnabled))
     
-    if lowerValidityLimit != None and lowerValidityLimit != "":
+    if lowerValidityLimitEnabled and lowerValidityLimit != None and lowerValidityLimit != "":
         if sampleValue < lowerValidityLimit:
-            system.gui.errorBox("The value you entered, %s, must be greater than the lower validity limit, %s, please correct and press 'Enter'" % (str(sampleValue), str(lowerValidityLimit)))
-            return
+            confirm = system.gui.confirm("The value you entered, %.4f, is less than the lower validity limit, %.4f, are you sure?" % (sampleValue, lowerValidityLimit))
+            if not(confirm):
+                return
     
-    if upperValidityLimit != None and upperValidityLimit != "":
+    if upperValidityLimitEnabled and upperValidityLimit != None and upperValidityLimit != "":
         if sampleValue > upperValidityLimit:
-            system.gui.errorBox("The value you entered, %s, must be less than the upper validity limit, %s, please correct and press 'Enter'" % (str(sampleValue), str(upperValidityLimit)))
-            return
+            confirm = system.gui.confirm("The value you entered, %s, is greater than the upper validity limit, %s, are you sure?" % (str(sampleValue), str(upperValidityLimit)))
+            if not(confirm):
+                return
 
     # Check for an exact duplicate with the same value and time
     SQL = "select count(*) from LtHistory where ValueId = ? and SampleTime = ? and rawValue = ?" 
@@ -191,18 +230,20 @@ def entryFormEnterData(rootContainer, db = ""):
     print "Writing ", tagValues, " to ", tags
     system.tag.writeAll(tags, tagValues)
     
-    # If the lab datum is "local" then write the value to PHD (use a regular OPC write, so we won't 
-    # capture the sample time)
-    SQL = "select LV.ItemId, WL.ServerName "\
-        " from LtLocalValue LV, TkWriteLocation WL "\
+    # Refresh the table of recent values to show what we just entered.
+    refreshRecentValues(rootContainer, valueId, db)
+    
+    # If the lab datum is "local" then write the value to PHD, the destination is ALWAYS the historian so use an HDA write. 
+    SQL = "select LV.ItemId, PHD.InterfaceName "\
+        " from LtLocalValue LV, LtHdaInterface PHD "\
         " where LV.ValueId = %s "\
-        " and LV.WriteLocationId = WL.WriteLocationId" % (str(valueId))
+        " and LV.InterfaceId = PHD.InterfaceId" % (str(valueId))
  
     pds = system.db.runQuery(SQL, db)
     if len(pds) != 0:
         record = pds[0]
         itemId = record["ItemId"]
-        serverName = record["ServerName"]
+        serverName = record["InterfaceName"]
         
         # Check if writing is enabled
         labDataWriteEnabled= system.tag.read("[" + provider + "]Configuration/LabData/labDataWriteEnabled").value
@@ -210,12 +251,9 @@ def entryFormEnterData(rootContainer, db = ""):
         writeEnabled = provider != productionProvider or (labDataWriteEnabled and globalWriteEnabled)
         
         if writeEnabled:
-            print "Writing local value %s for %s to %s" % (str(sampleValue), valueName, itemId)
-            returnQuality = system.opc.writeValue(serverName, itemId, sampleValue)
-            if returnQuality.isGood():
-                print "Write <%s> to %s-%s for %s local lab data was successful" % (str(sampleValue), serverName, itemId, valueName)
-            else:
-                print "ERROR: Write <%s> to %s-%s for %s local lab data failed" % (str(sampleValue), serverName, itemId, valueName)
+            print "Writing local value %s for %s to %s..." % (str(sampleValue), valueName, itemId)
+            returnQuality = system.opchda.insertReplace(serverName, itemId, sampleValue, sampleTime, 192)
+            print "...the returnQuality is: %s" % (str(returnQuality))
         else:
             print "*** Skipping *** Write of local value %s for %s to %s" % (str(sampleValue), valueName, itemId)
     else:

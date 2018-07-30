@@ -4,6 +4,10 @@ Created on Jun 7, 2015
 @author: Pete
 '''
 
+def getServers():
+    list=[]
+    return list
+
 def readValue(serverName, itemId):
     qv=""
     return qv
