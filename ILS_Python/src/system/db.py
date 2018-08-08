@@ -42,6 +42,10 @@ def refresh(component,name):
 def rollbackTransaction(tx):
     return True
 
+def runNamedQuery(project, queryName, argDictionary):
+    pds="foo"
+    return pds
+
 def runPrepQuery(SQL):
     return True
 
