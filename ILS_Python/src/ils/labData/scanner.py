@@ -140,7 +140,7 @@ def checkForDerivedValueTriggers(database):
                 sampleTimeTolerance=record['SampleTimeTolerance']
                 newSampleWaitTime=record['NewSampleWaitTime']
                 resultItemId=record['ResultItemId']
-                resultServerName=record['ResultServerName']
+                resultServerName=record['InterfaceName']
                 unitName=record['UnitName']
 
                 # Fetch the related data

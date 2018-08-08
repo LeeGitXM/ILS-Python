@@ -45,7 +45,7 @@ def activate(scopeContext, stepProperties, state):
         
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
-            logger.tracef("Initializing a Yes/No step, the reponse key is: %s", responseKey)
+            logger.tracef("Initializing a Yes/No step, the response key is: %s", responseKey)
             
             # Clear the response recipe data so we know when the client has updated it
             s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
@@ -61,14 +61,16 @@ def activate(scopeContext, stepProperties, state):
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
             prompt = substituteScopeReferences(chartScope, stepScope, prompt)
+            if prompt.find("<HTML") < 0:
+                prompt = "<HTML>" + prompt 
             
             targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
-
-            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute) values ('%s', '%s', '%s', '%s')" % (windowId, prompt, targetStepUUID, responseKey)
-            system.db.runUpdateQuery(sql, database)
+            
+            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute) values (?, ?, ?, ?)"
+            system.db.runPrepUpdate(sql, [windowId, prompt, targetStepUUID, responseKey], database)
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)

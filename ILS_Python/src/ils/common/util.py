@@ -26,7 +26,7 @@ def okToPrint():
 def isUserConnected(userName):
     sessions = system.util.getSessionInfo()
     for session in sessions:
-        if session["username"] == userName and session["isDesigner"] == False:
+        if string.upper(session["username"]) == string.upper(userName) and session["isDesigner"] == False:
             print "The user IS connected"
             return True
         print session

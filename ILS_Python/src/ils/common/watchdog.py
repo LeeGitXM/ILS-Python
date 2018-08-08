@@ -251,30 +251,46 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
     
         ''' The second check is to call the HDA readRaw API and verify that the sample time has updated - the value is expected to always be 1. '''
         endDate = system.date.now()
-        startDate = endDate
+        startDate = system.date.addMinutes(endDate, -30)
         boundingValues = False
+        maxValues = 0
+
         log.tracef("Reading the sample value and time...")
-        retVals = system.opchda.readRaw(serverName, [itemId], startDate, endDate, boundingValues)
+        retVals = system.opchda.readRaw(serverName, [itemId], startDate, endDate, maxValues, boundingValues)
+        log.tracef("...back from readRaw, %d values were returned! (%s)", len(retVals), str(retVals))
+        sampleTimeChanged = False
         
-        log.tracef("...unpacking the HDA results...")
-        valueList=retVals[0]
-        qv = valueList[0]
-        sampleValue = qv.value
-        sampleTime = qv.timestamp
-        quality = qv.quality
-        
-        print sampleValue, sampleTime, quality
-
-        tags.append(udtPath+"/lastSampleValue")
-        vals.append(sampleValue)
-        
-        tags.append(udtPath+"/lastSampleTime")
-        vals.append(sampleTime)
-
-        if sampleTime != lastSampleTime:
-            sampleTimeChanged = True
+        if len(retVals) != 1:
+            log.errorf("A value was not returned for the HDA watchdog <%s - %s>", serverName, itemId)
         else:
-            sampleTimeChanged = False
+            #Break apart the vales list
+            valueList = retVals[0]
+            if str(valueList.serviceResult) != 'Good':
+                log.errorf("HDA watchdog <%s - %s> Returned value not good", serverName, itemId)
+            if valueList.size() == 0:
+                log.errorf("HDA watchdog <%s - %s> Returned size 0", serverName, itemId)
+            else:
+                ''' 
+                I'm not sure if there is a spec about the order of data returned by this API, but the Vistalon HDA server orders
+                the from oldest to newest. (This shouldn't return a lot of values, so iterate and then take the last value).
+                '''
+                for qv in valueList:
+                    sampleValue = qv.value
+                    sampleTime = qv.timestamp
+                    quality = qv.quality
+
+                log.tracef("Returned value: %s - %s - %s", str(sampleValue), str(sampleTime), str(quality))
+
+                tags.append(udtPath+"/lastSampleValue")
+                vals.append(sampleValue)
+                
+                tags.append(udtPath+"/lastSampleTime")
+                vals.append(sampleTime)
+        
+                if sampleTime != lastSampleTime:
+                    sampleTimeChanged = True
+                else:
+                    sampleTimeChanged = False
 
     if not(serverIsAvailable) or not(sampleTimeChanged):
         tags.append(udtPath+"/stallCount")

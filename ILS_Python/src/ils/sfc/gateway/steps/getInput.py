@@ -53,6 +53,8 @@ def activate(scopeContext, stepProperties, state):
             defaultValue = substituteScopeReferences(chartScope, stepScope, defaultValue)
             prompt = getStepProperty(stepProperties, PROMPT)
             prompt = substituteScopeReferences(chartScope, stepScope, prompt)
+            if prompt.find("<HTML") < 0:
+                prompt = "<HTML>" + prompt 
             
             # Clear the response recipe data so we know when the client has updated it
             s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
@@ -62,9 +64,8 @@ def activate(scopeContext, stepProperties, state):
 
             targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
 
-            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, defaultValue) "\
-                "values ('%s', '%s', '%s', '%s', '%s')" % (windowId, prompt, targetStepUUID, responseKey, defaultValue)
-            numInserted = system.db.runUpdateQuery(sql, database)
+            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, defaultValue) values (?, ?, ?, ?, ?)"
+            numInserted = system.db.runPrepUpdate(sql, [windowId, prompt, targetStepUUID, responseKey, defaultValue], database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)
 
