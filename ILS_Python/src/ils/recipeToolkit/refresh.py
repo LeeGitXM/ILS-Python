@@ -102,10 +102,10 @@ def refresher(familyName, ds, downloadType, provider, database=""):
         compTag = record['Comp Tag']
         if writeLocation != "" and writeLocation != None and compTag not in ["", None, "NULL", "null"]:
             if string.upper(writeLocation) == localWriteAlias:
-                if storTag not in localTagNames:
+                if compTag not in localTagNames:
                     localTagNames.append(compTag)
             else:
-                if storTag not in tagNames:
+                if compTag not in tagNames:
                     tagNames.append(compTag)
     
     # Now  convert the OPC tag names from MS Access to Ignition names
