@@ -230,6 +230,7 @@ testing in Baton Rouge, I need to specify the history tag provider.  This might 
 in project scope.
 '''
 def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, aggregationMode, log):
+        
     fullTagPaths = []
     for tagPath in tagPaths:
         fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
