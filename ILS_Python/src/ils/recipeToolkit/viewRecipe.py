@@ -59,7 +59,7 @@ def semiAutomatedDownloadCallback(event, payload):
     system.nav.centerWindow('Recipe/Recipe Viewer')
     
 def showCurrentRecipeCallback(familyName):
-    log.info("In %S.showCurrentRecipeCallback()", __name__)
+    log.info("In %s.showCurrentRecipeCallback()", __name__)
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
     # but it is probably a string
     SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
