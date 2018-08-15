@@ -18,6 +18,7 @@ def activate(scopeContext, stepProperties, state):
         chartRunId = getTopChartRunId(chartScope)
         logger.infof("The chart run id is: %s", str(chartRunId))
         database = getDatabaseName(chartScope)
+        logger.tracef("Database: %s", database)
         system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where chartRunId = '%s'" % (queueName, chartRunId), database)
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in procedure.py', logger)

@@ -5,7 +5,7 @@ Created on Sep 5, 2016
 '''
 
 import system
-from ils.common.message.gateway import sendAndReceive, sendAndReceiveToAClient
+from ils.common.message.gateway import sendAndReceive
 from ils.common.cast import toBool
 
 log=system.util.getLogger("com.ils.common.message")

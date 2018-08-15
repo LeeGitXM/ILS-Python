@@ -47,4 +47,8 @@ def okActionPerformed(event):
     key,attribute = splitKey(keyAndAttribute)
     dropdown = rootContainer.getComponent('choices')
     response = dropdown.selectedStringValue
+    if response == "":
+        system.gui.warningBox("Please select a value and press OK!")
+        return
+    
     setRecipeData(targetStepUUID, key, attribute, response, db)

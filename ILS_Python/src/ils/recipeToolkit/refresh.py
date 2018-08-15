@@ -6,10 +6,10 @@ Created on Sep 10, 2014
 
 import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
+log = system.util.getLogger("com.ils.recipeToolkit.ui")
 
 def refresh(rootContainer):
-    log.info("In ils.recipeToolkit.refresh.refresh()")
+    log.infof("In %s.refresh()", __name__)
 
     provider = rootContainer.getPropertyValue("provider")
     status = rootContainer.getPropertyValue("status")
@@ -40,7 +40,7 @@ def refresh(rootContainer):
 
 
 def automatedRefresh(familyName, processedData, provider, database):
-    log.info("In ils.recipeToolkit.refresh.automatedRefresh()")
+    log.infof("In %s.automatedRefresh()", __name__)
     # The downloadType is either GradeChange or MidRun
     downloadType = "GradeChange"
 
@@ -52,8 +52,8 @@ def automatedRefresh(familyName, processedData, provider, database):
 # be shown and put it in table.data.  (If the user is an engineer then processed data is all data, but 
 # operators only see a subset of the data.
 def refresher(familyName, ds, downloadType, provider, database=""):
-    log.info("In ils.recipeToolkit.refresh.refresher()")
-    log.info("Refreshing Recipe Table for a %s download..." % (downloadType))
+    log.infof("In %s.refresher()", __name__)
+    log.infof("Refreshing Recipe Table for a %s download...", downloadType)
 
     #===============================================
     # This checks if the reason is one of the standard reasons or a custom one entered by the operator.
@@ -279,7 +279,7 @@ def equivalentValues(pendVal, storVal, recipeMinimumDifference, recipeMinimumRel
 # This takes the processed data, considers the role of the user, and filters out OE data
 # if the user is an operator
 def refreshVisibleData(table):
-    log.info("In ils.recipeToolkit.refresh.refreshVisibleData()")
+    log.infof("In %s.refreshVisibleData()", __name__)
     ds = table.processedData    
     # Now create the data that will be shown
     from ils.common.user import isAE
@@ -297,4 +297,3 @@ def refreshVisibleData(table):
             row = row + 1
 
         table.data = system.dataset.deleteRows(ds, deleteRows)
-

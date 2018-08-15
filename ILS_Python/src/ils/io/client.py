@@ -33,7 +33,7 @@ def writeDatums(tagValues, project):
     system.util.sendMessage(project, "tagWriter", {"command": "writeDatum", "tagList": tagValues}, scope="G")
 
 def writeRamp(tagPath, tagValue, valueType, rampTime, updateFrequency, writeConfirm, project):
-    payload = {"tagPath":tagPath, "tagValue":tagValue, "valueType":valueType, "rampTime":rampTime, "updateFrequenct":updateFrequency, "writeConfirm":writeConfirm}
+    payload = {"tagPath":tagPath, "tagValue":tagValue, "valueType":valueType, "rampTime":rampTime, "updateFrequency":updateFrequency, "writeConfirm":writeConfirm}
     tagValues=[payload]
     log.trace("Sending write message for %i tags..." % (len(tagValues)))
     system.util.sendMessage(project, "tagWriter", {"command": "writeRamp", "tagList": tagValues}, scope="G")

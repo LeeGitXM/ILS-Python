@@ -5,11 +5,12 @@ Created on Apr 11, 2017
 '''
 
 import system
-logger=system.util.getLogger("com.ils.watchdog")
+log=system.util.getLogger("com.ils.watchdog")
 
 
 '''
-This is called from a gateway timer script
+This is called from a gateway timer script. It doesn't make sense to call this for isolation.
+(The UDTS do not exist in isolation as they get converted to folders. )
 '''
 def scanOpcReadWatchdogs(tagProvider):
     projectName = system.util.getProjectName()
@@ -17,7 +18,7 @@ def scanOpcReadWatchdogs(tagProvider):
         print "Skipping the OPC Watchdog scanner for the global project"
         return
     
-    logger.info("Scanning OPC Read watchdogs...")
+    log.info("Scanning OPC Read watchdogs...")
     
     udtParentType = "OPC Read Watchdog"
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
@@ -28,17 +29,17 @@ def scanOpcReadWatchdogs(tagProvider):
         udtParentType="Watchdogs/" + udtParentType,
         recursive=True)
     
-    logger.tracef("...Discovered %d read watchdog UDTs...", len(udts))
+    log.tracef("...Discovered %d read watchdog UDTs...", len(udts))
     
     for udt in udts:
         udtPath = udt.path
-        logger.tracef("Found a %s at %s", udtParentType, udtPath)
+        log.tracef("Found a %s at %s", udtParentType, udtPath)
         opcReadWatchdog(tagProvider, udtPath)
 
 
 def opcReadWatchdog(tagProvider, udtPath):
     udtPath = "[%s]%s" % (tagProvider, udtPath)
-    logger.tracef("Evaluating an opcReadWatchdog with <%s>", udtPath)
+    log.tracef("Evaluating an opcReadWatchdog with <%s>", udtPath)
     
     vals = system.tag.readAll([udtPath+"/tag", 
                                udtPath+"/changeStrategy", 
@@ -63,32 +64,32 @@ def opcReadWatchdog(tagProvider, udtPath):
     changeTestFailed = False
     readAndCompareTestFailed = False
         
-    logger.tracef("Path: %s, Current Value: %s, Change Strategy: %s, Read and Compare Strategy: %s, Last Value %s, Server Name: %s, Item Id: %s, Stall Count: %s", \
+    log.tracef("Path: %s, Current Value: %s, Change Strategy: %s, Read and Compare Strategy: %s, Last Value %s, Server Name: %s, Item Id: %s, Stall Count: %s", \
          udtPath, str(val), str(changeStrategy), str(readAndCompareStrategy), str(lastValue), str(serverName), str(itemId), str(stallCount))
 
     if changeStrategy:
-        logger.tracef("Verifying the change Watchdog...")
+        log.tracef("Verifying the change Watchdog...")
         if val == lastValue:
-            logger.errorf("FAILED the change test because the current value: %s and the last value %s, are the same", str(val), str(lastValue))
+            log.errorf("FAILED the change test because the current value: %s and the last value %s, are the same", str(val), str(lastValue))
             changeTestFailed = True
         else:
-            logger.tracef("Passed the value changed test")
+            log.tracef("Passed the value changed test")
             
         system.tag.write(udtPath+"/lastValue", val)
 
 # Not sure what this test is meant to do!!!!        
     if readAndCompareStrategy:
-        logger.tracef("Verifying the read and compare watchdog...")
+        log.tracef("Verifying the read and compare watchdog...")
         currentVal = system.opc.readValue(serverName, itemId)
         
         if currentVal.quality.isGood():
             if val == currentVal.value:
-                logger.tracef("Passed the readAndCompare test")
+                log.tracef("Passed the readAndCompare test")
             else:
                 readAndCompareTestFailed = True
-                logger.errorf("Failed the readAndCompare test because %s and %s are not the same", str(val), str(currentVal.value))
+                log.errorf("Failed the readAndCompare test because %s and %s are not the same", str(val), str(currentVal.value))
         else:
-            logger.errorf("Failed readAndCompare test because the quality is not good!")
+            log.errorf("Failed readAndCompare test because the quality is not good!")
 
     if changeTestFailed or readAndCompareTestFailed:
         system.tag.write(udtPath+"/stallCount", stallCount + 1)
@@ -97,7 +98,7 @@ def opcReadWatchdog(tagProvider, udtPath):
 
 '''
 This is called from a gateway timer script.  It doesn't make sense to call this for isolation.
-One thing is that the UDTS do not exist in isolation as they get converted to folders. 
+(The UDTS do not exist in isolation as they get converted to folders. )
 '''
 def scanOpcWriteWatchdogs(tagProvider):
     projectName = system.util.getProjectName()
@@ -105,7 +106,7 @@ def scanOpcWriteWatchdogs(tagProvider):
         print "Skipping the OPC Watchdog scanner for the global project"
         return
     
-    logger.info("Scanning OPC write watchdogs...")
+    log.info("Scanning OPC write watchdogs...")
     
     udtParentType = "OPC Write Watchdog"
     
@@ -115,11 +116,11 @@ def scanOpcWriteWatchdogs(tagProvider):
         udtParentType="Watchdogs/" + udtParentType,
         recursive=True)
     
-    logger.tracef("...Discovered %d write watchdog UDTs...", len(udts))
+    log.tracef("...Discovered %d write watchdog UDTs...", len(udts))
     
     for udt in udts:
         udtPath = udt.path
-        logger.tracef("Found a %s at %s", udtParentType, udtPath)
+        log.tracef("Found a %s at %s", udtParentType, udtPath)
         opcWriteWatchdog(tagProvider, udtPath)
 
 '''
@@ -129,7 +130,7 @@ then the DCS concludes that Ignition is dead.
 '''
 def opcWriteWatchdog(tagProvider, udtPath):
     udtPath = "[%s]%s" % (tagProvider, udtPath)
-    logger.tracef("Evaluating an opcWriteWatchdog with <%s>", udtPath)
+    log.tracef("Evaluating an opcWriteWatchdog with <%s>", udtPath)
     
     vals = system.tag.readAll([udtPath+"/tag", 
                                udtPath+"/WriteEnabled", 
@@ -163,19 +164,19 @@ def opcWriteWatchdog(tagProvider, udtPath):
         tagpath = udtPath + "/writeValue"
         system.tag.write(tagpath, writeValue)
         
-    logger.tracef("  Path: %s\n  Current Value: %s\n  Write Enabled %s\n  Write Value %s\n  Server Name: %s\n  Item Id: %s\n  Stall Count: %s\n", \
+    log.tracef("  Path: %s\n  Current Value: %s\n  Write Enabled %s\n  Write Value %s\n  Server Name: %s\n  Item Id: %s\n  Stall Count: %s\n", \
          udtPath, str(val), str(writeEnabled), str(writeValue), str(serverName), str(itemId), str(stallCount))
 
     if writeEnabled and globalWriteEnabled:
-        logger.tracef("Attempting watchdog write...")
+        log.tracef("Attempting watchdog write...")
         
         try:
             tagpath = udtPath + "/tag"
-            logger.tracef("Writing %s to %s", str(writeValue), tagpath)
+            log.tracef("Writing %s to %s", str(writeValue), tagpath)
             system.tag.writeSynchronous(tagpath, writeValue)
-            logger.tracef("Passed the watchdog write test")
+            log.tracef("Passed the watchdog write test")
         except:
-            logger.errorf("FAILED the write watchdog test because the synchronous write to (%s) failed", tagpath)
+            log.errorf("FAILED the write watchdog test because the synchronous write to (%s) failed", tagpath)
             stalled = True
             
     if stalled:
@@ -184,9 +185,128 @@ def opcWriteWatchdog(tagProvider, udtPath):
         system.tag.write(udtPath+"/stallCount", 0)
 
 
+'''
+This is called from a gateway timer script. It doesn't make sense to call this for isolation.
+(The UDTS do not exist in isolation as they get converted to folders. )
+'''
+def scanHdaReadWatchdogs(tagProvider):
+    projectName = system.util.getProjectName()
+    if projectName == "[global]":
+        print "Skipping the HDA Watchdog scanner for the global project"
+        return
+    
+    log.info("Scanning HDA Read watchdogs...")
+    
+    udtParentType = "HDA Watchdog"
+    parentPath = "[%s]Site/Watchdogs" % (tagProvider)
+        
+    udts = system.tag.browseTags(
+        parentPath=parentPath, 
+        tagType="UDT_INST", 
+        udtParentType="Watchdogs/" + udtParentType,
+        recursive=True)
+    
+    log.tracef("...Discovered %d HDA Read watchdog UDTs...", len(udts))
+    
+    for udt in udts:
+        udtPath = udt.path
+        log.tracef("Found a %s at %s", udtParentType, udtPath)
+        opcHdaReadWatchdog(tagProvider, udtPath)
 
+def opcHdaReadWatchdog(tagProvider, udtPath):
+    udtPath = "[%s]%s" % (tagProvider, udtPath)
+    log.tracef("Evaluating an opcHdaReadWatchdog with <%s>", udtPath)
+    
+    vals = system.tag.readAll([udtPath+"/serverName",
+                               udtPath+"/itemId",
+                               udtPath+"/lastSampleValue",
+                               udtPath+"/lastSampleTime",
+                               udtPath+"/maxStalls",
+                               udtPath+"/stallCount"
+                               ])
+    
+    serverName=vals[0].value
+    itemId=vals[1].value
+    lastSampleValue=vals[2].value
+    lastSampleTime=vals[3].value
+    maxStalls=vals[4].value
+    stallCount=vals[5].value
+    
+    if stallCount == None:
+        stallCount = 0
+
+    sampleTimeChanged = False
+    vals = []
+    tags = []
+    
+    log.tracef("Path: %s, Last Value: %s, Last Sample Time %s, Server Name: %s, Item Id: %s, Stall Count: %s", \
+         udtPath, str(lastSampleValue), str(lastSampleTime), str(serverName), str(itemId), str(stallCount))
+
+    ''' The first check is to just use the Ignition API to see if the server is available '''
+    serverIsAvailable = system.opchda.isServerAvailable(serverName)
+    if not(serverIsAvailable):
+        log.errorf("The HDA server (%s) is *NOT* available as determined by calling system.opchda.isServerAvailable()!", serverName)
+    else:
+        log.tracef("The HDA server (%s) is available as determined by calling system.opchda.isServerAvailable()!", serverName)
+    
+        ''' The second check is to call the HDA readRaw API and verify that the sample time has updated - the value is expected to always be 1. '''
+        endDate = system.date.now()
+        startDate = system.date.addMinutes(endDate, -30)
+        boundingValues = False
+        maxValues = 0
+
+        log.tracef("Reading the sample value and time...")
+        retVals = system.opchda.readRaw(serverName, [itemId], startDate, endDate, maxValues, boundingValues)
+        log.tracef("...back from readRaw, %d values were returned! (%s)", len(retVals), str(retVals))
+        sampleTimeChanged = False
+        
+        if len(retVals) != 1:
+            log.errorf("A value was not returned for the HDA watchdog <%s - %s>", serverName, itemId)
+        else:
+            #Break apart the vales list
+            valueList = retVals[0]
+            if str(valueList.serviceResult) != 'Good':
+                log.errorf("HDA watchdog <%s - %s> Returned value not good", serverName, itemId)
+            if valueList.size() == 0:
+                log.errorf("HDA watchdog <%s - %s> Returned size 0", serverName, itemId)
+            else:
+                ''' 
+                I'm not sure if there is a spec about the order of data returned by this API, but the Vistalon HDA server orders
+                the from oldest to newest. (This shouldn't return a lot of values, so iterate and then take the last value).
+                '''
+                for qv in valueList:
+                    sampleValue = qv.value
+                    sampleTime = qv.timestamp
+                    quality = qv.quality
+
+                log.tracef("Returned value: %s - %s - %s", str(sampleValue), str(sampleTime), str(quality))
+
+                tags.append(udtPath+"/lastSampleValue")
+                vals.append(sampleValue)
+                
+                tags.append(udtPath+"/lastSampleTime")
+                vals.append(sampleTime)
+        
+                if sampleTime != lastSampleTime:
+                    sampleTimeChanged = True
+                else:
+                    sampleTimeChanged = False
+
+    if not(serverIsAvailable) or not(sampleTimeChanged):
+        tags.append(udtPath+"/stallCount")
+        vals.append(stallCount + 1)
+    elif serverIsAvailable and sampleTimeChanged and stallCount > 0:
+        tags.append(udtPath+"/stallCount")
+        vals.append(0)
+
+    if len(tags) > 0:
+        system.tag.writeAll(tags, vals)
+     
+'''
+-------------------------------------------------------------------------------------------------
+'''
 def resetInterface(serverName):
-    logger.infof("In %s.resetInterface()", __name__)
+    log.infof("In %s.resetInterface()", __name__)
     
     if serverName == None:
         return
@@ -208,7 +328,7 @@ def resetInterface(serverName):
 
 
 def notifyOC(serverName, retryCounter, post):
-    logger.infof("In %s.notifyOC()", __name__)
+    log.infof("In %s.notifyOC()", __name__)
 
     print "OPC Interface: ", serverName
     

@@ -140,7 +140,7 @@ def checkForDerivedValueTriggers(database):
                 sampleTimeTolerance=record['SampleTimeTolerance']
                 newSampleWaitTime=record['NewSampleWaitTime']
                 resultItemId=record['ResultItemId']
-                resultServerName=record['ResultServerName']
+                resultServerName=record['InterfaceName']
                 unitName=record['UnitName']
 
                 # Fetch the related data
@@ -275,7 +275,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 
                     # Derived lab data also has a target OPC tag that it needs to update - do this immediately
                     if writeEnabled:
-                        system.opc.writeValue(resultServerName, resultItemId, newVal)
+                        system.opchda.insert(resultServerName, resultItemId, newVal, system.date.now(), 192)
                         log.trace("         Writing derived value %f for %s to %s" % (newVal, valueName, resultItemId))
                     else:
                         log.info("         *** Skipping *** Write of derived value %f for %s to %s" % (newVal, valueName, resultItemId))
@@ -353,12 +353,12 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         
     dcsLog.info("Checking for new DCS Lab values ... ")    
     
-    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, WL.ServerName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds "\
-        "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, TkWriteLocation WL "\
+    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds "\
+        "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, LtOpcInterface OPC "\
         "WHERE V.ValueId = DV.ValueId "\
         " and V.UnitId = U.UnitId "\
         " and U.PostId = P.PostId " \
-        " and DV.WriteLocationId = WL.WriteLocationId"
+        " and DV.InterfaceId = OPC.InterfaceId"
         
     pds = system.db.runQuery(SQL, database)
 
@@ -366,7 +366,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         unitName = record["UnitName"]
         valueName = record["ValueName"]
         valueId = record["ValueId"]
-        serverName = record["ServerName"]
+        interfaceName = record["InterfaceName"]
         itemId = record["ItemId"]
         post = record["Post"]
         validationProcedure = record["ValidationProcedure"]

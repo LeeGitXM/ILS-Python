@@ -50,11 +50,11 @@ def activate(scopeContext, stepProperties, state):
             
             position = getStepProperty(stepProperties, POSITION) 
             scale = getStepProperty(stepProperties, SCALE) 
-            title = getStepProperty(stepProperties, WINDOW_TITLE) 
+            title = getStepProperty(stepProperties, WINDOW_TITLE)
+            title = substituteScopeReferences(chartScope, stepScope, title)
             prompt = getStepProperty(stepProperties, PROMPT)
             prompt = substituteScopeReferences(chartScope, stepScope, prompt)
             defaultValue = getStepProperty(stepProperties, DEFAULT_VALUE)
-            defaultValue = substituteScopeReferences(chartScope, stepScope, defaultValue)
             minValue = getStepProperty(stepProperties, MINIMUM_VALUE)
             maxValue = getStepProperty(stepProperties, MAXIMUM_VALUE) 
             

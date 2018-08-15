@@ -65,13 +65,32 @@ def automatedDownloadHandler(tagPath, grade):
         log.trace("Sending a message to every client to post a download GUI")
         # system.util.sendMessage(project, "automatedDownload", {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}, 'C')
         
-        callbackPayloadDictionary = {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version}
+        callbackPayloadDictionary = {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version, "triggerTagPath": parentTagPath}
         # This is generally called from the gateway, but should work from th
         mainMessage = "Semi-automated Recipe Download for grade %s - %s" % (str(grade), str(version))
         topBottomMessage = "Semi-automated recipe download!"
         sendAlert(project, post, topMessage=topBottomMessage, bottomMessage=topBottomMessage, mainMessage=mainMessage, 
                   buttonLabel="View Recipe", callback="ils.recipeToolkit.viewRecipe.semiAutomatedDownloadCallback", 
                   callbackPayloadDictionary=callbackPayloadDictionary, db=database)    
+        
+        ''' Initialize the UDT tags  '''
+        tags = [parentTagPath + "/downloadStartTime",
+                parentTagPath + "/downloadEndTime",
+                parentTagPath + "/failedDownloads",
+                parentTagPath + "/passedDownloads",
+                parentTagPath + "/totalDownloads",
+                parentTagPath + "/status"
+            ]
+    
+        vals = ["",
+                "",
+                0,
+                0,
+                0,
+                "Sending OC Alert"
+            ]
+        
+        system.tag.writeAll(tags, vals)
 
 
 '''
@@ -199,6 +218,7 @@ def download(rootContainer):
     database = getDatabaseClient()
     isolationMode = getIsolationModeClient()
     familyName = rootContainer.getPropertyValue("familyName")
+    mode = rootContainer.getPropertyValue("mode")
     table = rootContainer.getComponent("Power Table")
     
     productionProvider = getTagProvider()     # Get the production tag provider.
@@ -222,6 +242,13 @@ def download(rootContainer):
     now = util.getDate()
     rootContainer.timestamp = util.formatDateTime(now)
     rootContainer.downloadStartTime = system.date.now()
+    
+    ''' If we are in semi-automatic mode, then this download was triggerred from a trigger tag UDT which needs to be updated ''' 
+    if mode == "semi-automatic":
+        tagPath = rootContainer.getPropertyValue("triggerTagPath")
+        tags = [tagPath + "/status", tagPath + "/failedDownloads", tagPath + "/passedDownloads", tagPath + "/totalDownloads", tagPath + "/downloadStartTime"]
+        vals = ["Downloading", 0, 0, 0, now]
+        system.tag.writeAll(tags, vals)
 
     # Set the background color to indicate Downloading
     recipeToolkit_common.setBackgroundColor(rootContainer, "screenBackgroundColorDownloading")

@@ -210,11 +210,15 @@ def sfcShowQueue(payload):
     view(queueKey, useCheckpoint=True, silent=True, position=position, scale=scale)
         
 def sfcPrintWindow(payload):
-    windowName = payload['window']
-    showPrintDialog = payload['showPrintDialog']
-    windows = system.gui.findWindow(windowName)
-    for window in windows:
-        printJob = system.print.createPrintJob(window)
-        printJob.showPrintDialog = showPrintDialog
-        printJob.print()
+    from ils.common.util import okToPrint
 
+    if okToPrint():
+        windowName = payload['window']
+        showPrintDialog = payload['showPrintDialog']
+        windows = system.gui.findWindow(windowName)
+        for window in windows:
+            printJob = system.print.createPrintJob(window)
+            printJob.showPrintDialog = showPrintDialog
+            printJob.print()
+    else:
+        print "Unable to print because printers have not been set up"

@@ -179,7 +179,7 @@ def validateConditions(tagRoot, labValue, biasName):
     modelTagPath="%s/modelValue" % (tagRoot)
     modelTagPath = substituteProvider(modelTagPath, historyProvider)
     if averageWindow == 0:      
-        ds = system.tag.queryTagHistory(paths=[modelTagPath], startDate=sampleTime, rangeMinutes=1, aggregationMode="SimpleAverage", returnSize=1)
+        ds = system.tag.queryTagHistory(paths=[modelTagPath], startDate=sampleTime, rangeMinutes=1, aggregationMode="SimpleAverage", ignoreBadQuality=True, noInterpolation=True, returnSize=1)
         if ds.rowCount == 0:
             msg = "Unable to acquire a value for the model <%s> at <%s> for bias value %s." % (modelTagPath, str(sampleTime), biasName)
             log.warn(msg)
@@ -190,7 +190,7 @@ def validateConditions(tagRoot, labValue, biasName):
     else:
         startDate = system.date.addSeconds(sampleTime, int(-1 * (averageWindow + deadTime)))
         endDate  = system.date.addSeconds(sampleTime, int(averageWindow - deadTime))
-        ds = system.tag.queryTagHistory(paths=[modelTagPath], startDate=startDate, endDate=endDate, aggregationMode="SimpleAverage", returnSize=1)
+        ds = system.tag.queryTagHistory(paths=[modelTagPath], startDate=startDate, endDate=endDate, aggregationMode="SimpleAverage", ignoreBadQuality=True, noInterpolation=True, returnSize=1)
         if ds.rowCount == 0:
             msg = "Unable to acquire an average value for the model <%s> from <%s> to <%s> for bias value %s." % (modelTagPath, str(startDate), str(endDate), biasName)
             log.warn(msg)
@@ -208,7 +208,7 @@ def validateConditions(tagRoot, labValue, biasName):
     '''
     Check if this bias should be multiplicative
     '''
-    multiplicative = system.tag.read(tagRoot + 'multiplicative').value
+    multiplicative = system.tag.read(tagRoot + '/multiplicative').value
     if multiplicative:
         #TODO call DB-SPECIAL-VAL-CHK
         rawBias = labValue / modelValue
@@ -239,25 +239,27 @@ def validateConditions(tagRoot, labValue, biasName):
 def biasControlInUse():
     return True
 
+
 def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime):
     from ils.common.config import getTagProvider
     productionProviderName = getTagProvider()   # Get the Production tag provider
     
-    writeEnabled = system.tag.read("[" + tagProvider + "]/Configuration/LabData/labFeedbackWriteEnabled").value
+    log.tracef("Writing %s for %s", str(biasValue), biasName)
+    writeEnabled = system.tag.read("[" + tagProvider + "]Configuration/LabFeedback/labFeedbackWriteEnabled").value
     if tagProvider == productionProviderName and not(writeEnabled):
         msg = "Unable to write bias value <%f> for <%s> because writes are inhibited for Lab Bias Feedback." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
         return
     
-    writeEnabled = system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
+    writeEnabled = system.tag.read("[" + tagProvider + "]Configuration/Common/writeEnabled").value
     if tagProvider == productionProviderName and not(writeEnabled):
         msg = "Unable to write bias value <%f> for <%s> because all writes are globally inhibited." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
         return
-    
-    serverType = system.tag.read(tagRoot + 'biasTargetServerType')
+
+    serverType = system.tag.read(tagRoot + '/biasTargetServerType')
     if not (serverType.quality.isGood()) or (serverType.value not in ["OPC", "HDA"]):
         msg = "Unable to write bias value <%f> for <%s> because the Target Server Type is bad or not one of OPC or HDA" % (biasValue, biasName)
         log.error(msg)
@@ -265,7 +267,7 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         return
     serverType = serverType.value
     
-    serverName = system.tag.read(tagRoot + 'biasTargetServerName')
+    serverName = system.tag.read(tagRoot + '/biasTargetServerName')
     if not (serverName.quality.isGood()) or serverName.value == None:
         msg = "Unable to write bias value <%f> for <%s> because the Target Server name is bad or not specified" % (biasValue, biasName)
         log.error(msg)
@@ -273,7 +275,7 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         return
     serverName = serverName.value
     
-    itemId = system.tag.read(tagRoot + 'biasTargetItemId')
+    itemId = system.tag.read(tagRoot + '/biasTargetItemId')
     if not (itemId.quality.isGood()) or itemId.value == None:
         msg = "Unable to write bias value <%f> for <%s> because the Target Item-Id is bad or not specified" % (biasValue, biasName)
         log.error(msg)
@@ -281,6 +283,7 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         return
     itemId = itemId.value
     
+    log.tracef("...writing to %s %s (%s)", serverName, itemId, serverType)
     if serverType == "HDA":
         returnQuality = system.opchda.insert(serverName, itemId, biasValue, sampleTime, 192)
         if returnQuality.isGood():

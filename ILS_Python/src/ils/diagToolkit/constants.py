@@ -14,3 +14,5 @@ RECOMMENDATION_TEXT_POSTED = "Text Rec Posted"
 
 AUTO_NO_DOWNLOAD = "Auto No-Download"
 WAIT_FOR_MORE_DATA = "Wait For Data"
+DOWNLOAD = "Download"
+NO_DOWNLOAD = "No Download" 

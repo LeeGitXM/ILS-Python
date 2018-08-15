@@ -13,18 +13,26 @@ log = LogUtil.getLogger("com.ils.recipeToolkit.download")
 # This is called once it is deemed that the download is complete.  
 # It summarizes the results of the download.
 def downloadComplete(rootContainer):
-    log.trace("In downloadComplete()...")
+    log.tracef("In %s.downloadComplete()...", __name__)
     logId = rootContainer.getPropertyValue("logId")
     grade = rootContainer.getPropertyValue("grade")
     version = rootContainer.getPropertyValue("version")
     recipeKey = rootContainer.getPropertyValue("familyName")
     downloadType = rootContainer.getPropertyValue("downloadType")
     table = rootContainer.getComponent("Power Table")
+    mode = rootContainer.getPropertyValue("mode")
     database = getDatabaseClient()
 
     ds = table.processedData
+
+    status, downloads, successes, failures = downloadCompleteRunner(ds, logId, recipeKey, grade, version, mode, downloadType, database)
     
-    status, downloads, successes, failures = downloadCompleteRunner(ds, logId, recipeKey, grade, version, "Manual", downloadType, database)
+    if mode == "semi-automatic":
+        tagPath = rootContainer.getPropertyValue("triggerTagPath")
+        print "Updating: ", tagPath
+        tags = [tagPath + "/status", tagPath + "/failedDownloads", tagPath + "/passedDownloads", tagPath + "/totalDownloads", tagPath + "/downloadEndTime"]
+        vals = [status, failures, successes, downloads, system.date.now()]
+        system.tag.writeAll(tags, vals)
 
     from ils.recipeToolkit.common import setBackgroundColor
     if failures == 0:
@@ -38,7 +46,7 @@ def downloadComplete(rootContainer):
 #
 def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManual, gradeChangeOrMidRun, database=""):
     import string
-    log.trace("In downloadCompleteRunner()...")
+    log.tracef("In %s.downloadCompleteRunner(), the download mode was: %s ...", __name__, automatedOrManual)
     log.info("Download complete...")
 
     pds = system.dataset.toPyDataSet(ds)

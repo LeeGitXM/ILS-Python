@@ -520,8 +520,8 @@ def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage
 
 def sendMessageToClient(chartScope, messageHandler, payload):
     '''Send a message to the client(s) of this chart'''
-    print "Sending a message..."
-    logger.trace("Sending a %s SFC message... " % (str(messageHandler)))
+    logger.tracef("In %s.sendMessageToClient() - Sending a %s SFC message... ", __name__, str(messageHandler))
+    logger.tracef("The chart scope is: %s", str(chartScope))
     controlPanelId = getControlPanelId(chartScope)
     controlPanelName = getControlPanelName(chartScope)
     project = getProject(chartScope)

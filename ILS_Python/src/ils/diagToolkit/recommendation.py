@@ -18,8 +18,8 @@ def notifyConsole():
 
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, constantFD, calculationMethod, 
-                       postTextRecommendation, textRecommendation, database="", provider=""):
-    log.infof("********** In %s *********", __name__)
+                       postTextRecommendation, textRecommendation, zeroChangeThreshold, database="", provider=""):
+    log.infof("********** In %s.makeRecommendation() *********", __name__)
 
     log.infof("Making a recommendation for final diagnosis with id: %s using calculation method: <%s>, Constant=<%s>, \
         database: %s, provider: %s", str(finalDiagnosisId), calculationMethod, str(constantFD), database, provider)
@@ -92,7 +92,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         log.infof("Screening for no-change recommendations...") 
         screenedRecommendationList=[]
         for recommendation in rawRecommendationList:
-            if recommendation.get("Value",0.0) == 0.0:
+            if abs(recommendation.get("Value",0.0)) < zeroChangeThreshold:
                 log.infof("...removing a no change recommendation: %s", str(recommendation))
             else:
                 screenedRecommendationList.append(recommendation)

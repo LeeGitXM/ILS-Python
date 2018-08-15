@@ -11,7 +11,7 @@ from ils.sfc.recipeData.core import splitKey, setRecipeData
 import system, time
 
 def internalFrameOpened(event):
-    print "In internalFrameOpened()"
+    print "In %s.internalFrameOpened()" % (__name__)
     rootContainer = event.source.rootContainer
     database = getDatabaseClient()
     windowId = rootContainer.windowId
@@ -32,13 +32,17 @@ def internalFrameOpened(event):
     
     lowLimit = record["lowLimit"]
     highLimit = record["highLimit"]
+    defaultValue = record["defaultValue"]
+    print "    High limit: ", lowLimit
+    print "     Low Limit: ", highLimit
+    print "       Default: ", defaultValue
     
     rootContainer.prompt = record["prompt"]
     rootContainer.lowLimit = lowLimit
     rootContainer.highLimit = highLimit
     rootContainer.targetStepUUID = record["targetStepUUID"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
-    rootContainer.defaultValue = record["defaultValue"]
+    rootContainer.defaultValue = defaultValue
     
     if lowLimit == None or highLimit == None:
         limitText = ""
@@ -46,9 +50,10 @@ def internalFrameOpened(event):
         limitText = "Limits: %s to %s" % (str(lowLimit), str(highLimit))
 
     rootContainer.limitText = limitText    
-    print "-- DONE --"
+
 
 def okActionPerformed(event):
+    print "%s.okActionPerformed()" % (__name__)
     database = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
@@ -82,4 +87,3 @@ def okActionPerformed(event):
   
 def cancelActionPerformed(event):
     window=system.gui.getParentWindow(event)
-    

@@ -316,7 +316,7 @@ def _scanner(database, tagProvider):
 
     pds = system.db.runQuery(SQL, database)
     ageInterval = system.tag.read("[%s]Configuration/DiagnosticToolkit/diagnosticAgeInterval" % (tagProvider)).value
-    
+
     for record in pds:    
         timestamp = record["Timestamp"]
         secondsSince = system.date.secondsBetween(timestamp, system.date.now())
@@ -830,6 +830,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     explanation = ""
     diagnosisEntryId = -1
     noChange = False
+    zeroChangeThreshold = system.tag.read("[%s]Configuration/DiagnosticToolkit/zeroChangeThreshold" % (provider)).value
     
     # Fetch the list of final diagnosis that were most important the last time we managed
     oldList=fetchPreviousHighestPriorityDiagnosis(application, database)
@@ -920,7 +921,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
         else:
             from ils.diagToolkit.recommendation import makeRecommendation
             recommendations, explanation, recommendationStatus = makeRecommendation(applicationName, familyName, finalDiagnosisName, finalDiagnosisId,
-                diagnosisEntryId, constantFD, calculationMethod, postTextRecommendation, textRecommendation, database, provider)
+                diagnosisEntryId, constantFD, calculationMethod, postTextRecommendation, textRecommendation, zeroChangeThreshold, database, provider)
         
             # Fetch all of the quant outputs for the final diagnosis
             from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis

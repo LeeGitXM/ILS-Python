@@ -19,7 +19,10 @@ log = LogUtil.getLogger("com.ils.io")
 
 
 class OPCConditionalOutput(opcoutput.OPCOutput):
+    PERMISSIVE_LATENCY_TIME = 0.0
+    
     def __init__(self,path):
+        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
         opcoutput.OPCOutput.__init__(self,path)
 
     # Reset the memory tags - this does not write to OPC!
@@ -88,6 +91,9 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
                 system.tag.write(self.path + "/writeStatus", "Failure")
                 system.tag.write(self.path + "/writeMessage", errorMessage)
                 return confirmed, errorMessage
+        else:
+            log.trace("...dwelling in lieu of permissive confirmation...")
+            time.sleep(self.PERMISSIVE_LATENCY_TIME)
             
         # If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
         # write the value to the OPC tag

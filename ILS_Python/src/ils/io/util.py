@@ -285,10 +285,13 @@ def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDiff
  
     val1IsText = isText(val1)
     val2IsText = isText(val2)
+    
+    # 7/20/18 - Added Nnne to check below.  If item-id for tags is wrong, or tag doesn't exist in OPC server, then the value will Be None with
+    #           a quality of config error. 
 
     # When we write a NaN we read back a Null value which looks like a '' - Treat these as equal
-    if string.upper(str(val1)) == "NAN" or string.upper(str(val2)) == "NAN":
-        print "One of the values is NAN..."
+    if val1 == None or val2 == None or string.upper(str(val1)) == "NAN" or string.upper(str(val2)) == "NAN":
+        print "One of the values is NAN or None..."
         val1 = string.upper(str(val1))
         val2 = string.upper(str(val2))
         print "Now comparing: ", val1, val2

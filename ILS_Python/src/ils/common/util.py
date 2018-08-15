@@ -9,10 +9,24 @@ log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
 from system.date import secondsBetween
 
+def okToPrint():
+    from javax.print import PrintServiceLookup as PSL
+
+    printerList = PSL.lookupPrintServices(None, None)
+    defaultPrinter = PSL.lookupDefaultPrintService()
+
+    if defaultPrinter in [None, ""]:
+        return False
+    
+    if len(printerList) == 0:
+        return False
+    
+    return True
+
 def isUserConnected(userName):
     sessions = system.util.getSessionInfo()
     for session in sessions:
-        if session["username"] == userName and session["isDesigner"] == False:
+        if string.upper(session["username"]) == string.upper(userName) and session["isDesigner"] == False:
             print "The user IS connected"
             return True
         print session

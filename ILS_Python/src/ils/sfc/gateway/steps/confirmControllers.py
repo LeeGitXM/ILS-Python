@@ -44,20 +44,25 @@ def activate(scopeContext, stepProperties, state):
 
             tagPath = s88Get(chartScope, stepScope, key + ".Tag", recipeScope)
             tagPath = "[" + providerName + "]" + tagPath
-#            val = rd.get(VALUE)
+
             newVal = s88Get(chartScope, stepScope, key + ".OutputValue", recipeScope)
             outputType = s88Get(chartScope, stepScope, key + ".OutputType", recipeScope)
-            logger.trace("Confirming controller for tagPath: %s, Check SP for 0: %s, Check Path to Valve: %s, Output type: %s, New Value: %s" % (tagPath, str(testForZero), str(checkPathToValve), outputType, str(newVal)))
+            download = s88Get(chartScope, stepScope, key + ".Download", recipeScope)
+            logger.trace("Confirming controller for tagPath: %s, Check SP for 0: %s, Check Path to Valve: %s, Output type: %s, New Value: %s (Download: %s)" % 
+                         (tagPath, str(testForZero), str(checkPathToValve), outputType, str(newVal), str(download)))
             
             try:
-                success, errorMessage = confirmControllerMode(tagPath, newVal, testForZero, checkPathToValve, outputType)
-                if success:
-                    logger.tracef("...%s mode is correct!",tagPath)
+                if download:
+                    success, errorMessage = confirmControllerMode(tagPath, newVal, testForZero, checkPathToValve, outputType)
+                    if success:
+                        logger.tracef("...%s mode is correct!",tagPath)
+                    else:
+                        numberOfErrors = numberOfErrors + 1
+                        txt = "Confirm Controller Mode Error: %s - %s.  %s" % (row.key, tagPath, errorMessage)
+                        logger.warnf("Confirm Controller Mode failed for %s because %s", tagPath, errorMessage)
+                        postToQueue(chartScope, MSG_STATUS_ERROR, txt)
                 else:
-                    numberOfErrors = numberOfErrors + 1
-                    txt = "Confirm Controller Mode Error: %s - %s.  %s" % (row.key, tagPath, errorMessage)
-                    logger.warnf("Confirm Controller Mode failed for %s because %s", tagPath, errorMessage)
-                    postToQueue(chartScope, MSG_STATUS_ERROR, txt)
+                    logger.tracef("...skipping check because the download flag is not set!")
             except:
                 notifyGatewayError(chartScope, stepProperties, 'Trapped an error in confirmControllers.py', chartLogger)
                 numberOfErrors = numberOfErrors + 1

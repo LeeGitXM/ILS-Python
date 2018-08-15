@@ -61,7 +61,9 @@ def activate(scopeContext, stepProperties, state):
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
             prompt = substituteScopeReferences(chartScope, stepScope, prompt)
-            
+            if prompt.find("<HTML") < 0:
+                prompt = "<HTML>" + prompt 
+
             # Clear the response recipe data so we know when the client has updated it
             s88Set(chartScope, stepScope, responseKeyAndAttribute, "NULL", responseRecipeLocation)
             
@@ -72,10 +74,8 @@ def activate(scopeContext, stepProperties, state):
             
             targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
             
-            sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, keyAndAttribute) "\
-                "values ('%s', '%s', '%s', '%s', '%s', '%s')" \
-                % (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, responseKeyAndAttribute)
-            system.db.runUpdateQuery(sql, database)
+            sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, keyAndAttribute) values (?, ?, ?, ?, ?, ?)"
+            system.db.runPrepUpdate(sql, [windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, responseKeyAndAttribute], database)
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)

@@ -87,7 +87,8 @@ def bookkeeping(ds):
         rowType=ds.getValueAt(row, "type")
         if rowType == "row":
             command=ds.getValueAt(row, "command")
-            if string.upper(command) == 'GO':
+            downloadStatus=ds.getValueAt(row, "downloadStatus")
+            if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:
                 cnt=cnt+1
                 workToDo=True
     log.info("There are %i outputs to write" % (cnt))
@@ -107,7 +108,8 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
         rowType=ds.getValueAt(row, "type")
         if rowType == "row":
             command=ds.getValueAt(row, "command")
-            if string.upper(command) == 'GO':
+            downloadStatus=ds.getValueAt(row, "downloadStatus")
+            if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:
                 quantOutput=ds.getValueAt(row, "output")
                 newSetpoint=ds.getValueAt(row, "finalSetpoint")
                 tag=ds.getValueAt(row, "tag")
@@ -160,6 +162,7 @@ This should run in the gateway to free up the client.  Status is communicated vi
 '''
 
 def serviceDownloadMessageHandler(payload):
+    from ils.diagToolkit.downloader import Downloader
     print "Received a service download message"
     print "The payload is: ", payload
     
@@ -173,7 +176,10 @@ def serviceDownloadMessageHandler(payload):
     print "Database:     ", db
     print "Dataset:      ", ds
     
-    serviceDownload(post, ds, tagProvider, db)
+#    serviceDownload(post, ds, tagProvider, db)   
+    
+    downloader = Downloader(post, ds, tagProvider, db)
+    downloader.download()
 
 def serviceDownload(post, ds, tagProvider, db):
     # iterate through each row of the dataset that is marked to go and download it.
@@ -189,7 +195,8 @@ def serviceDownload(post, ds, tagProvider, db):
         rowType=ds.getValueAt(row, "type")
         if rowType == "row":
             command=ds.getValueAt(row, "command")
-            if string.upper(command) == 'GO':
+            downloadStatus=ds.getValueAt(row, "downloadStatus")
+            if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:
                 quantOutputId=ds.getValueAt(row, "qoId")
                 updateQuantOutputDownloadStatus(quantOutputId, "Pending", db)
 
@@ -211,7 +218,8 @@ def serviceDownload(post, ds, tagProvider, db):
             
         elif rowType == "row":
             command=ds.getValueAt(row, "command")
-            if string.upper(command) == 'GO':
+            downloadStatus=ds.getValueAt(row, "downloadStatus")
+            if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:
                 if firstOutputRow:
                     # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
                     firstOutputRow = False
