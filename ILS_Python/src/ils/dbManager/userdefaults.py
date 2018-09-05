@@ -23,7 +23,6 @@ log = system.util.getLogger("com.ils.recipe.userdefaults")
 # DATABASE - the current recipe database in use
 # UNIT - the current procesing unit (or ALL)
 def get(key):
-    print "Getting key: ", key
     if string.upper(key) in ["FAMILY", "UNIT"]:
         val = system.tag.read('[Client]Family').value
     elif string.upper(key) == "GRADE":

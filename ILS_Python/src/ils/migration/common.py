@@ -8,7 +8,6 @@ migrationDatabase = "XOMMigration"
 
 def lookupOPCServerAndScanClass(site, gsiInterface):
     SQL = "select newServerName, newScanClass, newPermissiveScanClass from InterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
-    print SQL
     pds = system.db.runQuery(SQL, migrationDatabase)
     if len(pds) != 1:
         print "Error looking up GSI interface <%s> in the InterfaceTranslation table" % (gsiInterface)
@@ -20,23 +19,23 @@ def lookupOPCServerAndScanClass(site, gsiInterface):
     
     # Now lookup the id of this interface in the RtWriteLocation table
     
-    SQL = "select WriteLocationId from TkWriteLocation where ServerName = '%s' and ScanClass = '%s'" % (serverName, scanClass)
+    SQL = "select InterfaceId from LtOPCInterface where InterfaceName = '%s'" % (serverName)
     pds = system.db.runQuery(SQL)
     if len(pds) != 1:
-        print "Error looking up the translated server and scan class (%s, %s) in RtWriteLocation table" % (serverName, scanClass)
-        writeLocationId = -1
+        print "Error looking up the translated server <%s> in LtOPCInterface table" % (serverName)
+        interfaceId = -1
     else:
         record = pds[0]
-        writeLocationId=record["WriteLocationId"]
+        interfaceId=record["InterfaceId"]
     
-    return serverName, scanClass, permissiveScanClass, writeLocationId
+    return serverName, scanClass, permissiveScanClass, interfaceId
 
 def lookupHDAServer(site, gsiInterface):
     # Translate from the G2 interface name to the Ignition Interface name
     SQL = "select newServerName from HDAInterfaceTranslation where site = '%s' and oldInterfaceName = '%s'" % (site, gsiInterface)
     pds = system.db.runQuery(SQL, migrationDatabase)
     if len(pds) != 1:
-        print "Error looking up GSI interface <%s> for <%s> in the InterfaceTranslation table" % (gsiInterface, site)
+        print "Error looking up GSI interface <%s> for <%s> in the HDAInterfaceTranslation table" % (gsiInterface, site)
         return -1, -1
     record = pds[0]
     serverName=record["newServerName"]
@@ -102,3 +101,16 @@ def lookupFeedbackMethod(oldName):
     lookupId=record["LookupId"]
     
     return newName, lookupId
+
+#
+def lookupRampTypeId(rampType):
+    SQL = "select LookupId from Lookup where LookupTypeCode = 'RampType' and LookupName = '%s' " % (rampType)
+    pds = system.db.runQuery(SQL)
+    if len(pds) != 1:
+        print "Error looking up the ramp type (%s) in Lookup table" % (rampType)
+        return -1
+
+    record = pds[0]
+    lookupId=record["LookupId"]
+    
+    return lookupId

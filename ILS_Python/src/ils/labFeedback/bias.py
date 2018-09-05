@@ -17,6 +17,51 @@ from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.common.config import getHistoryProvider
 from ils.common.error import catchError
 
+def manualOverride(tagPath, previousValue, biasValue, initialchange): 
+    try:
+        # Find tag provider and the root of the tag by stripping off LabData
+        tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
+        tagRoot=tagPath.rstrip('/manualOverride')
+        
+        # Strip off the path and get just the name of the UDT
+        biasName = tagRoot[:len(tagRoot)]
+        biasName = biasName[biasName.rfind('/') + 1:]
+        
+        if initialchange:
+            log.tracef("Skipping lab bias manual override for %s because this was an initial change.", biasName)
+            return
+        
+        ''' I think that manual overrides should not be subject to the updatePermitted tag, but I could be convinced to go either way '''
+        '''
+        updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
+        if not(updatePermitted):
+            log.tracef("Skipping lab bias exponential updates for %s because updates are not permitted.", biasName)
+            return
+        '''
+        
+        if not(biasValue.quality.isGood()):
+            log.warnf("Skipping lab bias manual override updates for %s because the new lab value is bad.", biasName)
+            return
+        
+        biasValue = biasValue.value
+        
+        if biasValue == None:
+            log.warnf("Skipping lab bias manual override updates for %s because the new lab value is None.", biasName)
+            return
+        
+        log.infof("Writing the manual override bias value for %s (%s)", biasName, tagRoot)
+    
+        system.tag.write(tagRoot + '/biasValue', biasValue)
+    
+        # Write this nicely calculated value to either the DCS or the PHD historian
+        writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, system.date.now())
+        
+    except:
+        txt=catchError("exponentialFilter", "Caught an error calculating an exponential filter bias for %s" % (tagPath))
+        log.error(txt)
+        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
+
+
 def exponentialFilter(tagPath, previousValue, newValue, initialchange): 
     try:
         # Find tag provider and the root of the tag by stripping off LabData

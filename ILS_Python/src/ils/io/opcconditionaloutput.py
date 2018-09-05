@@ -41,7 +41,11 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
         success = True
         errorMessage = ""
         return success, errorMessage
-
+    
+    def writeWithNoCheck(self, val, valueType=""):
+        status, errorMessage = self.writeDatum(val, valueType)
+        return status, errorMessage
+    
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output
     def writeDatum(self, val, valueType=""):
@@ -69,14 +73,16 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
  
         # Read the current permissive so that we can put it back the way is was when we are done
         permissiveAsFound = system.tag.read(self.path + "/permissive").value
-        log.tracef("   %s - the permissive as found is: %s", self.path, permissiveAsFound)
+        log.info("   %s - the permissive as found is: %s" % (self.path, permissiveAsFound))
+        time.sleep(1)
+        log.info("Return from 1 second sleep...")
         
         # Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed
         permissiveValue = system.tag.read(self.path + "/permissiveValue").value
         permissiveConfirmation = system.tag.read(self.path + "/permissiveConfirmation").value
         
         # Write the permissive value to the permissive tag and wait until it gets there
-        log.tracef("   %s - writing permissive %s", self.path, permissiveValue)
+        log.info("   %s - writing permissive %s" % (self.path, permissiveValue))
         system.tag.write(self.path + "/permissive", permissiveValue)
         
         # Confirm the permissive if necessary.  If the UDT is configured for confirmation, then it MUST be confirmed 
@@ -92,7 +98,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
                 system.tag.write(self.path + "/writeMessage", errorMessage)
                 return confirmed, errorMessage
         else:
-            log.trace("...dwelling in lieu of permissive confirmation...")
+            log.info("...dwelling in lieu of permissive confirmation...")
             time.sleep(self.PERMISSIVE_LATENCY_TIME)
             
         # If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
@@ -120,8 +126,8 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
             
         # Return the permissive to its original value
         # Write the permissive value to the permissive tag and wait until it gets there
-        # TODO wait for a latency time
-        log.trace("  Restoring permissive")
+        time.sleep(self.PERMISSIVE_LATENCY_TIME)
+        log.info("  Restoring permissive to %s" % (permissiveAsFound))
         system.tag.write(self.path + "/permissive", permissiveAsFound)
         if permissiveConfirmation:
             confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveAsFound)

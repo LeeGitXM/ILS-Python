@@ -4,6 +4,7 @@ Created on Feb 25, 2017
 @author: phass
 '''
 
+
 import system
 
 def internalFrameOpened(rootContainer, db=""):
@@ -16,6 +17,118 @@ def internalFrameOpened(rootContainer, db=""):
     refreshConsoles(rootContainer)
     refreshLogbooks(rootContainer)
     refreshQueues(rootContainer)
+    refreshLookups(rootContainer)
+    refreshLookupValues(rootContainer.getComponent("Lookup Container"))
+    
+'''
+Lookup Related Functions
+'''
+
+def refreshLookups(rootContainer):
+    SQL = "select * from LookupType order by LookupTypeName"
+    pds= system.db.runQuery(SQL)
+    table = rootContainer.getComponent("Lookup Container").getComponent("Lookup Type Table")
+    table.data = pds
+    
+def addLookupType(container):
+    print "In addLookupType()"
+    
+    lookupTypeCode = system.gui.inputBox("Enter new Lookup Type Code:")
+    if lookupTypeCode == None:
+        return
+    
+    SQL = "insert into LookupType (LookupTypeCode, LookupTypeName) values ('%s', '%s')" % (lookupTypeCode, lookupTypeCode)
+    system.db.runUpdateQuery(SQL)
+    refreshLookups(container.parent)
+    refreshLookupValues(container)
+
+def deleteLookupType(container):
+    print "In deleteLookupType()"
+    
+    lookupTypeTable = container.getComponent("Lookup Type Table")
+    lookupTypeCode = lookupTypeTable.data.getValueAt(lookupTypeTable.selectedRow, 0)
+
+    SQL = "delete from LookupType where LookupTypeCode = '%s'" % (lookupTypeCode)
+    system.db.runUpdateQuery(SQL)
+    
+    refreshLookups(container.parent)
+    refreshLookupValues(container)
+
+def saveLookupType(table, row):
+    print "In saveLookupType()"
+    
+    ds = table.data
+    lookupTypeCode = ds.getValueAt(row, 0)
+    lookupTypeName = ds.getValueAt(row, 1)
+    lookupTypeDescription = ds.getValueAt(row, 2)
+    
+    SQL = "update LookupType set LookupTypeName = '%s', LookupTypeDescription = '%s' where LookupTypeCode = '%s'" % (lookupTypeName, lookupTypeDescription, lookupTypeCode)
+    print SQL
+    system.db.runUpdateQuery(SQL)
+    
+    refreshLookups(table.parent.parent)
+
+
+def refreshLookupValues(container):
+    print "In fetchLookupValues()... "
+    
+    lookupTypeTable = container.getComponent("Lookup Type Table")
+    lookupTable = container.getComponent("Lookup Table")
+    
+    if lookupTypeTable.selectedRow < 0:
+        ds = lookupTable.data
+        for row in range(ds.rowCount):
+            ds = system.dataset.deleteRow(ds, 0)
+        lookupTable.data = ds
+    
+    else:
+        lookupTypeCode = lookupTypeTable.data.getValueAt(lookupTypeTable.selectedRow, 0)
+    
+        SQL = "select * from Lookup where LookupTypeCode = '%s'" % (lookupTypeCode) 
+        pds = system.db.runQuery(SQL)
+        lookupTable.data = pds
+    
+def addLookup(container):
+    print "In addLookup()"
+    
+    lookup = system.gui.inputBox("Enter new Lookup :")
+    if lookup == None:
+        return
+    
+    lookupTypeTable = container.getComponent("Lookup Type Table")
+    lookupTypeCode = lookupTypeTable.data.getValueAt(lookupTypeTable.selectedRow, 0)
+    
+    SQL = "insert into Lookup (LookupTypeCode, LookupName, Active) values ('%s', '%s', 1)" % (lookupTypeCode, lookup)
+    system.db.runUpdateQuery(SQL)
+    
+    refreshLookupValues(container)
+
+def deleteLookup(container):
+    print "In deleteLookup()"
+    
+    lookupTable = container.getComponent("Lookup Table")
+    lookupId = lookupTable.data.getValueAt(lookupTable.selectedRow, 0)
+    
+    SQL = "delete from Lookup where LookupId = %s" % (str(lookupId))
+    system.db.runUpdateQuery(SQL)
+    
+    refreshLookupValues(container)
+
+def saveLookup(table, row):
+    print "In saveLookup(), row %d was edited..." % (row)
+    
+    ds = table.data
+    lookupId = ds.getValueAt(row, 0)
+    lookupName = ds.getValueAt(row, 2)
+    lookupDescription = ds.getValueAt(row, 3)
+    active = ds.getValueAt(row, 4)
+    
+    SQL = "update Lookup set LookupName = '%s', LookupDescription = '%s', active = %d where LookupId = %d" % (lookupName, lookupDescription, active, lookupId)
+    print SQL
+    system.db.runUpdateQuery(SQL)
+    
+    refreshLookupValues(table.parent)
+
 
 '''
 Unit Related Functions

@@ -48,13 +48,22 @@ def insertLabTableIntoDB(container):
                 displayTableId = system.db.runUpdateQuery(SQL, getKey=1)
         
             print "%s - %s - %s - %s" % (oldTableName, displayTableTitle, displayFlag, displayOrder)
+            order = 1
             for labData in table.findall('labData'):
                 # There is only room for one description, and it came from the other file, so ignore this one
                 labDescription = labData.get("labDescription")
                 valueName = labData.get("labDataName")
-                print "     Setting display table for %s" % (valueName)
-                SQL = "update LtValue set DisplayTableId = %s where ValueName = '%s'" % (str(displayTableId), valueName)
-                system.db.runUpdateQuery(SQL)
+                
+                SQL = "Select ValueId from LtValue where ValueName = '%s' " % (valueName)
+                valueId = system.db.runScalarQuery(SQL)
+                
+                if valueId != None:
+                    print "     Setting display table for %s" % (valueName)
+                    SQL = "insert into LtDisplayTableDetails (DisplayTableId, ValueId, DisplayOrder) values (%d, %d, %d)" % (displayTableId, valueId, order)
+                    system.db.runUpdateQuery(SQL)
+                    order = order + 1
+                else:
+                    print "**** ERROR: value <%s> is not defined ****" % (valueName) 
         else:
             print "Skipping %s because a post <%s> was not found!" % (displayTableTitle, post)
             
@@ -129,6 +138,15 @@ def insertIntoDB(container):
                         valueId=insertLabValue(labData, unitName)
                         insertDCSLabValue(labData, valueId, site)
                         insertSQCLimit(labData,valueId)
+                        loaded=loaded+1
+                        print "   ...done!"
+                
+                elif className == "LAB-DCS-SQC-FIXED":
+                    if phase == 1:
+                        print "   Creating..."
+                        valueId=insertLabValue(labData, unitName)
+                        insertDCSLabValue(labData, valueId, site)
+                        insertSQCFixedLimit(labData,valueId)
                         loaded=loaded+1
                         print "   ...done!"
                 
@@ -312,20 +330,20 @@ def insertPHDLabValue(labData, valueId, site):
 # I'm going to assume that it s legal to have a local lab value that soes not get written out to PHD, but if the 
 # old system had an item id and interface, then the new one should too
 def insertDCSLabValue(labData, valueId, site):
-    print "      Inserting into LtPHDValue..." 
+    print "      Inserting into LtDCSValue..." 
     for rawValue in labData.findall('rawValue'):
         itemId = rawValue.get("item-id")
         interfaceName = rawValue.get("interface-name")
         if interfaceName == None:
             SQL = "insert into LtDCSValue (ValueId) values (%s)" % (str(valueId))
         else:
-            serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, interfaceName)
-            if writeLocationId < 0:
+            serverName, scanClass, permissiveScanClass, interfaceId = lookupOPCServerAndScanClass(site, interfaceName)
+            if interfaceId < 0:
                 print "Unable to find interface: %s for site: %s in the InterfaceTransalation table!" % (interfaceName, site)
                 SQL = "insert into LtDCSValue (ValueId) values (%s)" % (str(valueId))
             else:
-                SQL = "insert into LtDCSValue (ValueId, ItemId, WriteLocationId) "\
-                    " values (%s, '%s', %s)" % (str(valueId), itemId, str(writeLocationId))
+                SQL = "insert into LtDCSValue (ValueId, ItemId, InterfaceId) "\
+                    " values (%s, '%s', %s)" % (str(valueId), itemId, str(interfaceId))
         system.db.runUpdateQuery(SQL)
         print "      ...inserted a record into LtPHDValue..."
     return valueId
@@ -362,10 +380,10 @@ def insertDerivedLabValue(labData, valueId, site):
     for result in labData.findall('phdResultTag'):
         resultItemId = result.get("item-id")
         interfaceName=result.get("interface-name")
-        serverName, scanClass, permissiveScanClass, resultWriteLocationId = lookupOPCServerAndScanClass(site, interfaceName)
+        serverName, resultInterfaceId = lookupHDAServer(site, interfaceName)
 
-    SQL = "insert into LtDerivedValue (ValueId, TriggerValueId, callback, ResultItemId, ResultWriteLocationId, SampleTimeTolerance, NewSampleWaitTime) "\
-        " values (%s, %s, '%s', '%s', %s, 5, 45)" % (str(valueId), str(triggerValueId), callback, resultItemId, str(resultWriteLocationId))
+    SQL = "insert into LtDerivedValue (ValueId, TriggerValueId, callback, ResultItemId, ResultInterfaceId, SampleTimeTolerance, NewSampleWaitTime) "\
+        " values (%s, %s, '%s', '%s', %s, 5, 45)" % (str(valueId), str(triggerValueId), callback, resultItemId, str(resultInterfaceId))
     derivedValueId=system.db.runUpdateQuery(SQL, getKey=1)
     print "      ...inserted a record into LtDerivedValue and assigned id %i to the derived lab value" % (derivedValueId)
     
@@ -381,6 +399,43 @@ def insertDerivedLabValue(labData, valueId, site):
             print "Can't find the related item named: ", relatedValueName
 
     return derivedValueId
+
+def insertSQCFixedLimit(labData, valueId):
+    print "      Inserting a SQC limit..."
+
+    # Each of these for loops should find exactly 1 match
+    # The main thing we need to extract is the parameter name - the structure of the recipe database has changed so the upper and lower limit
+    # use the same name, so I only need to extract one.  I need to extract the real name from the name in the export by stripping off the
+    # _upper and _lower.
+    # For the actual limits, these will be overwritten as soon as the first grade change occurs, so they are not terribly important.  
+    # The upper and lower limit values are not in the export, so just use the validity limits as the SQC limits for starters.
+    for limit in labData.findall('upperValidityLimit'):
+        print "      ...found an upper validity limit..."
+        upperValidityLimit = limit.get("value")
+    for limit in labData.findall('lowerValidityLimit'):
+        print "      ...found an lower validity limit..."
+        lowerValidityLimit = limit.get("value")
+    for limit in labData.findall('lowerLimit'):
+        print "      ...found an lower limit..."
+        lowerLimit = limit.get("value")
+    for limit in labData.findall('upperLimit'):
+        print "      ...found an upper limit..."
+        upperLimit = limit.get("value")
+    for limit in labData.findall('standardDeviation'):
+        print "      ...found the standardDeviation..."
+        standardDeviation = limit.get("value")
+    for limit in labData.findall('target'):
+        print "      ...found the target..."
+        target = limit.get("value")
+
+    typeId = lookup("RtLimitType", "SQC")
+    sourceId = lookup("RtLimitSource", "Constant")
+
+    SQL = "insert into LtLimit (ValueId, LimitTypeId, LimitSourceId, UpperValidityLimit, LowerValidityLimit, UpperSQCLimit, LowerSQCLimit, Target, StandardDeviation) "\
+        " values (%s, %s, %s, %s, %s, %s, %s, %s, %s)" \
+        % (str(valueId), str(typeId), str(sourceId), str(upperValidityLimit), str(lowerValidityLimit), str(upperLimit), str(lowerLimit), str(target), str(standardDeviation))
+    system.db.runUpdateQuery(SQL)
+    print "      ...inserted a record into LtLimit..."
 
 
 def insertSQCLimit(labData, valueId):

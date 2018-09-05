@@ -67,6 +67,7 @@ def createTags(tagProvider):
     data.append([path, "sqcPlotFreshDataColor", "String", "Green"])
     data.append([path, "sqcPlotStaleDataColor", "String", "Gray"])
     data.append([path, "unitParameterSyncSeconds", "Float8", "3.0"])
+    data.append([path, "manualEntryOverride", "Boolean", "True"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

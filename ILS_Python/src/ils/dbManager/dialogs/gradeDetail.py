@@ -92,7 +92,7 @@ def showWindow():
 # Update database for a cell edit. We only allow edits of parameter value or 
 # limits.
 def update(table,row,colname,value):
-    log.info("gradedetail.update (%d:%s)=%s ..." %(row,colname,str(value)))
+    log.info("gradedetail.update (%d:%s)=<%s> ..." %(row,colname,str(value)))
 
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
@@ -102,17 +102,23 @@ def update(table,row,colname,value):
     vid = ds.getValueAt(row,"ValueId")
     valueType = ds.getValueAt(row,"ValueType")
     try:
-        if valueType == "Float":
-            msg = "Value must be a floating point number."
-            val = float(value)
-        elif valueType == "Integer":
-            msg = "Value must be a floating point number."
-            val = int(value)
-
-        msg = "Database Error."
-        SQL = "UPDATE RtGradeDetail SET %s = '%s' " \
-            " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %i and ValueId = %i" \
-            % (colname, str(value), familyid, str(gradeid), version, vid)
+        if value == "":
+            msg = "Database Error."
+            SQL = "UPDATE RtGradeDetail SET %s = NULL " \
+                " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %i and ValueId = %i" \
+                % (colname, familyid, str(gradeid), version, vid)
+        else:
+            if valueType == "Float":
+                msg = "Value must be a floating point number."
+                val = float(value)
+            elif valueType == "Integer":
+                msg = "Value must be a floating point number."
+                val = int(value)
+    
+            msg = "Database Error."
+            SQL = "UPDATE RtGradeDetail SET %s = '%s' " \
+                " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %i and ValueId = %i" \
+                % (colname, str(value), familyid, str(gradeid), version, vid)
         log.trace(SQL)
         rows = system.db.runUpdateQuery(SQL)
         log.trace("Updated %i rows" % (rows))

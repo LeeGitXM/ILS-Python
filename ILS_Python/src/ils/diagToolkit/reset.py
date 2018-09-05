@@ -6,6 +6,7 @@ Created on Sep 18, 2016
 
 import system
 import system.ils.blt.diagram as diagram
+from ils.common.error import catchError
 log = system.util.getLogger("com.ils.diagToolkit.reset")
 
 '''
@@ -36,7 +37,15 @@ def resetApplication(unit, database, tagProvider):
         log.info("Fetching descriptors for %s" % (applicationName))
 
         # Fetch all of the diagnostio diagrams for the application
-        descriptorList = diagram.listDescriptorsForApplication(applicationName) 
+        try:
+            descriptorList = diagram.listDescriptorsForApplication(applicationName) 
+        except:
+            errorText = catchError("%s.resetApplication for application %s" % (__name__, applicationName))
+            log.error(errorText)
+            descriptorList = []
+        else:
+            log.tracef("Found %d descriptors for application %s", len(descriptorList), applicationName)
+            
         for descriptor in descriptorList:
             descriptorId=descriptor.getId()
             descriptorName=descriptor.getName()

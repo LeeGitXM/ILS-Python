@@ -58,8 +58,17 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
         download = record["Download"]
         downloadType = record["Download Type"]
         downloadStatus = string.upper(record["Download Status"])
+        reason = record["Reason"]
+        
+        '''
+        If the tag doesn't exist, then the download falg won't be set
+        '''
+        
+        if reason == "":
+            downloads = downloads + 1
+            failures = failures + 1
 
-        if download:
+        elif download:
             downloads = downloads + 1
 
             if downloadStatus == 'SUCCESS':
