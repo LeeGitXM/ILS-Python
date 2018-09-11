@@ -43,14 +43,22 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
         return success, errorMessage
     
     def writeWithNoCheck(self, val, valueType=""):
-        status, errorMessage = self.writeDatum(val, valueType)
-        return status, errorMessage
+        print "In %s.writeWithNoCheck()..." % (__name__)      
+        status, msg = self.writer(val, False, valueType)
+        return status, msg
     
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output
     def writeDatum(self, val, valueType=""):
-        
-        log.info("Writing <%s>, <%s> to %s, an OPCConditionalOutput" % (str(val), str(valueType), self.path))
+        print "In %s.writeDatum()..." % (__name__)
+        status, msg = self.writer(val, True, valueType)
+        return status, msg
+    
+    '''
+    This is a private method that is used by both of the public methods (writeDatum and writeWithNoCheck)
+    '''
+    def writer(self, val, confirm, valueType=""):
+        log.info("Writing <%s>, <%s>, <confirm: %s> to %s, an OPCConditionalOutput" % (str(val), str(valueType), str(confirm), self.path))
 
         if val == None:
             val = float("NaN")
@@ -73,7 +81,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
  
         # Read the current permissive so that we can put it back the way is was when we are done
         permissiveAsFound = system.tag.read(self.path + "/permissive").value
-        log.info("   %s - the permissive as found is: %s" % (self.path, permissiveAsFound))
+        log.info("   %s - the permissive as found is: <%s>" % (self.path, permissiveAsFound))
         time.sleep(1)
         log.info("Return from 1 second sleep...")
         
@@ -108,33 +116,42 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
         system.tag.write(self.path + "/writeStatus", "Writing value")
         log.trace("  Write status: %s" % (status))
 
-        # Determine if the write was successful
-        confirmed, errorMessage = self.confirmWrite(val)
- 
-        if confirmed:
-            log.trace("Confirmed: %s - %s" % (self.path, str(val)))
-            system.tag.write(self.path + "/writeStatus", "Success")
-            system.tag.write(self.path + "/writeConfirmed", True)
-            status = True
-            msg = ""
+        if confirm:
+            # Determine if the write was successful
+            log.infof("Confirming write of %s to %s...", str(val), self.path)
+            confirmed, errorMessage = self.confirmWrite(val)
+     
+            if confirmed:
+                log.trace("Confirmed: %s - %s" % (self.path, str(val)))
+                system.tag.write(self.path + "/writeStatus", "Success")
+                system.tag.write(self.path + "/writeConfirmed", True)
+                status = True
+                msg = ""
+            else:
+                log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, errorMessage))
+                system.tag.write(self.path + "/writeStatus", "Failure")
+                system.tag.write(self.path + "/writeMessage", errorMessage)
+                status = False
+                msg = errorMessage   
         else:
-            log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, errorMessage))
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeMessage", errorMessage)
-            status = False
-            msg = errorMessage
+            ''' If this was a write with no confirm then if we got this far we were successful.  '''
+            system.tag.write(self.path + "/writeStatus", "Success")
             
         # Return the permissive to its original value
         # Write the permissive value to the permissive tag and wait until it gets there
         time.sleep(self.PERMISSIVE_LATENCY_TIME)
-        log.info("  Restoring permissive to %s" % (permissiveAsFound))
+        log.info("  Restoring permissive to <%s>" % (permissiveAsFound))
+
         system.tag.write(self.path + "/permissive", permissiveAsFound)
         if permissiveConfirmation:
             confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveAsFound)
- 
+
             if confirmed:
-                log.trace("Confirmed Permissive restore: %s - %s - %s" % (self.path, status, msg))
+                status = True
+                msg = ""
+                log.tracef("Confirmed Permissive restore: %s - %s", self.path, status)
             else:
+                status = False
                 log.error("Failed to confirm permissive write of <%s> to %s because %s" % (str(val), self.path, errorMessage))
                 system.tag.write(self.path + "/writeStatus", "Failure")
                 system.tag.write(self.path + "/writeMessage", errorMessage)

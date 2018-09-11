@@ -68,6 +68,7 @@ def createTags(tagProvider):
     data.append([path, "sqcPlotStaleDataColor", "String", "Gray"])
     data.append([path, "unitParameterSyncSeconds", "Float8", "3.0"])
     data.append([path, "manualEntryOverride", "Boolean", "True"])
+    data.append([path, "uiPollingEnabled", "Boolean", "False"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

@@ -172,7 +172,7 @@ def fetchLimits(tagProvider, database):
     #-----------------------------------------------------------
     def readSQCLimitsFromDCS(record):
         valueName=record["ValueName"]
-        serverName=record["WriteLocation"]
+        serverName=record["InterfaceName"]
         upperItemId=record["OPCUpperItemId"]
         lowerItemId=record["OPCLowerItemId"]
         log.trace("Fetching DCS limits for %s from %s (upper: %s, lower: %s)" % (valueName, serverName, upperItemId, lowerItemId))

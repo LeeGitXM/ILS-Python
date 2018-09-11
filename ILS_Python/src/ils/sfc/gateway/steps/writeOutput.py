@@ -5,8 +5,8 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.recipeData.api import s88Get, s88Set
-from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, getTopChartRunId, getIsolationMode, getProviderName
+from ils.sfc.recipeData.api import s88Get, s88Set, s88GetRecipeDataId
+from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, getTopChartRunId, getIsolationMode, getProviderName, getDatabaseName
 from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER, STEP_NAME, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
@@ -36,8 +36,10 @@ def activate(scopeContext, stepProperties, state):
     runId = getTopChartRunId(chartScope)
     isolationMode = getIsolationMode(chartScope)
     providerName = getProviderName(chartScope)
+    db = getDatabaseName(chartScope)
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
+    timerRecipeDataId = s88GetRecipeDataId(chartScope, stepProperties, timerKey, timerLocation)
     recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
     stepName = getStepProperty(stepProperties, STEP_NAME)
 
@@ -52,10 +54,10 @@ def activate(scopeContext, stepProperties, state):
         writeConfirmComplete = True
     elif state == PAUSED:
         logger.trace("The writeOutput was paused")
-        handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, PAUSE_TIMER, logger)
+        handleTimer(timerRecipeDataId, PAUSE_TIMER, logger, db)
     elif state == RESUMED:
         logger.trace("The writeOutput was paused")
-        handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, RESUME_TIMER, logger)
+        handleTimer(timerRecipeDataId, RESUME_TIMER, logger, db)
     elif not initialized:
         stepScope[INITIALIZED]=True
         stepScope[ERROR_COUNT_LOCAL] = 0

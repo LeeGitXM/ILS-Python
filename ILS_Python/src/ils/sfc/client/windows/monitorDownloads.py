@@ -5,8 +5,8 @@ Created on May 29, 2015
 '''
 import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName,\
-    s88SetFromStep
+from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName, s88SetFromStep, s88GetRecipeDataIdFromStep, s88GetFromId, s88GetRecordFromId
+from ils.sfc.recipeData.constants import TIMER
 from ils.common.util import formatDateTime
 from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
 
@@ -23,16 +23,13 @@ def internalFrameOpened(event):
 
     database = getDatabaseClient()
     windowId = rootContainer.windowId
+    rootContainer.startTime = None
     
-    SQL = "select State, TimerStepUUID, TimerKey from SfcDownloadGUI where windowId = '%s'" % (windowId)
+    SQL = "select State, TimerRecipeDataId from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
-    timerStepUUID = pds[0]["TimerStepUUID"]
-    timerKey =  pds[0]["TimerKey"]
-
-    rootContainer.startTime = None
-    rootContainer.timerStepUUID = timerStepUUID
-    rootContainer.timerKey = timerKey
+    timerRecipeDataId = pds[0]["TimerRecipeDataId"]
+    rootContainer.timerRecipeDataId = timerRecipeDataId
 
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -79,8 +76,8 @@ def update(rootContainer):
     print "In monitorDownloads.update()"
 
     windowId = rootContainer.windowId
-    timerStepUUID = rootContainer.timerStepUUID
-    timerKey = rootContainer.timerKey
+    timerRecipeDataId = rootContainer.timerRecipeDataId
+    print "The timerRecipeDataId is: ", timerRecipeDataId
     database = getDatabaseClient()
     tagProvider = getTagProviderClient()
     
@@ -91,7 +88,8 @@ def update(rootContainer):
     
     # If this window hasn't discovered a starttime, then check if someone started the timer.
     if rootContainer.startTime == None:
-        startTime = s88GetFromStep(timerStepUUID, timerKey + ".StartTime", database)
+#        startTime = s88GetFromStep(timerStepUUID, timerKey + ".StartTime", database)
+        startTime = s88GetFromId(timerRecipeDataId, TIMER, "StartTime", database)
         if startTime != None:
             rootContainer.startTime = startTime
             updateStartTime(windowId, startTime, database)
@@ -187,10 +185,10 @@ def initializeDatabaseTable(windowId, database, tagProvider):
     # Oddly enough, Inputs do not have any additional attributes vs IO
     # get common IO attributes and set some defaults:
     for record in pds:
-        recipeDataStepUUID = record["RecipeDataStepUUID"]
-        recipeDataKey = record["RecipeDataKey"]
+        recipeDataId = record["RecipeDataId"]
+        recipeDataType = record["RecipeDataType"]
         
-        recipeRecord = s88GetRecord(recipeDataStepUUID, recipeDataKey, database)
+        recipeRecord = s88GetRecordFromId(recipeDataId, recipeDataType, database)
         print "Fetched recipe record: ", recipeRecord
 
         rawTiming = recipeRecord["TIMING"]
@@ -234,10 +232,10 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 
         SQL = "update SfcDownloadGUITable set RawTiming=%s, Timing=%s, DcsTagId='%s', SetPoint='%s', PV='%s'," \
             "StepTimestamp='%s', DownloadStatus='%s', PVMonitorStatus='%s', SetpointStatus='%s', " \
-            "Description = '%s' where windowId = '%s' and RecipeDataKey = '%s'  " % \
+            "Description = '%s' where windowId = '%s' and RecipeDataId = %d  " % \
             (str(rawTiming), str(timing), displayName, str(setpoint), formattedPV, \
              stepTimestamp, str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
-             description, windowId, recipeDataKey)
+             description, windowId, recipeDataId)
 
         system.db.runUpdateQuery(SQL, database)
 
@@ -255,10 +253,10 @@ def updateDatabaseTable(windowId, database):
     pds = system.db.runQuery(SQL, database)
 
     for record in pds:
-        recipeDataStepUUID = record["RecipeDataStepUUID"]
-        recipeDataKey = record["RecipeDataKey"]
+        recipeDataId = record["RecipeDataId"]
+        recipeDataType = record["RecipeDataType"]
         
-        recipeRecord = s88GetRecord(recipeDataStepUUID, recipeDataKey, database)
+        recipeRecord = s88GetRecordFromId(recipeDataId, recipeDataType, database)
         
         downloadStatus = recipeRecord["DOWNLOADSTATUS"]
         pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
@@ -281,9 +279,9 @@ def updateDatabaseTable(windowId, database):
 
         SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
             "SetpointStatus='%s', StepTimestamp='%s' "\
-            "where windowId = '%s' and RecipeDataKey = '%s' " % \
+            "where windowId = '%s' and RecipeDataId = %s " % \
             (str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
-             stepTimestamp, windowId, recipeDataKey)
+             stepTimestamp, windowId, str(recipeDataId) )
 
         system.db.runUpdateQuery(SQL, database)
 

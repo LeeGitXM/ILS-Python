@@ -2,6 +2,8 @@
 Created on Mar 27, 2015
 
 @author: Pete
+
+The purpose of this module is to scan / poll of of the lab data points for new values
 '''
 
 import sys, system, string, traceback
@@ -21,8 +23,9 @@ lastValueCache = {}
 triggerCache = {}
 derivedCalculationCache = {}
 
-# The purpose of this module is to scan / poll of of the lab data points for new values
-
+'''
+This is called from a gateway timer script
+'''
 def main(database, tagProvider):
     log.info("Scanning for lab data (%s, %s)..." % (database, tagProvider))
 
@@ -34,17 +37,22 @@ def main(database, tagProvider):
     limits=fetchLimits(tagProvider, database)
 
     writeMode = "synch"
+    newValue = False
     writeTags=[]
-    writeTagValues=[] 
+    writeTagValues=[]
     writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
     log.debug("Writing %i new PHD lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
+    if len(writeTags) > 0:
+        newValue = True
     
     writeTags=[]
     writeTagValues=[] 
     writeTags, writeTagValues = checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues)
     log.debug("Writing %i new DCS lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
+    if len(writeTags) > 0:
+        newValue = True
     
     writeTags=[]
     writeTagValues=[] 
@@ -52,8 +60,20 @@ def main(database, tagProvider):
     writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues)
     log.debug("Writing %i new derived lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
+    if len(writeTags) > 0:
+        newValue = True
+        
+    if newValue:
+        notifyClients()
 
     log.infof("...finished lab data scanning!")
+
+
+def notifyClients():
+    print "Notifying clients of new lab data!"
+    project = system.util.getProjectName()
+    system.util.sendMessage(project, messageHandler="newLabData", payload={}, scope="C")
+
 
 def tagWriter(tags, vals, mode="synch"):
     
