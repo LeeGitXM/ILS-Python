@@ -137,7 +137,7 @@ def populateRepeater(rootContainer):
     print SQL
     pds = system.db.runQuery(SQL)
     
-    SQL = "select V.ValueName, V.valueId, MAX(reportTime) maxTime "\
+    SQL = "select ValueName, V.ValueId, MAX(reportTime) maxTime "\
         " from LtHistory H, LtValue V "\
         " where H.ValueId = V.ValueId "\
         " group by V.ValueId, V.ValueName "\
@@ -200,7 +200,7 @@ def checkForNewData(displayTableTitle):
     return newData
 
 def checkForNewData2(displayTableTitle, maxTimePds):
-    print "In labData.tableChooser.checkForNewData()..."
+    print "In labData.tableChooser.checkForNewData2()..."
     print " ---- Checking Table: ", displayTableTitle
     newData = False
 
