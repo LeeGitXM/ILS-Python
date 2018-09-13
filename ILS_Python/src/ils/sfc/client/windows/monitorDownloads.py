@@ -5,7 +5,7 @@ Created on May 29, 2015
 '''
 import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName, s88SetFromStep, s88GetRecipeDataIdFromStep, s88GetFromId, s88GetRecordFromId
+from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName, s88SetFromStep, s88GetRecipeDataIdFromStep, s88GetFromId, s88GetRecordFromId, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
 from ils.common.util import formatDateTime
 from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
@@ -332,7 +332,6 @@ def resumeChart(event):
     
     from system.sfc import resumeChart
     resumeChart(chartRunId)
-
     
 def getChartRunId(rootContainer):
     windowId = rootContainer.windowId
@@ -345,7 +344,5 @@ def getChartRunId(rootContainer):
 def handleTimer(rootContainer, command):
     print command + "ing the timer"
     db = getDatabaseClient()
-    timerStepUUID = rootContainer.timerStepUUID
-    timerKey = rootContainer.timerKey
-    s88SetFromStep(timerStepUUID, timerKey + ".command", command, db)
-
+    timerRecipeDataId = rootContainer.timerRecipeDataId
+    s88SetFromId(timerRecipeDataId, TIMER, "command", command, db)

@@ -52,8 +52,6 @@ def activate(scopeContext, stepProperties, state):
         providerName = getProviderName(isolationMode)
         database = getDatabaseName(isolationMode)
 
-
-
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
         if state == DEACTIVATED:
