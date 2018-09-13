@@ -6,12 +6,6 @@
 	</target>
 	
 	<target name="deploy" description="Install Python">
-		<echo message="Deploying python scripts to ${vistalon.py.lib}" />
-		<copy todir="${vistalon.py.lib}">
-			<fileset dir="${basedir}/src">
-				<include name="ils/**/*.py" />
-			</fileset>
-		</copy>
 		
 		<echo message="Deploying python scripts to ${brpo.py.lib}" />
 		<copy todir="${brpo.py.lib}">
@@ -20,8 +14,15 @@
 			</fileset>
 		</copy>
 		
-		<echo message="Deploying python scripts to ${halobutyl.py.lib}" />
-		<copy todir="${halobutyl.py.lib}">
+		<echo message="Deploying python scripts to ${demo.py.lib}" />
+		<copy todir="${demo.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+			
+		<echo message="Deploying python scripts to ${development.py.lib}" />
+		<copy todir="${development.py.lib}">
 			<fileset dir="${basedir}/src">
 				<include name="ils/**/*.py" />
 			</fileset>
@@ -34,15 +35,22 @@
 			</fileset>
 		</copy>
 		
-		<echo message="Deploying python scripts to ${demo.py.lib}" />
-		<copy todir="${demo.py.lib}">
+		<echo message="Deploying python scripts to ${gline.py.lib}" />
+		<copy todir="${gline.py.lib}">
 			<fileset dir="${basedir}/src">
 				<include name="ils/**/*.py" />
 			</fileset>
 		</copy>
 		
-		<echo message="Deploying python scripts to ${test.py.lib}" />
-		<copy todir="${test.py.lib}">
+		<echo message="Deploying python scripts to ${halobutyl.py.lib}" />
+		<copy todir="${halobutyl.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
+		<echo message="Deploying python scripts to ${vistalon.py.lib}" />
+		<copy todir="${vistalon.py.lib}">
 			<fileset dir="${basedir}/src">
 				<include name="ils/**/*.py" />
 			</fileset>
