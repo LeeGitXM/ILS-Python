@@ -87,4 +87,19 @@ def details(familyName, grade, version, database = ""):
     pds = system.db.runQuery(SQL, database)
     log.trace("Fetched %i rows" % (len(pds)))
     
+    '''
+    Filter the data as a safety measure.  If there is a tagpath then there MUST be a value!
+    Replace empty strings with NaN
+    '''
+    ds = system.dataset.toDataSet(pds)
+    for row in range(ds.getRowCount()):
+        description = ds.getValueAt(row, "Description")
+        value = ds.getValueAt(row, "RecommendedValue")
+        tag = ds.getValueAt(row, "StoreTag")
+        
+        if value in ["", None] and tag != None:
+            log.infof("Found an NULL value for %s - %s that will be replaced with a NaN", description, tag)
+            ds = system.dataset.setValue(ds, row, "RecommendedValue", "NaN")
+    
+    pds = system.dataset.toPyDataSet(ds)
     return pds
