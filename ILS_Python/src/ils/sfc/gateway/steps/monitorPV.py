@@ -75,7 +75,7 @@ def activate(scopeContext, stepProperties, state):
                 timerKey = getStepProperty(stepProperties, TIMER_KEY)
                 timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepProperties, timerKey, timerLocation)
                 stepScope["timerRecipeDataId"] = timerRecipeDataId
-                logger.tracef("The Timer recipe data id is: %d using %s - %s", timerRecipeDataId, timerLocation, timerKey)
+                logger.infof("The timer recipe data id is: %d using %s - %s", timerRecipeDataId, timerLocation, timerKey)
     
                 configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
                 config = getPVMonitorConfig(configJson)
@@ -112,7 +112,7 @@ def activate(scopeContext, stepProperties, state):
                     configRow.targetRecipeDataId = targetRecipeDataId
                     configRow.targetRecipeDataType = targetRecipeDataType
                     
-                    logger.trace(" ...Target Recipe Id: %d - Target Recipe Data Type: %s" % (targetRecipeDataId, targetRecipeDataType))
+                    logger.trace(" ...Target Recipe Id: %d - Recipe Data Type: %s" % (targetRecipeDataId, targetRecipeDataType))
 
                     configRow.lastPV = -999999.99
                     configRow.lastStatus = "UNKNOWN"
@@ -168,7 +168,7 @@ def activate(scopeContext, stepProperties, state):
                         configRow.targetValue = qv.value
                     elif targetType == RECIPE:
                         # This means that the value will be in some property of the recipe data
-                        configRow.targetValue = s88GetFromId(targetRecipeDataId, targetRecipeDataType, configRow.targetNameIdOrValue, database)           
+                        configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeDataLocation)           
 
                     logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
 
@@ -246,6 +246,7 @@ def activate(scopeContext, stepProperties, state):
                     stepScope["timerStarted"] = True
                 
                 elapsedMinutes = s88GetFromId(timerRecipeDataId, TIMER, "ELAPSEDMINUTES", database)
+                logger.tracef("The elapsed minutes are: %s", str(elapsedMinutes))
                 persistencePending = stepScope[PERSISTENCE_PENDING]
                 monitorActiveCount = stepScope[MONITOR_ACTIVE_COUNT]
                 maxPersistence = stepScope[MAX_PERSISTENCE]

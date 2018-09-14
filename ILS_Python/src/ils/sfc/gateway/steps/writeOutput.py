@@ -132,9 +132,9 @@ def activate(scopeContext, stepProperties, state):
         stepScope[DOWNLOAD_ROWS]=downloadRows
         stepScope[TIMER_NEEDED]=timerNeeded
 
-        logger.tracef("There are %i immediate rows", len(immediateRows))
-        logger.tracef("There are %i timed rows", len(timedRows))
-        logger.tracef("There are %i final rows", len(finalRows))
+        logger.tracef("There are %d immediate rows", len(immediateRows))
+        logger.tracef("There are %d timed rows", len(timedRows))
+        logger.tracef("There are %d final rows", len(finalRows))
         
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             writeComplete = True
