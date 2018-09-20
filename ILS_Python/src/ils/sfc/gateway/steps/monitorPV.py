@@ -25,7 +25,7 @@ from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIV
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, \
     NAME, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM
-from ils.sfc.recipeData.constants import TIMER
+from ils.sfc.recipeData.constants import TIMER, OUTPUT, INPUT
 from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget
 
 def activate(scopeContext, stepProperties, state):
@@ -73,7 +73,7 @@ def activate(scopeContext, stepProperties, state):
                 
                 timerLocation = getStepProperty(stepProperties, TIMER_LOCATION)
                 timerKey = getStepProperty(stepProperties, TIMER_KEY)
-                timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepProperties, timerKey, timerLocation)
+                timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
                 stepScope["timerRecipeDataId"] = timerRecipeDataId
                 logger.infof("The timer recipe data id is: %d using %s - %s", timerRecipeDataId, timerLocation, timerKey)
     
@@ -108,6 +108,8 @@ def activate(scopeContext, stepProperties, state):
                     else:
                         targetKey = configRow.pvKey
                         
+                    logger.trace(" ...Target Type: %s - Target Key: %s" % (targetType, targetKey))
+                        
                     targetRecipeDataId, targetRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, targetKey, database)
                     configRow.targetRecipeDataId = targetRecipeDataId
                     configRow.targetRecipeDataType = targetRecipeDataType
@@ -123,9 +125,9 @@ def activate(scopeContext, stepProperties, state):
                     
                     if targetType == SETPOINT:
                         s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_VALUE, "Null", database)
+                        s88SetFromId(targetRecipeDataId, targetRecipeDataType, SETPOINT_STATUS, "", database)
 
                     s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_STATUS, PV_MONITORING, database)
-                    s88SetFromId(targetRecipeDataId, targetRecipeDataType, SETPOINT_STATUS, "", database)
                     s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, True, database)
                     
 #                    dataType = s88GetFromId(targetRecipeDataId, targetRecipeDataType, RECIPE_DATA_TYPE, database)
@@ -167,7 +169,8 @@ def activate(scopeContext, stepProperties, state):
                         qv = system.tag.read("[" + providerName + "]" + configRow.targetNameIdOrValue)
                         configRow.targetValue = qv.value
                     elif targetType == RECIPE:
-                        # This means that the value will be in some property of the recipe data
+                        # This means that the target value will be in some property of the recipe data
+                        print "Getting the target value from Recipe key:", recipeDataLocation, configRow.targetNameIdOrValue
                         configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeDataLocation)           
 
                     logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
@@ -224,7 +227,7 @@ def activate(scopeContext, stepProperties, state):
                 logger.tracef("Completed the initialization phase of PV monitoring")
             
             else:    
-                logger.trace("(%s) monitoring..." % (stepName))
+                logger.trace("---(%s) monitoring---" % (stepName))
                 
                 timerRecipeDataId = stepScope["timerRecipeDataId"]
                 timerStarted = stepScope["timerStarted"]
@@ -385,9 +388,10 @@ def activate(scopeContext, stepProperties, state):
                             else:
                                 configRow.status = PV_BAD_NOT_CONSISTENT
             
-                        if configRow.status == PV_ERROR:
+                        if configRow.status == PV_ERROR and string.upper(targetRecipeDataType) == OUTPUT:
                             # Set the setpoint status to PROBLEM - this cannot be reset
 #                            s88Set(chartScope, stepScope, targetKey + "." + SETPOINT_STATUS, SETPOINT_PROBLEM, recipeDataLocation)
+                            print "Setting the setpoint status for a ", targetRecipeDataType
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, SETPOINT_STATUS, SETPOINT_PROBLEM, database)
             
                         logger.tracef("(%s) Status: %s", stepName, configRow.status)
@@ -420,7 +424,9 @@ def activate(scopeContext, stepProperties, state):
     
                         if configRow.status in [PV_ERROR, PV_WARNING, PV_BAD_NOT_CONSISTENT]:
                             numTimeouts = numTimeouts + 1
-                            s88SetFromId(targetRecipeDataId, targetRecipeDataType, SETPOINT_STATUS, SETPOINT_PROBLEM, database)
+                            if string.upper(targetRecipeDataType) == OUTPUT:
+                                ''' This could be redundant (and an unnecessary database transaction, I'm not sure how this could escape being set above. '''
+                                s88SetFromId(targetRecipeDataId, targetRecipeDataType, SETPOINT_STATUS, SETPOINT_PROBLEM, database)
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_STATUS, PV_ERROR, database)
     
                         s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, 0, database)

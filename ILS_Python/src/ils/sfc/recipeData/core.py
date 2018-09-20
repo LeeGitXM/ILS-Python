@@ -13,7 +13,6 @@ from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUM
     TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED, \
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP, ID
-from ils.sfc.gateway.api import getStepProperty
 
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER, \
     ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
@@ -891,8 +890,7 @@ def getChartUUID(chartProperties):
     return chartProperties.get("chartUUID", "-1")
 
 def getStepUUID(stepProperties):
-    uuid = getStepProperty(stepProperties, ID)
-    return uuid
+    return stepProperties.get("id","-1")
 
 def getStepName(stepProperties):
     return stepProperties.get(STEP_NAME, "")
