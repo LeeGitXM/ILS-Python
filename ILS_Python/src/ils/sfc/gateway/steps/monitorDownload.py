@@ -66,12 +66,10 @@ def activate(scopeContext, stepProperties, state):
         
         # Reset the recipe data download and PV monitoring attributes
         for row in monitorDownloadsConfig.rows:
-            logger.trace("Resetting recipe data with key: %s" % (row.key))
+            logger.trace("Resetting recipe data with key: %s at %s" % (row.key, recipeLocation))
             
             download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeLocation)
             if download:
-                recipeKey = getStepProperty(stepProperties, TIMER_KEY)
-                recipeLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
                 recipeDataId, recipeDataType = s88GetRecipeDataId(chartScope, stepProperties, row.key, recipeLocation)
                 
                 # Initialize properties used by the write output process
