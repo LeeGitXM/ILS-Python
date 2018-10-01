@@ -58,8 +58,19 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
         download = record["Download"]
         downloadType = record["Download Type"]
         downloadStatus = string.upper(record["Download Status"])
+        reason = record["Reason"]
+        
+        '''
+        If the tag doesn't exist, then the download flag won't be set
+        '''
+        
+        if reason == "Error: Tag does not exist!":
+            log.info("Adding a failure for a missing tag!")
+            downloads = downloads + 1
+            failures = failures + 1
+            logDetail(logId, record["Store Tag"], record["Pend"], "Failure", record["Stor"], record["Comp"], record["Recc"], "", reason, database)
 
-        if download:
+        elif download:
             downloads = downloads + 1
 
             if downloadStatus == 'SUCCESS':

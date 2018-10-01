@@ -259,7 +259,7 @@ def updateLimit(rootContainer):
         " UpperReleaseLimit, LowerReleaseLimit, "\
         " UpperValidityLimit, LowerValidityLimit, "\
         " UpperSQCLimit, LowerSQCLimit, Target, StandardDeviation, "\
-        " RecipeParameterName, WriteLocation, OPCUpperItemId, OPCLowerItemId"\
+        " RecipeParameterName, InterfaceName, OPCUpperItemId, OPCLowerItemId"\
         " FROM LtLimitView "\
         " WHERE ValueId = %i " % (selectedValueId)
     pds = system.db.runQuery(sql)

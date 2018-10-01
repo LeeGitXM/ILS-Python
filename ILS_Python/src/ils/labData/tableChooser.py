@@ -5,6 +5,24 @@ Created on Mar 25, 2015
 '''
 import system
 
+'''
+This runs in client scope and is called from a client message handler...
+'''
+def newLabDataMessageHandler(payload):
+    print "In %s.newLabDataMessageHandler() - Handling a new lab data message..." % (__name__)
+    
+    windows = system.gui.getOpenedWindows()
+    for window in windows:
+        windowPath = window.getPath()
+        if windowPath == "Lab Data/Lab Table Chooser":
+            rootContainer = window.rootContainer
+            print "-------------------"
+            print "There is an open lab data chooser window "
+            
+            populateRepeater(rootContainer)
+            animatePageTabs(rootContainer)
+    
+
 def internalFrameOpened(rootContainer):
     print "In labData.tableChooser.internalFrameOpened()..."
     
@@ -119,12 +137,20 @@ def populateRepeater(rootContainer):
     print SQL
     pds = system.db.runQuery(SQL)
     
+    SQL = "select ValueName, V.ValueId, MAX(reportTime) maxTime "\
+        " from LtHistory H, LtValue V "\
+        " where H.ValueId = V.ValueId "\
+        " group by V.ValueId, V.ValueName "\
+        " order by maxTime desc"
+    maxTimePds = system.db.runQuery(SQL)
+    
     header = ['DisplayTableTitle', 'NewData']
     data = []
     for record in pds:
         displayTableTitle = record['DisplayTableTitle']
         print "Checking if %s has new data..." % (displayTableTitle)
-        newData = checkForNewData(displayTableTitle)            
+        #newData = checkForNewData(displayTableTitle)
+        newData = checkForNewData2(displayTableTitle, maxTimePds)          
         data.append([displayTableTitle,newData])
     
     ds = system.dataset.toDataSet(header, data)
@@ -172,6 +198,55 @@ def checkForNewData(displayTableTitle):
                 print "   ---There IS new data---"
         
     return newData
+
+def checkForNewData2(displayTableTitle, maxTimePds):
+    print "In labData.tableChooser.checkForNewData2()..."
+    print " ---- Checking Table: ", displayTableTitle
+    newData = False
+
+    username = system.security.getUsername()
+    
+    # Select the values in the table of interest
+    SQL = "select V.ValueId, V.ValueName "\
+        " from LtValue V, LtDisplayTable DT, LtDisplayTableDetails DTD "\
+        " where DTD.displayTableId = DT.DisplayTableId "\
+        " and DTD.ValueId = V.ValueId"\
+        " and DT.DisplayTableTitle = '%s' "\
+        " order by ValueName" % (displayTableTitle)
+    pds = system.db.runQuery(SQL)
+    
+    # Now try to figure out it there is new data  
+    for record in pds:
+        valueId = record["ValueId"]
+        valueName = record["ValueName"]
+        
+        for rec in maxTimePds:
+            if valueId == rec["ValueId"]:
+                mostRecentReportTime = rec["maxTime"]
+                print "Found max time of %s for %s" % (str(mostRecentReportTime), valueName)
+        
+        # Fetch the newest report time
+        SQL = "select max(ReportTime) "\
+            " from LtHistory "\
+            " where ValueId = %i " % (valueId)
+        print SQL
+        mostRecentReportTime = system.db.runScalarQuery(SQL)
+        print "The most recent report time for %s is %s" % (valueName, str(mostRecentReportTime))  
+        
+        if mostRecentReportTime != None:
+            SQL = "select viewTime "\
+                " from LtValueViewed "\
+                " where ValueId = %i "\
+                " and username = '%s' " % (valueId, username)
+            print SQL
+            lastViewedTime = system.db.runScalarQuery(SQL)
+            print "   ...and the last Viewed time is: %s" % (str(lastViewedTime))
+            if lastViewedTime == None or mostRecentReportTime > lastViewedTime:
+                newData = True
+                print "   ---There IS new data---"
+        
+    return newData
+
 
 def configureTabStrip(rootContainer, numPages):
     print "In labData.tableChooser.configureTabStrip()..."

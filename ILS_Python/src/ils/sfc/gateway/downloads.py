@@ -9,33 +9,34 @@ Created on Jun 18, 2015
 
 import system, string
 from java.util import Date
-from ils.sfc.recipeData.api import s88Set, s88Get
+from ils.sfc.recipeData.api import s88Set, s88Get, s88SetFromId
+from ils.sfc.recipeData.constants import TIMER
 from ils.sfc.common.constants import START_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, ERROR_COUNT_LOCAL, \
     WRITE_CONFIRMED, DOWNLOAD_STATUS, SUCCESS, FAILURE
 
 '''
 perform the timer-related logic for a step
 '''
-def handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, command, logger):
-    logger.trace("Timer command: <%s>, the key and attribute are: %s" % (command, timerKey))
-    key = timerKey + ".command"
+def handleTimer(timerRecipeDataId, command, logger, db):
+    logger.trace("Timer command: <%s>, the timer's recipe data id is: %d" % (command, timerRecipeDataId))
+    key = "command"
     
     # The specifics of the command are handled in the s88Set command 
     if command == CLEAR_TIMER:
         logger.info("Clearing the download timer...")
-        s88Set(chartScope, stepScope, key, CLEAR_TIMER, timerLocation)
+        s88SetFromId(timerRecipeDataId, TIMER, key, CLEAR_TIMER, db)
 
     if command == START_TIMER:
         logger.info("Starting the download timer...")
-        s88Set(chartScope, stepScope, key, START_TIMER, timerLocation)
+        s88SetFromId(timerRecipeDataId, TIMER, key, START_TIMER, db)
     
     if command == PAUSE_TIMER:
         logger.info("Pausing the download timer...")
-        s88Set(chartScope, stepScope, key, PAUSE_TIMER, timerLocation)
+        s88SetFromId(timerRecipeDataId, TIMER, key, PAUSE_TIMER, db)
     
     if command == RESUME_TIMER:
         logger.info("Resuming the download timer...")
-        s88Set(chartScope, stepScope, key, RESUME_TIMER, timerLocation)
+        s88SetFromId(timerRecipeDataId, TIMER, key, RESUME_TIMER, db)
 
 
 # This returns the elapsed time in minutes from the given Java time (milliseconds sine the epoch)

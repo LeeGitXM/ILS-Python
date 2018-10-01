@@ -8,6 +8,8 @@ import system, string, time
 from java.util import Date
 from ils.common.util import isText
 from ils.common.config import getTagProvider, getIsolationTagProvider
+from system.ils.blt.diagram import getProductionTagProvider,\
+    getProductionDatabase, getIsolationDatabase
 log = system.util.getLogger("com.ils.io.util")
 
 def runChecks():
@@ -411,6 +413,20 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
 
     log.error("Timed out waiting for write complete of %s!" % (tagRoot))
     return False, "Timed out waiting for write complete"
+
+def getDatabaseFromTagPath(tagPath):
+    '''
+    This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
+    provider without the brackets.  If a tag provider is not included in the tag path then the production tag provider is returned.
+    '''
+    provider = getProviderFromTagPath(tagPath)
+    productionProvider = getProductionTagProvider()
+    if provider == productionProvider:
+        db = getProductionDatabase()
+    else:
+        db = getIsolationDatabase()
+
+    return db
 
 
 def getProviderFromTagPath(tagPath):

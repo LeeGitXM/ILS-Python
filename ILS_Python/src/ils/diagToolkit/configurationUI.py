@@ -1,9 +1,8 @@
 '''
-Created on Feb 25, 2017
+Created on Aug 20, 2018
 
 @author: phass
 '''
-
 
 import system
 
@@ -11,17 +10,33 @@ def internalFrameOpened(rootContainer, db=""):
     tabStrip = rootContainer.getComponent("Tab Strip")
     tabStrip.selectedTab = "Queues"
     
-    refreshPositions(rootContainer)
-    refreshUnits(rootContainer)
-    refreshPosts(rootContainer)
-    refreshConsoles(rootContainer)
-    refreshLogbooks(rootContainer)
-    refreshQueues(rootContainer)
-    refreshLookups(rootContainer)
-    refreshLookupValues(rootContainer.getComponent("Lookup Container"))
+    refreshApplications(rootContainer)
+    refreshFamilies(rootContainer)
+#    refreshPosts(rootContainer)
+#    refreshConsoles(rootContainer)
+#    refreshLogbooks(rootContainer)
+#    refreshQueues(rootContainer)
+#    refreshLookups(rootContainer)
+#    refreshLookupValues(rootContainer.getComponent("Lookup Container"))
     
 '''
 Lookup Related Functions
+'''
+
+def refreshApplications(rootContainer):
+    SQL = "select * from DtApplicationView order by Post, UnitName, ApplicationName"
+    pds= system.db.runQuery(SQL)
+    table = rootContainer.getComponent("Applications Container").getComponent("Power Table")
+    table.data = pds
+
+
+def refreshFamilies(rootContainer):
+    SQL = "select * from DtApplicationView order by Post, UnitName, ApplicationName"
+    pds= system.db.runQuery(SQL)
+    table = rootContainer.getComponent("Families Container").getComponent("Power Table")
+    table.data = pds
+'''
+****************************************************************************************************************************************
 '''
 
 def refreshLookups(rootContainer):

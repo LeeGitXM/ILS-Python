@@ -7,7 +7,8 @@ Created on Nov 30, 2016
 
 import system, string
 from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
-    getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum
+    getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
+    fetchRecipeDataRecordFromRecipeDataId
 from ils.sfc.gateway.api import getDatabaseName, readTag
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
@@ -206,6 +207,13 @@ def s88GetRecord(stepUUID, key, db):
     logger.tracef("...fetched %s", str(record))
     return record
 
+# Return a value only for a specific key, otherwise raise an exception.
+def s88GetRecordFromId(recipeDataId, recipeDataType, db):
+    logger.tracef("s88GetRecordFromId(): %d - %s", recipeDataId, recipeDataType)
+    record = fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db)
+    logger.tracef("...fetched %s", str(record))
+    return record
+
 # This is the most popular API which should be used to access recipe data that lives in the call hierarchy of a 
 # running chart.
 def s88Set(chartScope, stepScope, keyAndAttribute, value, scope):
@@ -233,6 +241,7 @@ def s88SetFromStepWithUnits(stepUUID, keyAndAttribute, value, db, units):
     logger.tracef("s88SetFromStepWithUnits(): %s - %s - %s", keyAndAttribute, str(value), units)
     key,attribute = splitKey(keyAndAttribute)
     setRecipeData(stepUUID, key, attribute, value, db, units)
+
     
 # This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
 def s88SetFromName(chartPath, stepName, keyAndAttribute, value, db):
@@ -249,6 +258,68 @@ def s88SetFromNameWithUnits(chartPath, stepName, keyAndAttribute, value, units, 
     
 def s88CopyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
     copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db)
+    
+'''
+These APIs provide an optimized set of methods intended for use by long-running steps that update the same recipe data records each time through.
+'''
+# Return the Recipe Data Id, which is the primary key for recipe data objects  of the step  
+def s88GetRecipeDataId(chartProperties, stepProperties, key, scope):
+    db = getDatabaseName(chartProperties)
+    logger.tracef("Getting step for scope %s...", scope)
+
+    scope.lower()
+    
+    if scope == LOCAL_SCOPE:
+        stepUUID = getStepUUID(stepProperties)
+        recipeDataId, recipeDataType = getRecipeDataId(stepUUID, key, db)
+        return recipeDataId, recipeDataType
+    
+    elif scope == PRIOR_SCOPE:
+        stepUUID, stepName = getPriorStep(chartProperties, stepProperties)
+        
+        return stepUUID, stepName
+    
+    elif scope == SUPERIOR_SCOPE:
+        stepUUID, stepName = getSuperiorStep(chartProperties)
+        recipeDataId, recipeDataType = getRecipeDataId(stepUUID, key, db)
+        return recipeDataId, recipeDataType
+    
+    elif scope == PHASE_SCOPE:
+        stepUUID, stepName = walkUpHieracrchy(chartProperties, PHASE_STEP)   
+        recipeDataId, recipeDataType = getRecipeDataId(stepUUID, key, db)
+        return recipeDataId, recipeDataType
+    
+    elif scope == OPERATION_SCOPE:
+        stepUUID, stepName = walkUpHieracrchy(chartProperties, OPERATION_STEP)     
+        recipeDataId, recipeDataType = getRecipeDataId(stepUUID, key, db)
+        return recipeDataId, recipeDataType
+    
+    elif scope == GLOBAL_SCOPE:
+        stepUUID, stepName = walkUpHieracrchy(chartProperties, UNIT_PROCEDURE_STEP)     
+        recipeDataId, recipeDataType = getRecipeDataId(stepUUID, key, db)
+        return recipeDataId, recipeDataType
+        
+    else:
+        logger.errorf("Undefined scope: %s", scope)
+        
+    return -1, ""
+
+def s88GetRecipeDataIdFromStep(stepUUID, key, db):
+    recipeDataId, recipeDataType = getRecipeDataId(stepUUID, key, db)
+    return recipeDataId, recipeDataType
+
+# Return a value for a specific key using the recipe data id.  This is intended for long-running steps that update the same recipe data object each iteration.
+def s88GetFromId(recipeDataId, recipeDataType, attribute, db, units="", arrayIndex=0, rowIndex=0, columnIndex=0):
+    logger.tracef("s88GetRecipeDataValue(): %d - %s - %s", recipeDataId, recipeDataType, attribute)
+    val = fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayIndex, rowIndex, columnIndex, db)
+    logger.tracef("...fetched %s", str(val))
+    return val
+
+
+# Return a value for a specific key using the recipe data id.  This is intended for long-running steps that update the same recipe data object each iteration.
+def s88SetFromId(recipeDataId, recipeDataType, attribute, value, db, units="", targetUnits="", arrayIndex=0, rowIndex=0, columnIndex=0):
+    logger.tracef("s88GetRecipeDataValue(): %d - %s - %s", recipeDataId, recipeDataType, attribute)
+    setRecipeDataFromId(recipeDataId, recipeDataType, attribute, value, units, targetUnits, arrayIndex, rowIndex, columnIndex, db)
 
 '''
 These next few APIs are used to facilitate a number of steps sprinkled throughout the Vistalon recipe that

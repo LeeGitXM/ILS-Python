@@ -5,15 +5,15 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.recipeData.api import s88Get, s88Set
-from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, getTopChartRunId, getIsolationMode, getProviderName
+from ils.sfc.recipeData.api import s88Get, s88Set, s88GetRecipeDataId, s88GetFromId, s88SetFromId
+from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, getTopChartRunId, getIsolationMode, getProviderName, getDatabaseName
 from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER, STEP_NAME, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
     ERROR_COUNT_LOCAL, ERROR_COUNT_SCOPE, ERROR_COUNT_MODE, ERROR_COUNT_KEY, \
     DEACTIVATED, PAUSED, RESUMED, \
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, COUNT_ABSOLUTE
-
+from ils.sfc.recipeData.constants import TIMER
 from java.util import Date, Calendar
 from system.ils.sfc import getWriteOutputConfig
 from ils.sfc.gateway.downloads import handleTimer
@@ -33,17 +33,19 @@ def activate(scopeContext, stepProperties, state):
     writeConfirmComplete = False
     stepScope = scopeContext.getStepScope()
     chartScope = scopeContext.getChartScope()
-    runId = getTopChartRunId(chartScope)
-    isolationMode = getIsolationMode(chartScope)
-    providerName = getProviderName(chartScope)
-    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
-    timerKey = getStepProperty(stepProperties, TIMER_KEY)
-    recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
-    stepName = getStepProperty(stepProperties, STEP_NAME)
-
+    
     logger = getChartLogger(chartScope)
     logger.trace("In writeOutput.activate() (state: %s)..." % (state))
     
+    runId = getTopChartRunId(chartScope)
+    isolationMode = getIsolationMode(chartScope)
+    providerName = getProviderName(chartScope)
+    db = getDatabaseName(chartScope)
+    
+    recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
+    stepName = getStepProperty(stepProperties, STEP_NAME)
+
+
     # This does not initially exist in the step scope dictionary, so we will get a value of False
     initialized = stepScope.get(INITIALIZED, False)
     if state == DEACTIVATED:
@@ -52,10 +54,12 @@ def activate(scopeContext, stepProperties, state):
         writeConfirmComplete = True
     elif state == PAUSED:
         logger.trace("The writeOutput was paused")
-        handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, PAUSE_TIMER, logger)
+        timerRecipeDataId = stepScope["timerRecipeDataId"]
+        handleTimer(timerRecipeDataId, PAUSE_TIMER, logger, db)
     elif state == RESUMED:
         logger.trace("The writeOutput was paused")
-        handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, RESUME_TIMER, logger)
+        timerRecipeDataId = stepScope["timerRecipeDataId"]
+        handleTimer(timerRecipeDataId, RESUME_TIMER, logger, db)
     elif not initialized:
         stepScope[INITIALIZED]=True
         stepScope[ERROR_COUNT_LOCAL] = 0
@@ -63,6 +67,12 @@ def activate(scopeContext, stepProperties, state):
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
         config = getWriteOutputConfig(configJson)
         logger.trace("Block Configuration: %s" % (str(config)))
+        
+        timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+        timerKey = getStepProperty(stepProperties, TIMER_KEY)
+        timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepProperties, timerKey, timerLocation)
+        logger.tracef("%s - The recipe data id is: %s using %s and %s", __name__, str(timerRecipeDataId), timerLocation, timerKey)
+        stepScope["timerRecipeDataId"] = timerRecipeDataId
 
         # The timer is not running until someone starts it
         stepScope[TIMER_RUNNING]=False
@@ -75,7 +85,7 @@ def activate(scopeContext, stepProperties, state):
             if download:
                 downloadRows.append(row)
             else:
-                print row.key, " is disabled"
+                logger.tracef("%s is disabled", row.key)
                 numDisabledRows = numDisabledRows + 1
                 s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "", recipeDataScope)
         
@@ -122,26 +132,28 @@ def activate(scopeContext, stepProperties, state):
         stepScope[DOWNLOAD_ROWS]=downloadRows
         stepScope[TIMER_NEEDED]=timerNeeded
 
-        logger.trace("There are %i immediate rows" % (len(immediateRows)))
-        logger.trace("There are %i timed rows" % (len(timedRows)))
-        logger.trace("There are %i final rows" % (len(finalRows)))
+        logger.tracef("There are %d immediate rows", len(immediateRows))
+        logger.tracef("There are %d timed rows", len(timedRows))
+        logger.tracef("There are %d final rows", len(finalRows))
         
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             writeComplete = True
             writeConfirmComplete = True
         if timerNeeded  and getStepProperty(stepProperties, TIMER_SET):
-            handleTimer(chartScope, stepScope, stepProperties, timerKey, timerLocation, START_TIMER, logger)
+            logger.tracef("Starting the timer using: %s", str(timerRecipeDataId))
+            handleTimer(timerRecipeDataId, START_TIMER, logger, db)
 
     else:
         logger.trace("...performing write output work...")
         try:
             timerNeeded=stepScope[TIMER_NEEDED]
             downloadRows=stepScope.get(DOWNLOAD_ROWS,[])
+            timerRecipeDataId = stepScope["timerRecipeDataId"]
             
             if timerNeeded:
                 # Monitor for the specified period, possibly extended by persistence time
                 # It is possible that this block starts before some other block starts the timer
-                elapsedMinutes=s88Get(chartScope, stepScope, timerKey + ".elapsedMinutes", timerLocation)
+                elapsedMinutes = s88GetFromId(timerRecipeDataId, TIMER, "ELAPSEDMINUTES", db)
                 
                 if elapsedMinutes <= 0.0:
                     logger.trace("The timer has not been started")
@@ -161,7 +173,7 @@ def activate(scopeContext, stepProperties, state):
                         
                         # This is a strange little initialization that is done to initialize final writes in the bizzare 
                         # case where ALL of the writes are final
-                        timerStart=s88Get(chartScope, stepScope, timerKey + ".StartTime", timerLocation)
+                        timerStart=s88GetFromId(timerRecipeDataId, TIMER, "StartTime", db)
                         cal = Calendar.getInstance()
                         cal.setTime(timerStart)
                         absTiming = cal.getTime()

@@ -238,12 +238,17 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
     sampleTimeChanged = False
     vals = []
     tags = []
+    manualEntryOverride = system.tag.read("[%s]Configuration/LabData/manualEntryOverride" % (tagProvider)).value
+    if manualEntryOverride:
+        system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
     
     log.tracef("Path: %s, Last Value: %s, Last Sample Time %s, Server Name: %s, Item Id: %s, Stall Count: %s", \
          udtPath, str(lastSampleValue), str(lastSampleTime), str(serverName), str(itemId), str(stallCount))
 
     ''' The first check is to just use the Ignition API to see if the server is available '''
     serverIsAvailable = system.opchda.isServerAvailable(serverName)
+    system.tag.write(udtPath+"/connectionAvailable", serverIsAvailable)
+    
     if not(serverIsAvailable):
         log.errorf("The HDA server (%s) is *NOT* available as determined by calling system.opchda.isServerAvailable()!", serverName)
     else:
@@ -295,9 +300,19 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
     if not(serverIsAvailable) or not(sampleTimeChanged):
         tags.append(udtPath+"/stallCount")
         vals.append(stallCount + 1)
+        if stallCount > maxStalls:
+            system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), False)
+            system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
     elif serverIsAvailable and sampleTimeChanged and stallCount > 0:
         tags.append(udtPath+"/stallCount")
         vals.append(0)
+        system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
+        if not(manualEntryOverride):
+            system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), False)
+    elif stallCount == 0:
+        system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
+        if not(manualEntryOverride):
+            system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), False)
 
     if len(tags) > 0:
         system.tag.writeAll(tags, vals)

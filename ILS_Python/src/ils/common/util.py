@@ -230,17 +230,24 @@ testing in Baton Rouge, I need to specify the history tag provider.  This might 
 in project scope.
 '''
 def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, aggregationMode, log):
+    
+    # This function tests over the past n minutes, so make sur ethe time interval is negative
+    if timeIntervalMinutes > 0:
+        timeIntervalMinutes = -1 * timeIntervalMinutes
+
     fullTagPaths = []
     for tagPath in tagPaths:
         fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
     
     endDate = system.date.addMinutes(system.date.now(), -1)
     
+    log.tracef("Calculating the %s for %s over the past %s minutes", aggregationMode, str(fullTagPaths), str(timeIntervalMinutes))
+    
     ds = system.tag.queryTagHistory(
         paths=fullTagPaths, 
         endDate=endDate, 
-        rangeMinutes=-1*timeIntervalMinutes, 
-        aggregationMode="Average", 
+        rangeMinutes=timeIntervalMinutes, 
+        aggregationMode=aggregationMode, 
         returnSize=1, 
         ignoreBadQuality=True
         )
@@ -345,7 +352,7 @@ def integralOverTime(historyTagProvider, tagProvider, tagPath, startDate, endDat
     
     fullTagPath = "[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath)
     paths = [fullTagPath]
-    log.tracef("Calculating the integral for %s from %s to %s over %s", tagPath, str(startDate), str(endDate), timeInterval)
+    log.tracef("Calculating the integral for %s from %s to %s over %s", fullTagPath, str(startDate), str(endDate), timeInterval)
     
     ds = system.tag.queryTagHistory(paths=paths, startDate=startDate, endDate=endDate, includeBoundingValues=True, returnSize=0)
     log.tracef("History returned %d points...", ds.rowCount)

@@ -136,6 +136,7 @@ class PKSController(controller.Controller):
         # Return the permissive to its original value.  Don't let the success or failure of this override the result of the 
         # overall write.
         
+        time.sleep(self.PERMISSIVE_LATENCY_TIME)
         log.trace("Restoring permissive")
         system.tag.write(self.path + "/permissive", permissiveAsFound)
         if permissiveConfirmation:

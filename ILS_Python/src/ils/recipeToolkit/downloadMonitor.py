@@ -226,5 +226,4 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
 
     log.info("There are %i downloads (%i success, %i failed, %i pending)" % (downloads, successes, failures, pending))
 
-    
     return pending, ds

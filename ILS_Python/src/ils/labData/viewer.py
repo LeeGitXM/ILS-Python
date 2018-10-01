@@ -53,6 +53,28 @@ def internalFrameActivated(rootContainer):
 
     print "...leaving internalFrameActivated()!"
 
+'''
+This runs in client scope and is called from a client message handler...
+'''
+def newLabDataMessageHandler(payload):
+    print "In %s.newLabDataMessageHandler() - Handling a new lab data message..." % (__name__)
+    
+    windows = system.gui.getOpenedWindows()
+    for window in windows:
+        windowPath = window.getPath()
+        if windowPath == "Lab Data/Lab Data Viewer":
+            rootContainer = window.rootContainer
+            print "-------------------"
+            print "There is an open lab data viewer titled: ", rootContainer.displayTableTitle
+            
+            repeater = rootContainer.getComponent("Template Repeater")
+            
+            templateList = repeater.getLoadedTemplates()
+            
+            for template in templateList:
+                print "  Processing ", template.LabValueName
+                configureLabDatumTable(template)
+    
 #  This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
 def configureLabDatumTable(container):
     username = system.security.getUsername()
@@ -175,16 +197,13 @@ def setSeen(rootContainer):
             rows = system.db.runUpdateQuery(SQL)
             print "Inserted %i rows into LtValueViewed"
 
-    # If this was called when the table viewer was closed and we just updated what has been viewed, then update the 
-    # lab data chooser immediately, don't wait for it to poll.  But first see if the chooser is open...
-    print "Updating the Lab Table Chooser window, if it is open..."
-    import ils.labData.tableChooser as tableChooser
-    windows = system.gui.getOpenedWindows()
-    for window in windows:
-        windowPath=string.upper(window.getPath())
-        if windowPath.find("LAB TABLE CHOOSER") >= 0:
-            viewerRootContainer = window.rootContainer 
-            tableChooser.populateRepeater(viewerRootContainer)
+    '''
+    Send a message to every client to update their Lab Data Chooser so that red buttons can be turned grey.
+    (Not sure if I should only update the local client, if so then use the client id in the message)
+    '''
+    project = system.util.getProjectName()
+    system.util.sendMessage(project, messageHandler="newLabData", payload={}, scope="C")
+
 
 '''
 This is ALWAYS run from a client.  For now, the "Get History" button appears on every lab data table, regardless of its source,

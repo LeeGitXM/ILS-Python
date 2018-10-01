@@ -23,7 +23,8 @@ def activate(scopeContext, stepProperties, state):
         logger = getChartLogger(chartScope)
         stepScope = scopeContext.getStepScope()
         
-        recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+        recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+        windowTitle = getStepProperty(stepProperties, WINDOW_TITLE)
         path, filename = createFilepath(chartScope, stepProperties, True)
         logger.tracef("The recipe data report will be saved to: %s file: %s", path, filename)
 
@@ -36,7 +37,7 @@ def activate(scopeContext, stepProperties, state):
         ''' Always save the report to a file '''
         reportPath = "Recipe Data"
         project = "XOM"
-        parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset}
+        parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset, "Header": windowTitle}
         action = "save"
         actionSettings = {"path": path, "fileName": filename, "format": "pdf"}
         try:

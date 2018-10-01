@@ -149,9 +149,9 @@ def notifier(project, post, messageHandler, payload, database):
     log.infof("%s.notifier() - Notifying...", __name__)
     productionDatabase = getProductionDatabase()
     if database == productionDatabase:
-        isolationMode = True
-    else:
         isolationMode = False
+    else:
+        isolationMode = True
     
     #-------------------------------------------------------------------------------------------------
     def work(project=project, post=post, messageHandler=messageHandler, payload=payload, isolationMode=isolationMode, database=database):

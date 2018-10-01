@@ -12,7 +12,8 @@ from ils.common.util import formatDateTime, isText
 from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, \
     TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED, \
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
-    PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
+    PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP, ID
+from ils.sfc.gateway.api import getStepProperty
 
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER, \
     ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
@@ -136,6 +137,26 @@ def recipeDataExists(stepUUID, key, attribute, db):
     logger.tracef("...it does not exist!")
     return False
 
+def getRecipeDataId(stepUUID, key, db):
+    logger.tracef("Fetching recipe data id for %s - %s", stepUUID, key)
+    
+    SQL = "select RECIPEDATAID, RECIPEDATATYPE from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) == 0:
+        logger.errorf("Error the key <%s> was not found", key)
+        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
+    
+    if len(pds) > 1:
+        logger.errorf("Error multiple records were found")
+        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
+    
+    record = pds[0]
+    recipeDataId = record["RECIPEDATAID"]
+    recipeDataType = record["RECIPEDATATYPE"]
+    
+    return recipeDataId, recipeDataType
+
+
 def fetchRecipeData(stepUUID, key, attribute, db):
     logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
     
@@ -162,8 +183,20 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     # These attributes are common to all recipe data classes
     if attribute in ["DESCRIPTION","UNITS","LABEL","RECIPEDATATYPE"]:
         val = record[attribute]
+    else:
+        val = fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayIndex, rowIndex, columnIndex, db)
     
-    elif recipeDataType == SIMPLE_VALUE:
+    return val, units
+
+'''
+This is designed to be called from private SFC block internals that are called over and over again.  The recipeId will be fetched the first time and 
+can then be used for subsequent calls as the block evaluates every second.
+'''
+def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayIndex=0, rowIndex=0, columnIndex=0, db=""):
+    attribute = string.upper(attribute)
+    logger.tracef("Fetching recipe data using recipeDataId: %d of type %s, attribute: %s", recipeDataId, recipeDataType, attribute)
+    
+    if recipeDataType == SIMPLE_VALUE:
         SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
@@ -197,6 +230,8 @@ def fetchRecipeData(stepUUID, key, attribute, db):
             elif timerState in [TIMER_RUNNING]:
                 startTime = record["STARTTIME"]
                 cumulativeMinutes = record['CUMULATIVEMINUTES']
+                if cumulativeMinutes == None:
+                    cumulativeMinutes = 0.0
                 now = system.date.now()
                 runTimeMinutes = cumulativeMinutes + system.date.secondsBetween(startTime, now) / 60.0
                 val = runTimeMinutes
@@ -382,7 +417,7 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     else:
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
     
-    return val, units
+    return val
 
 def getIndexForKey(keyId, keyValue, db):
     print "***** Getting the index for: %d - %s" % (keyId, keyValue)
@@ -487,7 +522,12 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
     recipeDataId = record["RecipeDataId"]
     recipeDataType = record["RecipeDataType"]
     targetUnits = record["Units"]
+    
+    setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db)
 
+def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db):
+    attribute = string.upper(attribute)
+    
     if isFloat(val) and units <> "":
         oldVal = val
         val = convert(units, targetUnits, float(val), db)
@@ -766,7 +806,7 @@ def setRecipeData(stepUUID, key, attribute, val, db, units=""):
        
     elif recipeDataType == MATRIX:
         if rowIndex == None or columnIndex == None:
-            raise ValueError, "Matric Recipe data must specify a row and a column index - %s - %s" % (key, attribute)
+            raise ValueError, "Matrix Recipe data must specify a row and a column index"
         
         # Dereference array keys
         if isText(rowIndex):
@@ -851,7 +891,8 @@ def getChartUUID(chartProperties):
     return chartProperties.get("chartUUID", "-1")
 
 def getStepUUID(stepProperties):
-    return stepProperties.get("id", "-1")
+    uuid = getStepProperty(stepProperties, ID)
+    return uuid
 
 def getStepName(stepProperties):
     return stepProperties.get(STEP_NAME, "")

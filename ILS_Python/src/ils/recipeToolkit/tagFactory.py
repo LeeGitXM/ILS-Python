@@ -5,6 +5,7 @@ Created on Sep 10, 2014
 '''
 import system, string
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from system.ils.blt.diagram import getProductionTagProvider
 log = LogUtil.getLogger("com.ils.recipeToolkit")
 
 
@@ -20,13 +21,17 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
         return permissiveItemId
     #-----------------------------------------------------
     UDTType = 'Basic IO/' + UDTType
-    parentPath = '[' + provider + ']' + path    
+    parentPath = '[' + provider + ']' + path
+    
+    productionProvider = getProductionTagProvider()
     tagPath = parentPath + "/" + tagName
     tagExists = system.tag.exists(tagPath)
     
     if tagExists:
         log.tracef("%s already exists!", tagPath)
         pass
+    elif provider != productionProvider:
+        log.infof("Skipping the creation of %s, a %s, because we are in Isolation", tagName, UDTType)
     else:
         log.info("Creating a %s, Name: %s, Path: %s, Item Id: %s, Data Type: %s, Scan Class: %s, Server: %s, Conditional Data Type: %s" % (UDTType, tagName, tagPath, itemId, dataType, scanClass, serverName, conditionalDataType))
         if UDTType == 'Basic IO/OPC Output':
@@ -58,13 +63,17 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
 # Create a recipe detail UDT
 def createRecipeDetailUDT(UDTType, provider, path, tagName):
     UDTType = 'Recipe Data/' + UDTType
-    parentPath = '[' + provider + ']' + path                
+    parentPath = '[' + provider + ']' + path
+    
+    productionProvider = getProductionTagProvider()
     tagPath = parentPath + "/" + tagName
     tagExists = system.tag.exists(tagPath)
             
     if tagExists:
 #        print tagName, " already exists!"
         pass
+    elif provider != productionProvider:
+        log.infof("Skipping the creation of %s, a %s, because we are in Isolation", tagName, UDTType)
     else:
         log.info("Creating a %s, Name: %s, Path: %s" % (UDTType, tagName, tagPath)) 
         system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
