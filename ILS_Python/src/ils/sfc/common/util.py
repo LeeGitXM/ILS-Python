@@ -294,3 +294,39 @@ def getChartPathForStepUUID(stepUUID, db):
     chartPath = system.db.runScalarQuery(SQL, db)
     
     return chartPath
+
+'''
+This is useful for getting the control panel to use when running a chart deep down in the hierarchy from the designer.
+Note that chartPath is NOT the root chart which contains the unit procedure
+'''
+def getControlPanelForChart(chartPath, db):
+    from ils.sfc.recipeData.api import s88GetRootForChart
+    print "In %s.getControlPanelForChart" % (__name__)
+    
+    controlPanelName = ""
+    controlPanelId = -1
+    
+    rootChartPath, rootChartId = s88GetRootForChart(chartPath, db)
+    
+    print "The root chart path is <%s> and the root chart id is <%d>" % (rootChartPath, rootChartId)
+    
+    SQL = "Select ControlPanelName, ControlPanelId from SfcControlPanel where ChartPath = '%s'" % (rootChartPath)
+    pds = system.db.runQuery(SQL, db)
+ 
+    if len(pds) == 0:
+        controlPanelName = "Test"
+        SQL = "Select ControlPanelId from SfcControlPanel where ControlPanelName = '%s'" % (controlPanelName)
+        controlPanelId = system.db.runScalarQuery(SQL, db)
+        if controlPanelId == None:
+            print "ERROR: Could not find a control panel for <%s> or for Test" % (rootChartPath)
+            controlPanelName = ""
+            controlPanelId = -1
+        else:
+            print "Using the control panel for Test because a control panel was not found for <%s>" % (rootChartPath)
+    else:
+        record = pds[0]
+        controlPanelName = record["ControlPanelName"]
+        controlPanelId = record["ControlPanelId"]
+        print "Found Control panel <%s> with id: %d" % (controlPanelName, controlPanelId)
+
+    return controlPanelName, controlPanelId

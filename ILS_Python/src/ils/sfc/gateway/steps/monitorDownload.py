@@ -24,11 +24,12 @@ def activate(scopeContext, stepProperties, state):
         stepScope = scopeContext.getStepScope()
         database = getDatabaseName(chartScope)
         logger = getChartLogger(chartScope)
-        logger.trace("In monitorDownload.activate()...")
+        logger.tracef("In monitorDownload.activate()...")
     
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
-        timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepProperties, timerKey, timerLocation)
+        logger.tracef("...using timer %s.%s...", timerLocation, timerKey)
+        timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
         
         clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
         if clearTimer:

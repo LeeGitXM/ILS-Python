@@ -28,7 +28,7 @@ def exportCallback(event):
         return
     
     SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
-    chartId = system.db.runScalarQuery(SQL) 
+    chartId = system.db.runScalarQuery(SQL, db) 
     log.infof("Fetched chart id: %s", str(chartId))
     if chartId == None:
         return
@@ -45,7 +45,7 @@ def exportCallback(event):
     rootContainer.importExportFolder = folder
     
     sfcRecipeDataShowProductionOnly = False
-    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly)
+    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly, db)
     log.tracef("Selected %d chart hierarchy records...", len(hierarchyPDS))
     
     chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", db)

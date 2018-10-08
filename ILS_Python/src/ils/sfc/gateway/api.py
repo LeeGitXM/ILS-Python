@@ -512,11 +512,12 @@ def scaleTimeForIsolationMode(chartProperties, value, unit):
         logger.debug('the scaled time is %f' % value)
     return value
 
-def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0):
+def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, 
+                timeoutEnabled=False, timeoutSeconds=0, isolationMode=False):
     '''Send an OC alert'''
     project=getProject(chartProperties)
     db = getDatabaseName(chartProperties)
-    sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds, db)
+    sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds, db, isolationMode)
 
 def sendMessageToClient(chartScope, messageHandler, payload):
     '''Send a message to the client(s) of this chart'''
