@@ -5,6 +5,7 @@ Created on Jan 9, 2017
 '''
 
 import system, string, time
+from system.util import jsonDecode
 import xml.etree.ElementTree as ET
 from ils.sfc.recipeData.structureManager import getTxId
 from ils.common.error import catchError
@@ -82,6 +83,7 @@ def processStep(step, db, tx):
     
             # This looks a lot like a dictionary of dictionaries
             log.tracef("  Raw Text:            %s", str(associatedData.text))
+            log.tracef("  That text was   %s bytes", str(len(str(associatedData.text))))
             
             # The associated data is a text string that looks like a dictionary.  Python can convert it but is a little picky about some format things
             txt=associatedData.text
@@ -89,7 +91,7 @@ def processStep(step, db, tx):
             txt = string.replace(txt, "false","False")
             txt = string.replace(txt, "true","True")
     #        log.tracef("  Converted Text:      %s", txt)
-            myDict = eval(txt)
+            myDict = jsonDecode(txt)
             log.tracef("  Dictionary:          %s", str(myDict))
             
             for k in myDict.keys():
