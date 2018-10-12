@@ -24,11 +24,12 @@ def activate(scopeContext, stepProperties, state):
         stepScope = scopeContext.getStepScope()
         database = getDatabaseName(chartScope)
         logger = getChartLogger(chartScope)
-        logger.trace("In monitorDownload.activate()...")
+        logger.tracef("In monitorDownload.activate()...")
     
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
-        timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepProperties, timerKey, timerLocation)
+        logger.tracef("...using timer %s.%s...", timerLocation, timerKey)
+        timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
         
         clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
         if clearTimer:
@@ -66,12 +67,10 @@ def activate(scopeContext, stepProperties, state):
         
         # Reset the recipe data download and PV monitoring attributes
         for row in monitorDownloadsConfig.rows:
-            logger.trace("Resetting recipe data with key: %s" % (row.key))
+            logger.trace("Resetting recipe data with key: %s at %s" % (row.key, recipeLocation))
             
             download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeLocation)
             if download:
-                recipeKey = getStepProperty(stepProperties, TIMER_KEY)
-                recipeLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
                 recipeDataId, recipeDataType = s88GetRecipeDataId(chartScope, stepProperties, row.key, recipeLocation)
                 
                 # Initialize properties used by the write output process

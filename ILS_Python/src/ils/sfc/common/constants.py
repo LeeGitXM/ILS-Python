@@ -246,6 +246,7 @@ PHASE_SCOPE ="phase"
 OPERATION_SCOPE = "operation"
 GLOBAL_SCOPE = "global"
 TAG_SCOPE = "tag"
+CHART_RECIPE_SCOPE = "chart"
 
 # Chart states and status 
 DEACTIVATED = "deactivated";

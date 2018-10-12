@@ -59,6 +59,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
     '''
     def writer(self, val, confirm, valueType=""):
         log.info("Writing <%s>, <%s>, <confirm: %s> to %s, an OPCConditionalOutput" % (str(val), str(valueType), str(confirm), self.path))
+        msg = ""
 
         if val == None:
             val = float("NaN")

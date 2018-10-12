@@ -49,6 +49,7 @@ def activate(scopeContext, stepProperties, state):
             
             # Clear the response recipe data so we know when the client has updated it
             s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
+            logger.tracef("---DONE INITIALIZING THE RESPONSE RECIPE DATA---")
 
             stepScope[WAITING_FOR_REPLY] = True
             
@@ -60,6 +61,7 @@ def activate(scopeContext, stepProperties, state):
             scale = getStepProperty(stepProperties, SCALE) 
             title = getStepProperty(stepProperties, WINDOW_TITLE) 
             prompt = getStepProperty(stepProperties, PROMPT)
+            logger.trace("BLAH")
             prompt = substituteScopeReferences(chartScope, stepScope, prompt)
             if prompt.find("<HTML") < 0:
                 prompt = "<HTML>" + prompt 

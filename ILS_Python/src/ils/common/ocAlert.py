@@ -6,6 +6,7 @@ Created on Mar 31, 2015
 
 import system, string, sys, traceback
 from ils.common.notification import notifyError
+from ils.common.config import getIsolationModeClient
 logger=system.util.getLogger("com.ils.ocAlert")
 
 # This is generally called from the gateway, but should work from th
@@ -28,8 +29,10 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         "callback": callback,
         "callbackPayloadDataset": callbackPayloadDataset,
         "timeoutEnabled": timeoutEnabled,
-        "timeoutSeconds": timeoutSeconds
+        "timeoutSeconds": timeoutSeconds,
+        "isolationMode": isolationMode
         }
+
     logger.trace("Payload: %s" % (str(payload))) 
     
     message = "ocAlert"
@@ -48,12 +51,27 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
 def handleMessage(payload):
     logger.trace("In %s.handleMessage() - payload: %s" % (__name__, str(payload)))
     
-    # This is a hack.  We have a common notifyError API that implements so good logic to figure out if a window should be shown on a client.
-    # For some reason it adds "showOverride" to the payload.  It is no longer obvious who uses this property, but it throws an error
-    # for the OC alert. 
+    '''
+    This is a hack.  We have a common notifyError API that implements so good logic to figure out if a window should be shown on a client.
+    For some reason it adds "showOverride" to the payload.  It is no longer obvious who uses this property, but it throws an error
+    for the OC alert. 
+    '''
     if payload.has_key('showOverride'):
         del payload['showOverride']
+    
+    if payload.has_key('isolationMode'):
+        messageIsolationMode = payload["isolationMode"]
+        clientIsolationMode = getIsolationModeClient()
+        print "**************************************************"
+        print "Client Isolation Mode:  ", clientIsolationMode
+        print "Message Isolation Mode: ", messageIsolationMode
+        print "**************************************************"
+        if messageIsolationMode <> clientIsolationMode:
+            print "Ignoring the message because the isolation mode of the message does not match the isolation mode of the client"
+            return
         
+        del payload['isolationMode']
+
     system.nav.openWindowInstance("Common/OC Alert", payload)
     
 

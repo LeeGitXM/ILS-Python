@@ -45,7 +45,6 @@ def activate(scopeContext, stepProperties, state):
     recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
     stepName = getStepProperty(stepProperties, STEP_NAME)
 
-
     # This does not initially exist in the step scope dictionary, so we will get a value of False
     initialized = stepScope.get(INITIALIZED, False)
     if state == DEACTIVATED:
@@ -67,12 +66,7 @@ def activate(scopeContext, stepProperties, state):
         configJson = getStepProperty(stepProperties, WRITE_OUTPUT_CONFIG)
         config = getWriteOutputConfig(configJson)
         logger.trace("Block Configuration: %s" % (str(config)))
-        
-        timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
-        timerKey = getStepProperty(stepProperties, TIMER_KEY)
-        timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepProperties, timerKey, timerLocation)
-        logger.tracef("%s - The recipe data id is: %s using %s and %s", __name__, str(timerRecipeDataId), timerLocation, timerKey)
-        stepScope["timerRecipeDataId"] = timerRecipeDataId
+
 
         # The timer is not running until someone starts it
         stepScope[TIMER_RUNNING]=False
@@ -81,6 +75,23 @@ def activate(scopeContext, stepProperties, state):
         downloadRows = []
         numDisabledRows = 0
         for row in config.rows:
+            print "Row: ", row
+            if row.key[0] == "{" and row.key[len(row.key) - 1] == "}":
+                print "******** Found a reference ***********"
+                
+                reference = row.key[1:len(row.key)-1]
+                print "The reference is: <%s>, stripped: <%s>)" % (row.key, reference)
+                
+                scopeAndKey = chartScope.get(reference, "")
+                print "The de-referenced key is: ", scopeAndKey
+                scope = scopeAndKey[0:scopeAndKey.find(".")]
+                key = scopeAndKey[scopeAndKey.find("."):]
+                print "The scope is: <%s> and the key is: <%s>" % (scope, key)
+                row.key = key
+                row.recipeLocation = scope
+            else:
+                row.recipeLocation = recipeDataScope
+            
             download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeDataScope)
             if download:
                 downloadRows.append(row)
@@ -92,7 +103,7 @@ def activate(scopeContext, stepProperties, state):
         # do the timer logic, if there are rows that need timing
         timerNeeded = False
         for row in downloadRows:
-            row.timingMinutes = s88Get(chartScope, stepScope, row.key + "." + TIMING, recipeDataScope)
+            row.timingMinutes = s88Get(chartScope, stepScope, row.key + "." + TIMING, row.recipeLocation)
             if row.timingMinutes > 0.:
                 timerNeeded = True
     
@@ -110,21 +121,24 @@ def activate(scopeContext, stepProperties, state):
             row.written = False
     
             # cache some frequently used values from recipe data:
-            row.value = s88Get(chartScope, stepScope, row.key + "." + OUTPUT_VALUE, recipeDataScope)
-            row.tagPath = s88Get(chartScope, stepScope, row.key + "." + TAG, recipeDataScope)
+            row.value = s88Get(chartScope, stepScope, row.key + "." + OUTPUT_VALUE, row.recipeLocation)
+            row.tagPath = s88Get(chartScope, stepScope, row.key + "." + TAG, row.recipeLocation)
             
             logger.trace("Tag: %s, Value: %s, Time: %s" % (str(row.tagPath), str(row.value), str(row.timingMinutes)))
 
             # classify the rows
             if row.timingMinutes == 0.:
+                logger.trace("...adding an immediate output...")
                 immediateRows.append(row)
-                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "approaching", recipeDataScope)
+                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "approaching", row.recipeLocation)
             elif row.timingMinutes >= 1000.:
+                logger.trace("...adding a final output...")
                 finalRows.append(row)
-                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "pending", recipeDataScope)
+                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "pending", row.recipeLocation)
             else:
+                logger.trace("...adding a timed output...")
                 timedRows.append(row)
-                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "pending", recipeDataScope)
+                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "pending", row.recipeLocation)
 
         stepScope[IMMEDIATE_ROWS]=immediateRows
         stepScope[TIMED_ROWS]=timedRows
@@ -139,18 +153,26 @@ def activate(scopeContext, stepProperties, state):
         if len(immediateRows) == 0 and len(timedRows) == 0 and len(finalRows) == 0:
             writeComplete = True
             writeConfirmComplete = True
-        if timerNeeded  and getStepProperty(stepProperties, TIMER_SET):
-            logger.tracef("Starting the timer using: %s", str(timerRecipeDataId))
-            handleTimer(timerRecipeDataId, START_TIMER, logger, db)
+        if timerNeeded:
+            timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+            timerKey = getStepProperty(stepProperties, TIMER_KEY)
+            timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
+            logger.tracef("%s - The recipe data id is: %s using %s and %s", __name__, str(timerRecipeDataId), timerLocation, timerKey)
+            stepScope["timerRecipeDataId"] = timerRecipeDataId
+
+            if getStepProperty(stepProperties, TIMER_SET):
+                logger.tracef("Starting the timer using: %s", str(timerRecipeDataId))
+                handleTimer(timerRecipeDataId, START_TIMER, logger, db)
 
     else:
         logger.trace("...performing write output work...")
         try:
             timerNeeded=stepScope[TIMER_NEEDED]
             downloadRows=stepScope.get(DOWNLOAD_ROWS,[])
-            timerRecipeDataId = stepScope["timerRecipeDataId"]
             
             if timerNeeded:
+                timerRecipeDataId = stepScope["timerRecipeDataId"]
+                
                 # Monitor for the specified period, possibly extended by persistence time
                 # It is possible that this block starts before some other block starts the timer
                 elapsedMinutes = s88GetFromId(timerRecipeDataId, TIMER, "ELAPSEDMINUTES", db)
@@ -187,10 +209,10 @@ def activate(scopeContext, stepProperties, state):
                             if row.timingMinutes >= 1000.0:
                                 # Final writes
                                 # Because the rows are ordered by the timing, it is safe to use the last timestamp...
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, recipeDataScope)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, row.recipeLocation)
                                 # I don't want to propagate the magic 1000 value, so we use None
                                 # to signal an event-driven step
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, recipeDataScope)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, row.recipeLocation)
                                 
                             elif row.timingMinutes > 0 and row.timingMinutes < 1000.0:
                                 # Timed writes
@@ -199,8 +221,8 @@ def activate(scopeContext, stepProperties, state):
                                 cal.add(Calendar.SECOND, int(row.timingMinutes * 60))
                                 absTiming = cal.getTime()
                                 timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, recipeDataScope)
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, recipeDataScope)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, row.recipeLocation)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, row.recipeLocation)
                             
                             else:
                                 # Immediate writes
@@ -208,13 +230,13 @@ def activate(scopeContext, stepProperties, state):
                                 cal.setTime(timerStart)
                                 absTiming = cal.getTime()
                                 timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, recipeDataScope)
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, recipeDataScope)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, row.recipeLocation)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, row.recipeLocation)
     
                         logger.trace("...performing immediate writes...")
                         for row in immediateRows:
                             logger.trace("   writing a immediate write for step %s" % (row.key))
-                            writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
+                            writeValue(chartScope, stepScope, row, logger, providerName, row.recipeLocation)
                          
                     logger.trace("...checking timed writes...")
                     writesPending = False
@@ -227,24 +249,24 @@ def activate(scopeContext, stepProperties, state):
     
                                 if elapsedMinutes >= row.timingMinutes:
                                     logger.trace("      writing a timed write for step %s" % (row.key))
-                                    writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
+                                    writeValue(chartScope, stepScope, row, logger, providerName, row.recipeLocation)
                                     row.written = True
                                 else:
                                     writesPending = True
                                     if elapsedMinutes >= row.timingMinutes - 0.5:
-                                        s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "approaching", recipeDataScope)
+                                        s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "approaching", row.recipeLocation)
                 
                     # If all of the timed writes have been written then do the final writes
                     if not(writesPending):
                         logger.trace("...starting final writes...")
                         for row in finalRows:
-                            if s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, recipeDataScope) == "pending":
+                            if s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, row.recipeLocation) == "pending":
                                 logger.trace("   writing a final write for step %s" % (row.key))
                                 absTiming = Date()
                                 timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, recipeDataScope)
-                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, recipeDataScope)
-                                writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, row.recipeLocation)
+                                s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, row.recipeLocation)
+                                writeValue(chartScope, stepScope, row, logger, providerName, row.recipeLocation)
                         
                         # All of the timed writes have completed and the final writes have been made so signal that the block is done
                         writeComplete = True
@@ -258,18 +280,19 @@ def activate(scopeContext, stepProperties, state):
                 # Immediately after the timer starts running we need to calculate the absolute download time. 
                 # Even when all of the rows are immediate, we will call the activate several times as we await confirmation of the writes.  To make sure that we only
                 # attempt to write values once, remove them from the list to download once they have been written.           
-                logger.trace("The timer is not needed, performing immediate writes.")
+                
                 elapsedMinutes = 0.0
                 immediateRows=stepScope.get(IMMEDIATE_ROWS, [])
+                logger.tracef("...the timer is not needed, performing %d immediate writes...", len(immediateRows))
                 absTiming = system.date.now()
                 timestamp = system.db.dateFormat(absTiming, "dd-MMM-yy h:mm:ss a")
 
                 for row in immediateRows:
-                    s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, recipeDataScope)
-                    s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, recipeDataScope)
+                    s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, row.recipeLocation)
+                    s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, row.recipeLocation)
 
                     logger.trace("   writing an immediate write for step %s" % (row.key))
-                    writeValue(chartScope, stepScope, row, logger, providerName, recipeDataScope)
+                    writeValue(chartScope, stepScope, row, logger, providerName, row.recipeLocation)
                     immediateRows.remove(row)
 
                 writeComplete = True
@@ -289,8 +312,8 @@ def activate(scopeContext, stepProperties, state):
         logger.trace("The writes are all complete, check if the confirmations are complete...")
         writeConfirmComplete = True
         for row in downloadRows:
-            downloadStatus = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, recipeDataScope)
-            writeConfirmed = s88Get(chartScope, stepScope, row.key + "." + WRITE_CONFIRMED, recipeDataScope)
+            downloadStatus = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, row.recipeLocation)
+            writeConfirmed = s88Get(chartScope, stepScope, row.key + "." + WRITE_CONFIRMED, row.recipeLocation)
             logger.tracef( "Tag: %s", row.tagPath)
             logger.tracef( "          written: %s", str(row.written))
             logger.tracef( "  download status: %s", downloadStatus)
