@@ -392,9 +392,9 @@ def getTimeoutTime(chartScope, stepProperties):
    
 def getTimeFactor(chartProperties):
     '''Get the factor by which all times should be multiplied (typically used to speed up tests)'''
-    from system.ils.sfc import getTimeFactor
+    from system.ils.sfc import getTimeFactor as getModuleTimeFactor
     isolationMode = getIsolationMode(chartProperties)
-    return getTimeFactor(isolationMode)
+    return getModuleTimeFactor(isolationMode)
 
 def getTopChartRunId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''

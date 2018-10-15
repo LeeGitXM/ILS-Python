@@ -1,6 +1,5 @@
 <project name="ILS-Python" default="deploy" basedir=".">
 
-	
 	<target name="clean" description="Remove previous python" >
 		<delete dir="${ignition.py.lib}/ils" />
 	</target>
@@ -29,20 +28,6 @@
 		
 		<echo message="Deploying python scripts to ${escorez.py.lib}" />
 		<copy todir="${escorez.py.lib}">
-			<fileset dir="${basedir}/src">
-				<include name="ils/**/*.py" />
-			</fileset>
-		</copy>
-		
-		<echo message="Deploying python scripts to ${demo.py.lib}" />
-		<copy todir="${demo.py.lib}">
-			<fileset dir="${basedir}/src">
-				<include name="ils/**/*.py" />
-			</fileset>
-		</copy>
-		
-		<echo message="Deploying python scripts to ${test.py.lib}" />
-		<copy todir="${test.py.lib}">
 			<fileset dir="${basedir}/src">
 				<include name="ils/**/*.py" />
 			</fileset>

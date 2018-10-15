@@ -2,3 +2,7 @@
 *.class
 .DS_STORE
 /bin/
+/.classpath
+/.project
+/.pydevproject
+/.gitignore
