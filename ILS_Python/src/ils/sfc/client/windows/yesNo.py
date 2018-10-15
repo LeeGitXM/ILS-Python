@@ -50,6 +50,6 @@ def setResponse(event, response):
     rootContainer = event.source.parent
     targetStepUUID = rootContainer.targetStepUUID
     keyAndAttribute = rootContainer.keyAndAttribute
-    key,attribute = splitKey(keyAndAttribute)
-    setRecipeData(targetStepUUID, key, attribute, response, db)
+    folder,key,attribute = splitKey(keyAndAttribute)
+    setRecipeData(targetStepUUID, folder, key, attribute, response, db)
     system.nav.closeParentWindow(event)

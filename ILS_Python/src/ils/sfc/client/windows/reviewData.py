@@ -4,9 +4,9 @@ Created on Jan 14, 2015
 @author: rforbes
 '''
 
-import system, time
+import system
 from ils.common.config import getDatabaseClient
-from ils.sfc.recipeData.core import setRecipeData
+from ils.sfc.recipeData.core import splitKey, setRecipeData
 
 def internalFrameOpened(rootContainer):
     database = getDatabaseClient()
@@ -75,7 +75,8 @@ def actionPerformed(event, response):
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
     responseKey = rootContainer.responseKey
-    setRecipeData(targetStepUUID, responseKey, "value", response, db)
+    folder,key,attribute = splitKey(responseKey + ".value")
+    setRecipeData(targetStepUUID, folder,key,attribute, response, db)
     system.nav.closeParentWindow(event)
 
 

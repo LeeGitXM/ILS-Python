@@ -4,10 +4,14 @@ Created on Feb 10, 2017
 @author: phass
 '''
 import system
-from ils.common.windowUtil import clearTable
-from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
+from ils.common.config import getDatabaseClient
+from ils.common.windowUtil import clearTable, clearTree
+from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
 from ils.common.error import catchError
 from ils.common.config import getTagProviderClient
+from sys import path
+from __builtin__ import True
+from ils.sfc.common.constants import SQL
 log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 
 #treeMode = "chartName"
@@ -21,8 +25,8 @@ def internalFrameOpened(rootContainer, db):
     updateSfcTree(rootContainer, db)
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     clearTable(stepTable)
-    recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
-    clearTable(recipeDataTable)
+    recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
+    clearTree(recipeDataTree)
 
 '''
 This is called whenever the windows gains focus.  his happens as part of the noral workflow of creating or editing recipe data
@@ -31,7 +35,7 @@ so update the recipe data table to reflect the edit.
 def internalFrameActivated(rootContainer, db):
     log.infof("In %s.internalFrameActivated()", __name__)
 #    refreshSteps(rootContainer, db)
-    updateRecipeData(rootContainer, db)
+    updateRecipeDataTree(rootContainer, db)
 
 def updateSfcTree(rootContainer, db):
     log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
@@ -65,7 +69,6 @@ def updateSfcTree(rootContainer, db):
 
     
 def expandRow(tree, chartDict): 
-    
     log.tracef("Expanding: %s", str(tree))
     tokens = tree.split(",")
     path=""
@@ -82,7 +85,7 @@ def expandRow(tree, chartDict):
     fullPath = chartDict.get(int(token),"Unknown")
     
     chartName = fullPath[fullPath.rfind("\\")+1:]
-    print fullPath, "  --  ", chartName
+    log.tracef("%s  --  %s", fullPath, chartName)
 
     if treeMode == "fullPath":
         row = [path,fullPath,"default","color(255,255,255,255)","color(0,0,0,255)",fullPath,"","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
@@ -182,7 +185,7 @@ def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     # --------------------------
     
     # Get the roots
-    log.info("Getting the root nodes...")
+    log.infof("In %s.fetchSfcTree() - Getting the root nodes...", __name__)
     trees = []
     for chartRecord in chartPDS:
         chartId = chartRecord["ChartId"]
@@ -255,33 +258,179 @@ def tooltipFormatter(desc, lineLen=80):
         lines.append(desc[i:i+lineLen])
     desc = "<HTML>" + "<br>".join(lines)
     return desc    
-    
-'''
-Update the rightmost pane for a selection in the middle pane.
-'''
-def updateRecipeData(rootContainer, db=""):
-    log.infof("Updating the recipe data table (%s)...", db)
+
+
+def updateRecipeDataTree(rootContainer, db=""):
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
-    recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
+    recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
+    
+    ''' Unselect anything that might be selected '''
+    recipeDataTree.selectedPath = ""
     
     if stepTable.selectedRow < 0:
-        clearTable(recipeDataTable)
+        log.infof("Clearing the recipe data tree...")
+        clearTree(recipeDataTree)
+        setTreeButtons(recipeDataTree, False, False, False)
     else:
+        log.infof("In %s.updateRecipeDataTree() - Updating the recipe data tree...", __name__)
+        setTreeButtons(recipeDataTree, False, True, False)
         ds = stepTable.data
         stepId = ds.getValueAt(stepTable.selectedRow, "StepId")
         
+        '''
+        Fetch the folders...
+        '''
+        log.tracef("Fetching folders...")
+        SQL = "Select * from SfcRecipeDataFolder where StepId = %s order by ParentRecipeDataFolderId" % (str(stepId))
+        folderPDS = system.db.runQuery(SQL, db)
+        folderDataset = system.dataset.toDataSet(folderPDS)
+
+        '''
+        Fetch the Recipe Data...
+        '''
+        log.tracef("Fetching recipe data...")
         SQL = "select * from SfcRecipeDataView where StepId = %s order by RecipeDataKey" % (str(stepId))
         pds = system.db.runQuery(SQL, db)
 
         ds = system.dataset.toDataSet(pds)
         row = 0
+        
+        ''' Now update the Tree '''
+        icon = "default"
+        background = "color(255,255,255,255"
+        foreground = "color(0,0,0,255)"
+        tooltip = ""
+        border = ""
+        selectedText = ""
+        selectedIcon = "default"
+        selectedBackground = "color(250,214,138,255"
+        selectedForeground = "color(0,0,0,255)"
+        selectedTooltip = ""
+        selectedBorder = ""
+        closedFolderIcon = "Custom/folderClosed16.png"
+        
+        vals = []
+        header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", 
+                  "selectedTooltip", "selectedBorder"]
+        
+        log.tracef("Adding recipe data to the tree...")
+        pathsUsedByData = []
         for record in pds:
+            key = record["RecipeDataKey"]
+            log.tracef("   Adding %s", key)
             desc = getRecipeDataDescription(record, db)
-            ds = system.dataset.setValue(ds, row, "Description", desc)        
+            folderId = record["RecipeDataFolderId"]
+            if folderId == None:
+                log.tracef("   ... this goes in the root folder (not really a folder)")
+                val = ["",key,icon,background,foreground,tooltip,border,selectedText,selectedIcon,selectedBackground,selectedForeground,selectedTooltip,selectedBorder]   
+            else:
+                path = findRecipeParent(folderId, key, folderPDS)
+                pathsUsedByData.append(path)
+                log.tracef("   ...this is in a folder...")
+                val = [path,key,icon,background,foreground,tooltip,border,selectedText,selectedIcon,selectedBackground,selectedForeground,selectedTooltip,selectedBorder]
+     
+            vals.append(val)
             row = row + 1
-            
-        recipeDataTable.data = ds
+        
+        log.tracef("Adding folders to the tree...")
+        paths = []
+        for record in folderPDS:
+            path = findParent(folderPDS, record)
+            paths.append(path)
+        
+        ''' Scrub the paths so that wholly contained paths are eliminated '''
+        paths = scrubPaths(paths, pathsUsedByData)
+        
+        '''
+        Take the scrubbed paths and add a record to the tree dataset.  If the folder is a root folder, then the tree needs the path to be empty and the folder
+        name goes in the txt.  If the folder is a subfolder, then the last folder becomes the txt and the rest is the path.
+        '''
+        for path in paths:
+            tokens = path.split("/")
+            if len(tokens) == 1:
+                val = ["",path,closedFolderIcon,background,foreground,tooltip,border,selectedText,closedFolderIcon,selectedBackground,selectedForeground,selectedTooltip,selectedBorder]
+                vals.append(val)
+            else:
+                path = "/".join(tokens[:len(tokens)-1])
+                txt = tokens[len(tokens)-1]
+                val = [path,txt,closedFolderIcon,background,foreground,tooltip,border,selectedText,closedFolderIcon,selectedBackground,selectedForeground,selectedTooltip,selectedBorder]
+                vals.append(val)
+        
+        log.tracef("The tree values are: %s", str(vals))
+        ds = system.dataset.toDataSet(header, vals)
+        recipeDataTree.data = ds
 
+def setTreeButtons(recipeDataTree, editState, addState, deleteState):
+    log.infof("In %s.setTreeButtons...", __name__)
+    recipeDataTree.enableEditButton = editState
+    recipeDataTree.enableAddButton = addState
+    recipeDataTree.enableDeleteButton = deleteState
+
+'''
+Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
+'''
+def findRecipeParent(parentId, key, folderPDS):
+    log.tracef("=====================")
+    log.tracef("Finding the full path for %s - %d", key, parentId)
+    path = ""
+
+    while parentId != None:
+        
+        for record in folderPDS:
+            if record["RecipeDataFolderId"] == parentId:
+                log.tracef("Found the parent")
+                if path == "":
+                    path = record["RecipeDataKey"]
+                else:
+                    path = "%s/%s" % (record["RecipeDataKey"], path)
+                parentId = record["ParentRecipeDataFolderId"]
+                log.tracef("The new parent id is: %s", str(parentId))
+
+    log.tracef("The parent path is: %s", path)
+    return path
+
+'''
+Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
+'''
+def findParent(folderPDS, record):
+    log.tracef("------------------")
+    path = record["RecipeDataKey"]
+    parent = record["ParentRecipeDataFolderId"]
+    log.tracef("Finding the path for %s", path)
+    
+    while parent != None:
+        
+        for record in folderPDS:
+            if record["RecipeDataFolderId"] == parent:
+                log.tracef("Found the parent")
+                path = "%s/%s" % (record["RecipeDataKey"], path)
+                parent = record["ParentRecipeDataFolderId"]
+                log.tracef("The new parent id is: %s", parent)
+
+    log.tracef("The path is: %s", path)
+    return path
+
+'''
+Scrub the list of paths to remove paths that are wholly contained in another path.
+'''
+def scrubPaths(paths, pathsUsedByData):
+    log.tracef("In %s.scrubPaths() - Scrubbing...", __name__)
+    scrubbedPaths = []
+    
+    for path in paths:
+        log.tracef("    %s", path)
+        whollyContained = False
+        for parentPath in paths:
+            if path != parentPath and parentPath.find(path) >= 0:
+                log.tracef("       %s is wholly contained by %s", path, parentPath)
+                whollyContained = True
+                break
+
+        if not(whollyContained):
+            scrubbedPaths.append(path)
+    
+    log.tracef("The scrubbed paths are: %s", str(scrubbedPaths))
+    return scrubbedPaths
 
 def getRecipeDataDescription(record, db):
     try:
@@ -562,20 +711,81 @@ def getInputValueDescriptionFromRecord(record, desc):
     return desc
 
 
-def deleteRecipeData(rootContainer, db):
+def deleteCallback(event):
     log.infof("Deleting a recipe data...")
+    db = getDatabaseClient()
+    rootContainer = event.source.parent.parent
 
-    recipeDataTable = rootContainer.getComponent("Recipe Data Container").getComponent("Recipe Data")
+    recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
+    path = recipeDataTree.selectedPath
     
-    if recipeDataTable.selectedRow < 0:
-        system.gui.messageBox("Please select a row from the Recie Data table.")
+    if path == "":
+        system.gui.messageBox("Please select a row from the Recipe Data tree.")
         return
     
-    ds = recipeDataTable.data
-    recipeDataId = ds.getValueAt(recipeDataTable.selectedRow, "RecipeDataId")
+    stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
+    selectedRow = stepTable.selectedRow
+    log.tracef("The selected row is: %d", selectedRow)
+    stepDs = stepTable.data
+    stepId = stepDs.getValueAt(selectedRow,"StepId")
+    log.tracef("The step id is: %s", str(stepId))
     
-    recipeDataType = ds.getValueAt(recipeDataTable.selectedRow, "RecipeDataType")
+    recipeDataKey, recipeDataType, recipeDataId = fetchRecipeInfo(stepId, path, db)
     
+    log.tracef("Recipe Data Type: %s, Recipe Data id: %s", recipeDataType, str(recipeDataId))
+    
+    if recipeDataType == GROUP:
+        log.tracef("Deleting a group...")
+        deleteRecipeDataGroup(recipeDataId, db)
+    else:
+        deleteRecipeData(recipeDataType, recipeDataId, db)
+    
+    ''' Update the recipe data Tree '''
+    updateRecipeDataTree(rootContainer, db)
+
+
+def deleteRecipeDataGroup(recipeDataFolderId, db):
+    # Get the value ids before we delete the data
+    embeddedFolderIds = fetchEmbeddedFolders(recipeDataFolderId, db)
+    log.tracef("The embedded folder ids are: %s", str(embeddedFolderIds))
+    
+    ''' First delete all of the recipe data in the folders '''
+    SQL = "select RecipeDataKey, RecipeDataId, RecipeDataType from SfcRecipeDataView where RecipeDataFolderId in (%s)" % (",".join(str(s) for s in embeddedFolderIds))
+    pds = system.db.runQuery(SQL, db)
+    
+    if len(embeddedFolderIds) > 1 or len(pds) > 0:
+        confirmed = system.gui.confirm("This will delete all subfolders and embeded recipe data, are you sure you want to continue?")
+        if not(confirmed):
+            return
+        
+    for record in pds:
+        log.tracef("Delete %s-%s-%s", record["RecipeDataKey"], record["RecipeDataType"], record["RecipeDataId"])
+        deleteRecipeData(record["RecipeDataType"], record["RecipeDataId"], db)
+        
+    ''' now delete all of the folders '''
+    for folderId in embeddedFolderIds:
+        log.infof("Deleting a recipe data folder with id: %d", folderId)
+        SQL = "delete from SfcRecipeDataFolder where RecipeDataFolderId = %d" % (folderId)
+        system.db.runUpdateQuery(SQL, db)
+
+def fetchEmbeddedFolders(recipeDataFolderId, db):
+    newFolderIds = recipeDataFolderId
+    folderIds = [recipeDataFolderId]
+    while newFolderIds != "":
+        log.tracef("Looking for subfolders of <%s>...", str(newFolderIds)) 
+        SQL = "select RecipeDataFolderId from SfcRecipeDataFolder where ParentRecipeDataFolderId in (%s)" % (newFolderIds)
+        print SQL
+        pds = system.db.runQuery(SQL, db)
+        ids = []
+        for record in pds:
+            folderIds.append(record["RecipeDataFolderId"])
+            ids.append(str(record["RecipeDataFolderId"]))
+        newFolderIds = ",".join(ids)
+        log.tracef("...the subfolders are <%s>!", newFolderIds)
+
+    return folderIds
+
+def deleteRecipeData(recipeDataType, recipeDataId, db):
     # Get the value ids before we delete the data
     valueIds = []
     if recipeDataType == SIMPLE_VALUE:
@@ -613,6 +823,7 @@ def deleteRecipeData(rootContainer, db):
         log.infof("Deleted %d rows from SfcRecipeDataMatrixElement...", rows)
     
     # The recipe data tables all have cascade delete foreign keys so we just need to delete from the main table
+    log.infof("Deleting a %s with id: %d", recipeDataType. recipeDataId)
     SQL = "delete from SfcRecipeData where RecipeDataId = %d" % (recipeDataId)
     system.db.runUpdateQuery(SQL, db)
     
@@ -620,11 +831,122 @@ def deleteRecipeData(rootContainer, db):
     for valueId in valueIds:
         SQL = "delete from SfcRecipeDataValue where ValueId = %d" % (valueId)
         system.db.runUpdateQuery(SQL, db)
+            
+def editCallback(event):
+    db = getDatabaseClient()
+    container = event.source.parent
+    tree = container.getComponent("Tree View")
+    path = tree.selectedPath
     
-    ''' Update the table '''
-    updateRecipeData(rootContainer, db)
+    log.infof("In %s.editCallback() - The path is: %s", __name__, path)
+    
+    stepTable = container.parent.getComponent("Step Container").getComponent("Steps")
+    selectedRow = stepTable.selectedRow
+    log.tracef("The selected row is: %s", str(selectedRow))
+    stepDs = stepTable.data
+    stepId = stepDs.getValueAt(selectedRow,"StepId")
+    log.tracef("The step id is: %s", str(stepId))
+    
+    recipeDataKey, recipeDataType, recipeDataId = fetchRecipeInfo(stepId, path, db)
+    recipeDataFolderId = -1
+    
+    log.tracef("The recipe data id is: %s", str(recipeDataId))
+    window = system.nav.openWindowInstance('SFC/RecipeDataEditor', {'stepId':stepId, 'recipeDataType':recipeDataType, 'recipeDataId':recipeDataId, 'recipeDataKey':recipeDataKey, "recipeDataFolderId":recipeDataFolderId})
+    system.nav.centerWindow(window)            
 
+def addCallback(event):
+    log.infof("In %s.addCallback()...", __name__)
+    db = getDatabaseClient()
+    rootContainer = event.source.parent.parent
+    table = rootContainer.getComponent("Step Container").getComponent("Steps")
+    ds = table.data
+    row = table.selectedRow
+    stepId = ds.getValueAt(row,"StepId")
+    
+    tree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
+    path = tree.selectedPath
+    
+    if path <> "":
+        tokens = path.split("/")
+        SQL = "Select * from SfcRecipeDataFolder where StepId = %s order by ParentRecipeDataFolderId" % (str(stepId))
+        folderPDS = system.db.runQuery(SQL, db)
+        isFolder, recipeDataFolderId = fetchFolderId(folderPDS, tokens)
+        
+        if not(isFolder):
+            print "ERROR: expected the path to reference a folder"
+    else:
+        recipeDataFolderId = -99
 
+    window = system.nav.openWindow('SFC/RecipeDataTypeChooser', {'stepId' : stepId, 'recipeDataFolderId':recipeDataFolderId})
+    system.nav.centerWindow(window)
+
+def fetchRecipeInfo(stepId, path, db):
+    tokens = path.split("/")
+    
+    if len(tokens) == 1:
+        log.tracef("The path <%s> has one token, it is either a root folder or data in the root...", path)
+        SQL = "select * from SfcRecipeDataView where StepId = %s and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (str(stepId), path)
+        log.tracef(SQL)
+        pds = system.db.runQuery(SQL, db)
+        
+        if len(pds) == 1:
+            log.tracef("...it is DATA!")
+            record = pds[0]
+            recipeDataKey = path
+            recipeDataType = record["RecipeDataType"]
+            recipeDataId = record["RecipeDataId"]
+        else:
+            log.tracef("...it isn't data...")
+            SQL = "Select * from SfcRecipeDataFolder where StepId = %s order by ParentRecipeDataFolderId" % (str(stepId))
+            folderPDS = system.db.runQuery(SQL, db)
+
+            isFolder, recipeDataFolderId = fetchFolderId(folderPDS, tokens)
+        
+            if isFolder:
+                log.tracef("...it is a FOLDER!")
+                recipeDataKey = tokens[len(tokens) - 1]
+                recipeDataType = GROUP
+                recipeDataId = recipeDataFolderId
+            else:
+                print "****** ERROR ********"
+    else:
+        log.tracef("Fetching folders...")
+        SQL = "Select * from SfcRecipeDataFolder where StepId = %s order by ParentRecipeDataFolderId" % (str(stepId))
+        folderPDS = system.db.runQuery(SQL, db)
+        isFolder, recipeDataFolderId = fetchFolderId(folderPDS, tokens)
+        
+        if isFolder:
+            recipeDataKey = tokens[len(tokens) - 1]
+            recipeDataType = GROUP
+            recipeDataId = recipeDataFolderId
+        else:
+            recipeDataKey = tokens[len(tokens) - 1]
+            SQL = "Select RecipeDataType, RecipeDataId from sfcRecipeDataView where RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (recipeDataKey, recipeDataFolderId)
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                print "ERROR"
+            record = pds[0]
+            recipeDataType = record["RecipeDataType"]
+            recipeDataId = record["RecipeDataId"]
+    
+    return recipeDataKey, recipeDataType, recipeDataId
+
+def fetchFolderId(folderPDS, tokens):
+    parentRecipeDataFolderId = None
+    for token in tokens:
+        log.tracef("Looking for %s", token)
+        isFolder = False
+        for record in folderPDS:
+            if token == record["RecipeDataKey"] and record["ParentRecipeDataFolderId"] == parentRecipeDataFolderId:
+                parentRecipeDataFolderId = record["RecipeDataFolderId"]
+                isFolder = True
+    
+    if isFolder:
+        log.tracef("The last token is a folder")
+    else:
+        log.tracef("The last token is data")
+        
+    return isFolder, parentRecipeDataFolderId
 '''
 This is just a good text book example of recursion.
 '''    

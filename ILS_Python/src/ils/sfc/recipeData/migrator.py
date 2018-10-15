@@ -11,6 +11,7 @@ from ils.common.error import catchError
 from ils.common.cast import toBit, isFloat
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
 from ils.common.config import getTagProvider
+from system.util import jsonDecode
 log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
 
 def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
@@ -89,7 +90,7 @@ def processStep(step, db, tx):
             txt = string.replace(txt, "false","False")
             txt = string.replace(txt, "true","True")
     #        log.tracef("  Converted Text:      %s", txt)
-            myDict = eval(txt)
+            myDict = jsonDecode(txt)
             log.tracef("  Dictionary:          %s", str(myDict))
             
             for k in myDict.keys():

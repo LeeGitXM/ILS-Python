@@ -6,7 +6,7 @@ Created on Sep 22, 2015
 
 import system
 from ils.common.config import getDatabaseClient
-from ils.sfc.recipeData.core import setRecipeData
+from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.sfc.client.windows.reviewData import setAdviceVisibiity
 
 def internalFrameOpened(rootContainer):
@@ -76,5 +76,6 @@ def actionPerformed(event, response):
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
     responseKey = rootContainer.responseKey
-    setRecipeData(targetStepUUID, responseKey, "value", response, db)
+    folder,key,attribute = splitKey(responseKey + ".value")
+    setRecipeData(targetStepUUID, folder,key,attribute, response, db)
     system.nav.closeParentWindow(event)

@@ -99,25 +99,12 @@ def getSubScope(scope, key):
     print "The sub scope is: ", subScope
     return subScope
 
-def fetchRecipeDataType(stepUUID, key, attribute, db):
-    logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
+def fetchRecipeDataType(stepUUID, folder, key, attribute, db):
+    logger.tracef("Fetching %s.%s.%s from %s", folder, key, attribute, stepUUID)
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-        
-    SQL = "select RECIPEDATATYPE from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
-    pds = system.db.runQuery(SQL, db)
-    if len(pds) == 0:
-        logger.errorf("Error the key <%s> was not found", key)
-        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
-    
-    if len(pds) > 1:
-        logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
-    
-    record = pds[0]
-    recipeDataType = record["RECIPEDATATYPE"]
-    
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folder + "." + key, db)
     return recipeDataType
 
 def recipeDataExists(stepUUID, key, attribute, db):
@@ -125,8 +112,23 @@ def recipeDataExists(stepUUID, key, attribute, db):
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-        
-    SQL = "select RECIPEDATATYPE from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    
+    '''
+    I can't use the handy utility getRecieDataId() which does all of this work because it logs an error and throws an exception if the 
+    recipe data doesn't exist.  The whole point of this is do a test to see if it exists ao that an error can be avoided!
+    '''
+    
+    ''' This utility requires a key and an attribute, so add a fake attribute and then ignore it  '''
+    folder,key,attribute = splitKey(key + "." + attribute)
+    
+    if folder == "":
+        SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
+            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
+    else:
+        recipeDataFolderId = getFolderForStep(stepUUID, folder, db)
+        SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
+            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, str(recipeDataFolderId)) 
+
     pds = system.db.runQuery(SQL, db)
     
     if len(pds) == 1:
@@ -136,42 +138,28 @@ def recipeDataExists(stepUUID, key, attribute, db):
     logger.tracef("...it does not exist!")
     return False
 
-def getRecipeDataId(stepUUID, key, db):
-    logger.tracef("Fetching recipe data id for %s - %s", stepUUID, key)
+def getRecipeDataId(stepUUID, keyOriginal, db):
+    logger.tracef("Fetching recipe data id for %s - %s", stepUUID, keyOriginal)
     
-    SQL = "select RECIPEDATAID, RECIPEDATATYPE from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    ''' This utility requires a key and an attribute, so add a fake attribute and then ignore it  '''
+    folder,key,attribute = splitKey(keyOriginal + ".value")
+    
+    if folder == "":
+        SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
+            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
+    else:
+        recipeDataFolderId = getFolderForStep(stepUUID, folder, db)
+        SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
+            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, str(recipeDataFolderId)) 
+
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
-        logger.errorf("Error the key <%s> was not found", key)
-        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
+        logger.errorf("Error the key <%s> was not found", keyOriginal)
+        raise ValueError, "Key <%s> was not found for step %s" % (keyOriginal, stepUUID)
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
-    
-    record = pds[0]
-    recipeDataId = record["RECIPEDATAID"]
-    recipeDataType = record["RECIPEDATATYPE"]
-    
-    return recipeDataId, recipeDataType
-
-
-def fetchRecipeData(stepUUID, key, attribute, db):
-    logger.tracef("Fetching %s.%s from %s", key, attribute, stepUUID)
-    
-    # Separate the key from the array index if there is an array index
-    attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-        
-    SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
-        " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
-    pds = system.db.runQuery(SQL, db)
-    if len(pds) == 0:
-        logger.errorf("Error the key <%s> was not found", key)
-        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
-    
-    if len(pds) > 1:
-        logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
+        raise ValueError, "Multiple records were found for key <%s> for step %s" % (keyOriginal, stepUUID)
     
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
@@ -179,13 +167,44 @@ def fetchRecipeData(stepUUID, key, attribute, db):
     units = record["UNITS"]
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
+    return recipeDataId, recipeDataType, units
+
+def fetchRecipeData(stepUUID, folder, key, attribute, db):
+    logger.tracef("Fetching %s.%s.%s from %s", folder, key, attribute, stepUUID)
+ 
+    # Separate the key from the array index if there is an array index
+    attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folder + "." + key, db)
+    
     # These attributes are common to all recipe data classes
-    if attribute in ["DESCRIPTION","UNITS","LABEL","RECIPEDATATYPE"]:
-        val = record[attribute]
+    attribute = string.upper(attribute)
+    if attribute == "UNITS":
+        val = units
+    elif attribute == "RECIPEDATATYPE":
+        val = recipeDataType
+    elif attribute in ["DESCRIPTION","LABEL"]:
+        SQL = "select %s from SfcRecipeData where RecipeDataId = %d" % (attribute, recipeDataId)
+        val = system.db.runScalarQuery(SQL, db)
     else:
         val = fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayIndex, rowIndex, columnIndex, db)
     
     return val, units
+
+def getFolderForStep(stepUUID, folder, db):
+    SQL = "Select RecipeDataFolderId, RecipeDataKey, ParentRecipeDataFolderId "\
+        "from SfcRecipeDataFolderView "\
+        "where StepUUID = '%s'" % (str(stepUUID))
+    folderPDS = system.db.runQuery(SQL, db)
+    
+    tokens = folder.split(".")
+    recipeDataFolderId = None
+    for token in tokens:
+        for record in folderPDS:
+            if record["RecipeDataKey"] == token and record["ParentRecipeDataFolderId"] == recipeDataFolderId:
+                recipeDataFolderId = record["RecipeDataFolderId"]
+                break
+
+    return recipeDataFolderId
 
 '''
 This is designed to be called from private SFC block internals that are called over and over again.  The recipeId will be fetched the first time and 
@@ -500,27 +519,12 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     record = pds[0]
     return record
 
-
-def setRecipeData(stepUUID, key, attribute, val, db, units=""):
-    logger.tracef("Setting recipe data value for step with stepUUID: %s, key: %s, attribute: %s, value: %s", stepUUID, key, attribute, str(val))
+def setRecipeData(stepUUID, folder, key, attribute, val, db, units=""):
+    logger.tracef("Setting recipe data value for step with stepUUID: %s, folder: %s, key: %s, attribute: %s, value: %s", stepUUID, folder, key, attribute, str(val))
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    
-    SQL = "select * from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
-    pds = system.db.runQuery(SQL, db)
-    if len(pds) == 0:
-        logger.errorf("Error the key <%s> was not found", key)
-        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
-    
-    if len(pds) > 1:
-        logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
-    
-    record = pds[0]
-    recipeDataId = record["RecipeDataId"]
-    recipeDataType = record["RecipeDataType"]
-    targetUnits = record["Units"]
+    recipeDataId, recipeDataType, targetUnits = getRecipeDataId(stepUUID, folder + "." + key, db)    
     
     setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db)
 
@@ -901,9 +905,11 @@ def splitKey(keyAndAttribute):
     if len(tokens) < 2:
         txt = "Recipe access failed while attempting to split the key and attribute because there were not enough tokens: <%s> " % (keyAndAttribute)
         raise ValueError, txt
-    key = string.upper(tokens[0])
-    attribute = string.upper(tokens[1])
-    return key, attribute
+    folder = ".".join(tokens[:len(tokens) - 2])
+    key = string.upper(tokens[len(tokens) - 2])
+    attribute = string.upper(tokens[len(tokens) - 1])
+    logger.tracef("Folder: <%s>, Key: <%s>, Attribute: <%s>", folder, key, attribute)
+    return folder, key, attribute
 
 def fetchStepTypeIdFromFactoryId(factoryId, tx):
     SQL = "select StepTypeId from SfcStepType where FactoryId = '%s'" % (factoryId)

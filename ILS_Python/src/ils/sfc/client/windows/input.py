@@ -59,7 +59,7 @@ def okActionPerformed(event):
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
     keyAndAttribute = rootContainer.keyAndAttribute
-    key,attribute = splitKey(keyAndAttribute)
+    folder,key,attribute = splitKey(keyAndAttribute)
     responseField = rootContainer.getComponent('responseField')
     response = responseField.text
     if response == "":
@@ -76,13 +76,13 @@ def okActionPerformed(event):
         except ValueError:
             valueOk = False
         if valueOk:
-            setRecipeData(targetStepUUID, key, attribute, response, database)
+            setRecipeData(targetStepUUID, folder, key, attribute, response, database)
             system.nav.closeParentWindow(event)
         else:
             system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
     else:
         # return the response as a string
-        setRecipeData(targetStepUUID, key, attribute, response, database)
+        setRecipeData(targetStepUUID, folder, key, attribute, response, database)
         system.nav.closeParentWindow(event)
   
 def cancelActionPerformed(event):

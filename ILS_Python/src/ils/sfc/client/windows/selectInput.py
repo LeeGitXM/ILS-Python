@@ -44,11 +44,11 @@ def okActionPerformed(event):
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
     keyAndAttribute = rootContainer.keyAndAttribute
-    key,attribute = splitKey(keyAndAttribute)
+    folder,key,attribute = splitKey(keyAndAttribute)
     dropdown = rootContainer.getComponent('choices')
     response = dropdown.selectedStringValue
     if response == "":
         system.gui.warningBox("Please select a value and press OK!")
         return
     
-    setRecipeData(targetStepUUID, key, attribute, response, db)
+    setRecipeData(targetStepUUID, folder, key, attribute, response, db)

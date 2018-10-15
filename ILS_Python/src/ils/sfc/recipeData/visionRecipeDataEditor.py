@@ -6,12 +6,12 @@ Created on Feb 1, 2017
 
 import system, string
 from ils.common.cast import toBit
-from ils.common.error import catchError
+from ils.common.error import catchError, notifyError
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from ils.common.config import getDatabaseClient
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
-from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER
+from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER
 
     
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
@@ -226,6 +226,15 @@ def internalFrameOpened(rootContainer):
                 raise ValueError, "Unable to fetch a Timer recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.timerDataset = pds
+        
+        elif recipeDataType == GROUP:
+            print "Fetching a Timer"
+            SQL = "select * from SfcRecipeDataFolder where recipeDataFolderId = %s" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to fetch a GROUP recipe data with id: %s" % (str(recipeDataId))
+            record = pds[0]
+            rootContainer.groupDataset = pds
 
         else:
             raise ValueError, "Unexpected recipe data type <%s>" % (str(recipeDataType))
@@ -233,14 +242,23 @@ def internalFrameOpened(rootContainer):
         rootContainer.description = record["Description"]
         rootContainer.label = record["Label"]
         
-        units = record["Units"]
-        if units <> None:
-            units = string.upper(units)
-        rootContainer.units = units
-        print "Setting the units to: ", units
+        if recipeDataType <> GROUP:
+            units = record["Units"]
+            if units <> None:
+                units = string.upper(units)
+            rootContainer.units = units
+            print "Setting the units to: ", units
         
     else:
-        if recipeDataType == SIMPLE_VALUE:
+        if recipeDataType == GROUP:
+            print "Initializing a group..."
+            ds = rootContainer.groupDataset
+            ds = system.dataset.setValue(ds, 0, "RecipeDataKey", "")
+            ds = system.dataset.setValue(ds, 0, "Description", "")
+            ds = system.dataset.setValue(ds, 0, "Label", "")
+            rootContainer.groupDataset = ds
+            
+        elif recipeDataType == SIMPLE_VALUE:
             print "Initializing a simple value..."
             ds = rootContainer.simpleValueDataset
             ds = system.dataset.setValue(ds, 0, "RecipeDataKey", "")
@@ -839,6 +857,47 @@ def addUnselectionChoice(combo):
     ds = system.dataset.addRow(ds, 0, [-1, "<Select One>"])
     combo.data = ds
 
+def saveGroup(rootContainer):
+    print "Saving a group"
+
+    db = getDatabaseClient()
+    recipeDataId = rootContainer.recipeDataId
+    stepId = rootContainer.stepId
+    recipeDataFolderId = rootContainer.recipeDataFolderId
+    key = rootContainer.getComponent("Key").text
+    description = rootContainer.getComponent("Description").text
+    label = rootContainer.getComponent("Label").text
+    
+    tx = system.db.beginTransaction(db)
+    
+    try:
+        if recipeDataId < 0:
+            print "Inserting a new group..."
+            if recipeDataFolderId < 0:
+                SQL = "insert into SfcRecipeDataFolder (StepId, RecipeDataKey, Description, Label) "\
+                    "values (%s, '%s', '%s', '%s')" % (stepId, key, description, label)
+            else:
+                SQL = "insert into SfcRecipeDataFolder (StepId, RecipeDataKey, Description, Label, ParentRecipeDataFolderId) "\
+                    "values (%s, '%s', '%s', '%s', %s)" % (stepId, key, description, label, recipeDataFolderId)
+            print SQL
+            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            rootContainer.recipeDataId = recipeDataId
+        else:
+            print "Updating a group..."
+            recipeDataId = rootContainer.recipeDataId
+            SQL = "update SfcRecipeDataFolder set RecipeDataKey='%s', Description='%s', Label = '%s' where RecipeDataFolderId = %d " % (key, description, label, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+            
+        system.db.commitTransaction(tx)
+        system.db.closeTransaction(tx) 
+    except:
+        notifyError("ils.sfc.recipeData.visionEditor.saveGroup", "Caught an error, rolling back transactions")
+        system.db.rollbackTransaction(tx)
+        system.db.closeTransaction(tx) 
+    
+    print "Done!"
+
 
 def saveSimpleValue(rootContainer):
     print "Saving a simple value"
@@ -846,6 +905,7 @@ def saveSimpleValue(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -863,10 +923,7 @@ def saveSimpleValue(rootContainer):
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
             
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-            print SQL
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             if valueType == "Float":
@@ -930,6 +987,7 @@ def saveInput(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -950,11 +1008,7 @@ def saveInput(rootContainer):
             
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-            print SQL
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             # The values are meaningless until someone uses this data in a PV Monitoring block
@@ -995,6 +1049,7 @@ def saveOutput(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -1023,11 +1078,7 @@ def saveOutput(rootContainer):
             
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-            print SQL
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             valueIds=[]
@@ -1099,6 +1150,7 @@ def saveOutputRamp(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -1127,14 +1179,9 @@ def saveOutputRamp(rootContainer):
     try:
         if recipeDataId < 0:
             print "Inserting a new Output Ramp..."
-            
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-            print SQL
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             valueIds=[]
@@ -1216,6 +1263,7 @@ def saveTimerValue(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -1226,15 +1274,10 @@ def saveTimerValue(rootContainer):
     
     try:
         if recipeDataId < 0:
-            print "Inserting..."
-            
+            print "Inserting a timer..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-            print SQL
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             val = timerContainer.getComponent("Popup Calendar").text
@@ -1242,7 +1285,7 @@ def saveTimerValue(rootContainer):
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
         else:
-            print "Updating..."
+            print "Updating a timer..."
             recipeDataId = rootContainer.recipeDataId
             SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
             print SQL
@@ -1269,6 +1312,7 @@ def saveRecipe(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -1289,15 +1333,10 @@ def saveRecipe(rootContainer):
         highLimit = container.getComponent("High Limit").text
         
         if recipeDataId < 0:
-            print "Inserting..."
-            
+            print "Inserting a recipe..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-            print SQL
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             SQL = "Insert into SfcRecipeDataRecipe (RecipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
@@ -1306,7 +1345,7 @@ def saveRecipe(rootContainer):
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
         else:
-            print "Updating..."
+            print "Updating a recipe..."
             recipeDataId = rootContainer.recipeDataId
             SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
             print SQL
@@ -1337,6 +1376,7 @@ def saveArray(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -1359,14 +1399,9 @@ def saveArray(rootContainer):
     try:
         if recipeDataId < 0:
             print "Inserting a new array..."
-            
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             if indexKeyId <= 0:
@@ -1435,6 +1470,7 @@ def saveMatrix(rootContainer):
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text    
     description = rootContainer.getComponent("Description").text
     label = rootContainer.getComponent("Label").text
@@ -1459,14 +1495,9 @@ def saveMatrix(rootContainer):
     try:
         if recipeDataId < 0:
             print "Inserting a new matrix..."
-            
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            
-            SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-                "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
-            print SQL
-            recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             SQL = "Insert into SfcRecipeDataMatrix (RecipeDataId, ValueTypeId, Rows, Columns, RowIndexKeyId, ColumnIndexKeyId) values (?, ?, ?, ?, ?, ?)"
@@ -1556,3 +1587,12 @@ def updateRecipeDataValue(valueId, valueType, val, tx):
 
     print SQL
     system.db.runUpdateQuery(SQL, tx=tx)
+    
+def insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx):
+    if folderId < 0:
+        folderId = None
+    SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units, RecipeDataFolderId) "\
+    "values (%s, '%s', %d, '%s', '%s', '%s', %s)" % (stepId, key, recipeDataTypeId, description, label, units, folderId)
+    print SQL
+    recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
+    return recipeDataId
