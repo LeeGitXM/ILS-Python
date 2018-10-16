@@ -823,7 +823,7 @@ def deleteRecipeData(recipeDataType, recipeDataId, db):
         log.infof("Deleted %d rows from SfcRecipeDataMatrixElement...", rows)
     
     # The recipe data tables all have cascade delete foreign keys so we just need to delete from the main table
-    log.infof("Deleting a %s with id: %d", recipeDataType. recipeDataId)
+    log.infof("Deleting a %s with id: %d", recipeDataType, recipeDataId)
     SQL = "delete from SfcRecipeData where RecipeDataId = %d" % (recipeDataId)
     system.db.runUpdateQuery(SQL, db)
     

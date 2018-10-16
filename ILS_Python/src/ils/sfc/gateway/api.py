@@ -6,7 +6,7 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
     
-import system, time
+import system, time, sys
 from ils.sfc.common.util import boolToBit, logExceptionCause, chartIsRunning, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
@@ -87,6 +87,7 @@ def cancelChart(chartProperties):
     topChartRunId = getTopChartRunId(chartProperties)
     logger.infof("Cancelling chart with id: %s", str(topChartRunId))
     system.sfc.cancelChart(topChartRunId)
+    raise SystemExit
 
 def checkForResponse(chartScope, stepScope, stepProperties):
     '''Common code for processing responses from client. Returns true if work was

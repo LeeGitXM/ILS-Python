@@ -34,6 +34,14 @@ def clearTable(table):
     ds = system.dataset.deleteRows(ds, rows)
     table.data = ds
 
+def clearTree(tree):
+    ds = tree.data
+    rows=[]
+    for i in range(0, ds.rowCount):
+        rows.append(i)
+    ds = system.dataset.deleteRows(ds, rows)
+    tree.data = ds
+
 # Open a window instance with additional capability to TILE, STACK, CENTER or position the 
 # window in the standard well-known positions.
 def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):

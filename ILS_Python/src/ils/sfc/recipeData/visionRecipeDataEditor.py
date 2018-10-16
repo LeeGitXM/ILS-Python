@@ -11,7 +11,7 @@ from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from ils.common.config import getDatabaseClient
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
-from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER
+from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, SQC, TIMER
 
     
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
@@ -226,6 +226,15 @@ def internalFrameOpened(rootContainer):
                 raise ValueError, "Unable to fetch a Timer recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
             rootContainer.timerDataset = pds
+            
+        elif recipeDataType == SQC:
+            print "Fetching a SQC"
+            SQL = "select * from SfcRecipeDataSQCView where recipeDataId = %s" % (recipeDataId)
+            pds = system.db.runQuery(SQL, db)
+            if len(pds) <> 1:
+                raise ValueError, "Unable to fetch a SQC recipe data with id: %s" % (str(recipeDataId))
+            record = pds[0]
+            rootContainer.sqcDataset = pds
         
         elif recipeDataType == GROUP:
             print "Fetching a Timer"
@@ -364,6 +373,14 @@ def internalFrameOpened(rootContainer):
             print "Initializing a Timer..."
             ds = rootContainer.timerDataset
             rootContainer.timerDataset = ds
+            
+        elif recipeDataType == SQC:
+            print "Initializing a SQC value..."
+            ds = rootContainer.sqcDataset
+            ds = system.dataset.setValue(ds, 0, "LowLimit", 0.0)
+            ds = system.dataset.setValue(ds, 0, "TargetValue", 0.0)
+            ds = system.dataset.setValue(ds, 0, "HighLimit", 0.0)
+            rootContainer.sqcDataset = ds
         
         elif recipeDataType == ARRAY:
             print "Initializing an Array..."
@@ -1306,6 +1323,57 @@ def saveTimerValue(rootContainer):
     
     print "Done!"
 
+def saveSqcValue(rootContainer):
+    print "Saving a SQC value"
+
+    db = getDatabaseClient()
+    recipeDataId = rootContainer.recipeDataId
+    stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
+    key = rootContainer.getComponent("Key").text
+    description = rootContainer.getComponent("Description").text
+    label = rootContainer.getComponent("Label").text
+    units = rootContainer.getComponent("Units Dropdown").selectedStringValue
+     
+    sqcContainer=rootContainer.getComponent("SQC Container")
+    highLimit = sqcContainer.getComponent("High Limit").floatValue
+    targetValue = sqcContainer.getComponent("Target Value").floatValue
+    lowLimit = sqcContainer.getComponent("Low Limit").floatValue
+    
+    tx = system.db.beginTransaction(db)
+    
+    try:
+        if recipeDataId < 0:
+            print "Inserting a SQC..."
+            recipeDataType = rootContainer.recipeDataType
+            recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            rootContainer.recipeDataId = recipeDataId
+            
+            SQL = "Insert into SfcRecipeDataSQC (RecipeDataId, HighLimit, TargetValue, LowLimit) values (%d, %f, %f, %f)" % (recipeDataId, highLimit, targetValue, lowLimit)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+        else:
+            print "Updating a SQC..."
+            recipeDataId = rootContainer.recipeDataId
+            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+            
+            SQL = "Update SfcRecipeDataSQC set HighLimit=%f, TargetValue=%f, LowLimit=%f where RecipeDataId = %d" % (highLimit, targetValue, lowLimit, recipeDataId)
+            print SQL
+            system.db.runUpdateQuery(SQL, tx=tx)
+
+        system.db.commitTransaction(tx)
+        system.db.closeTransaction(tx) 
+    except:
+        catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
+        system.db.rollbackTransaction(tx)
+        system.db.closeTransaction(tx) 
+    
+    print "Done!"
+
+
 def saveRecipe(rootContainer):
     print "Saving a recipe"
 
@@ -1590,9 +1658,11 @@ def updateRecipeDataValue(valueId, valueType, val, tx):
     
 def insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx):
     if folderId < 0:
-        folderId = None
-    SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units, RecipeDataFolderId) "\
-    "values (%s, '%s', %d, '%s', '%s', '%s', %s)" % (stepId, key, recipeDataTypeId, description, label, units, folderId)
+        SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
+            "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
+    else:
+        SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units, RecipeDataFolderId) "\
+            "values (%s, '%s', %d, '%s', '%s', '%s', %s)" % (stepId, key, recipeDataTypeId, description, label, units, folderId)
     print SQL
     recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
     return recipeDataId

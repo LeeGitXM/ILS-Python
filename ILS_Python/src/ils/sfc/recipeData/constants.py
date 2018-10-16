@@ -13,6 +13,7 @@ OUTPUT = "Output"
 OUTPUT_RAMP = "Output Ramp"
 RECIPE = "Recipe"
 SIMPLE_VALUE = "Simple Value"
+SQC = "SQC"
 TIMER = "Timer"
 
 # Constants used to navigate and interrogate the chart scope property dictionary
