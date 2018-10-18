@@ -331,6 +331,12 @@ def simpleValue(stepName, stepType, stepId, recipeDataFolderId, recipeData, db, 
 
     valueTypeId = fetchValueTypeId(valueType, db)
     if valueType == "Float":
+        if str(val) == "False":
+            log.info("--Overriding False for a float to 0.0--")
+            val = 0.0
+        elif str(val) == "True":
+            log.info("--Overriding True for a float to 1.0--")
+            val = 1.0
         SQL = "insert into SfcRecipeDataValue (FloatValue) values (%s)" % (str(val))
     elif valueType == "Integer":
         SQL = "insert into SfcRecipeDataValue (IntegerValue) values (%s)" % (str(val))
