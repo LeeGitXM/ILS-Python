@@ -200,7 +200,7 @@ def getFolderForStep(stepUUID, folder, db):
     recipeDataFolderId = None
     for token in tokens:
         for record in folderPDS:
-            if record["RecipeDataKey"] == token and record["ParentRecipeDataFolderId"] == recipeDataFolderId:
+            if record["RecipeDataKey"] == string.upper(token) and record["ParentRecipeDataFolderId"] == recipeDataFolderId:
                 recipeDataFolderId = record["RecipeDataFolderId"]
                 break
 
