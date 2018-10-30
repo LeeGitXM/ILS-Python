@@ -457,3 +457,13 @@ def s88GetRootForChart(chartPath, db):
 
     print "Found root: ", chartPath
     return chartPath, chartId
+
+'''
+Utilities for dealing with folders
+'''
+def s88CopyFolderValues(chart, step, fromFolderKey, fromScope, toFolderKey, toScope, recursive, db):
+    logger.errorf("*******************************************************")
+    logger.errorf("* %s.s88CopyFolderValues NEEDS TO BE IMPLEMENTED", __name__)
+    logger.errorf("*******************************************************")
+    
+    

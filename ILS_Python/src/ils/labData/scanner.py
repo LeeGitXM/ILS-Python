@@ -501,7 +501,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
             for record in tagInfoPds:
                 itemIds.append(record["ItemId"])
 
-            print "HDA Lab data items: ", itemIds
+#            print "HDA Lab data items: ", itemIds
             maxValues=0
             boundingValues=0
             retVals=system.opchda.readRaw(hdaInterface, itemIds, startDate, endDate, maxValues, boundingValues)

@@ -47,7 +47,7 @@ way of knowing about the unit procedure block.  So when the unit procedure block
 record in the SfcControlParameter table. 
 '''
 def startChart(chartPath, controlPanelName, project, originator, isolationMode):
-    print "Trying to start a chart...", controlPanelName, project, originator, isolationMode
+    print "Starting a chart: <%s>, control panel: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, controlPanelName, project, originator, str(isolationMode))
     if chartIsRunning(chartPath):
         print "Exiting because the chart is already running!"
         return
@@ -59,8 +59,7 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
 
     print "Fetching control panel id for: ", controlPanelName, " using db: ", db
     controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), db)
-    print "...fetched ", controlPanelId
-    print "Found id %s for control panel %s" % (str(controlPanelId), controlPanelName)
+    print "...found id %s for control panel %s" % (str(controlPanelId), controlPanelName)
     
     initialChartParams = dict()
     initialChartParams[PROJECT] = project

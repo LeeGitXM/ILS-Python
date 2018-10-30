@@ -7,7 +7,7 @@ This is an attempt to migrate recipe data into Ignition directly from the G2 XML
  
 '''
 import xml.etree.ElementTree as ET
-import system
+import system, string
 from ils.common.error import catchError
 log=system.util.getLogger("com.ils.sfc.import")
 
@@ -75,8 +75,8 @@ def loadRecipeData(rootContainer):
 
 def translate(recipeClass):
     recipeDataType = "UNKNOWN"
-    if recipeClass == "S88-RECIPE-VALUE-DATA":
-        recipeDataType = "Simple Value"
+    if recipeClass == "S88-RECIPE-OUTPUT-RAMP-DATA":
+        recipeDataType = "Output Ramp"
         
     return recipeDataType
 
@@ -97,7 +97,6 @@ def importRecipeData(rootContainer):
 
     txt = ds.getValueAt(row, 0)
     recipeStepName = txt[txt.find(" - ") + 3:]
-    print "The name is <%s>" % (recipeStepName)
     
     '''
     Now the user needs to select a step in the chart hierarchy which will be the recipient of the data
@@ -110,7 +109,7 @@ def importRecipeData(rootContainer):
         return
     
     stepId = ds.getValueAt(row, 2)
-    
+    log.infof("Importing recipe data for step %s with id: %d", recipeStepName, stepId)
     
     recipeDataKeys = loadRecipeDataKeys(db)
     stepTypes = loadStepTypes(db)
@@ -133,12 +132,12 @@ def importRecipeData(rootContainer):
         
         if g2Name == recipeStepName:
             
-            i = 0
             for recipe in block.findall('recipe'):
-                i = i + 1
-                if i < 2:
-                    recipeDataClass = recipe.get("class-name")
-                    recipeDataType = translate(recipeDataClass)
+                recipeDataClass = recipe.get("class-name")
+                recipeDataType = translate(recipeDataClass)
+                
+                if recipeDataType == "Output Ramp" and recipeDataCounter < 1 and errorCounter < 1:
+                    print "Importing a ramp..."
                     recipeDataTypeId = recipeDataTypes.get(recipeDataType, -99)
                     recipeDataKey = recipe.get("key")
                     label = recipe.get("label")
@@ -165,26 +164,54 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             units = recipe.get("units", "")
             recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
             insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val, txId)
-                    
-        elif recipeDataType in ["Output", "Output Ramp"]:
-            valueType = recipe.get("valueType")
+        
+        elif recipeDataType in ["Output"]:
+            valueType = recipe.get("valueType", "float")
             valueTypeId = valueTypes.get(valueType, -99)
-            val = recipe.get("value")
+            val = recipe.get("val", 0.0)
             units = recipe.get("units", "")
-            outputType = recipe.get("outputType", "")
+            outputType = recipe.get("val-type", "")
             outputTypeId = outputTypes.get(outputType, -99)
             tag = recipe.get("tag", "")
             download = recipe.get("download", "True")
             timing = recipe.get("timing", "0.0")
-            maxTiming = recipe.get("maxTiming", "0.0")
-            writeConfirm = recipe.get("writeConfirm", "True")
+            maxTiming = recipe.get("max-timing", "0.0")
+            writeConfirm = recipe.get("write-confirm", "True")
             
             recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
             insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm, txId)
             
             if recipeDataType == "Output Ramp":
-                rampTimeMinutes = recipe.get("rampTimeMinutes", "0.0")
-                updateFrequencySeconds = recipe.get("updateFrequencySeconds", "0.0")
+                rampTimeMinutes = recipe.get("ramp-time", "0.0")
+                updateFrequencySeconds = recipe.get("update-frequency", "0.0")
+                insertOutputRampRecipeData(recipeDataId, rampTimeMinutes, updateFrequencySeconds, txId)
+                    
+        elif recipeDataType in ["Output Ramp"]:
+            print "Yo"
+            deleteRecipeData(stepId, recipeDataKey)
+                
+            valueType = recipe.get("valueType", "float")
+            valueTypeId = valueTypes.get(valueType, -99)
+            val = recipe.get("val", 0.0)
+            units = recipe.get("units", "")
+            outputType = recipe.get("val-type", "")
+            if outputType == "RAMP-OUTOUT":
+                outputType = "Output"
+            else:
+                outputType = "Setpoint"
+            outputTypeId = outputTypes.get(outputType, -99)
+            tag = recipe.get("tag", "")
+            download = recipe.get("download", "True")
+            timing = recipe.get("timing", "0.0")
+            maxTiming = recipe.get("max-timing", "0.0")
+            writeConfirm = recipe.get("write-confirm", "True")
+            
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm, txId)
+            
+            if recipeDataType == "Output Ramp":
+                rampTimeMinutes = recipe.get("ramp-time", "0.0")
+                updateFrequencySeconds = recipe.get("update-frequency", "0.0")
                 insertOutputRampRecipeData(recipeDataId, rampTimeMinutes, updateFrequencySeconds, txId)
 
         elif recipeDataType in ["Input"]:
@@ -290,17 +317,18 @@ def insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val, txId):
     system.db.runUpdateQuery(SQL, tx=txId)
     
 def insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm, txId):
-    log.tracef("          Inserting an Output recipe data...")
+    log.tracef("          Inserting an Output recipe data with timing: %s and val: %s...", str(timing), str(val))
     outputValueId = insertRecipeDataValue(valueType, val, txId)
     targetValueId = insertRecipeDataValue(valueType, 0.0, txId)
     pvValueId = insertRecipeDataValue(valueType, 0.0, txId)
     SQL = "insert into SfcRecipeDataOutput (recipeDataId, valueTypeId, outputTypeId, tag, download, timing, maxTiming, outputValueId, targetValueId, pvValueId, writeConfirm) "\
         "values (%d, %d, %d, '%s', '%s', %s, %s, %d, %d, %d, '%s')" % \
         (recipeDataId, valueTypeId, outputTypeId, tag, download, str(timing), str(maxTiming), outputValueId, targetValueId, pvValueId, writeConfirm)
+    print SQL
     system.db.runUpdateQuery(SQL, tx=txId)
 
 def insertOutputRampRecipeData(recipeDataId, rampTimeMinutes, updateFrequencySeconds, txId):
-    log.tracef("          Inserting an Output Ramp recipe data...")
+    log.tracef("          Inserting an Output Ramp recipe data with rampMinutes: %s and update frequency: %s...", str(rampTimeMinutes), str(updateFrequencySeconds))
     SQL = "insert into SfcRecipeDataOutputRamp (recipeDataId, rampTimeMinutes, updateFrequencySeconds) values (%d, %s, %s)" % \
         (recipeDataId, str(rampTimeMinutes), str(updateFrequencySeconds))
     system.db.runUpdateQuery(SQL, tx=txId)
@@ -354,7 +382,7 @@ def insertRecipeDataValue(valueType, val, txId):
         SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (val)
     elif valueType == "Integer":
         SQL = "insert into SfcRecipeDataValue (IntegerValue) values (%d)" % (int(val))
-    elif valueType == "Float":
+    elif string.lower(valueType) == "float":
         SQL = "insert into SfcRecipeDataValue (FloatValue) values (%f)" % (float(val))
     elif valueType == "Boolean":
         SQL = "insert into SfcRecipeDataValue (BooleanValue) values ('%s')" % (val)
@@ -415,7 +443,11 @@ def loadValueTypes(db):
     
     valueTypes = {}
     for record in pds:
-        valueTypes[record["ValueType"]] = record["ValueTypeId"]
+        valueTypes[string.lower(record["ValueType"])] = record["ValueTypeId"]
+    
+    log.info("---------------")
+    log.infof("The known value types are: %s", str(valueTypes))
+    log.info("---------------")
     
     return valueTypes
 
@@ -428,3 +460,25 @@ def insertIndexKey(indexKey, txId):
         valueTypes[record["ValueType"]] = record["ValueTypeId"]
     
     return valueTypes
+
+def deleteRecipeData(stepId, recipeDataKey):
+    log.infof("Deleting existing recipe data for step %d with key: %s...", stepId, recipeDataKey)
+    SQL = "select RecipeDataType from SfcRecipeDataView where StepId = %d and RecipeDataKey = '%s'" % (stepId, recipeDataKey) 
+    print SQL
+    pds = system.db.runQuery(SQL)
+    
+    for record in pds:
+        recipeDataType = record["RecipeDataType"]
+        if recipeDataType in ["Output", "Output Ramp"]:
+            print "Deleting a %s..." % (recipeDataType)
+            
+            SQL = "select * from SfcRecipeDataOutputRampView where StepId = %s and RecipeDataKey = '%s'" % (str(stepId), recipeDataKey)
+            pds = system.db.runQuery(SQL)
+            for record in pds:
+                outputValueId = record["OutputValueId"]
+                targetValueId = record["TargetValueId"]
+                pvValueId = record["PVValueId"]
+                rows = system.db.runUpdateQuery("Delete from SfcRecipeData where RecipeDataId = %d" % (record["RecipeDataId"]))
+                print "...deleted %d rows from SfcRecipeData..." % (rows)
+                rows = system.db.runUpdateQuery("Delete from SfcRecipeDataValue where ValueId = %d or ValueId = %d or ValueId = %d" % (outputValueId, targetValueId, pvValueId))
+                print "...deleted %d rows from SfcRecipeData..." % (rows)

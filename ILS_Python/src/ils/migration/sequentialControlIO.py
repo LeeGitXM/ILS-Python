@@ -198,39 +198,45 @@ def createTags(rootContainer):
                     if className == "OPC-TEXT-OUTPUT":
                         createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "String")
                         status = "Created"
+                        
                     elif className == "FLOAT-PARAMETER":
                         initialValue = ds.getValueAt(row, "initial-value")
                         createParameter(parentPath, outputName, scanClass, "Float8", initialValue)
                         status = "Created"
+                        
                     elif className == "OPC-FLOAT-OUTPUT":
                         createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Float")
                         status = "Created"
                     elif className == "OPC-INT-OUTPUT":
                         createOutput(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Integer")
                         status = "Created"
+                        
                     elif className == "OPC-FLOAT-BAD-FLAG":
                         createBadFlag(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Float")
                         status = "Created"
+                        
                     elif className == "OPC-INT-BAD-FLAG":
                         createBadFlag(parentPath, outputName, itemId, serverName, scanClass, outputNames, "Integer")
                         status = "Created"
+                        
                     elif className == "OPC-TEXT-BAD-FLAG":
                         createBadFlag(parentPath, outputName, itemId, serverName, scanClass, outputNames, "String")
                         status = "Created"
+                        
                     elif className == "OPC-TEXT-CONDITIONAL-FLOAT-OUTPUT":
                         # This column doesn't sound right for the permissive item id, but I think the columns just got a little 
                         # screwed up during export so the header doesn't match the column
                         permissiveItemId = ds.getValueAt(row, "mode-item-Id")
-                        createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, serverName, 
-                                                scanClass, outputNames, "Float", "String")
+                        createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, serverName, scanClass, outputNames, "Float", "String")
                         status = "Created"
+                        
                     elif className == "OPC-TEXT-CONDITIONAL-TEXT-OUTPUT":
                         # This column doesn't sound right for the permissive item id, but I think the columns just got a little 
                         # screwed up during export so the header doesn't match the column
                         permissiveItemId = ds.getValueAt(row, "mode-item-Id")
-                        createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, serverName, 
-                                                scanClass, outputNames, "String", "String")
+                        createConditionalOutut(parentPath, outputName, itemId, permissiveItemId, serverName, scanClass, outputNames, "String", "String")
                         status = "Created"
+
                     elif className in ["OPC-PKS-CONTROLLER", "OPC-PKS-DIGITAL-CONTROLLER", "OPC-PKS-EHG-CONTROLLER", "OPC-PKS-EHG-DIGITAL-CONTROLLER"]:
                         modeItemId = ds.getValueAt(row, "mode-item-id")
                         permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
@@ -241,7 +247,8 @@ def createTags(rootContainer):
     #                    windupItemId = ds.getValueAt(row, "output-disposability-item-id")
                         createPKSController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
                                             serverName, scanClass, permissiveScanClass, outputNames)
-                        status = "Created"                
+                        status = "Created"
+                                     
                     elif className == "OPC-PKS-ACE-CONTROLLER":
                         modeItemId = ds.getValueAt(row, "mode-item-id")
                         permissiveItemId = ds.getValueAt(row, "mode-permissive-item-id")
@@ -282,7 +289,24 @@ def createTags(rootContainer):
 
                         createTDCController(parentPath, outputName, itemId, spItemId, opItemId, modeItemId, windupItemId, 
                                             serverName, scanClass, permissiveScanClass, outputNames)
-                        status = "Created"  
+                        status = "Created"
+                        
+                        
+                    elif className in ["OPC-TDC-AUTOMAN-CONTROLLER"]:
+                        opItemId = ds.getValueAt(row, 7)
+                        modeItemId = ds.getValueAt(row, 8)
+
+                        createTDCAutomanController(parentPath, outputName, opItemId, modeItemId, serverName, scanClass, outputNames)
+                        status = "Created"
+                        1
+
+                    elif className in ["OPC-TDC-DIGITAL-PM-CONTROLLER"]:
+                        itemId = ds.getValueAt(row, 7)
+                        opItemId = ds.getValueAt(row, 8)
+                        modeItemId = ds.getValueAt(row, 9)
+
+                        createTDCDigitalController(parentPath, outputName, itemId, opItemId, modeItemId, serverName, scanClass, permissiveScanClass, outputNames)
+                        status = "Created"
                     
                     elif className in ["OPC-TDC-RAMP-VAR"]:
                         itemId = ds.getValueAt(row, 7)
@@ -414,7 +438,6 @@ def createPKSController(parentPath, outputName, itemId, modeItemId, permissiveIt
                                 "alternateNames": names},
                         overrides={"op": {"Enabled":"false"}})
 
-#
 def createTDCController(parentPath, outputName, itemId, spItemId, opItemId, modeItemId, windupItemId, 
                         serverName, scanClass, permissiveScanClass, names):
     UDTType='Controllers/TDC Controller'
@@ -425,6 +448,22 @@ def createTDCController(parentPath, outputName, itemId, spItemId, opItemId, mode
                         parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass, "spItemId":spItemId,
                                 "opItemId":opItemId, "modeItemId":modeItemId, "windupItemId":windupItemId, "alternateNames": names})
 
+def createTDCAutomanController(parentPath, outputName, itemId, modeItemId, serverName, scanClass, names):
+    UDTType='Controllers/TDC AUTOMAN Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, itemId, scanClass, serverName)
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"serverName":serverName, "scanClassName":scanClass, "itemId":itemId, "modeItemId":modeItemId, "alternateNames": names})
+
+def createTDCDigitalController(parentPath, outputName, itemId, opItemId, modeItemId, serverName, scanClass, permissiveScanClass, names):
+    UDTType='Controllers/TDC Digital Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, PV ItemId: %s, OP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, itemId, opItemId, scanClass, serverName)
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass,
+                                "opItemId":opItemId, "modeItemId":modeItemId, "alternateNames": names})
 
 def createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, 
                         serverName, scanClass, permissiveScanClass, names, processingCmdItemId):
