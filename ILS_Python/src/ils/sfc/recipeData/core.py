@@ -529,7 +529,7 @@ def setRecipeData(stepUUID, folder, key, attribute, val, db, units=""):
     setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db)
 
 def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db):
-    attribute = string.upper(attribute)
+    attribute = string.upper(attribute).strip()
     
     if isFloat(val) and units <> "":
         oldVal = val
