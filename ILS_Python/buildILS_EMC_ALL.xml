@@ -33,5 +33,12 @@
 			</fileset>
 		</copy>
 		
+		<echo message="Deploying python scripts to ${gline.py.lib}" />
+		<copy todir="${gline.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
 	</target>
 </project>

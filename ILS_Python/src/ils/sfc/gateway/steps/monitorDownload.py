@@ -41,7 +41,8 @@ def activate(scopeContext, stepProperties, state):
             handleTimer(timerRecipeDataId, START_TIMER, logger, database)
         
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-        recipeDataStepUUID, stepName = s88GetStep(chartScope, stepScope, recipeLocation)
+#TODO This may not be needed
+#        recipeDataStepUUID, stepName = s88GetStep(chartScope, stepScope, recipeLocation)
         
         configJson = getStepProperty(stepProperties, MONITOR_DOWNLOADS_CONFIG)
         monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)
@@ -90,6 +91,8 @@ def activate(scopeContext, stepProperties, state):
     
                 system.db.runUpdateQuery(SQL, database)
         
+        #TODO This is temprary to see if this is even used!
+        recipeDataStepUUID = -1
         payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: recipeDataStepUUID, IS_SFC_WINDOW: True}
         sendMessageToClient(chartScope, messageHandler, payload)
         

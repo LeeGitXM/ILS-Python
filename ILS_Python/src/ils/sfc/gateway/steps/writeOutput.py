@@ -12,7 +12,7 @@ from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
     ERROR_COUNT_LOCAL, ERROR_COUNT_SCOPE, ERROR_COUNT_MODE, ERROR_COUNT_KEY, \
     DEACTIVATED, PAUSED, RESUMED, \
-    LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, COUNT_ABSOLUTE
+    LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, REFERENCE_SCOPE, COUNT_ABSOLUTE
 from ils.sfc.recipeData.constants import TIMER
 from java.util import Date, Calendar
 from system.ils.sfc import getWriteOutputConfig
@@ -67,7 +67,6 @@ def activate(scopeContext, stepProperties, state):
         config = getWriteOutputConfig(configJson)
         logger.trace("Block Configuration: %s" % (str(config)))
 
-
         # The timer is not running until someone starts it
         stepScope[TIMER_RUNNING]=False
 
@@ -75,30 +74,32 @@ def activate(scopeContext, stepProperties, state):
         downloadRows = []
         numDisabledRows = 0
         for row in config.rows:
-            print "Row: ", row
-            if row.key[0] == "{" and row.key[len(row.key) - 1] == "}":
-                print "******** Found a reference ***********"
+            recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
+
+            if recipeDataScope == REFERENCE_SCOPE: 
+                print "The key for this row is: ", row.key
+                print "chartScope: ", str(chartScope)
                 
-                reference = row.key[1:len(row.key)-1]
-                print "The reference is: <%s>, stripped: <%s>)" % (row.key, reference)
-                
-                scopeAndKey = chartScope.get(reference, "")
+                # These didn't work
+                #scopeAndKey = chartScope[row.key]
+                scopeAndKey = chartScope.get(row.key)
                 print "The de-referenced key is: ", scopeAndKey
+                
                 scope = scopeAndKey[0:scopeAndKey.find(".")]
-                key = scopeAndKey[scopeAndKey.find("."):]
-                print "The scope is: <%s> and the key is: <%s>" % (scope, key)
+                key = scopeAndKey[scopeAndKey.find(".")+1:]
+                logger.tracef("The dereferenced scope and key are: <%s> <%s>", scope, key)
                 row.key = key
                 row.recipeLocation = scope
             else:
                 row.recipeLocation = recipeDataScope
             
-            download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeDataScope)
+            download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, row.recipeLocation)
             if download:
                 downloadRows.append(row)
             else:
                 logger.tracef("%s is disabled", row.key)
                 numDisabledRows = numDisabledRows + 1
-                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "", recipeDataScope)
+                s88Set(chartScope, stepScope, row.key + "." + DOWNLOAD_STATUS, "", row.recipeLocation)
         
         # do the timer logic, if there are rows that need timing
         timerNeeded = False
@@ -107,7 +108,7 @@ def activate(scopeContext, stepProperties, state):
             if row.timingMinutes > 0.:
                 timerNeeded = True
     
-        logger.trace("Timer is needed: %s" % (str(timerNeeded)))
+        logger.tracef("Timer is needed: %s", str(timerNeeded))
                 
         # separate rows into timed rows and those that are written after timed rows:
         immediateRows = []

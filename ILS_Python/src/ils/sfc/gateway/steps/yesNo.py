@@ -66,7 +66,8 @@ def activate(scopeContext, stepProperties, state):
             if prompt.find("<HTML") < 0:
                 prompt = "<HTML>" + prompt 
             
-            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
+            logger.tracef("...the step for the response is: %s - %s", stepName, targetStepUUID)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
