@@ -144,7 +144,7 @@ def getRecipeDataId(stepUUID, keyOriginal, db):
     ''' This utility requires a key and an attribute, so add a fake attribute and then ignore it  '''
     folder,key,attribute = splitKey(keyOriginal + ".value")
     
-    if folder == "":
+    if folder in ["", None]:
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
             " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
     else:
@@ -191,6 +191,7 @@ def fetchRecipeData(stepUUID, folder, key, attribute, db):
     return val, units
 
 def getFolderForStep(stepUUID, folder, db):
+    logger.tracef("...getting the recipeId for folder <%s> for step <%s>", folder, stepUUID)
     SQL = "Select RecipeDataFolderId, RecipeDataKey, ParentRecipeDataFolderId "\
         "from SfcRecipeDataFolderView "\
         "where StepUUID = '%s'" % (str(stepUUID))
@@ -200,7 +201,7 @@ def getFolderForStep(stepUUID, folder, db):
     recipeDataFolderId = None
     for token in tokens:
         for record in folderPDS:
-            if record["RecipeDataKey"] == string.upper(token) and record["ParentRecipeDataFolderId"] == recipeDataFolderId:
+            if string.lower(record["RecipeDataKey"]) == string.lower(token) and record["ParentRecipeDataFolderId"] == recipeDataFolderId:
                 recipeDataFolderId = record["RecipeDataFolderId"]
                 break
 
