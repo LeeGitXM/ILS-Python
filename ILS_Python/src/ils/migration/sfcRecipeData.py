@@ -149,7 +149,8 @@ def importRecipeData(rootContainer):
                     else:
                         errorCounter = errorCounter + 1
 
-    system.db.commitTransaction(txId)
+                    system.db.commitTransaction(txId)
+
     system.db.closeTransaction(txId)
     
     print "Done - Success: %d, Errors: %d" % (recipeDataCounter, errorCounter)
@@ -188,7 +189,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
                     
         elif recipeDataType in ["Output Ramp"]:
             print "Yo"
-            deleteRecipeData(stepId, recipeDataKey)
+            deleteRecipeData(stepId, recipeDataKey, txId)
                 
             valueType = recipe.get("valueType", "float")
             valueTypeId = valueTypes.get(valueType, -99)
@@ -461,11 +462,11 @@ def insertIndexKey(indexKey, txId):
     
     return valueTypes
 
-def deleteRecipeData(stepId, recipeDataKey):
+def deleteRecipeData(stepId, recipeDataKey, txId):
     log.infof("Deleting existing recipe data for step %d with key: %s...", stepId, recipeDataKey)
     SQL = "select RecipeDataType from SfcRecipeDataView where StepId = %d and RecipeDataKey = '%s'" % (stepId, recipeDataKey) 
     print SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, tx=txId)
     
     for record in pds:
         recipeDataType = record["RecipeDataType"]
@@ -473,12 +474,12 @@ def deleteRecipeData(stepId, recipeDataKey):
             print "Deleting a %s..." % (recipeDataType)
             
             SQL = "select * from SfcRecipeDataOutputRampView where StepId = %s and RecipeDataKey = '%s'" % (str(stepId), recipeDataKey)
-            pds = system.db.runQuery(SQL)
+            pds = system.db.runQuery(SQL, tx=txId)
             for record in pds:
                 outputValueId = record["OutputValueId"]
                 targetValueId = record["TargetValueId"]
                 pvValueId = record["PVValueId"]
-                rows = system.db.runUpdateQuery("Delete from SfcRecipeData where RecipeDataId = %d" % (record["RecipeDataId"]))
+                rows = system.db.runUpdateQuery("Delete from SfcRecipeData where RecipeDataId = %d" % (record["RecipeDataId"]), tx=txId)
                 print "...deleted %d rows from SfcRecipeData..." % (rows)
-                rows = system.db.runUpdateQuery("Delete from SfcRecipeDataValue where ValueId = %d or ValueId = %d or ValueId = %d" % (outputValueId, targetValueId, pvValueId))
+                rows = system.db.runUpdateQuery("Delete from SfcRecipeDataValue where ValueId = %d or ValueId = %d or ValueId = %d" % (outputValueId, targetValueId, pvValueId), tx=txId)
                 print "...deleted %d rows from SfcRecipeData..." % (rows)
