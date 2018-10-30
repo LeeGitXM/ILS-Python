@@ -136,7 +136,7 @@ def importRecipeData(rootContainer):
                 recipeDataClass = recipe.get("class-name")
                 recipeDataType = translate(recipeDataClass)
                 
-                if recipeDataType == "Output Ramp" and recipeDataCounter < 1 and errorCounter < 1:
+                if recipeDataType == "Output Ramp" and recipeDataCounter < 1000 and errorCounter < 1000:
                     print "Importing a ramp..."
                     recipeDataTypeId = recipeDataTypes.get(recipeDataType, -99)
                     recipeDataKey = recipe.get("key")
