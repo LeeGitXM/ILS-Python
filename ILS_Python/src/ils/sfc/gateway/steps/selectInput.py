@@ -13,6 +13,7 @@ from ils.sfc.common.constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY, IS_SF
 from ils.sfc.common.util import isEmpty
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
 from ils.sfc.gateway.steps.commonInput import cleanup
+from ils.sfc.recipeData.core import splitKey
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -25,6 +26,8 @@ def activate(scopeContext, stepProperties, state):
     windowPath = "SFC/SelectInput"
     messageHandler = "sfcOpenWindow"
     responseKeyAndAttribute = getStepProperty(stepProperties, RESPONSE_KEY_AND_ATTRIBUTE)
+    folder, responseKey, responseAttribute = splitKey(responseKeyAndAttribute)
+    
     responseRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
 
     if state in [DEACTIVATED, CANCELLED]:
@@ -70,9 +73,9 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
             
-            choicesStepUUID, stepName = s88GetStep(chartScope, stepScope, choicesRecipeLocation)
+            choicesStepUUID, stepName, choicesKeyAndAttribute = s88GetStep(chartScope, stepScope, choicesRecipeLocation, choicesKey)
             
-            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName, responseKetAndAttribute = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
             
             sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, keyAndAttribute) values (?, ?, ?, ?, ?, ?)"
             system.db.runPrepUpdate(sql, [windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, responseKeyAndAttribute], database)

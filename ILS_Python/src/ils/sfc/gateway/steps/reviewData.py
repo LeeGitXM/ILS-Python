@@ -82,7 +82,7 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef("The primary configuration: %s", str(primaryConfigJson))
             logger.tracef("The secondary configuration is: %s", str(secondaryConfigJson))
             
-            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
             
             SQL = "insert into SfcReviewData (windowId, showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
                 "values ('%s', %d, '%s', '%s', '%s', '%s')" % (windowId, showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel)

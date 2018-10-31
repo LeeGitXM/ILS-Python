@@ -61,7 +61,7 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation)
+            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
             
             sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, lowLimit, highLimit, defaultValue) "\
                 " values ('%s', '%s', '%s', '%s', %s, %s, '%s')" \

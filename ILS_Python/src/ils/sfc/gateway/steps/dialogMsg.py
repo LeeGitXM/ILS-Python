@@ -5,7 +5,7 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88SetWithUnits, s88GetWithUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88SetWithUnits, s88GetWithUnits
 from ils.sfc.gateway.api import sendMessageToClient, getControlPanelId, registerWindowWithControlPanel, getStepProperty, \
     logStepDeactivated, getTopChartRunId, deleteAndSendClose, getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getProject
 from ils.sfc.common.util import isEmpty
