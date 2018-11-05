@@ -161,7 +161,7 @@ class PKSController(controller.Controller):
             return configOK, errorMsg
         
         '''
-        The I/O module is designer for OPC I/O, if we are writing to memory tags then we don't use the I/O API.
+        The I/O module is designed for OPC I/O, if we are writing to memory tags then we don't use the I/O API.
         However, if we are using isolation tags then we DO write to memory tags!  If we are writing to memory tags then 
         it doesn't make sense to check for an item id or OPC server.
         '''
