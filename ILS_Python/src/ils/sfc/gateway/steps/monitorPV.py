@@ -86,7 +86,7 @@ def activate(scopeContext, stepProperties, state):
                 watchOnly = True
                 
                 recipeDataLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-                targetStepUUID, stepName = s88GetStep(chartScope, stepScope, recipeDataLocation, "")
+                targetStepUUID, stepName, unusedFillerVar = s88GetStep(chartScope, stepScope, recipeDataLocation, "")
                 
                 for configRow in config.rows:
                     logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s - Deadtime: %s" % 
