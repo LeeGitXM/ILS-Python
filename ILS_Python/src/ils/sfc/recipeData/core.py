@@ -143,12 +143,15 @@ def getRecipeDataId(stepUUID, keyOriginal, db):
     
     ''' This utility requires a key and an attribute, so add a fake attribute and then ignore it  '''
     folder,key,attribute = splitKey(keyOriginal + ".value")
-    
+
     if folder in ["", None]:
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
             " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
     else:
+        logger.errorf("EREIAM JH - attributes :%s: :%s: :%s:", str(folder), str(key), str(attribute))
+        logger.errorf("EREIAM JH - Getting Folder for step :%s: :%s: :%s:", str(stepUUID), str(folder), str(db))
         recipeDataFolderId = getFolderForStep(stepUUID, folder, db)
+        logger.errorf("EREIAM JH - Folder Id :%s:", str(recipeDataFolderId))
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
             " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, str(recipeDataFolderId)) 
 
@@ -487,6 +490,14 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
             "from SfcRecipeDataInputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == OUTPUT:
+        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, OUTPUTTYPE, OUTPUTTYPEID, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
+            "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, PVMONITORACTIVE, PVMONITORSTATUS, SETPOINTSTATUS,  WRITECONFIRM, WRITECONFIRMED, "\
+            "OUTPUTVALUEID, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
+            "TARGETVALUEID, TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
+            "PVVALUEID, PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
+            "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
+    
+    elif recipeDataType == OUTPUT_RAMP:
         SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, OUTPUTTYPE, OUTPUTTYPEID, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
             "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, PVMONITORACTIVE, PVMONITORSTATUS, SETPOINTSTATUS,  WRITECONFIRM, WRITECONFIRMED, "\
             "OUTPUTVALUEID, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
