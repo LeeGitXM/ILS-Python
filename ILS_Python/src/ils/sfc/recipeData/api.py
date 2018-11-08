@@ -336,9 +336,9 @@ def s88GetRecipeDataId(chartProperties, stepProperties, key, scope):
     return -1, ""
 
 def s88GetRecipeDataIdFromStep(stepUUID, key, db):
-    ''' I don't care about the attribute, but I need one to use splitKey, so add one and throw it away '''
-    folder,key,attribute = splitKey(key + ".value")
-    recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folder, key, db)
+#    ''' I don't care about the attribute, but I need one to use splitKey, so add one and throw it away '''
+#    folder,key,attribute = splitKey(key + ".value")
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, key, db)
     return recipeDataId, recipeDataType
 
 # Return a value for a specific key using the recipe data id.  This is intended for long-running steps that update the same recipe data object each iteration.
