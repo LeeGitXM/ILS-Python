@@ -122,7 +122,7 @@ def updateValueType(database,families,txId):
         
         updatedValueIds = []
         for record in pds:
-            print record["ValueId"], record["Grade"], record["ValueType"], record["RecommendedValue"]
+            #print record["ValueId"], record["Grade"], record["ValueType"], record["RecommendedValue"]
             valueId = record["ValueId"]
             valueType = record["ValueType"]
             val = record["RecommendedValue"]
@@ -242,14 +242,18 @@ def populateGradeDetail(database,families,vu,txId):
         unitMaster = record["Unit_Master"]
         unitPrefix = record["Unit_Prefix"]
         
-        SQL = "SELECT SUB_RECIPE FROM " + unitMaster
+        SQL = "SELECT SUB_RECIPE, ACTIVE FROM " + unitMaster
         
         masterpds = fetchRows(SQL,database)
         familyid = families.get(family)
         if masterpds != None:
             for masterrow in masterpds:
                 sub = masterrow['SUB_RECIPE']
-                table = unitPrefix + '_' + sub
+                active = masterrow['ACTIVE']
+                if active:
+                    table = unitPrefix + '_' + sub
+                else:
+                    table = 'z' + unitPrefix + '_' + sub
                 print "      ...",table
                 SQL = "SELECT PRES,RECC,LOLIM,HILIM FROM "+table
                 print SQL
@@ -308,13 +312,19 @@ def populateGradeMasterTable(database,families,txId):
         if unitMaster == None:
             print "** Could not find %s in TYPE_UNIT_ROOT **" % (family)
         
-        SQL = "SELECT SUB_RECIPE FROM " + unitMaster
+        SQL = "SELECT SUB_RECIPE, ACTIVE FROM " + unitMaster
         pds = fetchRows(SQL,database)
         if pds != None:
             for row in pds:
+                active = row['ACTIVE']
+                if active:
+                    activeVal = "1"
+                else:
+                    activeVal = "0"
+                    
                 grade = row['SUB_RECIPE']
                 grade = grade.lstrip("0")
-                SQL = "INSERT INTO RtGradeMaster(RecipeFamilyId,Grade,Version) VALUES ("+str(families.get(family))+",'"+grade+"',0)"
+                SQL = "INSERT INTO RtGradeMaster(RecipeFamilyId,Grade,Version,Active) VALUES (" + str(families.get(family)) + ",'" + grade + "',0," + activeVal + ")"
                 system.db.runUpdateQuery(SQL, tx=txId)
                 rows = rows + 1
             print "  ...inserted %i records into RtGradeMaster for %s!" % (rows, family)
