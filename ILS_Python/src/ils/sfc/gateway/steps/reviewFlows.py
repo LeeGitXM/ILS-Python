@@ -12,7 +12,7 @@ from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWind
         logStepDeactivated, getTopChartRunId, deleteAndSendClose, getDatabaseName, getChartLogger, sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, DEACTIVATED, CANCELLED, \
     BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, HEADING1, HEADING2, HEADING3, REVIEW_FLOWS, SECONDARY_REVIEW_DATA, \
-    PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL
+    PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL, REFERENCE_SCOPE
 from ils.sfc.common.util import isEmpty
 
 def activate(scopeContext, stepProperties, state):    
@@ -24,6 +24,8 @@ def activate(scopeContext, stepProperties, state):
     messageHandler = "sfcOpenWindow"
     responseKey = getStepProperty(stepProperties, BUTTON_KEY)
     responseRecipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
+    
+    print "The response location and key are: %s - %s" % (responseRecipeLocation, responseKey)
 
     if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
@@ -39,7 +41,9 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef("Initializing a Review Flows step, the response key is <%s>", responseKey)
             
             # Clear the response recipe data so we know when the client has updated it
-            s88Set(chartScope, stepScope, responseKey + ".value", "NULL", responseRecipeLocation)
+            if responseRecipeLocation != REFERENCE_SCOPE:
+                responseKey = responseKey + ".value"
+            s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
             
             stepScope[WAITING_FOR_REPLY] = True
             
@@ -73,7 +77,7 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
+            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
             
             SQL = "insert into SfcReviewFlows (windowId, heading1, heading2, heading3, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
                 "values (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -86,10 +90,13 @@ def activate(scopeContext, stepProperties, state):
             logger.trace("Starting to transfer the configuration to the database...")
             
             configJson = getStepProperty(stepProperties, REVIEW_FLOWS)
+            print "JSON: ", configJson
             configDict = jsonToDict(configJson)
+            print "Dictionary: ", configDict
             rows = configDict.get("rows", [])
             rowNum = 0
             for row in rows:
+                logger.tracef("...adding row %d", rowNum)
                 addData(chartScope, stepScope, windowId, row, rowNum, database, logger)
                 rowNum = rowNum + 1
             
@@ -124,7 +131,9 @@ def activate(scopeContext, stepProperties, state):
             sendMessageToClient(chartScope, messageHandler, payload)
 
         else: # waiting for reply
-            response = s88Get(chartScope, stepScope, responseKey + ".value", responseRecipeLocation)
+            if responseRecipeLocation != REFERENCE_SCOPE:
+                responseKey = responseKey + ".value"
+            response = s88Get(chartScope, stepScope, responseKey, responseRecipeLocation)
             logger.tracef("...the current response to a review Data step is: %s", str(response))
             
             if response <> None and response <> "NULL":

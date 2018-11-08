@@ -25,9 +25,7 @@ def activate(scopeContext, stepProperties, state):
     logger = getChartLogger(chartScope)
     windowPath = "SFC/SelectInput"
     messageHandler = "sfcOpenWindow"
-    responseKeyAndAttribute = getStepProperty(stepProperties, RESPONSE_KEY_AND_ATTRIBUTE)
-    folder, responseKey, responseAttribute = splitKey(responseKeyAndAttribute)
-    
+    responseKey = getStepProperty(stepProperties, RESPONSE_KEY_AND_ATTRIBUTE)
     responseRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
 
     if state in [DEACTIVATED, CANCELLED]:
@@ -43,15 +41,10 @@ def activate(scopeContext, stepProperties, state):
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
             logger.trace("Initializing a Select Input step")
-        
-
             
             # Get the choices from recipe data:
             choicesRecipeLocation = getStepProperty(stepProperties, CHOICES_RECIPE_LOCATION) 
             choicesKey = getStepProperty(stepProperties, CHOICES_KEY) 
-            
-            print "choicesRecipeLocation: ", choicesRecipeLocation
-            print "choicesKey: ", choicesKey
             
             stepScope[WAITING_FOR_REPLY] = True
             
@@ -68,23 +61,23 @@ def activate(scopeContext, stepProperties, state):
                 prompt = "<HTML>" + prompt 
 
             # Clear the response recipe data so we know when the client has updated it
-            s88Set(chartScope, stepScope, responseKeyAndAttribute, "NULL", responseRecipeLocation)
+            s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
             
             choicesStepUUID, stepName, choicesKeyAndAttribute = s88GetStep(chartScope, stepScope, choicesRecipeLocation, choicesKey)
             
-            targetStepUUID, stepName, responseKetAndAttribute = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
+            targetStepUUID, stepName, responseKeyAndAttribute = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
             
             sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, keyAndAttribute) values (?, ?, ?, ?, ?, ?)"
-            system.db.runPrepUpdate(sql, [windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, responseKeyAndAttribute], database)
+            system.db.runPrepUpdate(sql, [windowId, prompt, choicesStepUUID, choicesKeyAndAttribute, targetStepUUID, responseKeyAndAttribute], database)
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)
             
         else:
-            response = s88Get(chartScope, stepScope, responseKeyAndAttribute, responseRecipeLocation)
+            response = s88Get(chartScope, stepScope, responseKey, responseRecipeLocation)
             logger.tracef("...the current response to a selectInput step is: %s", str(response))
             
             if response <> None and response <> "None" and response <> "NULL": 

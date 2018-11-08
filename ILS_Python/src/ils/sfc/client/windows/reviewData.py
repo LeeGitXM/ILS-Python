@@ -2,9 +2,11 @@
 Created on Jan 14, 2015
 
 @author: rforbes
+
+This step caused some problems because of the brilliant decision to have an implied ".value" on the response key
 '''
 
-import system
+import system, string
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 
@@ -64,19 +66,29 @@ def internalFrameOpened(rootContainer):
     print "...finished"
  
 def okActionPerformed(event):
+    print "In %s.okActionPerformed()" % (__name__)
     actionPerformed(event, "OK")
   
 def cancelActionPerformed(event):
+    print "In %s.cancelActionPerformed()" % (__name__)
     actionPerformed(event, "CANCEL")
 
 def actionPerformed(event, response):
+    print "In %s.sctionPerformed(), the response is: %s" % (__name__, response)
     db = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
     responseKey = rootContainer.responseKey
-    folder,key,attribute = splitKey(responseKey + ".value")
-    setRecipeData(targetStepUUID, folder,key,attribute, response, db)
+    
+    '''
+    If this is in a library then they will have supplied the attribute, if it isn't in a library then there is an implied ".value"
+    '''
+    if string.lower(responseKey[len(responseKey) - 6:]) != ".value":
+        responseKey = responseKey + ".value"
+    print "From the root container properties, targetStepUUID: %s, responseKey: %s" % (targetStepUUID, responseKey)
+    folder,key,attribute = splitKey(responseKey)
+    setRecipeData(targetStepUUID, folder, key, attribute, response, db)
     system.nav.closeParentWindow(event)
 
 

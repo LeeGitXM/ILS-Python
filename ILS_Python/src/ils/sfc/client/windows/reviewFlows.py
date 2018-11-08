@@ -2,9 +2,11 @@
 Created on Sep 22, 2015
 
 @author: rforbes
+
+This step caused some problems because of the brilliant decision to have an implied ".value" on the response key
 '''
 
-import system
+import system, string
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.sfc.client.windows.reviewData import setAdviceVisibiity
@@ -53,29 +55,46 @@ def internalFrameOpened(rootContainer):
     print "Populating the primary table..."
     SQL = "select prompt, advice, data1, data2, data3, units from SfcReviewFlowsTable where windowId = '%s' and isPrimary = 1 order by rowNum" % (windowId)
     pds = system.db.runQuery(SQL, database)
+    print "...fetched %d rows for the primary table" % (len(pds))
     table.data = pds
     
     print "Populating the secondary table..."
     SQL = "select prompt, data1 as value, units from SfcReviewFlowsTable where windowId = '%s' and isPrimary = 0 order by rowNum" % (windowId)
     pds = system.db.runQuery(SQL, database)
+    print "...fetched %d rows for the secondary table" % (len(pds))
     table = rootContainer.getComponent("Secondary Table")
 #    setAdviceVisibiity(table, showAdvice, columnWidths)
     table.data = pds
     
+    if len(pds) > 0:
+        rootContainer.hasSecondary = True
+    else:
+        rootContainer.hasSecondary = False
+    
     print "...finished"
 
 def okActionPerformed(event):
+    print "In %s.okActionPerformed()" % (__name__)
     actionPerformed(event, "OK")
   
 def cancelActionPerformed(event):
+    print "In %s.cancelActionPerformed()" % (__name__)
     actionPerformed(event, "CANCEL")
 
 def actionPerformed(event, response):
+    print "In %s.sctionPerformed(), the response is: %s" % (__name__, response)
     db = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     targetStepUUID = rootContainer.targetStepUUID
     responseKey = rootContainer.responseKey
-    folder,key,attribute = splitKey(responseKey + ".value")
+    
+    '''
+    If this is in a library then they will have supplied the attribute, if it isn't in a library then there is an implied ".value"
+    '''
+    if string.lower(responseKey[len(responseKey) - 6:]) != ".value":
+        responseKey = responseKey + ".value"
+
+    folder,key,attribute = splitKey(responseKey)
     setRecipeData(targetStepUUID, folder,key,attribute, response, db)
     system.nav.closeParentWindow(event)
