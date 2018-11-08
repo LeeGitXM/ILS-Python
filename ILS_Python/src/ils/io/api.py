@@ -18,6 +18,7 @@ import ils.io.pksrampcontroller
 import ils.io.pksacecontroller
 import ils.io.pksacerampcontroller
 import ils.io.tdccontroller
+import ils.io.tdcrampcontroller
 import ils.io.tdcdigitalcontroller
 from ils.io.client import writeRamp
 

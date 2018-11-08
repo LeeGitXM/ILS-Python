@@ -6,30 +6,39 @@ Created on Mar 29, 2018
 
 
 import system, string, time
-import ils.io.pkscontroller as pkscontroller
+import ils.io.tdccontroller as tdccontroller
 import ils.io.opcoutput as opcoutput
 log = system.util.getLogger("com.ils.io")
 
-class PKSRampController(pkscontroller.PKSController):
+'''
+Constants used to sett he state of the ramp controller in the TDC
+'''
+PRESET = "preset"
+RUN = "run"
+
+class TDCRampController(tdccontroller.TDCController):
     
     def __init__(self,path):
-        pkscontroller.PKSController.__init__(self,path)
+        tdccontroller.TDCController.__init__(self,path)
 
     # Reset the UDT in preparation for a write 
     def reset(self):
-        status, errorMessage = pkscontroller.PKSController.reset(self) 
+        log.trace('Resetting a TDCRampController...')      
+        status, errorMessage = tdccontroller.TDCController.reset(self) 
+        log.trace('...done resetting a TDCRampController!')
+
         return status, errorMessage
 
     '''
-    Inherit the writeDatum method from a pks controller
+    Inherit the writeDatum method from a tdc controller
     '''
 
     '''
-    Inherit the checkConfig method from a pks controller
+    Inherit the checkConfig method from a tdc controller
     '''
 
     '''
-    Inherit the confirmControllerMode method from a pks controller
+    Inherit the confirmControllerMode method from a tdc controller
     '''
 
     
@@ -41,14 +50,14 @@ class PKSRampController(pkscontroller.PKSController):
         success = True
 
         if val == None or rampTime == None or writeConfirm == None or valType == None or updateFrequency == None:
-            log.errorf("ERROR writing ramp for PKS controller: %s - One or more of the required arguments is missing", self.path)
+            log.errorf("ERROR writing ramp for TDC controller: %s - One or more of the required arguments is missing", self.path)
             return False, "One or more of the required arguments is missing"
         
         '''
         A ramp controller can only ramp the SP in hardware, if the request is to ramp an OP then the ramp will be implemented in Ignition..
         '''
         if string.upper(valType) in ["OUTPUT RAMP"]:
-            status, errorMessage = pkscontroller.PKSController.writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm)
+            status, errorMessage = tdccontroller.TDCController.writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm)
             return status, errorMessage
             
         '''
@@ -71,32 +80,30 @@ class PKSRampController(pkscontroller.PKSController):
             system.tag.write(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
-
         
         # Put the controller into the appropriate mode
         modeTag = self.modeTag
         confirmed, errorMessage = modeTag.writeDatum(modeValue, 'mode')
         if not(confirmed):
-            log.warnf("Warning: EPKS Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!", self.path, modeValue)
+            log.warnf("Warning: TDC Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!", self.path, modeValue)
 
-        log.infof("Ramping the %s of EPKS controller <%s> to %s over %s minutes", valType, self.path, str(val), str(rampTime))
+        log.infof("Ramping the %s of TDC controller <%s> to %s over %s minutes", valType, self.path, str(val), str(rampTime))
         system.tag.write(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
 
         rampTimeSeconds = rampTime * 60.0
 
         log.trace("...writing PRESET to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", "PRESET")            
+        system.tag.write(self.path + "/sp/rampState", PRESET)            
         time.sleep(self.OPC_LATENCY_TIME)
 
         log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
         system.tag.write(self.path + "/sp/rampTime", rampTimeSeconds)
-        system.tag.write(self.path + "/sp/targetValue", val)
+        system.tag.write(self.path + "/sp/setpointTargetValue", val)
         time.sleep(self.OPC_LATENCY_TIME)
         
         log.trace("...writing RUN to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", "RUN")
+        system.tag.write(self.path + "/sp/rampState", RUN)
         time.sleep(self.OPC_LATENCY_TIME)
 
-        log.infof("EPKS Controller <%s> done ramping!", self.path)
+        log.infof("TDC Controller <%s> done ramping!", self.path)
         return success, errorMessage
-    

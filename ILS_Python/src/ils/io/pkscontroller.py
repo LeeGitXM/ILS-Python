@@ -26,7 +26,7 @@ class PKSController(controller.Controller):
 
     # Reset the UDT in preparation for a write 
     def reset(self):
-        success = True
+        status = True
         errorMessage = ""
         log.tracef('Resetting a %s Controller...', __name__)       
         
@@ -42,7 +42,7 @@ class PKSController(controller.Controller):
             system.tag.write(tagPath + '/writeConfirmed', False)
             system.tag.write(tagPath + '/writeStatus', '')
 
-        return success, errorMessage
+        return status, errorMessage
 
     
     # writeDatum for a controller supports writing values to the OP, SP, or MODE, one at a time.
