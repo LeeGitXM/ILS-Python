@@ -13,11 +13,10 @@ log=system.util.getLogger("com.ils.sfc.visionEditor")
 
 from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, SQC, TIMER
 
-    
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
 def internalFrameOpened(rootContainer):
     db = getDatabaseClient()
-    print "In internalFrameOpened, db: ", db
+    print "In %s.internalFrameOpened(), db: %s" % (__name__, db)
     rootContainer.initialized = False
     
     recipeDataId = rootContainer.getPropertyValue("recipeDataId")
@@ -207,6 +206,7 @@ def internalFrameOpened(rootContainer):
             if len(pds) <> 1:
                 raise ValueError, "Unable to fetch an Output Ramp recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
+            print "The output type is: ", record["OutputType"]
             rootContainer.outputRampDataset = pds
         
         elif recipeDataType == RECIPE:
@@ -771,7 +771,7 @@ def addMatrixColumn(table):
 # This is called once by a timer shortly after the window is activated.  It gets around the age old problem I have where the
 # list of values are bound to query and the selected value is bound to a property and there is a timing issue between the two of them.
 def refreshComboBoxes(event):
-    print "Refreshing the combo boxes"
+    print "Refreshing the combo boxes from a timer"
     rootContainer = event.source.parent
     
     # Common Combos
@@ -808,15 +808,18 @@ def refreshComboBoxes(event):
         combo.selectedStringValue = valueType
     
     elif recipeDataType == OUTPUT_RAMP:
+        print "Setting the combo box values for an output ramp..."
         # Output Combos
         container = rootContainer.getComponent("Output Ramp Container")
         combo = container.getComponent("Output Type Dropdown")
-        ds = rootContainer.outputDataset
+        ds = rootContainer.outputRampDataset
         outputType = ds.getValueAt(0,"OutputType")
+        print "...setting the output type to: ", outputType
         combo.selectedStringValue = outputType
-        
+
         combo = container.getComponent("Value Type Dropdown")
         valueType = ds.getValueAt(0,"ValueType")
+        print "...setting the value type to: ", valueType
         combo.selectedStringValue = valueType
     
     elif recipeDataType == ARRAY:
