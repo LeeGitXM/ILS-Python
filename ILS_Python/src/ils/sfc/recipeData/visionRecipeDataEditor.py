@@ -309,6 +309,7 @@ def internalFrameOpened(rootContainer):
         elif recipeDataType == OUTPUT_RAMP:
             print "Initializing an Output Ramp..."
             ds = rootContainer.outputRampDataset
+            ds = system.dataset.setValue(ds, 0, "OutputType", "Setpoint Ramp")
             ds = system.dataset.setValue(ds, 0, "OutputFloatValue", 0.0)
             ds = system.dataset.setValue(ds, 0, "OutputIntegerValue", 0)
             ds = system.dataset.setValue(ds, 0, "OutputStringValue", "")
@@ -1254,7 +1255,7 @@ def saveOutputRamp(rootContainer):
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
 
-            ds = rootContainer.outputDataset
+            ds = rootContainer.outputRampDataset
             valueId = ds.getValueAt(0,"OutputValueId")
             if valueType == "Float":
                 val = outputContainer.getComponent("Output Float Value").floatValue
