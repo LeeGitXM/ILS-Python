@@ -145,13 +145,12 @@ def getRecipeDataId(stepUUID, keyOriginal, db):
     folder,key,attribute = splitKey(keyOriginal + ".value")
 
     if folder in ["", None]:
+        logger.tracef("...there isn't a folder...")
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
             " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
-    else:
-        logger.errorf("EREIAM JH - attributes :%s: :%s: :%s:", str(folder), str(key), str(attribute))
-        logger.errorf("EREIAM JH - Getting Folder for step :%s: :%s: :%s:", str(stepUUID), str(folder), str(db))
+    else:        
         recipeDataFolderId = getFolderForStep(stepUUID, folder, db)
-        logger.errorf("EREIAM JH - Folder Id :%s:", str(recipeDataFolderId))
+        logger.tracef("...found folder Id :%s:", str(recipeDataFolderId))
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
             " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, str(recipeDataFolderId)) 
 

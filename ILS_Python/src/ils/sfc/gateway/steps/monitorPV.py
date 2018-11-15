@@ -131,7 +131,8 @@ def activate(scopeContext, stepProperties, state):
                     s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, True, database)
                     
 #                    dataType = s88GetFromId(targetRecipeDataId, targetRecipeDataType, RECIPE_DATA_TYPE, database)
-                    configRow.isOutput = (targetRecipeDataType == 'Output')
+                    ''' I'm not sure if this should look at the PV or the target?? '''
+                    configRow.isOutput = (targetRecipeDataType in ['Output', 'Output Ramp'])
 
                     configRow.isDownloaded = False
                     configRow.persistenceOK = False
@@ -275,7 +276,7 @@ def activate(scopeContext, stepProperties, state):
                         if configRow.status == PV_OK:
                             continue
                         
-                        logger.tracef('(%s) PV: %s, Target type: %s, Target: %s, Strategy: %s', stepName, configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy)
+                        logger.tracef('(%s) PV: %s, Target type: %s, Recipe Data Type: %s, Target: %s, Strategy: %s', stepName, configRow.pvKey, configRow.targetType, targetRecipeDataType, configRow.targetNameIdOrValue, configRow.strategy)
     
                         pvKey = configRow.pvKey
  
@@ -292,20 +293,22 @@ def activate(scopeContext, stepProperties, state):
                         monitorActiveCount = monitorActiveCount + 1
                         #TODO: how are we supposed to know about a download unless we have an Output??
                         if configRow.isOutput and not configRow.isDownloaded:
-                            logger.tracef("(%s) The item is an output and it hasn't been downloaded...", stepName)
+                            logger.tracef("  (%s) The item is an output and it hasn't been downloaded...", stepName)
                             downloadStatus = s88GetFromId(targetRecipeDataId, targetRecipeDataType, DOWNLOAD_STATUS, database)
                             configRow.isDownloaded = (downloadStatus == STEP_SUCCESS or downloadStatus == STEP_FAILURE)
                             if configRow.isDownloaded:
-                                logger.tracef("(%s) the download just completed!", stepName)
+                                logger.tracef("  (%s) the download just completed!", stepName)
                                 configRow.downloadTime = elapsedMinutes
+                                configRow.outToleranceTime = 0.0
+                                configRow.inToleranceTime = 0.0
             
                         # Display the PVs as soon as the block starts running, even before the SP has been written
                         tagPath = getMonitoredTagPath(targetRecipeDataId, targetRecipeDataType, providerName, database)
                         qv = system.tag.read(tagPath)
                         
-                        logger.tracef("(%s) The present qualified value for %s is: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
+                        logger.tracef("  (%s) The present qualified value for %s is: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                         if not(qv.quality.isGood()):
-                            logger.warnf("(%s) The monitored value for %s is bad: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
+                            logger.warnf("  (%s) The monitored value for %s is bad: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                             continue
     
                         pv=qv.value
@@ -314,16 +317,16 @@ def activate(scopeContext, stepProperties, state):
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, "pvValue", pv, database)
                             configRow.lastPV = pv
                         else:
-                            logger.tracef("Skipping update of pv")
+                            logger.tracef("  Skipping update of pv because it has not changed")
     
                         # If we are configured to wait for the download and it hasn't been downloaded, then don't start to monitor
                         if configRow.download == WAIT and not configRow.isDownloaded:
-                            logger.tracef("(%s) skipping because this output is designated to wait for a download and it has not been downloaded", stepName)
+                            logger.tracef("  (%s) skipping because this output is designated to wait for a download and it has not been downloaded", stepName)
                             continue
                        
                         # if we're just reading for display purposes, we're done with this row
                         if configRow.strategy != MONITOR:
-                            logger.tracef('(%s) skipping because the strategy is NOT monitor!', stepName)
+                            logger.tracef('  (%s) skipping because the strategy is NOT monitor!', stepName)
                             continue
                         
                         target=configRow.targetValue
@@ -331,11 +334,22 @@ def activate(scopeContext, stepProperties, state):
                         tolerance=configRow.tolerance
                         limitType=configRow.limits
                         
-                        # Check if the value is within the limits
+                        # check dead time - assume that immediate writes coincide with starting the timer.      
+                        if configRow.download == IMMEDIATE:
+                            logger.tracef("  (%s) Using the timer elapsed minutes (%s) to check if the dead time (%s) has been exceeded.", stepName, str(elapsedMinutes), str(configRow.deadTime) )
+                            deadTimeExceeded = elapsedMinutes > configRow.deadTime
+                        else:
+                            logger.tracef("  (%s) Setting the reference time as the download time", stepName)
+                            referenceTime = configRow.downloadTime
+                            deadTimeExceeded = (elapsedMinutes - referenceTime) > configRow.deadTime 
 
+                        logger.tracef("  (%s) Checking if the dead time has been exceeded: %s", stepName, str(deadTimeExceeded))
+
+
+                        # Check if the value is within the limits
                         valueOk,txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
                         
-                        # check persistence:
+                        # check persistence and consistency
                         if valueOk:
                             configRow.outToleranceTime = 0
                             isConsistentlyOutOfTolerance = False
@@ -347,54 +361,49 @@ def activate(scopeContext, stepProperties, state):
                                     isPersistent = False
                                 else:
                                     isPersistent = True
-                        else:
-                            configRow.inToleranceTime = 0
-                            isPersistent = False
-                            if configRow.outToleranceTime != 0:
-                                outToleranceTime=long(configRow.outToleranceTime)
-                                isConsistentlyOutOfTolerance = getElapsedMinutes(Date(long(outToleranceTime))) > configRow.consistency
-                            else:
-                                isConsistentlyOutOfTolerance = False
-                                configRow.outToleranceTime = Date().getTime()
-                                
-                        # check dead time - assume that immediate writes coincide with starting the timer.      
-                        if configRow.download == IMMEDIATE:
-                            logger.tracef("(%s) Using the timer elapsed minutes (%s) to check if the dead time (%s) has been exceeded.", stepName, str(elapsedMinutes), str(configRow.deadTime) )
-                            deadTimeExceeded = elapsedMinutes > configRow.deadTime
-                        else:
-                            logger.tracef("(%s) Setting the reference time as the download time", stepName)
-                            referenceTime = configRow.downloadTime
-                            deadTimeExceeded = (elapsedMinutes - referenceTime) > configRow.deadTime 
-
-                        logger.tracef("(%s) Checking if the dead time has been exceeded: %s", stepName, str(deadTimeExceeded))
-
-                        # print '   pv', presentValue, 'target', configRow.targetValue, 'low limit',  configRow.lowLimit, 'high limit', configRow.highLimit   
-                        # print '   inToleranceTime', configRow.inToleranceTime, 'outToleranceTime', configRow.outToleranceTime, 'deadTime',configRow.deadTime  
-                        # SUCCESS, WARNING, MONITORING, NOT_PERSISTENT, NOT_CONSISTENT, OUT_OF_RANGE, ERROR, TIMEOUT
-                        if valueOk:
+                            
                             if isPersistent:
+                                logger.tracef("  --- The value is persistent - this meets all monitoring requirements for this output ---")
                                 configRow.status = PV_OK
-#                                s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_ACTIVE, False, recipeDataLocation)
                                 s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, False, database)
                             else:
                                 configRow.status = PV_OK_NOT_PERSISTENT
                                 persistencePending = True
-                        else: # out of tolerance
+                        else:
+                            configRow.inToleranceTime = 0
+                            isPersistent = False
+                            
                             if deadTimeExceeded:
-                                # print '   setting error status'
                                 configRow.status = PV_ERROR
-                            elif isConsistentlyOutOfTolerance:
+                                
+                            elif configRow.status in [PV_OK, PV_OK_NOT_PERSISTENT]:
+                                logger.tracef("  the pv was OK and now isn't")
+                                if configRow.outToleranceTime != 0:
+                                    outToleranceTime=long(configRow.outToleranceTime)
+                                    if getElapsedMinutes(Date(long(outToleranceTime))) > configRow.consistency:
+                                        configRow.status = PV_WARNING
+                                    else:
+                                         configRow.status = PV_BAD_NOT_CONSISTENT
+                                        
+                                else:
+                                    logger.trace("The PV just went out of tolerance")
+                                    isConsistentlyOutOfTolerance = False
+                                    configRow.outToleranceTime = Date().getTime()
+                                    
+                            elif configRow.status in [MONITORING]:
                                 configRow.status = PV_WARNING
+                                
                             else:
-                                configRow.status = PV_BAD_NOT_CONSISTENT
+                                logger.tracef("  IN THE ELSE")
+                               
             
-                        if configRow.status == PV_ERROR and string.upper(targetRecipeDataType) == OUTPUT:
+                        if string.upper(configRow.status) == string.upper(PV_ERROR) and string.upper(targetRecipeDataType) == string.upper(OUTPUT):
                             # Set the setpoint status to PROBLEM - this cannot be reset
 #                            s88Set(chartScope, stepScope, targetKey + "." + SETPOINT_STATUS, SETPOINT_PROBLEM, recipeDataLocation)
-                            print "Setting the setpoint status for a ", targetRecipeDataType
+                            logger.tracef("  Setting the setpoint status for a %s", targetRecipeDataType)
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, SETPOINT_STATUS, SETPOINT_PROBLEM, database)
             
-                        logger.tracef("(%s) Status: %s", stepName, configRow.status)
+                        logger.tracef("  (%s) Status: %s", stepName, configRow.status)
                         if configRow.status != configRow.lastStatus:
 #                            s88Set(chartScope, stepScope, targetKey + "." + PV_MONITOR_STATUS, configRow.status, recipeDataLocation)        
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_STATUS, configRow.status, database)

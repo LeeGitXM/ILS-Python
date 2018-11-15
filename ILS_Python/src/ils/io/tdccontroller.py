@@ -84,17 +84,16 @@ class TDCController(controller.Controller):
         mode = string.strip(mode.value)
         
         # Check the Output Disposability
-        
-        windup = system.tag.read(self.path + '/windup')
+        outputDisposability = system.tag.read(self.path + '/outputDisposability/value')
         
         # Check the quality of the tags to make sure we can trust their values
-        if str(windup.quality) != 'Good': 
-            log.warn("checkConfig failed for %s because the windup quality is %s" % (self.path, str(windup.quality)))
-            return False, "The windup quality is %s" % (str(windup.quality))
+        if str(outputDisposability.quality) != 'Good': 
+            log.warn("checkConfig failed for %s because the outputDisposability quality is %s" % (self.path, str(outputDisposability.quality)))
+            return False, "The windup quality is %s" % (str(outputDisposability.quality))
 
-        windup = string.strip(windup.value)        
+        outputDisposability = string.strip(outputDisposability.value)        
 
-        log.trace("%s: %s=%s, windup=%s, mode:%s" % (self.path, outputType, str(currentValue), windup, mode))
+        log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, outputType, str(currentValue), outputDisposability, mode))
 
         # For outputs check that the mode is MANUAL - no other test is required
         if string.upper(outputType) in ["OP", "OUTPUT"]:
@@ -105,7 +104,8 @@ class TDCController(controller.Controller):
         # For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is 
         # optional 
         elif string.upper(outputType) in ["SP", "SETPOINT"]:
-            if string.upper(windup) == 'HILO' and checkPathToValve:
+            #TODO Not sure if output disposability has the same values as windup...
+            if string.upper(outputDisposability) == 'HILO' and checkPathToValve:
                 success = False
                 errorMessage = "%s has no path to valve" % (self.path)
         

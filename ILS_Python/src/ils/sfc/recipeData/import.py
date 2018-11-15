@@ -423,7 +423,9 @@ def insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag
 def insertRecipeDataValue(valueType, val, txId):
     log.tracef("        Inserting a recipe data value (type: %s, value: %s)...", valueType, val)
     
-    if valueType == "String":
+    if val in [None, 'None']:
+        SQL = "insert into SfcRecipeDataValue (StringValue) values (NULL)"   
+    elif valueType == "String":
         SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (val)
     elif valueType == "Integer":
         SQL = "insert into SfcRecipeDataValue (IntegerValue) values (%d)" % (int(val))

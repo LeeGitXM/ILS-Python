@@ -26,8 +26,8 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # Read the value that we want to write to the Processing command
         processingCommandWait = system.tag.read(self.path + "/processingCommandWait").value
 
-        print "Calling writeDatum() for a PKS-ACE controller..."
-        status, errorMessage = pksacecontroller.PKSACEController.writeDatum(self, val, valueType)
+        print "Calling PKSController.writeDatum() for a PKS-ACE controller..."
+        status, errorMessage = pksrampcontroller.PKSRampController.writeDatum(self, val, valueType)
         if not(status):
             return status, errorMessage
         
@@ -37,6 +37,12 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # so I don't need to reset it.
         log.tracef("Writing wait value %s to the processing command...", str(processingCommandWait))
         system.tag.write(self.path + "/processingCommand", processingCommandWait)
+        
+        # Write the new delay - no need to confirm this.  The is a delay in seconds.  The DCS will reset it to 0 or none after it has been processed,
+        # so I don't need to reset it.
+        log.tracef("Writing wait value %s to the processing command...", str(processingCommandWait))
+        system.tag.write(self.path + "/processingCommand", processingCommandWait)
+        return status, errorMessage
     
     
     def writeRamp(self, val, valueType, rampTime, updateFrequency, writeConfirm):       

@@ -8,13 +8,11 @@ import system
 
 # Open transaction when window is opened
 def internalFrameOpened(rootContainer):
-    print "In internalFrameOpened(), reserving a cursor..."
-    txId = system.db.beginTransaction(timeout=3600000)
-    rootContainer.txId = txId
+    print "In %s.internalFrameOpened()..." % (__name__)
 
 # Refresh when window is activated
 def internalFrameActivated(rootContainer):
-    print "In internaFrameActived()..."
+    print "In %s.internaFrameActived()..." % (__name__)
     rootContainer.selectedValueId = 0
     
     print "Calling update() from internalFrameActivated()"
@@ -22,27 +20,22 @@ def internalFrameActivated(rootContainer):
  
 # Close transaction when window is closed
 def internalFrameClosing(rootContainer):
-    try:
-        txId=rootContainer.txId
-        system.db.rollbackTransaction(txId)
-        print "Closing the transaction..."
-        system.db.closeTransaction(txId)
-    except:
-        print "Caught an error trying to close the transaction"
+    print "In %s.internalFrameClosing()..." % (__name__)
+
             
 #remove the selected row
 def removeDataRow(rootContainer):
-    txId = rootContainer.txId
-
+    print "In %s.removeDataRow()..." % (__name__)
+    
     # Get valueId of the data to be deleted
     valueId = rootContainer.selectedValueId
 
     #check for derived lab data references
     # Not sure if a selector can be referenced by derived data, I guess why not?
     SQL = "SELECT count(*) FROM LtDerivedValue WHERE TriggerValueId = %i" %(valueId)
-    triggerRows = system.db.runScalarQuery(SQL, tx=txId)
+    triggerRows = system.db.runScalarQuery(SQL)
     SQL = "SELECT count(*) FROM LtRelatedData WHERE RelatedValueId = %i" %(valueId)
-    relatedRows = system.db.runScalarQuery(SQL, tx=txId)
+    relatedRows = system.db.runScalarQuery(SQL)
         
     # If there is derived lab data based on this lab data, then inform the operator and make sure they want to delete  the
     # derived data along with this data
@@ -59,46 +52,45 @@ def removeDataRow(rootContainer):
                 " where V.ValueId = DV.ValueId "\
                 " and TriggerValueId = %s" % (str(valueId))
             print SQL
-            pds = system.db.runQuery(SQL, tx=txId)
+            pds = system.db.runQuery(SQL)
             
             for record in pds:
                 derivedValueId=record["ValueId"]
                 SQL = "delete from LtRelatedData where DerivedValueId in "\
                     "(select DerivedValueId from LtDerivedValue where ValueId = %s)" % (str(derivedValueId))
                 print SQL
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
+                rows = system.db.runUpdateQuery(SQL)
                 print "Deleted %i rows from LtRelatedData" % (rows)
                 
                 SQL = "DELETE FROM LtDerivedValue WHERE ValueId = %s " % (str(derivedValueId))
                 print SQL
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
+                rows = system.db.runUpdateQuery(SQL)
                 print "Deleted %i rows from LtDerivedValue" % (rows)
                                 
                 SQL = "DELETE FROM LtValue WHERE ValueId = %s " % (str(derivedValueId))
                 print SQL
-                rows = system.db.runUpdateQuery(SQL, tx=txId)
+                rows = system.db.runUpdateQuery(SQL)
                 print "Deleted %i rows from LtValue" % (rows)
 
     # remove the selected row from either PHD, DCS, or Local
     SQL = "DELETE FROM LtSelector WHERE ValueId = '%s'" % (valueId)
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL)
                 
     # delete from LtHistory
     SQL = "DELETE FROM LtHistory WHERE ValueId = '%s'" % (valueId)
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL)
         
     # delete from LtLimit (I don't think a selector has a record in the limit table, but won't hurt to try)
     SQL = "DELETE FROM LtLimit WHERE ValueId = '%s'" % (valueId)
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL)
         
     # delete from LtValue
     SQL = "DELETE FROM LtValue WHERE ValueId = '%s'" % (valueId)
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL)
         
 #add a row to the data table
 def insertDataRow(rootContainer):
-    txId = rootContainer.txId
-
+    print "In %s.removeDataRow()..." % (__name__)
     newName = rootContainer.getComponent("name").text
     description = rootContainer.getComponent("description").text
     decimals = rootContainer.getComponent("Spinner").intValue
@@ -108,7 +100,7 @@ def insertDataRow(rootContainer):
     SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
         "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
     print SQL
-    valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey = True)
+    valueId = system.db.runUpdateQuery(SQL, getKey=True)
     
     from ils.common.cast import toBit
     hasValidityLimit=toBit(rootContainer.getComponent("ValidityLimitCheckBox").selected)
@@ -118,11 +110,10 @@ def insertDataRow(rootContainer):
     SQL = "INSERT INTO LtSelector (ValueId, HasValidityLimit, HasSQCLimit, HasReleaseLimit)"\
             "VALUES (%s, %i, %i, %i)" %(str(valueId), hasValidityLimit, hasSQCLimit, hasReleaseLimit)
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txId)
-    
+    system.db.runUpdateQuery(SQL)
+
 #update the window
 def update(rootContainer):
-    txId = rootContainer.txId
     unitId = rootContainer.getComponent("UnitName").selectedValue
     
     SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, "\
@@ -131,7 +122,7 @@ def update(rootContainer):
             "WHERE UnitId = %i "\
             "AND V.ValueId = S.ValueId "\
             "ORDER BY ValueName" % (unitId)
-    pds = system.db.runQuery(SQL, tx=txId)
+    pds = system.db.runQuery(SQL)
     table = rootContainer.getComponent("Selector_Value")
     table.updateInProgress = True
     table.data = pds
@@ -140,9 +131,7 @@ def update(rootContainer):
     
 #update the database when user directly changes table 
 def dataCellEdited(table, rowIndex, colName, newValue):
-    print "A cell has been edited so update the database..."
-    rootContainer = table.parent.parent
-    txId = rootContainer.txId
+    print "In %s.dataCellEdited() cell has been edited so update the database..." % (__name__)
     ds = table.data
     valueId =  ds.getValueAt(rowIndex, "ValueId")
     
@@ -166,4 +155,4 @@ def dataCellEdited(table, rowIndex, colName, newValue):
             "WHERE ValueId = %i" % (newValue, valueId)
             
     print SQL
-    system.db.runUpdateQuery(SQL, tx=txId)
+    system.db.runUpdateQuery(SQL)

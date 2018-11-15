@@ -842,15 +842,15 @@ def editCallback(event):
     
     stepTable = container.parent.getComponent("Step Container").getComponent("Steps")
     selectedRow = stepTable.selectedRow
-    log.tracef("The selected row is: %s", str(selectedRow))
+    log.infof("The selected row is: %s", str(selectedRow))
     stepDs = stepTable.data
     stepId = stepDs.getValueAt(selectedRow,"StepId")
-    log.tracef("The step id is: %s", str(stepId))
+    log.infof("The step id is: %s", str(stepId))
     
     recipeDataKey, recipeDataType, recipeDataId = fetchRecipeInfo(stepId, path, db)
     recipeDataFolderId = -1
     
-    log.tracef("The recipe data id is: %s", str(recipeDataId))
+    log.infof("The recipe data id is: %s", str(recipeDataId))
     window = system.nav.openWindowInstance('SFC/RecipeDataEditor', {'stepId':stepId, 'recipeDataType':recipeDataType, 'recipeDataId':recipeDataId, 'recipeDataKey':recipeDataKey, "recipeDataFolderId":recipeDataFolderId})
     system.nav.centerWindow(window)            
 

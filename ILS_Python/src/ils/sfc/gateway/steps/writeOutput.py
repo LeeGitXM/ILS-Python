@@ -292,7 +292,7 @@ def activate(scopeContext, stepProperties, state):
                     s88Set(chartScope, stepScope, row.key + "." + ACTUAL_DATETIME, timestamp, row.recipeLocation)
                     s88Set(chartScope, stepScope, row.key + "." + ACTUAL_TIMING, elapsedMinutes, row.recipeLocation)
 
-                    logger.trace("   writing an immediate write for step %s" % (row.key))
+                    logger.trace("   writing an immediate write for row %s" % (row.key))
                     writeValue(chartScope, stepScope, row, logger, providerName, row.recipeLocation)
                     immediateRows.remove(row)
 
