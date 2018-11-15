@@ -131,7 +131,8 @@ def activate(scopeContext, stepProperties, state):
                     s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, True, database)
                     
 #                    dataType = s88GetFromId(targetRecipeDataId, targetRecipeDataType, RECIPE_DATA_TYPE, database)
-                    configRow.isOutput = (targetRecipeDataType == 'Output')
+                    ''' I'm not sure if this should look at the PV or the target?? '''
+                    configRow.isOutput = (targetRecipeDataType in ['Output', 'Output Ramp'])
 
                     configRow.isDownloaded = False
                     configRow.persistenceOK = False
@@ -362,7 +363,7 @@ def activate(scopeContext, stepProperties, state):
                                     isPersistent = True
                             
                             if isPersistent:
-                                logger.tracf("  --- The value is persistent - this meets all monitoring requirements for this output ---")
+                                logger.tracef("  --- The value is persistent - this meets all monitoring requirements for this output ---")
                                 configRow.status = PV_OK
                                 s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, False, database)
                             else:
