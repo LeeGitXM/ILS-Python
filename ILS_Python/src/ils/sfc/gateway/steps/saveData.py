@@ -18,17 +18,25 @@ from ils.sfc.recipeData.constants import SIMPLE_VALUE, OUTPUT
 def activate(scopeContext, stepProperties, state):
 
     try:
-        # extract property values
         chartScope = scopeContext.getChartScope()
+        chartPath = chartScope.get("chartPath","Unknown")
+
         logger = getChartLogger(chartScope)
         stepScope = scopeContext.getStepScope()
+        stepName = getStepProperty(stepProperties, NAME)
+        logger.tracef("In %s.activate(), step: %s, state: %s...", __name__, str(stepName), str(state) )
         
+        ''' extract property values '''
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         windowTitle = getStepProperty(stepProperties, WINDOW_TITLE)
         path, filename = createFilepath(chartScope, stepProperties, True)
-        logger.tracef("The recipe data report will be saved to: %s file: %s", path, filename)
+        if path == "" or filename == "":
+            logger.errorf("ERROR: SaveData step named <%S> on chart <%s> does not specify a directory and/or filename", stepName, chartPath)
+            return True
+        
+        logger.tracef("The <%s> recipe data report will be saved to: %s file: %s", recipeLocation, path, filename)
 
-        # get the data at the given location
+        ''' get the data at the given location '''
         simpleValueDataset = s88GetRecipeDataDataset(chartScope, stepScope, SIMPLE_VALUE, recipeLocation)
         logger.tracef("Found %d simple value recipe data items", simpleValueDataset.rowCount)
         outputDataset = s88GetRecipeDataDataset(chartScope, stepScope, OUTPUT, recipeLocation)

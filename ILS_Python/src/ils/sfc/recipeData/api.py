@@ -216,7 +216,8 @@ def s88GetRecipeDataDataset(chartScope, stepScope, recipeDataType, scope):
     scope = scope.lower()
     logger.tracef("s88GetCsv(): %s", scope)
     db = getDatabaseName(chartScope)
-    stepUUID, stepName = s88GetStep(chartScope, stepScope, scope)    
+    keyAndAttribute = ""
+    stepUUID, stepName, keyAndAttribute = s88GetStep(chartScope, stepScope, scope, keyAndAttribute)    
     ds = s88GetRecipeDataDS(stepUUID, recipeDataType, db)
     return ds
 

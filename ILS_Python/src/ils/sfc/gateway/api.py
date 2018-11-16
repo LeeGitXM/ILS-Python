@@ -162,6 +162,11 @@ def createFilepath(chartScope, stepProperties, includeExtension):
 
     directory = getStepProperty(stepProperties, DIRECTORY) 
     filename = getStepProperty(stepProperties, FILENAME) 
+    
+    ''' Both the directory and filename are required '''
+    if directory == "" or filename == "":
+        return "", ""
+    
     if includeExtension:
         extension = getStepProperty(stepProperties, EXTENSION) 
     else:
