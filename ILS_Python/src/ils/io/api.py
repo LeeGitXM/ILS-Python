@@ -390,8 +390,8 @@ def confirmControllerMode(tagPath, val, testForZero, checkPathToValve, valueType
     cmd = "ils.io." + pythonClass + "('" + tagPath + "')"
     log.trace("Command: %s" % (cmd))
     controller = eval(cmd)
-    success, errorMessage = controller.confirmControllerMode(val, testForZero, checkPathToValve, valueType)
-    return success, errorMessage
+    success, errorMessage, itemId = controller.confirmControllerMode(val, testForZero, checkPathToValve, valueType)
+    return success, errorMessage, itemId
 
 
 def validateValueType(valueType):

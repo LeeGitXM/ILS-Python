@@ -95,6 +95,7 @@ def sfcDialogMessage(payload):
 ''' This handles windows that are know to the SFC system'''
 def sfcOpenWindow(payload):
     print "In sfcOpenWindow()..."
+    print payload
     
     windowPath = payload[WINDOW_PATH]
     windowId = payload[WINDOW_ID]
@@ -119,10 +120,15 @@ def sfcOpenWindow(payload):
     
     if isSfcWindow:    
         print "The window is an SFC window, passing the WindowId: <%s>..." % (str(windowId))
-        payload = {WINDOW_ID: windowId}
+        windowPayload = {WINDOW_ID: windowId}
+        
+        ''' I really hate this implementation, if there is something extra on the payload ovr the entries that messaging need, then pass them on to the window '''
+        if windowPath == "SFC/SaveData":
+            windowPayload =  {WINDOW_ID: windowId, "simpleValue": payload["simpleValue"], "output": payload["output"], "header":  payload["header"]}
+
         print "Opening <%s>" % (windowPath)
-        print "Payload: ", payload
-        window = openWindowInstance(windowPath, payload, position, scale)
+        print "Window Payload: ", windowPayload
+        window = openWindowInstance(windowPath, windowPayload, position, scale)
     else:
         print "The window is a plain window..."
         print "Opening <%s>" % (windowPath)

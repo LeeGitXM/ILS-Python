@@ -140,14 +140,14 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                         # I'm calling a generic I/O API here which is shared with S88.  S88 can write to the OP of a controller, but I think that 
                         # the diag toolkit can only write to the SP of a controller.  (The G2 version just used stand-alone GSI variables, so it 
                         # was not obvious if we were writing to the SP or the OP, but I think we always wrote to the SP.
-                        reachable,msg=confirmControllerMode(tagPath, newSetpoint, testForZero=False, checkPathToValve=True, valueType="SP")
+                        reachable,msg,itemId=confirmControllerMode(tagPath, newSetpoint, testForZero=False, checkPathToValve=True, valueType="SP")
 
                         if not(reachable):
                             okToDownload=False
                             unreachableCnt=unreachableCnt+1
                             ds=system.dataset.setValue(ds, row, "downloadStatus", "Config Error")
                             print "Row %i - Output %s - Tag %s is not reachable" % (row, quantOutput, tag)
-                            insertPostMessage(post, "Error", "Controller %s is not reachable because %s" % (tagPath, msg), db)
+                            insertPostMessage(post, "Error", "Controller %s is not reachable because %s (tag: %s)" % (itemId, msg, tagPath), db)
     
     if okToDownload:
         log.info("It is OK to download")

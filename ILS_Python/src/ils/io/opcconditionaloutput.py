@@ -40,7 +40,8 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
     def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
         success = True
         errorMessage = ""
-        return success, errorMessage
+        itemId = ""
+        return success, errorMessage, itemId
     
     def writeWithNoCheck(self, val, valueType=""):
         print "In %s.writeWithNoCheck()..." % (__name__)      
