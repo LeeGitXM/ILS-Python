@@ -14,7 +14,6 @@ from ils.sfc.recipeData.api import s88Get, s88Set
 def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    chartLogger = getChartLogger(chartScope)
     logger = getChartLogger(chartScope)
 
     # Everything will have the same tag provider - check isolation mode and get the provider
@@ -53,24 +52,24 @@ def activate(scopeContext, stepProperties, state):
             
             try:
                 if download:
-                    success, errorMessage = confirmControllerMode(tagPath, newVal, testForZero, checkPathToValve, outputType)
+                    success, errorMessage, itemId = confirmControllerMode(tagPath, newVal, testForZero, checkPathToValve, outputType)
                     if success:
                         logger.tracef("...%s mode is correct!",tagPath)
                     else:
                         numberOfErrors = numberOfErrors + 1
-                        txt = "Confirm Controller Mode Error: %s - %s.  %s" % (row.key, tagPath, errorMessage)
-                        logger.warnf("Confirm Controller Mode failed for %s because %s", tagPath, errorMessage)
-                        postToQueue(chartScope, MSG_STATUS_ERROR, txt)
+                        errorMessage = "Confirm Controller Mode failed for %s (tag: %s) because %s" % (itemId, tagPath, errorMessage)
+                        logger.warnf(errorMessage)
+                        postToQueue(chartScope, MSG_STATUS_ERROR, errorMessage)
                 else:
                     logger.tracef("...skipping check because the download flag is not set!")
             except:
-                notifyGatewayError(chartScope, stepProperties, 'Trapped an error in confirmControllers.py', chartLogger)
+                notifyGatewayError(chartScope, stepProperties, 'Trapped an error in confirmControllers.py', logger)
                 numberOfErrors = numberOfErrors + 1
 
         logger.infof("...%s completed with %d errors!", stepName, numberOfErrors)
         
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in confirmControllers.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in confirmControllers.py', logger)
     finally:
         #stepScope[NUMBER_OF_ERRORS] = numberOfErrors
         logger.tracef("Setting error count: %s - %s - %s...", errorCountScope, errorCountKey, errorCountMode)

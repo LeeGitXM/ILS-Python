@@ -93,13 +93,16 @@ def checkForTimeout(stepScope):
     return timeout
 
 def setResponse(chartScope, stepScope, stepProperties, response):
-    print "In setResponse..."
+    logger = getChartLogger(chartScope)
+    logger.tracef("In %s.setResponse...", __name__)
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     key = getStepProperty(stepProperties, KEY) 
     s88Set(chartScope, stepScope, key, response, recipeLocation)
     
 def cleanup(chartScope, stepProperties, stepScope):
-    print "Cleaning up for a common input step"
+    logger = getChartLogger(chartScope)
+    logger.tracef("In %s.cleanup, cleaning up for a common input step...", __name__)
+
     try:
         database = getDatabaseName(chartScope)
         project = getProject(chartScope)
@@ -110,4 +113,3 @@ def cleanup(chartScope, stepProperties, stepScope):
     except:
         chartLogger = getChartLogger(chartScope)
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in commonInput.py', chartLogger)
-

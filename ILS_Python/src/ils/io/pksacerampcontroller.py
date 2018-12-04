@@ -26,7 +26,7 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # Read the value that we want to write to the Processing command
         processingCommandWait = system.tag.read(self.path + "/processingCommandWait").value
 
-        print "Calling PKSController.writeDatum() for a PKS-ACE controller..."
+        log.trace("Calling PKSController.writeDatum() for a PKS-ACE controller...")
         status, errorMessage = pksrampcontroller.PKSRampController.writeDatum(self, val, valueType)
         if not(status):
             return status, errorMessage
@@ -51,7 +51,7 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # Read the value that we want to write to the Processing command
         processingCommandWait = system.tag.read(self.path + "/processingCommandWait").value
 
-        print "Calling PKSRampController.writeRamp() for a PKS ACE Ramp controller..."
+        log.tracef("Calling PKSRampController.writeRamp() for a PKS ACE Ramp controller...")
         status, errorMessage = pksrampcontroller.PKSRampController.writeRamp(self, val, valueType, rampTime, updateFrequency, writeConfirm)
         if not(status):
             return status, errorMessage
