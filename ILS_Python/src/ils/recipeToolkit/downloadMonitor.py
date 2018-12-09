@@ -13,7 +13,7 @@ log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
 def automatedRunner(parentTagPath, dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database):
     from java.util import Date
     
-    log.trace("Starting the automated download monitor...")
+    log.tracef("Starting the automated download monitor using databse %s...", database)
     
     localWriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value
     recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
@@ -111,13 +111,12 @@ def runner(rootContainer):
 # This is called from a timer on the window and monitors the download.  Part of monitoring is to 
 # animate the table to indicate the success or failure of a tag.
 # Monitor every row of the table that is marked to be downloaded
-def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds, database = ""):
+def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, recipeMinimumRelativeDifference, logId, ds, database=""):
     import string
     from ils.recipeToolkit.log import logDetail
 
-    log.trace("  Starting project.recipe.downloadMonitor.monitor()")
+    log.tracef("  Starting project.recipe.downloadMonitor.monitor() using database: %s", database)
     
-    database = getDatabaseClient()
     productionProvider = getTagProvider()     # Get the production tag provider.
     
     recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value

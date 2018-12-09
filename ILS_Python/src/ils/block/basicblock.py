@@ -124,13 +124,20 @@ class BasicBlock():
             else:
                 self.handler.sendConnectionNotification(self.uuid,anchor["name"],"","Good",now)
     
-    # Convenience method to extract the package name from a module
+    # Convenience method to extract the package name from a function
     # Use this for the import
-    def packageFromModule(self,modName):
-        packName = modName
-        index = modName.rfind(".")
-        if index>0:
-            print "BasicBlock.packageFromModule: ",modName,",",index
-            packName = modName[0:index]
+    def packageFromFunctionPath(self, packageModuleFunction):
+        packName = packageModuleFunction
+        index = packageModuleFunction.rfind(".")
+        if index > 0:
+            packName = packageModuleFunction[0:index]
         return packName
     
+    # Convenience method to extract the package name from a function
+    # Use this for the import
+    def functionFromFunctionPath(self, packageModuleFunction):
+        funcName = packageModuleFunction
+        index = packageModuleFunction.rfind(".")
+        if index>0:
+            funcName = packageModuleFunction[index+1:]
+        return funcName

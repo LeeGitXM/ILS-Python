@@ -43,4 +43,4 @@ def logDetail(masterId, tag, outputVal, status, storeVal, compareVal, recommendV
     
     log.trace(SQL)
     
-    system.db.runPrepUpdate(SQL, [masterId, tag, outputVal, success, storeVal, compareVal, recommendVal, reason, errorMessage], database)
+    system.db.runPrepUpdate(SQL, [masterId, tag, outputVal, success, storeVal, compareVal, recommendVal, reason, errorMessage], database=database)

@@ -125,6 +125,7 @@ def createTags(rootContainer):
     folderFilter = rootContainer.getComponent("Filters").getComponent("Folder").text
     classFilter = rootContainer.getComponent("Filters").getComponent("Class").text
     itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
+    serverName = ""
 
     for row in range(ds.rowCount):
         status = ""
@@ -140,7 +141,7 @@ def createTags(rootContainer):
             outputName = filterName(outputName)
             outputNames = ds.getValueAt(row, "names")
             
-            if className in ["FLOAT-PARAMETER", "FLOAT-VARIABLE", "LOGICAL-VARIABLE"]:
+            if className in ["FLOAT-PARAMETER", "FLOAT-VARIABLE", "LOGICAL-VARIABLE", "LOGICAL-PARAMETER", "INTEGER-PARAMETER"]:
                 path = rootFolder + "/" + folder
                 parentPath = '[' + provider + ']' + path    
                 tagPath = parentPath + "/" + outputName
@@ -155,10 +156,19 @@ def createTags(rootContainer):
                         system.tag.addTag(parentPath=parentPath, name=outputName, tagType="MEMORY", dataType="Float8",
                                           attributes={"ScanClass": "Expression-Fast"})
                         status = "Created"
+                    elif className == "INTEGER-PARAMETER":
+                        system.tag.addTag(parentPath=parentPath, name=outputName, tagType="MEMORY", dataType="Int8",
+                                          attributes={"ScanClass": "Expression-Fast"})
+                        status = "Created"
                     elif className == "FLOAT-VARIABLE":
                         expression =  ds.getValueAt(row, 6)
                         system.tag.addTag(parentPath=parentPath, name=outputName, tagType="EXPRESSION", dataType="Float8",
                                           attributes={"Expression":expression, "ScanClass": "Expression-Fast"})
+                        status = "Created"
+                    elif className == "LOGICAL-PARAMETER":
+                        expression =  ds.getValueAt(row, 6)
+                        system.tag.addTag(parentPath=parentPath, name=outputName, tagType="MEMORY", dataType="Boolean",
+                                          attributes={"ScanClass": "Expression-Fast"})
                         status = "Created"
                     elif className == "LOGICAL-VARIABLE":
                         expression =  ds.getValueAt(row, 6)
@@ -169,7 +179,7 @@ def createTags(rootContainer):
                         status = "Error"
             else:
                 gsiInterface = ds.getValueAt(row, "gsi-interface")
-                itemId = ds.getValueAt(row, "itemId")
+                itemId = string.upper(ds.getValueAt(row, "itemId"))
     #            conditionalItemId = ds.getValueAt(row, "Conditional ItemId")
                 
                 if itemId <> "":
@@ -287,8 +297,16 @@ def createTags(rootContainer):
                         modeItemId = ds.getValueAt(row, 10)
                         windupItemId = ds.getValueAt(row, 11)    # Is this permissive or windup
 
+                        '''
                         createTDCController(parentPath, outputName, itemId, spItemId, opItemId, modeItemId, windupItemId, 
                                             serverName, scanClass, permissiveScanClass, outputNames)
+                        '''
+                        
+                        rootItemId = itemId[:itemId.find(".")]
+                        permissiveItemId = rootItemId + ".MODEATTR /ENUM"
+                        
+                        createPKSControllerWithOpAndSp(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, opItemId, windupItemId, serverName, 
+                                            scanClass, permissiveScanClass, outputNames)
                         status = "Created"
                         
                         
@@ -296,7 +314,16 @@ def createTags(rootContainer):
                         opItemId = ds.getValueAt(row, 7)
                         modeItemId = ds.getValueAt(row, 8)
 
+                        '''
                         createTDCAutomanController(parentPath, outputName, opItemId, modeItemId, serverName, scanClass, outputNames)
+                        '''
+                        itemId = ""
+                        permissiveItemId = ""
+                        windupItemId = ""
+
+                        
+                        createPKSControllerWithOp(parentPath, outputName, itemId, modeItemId, permissiveItemId, opItemId, windupItemId, serverName, 
+                                            scanClass, permissiveScanClass, outputNames)
                         status = "Created"
                         1
 
@@ -305,7 +332,7 @@ def createTags(rootContainer):
                         opItemId = ds.getValueAt(row, 8)
                         modeItemId = ds.getValueAt(row, 9)
 
-                        createTDCDigitalController(parentPath, outputName, itemId, opItemId, modeItemId, serverName, scanClass, permissiveScanClass, outputNames)
+                        createPKSDigitalController(parentPath, outputName, itemId, opItemId, modeItemId, serverName, scanClass, permissiveScanClass, outputNames)
                         status = "Created"
                     
                     elif className in ["OPC-TDC-RAMP-VAR"]:
@@ -313,7 +340,7 @@ def createTags(rootContainer):
                         spItemId = ds.getValueAt(row, 8)
                         opItemId = ds.getValueAt(row, 9)
                         modeItemId = ds.getValueAt(row, 10)
-                        outputDisposabilityItemId = ds.getValueAt(row, 11)
+                        windupItemId = ds.getValueAt(row, 11)  # This used to be output disposability
                         sptvItemId = ds.getValueAt(row, 12)
                         sptvSetpointItemId = ds.getValueAt(row, 13) # This is always the same as the spItem Id
                         rampStateItemId = ds.getValueAt(row, 14)
@@ -324,11 +351,20 @@ def createTags(rootContainer):
                         highClampItemId = ""
                         windupItemId = ""
 
+                        '''
                         createTDCRampController(parentPath, outputName, itemId, spItemId, opItemId, modeItemId, outputDisposabilityItemId,
                                             sptvItemId, rampStateItemId, rampTimeItemId, rampTimeValue, 
                                             lowClampItemId, highClampItemId, windupItemId,
                                             serverName, scanClass, permissiveScanClass, outputNames)
+                        '''
                         
+                        rootItemId = itemId[:itemId.find(".")]
+                        permissiveItemId = rootItemId + ".MODEATTR /ENUM"
+                        processingCmdItemId = rootItemId + ".BPSDELAY"
+                        
+                        createPKSRampControllerWithOp(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, opItemId, windupItemId, serverName, scanClass, permissiveScanClass, 
+                                            outputNames, processingCmdItemId, rampStateItemId, rampTimeItemId, sptvItemId, highClampItemId, lowClampItemId)
+
                     elif className in ["OPC-CONTROLLER-TDC-RAMP-OUTPUT"]:
                         sptvItemId = ds.getValueAt(row, 7)
                         spItemId = ds.getValueAt(row, 8)
@@ -342,11 +378,19 @@ def createTags(rootContainer):
                         
                         outputDisposabilityItemId = ""
                         opItemId = ""
+                        rootItemId = itemId[:itemId.find(".")]
+                        permissiveItemId = rootItemId + ".MODEATTR /ENUM"
+                        processingCmdItemId = rootItemId + ".BPSDELAY"
+                        
+                        createPKSRampController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, serverName, scanClass, permissiveScanClass, 
+                                            outputNames, processingCmdItemId, rampStateItemId, rampTimeItemId, sptvItemId, highClampItemId, lowClampItemId)
 
+                        '''
                         createTDCRampController(parentPath, outputName, itemId, spItemId, opItemId, modeItemId, outputDisposabilityItemId,
                                             sptvItemId, rampStateItemId, rampTimeItemId, rampTimeValue, 
                                             lowClampItemId, highClampItemId, windupItemId,
                                             serverName, scanClass, permissiveScanClass, outputNames)
+                        '''
 
                         status = "Created"  
                         
@@ -436,7 +480,45 @@ def createPKSController(parentPath, outputName, itemId, modeItemId, permissiveIt
                                 "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                                 "windupItemId":windupItemId,
                                 "alternateNames": names},
-                        overrides={"op": {"Enabled":"false"}})
+                        overrides={"op": {"Enabled":"false"}, 
+                                   "highClamp": {"Enabled":"false"}, 
+                                   "lowClamp": {"Enabled":"false"}
+                                   })
+
+def createPKSControllerWithOp(parentPath, outputName, itemId, modeItemId, permissiveItemId, opItemId, windupItemId, 
+                        serverName, scanClass, permissiveScanClass, names):
+    UDTType='Controllers/PKS Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, OP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, opItemId, scanClass, serverName)
+    # Because this generic controller definition is being used by the Diagnostic Toolkit it does not use the PV and OP attributes.  
+    # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass, "opItemId":opItemId,
+                                "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
+                                "windupItemId":windupItemId,
+                                "alternateNames": names},
+                        overrides={"sp": {"Enabled":"false"},
+                                   "highClamp": {"Enabled":"false"}, 
+                                   "lowClamp": {"Enabled":"false"}
+                                   })
+    
+def createPKSControllerWithOpAndSp(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, opItemId, windupItemId, 
+                        serverName, scanClass, permissiveScanClass, names):
+    UDTType='Controllers/PKS Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, OP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, opItemId, scanClass, serverName)
+    # Because this generic controller definition is being used by the Diagnostic Toolkit it does not use the PV and OP attributes.  
+    # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass, "opItemId":opItemId,
+                                "modeItemId":modeItemId, "permissiveItemId":permissiveItemId, "spItemId":spItemId,
+                                "windupItemId":windupItemId,
+                                "alternateNames": names},
+                        overrides={"highClamp": {"Enabled":"false"}, 
+                                   "lowClamp": {"Enabled":"false"}
+                                   })
 
 def createTDCController(parentPath, outputName, itemId, spItemId, opItemId, modeItemId, windupItemId, 
                         serverName, scanClass, permissiveScanClass, names):
@@ -456,8 +538,8 @@ def createTDCAutomanController(parentPath, outputName, itemId, modeItemId, serve
                         attributes={"UDTParentType":UDTType}, 
                         parameters={"serverName":serverName, "scanClassName":scanClass, "itemId":itemId, "modeItemId":modeItemId, "alternateNames": names})
 
-def createTDCDigitalController(parentPath, outputName, itemId, opItemId, modeItemId, serverName, scanClass, permissiveScanClass, names):
-    UDTType='Controllers/TDC Digital Controller'
+def createPKSDigitalController(parentPath, outputName, itemId, opItemId, modeItemId, serverName, scanClass, permissiveScanClass, names):
+    UDTType='Controllers/PKS Digital Controller'
 
     print "Creating a %s, Name: %s, Path: %s, PV ItemId: %s, OP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, itemId, opItemId, scanClass, serverName)
     system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
@@ -480,6 +562,48 @@ def createPKSACEController(parentPath, outputName, itemId, modeItemId, permissiv
                                 "alternateNames": names},
                         overrides={"op": {"Enabled":"false"}})
 
+def createPKSACEControllerWithOpAndSp(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, opItemId, windupItemId, 
+                        serverName, scanClass, permissiveScanClass, names, processingCmdItemId):
+    UDTType='Controllers/PKS ACE Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, scanClass, serverName)
+    # Because this generic controller definition is being used by the Diagnostic Toolkit it does not use the PV and OP attributes.  
+    # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives": permissiveScanClass,
+                                "spItemId":spItemId, "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
+                                "windupItemId":windupItemId, "processingCommandItemId": processingCmdItemId,
+                                "alternateNames": names})
+
+def createPKSRampController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, serverName,
+            scanClass, permissiveScanClass, names, processingCmdItemId, rampStateItemId, rampTimeItemId, rampTargetValueItemId, highClampItemId, lowClampItemId):
+    UDTType='Ramp Controllers/PKS Ramp Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, scanClass, serverName)
+    # Because this generic controller definition is being used by the Diagnostic Toolkit it does not use the PV and OP attributes.  
+    # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives": permissiveScanClass,
+                                "spItemId":spItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
+                                "windupItemId":windupItemId, "rampStateItemId": rampStateItemId, "highClampItemId": highClampItemId, "lowClampItemId": lowClampItemId, 
+                                "rampTimeItemId": rampTimeItemId, "rampTargetValueItemId": rampTargetValueItemId, "alternateNames": names},
+                        overrides={"op": {"Enabled":"false"}})
+
+def createPKSRampControllerWithOp(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, opItemId, windupItemId, serverName,
+            scanClass, permissiveScanClass, names, processingCmdItemId, rampStateItemId, rampTimeItemId, rampTargetValueItemId, highClampItemId, lowClampItemId):
+    UDTType='Ramp Controllers/PKS Ramp Controller'
+
+    print "Creating a %s, Name: %s, Path: %s, SP Item Id: %s, Scan Class: %s, Server: %s" % (UDTType, outputName, parentPath, spItemId, scanClass, serverName)
+    # Because this generic controller definition is being used by the Diagnostic Toolkit it does not use the PV and OP attributes.  
+    # There are OPC tags and just to make sure we don't wreak havoc with the OPC server, these should be disabled
+    system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
+                        attributes={"UDTParentType":UDTType}, 
+                        parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives": permissiveScanClass,
+                                "spItemId":spItemId, "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
+                                "windupItemId":windupItemId, "rampStateItemId": rampStateItemId, "highClampItemId": highClampItemId, "lowClampItemId": lowClampItemId, 
+                                "rampTimeItemId": rampTimeItemId, "rampTargetValueItemId": rampTargetValueItemId, "alternateNames": names})
 
 def createPKSACERampController(parentPath, outputName, itemId, modeItemId, permissiveItemId, spItemId, windupItemId, serverName,
             scanClass, permissiveScanClass, names, processingCmdItemId, rampStateItemId, rampAttributeItemId, rampSetpointItemId):

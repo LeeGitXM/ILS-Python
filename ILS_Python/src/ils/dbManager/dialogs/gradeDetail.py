@@ -105,7 +105,7 @@ def update(table,row,colname,value):
         if value == "":
             msg = "Database Error."
             SQL = "UPDATE RtGradeDetail SET %s = NULL " \
-                " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %i and ValueId = %i" \
+                " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %d and ValueId = %d" \
                 % (colname, familyid, str(gradeid), version, vid)
         else:
             if valueType == "Float":
@@ -117,11 +117,11 @@ def update(table,row,colname,value):
     
             msg = "Database Error."
             SQL = "UPDATE RtGradeDetail SET %s = '%s' " \
-                " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %i and ValueId = %i" \
+                " WHERE RecipeFamilyId=%d and Grade='%s' and Version = %d and ValueId = %d" \
                 % (colname, str(value), familyid, str(gradeid), version, vid)
         log.trace(SQL)
         rows = system.db.runUpdateQuery(SQL)
-        log.trace("Updated %i rows" % (rows))
+        log.trace("Updated %d rows" % (rows))
     except:
         system.gui.warningBox(msg)
         ds = system.dataset.setValue(ds,row,colname,'')

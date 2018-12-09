@@ -6,6 +6,8 @@ Created on Jun 30, 2015
 import system, string
 from ils.diagToolkit.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
 from ils.common.config import getDatabaseClient
+from ils.common.util import formatHTML
+from ils.diagToolkit.common import fetchApplicationsForPost, fetchActiveTextRecommendationsForPost
 
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
@@ -351,19 +353,31 @@ def ackTextRecommendation(event, payload):
     application=payload.get("application","")
     database=payload.get("database","")
     provider=payload.get("provider","")
-    diagnosisEntryId=payload.get("diagnosisEntryId","")
-    notificationText=payload.get("notificationText","")
+
+    pds = fetchActiveTextRecommendationsForPost(post, database)
     
     # Dismiss the loud workspace
     system.nav.closeParentWindow(event)
     
-    # Now display the text recommendation
-    system.gui.messageBox(notificationText, "Text Recommendation")
-
-    # Once the text recommendation is acknowledged proceed to perform the standard resets
-    print "Proceeding to acknowledge the text recommendation..."    
-    from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
-    acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
+    if len(pds) == 1:
+        print "I found a single text recommendation!"
+        record = pds[0]
+        notificationText = record["TextRecommendation"]
+        diagnosisEntryId = record["DiagnosisEntryId"]
+        
+        notificationText = formatHTML(notificationText, 50)
+        
+        system.gui.messageBox(notificationText, "Text Recommendation")
+        # Once the text recommendation is acknowledged proceed to perform the standard resets
+        print "Proceeding to acknowledge the text recommendation..."    
+        from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
+        acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
+    
+    else:
+        print "Hey I need to handle multiple here!"
+        window = system.nav.openWindow("DiagToolkit/Multiple Text Recommendation Ack", {"post": post, "provider": provider})
+        print "Opened a window: ", window
+        system.nav.centerWindow(window)
 
 
 # This is called when they press ???
@@ -396,3 +410,4 @@ def datasetsMatch(oldDs, newDs):
             if oldVal != newVal:
                 return False
     return True
+

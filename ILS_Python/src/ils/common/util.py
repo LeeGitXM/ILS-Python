@@ -9,6 +9,10 @@ log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
 from system.date import secondsBetween
 
+def getSiteName(db=""):
+    siteName = system.db.runScalarQuery("select SiteName from TkSite", database=db)
+    return siteName
+
 def okToPrint():
     from javax.print import PrintServiceLookup as PSL
 

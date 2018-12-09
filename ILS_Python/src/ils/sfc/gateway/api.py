@@ -11,7 +11,7 @@ from ils.sfc.common.util import boolToBit, logExceptionCause, chartIsRunning, ge
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
 from ils.common.ocAlert import sendAlert
-from ils.common.util import substituteProvider
+from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.sfc.client.windows.controlPanel import getControlPanelIdForChartRunId
 NEWLINE = '\n\r'
 logger=system.util.getLogger("com.ils.sfc.gateway.api")
@@ -65,7 +65,7 @@ This is called from the gateway by a running chart, it does not have a window ha
 a window.  Display a message on the control panel
 '''
 def addControlPanelMessage(chartProperties, message, priority, ackRequired):
-    escapedMessage = escapeSingleQuotes(message)
+    escapedMessage = escapeSqlQuotes(message)
     chartRunId = getTopChartRunId(chartProperties)
     database = getDatabaseName(chartProperties)
     controlPanelId = getControlPanelId(chartProperties)
@@ -248,9 +248,6 @@ def dictToString(aDict):
 def dumpProperties(properties):
     for k in properties.keys():
         print k
-        
-def escapeSingleQuotes(msg):
-    return msg.replace("'", "''")
 
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''

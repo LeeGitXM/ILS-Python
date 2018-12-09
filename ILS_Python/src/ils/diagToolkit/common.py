@@ -58,11 +58,6 @@ def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeo
 
     log.trace("** %s and %s are NOT consistent **" % (tagPath1, tagPath2))
     return isConsistent
-
-def insertApplicationQueueMessage(applicationName, message, status="info", db=""):
-    key = getQueueForDiagnosticApplication(applicationName, db)
-    from ils.queue.message import insert
-    insert(key, status, message)
     
 # Check if the timestamp of the tag is less than a certain tolerance older then theTime, or the current time if theTime 
 # is omitted.  This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
@@ -264,6 +259,8 @@ def fetchActiveTextRecommendationsForPost(post, database=""):
         " and P.Post = '%s' "  % (post)
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
+    for record in pds:
+        log.tracef("%s - %s - %s", record["ApplicationName"], record["DiagnosisEntryId"], record["TextRecommendation"])
     return pds
 
 # Fetch applications for a console
