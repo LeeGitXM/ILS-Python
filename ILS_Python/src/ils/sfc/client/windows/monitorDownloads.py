@@ -66,7 +66,7 @@ def setWindowSize(rootContainer, window):
     print "The window Height is: %d, there are %d rows, the required height is: %d" % (windowHeight, rows, requiredHeight)
     if requiredHeight > windowHeight * maxAdjustment:
         system.gui.warningBox("The Download monitor window is too small to display all of the outputs!")
-        print "The download monitor is too small to display all of the rows to be monitored, but the required size is more than %f times larger than the window, which is too much of an adjustment"
+        print "The download monitor is too small to display all of the rows to be monitored, but the required size is %f, which is too much of an adjustment" % (requiredHeight)
     elif requiredHeight > windowHeight:
         print "Adjusting the window height to fit all rows."
         window.setSize(int(windowWidth), int(requiredHeight))
