@@ -1041,10 +1041,14 @@ def createTDCController(container):
     system.tag.writeAll(writeTags, writeValues)
 
 def createTDC_AMController(container):
+    '''
+    Normally we would map the TDC AM outputs/controllers into a PKS ACE controller, but for G-Line, Marshall indicated that the 8 AM outputs 
+    don't need to be AM (or ACE), so since G-Line is the final migration I am going to change this to PKS controller
+    '''
     rootContainer=container.parent
     table=container.getComponent("Power Table")
     ds=table.data
-    UDTType='Controllers/TDC AM Controller'
+    UDTType='Controllers/PKS Controller'
     site = rootContainer.getComponent("Site").text
     provider = rootContainer.getComponent("Tag Provider").text
     itemIdPrefix = system.tag.read("[" + provider + "]Configuration/DiagnosticToolkit/itemIdPrefix").value
@@ -1063,16 +1067,16 @@ def createTDC_AMController(container):
         # nobody cares what the inputs are.
         itemId=""
         opItemId=""
-        spItemId = itemIdPrefix + ds.getValueAt(row, " item-id")
+        spItemId = string.upper(itemIdPrefix + ds.getValueAt(row, " item-id"))
+        itemIdRoot = spItemId[:spItemId.find(".")]
+        permissiveItemId = itemIdRoot + ".MODEATTR /ENUM"
         
 #        permissiveItemId = itemIdPrefix + ds.getValueAt(row, "permissive-item-id")
 #        permissiveValue = ds.getValueAt(row, "permissive-value")
-        highClampItemId = itemIdPrefix + ds.getValueAt(row, " high-clamp-item-id")
-        lowClampItemId = itemIdPrefix + ds.getValueAt(row, " low-clamp-item-id")
-        windupItemId = itemIdPrefix + ds.getValueAt(row, " windup-item-id")
-        modeItemId = itemIdPrefix + ds.getValueAt(row, " mode-item-id")
-        processingCommandItemId = itemIdPrefix + ds.getValueAt(row, " processing-cmd-item-id")
-        processingCommandWait = itemIdPrefix + ds.getValueAt(row, " processing-cmd-wait")
+        highClampItemId = string.upper(itemIdPrefix + ds.getValueAt(row, " high-clamp-item-id"))
+        lowClampItemId = string.upper(itemIdPrefix + ds.getValueAt(row, " low-clamp-item-id"))
+        windupItemId = string.upper(itemIdPrefix + ds.getValueAt(row, " windup-item-id")) + " /ENUM"
+        modeItemId = string.upper(itemIdPrefix + ds.getValueAt(row, " mode-item-id")) + " /ENUM"
         
         gsiInterface = ds.getValueAt(row, " opc-server")
         serverName, scanClass, permissiveScanClass, writeLocationId = lookupOPCServerAndScanClass(site, gsiInterface)
@@ -1080,9 +1084,6 @@ def createTDC_AMController(container):
        
         parentPath = '[' + provider + ']' + path    
         tagPath = parentPath + "/" + outputName
-        
-        writeTags.append(tagPath + "/processingCommandWait")
-        writeValues.append(processingCommandWait)
         
 #        writeTags.append(tagPath + "/permissiveValue")
 #        writeValues.append(permissiveValue)
@@ -1094,9 +1095,9 @@ def createTDC_AMController(container):
             system.tag.addTag(parentPath=parentPath, name=outputName, tagType="UDT_INST", 
                         attributes={"UDTParentType":UDTType}, 
                         parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "scanClassNameForPermissives":permissiveScanClass, 
-                            "spItemId":spItemId, "opItemId":opItemId, "modeItemId":modeItemId,
+                            "spItemId":spItemId, "opItemId":opItemId, "modeItemId":modeItemId, "permissiveItemId":permissiveItemId,
                             "highClampItemId": highClampItemId, "lowClampItemId":lowClampItemId, "windupItemId":windupItemId, 
-                            "processingCommandItemId": processingCommandItemId, "alternateNames": names},
+                            "alternateNames": names},
                         overrides={"value": {"Enabled":"false"}, "op": {"Enabled":"false"}})
         else:
             print "Tag %s already exists..." % (outputName)
