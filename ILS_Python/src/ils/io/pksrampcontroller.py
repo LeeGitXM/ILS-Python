@@ -54,6 +54,11 @@ class PKSRampController(pkscontroller.PKSController):
         '''
         This method only handles setpoint ramps
         '''
+       
+        pkscontroller.PKSController.setPermissive(self)
+       
+       
+       
         log.tracef("In %s.writeRamp() writing a setpoint ramp for controller %s", __name__, self.path)
         if string.upper(valType) not in ["SETPOINT RAMP"]:
             log.errorf("ERROR writing ramp for PKS controller: %s - Unexpected value type <%s>", self.path, valType)
@@ -82,20 +87,22 @@ class PKSRampController(pkscontroller.PKSController):
         log.infof("Ramping the %s of EPKS controller <%s> to %s over %s minutes", valType, self.path, str(val), str(rampTime))
         system.tag.write(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
 
-        rampTimeSeconds = rampTime * 60.0
+#        rampTimeSeconds = rampTime * 60.0
 
         log.trace("...writing PRESET to the rampstate...")
         system.tag.write(self.path + "/sp/rampState", "PRESET")            
         time.sleep(self.OPC_LATENCY_TIME)
 
         log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
-        system.tag.write(self.path + "/sp/rampTime", rampTimeSeconds)
+        system.tag.write(self.path + "/sp/rampTime", rampTime)
         system.tag.write(self.path + "/sp/targetValue", val)
         time.sleep(self.OPC_LATENCY_TIME)
         
         log.trace("...writing RUN to the rampstate...")
         system.tag.write(self.path + "/sp/rampState", "RUN")
         time.sleep(self.OPC_LATENCY_TIME)
+        
+        pkscontroller.PKSController.restorePermissive(self)
 
         log.infof("EPKS Controller <%s> done ramping!", self.path)
         return success, errorMessage

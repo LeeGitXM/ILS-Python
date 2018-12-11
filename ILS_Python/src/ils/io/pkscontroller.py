@@ -56,7 +56,7 @@ class PKSController(controller.Controller):
  
         ''' Read the current permissive and save it so that we can put it back the way is was when we are done '''
         self.permissiveAsFound = system.tag.read(self.path + "/permissive").value
-        log.tracef("   permisive as found: %s", self.permissiveAsFound)
+        log.tracef("   permissive as found: %s", self.permissiveAsFound)
         
         ''' Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed '''
         self.permissiveValue = system.tag.read(self.path + "/permissiveValue").value
