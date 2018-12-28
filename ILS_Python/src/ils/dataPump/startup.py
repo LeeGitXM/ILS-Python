@@ -4,8 +4,8 @@ Created on Jul 14, 2017
 @author: phass
 
 There is really nothing to create here.  At one time the data pump used tags in the configuration folder that were created here
-but the command tag has a tag change script which I can't configure when I create tags in this way.  So noe the data pump tags are 
-created manually from a standard XML exort.
+but the command tag has a tag change script which I can't configure when I create tags in this way.  So now the data pump tags are 
+created manually from a standard XML export.
 '''
 
 import system

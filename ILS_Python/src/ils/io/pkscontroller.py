@@ -20,11 +20,13 @@ class PKSController(controller.Controller):
     PERMISSIVE_LATENCY_TIME = 0.0
     OPC_LATENCY_TIME = 0.0
     
-    def __init__(self,path):
-        controller.Controller.__init__(self,path)
+    def __init__(self, path):
+        log.tracef("In %s.__int__()", __name__)
+        controller.Controller.__init__(self, path)
         
-        self.spTag = opcoutput.OPCOutput(path + '/sp')
-        self.opTag = opcoutput.OPCOutput(path + '/op')
+        self.spTag = opcoutput.OPCOutput(self.path + '/sp')
+        self.opTag = opcoutput.OPCOutput(self.path + '/op')
+        log.tracef("OP Tag path: %s", self.opTag.path)
         self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
         self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
 
@@ -122,6 +124,8 @@ class PKSController(controller.Controller):
         else:
             log.errorf("Unexpected value Type: <%s>", valueType)
             raise Exception("Unexpected value Type: <%s>" % (valueType))
+        
+        confirmTagPath = tagRoot + '/value'
 
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
@@ -156,7 +160,7 @@ class PKSController(controller.Controller):
             
         log.tracef("Writing %s to %s", str(val), tagRoot)
         system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
-        confirmed, errorMessage = targetTag.writeDatum(val, valueType)
+        confirmed, errorMessage = targetTag.writeDatum(val, valueType, confirmTagPath)
          
         ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''
         self.restorePermissive()

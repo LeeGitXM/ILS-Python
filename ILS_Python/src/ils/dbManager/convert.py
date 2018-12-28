@@ -57,7 +57,7 @@ def internalFrameActivated(event):
 # The ouput file creates and populates a schema for the Recipe Toolkit.
 # The "sqlserver" attribute is a flag which determines if the output
 # is compatible with SQL*Server.
-def convert(recipedb,sqcdb):
+def convert(recipedb):
     if recipedb!='None':
 
         txId = system.db.beginTransaction()
@@ -71,19 +71,49 @@ def convert(recipedb,sqcdb):
         populateGradeModifications(recipedb,families,vu,txId)
         updateValueType(recipedb,families,txId)
 
-        # Add on the SQC tables
-        if sqcdb!='None' and sqcdb!='':
-            populateFlyingSwitchTable(sqcdb,txId)
-            populateWatchdogTable(sqcdb,txId)
-            populateGainTable(sqcdb,families,txId)
-            populateSQCTable(sqcdb,families,txId)
-            populateEventTable(sqcdb,families,txId)
-
         print "Committing transactions!"
         system.db.commitTransaction(txId)    
         system.db.closeTransaction(txId)
         
     print "Conversion complete."
+    
+def convertSQC(sqcdb):
+    # Add on the SQC tables
+    if sqcdb!='None' and sqcdb!='':
+        families = fetchFamilies()
+        
+        '''
+        Hard code some data fro G-Line.  The gain table doesn't reflect the expected naming convention.
+        '''
+        gainFamilies = {"Gline":174}
+        txId = system.db.beginTransaction()
+        populateFlyingSwitchTable(sqcdb,txId)
+        populateWatchdogTable(sqcdb,txId)
+        populateGainTable(sqcdb,gainFamilies,txId)
+        populateSQCTable(sqcdb,families,txId)
+        populateEventTable(sqcdb,families,txId)
+
+        print "Committing transactions!"
+        system.db.commitTransaction(txId)    
+        system.db.closeTransaction(txId)
+        
+    print "SQC Conversion complete."
+
+
+def fetchFamilies():
+    print "Fetching existing families..."
+
+    SQL = "SELECT RecipeFamilyId, RecipeFamilyName FROM RtRecipeFamily"
+    pds = system.db.runQuery(SQL)
+
+    families = {}
+    for row in pds:
+        family = row['RecipeFamilyName']
+        index  = row['RecipeFamilyId']    
+        families[family] = index
+
+    print families
+    return families
 
 def isaNumber(val):
     sval = str(val)

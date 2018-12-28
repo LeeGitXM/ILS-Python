@@ -37,9 +37,23 @@ def toDictList(pds, records):
 
     return records
 
-# Lookup the post id given the name
+def toDateString(aDate):
+    ''' Format a datetime value into a string that is compatible with SQLServers automatic string to date conversion '''
+    
+    aDateString = system.date.format(aDate,"yyyy-MM-dd HH:mm:ss")
+    return aDateString
+
 def getConsoleWindowNameForConsole(consoleName, database=""):
+    ''' Lookup the post id given the name '''
     SQL = "select WindowName from TkConsole where ConsoleName = '%s'" % (consoleName)
+    log.trace(SQL)
+    consoleWindowName = system.db.runScalarQuery(SQL, database)
+    return consoleWindowName
+
+def getConsoleWindowNameForPost(post, database=""):
+    ''' Lookup the post id given the name '''
+    SQL = "select WindowName from TkConsole C, TkPost P "\
+        "where P.Post = '%s' and P.PostId = C.PostId" % (post)
     log.trace(SQL)
     consoleWindowName = system.db.runScalarQuery(SQL, database)
     return consoleWindowName

@@ -4,41 +4,19 @@ Created on Dec 6, 2018
 @author: phass
 '''
 
-import ils.io.controller as controller
+import ils.io.pkscontroller as pkscontroller
 import system, string, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
 log = LogUtil.getLogger("com.ils.io")
 
-class PKSDigitalController(controller.Controller):
-    opTag = None
-    CONFIRM_TIMEOUT = 10.0
-    PERMISSIVE_LATENCY_TIME = 0.0
-    OPC_LATENCY_TIME = 0.0
+class PKSDigitalController(pkscontroller.PKSController):
     
     def __init__(self,path):
-        controller.Controller.__init__(self,path)
-        self.opTag = opcoutput.OPCOutput(path + '/op')
-        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
-        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
-
-    def reset(self):
-        ''' Reset the UDT in preparation for a write '''
-        success = True
-        errorMessage = ""
-        log.tracef('Resetting a %s Controller...', __name__)       
-        
-        system.tag.write(self.path + '/badValue', False)
-        system.tag.write(self.path + '/writeErrorMessage', '')
-        system.tag.write(self.path + '/writeConfirmed', False)
-        system.tag.write(self.path + '/writeStatus', '')
-        
-        for embeddedTag in ['/mode', '/op']:
-            tagPath = self.path + embeddedTag
-            system.tag.write(tagPath + '/badValue', False)
-            system.tag.write(tagPath + '/writeErrorMessage', '')
-            system.tag.write(tagPath + '/writeConfirmed', False)
-            system.tag.write(tagPath + '/writeStatus', '')
+        log.tracef("In %s.__int__()", __name__)
+        pkscontroller.PKSController.__init__(self,path)
+        print self.opTag
+        print self.spTag
 
     def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
         ''' Check if a controller is in the appropriate mode for writing to.  This does not attempt to change the 
@@ -111,10 +89,17 @@ class PKSDigitalController(controller.Controller):
             tagRoot = self.path + '/op'
             targetTag = self.opTag
             valueType = 'op'
+            confirmTagPath = tagRoot + '/value'
+        elif string.upper(valueType) in ["SP", "SETPOINT"]:
+            tagRoot = self.path + '/sp'
+            targetTag = self.spTag
+            valueType = 'op'
+            confirmTagPath = self.opTag.path + "/value"
         elif string.upper(valueType) in ["MODE"]:
             tagRoot = self.path + '/mode'
             targetTag = self.modeTag
             valueType = 'mode'
+            confirmTagPath = tagRoot + "/value"
         else:
             log.errorf("Unexpected value Type: <%s>", valueType)
             raise Exception("Unexpected value Type: <%s>" % (valueType))
@@ -131,12 +116,20 @@ class PKSDigitalController(controller.Controller):
         self.reset()
         time.sleep(1)
         
+        ''' Set the permissive '''
+        confirmed, errorMessage = self.setPermissive()
+        if not(confirmed):
+            return confirmed, errorMessage
+        
         ''' Write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
         the write so this needs to just wait around for the answer. '''
 
         log.tracef("Writing %s to %s", str(val), tagRoot)
         system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
-        confirmed, errorMessage = targetTag.writeDatum(val, valueType)
+        confirmed, errorMessage = targetTag.writeDatum(val, valueType, confirmTagPath)
+        
+        ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''
+        self.restorePermissive()
 
         return confirmed, errorMessage
 
@@ -196,6 +189,11 @@ class PKSDigitalController(controller.Controller):
         self.reset()
         time.sleep(1)
         
+        ''' Set the permissive '''
+        confirmed, errorMessage = self.setPermissive()
+        if not(confirmed):
+            return confirmed, errorMessage
+        
         ''' If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
         write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
         the write so this needs to just wait around for the answer '''
@@ -210,5 +208,8 @@ class PKSDigitalController(controller.Controller):
             return confirmed, errorMessage
          
         system.tag.write(self.path + "/writeStatus", "Success")
+        
+        ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''
+        self.restorePermissive()
         
         return confirmed, errorMessage

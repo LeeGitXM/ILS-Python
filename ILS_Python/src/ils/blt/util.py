@@ -35,10 +35,11 @@ def acceptValue(block,port,value,quality,time):
 #     uid    - UUID string of the block itself
 #     result - shared dictionary.
 def createBlockInstance(className,parent,uid,result):
-    log.tracef('ils.blt.util.createBlockInstance ...%s',className )
+    log.infof('Creating a %s, parent: %s, uid: %s', className, parent, uid)
     obj = getNewBlockInstance(className)
     obj.setUUID(uid)
     obj.setParentUUID(parent)
+    log.infof("...created!")
     result['instance'] = obj
 #
 # Given an instance of an executable block

@@ -14,6 +14,7 @@ import ils.io.opcconditionaloutput
 import ils.io.recipedetail
 import ils.io.controller
 import ils.io.pkscontroller
+import ils.io.pksdigitalcontroller
 import ils.io.pksrampcontroller
 import ils.io.pksacecontroller
 import ils.io.pksacerampcontroller
@@ -133,7 +134,7 @@ def writeDatum(tagPath, val, valueType=""):
     This can run in either the client or the gateway.
     The tagPath should contain the provider.
     '''
-    log.info("Writing %s to %s, type=%s (writeDatum)" % (str(val), tagPath, str(valueType)))
+    log.infof("In %s.writeDatum() - writing %s to %s, type=%s", __name__, str(val), tagPath, str(valueType))
 
     success, errorMessage = writer(tagPath, val, valueType, "writeDatum")
     '''
@@ -158,7 +159,7 @@ def writeWithNoCheck(tagPath, val, valueType=""):
     This can run in either the client or the gateway.
     The tagPath should contain the provider.
     '''
-    log.info("Writing %s to %s, type=%s (writeWithNoCheck)" % (str(val), tagPath, str(valueType)))
+    log.infof("In %s.writeWithNoCheck() - writing %s to %s, type=%s (writeWithNoCheck)", __name__, str(val), tagPath, str(valueType))
 
     success, errorMessage = writer(tagPath, val, valueType, "writeWithNoCheck")
     
@@ -265,7 +266,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
     This implements the common core write logic.  It is used by both WriteDatum and WriteWithNoCheck.
     The reason for not just making this WriteWithNoCheck is so that I can make distinct log messages.
     '''
-    log.tracef("In writer with %s - %s - %s - %s", tagPath, str(val), valueType, command)
+    log.tracef("In %s.writer() with %s - %s - %s - %s", __name__, tagPath, str(val), valueType, command)
     
     errorMessage=""
     success = False

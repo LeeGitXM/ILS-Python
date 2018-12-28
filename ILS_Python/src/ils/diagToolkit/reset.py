@@ -55,7 +55,13 @@ def resetApplication(unit, database, tagProvider):
     
             if descriptorType in ["blt.diagram"]:
                 # Fetch all of the blocks on the diagram
-                tBlocks=diagram.listBlocksInDiagram(descriptorId)
+                try:
+                    tBlocks=diagram.listBlocksInDiagram(descriptorId)
+                except:
+                    errorText = catchError("%s.resetApplication listing blocks in diagram %s" % (__name__, descriptorName))
+                    log.error(errorText)
+                    tBlocks=[]
+                    
                 for block in tBlocks:
                     if block not in blocks:
                         blocks.append(block)
@@ -76,25 +82,24 @@ def resetApplication(unit, database, tagProvider):
         if blockClass in ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.trenddiagnosis.TrendDiagnosis"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
 
-            # Resetting a block sets its state to UNSET, which does not propagate. 
-            system.ils.blt.diagram.resetBlock(parentUUID, blockName)
-            
-            # Now set the state to UNKNOWN and propagate it
-            system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
-            system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
+            restAndPropagate(block)
             
             # Collect all of the blocks upstream of this final diagnosis
             log.trace("      ...collecting blocks downstream from it ...")
-            tBlocks = diagram.listBlocksGloballyDownstreamOf(parentUUID, blockName)
+            try:
+                tBlocks = diagram.listBlocksGloballyDownstreamOf(parentUUID, blockName)
+            except:
+                errorText = catchError("%s.resetApplication listing blocks downstream of %s" % (__name__, blockName))
+                log.error(errorText)
+                tBlocks = []
+                
             for tBlock in tBlocks:
                 if tBlock not in downstreamBlocks:
                     downstreamBlocks.append(tBlock)
                     
         elif blockClass in ["com.ils.block.SQC"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
-            system.ils.blt.diagram.resetBlock(parentUUID, blockName)
-            system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
-            system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
+            restAndPropagate(block)
         
         elif blockClass in ["com.ils.block.Inhibitor"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
@@ -110,6 +115,7 @@ def resetApplication(unit, database, tagProvider):
         
         if blockClass in ["xom.block.finaldiagnosis.FinalDiagnosis"]:
             blockUUID=block.getIdString()
+            blockName=block.getName()
               
             # We only want to reset FDs that are not a CONSTANT type of FD.  Constant FDs are typically
             # plant status diagrams that update quickly in real time and do not make recommendations.
@@ -119,16 +125,19 @@ def resetApplication(unit, database, tagProvider):
 
             if constant == 0:
                 log.info("   ... resetting Final Diagnosis: %s with id: %s on diagram: %s..." % (blockName, blockUUID, parentUUID))
-                blockName=block.getName()
-                parentUUID=block.getAttributes().get("parent")
                 
-                system.ils.blt.diagram.resetBlock(parentUUID, blockName)
-                system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
-                system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
+                parentUUID=block.getAttributes().get("parent")
+                restAndPropagate(block)
                 
                 # Collect all of the blocks upstream of this final diagnosis
                 log.trace("   ... collecting blocks upstream from it ...")
-                tBlocks = diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
+                try:
+                    tBlocks = diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
+                except:
+                    errorText = catchError("%s.resetApplication listing blocks upstream of %s" % (__name__, blockName))
+                    log.error(errorText)
+                    tBlocks = []
+                
                 for tBlock in tBlocks:
                     if tBlock not in upstreamBlocks:
                         upstreamBlocks.append(tBlock)
@@ -165,6 +174,22 @@ def resetApplication(unit, database, tagProvider):
             system.ils.blt.diagram.sendSignal(parentUUID, blockName, "reset", "Grade Change")
 
     return
+
+'''
+Reset a block, set the block state and propagate it's state.
+'''
+def restAndPropagate(block):
+    blockName=block.getName()
+    blockUUID=block.getIdString()
+    parentUUID=block.getAttributes().get("parent")
+    
+    try:
+        system.ils.blt.diagram.resetBlock(parentUUID, blockName)
+        system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
+        system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
+    except:
+        errorText = catchError("%s.restAndPropagate() for block: %s" % (__name__, blockName))
+        log.error(errorText)
 
 
 '''

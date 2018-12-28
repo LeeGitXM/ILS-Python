@@ -47,18 +47,31 @@ class OPCOutput(opctag.OPCTag):
         system.tag.write(self.path + '/writeStatus', 'Reset')
         return status, msg
  
-    def confirmWrite(self, val):  
+    def confirmWrite(self, val, confirmTagPath=""):  
         ''' Implement a simple write confirmation.  Use the standard utility routine to perform the check. '''
-        log.tracef("%s - Confirming the write of <%s> to %s...", __name__, str(val), self.path)
+        
+        if confirmTagPath == "":
+            confirmTagPath = self.path
+            
+        log.tracef("%s - Confirming the write of <%s> to %s...", __name__, str(val), confirmTagPath)
  
         from ils.io.util import confirmWrite as confirmWriteUtil
         system.tag.write(self.path + '/writeStatus', 'Confirming')
-        confirmation, errorMessage = confirmWriteUtil(self.path + "/value", val)
+        confirmation, errorMessage = confirmWriteUtil(confirmTagPath, val)
         return confirmation, errorMessage
    
-    def writeDatum(self, val, valueType=""):
+    def writeDatum(self, val, valueType="", confirmTagPath=""):
         ''' Write with confirmation. Assume the UDT structure of an OPC Output  '''
-        log.infof("%s - Writing <%s>, <%s> to %s, an OPCOutput", __name__, str(val), str(valueType), self.path)
+        
+        '''
+        I added the 3rd argument, which is optional and providea a default value of "", to support the case with digital controllers 
+        where we write to the SP tag, which is configured with the .GOP item id, but we confirm from the OP tag, which is configured
+        with the .OP item id.
+        '''
+        log.infof("%s.writeDatum() - Writing <%s>, <%s> to %s, an OPCOutput", __name__, str(val), str(valueType), self.path)
+        
+        if confirmTagPath == "":
+            confirmTagPath = self.path + "/value"
 
         if val == None or string.upper(str(val)) == 'NAN':
             val = float("NaN")
@@ -82,7 +95,7 @@ class OPCOutput(opctag.OPCTag):
         status = system.tag.write(self.path + "/value", val)
         log.tracef("%s - Write status: %s", __name__, status)
                                
-        status, msg = self.confirmWrite(val)
+        status, msg = self.confirmWrite(val, confirmTagPath)
  
         if status:
             log.tracef("%s - Confirmed: %s - %s - %s", __name__, self.path, status, msg)
@@ -91,7 +104,7 @@ class OPCOutput(opctag.OPCTag):
         else:
             log.errorf("%s - Failed to confirm write of <%s> to %s because %s", __name__, str(val), self.path, msg)
             system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeMessage", msg)
+            system.tag.write(self.path + "/writeErrorMessage", msg)
  
         return status, msg
 

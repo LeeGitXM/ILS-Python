@@ -874,6 +874,7 @@ def loadUnitParameters(container):
         connections=0        
         for connection in unitParameter.findall('connectedTo'):
             sourceTagName=connection.get("name")
+            sourceTagName = string.replace(sourceTagName, "_", "-")
             
             unit=connection.get("unit","")
             if unit == "":
@@ -896,7 +897,14 @@ def loadUnitParameters(container):
         if parent == "None":
             path = "Site/"
         elif sourceType == "Lab Data":
-            path = "LabData/%s/" % (parent)
+            if parent == "MONITORING-GDA":
+                path = "LabData/FINISHING/"
+            elif parent == "FIN_PRODUCT_QUALITY-GDA":
+                path = "LabData/FINISHING/"
+            elif parent == "POLY_PRODUCT_QUALITY-GDA":
+                path = "LabData/POLY/"
+            else:
+                path = "LabData/"
         else:
             path = "Site/%s/" % (parent)
                         

@@ -105,7 +105,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
             else:
                 log.error("Failed to confirm permissive write of <%s> to %s because %s" % (str(permissiveValue), self.path, errorMessage))
                 system.tag.write(self.path + "/writeStatus", "Failure")
-                system.tag.write(self.path + "/writeMessage", errorMessage)
+                system.tag.write(self.path + "/writeErrorMessage", errorMessage)
                 return confirmed, errorMessage
         else:
             log.info("...dwelling in lieu of permissive confirmation...")
@@ -120,8 +120,9 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
 
         if confirm:
             # Determine if the write was successful
-            log.infof("Confirming write of %s to %s...", str(val), self.path)
-            confirmed, errorMessage = self.confirmWrite(val)
+            confirmTagPath = self.path + "/value"
+            log.infof("Confirming write of %s to %s...", str(val), confirmTagPath)
+            confirmed, errorMessage = self.confirmWrite(val, confirmTagPath)
      
             if confirmed:
                 log.trace("Confirmed: %s - %s" % (self.path, str(val)))
@@ -132,7 +133,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
             else:
                 log.error("Failed to confirm write of <%s> to %s because %s" % (str(val), self.path, errorMessage))
                 system.tag.write(self.path + "/writeStatus", "Failure")
-                system.tag.write(self.path + "/writeMessage", errorMessage)
+                system.tag.write(self.path + "/writeErrorMessage", errorMessage)
                 status = False
                 msg = errorMessage   
         else:
@@ -156,7 +157,7 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
                 status = False
                 log.error("Failed to confirm permissive write of <%s> to %s because %s" % (str(val), self.path, errorMessage))
                 system.tag.write(self.path + "/writeStatus", "Failure")
-                system.tag.write(self.path + "/writeMessage", errorMessage)
+                system.tag.write(self.path + "/writeErrorMessage", errorMessage)
                 return status, errorMessage
         
         return status, msg

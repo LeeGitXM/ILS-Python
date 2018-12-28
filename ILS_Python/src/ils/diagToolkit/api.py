@@ -15,9 +15,8 @@ from ils.common.util import escapeSqlQuotes
 
 log = system.util.getLogger("com.ils.diagToolkit.common")
 
-# -------------------------- Helper methods ----------------------
-# Return the ProcessDiagram at the specified path
 def setTextOfRecommendation(applicationName, familyName, finalDiagnosisName, textRecommendation, db):
+    ''' Return the ProcessDiagram at the specified path '''
     log.infof("Setting the text of recommendation %s - %s - %s to %s", applicationName, familyName, finalDiagnosisName, textRecommendation)
     
     textRecommendation = escapeSqlQuotes(textRecommendation)

@@ -4,7 +4,8 @@ Created on Jun 20, 2017
 @author: phass
 '''
 
-import system, time
+import system, time, string
+from ils.common.cast import toDateTime
 log = system.util.getLogger("com.ils.dataPump")
 
 '''
@@ -65,6 +66,12 @@ def player(commandTagpath):
             else:
                 tagname = ds.getColumnName(j)
                 fullTagPath = "[%s]%s" % (provider, tagname)
+                
+                txt = string.upper(tagname)
+
+                if txt.find("TIME") > -1:
+                    val = toDateTime(val)
+
                 status = system.tag.write(fullTagPath, val)
                 log.tracef("Tag: %s, Value: %s, Status: %s", fullTagPath, str(val), str(status) )
 

@@ -3,7 +3,25 @@ Created on Sep 10, 2014
 
 @author: Pete
 '''
+
+import system
 from __builtin__ import str
+
+def toDateTime(txt):
+    mm = txt[:txt.find("/")]
+    txt = txt[txt.find("/")+1:]
+    
+    dd = txt[:txt.find("/")]
+    txt = txt[txt.find("/")+1:]
+    yy = txt[:txt.find(" ")]
+    txt = txt[txt.find(" ")+1:]
+    
+    hh = txt[:txt.find(":")]
+    mi = txt[txt.find(":")+1:]
+    
+    theDate = system.date.getDate(int(yy), int(mm) - 1, int(dd))
+    theDateTime = system.date.setTime(theDate, int(hh), int(mi), 0)
+    return theDateTime
 
 def toBool(txt):
 
