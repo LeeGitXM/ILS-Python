@@ -13,6 +13,9 @@ from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL
 from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.sfc.client.windows.controlPanel import getControlPanelIdForChartRunId
+from ils.queue.constants import QUEUE_ERROR
+
+SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
 logger=system.util.getLogger("com.ils.sfc.gateway.api")
 
@@ -481,6 +484,15 @@ def postToQueue(chartScope, status, message, queueKey=None):
     consoleName=getConsoleName(chartScope, db)
     from ils.queue.message import insert as insertQueueMessage
     insertQueueMessage(queueKey, status, message, db, project, consoleName)
+
+def postError(chartScope, message):
+    '''  Post an error message to the SFC Message Queue.  '''
+
+    db=getDatabaseName(chartScope)
+    project=getProject(chartScope)
+    consoleName=getConsoleName(chartScope, db)
+    from ils.queue.message import insert as insertQueueMessage
+    insertQueueMessage(SFC_MESSAGE_QUEUE, QUEUE_ERROR, message, db, project, consoleName)
 
 def printSpace(level, out):
     for i in range(level):
