@@ -144,7 +144,7 @@ def activate(scopeContext, stepProperties, state):
                         if row.destination == None or string.upper(row.destination) == "TAG":
                             targetStepUUID = ''
                         else:
-                            targetStepUUID, stepName = s88GetStep(chartScope, stepScope, row.destination, key)
+                            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, row.destination, key)
                             
                         lowLimitDbStr = dbStringForFloat(row.lowLimit)
                         highLimitDbStr = dbStringForFloat(row.highLimit)
