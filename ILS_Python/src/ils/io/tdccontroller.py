@@ -57,9 +57,9 @@ class TDCController(controller.Controller):
         #TODO Need to add support for a setpoint ramp here and at the end.
         
         ''' Determine which tag in the controller we are seeking to write to '''
-        if string.upper(outputType) in ["SP", "SETPOINT"]:
+        if string.upper(outputType) in ["SP", "SETPOINT", "SETPOINT RAMP"]:
             tagRoot = self.path + '/sp'
-        elif string.upper(outputType) in ["OP", "OUTPUT"]:
+        elif string.upper(outputType) in ["OP", "OUTPUT", "OUTPUT RAMP"]:
             tagRoot = self.path + '/op'
         else:
             raise Exception("Unexpected value Type: <%s> for a TDC controller %s" % (outputType, self.path))
@@ -101,12 +101,12 @@ class TDCController(controller.Controller):
         log.trace("%s: %s=%s, outputDisposability=%s, mode:%s" % (self.path, outputType, str(currentValue), outputDisposability, mode))
 
         ''' For outputs check that the mode is MANUAL - no other test is required '''
-        if string.upper(outputType) in ["OP", "OUTPUT"]:
+        if string.upper(outputType) in ["OP", "OUTPUT", "OUTPUT RAMP"]:
             if string.upper(mode) != 'MAN':
                 success = False
                 errorMessage = "the controller is not in manual (mode is actually %s)" % (mode)
 
-        elif string.upper(outputType) in ["SP", "SETPOINT"]:
+        elif string.upper(outputType) in ["SP", "SETPOINT", "SETPOINT RAMP"]:
             ''' For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is optional '''
             #TODO Not sure if output disposability has the same values as windup...
             if string.upper(outputDisposability) == 'HILO' and checkPathToValve:
