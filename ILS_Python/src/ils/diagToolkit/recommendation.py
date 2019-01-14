@@ -50,8 +50,8 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             exec("from %s import %s" % (package,module))
         except:
             errorType,value,trace = sys.exc_info()
-            errorTxt = traceback.format_exception(errorType, value, trace, 500)
-            log.errorf("Caught an exception importing an external reference method named %s %s", str(calculationMethod), str(errorTxt))
+            errorTxt = str(traceback.format_exception(errorType, value, trace, 500))
+            log.errorf("Caught an exception importing an external reference method named %s %s", str(calculationMethod), errorTxt)
             return [], errorTxt, "ERROR"
         else:
             log.tracef("...import of external reference was successful...")
@@ -137,7 +137,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                     del recommendation['Value']
                     recommendationList.append(recommendation)
 
-    return recommendationList, explanation, "SUCCESS"
+    return recommendationList, str(explanation), "SUCCESS"
 
 # Insert a recommendation into the database
 def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, database):
@@ -252,13 +252,14 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
         exec("from %s import %s" % (package,module))
 
     status, explanation, rawRecommendationList = eval(calculationMethod)(applicationName,finalDiagnosisName, finalDiagnosisId, provider,database)
+    
 
     if len(rawRecommendationList) == 0:
         log.infof("No recommendations were returned!")
     else:
         log.infof("Recommendations: %s", str(rawRecommendationList))
 
-    return status, explanation, rawRecommendationList
+    return status, str(explanation), rawRecommendationList
 
 def postApplicationMessage(applicationName, status, message, log, database):
     SQL = "select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName)

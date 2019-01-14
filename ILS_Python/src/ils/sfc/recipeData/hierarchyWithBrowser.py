@@ -319,6 +319,7 @@ def updateRecipeDataTree(rootContainer, db=""):
             key = record["RecipeDataKey"]
             log.tracef("   Adding %s", key)
             desc = getRecipeDataDescription(record, db)
+            key = "%s :: %s" % (key, desc)
             folderId = record["RecipeDataFolderId"]
             if folderId == None:
                 log.tracef("   ... this goes in the root folder (not really a folder)")
@@ -523,9 +524,9 @@ def getMatrixDescription(recipeDataId, desc, db):
         matrixDesc = "A %d X %d matrix: " % (rows, columns)
         
         if desc == "":
-            desc = matrixDesc
+            desc = "a matrix, %s" % (matrixDesc)
         else:
-            desc = "%s, %s" % (desc, matrixDesc)
+            desc = "a matrix, %s, %s" % (desc, matrixDesc)
 
         SQL = "select * from SfcRecipeDataMatrixElementView where RecipeDataId = %d order by RowIndex, ColumnIndex" % (recipeDataId)
         pdsValues = system.db.runQuery(SQL, db)
@@ -587,9 +588,9 @@ def getArrayDescription(recipeDataId, desc, db):
     txt = txt + ")"
 
     if desc == "":
-        desc = txt
+        desc = "an array, %s" % (txt)
     else:
-        desc = "%s, %s" % (desc, txt)
+        desc = "an array, %s, %s" % (desc, txt)
     
     ''' If the array is keyed then append the name of the key '''    
     if key != None:
@@ -606,9 +607,9 @@ def getTimerDescription(recipeDataId, desc, db):
     txt = "State: %s, Start time: %s" % (valueRecord["TimerState"], valueRecord["StartTime"])
     
     if desc == "":
-        desc = txt
+        desc = "a timer, %s" % (txt)
     else:
-        desc = "%s, %s" % (desc, txt)    
+        desc = "a timer, %s, %s" % (desc, txt)    
 
     return desc
 
@@ -621,9 +622,9 @@ def getRecipeDescription(recipeDataId, desc, db):
     txt = "Tag: %s, Value: %s" % (valueRecord["StoreTag"], str(valueRecord["RecommendedValue"]))
 
     if desc == "":
-        desc = txt
+        desc = "a recipe, %s" % (txt)
     else:
-        desc = "%s, %s" % (desc, txt)    
+        desc = "a recipe, %s, %s" % (desc, txt)    
 
     return desc 
 
@@ -645,9 +646,9 @@ def getValueDescriptionFromRecord(record, desc):
             val = "False"
     
     if desc == "":
-        desc = "%s" % (str(val))
+        desc = "a simple value, %s" % (str(val))
     else:
-        desc = "%s, %s" % (desc, str(val))
+        desc = "a simple value, %s, %s" % (desc, str(val))
     
     if units <> "" and units <> None:
         desc = "%s (%s)" % (desc, units)
@@ -673,9 +674,9 @@ def getOutputValueDescriptionFromRecord(record, desc):
             val = "False"
     
     if desc == "":
-        desc = "%s" % (str(val))
+        desc = "an output, %s" % (str(val))
     else:
-        desc = "%s, %s" % (desc, str(val))
+        desc = "an output, %s, %s" % (desc, str(val))
     
     if units <> "" and units <> None:
         desc = "%s (%s)" % (desc, units)
@@ -701,9 +702,9 @@ def getInputValueDescriptionFromRecord(record, desc):
             val = "False"
     
     if desc == "":
-        desc = "%s" % (str(val))
+        desc = "an input, %s" % (str(val))
     else:
-        desc = "%s, %s" % (desc, str(val))
+        desc = "an input, %s, %s" % (desc, str(val))
     
     if units <> "" and units <> None:
         desc = "%s (%s)" % (desc, units)
@@ -881,6 +882,12 @@ def addCallback(event):
     system.nav.centerWindow(window)
 
 def fetchRecipeInfo(stepId, path, db):
+    print "Fetching recipe info for: ", path
+    pos = path.find(" :: ")
+    if pos > 0:
+        path = path[:path.find(" :: ")]
+        print "The stripped path is <%s>" % (path)
+    
     tokens = path.split("/")
     
     if len(tokens) == 1:

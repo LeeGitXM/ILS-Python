@@ -140,21 +140,25 @@ def tileWindow(window, scale=1.0):
     windows = system.gui.getOpenedWindows()
     for w in windows:
         windowPath = w.getPath()
+        dockPosition = w.getDockPosition()
+        print windowPath, ": Dock Position: ", dockPosition
         if windowPath == thisWindowPath:
             instanceCount = instanceCount + 1
             if w != window:
                 firstWindow = w
-        elif string.upper(windowPath).find("CONSOLE") > 0:
-            # I'm not sure how to determine where the window is docked, so assume West for now 
-            print "Resetting the origin for a docked console window..."
+        elif dockPosition == 3: 
+            print "Resetting the origin for a WEST docked window..."
             originX = w.getWidth()
 #            originY = w.getHeight()
-            print "The console is %i X %i (W X H)" % (w.getWidth(), w.getHeight())
+#            print "The console is %i X %i (W X H)" % (w.getWidth(), w.getHeight())
+        elif dockPosition == 1: 
+            print "Resetting the origin for a North docked window..."
+            originY = w.getHeight()
                 
     if originX != 0 or originY != 0:
         mainWidth = mainWidth - originX
         mainHeight = mainHeight - originY
-        print "The main window size adjusted for a docked window is : %i X %i" % (mainWidth, mainHeight)
+        print "The main window size adjusted for docked windows is : %i X %i" % (mainWidth, mainHeight)
 
     # The first window is always centered.    
     if instanceCount == 1:

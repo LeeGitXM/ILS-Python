@@ -113,8 +113,13 @@ def activate(scopeContext, stepProperties, state):
                     targetRecipeDataId, targetRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, targetKey, database)
                     configRow.targetRecipeDataId = targetRecipeDataId
                     configRow.targetRecipeDataType = targetRecipeDataType
-                    
                     logger.trace(" ...Target Recipe Id: %d - Recipe Data Type: %s" % (targetRecipeDataId, targetRecipeDataType))
+                    
+                    logger.tracef("*********** CACHING the pvRecipeData Id **************************")
+                    pvRecipeDataId, pvRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, pvKey, database)
+                    configRow.pvRecipeDataId = pvRecipeDataId
+                    configRow.pvRecipeDataType = pvRecipeDataType
+                    logger.trace(" ...PV Recipe Id: %d - Recipe Data Type: %s" % (pvRecipeDataId, pvRecipeDataType))
 
                     configRow.lastPV = -999999.99
                     configRow.lastStatus = "UNKNOWN"
@@ -268,6 +273,8 @@ def activate(scopeContext, stepProperties, state):
                         
                         targetRecipeDataId = configRow.targetRecipeDataId
                         targetRecipeDataType = configRow.targetRecipeDataType
+                        pvRecipeDataId = configRow.pvRecipeDataId
+                        pvRecipeDataType = configRow.pvRecipeDataType
                         
                         # REMOVE THESE TWO LINES
                         tolerance=configRow.tolerance
@@ -303,10 +310,10 @@ def activate(scopeContext, stepProperties, state):
                                 configRow.inToleranceTime = 0.0
             
                         # Display the PVs as soon as the block starts running, even before the SP has been written
-                        tagPath = getMonitoredTagPath(targetRecipeDataId, targetRecipeDataType, providerName, database)
+                        tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
                         qv = system.tag.read(tagPath)
                         
-                        logger.tracef("  (%s) The present qualified value for %s is: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
+                        logger.tracef("  (%s) The current PV is: %s-%s (%s)", stepName, str(qv.value), str(qv.quality), tagPath)
                         if not(qv.quality.isGood()):
                             logger.warnf("  (%s) The monitored value for %s is bad: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                             continue

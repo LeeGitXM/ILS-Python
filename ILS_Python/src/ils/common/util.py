@@ -207,8 +207,11 @@ def calculateXFromEquationOfLine(y, m, b):
     x = (y - b) / m
     return x
 
-def escapeSqlQuotes(string):
-    return string.replace("'", "''")
+def escapeSqlQuotes(txt):
+    print "Incoming text: <%s>" % (txt)
+    txt = string.replace(txt, "'", "''")
+    print "Outgoing text: <%s>" % (txt)
+    return txt
 
 def substituteProvider(tagPath, provider):
     '''alter the given tag path to reflect the supplied provider'''

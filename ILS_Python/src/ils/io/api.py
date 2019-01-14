@@ -374,14 +374,14 @@ def confirmControllerMode(tagPath, val, testForZero, checkPathToValve, valueType
     Revised to assume that the path is a controller or folder, i.e., don't pass the mode of the controller, ass the controller
     '''
     log.trace("In %s, checking %s" % (__name__, tagPath))
-    
+    itemId = ""
     tagExists = system.tag.exists(tagPath)
     if not(tagExists):
-        return False, "%s does not exist" % (tagPath)
+        return False, "%s does not exist" % (tagPath), itemId
     
     if not(isUDTorFolder(tagPath)):
         log.trace("The target is not a controller so assume it is reachable")
-        return True, "The target is not a Controller"
+        return True, "The target is not a Controller", itemId
 
     ''' Get the name of the Python class that corresponds to this UDT. '''
     pyc = system.tag.read(tagPath + "/pythonClass").value
@@ -423,10 +423,10 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
         # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
         if isUDTorFolder(fullTagPath):
             pythonClass = system.tag.read(fullTagPath + '/pythonClass').value
-            if string.upper(pythonClass) in ["OPCTAG", "OPCConditionalOutput"]:
+            if string.upper(pythonClass) in ["OPCTAG", "OPCCONDITIONALOUTPUT", "OPCOUTPUT"]:
                 displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
-            elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSACECONTROLLER"]:
-                displayName = system.tag.read(fullTagPath + '/sp//value.OPCItemPath').value
+            elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSACECONTROLLER", "PKSACERAMPCONTROLLER", "PKSDIGITALCONTROLLER", "TDCCONTROLLER", "TDCDIGITALCONTROLLER", "TDCRAMPCONTROLLER"]:
+                displayName = system.tag.read(fullTagPath + '/sp/value.OPCItemPath').value
             else:
                 raise ValueError, "Unknown I/O class: %s" % (pythonClass)      
         else:

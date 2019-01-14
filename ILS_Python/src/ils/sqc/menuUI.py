@@ -4,7 +4,8 @@ Created on Dec 10, 2015
 @author: Pete
 '''
 
-import system
+import system, string
+from ils.common.config import getDatabaseClient
 log = system.util.getLogger("com.ils.sqc.plotChooser")
 
 def internalFrameOpened(rootContainer):
@@ -86,4 +87,15 @@ def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID):
         openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="CENTER", scale=1.0)
     else:
         openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="Tile", scale = 0.75)
+        
+def openSQCPlots(sqcDiagnosisNames):
+    db = getDatabaseClient()
+    pds =system.db.runQuery("select SQCDiagnosisName, SQCDiagnosisUUID from DtSQCDiagnosis", db)
+    
+    for sqcDiagnosisName in sqcDiagnosisNames:
+        SQCDiagnosisUUID = ""
+        for record in pds:
+            if string.upper(record["SQCDiagnosisName"]) == string.upper(sqcDiagnosisName):
+                SQCDiagnosisUUID = record["SQCDiagnosisUUID"]
+        openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID)
         

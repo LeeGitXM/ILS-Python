@@ -28,7 +28,7 @@ def createConfigurationTags(ds, log):
             elif dataType == "Boolean":
                 from ils.common.cast import toBool
                 val = toBool(val)
-            elif dataType == "Dataset":
+            elif dataType == "DataSet":
                 val = None
 
             system.tag.addTag(parentPath=path, name=name, tagType="MEMORY", dataType=dataType, value=val)

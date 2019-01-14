@@ -41,3 +41,26 @@ def insertApplicationQueueMessage(applicationName, message, status=QUEUE_INFO, d
     key = getQueueForDiagnosticApplication(applicationName, db)
     from ils.queue.message import insert
     insert(key, status, message)
+    
+def getManualMove(finalDiagnosisId, db):
+    ''' Return the Manual Move amount for the FD which was presumably just entered by the operator at a client'''
+    log.infof("Getting the Manual Move amount for FD with id: %d", finalDiagnosisId)
+    
+    SQL = "SELECT ManualMove from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+ 
+    log.tracef(SQL)
+    manualMove = system.db.runScalarQuery(SQL, db)
+    
+    if manualMove == None:
+        manualMove = 0.0
+    
+    return manualMove
+
+def resetManualMove(finalDiagnosisId, db):
+    ''' Reset the Manual Move amount for the FD '''
+    log.infof("Resetting the Manual Move amount for FD with id: %d", finalDiagnosisId)
+    
+    SQL = "Update DtFinalDiagnosis set ManualMove = 0.0 where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+ 
+    log.tracef(SQL)
+    system.db.runUpdateQuery(SQL, db)
