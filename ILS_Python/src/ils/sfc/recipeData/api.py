@@ -9,13 +9,59 @@ import system, string
 from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
     getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
     fetchRecipeDataRecordFromRecipeDataId
-from ils.sfc.gateway.api import getDatabaseName, readTag
+from ils.sfc.gateway.api import getDatabaseName, readTag, postToQueue, getProviderName
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, REFERENCE_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
-from ils.sfc.recipeData.constants import SIMPLE_VALUE
+from ils.queue.constants import QUEUE_WARNING, QUEUE_ERROR
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.api")
+
+def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
+    ''' Check that the desired setpoint (from recipe), the actual setpoint, and the actual PV are within tolerance.  '''
+
+    logger.tracef("In %s.s88CheckPV() checking %s...", __name__, key)
+ 
+    provider = getProviderName(chartProperties)
+    tagName = s88Get(chartProperties, stepProperties, key + ".tag", scope)
+    tagName = "[%s]%s" % (provider, tagName)
+    logger.tracef("Checking if %s exists...", tagName)
+    tagExists = system.tag.exists(tagName)
+    if not(tagExists):
+        txt = "Unable to locate an output variable named <%s>" % (tagName)
+        postToQueue(chartProperties, QUEUE_ERROR, txt)
+        return "var-failure" 
+
+    spDesired = s88Get(chartProperties, stepProperties, key + ".outputValue", scope)
+
+    tagPaths = ["%s/sp/value" % (tagName), "%s/value" % (tagName)]
+    logger.tracef("Reading current values from: %s", str(tagPaths))
+    qvs = system.tag.readAll(tagPaths) 
+    if not(qvs[0].quality.isGood() and qvs[1].quality.isGood()):
+        return "Tag Read Error"
+
+    sp = qvs[0].value
+    pv = qvs[1].value
+
+    tolerance = s88Get(chartProperties, stepProperties, toleranceKey + ".value", scope) 
+
+    ''' We have found all of the required data '''
+
+    logger.tracef("Desired Setpoint: %f, Current Setpoint: %f, PV: %f, Tolerance: %f", spDesired, sp, pv, tolerance)
+
+    if (abs(spDesired - sp) < 0.1):
+        if abs(spDesired - pv) < abs(tolerance):
+            status =  "success"
+        else:
+            status = "pv-failure"
+
+    else:
+        txt = "The SP of %s: %.4f does not match the desired SP (%s): %.4f." % (tagName, sp, key, spDesired)
+        postToQueue(chartProperties, QUEUE_WARNING, txt)
+        status = "sp-failure"
+    
+    return status
+
 
 def s88DataExists(chartProperties, stepProperties, keyAndAttribute, scope):
     scope = scope.lower()
