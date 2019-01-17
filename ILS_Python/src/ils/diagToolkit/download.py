@@ -188,7 +188,7 @@ def serviceDownload(post, ds, tagProvider, db):
     diagToolkitWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
     print "DiagToolkitWriteEnabled: ", diagToolkitWriteEnabled
     
-    logbookMessage = "Download performed for the following:\n"
+    logbookMessage = "<HTML>Download performed for the following:<UL>"
 
     # First update the download status of every output we intend to write
     for row in range(ds.rowCount):
@@ -213,7 +213,7 @@ def serviceDownload(post, ds, tagProvider, db):
         rowType=ds.getValueAt(row, "type")
         if rowType == "app":
             applicationName = ds.getValueAt(row, "application")
-            logbookMessage += "  Application: %s\n" % applicationName
+            logbookMessage += "<LI>Application: %s<UL>" % applicationName
             firstOutputRow = True
             
         elif rowType == "row":
@@ -325,6 +325,7 @@ def constructDownloadLogbookMessage(post, applicationName, db):
         
     else:
         
+        txt += "<UL>"
         for finalDiagnosisRecord in pds:
             family=finalDiagnosisRecord['FamilyName']
             finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
@@ -334,9 +335,9 @@ def constructDownloadLogbookMessage(post, applicationName, db):
             print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
                 
             if multiplier < 0.99 or multiplier > 1.01:
-                txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier)
+                txt += "<LI>Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier)
             else:
-                txt += "       Diagnosis -- %s\n" % (finalDiagnosis)
+                txt += "<LI>Diagnosis -- %s\n" % (finalDiagnosis)
     
             if recommendationErrorText != None:
                 txt += "       %s\n\n" % (recommendationErrorText) 
@@ -365,6 +366,7 @@ def constructDownloadLogbookMessage(post, applicationName, db):
                     if outputLimited and feedbackOutput != 0.0:
                         txt += "          change to %s adjusted to %s because %s\n" % (tagPath, str(feedbackOutputConditioned), outputLimitedStatus)
 
+        txt += "</UL>"
     return txt
 
 # Fetch the outputs for a final diagnosis and return them as a list of dictionaries

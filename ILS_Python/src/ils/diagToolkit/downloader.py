@@ -59,7 +59,7 @@ class Downloader():
         self.db = db
         self.threads = []
         self.runningCount = 0
-        self.logbookMessage = "Download performed for the following:\n"
+        self.logbookMessage = "<HTML>Download performed for the following:<UL>"
 
     def download(self):
         log.infof("Start Downloading...")
@@ -90,7 +90,7 @@ class Downloader():
             rowType = self.ds.getValueAt(row, "type")
             if rowType == "app":
                 applicationName = self.ds.getValueAt(row, "application")
-                self.logbookMessage += "  Application: %s\n" % applicationName
+                self.logbookMessage += "<LI>Application: %s<UL>" % applicationName
                 firstOutputRow = True
                 
             elif rowType == "row":
@@ -219,12 +219,12 @@ class Downloader():
                 print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
                     
                 if multiplier < 0.99 or multiplier > 1.01:
-                    txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier)
+                    txt += "<LI>Diagnosis -- %s (multiplier = %f)" % (finalDiagnosis, multiplier)
                 else:
-                    txt += "       Diagnosis -- %s\n" % (finalDiagnosis)
+                    txt += "<LI>Diagnosis -- %s" % (finalDiagnosis)
         
                 if recommendationErrorText != None:
-                    txt += "       %s\n\n" % (recommendationErrorText) 
+                    txt += "<UL><LI>%s</UL>" % (recommendationErrorText) 
         
                 rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
                 for rootCause in rootCauseList:
@@ -232,6 +232,7 @@ class Downloader():
         
                 from ils.diagToolkit.common import fetchActiveOutputsForFinalDiagnosis
                 pds, outputs=fetchActiveOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
+                txt += "<UL>"
                 for record in outputs:
                     print record
                     quantOutput = record.get('QuantOutput','')
@@ -242,14 +243,13 @@ class Downloader():
                     outputLimited=record.get('OutputLimited', False)
                     outputLimitedStatus=record.get('OutputLimitedStatus', '')
                     if feedbackOutput <> None:
-                        txt += "          the desired change in %s = %s" % (tagPath, str(feedbackOutput))
+                        txt += "<LI>the desired change in %s = %s" % (tagPath, str(feedbackOutput))
                         if manualOverride:
                             txt += "%s  (manually specified)" % (txt)
-                        txt += "\n"
             
                         if outputLimited and feedbackOutput != 0.0:
                             txt += "          change to %s adjusted to %s because %s\n" % (tagPath, str(feedbackOutputConditioned), outputLimitedStatus)
-    
+                txt += "</UL>"
         return txt
     
     '''
