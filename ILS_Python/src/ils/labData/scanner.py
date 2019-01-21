@@ -70,7 +70,7 @@ def main(database, tagProvider):
 
 
 def notifyClients():
-    print "Notifying clients of new lab data!"
+    log.tracef("Notifying clients of new lab data!")
     project = system.util.getProjectName()
     system.util.sendMessage(project, messageHandler="newLabData", payload={}, scope="C")
 

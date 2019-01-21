@@ -13,6 +13,19 @@ from ils.io.api import confirmControllerMode
 from ils.io.api import write
 from ils.diagToolkit.setpointSpreadsheet import hideDetailMap
 
+def downloadLogbookTestCallback(event, rootContainer):
+    from ils.common.config import getTagProviderClient, getDatabaseClient
+    tagProvider=getTagProviderClient()
+    db=getDatabaseClient()
+    post=rootContainer.post
+    
+    repeater=rootContainer.getComponent("Template Repeater")
+    ds = repeater.templateParams
+    
+    from ils.diagToolkit.downloader import Downloader
+    downloader = Downloader(post, ds, tagProvider, db)
+    downloader.downloadMessage()
+
 # This is called from the download button on the setpoint spreadsheet.
 def downloadCallback(event, rootContainer):
     log.info("In downloadCallback()")
@@ -264,8 +277,8 @@ def updateQuantOutputDownloadStatus(quantOutputId, downloadStatus, db):
     log.trace(SQL)
     system.db.runUpdateQuery(SQL, db)
 
-#
-def constructDownloadLogbookMessage(post, applicationName, db):
+def constructDownloadLogbookMessageCRAP(post, applicationName, db):
+    print "In %s.constructDownloadLogbookMessage()" % (__name__)
     from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
     from ils.diagToolkit.common import fetchHighestActiveDiagnosis
     pds = fetchHighestActiveDiagnosis(applicationName, db)
@@ -335,19 +348,20 @@ def constructDownloadLogbookMessage(post, applicationName, db):
             print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
                 
             if multiplier < 0.99 or multiplier > 1.01:
-                txt += "<LI>Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier)
+                txt += "<LI>Diagnosis -- %s (multiplier = %f)" % (finalDiagnosis, multiplier)
             else:
-                txt += "<LI>Diagnosis -- %s\n" % (finalDiagnosis)
+                txt += "<LI>Diagnosis -- %s" % (finalDiagnosis)
     
             if recommendationErrorText != None:
-                txt += "       %s\n\n" % (recommendationErrorText) 
+                txt += "  --  %s" % (recommendationErrorText) 
     
             rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
             for rootCause in rootCauseList:
-                txt += "      %s\n" % (rootCause)
+                txt += "  --  %s" % (rootCause)
     
             from ils.diagToolkit.common import fetchActiveOutputsForFinalDiagnosis
             pds, outputs=fetchActiveOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
+            txt += "<UL>"
             for record in outputs:
                 print record
                 quantOutput = record.get('QuantOutput','')
@@ -358,14 +372,13 @@ def constructDownloadLogbookMessage(post, applicationName, db):
                 outputLimited=record.get('OutputLimited', False)
                 outputLimitedStatus=record.get('OutputLimitedStatus', '')
                 if feedbackOutput <> None:
-                    txt += "          the desired change in %s = %s" % (tagPath, str(feedbackOutput))
+                    txt += "<LI>the desired change in %s = %s" % (tagPath, str(feedbackOutput))
                     if manualOverride:
                         txt += "%s  (manually specified)" % (txt)
-                    txt += "\n"
         
                     if outputLimited and feedbackOutput != 0.0:
-                        txt += "          change to %s adjusted to %s because %s\n" % (tagPath, str(feedbackOutputConditioned), outputLimitedStatus)
-
+                        txt += " change to %s adjusted to %s because %s" % (tagPath, str(feedbackOutputConditioned), outputLimitedStatus)
+            txt += "</UL>"
         txt += "</UL>"
     return txt
 

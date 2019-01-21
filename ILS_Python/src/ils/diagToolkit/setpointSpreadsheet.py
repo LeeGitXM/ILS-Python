@@ -4,7 +4,7 @@ Created on Sep 9, 2014
 @author: ILS
 '''
 
-import system, string
+import system, string, time
 from ils.sfc.common.constants import SQL
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
@@ -142,6 +142,18 @@ def checkIfDownloadComplete(event):
     # Only update the database if downloadComplete is True, we assume it is True since this is running
     if downloadComplete:
         print "...the download is complete..."
+        
+        ''' Make a logbook message for the download BEFORE we reset the FDs in the DB '''
+        post = rootContainer.post
+        db = getDatabaseClient()
+        tagProvider = getTagProviderClient()
+        
+        from ils.diagToolkit.downloader import Downloader
+        downloader = Downloader(post, ds, tagProvider, db)
+        downloader.downloadMessage(messageType="download")
+        insertForPost(post, downloader.logbookMessage, db)
+        
+        ''' Now get to work '''
         rootContainer.downloadActive = False
         db=system.tag.read("[Client]Database").value
         db=getDatabaseClient()
@@ -527,9 +539,10 @@ def waitCallback(event):
         ds = repeater.templateParams
         
         # Write something useful to the logbook to document this No Download
-        logbookMessage = "Wait for more data requested before acting on the following:\n"
-        logbookMessage += constructNoDownloadLogbookMessage(post, ds, db)
-        insertForPost(post, logbookMessage, db)
+        from ils.diagToolkit.downloader import Downloader
+        downloader = Downloader(post, ds, tagProvider, db)
+        downloader.downloadMessage(messageType="wait")
+        insertForPost(post, downloader.logbookMessage, db)
     
         allApplicationsProcessed = postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=WAIT_FOR_MORE_DATA, recommendationStatus=WAIT_FOR_MORE_DATA)
 
@@ -555,10 +568,11 @@ def noDownloadCallback(event):
         print "There IS an active application..."
         ds = repeater.templateParams
         
-        # Write something useful to the logbook to document this No Download
-        logbookMessage = "Download NOT performed for the following:\n"
-        logbookMessage += constructNoDownloadLogbookMessage(post, ds, db)
-        insertForPost(post, logbookMessage, db)
+        # Write something useful to the logbook to document this No Download        
+        from ils.diagToolkit.downloader import Downloader
+        downloader = Downloader(post, ds, tagProvider, db)
+        downloader.downloadMessage(messageType="no_download")
+        insertForPost(post, downloader.logbookMessage, db)
     
         # Set a flag that will be used when the notification arrives.  This is only relevent when two applications are present but one of them was INACTIVE
         rootContainer.lastAction = "noDownload"
@@ -580,34 +594,6 @@ def hideDetailMap():
     for window in windows:
         if window.getPath() == "DiagToolkit/Recommendation Map":
             system.nav.closeWindow(window)
-
-'''
-Format a message for the No-Download and for a Wait-For-More-Data.  The message will be posted to the operator logbook.
-The message is nearly the same for these two actions and it is really similar to what gets logged for an actual download.
-In fact we reuse some of the same logic used for the download.
-'''
-def constructNoDownloadLogbookMessage(post, ds, db):
-    logbookMessage = ""
-    print "Constructing a NO DOWNLOAD logbook message..."
-    for row in range(ds.rowCount):
-        rowType=ds.getValueAt(row, "type")
-        if rowType == "app":
-            applicationName = ds.getValueAt(row, "application")
-            print "Processing application: ", applicationName
-            logbookMessage += "  Application: %s\n" % applicationName
-            firstOutputRow = True
-                
-        elif rowType == "row":
-            command=ds.getValueAt(row, "command")
-            if string.upper(command) == 'GO':
-                if firstOutputRow:
-                    print "...found the first row after a GO..."
-                    # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
-                    firstOutputRow = False
-                            
-                    from ils.diagToolkit.download import constructDownloadLogbookMessage
-                    logbookMessage += constructDownloadLogbookMessage(post, applicationName, db)
-    return logbookMessage
 
 def isThereAnActiveApplication(repeater):
     ds = repeater.templateParams

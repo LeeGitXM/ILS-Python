@@ -15,8 +15,6 @@ class PKSDigitalController(pkscontroller.PKSController):
     def __init__(self,path):
         log.tracef("In %s.__int__()", __name__)
         pkscontroller.PKSController.__init__(self,path)
-        print self.opTag
-        print self.spTag
 
     def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
         ''' Check if a controller is in the appropriate mode for writing to.  This does not attempt to change the 

@@ -41,7 +41,7 @@ class DownloadThread(threading.Thread):
             self.downloader.updateQuantOutputDownloadStatus(self.quantOutputId, "Error")
             self.downloader.logbookMessage += "failed because of an error: %s\n" % (errorMessage)
 
-        log.infof("...done!")
+        log.infof("...finished a download thread for writing %s to %s!", str(self.newSetpoint), self.tagPath)
 
 class Downloader():
     post = None
@@ -51,7 +51,8 @@ class Downloader():
     threads = None
     runningCount = None
     logbookMessage = ""
-    
+    downloadStatus = {}
+
     def __init__(self, post, ds, tagProvider, db):
         self.post = post
         self.ds = ds
@@ -59,7 +60,7 @@ class Downloader():
         self.db = db
         self.threads = []
         self.runningCount = 0
-        self.logbookMessage = "<HTML>Download performed for the following:<UL>"
+        self.logbookMessage = ""
 
     def download(self):
         log.infof("Start Downloading...")
@@ -90,26 +91,16 @@ class Downloader():
             rowType = self.ds.getValueAt(row, "type")
             if rowType == "app":
                 applicationName = self.ds.getValueAt(row, "application")
-                self.logbookMessage += "<LI>Application: %s<UL>" % applicationName
-                firstOutputRow = True
                 
             elif rowType == "row":
                 command = self.ds.getValueAt(row, "command")
                 downloadStatus = self.ds.getValueAt(row, "downloadStatus")
-                if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:
-                    if firstOutputRow:
-                        # When we encounter the first output row, write out information about the Final diagnosis and violated SQC rules
-                        firstOutputRow = False
-                        self.logbookMessage += self.constructDownloadLogbookMessage(applicationName)
-        
-        
+                if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:        
                     quantOutput = self.ds.getValueAt(row, "output")
                     quantOutputId = self.ds.getValueAt(row, "qoId")
                     tag = self.ds.getValueAt(row, "tag")
                     newSetpoint = self.ds.getValueAt(row, "finalSetpoint")
                     tagPath="[%s]%s" % (self.tagProvider, tag)
-    
-                    self.logbookMessage += "      download of %s to the value %f was " % (tagPath, newSetpoint)
                     
                     if diagToolkitWriteEnabled:
                         print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
@@ -126,7 +117,6 @@ class Downloader():
                         print "...writes from the diagnostic toolkit are disabled..."
                         insertPostMessage(self.post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), self.db)
                         self.updateQuantOutputDownloadStatus(quantOutputId, "Error")
-                        self.logbookMessage += "failed because diag toolkit writes are disabled\n"
         
         ''' Now monitor the threads until they are done '''
         while self.runningCount > 0:
@@ -140,117 +130,178 @@ class Downloader():
         
         log.infof("All of the dowwnloads are complete")
         
-        from ils.common.operatorLogbook import insertForPost
-        log.tracef("Logging logbook message: %s", self.logbookMessage)
-        insertForPost(self.post, self.logbookMessage, self.db)
+        ''' Now make a logbook message for the download '''
+#        self.downloadMessage()
+        
+#        from ils.common.operatorLogbook import insertForPost
+#        log.tracef("Logging logbook message: %s", self.logbookMessage)
+#        insertForPost(self.post, self.logbookMessage, self.db)
 
 
     def updateQuantOutputDownloadStatus(self, quantOutputId, downloadStatus):
+        ''' Update the database, which will drive th GUI om the client '''
+        print "Updating the download status for %s to %s" % (str(quantOutputId), downloadStatus)
+        
         SQL = "update DtQuantOutput set DownloadStatus = '%s' where QuantOutputId = %i " % (downloadStatus, quantOutputId)
         log.trace(SQL)
         system.db.runUpdateQuery(SQL, self.db)
         
-    def constructDownloadLogbookMessage(self, applicationName):
+        self.downloadStatus[quantOutputId] = downloadStatus
+        return
+    
+        ds = self.ds
+        for row in range(ds.getRowCount()):
+            if ds.getValueAt(row, "qoid") == quantOutputId:
+                print "...updating row %s..." % (str(row))
+                ds = system.dataset.setValue(ds, row, "downloadStatus", downloadStatus)
+        self.ds = ds
+        
+    def downloadMessage(self, messageType="download"):
+        '''
+        Because this is a pretty complicated logbook message I am formatting it using HTML, but be careful to keep the HTML pretty simple.
+        I tried to use a tabl to display the quant output contribution for multiple final diagnosis but the report viewer widget didn't support it
+        even though I could put the same HTML into chrome and it looked great!
+        '''
         from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
         from ils.diagToolkit.common import fetchHighestActiveDiagnosis
-        pds = fetchHighestActiveDiagnosis(applicationName, self.db)
-        txt = ""
+        print "============================================================================="
+        log.tracef("In %s.downloadMessage(), messageType: %s", __name__, str(messageType))
+        print "The download status dictionary is: ", self.downloadStatus
+
+        noteText = ""
+        fdText = "" 
+        ds = self.ds
+        if string.upper(messageType) == "DOWNLOAD":
+            self.logbookMessage = "<HTML>Download performed for the following:<UL>"
+        elif string.upper(messageType) == "NO_DOWNLOAD":
+            self.logbookMessage = "<HTML>Download <b>NOT</b> performed for the following:<UL>"
+        elif string.upper(messageType) == "WAIT":
+            self.logbookMessage = "<HTML>Wait for more data requested before acting on the following:<UL>"
         
-        # If there are more than on final diagnosis active, then print the individual recommendation contributions from each
-        # recommendation and then a summary at the end
-        if len(pds) > 1:
-            print "The individual contributions from each diagnosis are:"
-            txt += "    The individual contributions from each diagnosis are:\n"
-            finalDiagnosisIds = []
-            for finalDiagnosisRecord in pds:
-                finalDiagnosisName=finalDiagnosisRecord['FinalDiagnosisName']
-                finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
-                finalDiagnosisIds.append(finalDiagnosisId)
-                multiplier=finalDiagnosisRecord['Multiplier']
-                recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
+        ''' print out the contents of the repeater dataset for debugging '''
+        for row in range(ds.getRowCount()):
+            txt = ""
+            for col in range(ds.getColumnCount()):
+                txt += "%s ," % (ds.getValueAt(row,col))
+            print row, txt
+        
+        ''' Process the contents of the repeater row by row'''
+        for row in range(ds.getRowCount()):
+            rowType = self.ds.getValueAt(row, "type")
+            if rowType == "app":
+                applicationName = self.ds.getValueAt(row, "application")
+                log.tracef("Handling an application - %s", applicationName)
                 
-                if multiplier < 0.99 or multiplier > 1.01:
-                    txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosisName, multiplier)
-                else:
-                    txt += "       Diagnosis -- %s\n" % (finalDiagnosisName)
-        
-                if recommendationErrorText != None:
-                    txt += "       %s\n\n" % (recommendationErrorText) 
-    
-                rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName)
-                for rootCause in rootCauseList:
-                    txt += "      %s\n" % (rootCause)
-    
-                recPDS = self.fetchRecommendationsForFinalDiagnosis(finalDiagnosisId) 
-                for record in recPDS:
-                    print record["QuantOutputName"], record["TagPath"], record["Recommendation"], record["AutoRecommendation"], record["ManualRecommendation"], record["AutoOrManual"]
-                    txt += "          the desired change in %s = %f\n" % (record["TagPath"], record["AutoRecommendation"])
-            
-            # Now print the summary
-            txt += "\n    The combined recommendations are:\n"    
-            pds = self.fetchOutputsForListOfFinalDiagnosis(finalDiagnosisIds)
-            for record in pds:
-                quantOutputName = record['QuantOutputName']
-                quantOutputId = record['QuantOutputId']
-                print "%s - %s" % (str(quantOutputId), quantOutputName)
-                tagPath = record['TagPath']
-                feedbackOutput=record['FeedbackOutput']
-                feedbackOutputConditioned = record['FeedbackOutputConditioned']
-                manualOverride=record['ManualOverride']
-                outputLimited=record['OutputLimited']
-                outputLimitedStatus=record['OutputLimitedStatus']
-                print "Manual Override: ", manualOverride
-                txt += "          the desired change in %s = %s" % (tagPath, str(feedbackOutput))
-                if manualOverride:
-                    txt += "%s  (manually specified)" % (txt)
-                txt += "\n"
-    
-                if outputLimited and feedbackOutput != 0.0:
-                    txt = "          change to %s adjusted to %s because %s" % (quantOutputName, str(feedbackOutputConditioned), outputLimitedStatus)
-            
-        else:
-            
-            for finalDiagnosisRecord in pds:
-                family=finalDiagnosisRecord['FamilyName']
-                finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
-                finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
-                multiplier=finalDiagnosisRecord['Multiplier']
-                recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
-                print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
+                pds = fetchHighestActiveDiagnosis(applicationName, self.db)
+                log.tracef("There are %d high active diagnosis for this application", len(pds))
+
+                if fdText != "" or noteText != "":
+                    self.logbookMessage += fdText
+                    self.logbookMessage += noteText
+                    noteText = ""
+                    fdText = ""
                     
-                if multiplier < 0.99 or multiplier > 1.01:
-                    txt += "<LI>Diagnosis -- %s (multiplier = %f)" % (finalDiagnosis, multiplier)
+                ''' Multiple diagnosis have contributed so list the contributions by final diagnosis '''
+                
+                outputs = getOutputsForApplication(ds, applicationName)
+                
+                if len(pds) > 1:
+                    fdText = "<LI>Application: %s (Multiple final diagnosis have contributed to the move)<UL>" % applicationName
+                    log.tracef("There are multiple diagnosis that contributed to this application.")
                 else:
-                    txt += "<LI>Diagnosis -- %s" % (finalDiagnosis)
-        
-                if recommendationErrorText != None:
-                    txt += "<UL><LI>%s</UL>" % (recommendationErrorText) 
-        
-                rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
-                for rootCause in rootCauseList:
-                    txt += "      %s\n" % (rootCause)
-        
-                from ils.diagToolkit.common import fetchActiveOutputsForFinalDiagnosis
-                pds, outputs=fetchActiveOutputsForFinalDiagnosis(applicationName, family, finalDiagnosis)
-                txt += "<UL>"
-                for record in outputs:
-                    print record
-                    quantOutput = record.get('QuantOutput','')
-                    tagPath = record.get('TagPath','')
-                    feedbackOutput=record.get('FeedbackOutput',0.0)
-                    feedbackOutputConditioned = record.get('FeedbackOutputConditioned',0.0)
-                    manualOverride=record.get('ManualOverride', False)
-                    outputLimited=record.get('OutputLimited', False)
-                    outputLimitedStatus=record.get('OutputLimitedStatus', '')
-                    if feedbackOutput <> None:
-                        txt += "<LI>the desired change in %s = %s" % (tagPath, str(feedbackOutput))
-                        if manualOverride:
-                            txt += "%s  (manually specified)" % (txt)
+                    fdText = "<LI>Application: %s<UL>" % applicationName
+                    log.tracef("There are SINGLE diagnosis. (%d)", len(pds))
+
+                finalDiagnosisRecommendations = {}
+                finalDiagnosisIds = []
+                for finalDiagnosisRecord in pds:
+                    print "...working..."
+                    finalDiagnosisId = finalDiagnosisRecord['FinalDiagnosisId']
+                    recommendationPDS = self.fetchRecommendationsForFinalDiagnosis(finalDiagnosisId)
+                    finalDiagnosisName = finalDiagnosisRecord['FinalDiagnosisName']
+                    finalDiagnosisIds.append(finalDiagnosisId)
+                    multiplier=finalDiagnosisRecord['Multiplier']
+                    recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
+                    
+                    if multiplier < 0.99 or multiplier > 1.01:
+                        fdText += "<LI>Diagnosis -- %s (multiplier = %f)" % (finalDiagnosisName, multiplier)
+                    else:
+                        fdText += "<LI>Diagnosis -- %s" % (finalDiagnosisName)
             
+                    if recommendationErrorText != None:
+                        fdText += "%s" % (recommendationErrorText) 
+        
+                    rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName)
+                    for rootCause in rootCauseList:
+                        fdText += "%s" % (rootCause)
+            
+                    ''' Start an embedded list of individual recommendations for this Final Diagnosis '''
+                    fdText += "<UL>"
+                    
+                    recommendationPDS = self.fetchRecommendationsForFinalDiagnosis(finalDiagnosisId)
+
+                    for recRecord in recommendationPDS:
+                        outputName = recRecord["QuantOutputName"]
+                        tagPath = recRecord["TagPath"]
+                        autoRecommendation = recRecord["AutoRecommendation"]
+                        fdText += "<li>desired change in %s = %f</li>" % (tagPath, autoRecommendation)
+                    fdText += "</UL>"
+                fdText += "</UL>"
+                
+                print "Done processing an APP row: ", fdText
+
+                writeResultsText = "<LI>Download Results:<UL>"
+                
+            elif rowType == "row":
+                log.tracef("Handling a row...")
+                command = self.ds.getValueAt(row, "command")
+                downloadStatus = self.ds.getValueAt(row, "downloadStatus")
+                log.tracef("...command: %s, download status: %s", command, downloadStatus)
+                if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR', 'SUCCESS']:
+
+                    qoId = self.ds.getValueAt(row, "qoid")
+                    log.tracef("Processing Quant Output: %d", qoId)
+                    record = self.fetchQuantOutput(qoId)
+                    
+                    quantOutputName = record['QuantOutputName']
+                    quantOutputId = record['QuantOutputId']
+                    print "%s - %s" % (str(quantOutputId), quantOutputName)
+                    tagPath = record['TagPath']
+                    feedbackOutput=record['FeedbackOutput']
+                    feedbackOutputManual=record['FeedbackOutputManual']
+                    feedbackOutputConditioned = record['FeedbackOutputConditioned']
+                    manualOverride=record['ManualOverride']
+                    outputLimited=record['OutputLimited']
+                    outputLimitedStatus=record['OutputLimitedStatus']
+                    print "Manual Override: ", manualOverride
+                    
+                    if manualOverride or (outputLimited and feedbackOutput != 0.0):
+                        if manualOverride:
+                            noteText += "<LI>Desired change for %s was manually changed to %.4f" % (quantOutputName, feedbackOutputManual)
+    
                         if outputLimited and feedbackOutput != 0.0:
-                            txt += "          change to %s adjusted to %s because %s\n" % (tagPath, str(feedbackOutputConditioned), outputLimitedStatus)
-                txt += "</UL>"
-        return txt
+                            noteText += "<LI>%s was adjusted to %s because %s" % (quantOutputName, str(feedbackOutputConditioned), outputLimitedStatus)
+                        
+                    ''' There is a combined section for the results of the write '''
+                    if string.upper(messageType) == "DOWNLOAD":
+                        tag = self.ds.getValueAt(row, "tag")
+                        newSetpoint = self.ds.getValueAt(row, "finalSetpoint")
+                        tagPath="[%s]%s" % (self.tagProvider, tag)
+                        writeResultsText += "<LI>download of %.4f to %s was %s" % (newSetpoint, tagPath, downloadStatus)
+            
+        self.logbookMessage += fdText
+        if noteText != "":
+            self.logbookMessage += "<li>Notes</lu>"
+            self.logbookMessage += "<ul>"
+            self.logbookMessage += noteText
+            self.logbookMessage += "</ul>"       
+                
+        if string.upper(messageType) == "DOWNLOAD":
+            self.logbookMessage += writeResultsText
+            
+        print self.logbookMessage
+        print "============================================================================="
+
     
     '''
     Fetch the outputs for a final diagnosis and return them as a list of dictionaries
@@ -296,6 +347,36 @@ class Downloader():
         log.trace(SQL)
         pds = system.db.runQuery(SQL, self.db)
         return pds
+    
+    def fetchQuantOutput(self, qoId):
+        SQL = "select distinct QO.QuantOutputName, QO.QuantOutputId, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+            " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
+            " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
+            " from DtQuantOutput QO, Lookup L "\
+            " where L.LookupTypeCode = 'FeedbackMethod'"\
+            " and L.LookupId = QO.FeedbackMethodId "\
+            " and QO.QuantOutputId = %d" % ( qoId )
+        print SQL
+        log.trace(SQL)
+        pds = system.db.runQuery(SQL, self.db)
+        
+        ''' This better only return 1 row '''
+        return pds[0]
+
+def getOutputsForApplication(ds, applicationName):
+    outputs = []
+    for row in range(ds.getRowCount()):        
+        rowType = ds.getValueAt(row, "type")
+        if rowType == "app":
+            foundApplication = False
+            if applicationName == ds.getValueAt(row, "application"):
+                foundApplication = True
+        elif rowType == "row":
+            if foundApplication:
+                outputs.append(ds.getValueAt(row, "output"))
+    
+    print "The outputs for %s are %s" % (applicationName, outputs)
+    return outputs
         
 '''
 ===============================================================================================

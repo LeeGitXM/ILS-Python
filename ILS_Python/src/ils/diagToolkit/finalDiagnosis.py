@@ -4,10 +4,6 @@ Created on Sep 12, 2014
 @author: Pete
 '''
 
-#
-# Everywhere provider is used here, assume it does not have square brackets
-# clc - modification here to remove diagtoolkit dependency on SFCs
-#
 import system, string
 import system.ils.blt.diagram as scriptingInterface
 from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged,\
@@ -115,9 +111,6 @@ def manageFinalDiagnosis(applicationName, family, finalDiagnosis, database="", p
     else:
         log.errorf("ERROR: Unknown notification strategy <%s>", notificationStrategy)
     
-    
-    
-    
 #-------------
 
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
@@ -195,10 +188,12 @@ def notififySpecificClientToOpenSpreadsheet(project, post, applicationName, clie
 
 #handleOpenSpreadsheetForSpecificClientNotification
 
-# Unpack the payload into arguments and call the method that posts a diagnosis entry.  
-# This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def postDiagnosisEntryMessageHandler(payload):
-    print "The payload is: ", payload
+    '''
+    Unpack the payload into arguments and call the method that posts a diagnosis entry.  
+    This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
+    '''
+    log.infof("In %s.postDiagnosisEntryMessageHandler(), the payload is: %s", __name__, str(payload))
 
     application=payload["application"]
     family=payload["family"]
@@ -213,6 +208,7 @@ def postDiagnosisEntryMessageHandler(payload):
 # This is called from the finalDiagnosis method acceptValue when the value is True.  This should only happen afer we receiv a False and have cleared the previous diagnosis entry.
 # However, on a gateway restart, we may become True again.  There are two possibilities of how this could be handled: 1) I could ignore the Insert a record into the diagnosis queue
 def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
+    log.infof("In %s.postDiagnosisEntry() ", __name__)
     projectName = system.util.getProjectName()
     
     managed = fetchApplicationManaged(applicationName, database)
@@ -278,6 +274,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     requestToManage(applicationName, database, provider)
     
 def requestToManage(applicationName, database, provider):
+    log.infof("In %s.requestToManage()...", __name__)
     SQL = "select count(*) from DtApplicationManageQueue where applicationName = '%s'" % (applicationName)
     cnt = system.db.runScalarQuery(SQL, database=database)
     if cnt > 0:
@@ -287,7 +284,8 @@ def requestToManage(applicationName, database, provider):
     else:
         log.info("Inserting a new record into DtApplicationManageQueue for %s..." % (applicationName))
         SQL = "Insert into DtApplicationManageQueue (applicationName, provider, timestamp) values ('%s', '%s', getdate())" % (applicationName, provider)
-        system.db.runUpdateQuery(SQL, database)
+        rows = system.db.runUpdateQuery(SQL, database=database)
+        log.infof("...inserted %d rows...", rows)
 
 
 '''
@@ -314,19 +312,22 @@ def _scanner(database, tagProvider):
         " and A.Managed = 1"
 
     pds = system.db.runQuery(SQL, database)
+    
     ageInterval = system.tag.read("[%s]Configuration/DiagnosticToolkit/diagnosticAgeInterval" % (tagProvider)).value
 
-    for record in pds:    
+    for record in pds:  
+        applicationName = record["ApplicationName"]  
         timestamp = record["Timestamp"]
         secondsSince = system.date.secondsBetween(timestamp, system.date.now())
+        log.tracef("...%s - %s seconds since a diagnosis became tree...", applicationName, str(secondsSince))
         if secondsSince < ageInterval:
             log.info("There is an application to be managed, but it needs to age...")
         else:
-            applicationName = record["ApplicationName"]
             SQL = "delete from DtApplicationManageQueue where applicationName = '%s'" % (applicationName)
             system.db.runUpdateQuery(SQL, database)
             
             provider = record["Provider"]
+            log.infof("Calling Manage...")
             notificationText, activeOutputs, postTextRecommendation, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
             log.infof("...back from manage, activeOutputs: %s, postTextRecommendation: %s, notificationText: %s!", str(activeOutputs), str(postTextRecommendation), notificationText)
             
@@ -447,7 +448,7 @@ def recalcMessageHandler(payload):
 # This inserts a message into the recommendation queue which is accessed from the "M" button
 # on the common console.
 def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database):
-    print "In postRecommendationMessage(), the recommendations are: %s" % (str(recommendations))
+    log.infof("In postRecommendationMessage(), the recommendations are: %s", str(recommendations))
 
     fdTextRecommendation = fetchTextRecommendation(finalDiagnosisId, database)
     textRecommendation = "The %s has detected %s. %s." % (application, finalDiagnosis, fdTextRecommendation)
