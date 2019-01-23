@@ -16,6 +16,20 @@ log = system.util.getLogger("com.ils.io")
 This is called from the source tag of the "Data Transfer" UDT.
 '''
 def dataTransfer(tagPath, previousValue, currentValue, initialChange, missedEvents):
+    dataTransferCore(tagPath, currentValue, initialChange)
+
+
+'''
+This is called from the sampleTime tag of the "Data Transfer" UDT.
+Whenever the sample time changes we write the value.  The destination does not have a slot for the sample time, so
+the first thing we need to do is to read the value that we want to transfer.  The current value here is the sample time.
+'''
+def dataTransferSampleTime(tagPath, previousValue, currentValue, initialChange, missedEvents):
+    currentValue = system.tag.read("[.]source")
+    dataTransferCore(tagPath, currentValue, initialChange)
+            
+
+def dataTransferCore(tagPath, currentValue, initialChange):
     if initialChange:
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return
@@ -32,13 +46,12 @@ def dataTransfer(tagPath, previousValue, currentValue, initialChange, missedEven
         while tries < MAX_TRIES:
             try:
                 system.tag.writeSynchronous("[.]destination", currentValue.value)
-                system.tag.write("[.]status", "Successfully wrote %s" % (str(currentValue.value)))
             except:
                 tries = tries + 1
                 time.sleep(latency)
             else:
                 ''' The write was successful! '''
-                txt = "Successfully wrote %s to %s (%s)" % (str(currentValue.value), itemId, tagPath)
+                txt = "Successfully wrote %s to %s at %s" % (str(currentValue.value), itemId, str(system.date.now()))
                 log.infof(txt)
                 system.tag.write("[.]status", txt)
                 if messageQueue != "":
@@ -51,11 +64,27 @@ def dataTransfer(tagPath, previousValue, currentValue, initialChange, missedEven
             system.tag.write("[.]status", txt)
             if messageQueue != "":
                 insert(messageQueue, QUEUE_ERROR, txt, db)
+    else:
+        system.tag.write("[.]status", "Skipping write because the permissive is false")
 
 '''
 This is called from the source tag of the "Data Transfer With Count" UDT.
 '''
-def dataTransferWithCount(tagPath, previousValue, currentValue, initialChange, missedEvents):
+def dataTransferWithCount(tagPath, previousValue, currentValue, initialChange, missedEvents):    
+    dataTransferWithCountCore(tagPath, currentValue, initialChange)
+
+
+'''
+This is called from the sampleTime tag of the "Data Transfer With Count" UDT.
+Whenever the sample time changes we write the value.  The destination does not have a slot for the sample time, so
+the first thing we need to do is to read the value that we want to transfer.  The current value here is the sample time.
+'''
+def dataTransferWithCountSampleTime(tagPath, previousValue, currentValue, initialChange, missedEvents):
+    currentValue = system.tag.read("[.]source")
+    dataTransferWithCountCore(tagPath, currentValue, initialChange)    
+    
+
+def dataTransferWithCountCore(tagPath, currentValue, initialChange):
     if initialChange:
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return
@@ -74,13 +103,12 @@ def dataTransferWithCount(tagPath, previousValue, currentValue, initialChange, m
             try:
                 system.tag.writeSynchronous("[.]destination", currentValue.value)
                 system.tag.writeSynchronous("[.]countDestination", count + 1)
-                system.tag.write("[.]status", "Successfully wrote %s" % (str(currentValue.value)))
             except:
                 tries = tries + 1
                 time.sleep(latency)
             else:
                 ''' The write was successful! '''
-                txt = "Successfully wrote %s to %s (%s)" % (str(currentValue.value), itemId, tagPath)
+                txt = "Successfully wrote %s to %s at %s" % (str(currentValue.value), itemId, str(system.date.now()))
                 log.infof(txt)
                 system.tag.write("[.]status", txt)
                 if messageQueue != "":
@@ -93,12 +121,30 @@ def dataTransferWithCount(tagPath, previousValue, currentValue, initialChange, m
             system.tag.write("[.]status", txt)
             if messageQueue != "":
                 insert(messageQueue, QUEUE_ERROR, txt, db)
-    
+
+    else:
+        system.tag.write("[.]status", "Skipping write because the permissive is false")
+
 
 '''
 This is called from the source tag of the "Data Transfer With Time" UDT.
 '''
 def dataTransferWithTime(tagPath, previousValue, currentValue, initialChange, missedEvents):
+    print "A2"
+    dataTransferWithTimeCore(tagPath, currentValue, initialChange)
+
+
+'''
+This is called from the SampleTime tag of the "Data Transfer With Time" UDT.
+'''
+def dataTransferWithTimeSampleTime(tagPath, previousValue, currentValue, initialChange, missedEvents):
+    print "A1"
+    currentValue = system.tag.read("[.]source")
+    dataTransferWithTimeCore(tagPath, currentValue, initialChange) 
+   
+
+def dataTransferWithTimeCore(tagPath, currentValue, initialChange):
+    print "A3"
     if initialChange:
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return
@@ -118,13 +164,12 @@ def dataTransferWithTime(tagPath, previousValue, currentValue, initialChange, mi
             try:
                 system.tag.writeSynchronous("[.]destination", currentValue.value)
                 system.tag.writeSynchronous("[.]timeDestination", ut)
-                system.tag.write("[.]status", "Successfully wrote %s" % (str(currentValue.value)))
             except:
                 tries = tries + 1
                 time.sleep(latency)
             else:
                 ''' The write was successful! '''
-                txt = "Successfully wrote %s to %s (%s)" % (str(currentValue.value), itemId, tagPath)
+                txt = "Successfully wrote %s to %s at %s" % (str(currentValue.value), itemId, str(system.date.now()))
                 log.infof(txt)
                 system.tag.write("[.]status", txt)
                 if messageQueue != "":

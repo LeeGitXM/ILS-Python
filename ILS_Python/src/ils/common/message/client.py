@@ -47,7 +47,7 @@ def openWindow(payload):
     window = payload["window"]
     position = payload.get("position", "center")
     scale = payload.get("scale", 1.0)
-    windowPayload = payload["windowPayload"]
+    windowPayload = payload.get("windowPayload", {})
         
     if console == "" and post == "":
         print "Showing the window because neither the post or console were specified"
