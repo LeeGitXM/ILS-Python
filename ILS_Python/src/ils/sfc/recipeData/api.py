@@ -8,7 +8,7 @@ Created on Nov 30, 2016
 import system, string
 from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
     getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
-    fetchRecipeDataRecordFromRecipeDataId
+    fetchRecipeDataRecordFromRecipeDataId, getFolderForStep, copyFolderValues
 from ils.sfc.gateway.api import getDatabaseName, readTag, postToQueue, getProviderName
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, REFERENCE_SCOPE, \
@@ -270,7 +270,17 @@ def s88GetRecipeDataDataset(chartScope, stepScope, recipeDataType, scope):
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetRecord(stepUUID, key, db):
     logger.tracef("s88GetRecord(): %s", key)
-    record = fetchRecipeDataRecord(stepUUID, key, db)
+    
+    tokens = key.split(".")
+    if len(tokens) > 1:
+        folder = key[:key.rfind(".")]
+        key = key[key.rfind(".")+1:]
+        folderId = getFolderForStep(stepUUID, folder, db)
+        logger.tracef("<%s>.<%s>", folder, key)
+    else:
+        folderId = None
+    
+    record = fetchRecipeDataRecord(stepUUID, folderId, key, db)
     logger.tracef("...fetched %s", str(record))
     return record
 
@@ -327,9 +337,7 @@ def s88SetFromNameWithUnits(chartPath, stepName, keyAndAttribute, value, units, 
     folder,key,attribute = splitKey(keyAndAttribute)
     stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
     setRecipeData(stepUUID, folder, key, attribute, value, db, units)
-    
-def s88CopyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
-    copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db)
+
     
 '''
 These APIs provide an optimized set of methods intended for use by long-running steps that update the same recipe data records each time through.
@@ -522,12 +530,23 @@ def s88GetRootForChart(chartPath, db):
     print "Found root: ", chartPath
     return chartPath, chartId
 
+    
+def s88CopyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
+    logger.tracef("In %s.s88CopyRecipeDatum() copying recipe datum from %s.%s to %s.%s", __name__, sourceUUID, sourceKey, targetUUID, targetKey)
+    copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db)
+    
 '''
 Utilities for dealing with folders
 '''
-def s88CopyFolderValues(chart, step, fromFolderKey, fromScope, toFolderKey, toScope, recursive, db):
-    logger.errorf("*******************************************************")
-    logger.errorf("* %s.s88CopyFolderValues NEEDS TO BE IMPLEMENTED", __name__)
-    logger.errorf("*******************************************************")
+def s88CopyFolderValues(fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder, recursive, category, db):
+    logger.tracef("Copying recipe data from %s-%s-%s to %s-%s-%s", fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder)
+    
+    fromStepUUID, fromStepId = s88GetStepFromName(fromChartPath, fromStepName, db)
+    logger.tracef("...fromStepUUID: %s, fromStepId: %s", fromStepUUID, str(fromStepId))
+    
+    toStepUUID, toStepId = s88GetStepFromName(toChartPath, toStepName, db)
+    logger.tracef("...toStepUUID: %s, toStepId: %s", toStepUUID, str(toStepId))
+    
+    copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, fromFolder, toChartPath, toStepName, toStepUUID, toStepId, toFolder, recursive, category, db)
     
     

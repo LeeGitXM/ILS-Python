@@ -450,11 +450,16 @@ def getIndexForKey(keyId, keyValue, db):
     return keyIndex 
 
 
-def fetchRecipeDataRecord(stepUUID, key, db):
+def fetchRecipeDataRecord(stepUUID, folderId, key, db):
     logger.tracef("Fetching %s from %s", key, stepUUID)
-        
-    SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
-        " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' " % (stepUUID, key) 
+    
+    if folderId == None:
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key)
+    else:
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, folderId)
+    print SQL
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         logger.errorf("Error the key <%s> was not found", key)
@@ -470,6 +475,15 @@ def fetchRecipeDataRecord(stepUUID, key, db):
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
     return fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db)
+
+def fetchRecipeDataRecordsInFolder(stepId, folderId, db):
+    logger.tracef("Fetching records from %s - %s", stepId, folderId)
+    
+    SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+            " from SfcRecipeDataView where stepId = %s and RecipeDataFolderId = %s" % (stepId, folderId)
+    pds = system.db.runQuery(SQL, db)
+    
+    return pds
     
 
 def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
@@ -995,9 +1009,80 @@ def s88GetRecipeDataDS(stepUUID, recipeDataType, db):
     
     return ds
 
+def copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, fromFolder, toChartPath, toStepName, toStepUUID, toStepId, toFolder, recursive, category, db):
+    logger.tracef("Copying recipe data from %s-%s-%s to %s-%s-%s", fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder)
+    
+    # ------------------------------------------------------------------------------------
+    def getKeys(pds):
+        keys = []
+        for record in pds:
+            keys.append(record["RECIPEDATAKEY"])
+        return keys
+    # ------------------------------------------------------------------------------------
+
+    fromFolderId = getFolderForStep(fromStepUUID, fromFolder, db)    
+    toFolderId = getFolderForStep(toStepUUID, toFolder, db)
+    logger.tracef("  From folder: %s", fromFolderId)
+    logger.tracef("    To Folder: %s", toFolderId)
+    
+    ''' Get all of the FROM keys ''' 
+    fromPds = fetchRecipeDataRecordsInFolder(fromStepId, fromFolderId, db)
+    logger.tracef("Found %d lab datums in %s", len(fromPds), fromFolder)
+    fromKeys = getKeys(fromPds)
+    
+    ''' Get all of the TO keys '''
+    toPds = fetchRecipeDataRecordsInFolder(toStepId, toFolderId, db)
+    logger.tracef("Found %d lab datums in %s", len(toPds), toFolder)
+    toKeys = getKeys(toPds)
+    
+    i = 0
+    for fromKey in fromKeys:
+        if fromKey in toKeys:
+            logger.tracef("  Copying %s...", fromKey)
+            fromRecord = fromPds[i]
+            fromRecord = fetchRecipeDataRecordFromRecipeDataId(fromRecord["RECIPEDATAID"], fromRecord["RECIPEDATATYPE"], db)
+            
+            for toRecord in toPds:
+                if toRecord["RECIPEDATAKEY"] == fromKey:
+                    toRecord = fetchRecipeDataRecordFromRecipeDataId(toRecord["RECIPEDATAID"], toRecord["RECIPEDATATYPE"], db)
+                    copySourceToTarget(fromRecord, toRecord, db)
+            
+        else:
+            logger.tracef("Skipping %s because it is not in the destination", fromKey)
+        i = i + 1
+#    keys = s88GetKeysForNamedBlock(fromChartPath, fromStepName, "%", db)
+
 def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
     # 1) Ensure that the types of recipe data are the same.
     # 2) Call a copy method that knows which attributes of recipe data need to be copied
+    
+    tokens = sourceKey.split(".")
+    if len(tokens) > 1:
+        sourceFolder = sourceKey[:sourceKey.rfind(".")]
+        sourceKey = sourceKey[sourceKey.rfind(".")+1:]
+        sourceFolderId = getFolderForStep(sourceUUID, sourceFolder, db)
+        logger.tracef("Source: <%s>.<%s>", sourceFolder, sourceKey)
+    else:
+        sourceFolderId = None
+        
+    tokens = targetKey.split(".")
+    if len(tokens) > 1:
+        targetFolder = targetKey[:targetKey.rfind(".")]
+        targetKey = targetKey[targetKey.rfind(".")+1:]
+        targetFolderId = getFolderForStep(targetUUID, targetFolder, db)
+        logger.tracef("Target: <%s>.<%s>", targetFolder, targetKey)
+    else:
+        targetFolderId = None
+
+    sourceRecord = fetchRecipeDataRecord(sourceUUID, sourceFolderId, sourceKey, db)
+    targetRecord = fetchRecipeDataRecord(targetUUID, targetFolderId, targetKey, db)
+    
+    copySourceToTarget(sourceRecord, targetRecord, db)
+    
+def copySourceToTarget(sourceRecord, targetRecord, db):
+    '''
+    This is used when copying a single datum to another or when copying all of the datums in one folder to another folder
+    '''
     
     ''' --------------------------------------------- Private Methods ------------------------------------------------- '''
     def updateSfcRecipeData(recipeDataId, label, description, units, db):
@@ -1026,9 +1111,6 @@ def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
         logger.tracef("Updated %d rows in updateSfcRecipeDataOutput", rows)
     
     ''' --------------------------------------------- End of Private Methods ------------------------------------------------- '''
-
-    sourceRecord = fetchRecipeDataRecord(sourceUUID, sourceKey, db)
-    targetRecord = fetchRecipeDataRecord(targetUUID, targetKey, db)
     
     if sourceRecord["RECIPEDATATYPE"] != targetRecord["RECIPEDATATYPE"]:
         errorText = "Unable to copy recipe data of dissimilar type!"
@@ -1041,7 +1123,7 @@ def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
         updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
         updateSfcRecipeDataSimpleValue(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], db)
         updateSfcRecipeDataValue(targetRecord["VALUEID"], sourceRecord["FLOATVALUE"], sourceRecord["INTEGERVALUE"], sourceRecord["STRINGVALUE"], sourceRecord["BOOLEANVALUE"], db)
-
+        
     elif recipeDataType == INPUT:
         logger.tracef('Copying input recipe data...')
         updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
