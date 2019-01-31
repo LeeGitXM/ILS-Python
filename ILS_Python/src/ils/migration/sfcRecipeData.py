@@ -168,7 +168,7 @@ def importRecipeData(rootContainer):
                         print "%s, a %s (folder: %s)...  exists" % (recipeDataKey, recipeDataType, uuid)
                     else:
                         print "%s, a %s (folder: %s)...  DOES NOT EXIST" % (recipeDataKey, recipeDataType, uuid)
-                        inserted = importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDataKey, label, description, stepTypes, recipeDataTypes, valueTypes, outputTypes, txId)
+                        inserted = importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDataKey, label, description, stepTypes, recipeDataTypes, valueTypes, outputTypes, None, txId)
                         if inserted:
                             print "--- successfully created folder: %s ---" % (recipeDataKey)
                         else:
