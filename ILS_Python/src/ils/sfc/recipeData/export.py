@@ -214,13 +214,25 @@ def exportChartSteps(chartId, folderPDS, db):
     
     for record in pds:
         stepId = record["stepId"]
+        recipeFolderTxt = exportRecipeDataFoldersForStep(stepId, db)
         recipeDataTxt = exportRecipeDataForStep(stepId, folderPDS, db)
         stepTxt = stepTxt + "<step stepName='%s' stepType='%s' stepUUID='%s' >\n" % (record["stepName"], record["stepType"], record["stepUUID"])
-        stepTxt = stepTxt + recipeDataTxt
+        stepTxt = stepTxt + recipeFolderTxt + recipeDataTxt
         stepTxt = stepTxt + "</step>\n\n"
     
     return stepTxt
 
+def exportRecipeDataFoldersForStep(stepId, db):
+    log.infof("Exporting recipe data folders for step %s", str(stepId))
+    txt = ""
+
+    SQL = "Select RecipeDataKey, RecipeDataFolderId, ParentRecipeDataFolderId from SfcRecipeDataFolder where stepId = %d" % (stepId)
+    pds = system.db.runQuery(SQL, db)
+    
+    for record in pds:
+        txt = txt + "<recipeFolder recipeDataKey='%s' folderId='%s' parentFolderId='%s' />\n" % (record["RecipeDataKey"], record["RecipeDataFolderId"], record["ParentRecipeDataFolderId"])
+
+    return txt
 
 def exportRecipeDataForStep(stepId, folderPDS, db):
     log.infof("Exporting recipe data for step %s", str(stepId))
