@@ -107,6 +107,22 @@ def fetchRecipeDataType(stepUUID, folder, key, attribute, db):
     recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folder + "." + key, db)
     return recipeDataType
 
+def recipeGroupExists(stepUUID, key, parentKey, db):
+    if parentKey == "":
+        SQL = "select * from SfcRecipeDataFolderView "\
+            " where stepUUID = '%s' and RecipeDataKey = '%s' and ParentRecipeDataFolderId is NULL" % (stepUUID, key) 
+    else:
+        logger.error("ERROR Support for nested folders has not been implemented!")
+    
+    pds = system.db.runQuery(SQL, db)
+    
+    if len(pds) == 1:
+        logger.tracef("...it exists!")
+        return True
+    
+    logger.tracef("...it does not exist!")
+    return False
+
 def recipeDataExists(stepUUID, key, attribute, db):
     logger.tracef("Checking if %s.%s from %s exists...", key, attribute, stepUUID)
     
@@ -126,6 +142,11 @@ def recipeDataExists(stepUUID, key, attribute, db):
             " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
     else:
         recipeDataFolderId = getFolderForStep(stepUUID, folder, db)
+        
+        if recipeDataFolderId == None:
+            logger.tracef("...the folder does not exist!")
+            return False
+        
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
             " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, str(recipeDataFolderId)) 
 

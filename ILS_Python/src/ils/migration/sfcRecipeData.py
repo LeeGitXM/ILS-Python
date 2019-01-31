@@ -9,6 +9,7 @@ This is an attempt to migrate recipe data into Ignition directly from the G2 XML
 import xml.etree.ElementTree as ET
 import system, string
 from ils.common.error import catchError
+from ils.sfc.recipeData.core import recipeDataExists, recipeGroupExists
 log=system.util.getLogger("com.ils.sfc.import")
 
 def loadSteps(rootContainer):
@@ -77,8 +78,23 @@ def translate(recipeClass):
     recipeDataType = "UNKNOWN"
     if recipeClass == "S88-RECIPE-OUTPUT-RAMP-DATA":
         recipeDataType = "Output Ramp"
+    elif recipeClass == "S88-RECIPE-VALUE-DATA":
+        recipeDataType = "Simple Value"
+    elif recipeClass == "S88-RECIPE-OUTPUT-DATA":
+        recipeDataType = "Output"
+    elif recipeClass == "S88-RECIPE-DATA-GROUP":
+        recipeDataType = "Group"
+    else:
+        print "*****************************************"
+        print "*******   Unknown recipe data class: ", recipeClass
+        print "*****************************************"
         
     return recipeDataType
+
+def getStepUUIDFromId(stepId, db):
+    SQL = "select StepUUID from SfcStep where StepId = %s" % (str(stepId))
+    stepUUID = system.db.runScalarQuery(SQL, db)
+    return stepUUID
 
 def importRecipeData(rootContainer):
     db = ""
@@ -110,7 +126,7 @@ def importRecipeData(rootContainer):
     
     stepId = ds.getValueAt(row, 2)
     log.infof("Importing recipe data for step %s with id: %d", recipeStepName, stepId)
-    
+    stepUUID = getStepUUIDFromId(stepId, db)
     recipeDataKeys = loadRecipeDataKeys(db)
     stepTypes = loadStepTypes(db)
     recipeDataTypes = loadRecipeDataTypes(db)
@@ -125,6 +141,7 @@ def importRecipeData(rootContainer):
     
     recipeDataCounter = 0
     errorCounter = 0
+    groups = {}
     
     for block in root.findall('block'):
         g2Class = block.get("class")
@@ -132,38 +149,97 @@ def importRecipeData(rootContainer):
         
         if g2Name == recipeStepName:
             
+            ''' Make 2 passes, the first pass makes folders / groups '''
+            
+            print ""
+            print "Pass 1 - folders"
+            print ""
             for recipe in block.findall('recipe'):
                 recipeDataClass = recipe.get("class-name")
+                uuid = recipe.get("uuid")
                 recipeDataType = translate(recipeDataClass)
+                recipeDataTypeId = recipeDataTypes.get(recipeDataType, -99)
+                recipeDataKey = recipe.get("key")
+                label = recipe.get("label")
+                description = recipe.get("description")
                 
-                if recipeDataType == "Output Ramp" and recipeDataCounter < 1000 and errorCounter < 1000:
-                    print "Importing a ramp..."
-                    recipeDataTypeId = recipeDataTypes.get(recipeDataType, -99)
-                    recipeDataKey = recipe.get("key")
-                    label = recipe.get("label")
-                    description = recipe.get("description")
-                    
-                    inserted = importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDataKey, label, description, stepTypes, recipeDataTypes, valueTypes, outputTypes, txId)
-                    if inserted:
-                        recipeDataCounter = recipeDataCounter + 1
+                if recipeDataType == "Group":
+                    if recipeGroupExists(stepUUID, recipeDataKey, "", db):
+                        print "%s, a %s (folder: %s)...  exists" % (recipeDataKey, recipeDataType, uuid)
                     else:
-                        errorCounter = errorCounter + 1
+                        print "%s, a %s (folder: %s)...  DOES NOT EXIST" % (recipeDataKey, recipeDataType, uuid)
+                        inserted = importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDataKey, label, description, stepTypes, recipeDataTypes, valueTypes, outputTypes, txId)
+                        if inserted:
+                            print "--- successfully created folder: %s ---" % (recipeDataKey)
+                        else:
+                            print " *** EROR CREATING A FOLDER ***"
 
-                    system.db.commitTransaction(txId)
+                    groups[uuid] = recipeDataKey
+                    
+            print "The recipe data groups are: ", groups
+            print ""
+            print "Pass 2 - data"
+            print ""
+            for recipe in block.findall('recipe'):
+                recipeDataClass = recipe.get("class-name")
+                parentGroup = recipe.get("parent-group")
+                recipeDataType = translate(recipeDataClass)
+                recipeDataTypeId = recipeDataTypes.get(recipeDataType, -99)
+                recipeDataKey = recipe.get("key")
+                label = recipe.get("label")
+                description = recipe.get("description")
+                
+                if recipeDataType == "Group":
+                    pass
+                else:
+                    if parentGroup != "None" and parentGroup != None:
+                        parentGroup = groups[parentGroup]
+                        recipeDataKeyWithGroup = "%s.%s" % (parentGroup, recipeDataKey)
+                    else:
+                        parentGroup = None
+                        recipeDataKeyWithGroup = recipeDataKey
+    
+                    if recipeDataExists(stepUUID, recipeDataKeyWithGroup, "description", db):
+                        print "%s, a %s (folder: %s)...  exists" % (recipeDataKey, recipeDataType, parentGroup)
+                    else:
+                        print "%s, a %s (folder: %s)...  DOES NOT EXIST" % (recipeDataKey, recipeDataType, parentGroup)
+                        
+                        inserted = importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDataKey, label, description, stepTypes, recipeDataTypes, 
+                                                     valueTypes, outputTypes, parentGroup, txId)
+                        if inserted:
+                            recipeDataCounter = recipeDataCounter + 1
+                            print "   ...was inserted!"
+                        else:
+                            errorCounter = errorCounter + 1
+                            print "   *** ERROR ***"
+                        
+
+                system.db.commitTransaction(txId)
 
     system.db.closeTransaction(txId)
     
     print "Done - Success: %d, Errors: %d" % (recipeDataCounter, errorCounter)
 
-def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDataKey, label, description, stepTypes, recipeDataTypes, valueTypes, outputTypes, txId):
+def fetchFolderId(stepId, recipeDataKey):
+    SQL = "select RecipeDataFolderId from SfcRecipeDataFolder "\
+        "where StepId = %d and RecipeDataKey = '%s'" % (stepId, recipeDataKey)
+    recipeDataFolderId = system.db.runScalarQuery(SQL)
+    return recipeDataFolderId
+
+def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDataKey, label, description, stepTypes, recipeDataTypes, valueTypes, outputTypes, parentGroup, txId):
     log.infof("Entering importRecipeDatum with: %s", recipeDataKey)
     try:
+        if parentGroup != None:
+            recipeDataFolderId = fetchFolderId(stepId, parentGroup)
+        else:
+            recipeDataFolderId = None
+            
         if recipeDataType == "Simple Value":
             valueType = recipe.get("type")
             valueTypeId = valueTypes.get(valueType, -99)
             val = recipe.get("val")
             units = recipe.get("units", "")
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val, txId)
         
         elif recipeDataType in ["Output"]:
@@ -179,7 +255,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             maxTiming = recipe.get("max-timing", "0.0")
             writeConfirm = recipe.get("write-confirm", "True")
             
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm, txId)
             
             if recipeDataType == "Output Ramp":
@@ -207,7 +283,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             maxTiming = recipe.get("max-timing", "0.0")
             writeConfirm = recipe.get("write-confirm", "True")
             
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm, txId)
             
             if recipeDataType == "Output Ramp":
@@ -221,7 +297,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             units = recipe.get("units", "")
             tag = recipe.get("tag", "")
 
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertInputRecipeData(recipeDataId, valueType, valueTypeId, tag, txId)
 
         elif recipeDataType == "Array":
@@ -231,7 +307,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             indexKey = recipe.get("indexKey", None)
             if indexKey not in [None, 'None']:
                 insertIndexKey(indexKey, txId)
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertArray(recipeDataId, valueType, valueTypeId, txId)
             
             for element in recipe.findall("element"):
@@ -258,7 +334,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             else:
                 columnIndexKeyId = -1
                 
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey, txId)
             
             for element in recipe.findall("element"):
@@ -269,7 +345,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
                 
         elif recipeDataType == "Timer":
             units = recipe.get("units", "")
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertTimerRecipeData(recipeDataId, txId)
         
         elif recipeDataType == "Recipe":
@@ -283,9 +359,12 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             lowLimit = recipe.get("lowLimit", "")
             highLimit = recipe.get("highLimit", "")
             
-            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId)
             insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit, txId)
             
+        elif recipeDataType == "Group":
+            insertGroupRecipeData(stepId, recipeDataKey, description, label, txId)
+
         else:
             txt = "Error: Unable to import recipe data type: %s with key %s" % (recipeDataType, recipeDataKey)
             print txt
@@ -304,10 +383,15 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
 '''
 Copied from the SFC import module.  Copied here so it can be tweaked without ramifacations if needed
 '''
-def insertRecipeData(stepId, key, recipeDataType, recipeDataTypeId, label, description, units, txId):
+def insertRecipeData(stepId, key, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, txId):
     log.infof("      Inserting recipe data:  %s - %s...", key, recipeDataType)
-    SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Units) values (%d, '%s', %d, '%s', '%s', '%s')" % \
-        (stepId, key, recipeDataTypeId, label, description, units)
+    if recipeDataFolderId == None:
+        SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Units) values (%d, '%s', %d, '%s', '%s', '%s')" % \
+            (stepId, key, recipeDataTypeId, label, description, units)
+    else:
+        SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Units, RecipeDataFolderId) values (%d, '%s', %d, '%s', '%s', '%s', %d)" % \
+            (stepId, key, recipeDataTypeId, label, description, units, recipeDataFolderId)
+            
     recipeDataId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
     return recipeDataId
 
@@ -368,6 +452,12 @@ def insertTimerRecipeData(recipeDataId, txId):
     log.tracef("          Inserting a Timer...")
     SQL = "insert into SfcRecipeDataTimer (recipeDataId) values (%d)" % (recipeDataId)
     system.db.runUpdateQuery(SQL, tx=txId)
+
+def insertGroupRecipeData(stepId, recipeDataKey, description, label, txId):
+    log.tracef("          Inserting a Group...")
+    SQL = "insert into SfcRecipeDataFolder (RecipeDataKey, StepId, Description, Label) values ('%s', %s, '%s', '%s')" % (recipeDataKey, str(stepId), description, label)
+    recipeDataFolderId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
+    return recipeDataFolderId
 
 def insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit, txId):
     log.tracef("          Inserting a RECIPE recipe data...")

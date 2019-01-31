@@ -41,7 +41,6 @@ def exportCallback(event):
         return
     
     folder = os.path.dirname(filename)
-    print "The folder is: ", folder
     rootContainer.importExportFolder = folder
     
     sfcRecipeDataShowProductionOnly = False
@@ -51,11 +50,14 @@ def exportCallback(event):
     chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", db)
     log.tracef("Selected info for %d charts...", len(chartPDS))
     
+    SQL = "Select * from SfcRecipeDataFolder"
+    folderPDS = system.db.runQuery(SQL, db)
+    
     ''' Export any keys that are used by keyed arrays or matrices. '''
     keyTxt = exportKeysForTree(chartId, hierarchyPDS, chartPDS, db)
     
     ''' Export the tree (Charts, steps, and recipe data) '''
-    txt, structureTxt = exportTree(chartId, hierarchyPDS, chartPDS, db)
+    txt, structureTxt = exportTree(chartId, hierarchyPDS, chartPDS, folderPDS, db)
     
     txt = "<data>\n" + keyTxt + txt + structureTxt + "</data>"
     system.file.writeFile(filename, txt, False)
@@ -78,6 +80,7 @@ def exportKeysForTree(chartId, hierarchyPDS, chartPDS, db):
     
     log.tracef("The chart ids are: %s", str(chartIds))
     
+    log.tracef("--- Exporting Matrix and Array Keys ---")
     txt = ""
     keys = []
     for chartId in chartIds:
@@ -85,31 +88,31 @@ def exportKeysForTree(chartId, hierarchyPDS, chartPDS, db):
         pds = system.db.runQuery(SQL, db)
         
         for record in pds:
-            print "Found matrix id: ", record["RecipeDataId"]
+            log.tracef("Found matrix id: %s", str(record["RecipeDataId"]))
             SQL = "select RowIndexKeyId, ColumnIndexKeyId from SfcRecipeDataMatrix where RecipeDataId = %d" % (record["RecipeDataId"])
             keyPds = system.db.runQuery(SQL, db)
             for record in keyPds:
                 if record["RowIndexKeyId"] != None and record["RowIndexKeyId"] not in keys:
-                    print "Found a new Matrix row key: ", record["RowIndexKeyId"]
+                    log.tracef("Found a new Matrix row key: %s", str(record["RowIndexKeyId"]))
                     keys.append(record["RowIndexKeyId"])
                 if record["ColumnIndexKeyId"] != None and record["ColumnIndexKeyId"] not in keys:
-                    print "Found a new matrix column key: ", record["ColumnIndexKeyId"]
+                    log.tracef("Found a new matrix column key: %s", str(record["ColumnIndexKeyId"]))
                     keys.append(record["ColumnIndexKeyId"])
         
         SQL = "select RecipeDataId from SfcRecipeDataView where chartId = %d and RecipeDataType = 'Array'" % (chartId)
         pds = system.db.runQuery(SQL, db)
         
         for record in pds:
-            print "Found array id: ", record["RecipeDataId"]
+            log.tracef("Found array id: %s", str(record["RecipeDataId"]))
             SQL = "select IndexKeyId from SfcRecipeDataArray where RecipeDataId = %d and IndexKeyId is not null" % (record["RecipeDataId"])
             keyPds = system.db.runQuery(SQL, db)
             for record in keyPds:
                 if record["IndexKeyId"] not in keys:
-                    print "Found a new Array key: ", record["IndexKeyId"]
+                    log.tracef("Found a new Array key: %s", str(record["IndexKeyId"]))
                     keys.append(record["IndexKeyId"])
         
 #        txt = txt + exportKeysForChart(chartId, db)
-    print "The referenced keys are: ", keys
+    log.tracef("The referenced keys are: %s", str(keys))
     
     for key in keys:
         SQL = "select * from SfcRecipeDataKeyView where KeyId = %d order by KeyIndex" % (key)
@@ -122,7 +125,7 @@ def exportKeysForTree(chartId, hierarchyPDS, chartPDS, db):
             row = row + 1
         txt = txt + "</key>\n"
     
-    print "The key XML is: ", txt
+    log.tracef("The key XML is: %s", txt)
     return txt
 
 
@@ -133,7 +136,7 @@ def getChartPathFromPDS(chartId, chartPDS):
     return ""
 
 
-def exportTree(chartId, hierarchyPDS, chartPDS, db):
+def exportTree(chartId, hierarchyPDS, chartPDS, folderPDS, db):
     log.infof("Exporting chart Id: %d", chartId)
     
     chartIds = [chartId]
@@ -154,12 +157,10 @@ def exportTree(chartId, hierarchyPDS, chartPDS, db):
     txt = ""
     
     for chartId in chartIds:
-        txt = txt + exportChart(chartId, db)
+        txt = txt + exportChart(chartId, folderPDS, db)
     
     hierarchyXML = ""
-    print "The parents are:"
     for record in parentChildList:
-        print record
         parentChartPath = getChartPathFromPDS(record["parent"], chartPDS)
         childChartPath = getChartPathFromPDS(record["child"], chartPDS)
         hierarchyXML = hierarchyXML + "<parentChild parent=\"%s\" child=\"%s\" stepName=\"%s\" />\n" % (parentChartPath, childChartPath, record["stepName"])
@@ -190,10 +191,10 @@ def fetchChildren(chartId, visitedCharts, parentChildList, hierarchyPDS, chartPD
     return newChildren, parentChildList
 
 
-def exportChart(chartId, db):
-    print "Exporting ", chartId
+def exportChart(chartId, folderPDS, db):
+    log.infof("Exporting chart %s", str(chartId))
     
-    stepTxt = exportChartSteps(chartId, db)
+    stepTxt = exportChartSteps(chartId, folderPDS, db)
     
     chartPath = fetchChartPathFromChartId(chartId)
     txt = "<chart chartId=\"%d\" chartPath=\"%s\" >\n" % (chartId, chartPath)
@@ -203,8 +204,8 @@ def exportChart(chartId, db):
     return txt
 
 
-def exportChartSteps(chartId, db):
-    print "Exporting ", chartId
+def exportChartSteps(chartId, folderPDS, db):
+    log.infof("Exporting chart steps for chart %s", str(chartId))
     
     SQL = "select stepId, stepName, stepUUID, stepType from SfcStepView where chartId = %d" % (chartId)
     pds = system.db.runQuery(SQL, db)
@@ -213,7 +214,7 @@ def exportChartSteps(chartId, db):
     
     for record in pds:
         stepId = record["stepId"]
-        recipeDataTxt = exportRecipeDataForStep(stepId, db)
+        recipeDataTxt = exportRecipeDataForStep(stepId, folderPDS, db)
         stepTxt = stepTxt + "<step stepName='%s' stepType='%s' stepUUID='%s' >\n" % (record["stepName"], record["stepType"], record["stepUUID"])
         stepTxt = stepTxt + recipeDataTxt
         stepTxt = stepTxt + "</step>\n\n"
@@ -221,15 +222,15 @@ def exportChartSteps(chartId, db):
     return stepTxt
 
 
-def exportRecipeDataForStep(stepId, db):
-    print "Exporting recipe data for step ", stepId
+def exportRecipeDataForStep(stepId, folderPDS, db):
+    log.infof("Exporting recipe data for step %s", str(stepId))
     
     def fetchFirstRecord(SQL, db):
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         return record
     
-    SQL = "select recipeDataId, recipeDataKey, recipeDataType, label, description, units from SfcRecipeDataView where stepId = %d" % (stepId)
+    SQL = "select recipeDataId, recipeDataKey, recipeDataType, label, description, units, recipeDataFolderId from SfcRecipeDataView where stepId = %d" % (stepId)
     pds = system.db.runQuery(SQL, db)
     
     recipeDataTxt = ""
@@ -238,10 +239,13 @@ def exportRecipeDataForStep(stepId, db):
         recipeDataId = record["recipeDataId"]
         recipeDataType = record["recipeDataType"]
         recipeDataKey = record["recipeDataKey"]
+        folderId = record["recipeDataFolderId"]
         
-        print "Found recipe data %s - %s " % (recipeDataKey, recipeDataType)
+        parentFolder = findParent(folderPDS, folderId)
+        log.tracef("Found recipe data %s - %s ", recipeDataKey, recipeDataType)
         
-        baseTxt = "<recipe recipeDataKey='%s' recipeDataType='%s' label='%s' description='%s' units='%s' " % (recipeDataKey, recipeDataType, record["label"], record["description"], record["units"])
+        baseTxt = "<recipe recipeDataKey='%s' recipeDataType='%s' label='%s' description='%s' units='%s' parent='%s'" % \
+            (recipeDataKey, recipeDataType, record["label"], record["description"], record["units"], parentFolder)
         
         if recipeDataType == "Simple Value":
             SQL = "select valueType, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataSimpleValueView where RecipeDataId = %d" % (recipeDataId)
@@ -256,7 +260,7 @@ def exportRecipeDataForStep(stepId, db):
             elif valueType == "Boolean":
                 recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' value='%s' />" % (valueType, str(record['booleanValue']))
             else:
-                print "****** Unknown simple value data type: ", valueType
+                log.errorf("****** Unknown simple value data type: %s", valueType)
 
         elif recipeDataType == "Recipe":
             SQL = "select presentationOrder, storeTag, compareTag, ModeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit from SfcRecipeDataRecipeView where RecipeDataId = %d" % (recipeDataId)
@@ -286,7 +290,7 @@ def exportRecipeDataForStep(stepId, db):
             elif valueType == "Boolean":
                 val = str(record['outputBooleanValue'])
             else:
-                print "****** Unknown output value data type: ", valueType
+                log.errorf("****** Unknown output value data type: %s", valueType)
                 
             recipeDataTxt = recipeDataTxt + baseTxt + " tag='%s' valueType='%s' outputType='%s' download='%s' timing='%s' maxTiming='%s' writeConfirm='%s' value='%s' />" %\
                 (str(record['tag']), str(record['valueType']), str(record['outputType']), str(record['download']), str(record['timing']), str(record['maxTiming']), \
@@ -308,7 +312,7 @@ def exportRecipeDataForStep(stepId, db):
             elif valueType == "Boolean":
                 val = str(record['outputBooleanValue'])
             else:
-                print "****** Unknown output value data type: ", valueType
+                log.errorf("****** Unknown output value data type: %s", valueType)
                 
             recipeDataTxt = recipeDataTxt + baseTxt + " tag='%s' valueType='%s' outputType='%s' download='%s' timing='%s' maxTiming='%s' writeConfirm='%s' value='%s' "\
                 " rampTimeMinutes='%s' updateFrequencySeconds='%s' />" %\
@@ -345,7 +349,7 @@ def exportRecipeDataForStep(stepId, db):
                 elif valueType == "Boolean":
                     recipeDataTxt = recipeDataTxt + "<element arrayIndex='%d' value='%s'/>\n" % (record["arrayIndex"], str(record['booleanValue']))
                 else:
-                    print "****** Unknown array value data type: ", valueType
+                    log.errorf("****** Unknown array value data type: %s", valueType)
 
             recipeDataTxt = recipeDataTxt + "</recipe>\n"
             
@@ -374,12 +378,36 @@ def exportRecipeDataForStep(stepId, db):
                 elif valueType == "Boolean":
                     recipeDataTxt = recipeDataTxt + "<element rowIndex='%d' columnIndex='%d' value='%s'/>\n" % (record["rowIndex"], record["columnIndex"], str(record['booleanValue']))
                 else:
-                    print "****** Unknown array value data type: ", valueType
+                    log.errorf("****** Unknown array value data type: %s", valueType)
 
             recipeDataTxt = recipeDataTxt + "</recipe>\n"
             
             
         else:
-            print "***** Unsupported recipe data type: ", recipeDataType
+            log.errorf("***** Unsupported recipe data type: %s", recipeDataType)
+            
 #recipeDataTxt = recipeDataTxt + "</recipe>\n\n"
     return recipeDataTxt
+
+'''
+Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
+'''
+def findParent(folderPDS, folderId):
+    if folderId == "":
+        return ""
+    
+    log.tracef("------------------")
+    path = ""
+    log.tracef("Finding the path for %d", folderId)
+    
+    while folderId != None:
+        
+        for record in folderPDS:
+            if record["RecipeDataFolderId"] == folderId:
+                log.tracef("Found the parent")
+                path = "%s/%s" % (record["RecipeDataKey"], path)
+                folderId = record["ParentRecipeDataFolderId"]
+                log.tracef("The new parent id is: %s", str(folderId))
+
+    log.tracef("The path is: %s", path)
+    return path

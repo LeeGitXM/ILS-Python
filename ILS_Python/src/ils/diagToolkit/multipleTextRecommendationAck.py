@@ -20,6 +20,7 @@ def refresh(rootContainer):
     ackVals = [False] * len(pds)
     ds = system.dataset.toDataSet(pds)
     ds = system.dataset.addColumn(ds,ackVals, "Ackd", bool)
+    rootContainer.data = ds
     table = rootContainer.getComponent("Power Table")
     table.data = ds
     
