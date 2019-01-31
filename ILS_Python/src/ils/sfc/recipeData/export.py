@@ -226,11 +226,12 @@ def exportRecipeDataFoldersForStep(stepId, db):
     log.infof("Exporting recipe data folders for step %s", str(stepId))
     txt = ""
 
-    SQL = "Select RecipeDataKey, RecipeDataFolderId, ParentRecipeDataFolderId from SfcRecipeDataFolder where stepId = %d" % (stepId)
+    SQL = "Select RecipeDataKey, RecipeDataFolderId, ParentRecipeDataFolderId, Description, Label from SfcRecipeDataFolder where stepId = %d" % (stepId)
     pds = system.db.runQuery(SQL, db)
     
     for record in pds:
-        txt = txt + "<recipeFolder recipeDataKey='%s' folderId='%s' parentFolderId='%s' />\n" % (record["RecipeDataKey"], record["RecipeDataFolderId"], record["ParentRecipeDataFolderId"])
+        txt = txt + "<recipeFolder recipeDataKey='%s' folderId='%s' parentFolderId='%s' description='%s' label='%s'/>\n" % \
+            (record["RecipeDataKey"], record["RecipeDataFolderId"], record["ParentRecipeDataFolderId"], record["Description"], record["Label"])
 
     return txt
 

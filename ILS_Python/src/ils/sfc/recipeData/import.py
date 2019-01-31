@@ -20,6 +20,12 @@ def importRecipeDataCallback(event):
         folder = os.path.basename(filename)
         print "The folder is: ", folder
         rootContainer.importExportFolder = folder
+        
+def buildFolderPath(recipeDataKey, oldParentFolderId, folderPaths):
+    print "Building a folder path from: ", recipeDataKey, oldParentFolderId, folderPaths
+    folderPath = recipeDataKey
+    return folderPath
+    
 
 def importRecipeData(filename, db):
     log.infof("In %s.importRecipeData(), importing recipe data from %s", __name__, filename)
@@ -107,12 +113,47 @@ def importRecipeData(filename, db):
                 stepId = insertStep(chartId, stepUUID, stepName, stepTypeId, txId)
                 stepCounter = stepCounter + 1
                 
+                ''' Insert Folders '''
+                folderIds = {}
+                folderKeys = {}
+                folderPaths = {}
+                for folder in step.findall("recipeFolder"):
+                    print "--------------"
+
+                    recipeDataKey = folder.get("recipeDataKey")
+                    oldFolderId = folder.get("folderId")
+                    oldParentFolderId = folder.get("parentFolderId")
+                    label = folder.get("label", "")
+                    description = folder.get("description", "")
+                    folderPaths[recipeDataKey] = {'id': oldFolderId, 'parentId': oldParentFolderId}
+                    print "Looking at ", recipeDataKey, oldFolderId, oldParentFolderId, label, description
+                    print "  Folder Ids: ", folderIds
+                    
+                    if oldParentFolderId != "None":
+                        parentFolderId = folderIds[oldParentFolderId]
+                        print "Mapped old folder id %s to new folder id %s" % (oldParentFolderId, parentFolderId)
+                    else:
+                        parentFolderId = None
+
+                    folderId = insertRecipeDataFolder(stepId, recipeDataKey, description, label, parentFolderId, txId)
+                    folderIds[oldParentFolderId] = folderId
+                    folderPath = buildFolderPath(recipeDataKey, oldParentFolderId, folderPaths)
+                
+                print "The folder Id dictionary is: ", folderIds
+            
+                ''' Insert Recipe Data '''
                 for recipe in step.findall("recipe"):
                     recipeDataType = recipe.get("recipeDataType")
                     recipeDataTypeId = recipeDataTypes.get(recipeDataType, -99)
                     recipeDataKey = recipe.get("recipeDataKey")
                     label = recipe.get("label")
                     description = recipe.get("description")
+                    parent = recipe.get("parent")
+                    if parent != "":
+                        print "The id for ", parent
+                        parent = folderPaths[parent]
+                        print "   is ", parent
+                        
                     
                     if recipeDataType == "Simple Value":
                         valueType = recipe.get("valueType")
@@ -436,6 +477,15 @@ def insertRecipeDataValue(valueType, val, txId):
     
     valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
     return valueId
+
+def insertRecipeDataFolder(stepId, recipeDataKey, description, label, parentFolderId, txId):
+    if parentFolderId == None:
+        SQL = "insert into SfcRecipeDataFolder (RecipeDataKey, StepId, Description, Label) values ('%s', %d, '%s', '%s')" % (recipeDataKey, stepId, description, label)
+    else:
+        SQL = "insert into SfcRecipeDataFolder (RecipeDataKey, StepId, Description, Label, ParentRecipeDataFolderId) "\
+            " values ('%s', %d, '%s', '%s', %d)" % (recipeDataKey, stepId, description, label, parentFolderId)
+    folderId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
+    return folderId
 
 ''' -----------------------------------------------------
     Generic utilities
