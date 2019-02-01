@@ -492,6 +492,7 @@ def substituteScopeReferences(chartProperties, stepProperties, sql):
     return sql
 
 def getRecipeByReference(chartScope, keyAndAttribute):
+    #TODO Figure out how to make this case insensitive - everything else is case insensitive w/ recipe data
     scopeAndKey = chartScope.get(keyAndAttribute, "")
     logger.tracef("Resolving an indirect reference: <%s>", scopeAndKey)
     scope = scopeAndKey[0:scopeAndKey.find(".")]
@@ -548,5 +549,17 @@ def s88CopyFolderValues(fromChartPath, fromStepName, fromFolder, toChartPath, to
     logger.tracef("...toStepUUID: %s, toStepId: %s", toStepUUID, str(toStepId))
     
     copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, fromFolder, toChartPath, toStepName, toStepUUID, toStepId, toFolder, recursive, category, db)
-    
+
+'''
+This is provided to get behind the scenes in an acceptable way.  It is useful when accessing elements of an array recipe data in a library task where 
+the key is passed by reference.
+'''
+def s88GetStepUUIDFolderKeyAttribute(chartProperties, stepProperties, keyAndAttribute, scope):
+    scope = scope.lower()
+    db = getDatabaseName(chartProperties)
+    if scope == REFERENCE_SCOPE:
+        scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
+    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
+    folder,key,attribute = splitKey(keyAndAttribute)
+    return stepUUID, folder, key, attribute
     

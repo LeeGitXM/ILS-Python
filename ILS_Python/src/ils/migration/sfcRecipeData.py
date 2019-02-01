@@ -236,6 +236,8 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             
         if recipeDataType == "Simple Value":
             valueType = recipe.get("type")
+            if string.upper(valueType) == "QUANTITY":
+                valueType = "float"
             valueTypeId = valueTypes.get(valueType, -99)
             val = recipe.get("val")
             units = recipe.get("units", "")
@@ -244,6 +246,8 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
         
         elif recipeDataType in ["Output"]:
             valueType = recipe.get("valueType", "float")
+            if string.upper(valueType) == "QUANTITY":
+                valueType = "float"
             valueTypeId = valueTypes.get(valueType, -99)
             val = recipe.get("val", 0.0)
             units = recipe.get("units", "")
@@ -268,6 +272,8 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             deleteRecipeData(stepId, recipeDataKey, txId)
                 
             valueType = recipe.get("valueType", "float")
+            if string.upper(valueType) == "QUANTITY":
+                valueType = "float"
             valueTypeId = valueTypes.get(valueType, -99)
             val = recipe.get("val", 0.0)
             units = recipe.get("units", "")
@@ -293,6 +299,8 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
 
         elif recipeDataType in ["Input"]:
             valueType = recipe.get("valueType")
+            if string.upper(valueType) == "QUANTITY":
+                valueType = "float"
             valueTypeId = valueTypes.get(valueType, -99)
             units = recipe.get("units", "")
             tag = recipe.get("tag", "")
@@ -302,6 +310,8 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
 
         elif recipeDataType == "Array":
             valueType = recipe.get("valueType")
+            if string.upper(valueType) == "QUANTITY":
+                valueType = "float"
             valueTypeId = valueTypes.get(valueType, -99)
             units = recipe.get("units", "")
             indexKey = recipe.get("indexKey", None)
@@ -317,6 +327,8 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
       
         elif recipeDataType == "Matrix":
             valueType = recipe.get("valueType")
+            if string.upper(valueType) == "QUANTITY":
+                valueType = "float"
             valueTypeId = valueTypes.get(valueType, -99)
             units = recipe.get("units", "")
             rows = recipe.get("rows", "")
@@ -469,13 +481,13 @@ def insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag
 def insertRecipeDataValue(valueType, val, txId):
     log.tracef("        Inserting a recipe data value (type: %s, value: %s)...", valueType, val)
     
-    if valueType in ["String", "symbol"]:
+    if string.upper(valueType) in ["STRING", "SYMBOL"]:
         SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (val)
-    elif valueType == "Integer":
+    elif string.upper(valueType) == "INTEGER":
         SQL = "insert into SfcRecipeDataValue (IntegerValue) values (%d)" % (int(val))
-    elif string.lower(valueType) == "float":
+    elif string.upper(valueType) in ["FLOAT", "QUANTITY"]:
         SQL = "insert into SfcRecipeDataValue (FloatValue) values (%f)" % (float(val))
-    elif valueType == "Boolean":
+    elif string.upper(valueType) == "BOOLEAN":
         SQL = "insert into SfcRecipeDataValue (BooleanValue) values ('%s')" % (val)
     
     valueId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)

@@ -117,8 +117,9 @@ def importRecipeData(filename, db):
                 folderIds = {}
                 folderKeys = {}
                 folderPaths = {}
+                print "  Checking for recipe folders..."
                 for folder in step.findall("recipeFolder"):
-                    print "--------------"
+                    print "  --------------"
 
                     recipeDataKey = folder.get("recipeDataKey")
                     oldFolderId = folder.get("folderId")
@@ -126,33 +127,51 @@ def importRecipeData(filename, db):
                     label = folder.get("label", "")
                     description = folder.get("description", "")
                     folderPaths[recipeDataKey] = {'id': oldFolderId, 'parentId': oldParentFolderId}
-                    print "Looking at ", recipeDataKey, oldFolderId, oldParentFolderId, label, description
-                    print "  Folder Ids: ", folderIds
+                    print "  Looking at ", recipeDataKey, oldFolderId, oldParentFolderId, label, description
+                    print "    Folder Ids: ", folderIds
                     
                     if oldParentFolderId != "None":
                         parentFolderId = folderIds[oldParentFolderId]
-                        print "Mapped old folder id %s to new folder id %s" % (oldParentFolderId, parentFolderId)
+                        print "  Mapped old folder id %s to new folder id %s" % (oldParentFolderId, parentFolderId)
                     else:
                         parentFolderId = None
 
                     folderId = insertRecipeDataFolder(stepId, recipeDataKey, description, label, parentFolderId, txId)
-                    folderIds[oldParentFolderId] = folderId
+                    print "  Inserted %s with new id: %s" % (recipeDataKey, str(folderId))
+                    folderIds[oldFolderId] = folderId
+                    folderKeys[recipeDataKey] = folderId
                     folderPath = buildFolderPath(recipeDataKey, oldParentFolderId, folderPaths)
                 
-                print "The folder Id dictionary is: ", folderIds
+                    print "  The folder id dictionary is: ", folderIds
+                    print "  The folder keys dictionary is: ", folderKeys
             
                 ''' Insert Recipe Data '''
+                print "**********************"
+                print "  Checking for recipe data..."
+                print "**********************"
                 for recipe in step.findall("recipe"):
+                    folderId = None
                     recipeDataType = recipe.get("recipeDataType")
                     recipeDataTypeId = recipeDataTypes.get(recipeDataType, -99)
                     recipeDataKey = recipe.get("recipeDataKey")
                     label = recipe.get("label")
                     description = recipe.get("description")
                     parent = recipe.get("parent")
-                    if parent != "":
-                        print "The id for ", parent
-                        parent = folderPaths[parent]
-                        print "   is ", parent
+                    print "%s - <%s>" % (recipeDataKey, parent) 
+                    
+                    if parent not in ["", None]:
+                        if parent[len(parent)-1] == '/':
+                            print "  -- stripping trailing / --"
+                            parent = parent[:len(parent)-1]
+                        print "  Parent <%s>" % (parent)
+                        tokens = parent.split("/")
+                        print "  The tokens are: ", tokens
+                        folder = tokens[len(tokens)-1]
+                        print "  The terminal folder is: ", folder
+                       
+                        print "The id for ", folder
+                        folderId = folderKeys[folder]
+                        print "   is ", folderId
                         
                     
                     if recipeDataType == "Simple Value":
@@ -160,7 +179,7 @@ def importRecipeData(filename, db):
                         valueTypeId = valueTypes.get(valueType, -99)
                         val = recipe.get("value")
                         units = recipe.get("units", "")
-                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
                         insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val, txId)
                         recipeDataCounter = recipeDataCounter + 1
                     
@@ -177,7 +196,7 @@ def importRecipeData(filename, db):
                         maxTiming = recipe.get("maxTiming", "0.0")
                         writeConfirm = recipe.get("writeConfirm", "True")
                         
-                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
                         insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm, txId)
                         recipeDataCounter = recipeDataCounter + 1
                         
@@ -192,7 +211,7 @@ def importRecipeData(filename, db):
                         units = recipe.get("units", "")
                         tag = recipe.get("tag", "")
     
-                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
                         insertInputRecipeData(recipeDataId, valueType, valueTypeId, tag, txId)
                         recipeDataCounter = recipeDataCounter + 1
     
@@ -203,7 +222,7 @@ def importRecipeData(filename, db):
                         indexKey = recipe.get("indexKey", None)
                         if indexKey not in [None, 'None']:
                             insertIndexKey(indexKey, txId)
-                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
                         insertArray(recipeDataId, valueType, valueTypeId, txId)
                         recipeDataCounter = recipeDataCounter + 1
                         
@@ -231,7 +250,7 @@ def importRecipeData(filename, db):
                         else:
                             columnIndexKeyId = -1
                             
-                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
                         insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey, txId)
                         recipeDataCounter = recipeDataCounter + 1
                         
@@ -243,7 +262,7 @@ def importRecipeData(filename, db):
                     
                     elif recipeDataType == "Timer":
                         units = recipe.get("units", "")
-                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
                         insertTimerRecipeData(recipeDataId, txId)
                         recipeDataCounter = recipeDataCounter + 1
                     
@@ -258,7 +277,7 @@ def importRecipeData(filename, db):
                         lowLimit = recipe.get("lowLimit", "")
                         highLimit = recipe.get("highLimit", "")
                         
-                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, txId)
+                        recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
                         insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit, txId)
                         recipeDataCounter = recipeDataCounter + 1
                         
@@ -390,10 +409,14 @@ def deleteRecipeDataForChart(chartPath, txId):
     log.infof("      ...deleted %d rows", totalRows)
     return totalRows
 
-def insertRecipeData(stepId, key, recipeDataType, recipeDataTypeId, label, description, units, txId):
+def insertRecipeData(stepId, key, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId):
     log.infof("      Inserting recipe data:  %s - %s...", key, recipeDataType)
-    SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Units) values (%d, '%s', %d, '%s', '%s', '%s')" % \
-        (stepId, key, recipeDataTypeId, label, description, units)
+    if folderId == None:
+        SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Units) values (%d, '%s', %d, '%s', '%s', '%s')" % \
+            (stepId, key, recipeDataTypeId, label, description, units)
+    else:
+        SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, RecipeDataFolderId, Units) values (%d, '%s', %d, '%s', '%s', %d, '%s')" % \
+            (stepId, key, recipeDataTypeId, label, description, folderId, units)
     recipeDataId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
     return recipeDataId
 
