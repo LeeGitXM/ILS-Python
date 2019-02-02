@@ -4,12 +4,13 @@ Created on Oct 10, 2018
 @author: phass
 
 This is an attempt to migrate recipe data into Ignition directly from the G2 XML export file.
- 
+
 '''
 import xml.etree.ElementTree as ET
 import system, string
 from ils.common.error import catchError
 from ils.sfc.recipeData.core import recipeDataExists, recipeGroupExists
+from ils.common.cast import isFloat
 log=system.util.getLogger("com.ils.sfc.import")
 
 def loadSteps(rootContainer):
@@ -84,6 +85,10 @@ def translate(recipeClass):
         recipeDataType = "Output"
     elif recipeClass == "S88-RECIPE-DATA-GROUP":
         recipeDataType = "Group"
+    elif recipeClass == "S88-RECIPE-SQC-DATA":
+        recipeDataType = "SQC"
+    elif recipeClass == "EM-RECIPE-DATA":
+        recipeDataType = "Recipe"
     elif recipeClass in ["S88-RECIPE-QUANTITY-ARRAY-DATA", "S88-RECIPE-VALUE-ARRAY-DATA"]:
         recipeDataType = "Array"
     else:
@@ -233,6 +238,10 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             valueType = recipe.get("type")
             if string.upper(valueType) == "QUANTITY":
                 valueType = "float"
+            elif string.upper(valueType) == 'SYMBOL':
+                valueType = "string"
+            elif string.upper(valueType) == 'TEXT':
+                valueType = "string"
             valueTypeId = valueTypes.get(valueType, -99)
             val = recipe.get("val")
             units = recipe.get("units", "")
@@ -240,14 +249,32 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val, db)
         
         elif recipeDataType in ["Output"]:
-            valueType = recipe.get("valueType", "float")
-            if string.upper(valueType) == "QUANTITY":
-                valueType = "float"
-            valueTypeId = valueTypes.get(valueType, -99)
+#            valueType = recipe.get("valueType", "float")
+#            if string.upper(valueType) == "QUANTITY":
+#                valueType = "float"
+            
             val = recipe.get("val", 0.0)
+            
+            if isFloat(val):
+                valueType = "float"
+            else:
+                valueType = "string"
+                
+            valueTypeId = valueTypes.get(valueType, -99)
+            
             units = recipe.get("units", "")
+            
             outputType = recipe.get("val-type", "")
+            if outputType == "SETPOINT":
+                outputType = "Setpoint"    
+            elif outputType == "OUTPUT":
+                outputType = "Output"
+            elif outputType == "MODE":
+                outputType = "Mode"
+            elif outputType == "VALUE":
+                outputType = "Value"
             outputTypeId = outputTypes.get(outputType, -99)
+
             tag = recipe.get("tag", "")
             download = recipe.get("download", "True")
             timing = recipe.get("timing", "0.0")
@@ -262,10 +289,7 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
                 updateFrequencySeconds = recipe.get("update-frequency", "0.0")
                 insertOutputRampRecipeData(recipeDataId, rampTimeMinutes, updateFrequencySeconds, db)
                     
-        elif recipeDataType in ["Output Ramp"]:
-            print "Yo"
-            #deleteRecipeData(stepId, recipeDataKey, db)
-                
+        elif recipeDataType in ["Output Ramp"]:                
             valueType = recipe.get("valueType", "float")
             if string.upper(valueType) == "QUANTITY":
                 valueType = "float"
@@ -316,10 +340,16 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, db)
             insertArray(recipeDataId, valueType, valueTypeId, db)
             
-            for element in recipe.findall("element"):
-                arrayIndex = element.get("arrayIndex")
-                val = element.get("value")
+            val = recipe.get("val", "")
+            print "Array Values:", val
+            val = string.lstrip(val, '{')
+            val = string.rstrip(val, '}')
+            tokens = val.split(',')
+            arrayIndex = 0
+            for token in tokens:
+                val = float(token)
                 insertArrayElement(recipeDataId, valueType, valueTypeId, arrayIndex, val, db)
+                arrayIndex = arrayIndex + 1
       
         elif recipeDataType == "Matrix":
             valueType = recipe.get("valueType")
@@ -355,20 +385,31 @@ def importRecipeDatum(stepId, recipe, recipeDataType, recipeDataTypeId, recipeDa
             units = recipe.get("units", "")
             recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, db)
             insertTimerRecipeData(recipeDataId, db)
-        
+            
+        elif recipeDataType == "SQC":
+            units = recipe.get("units", "")
+            recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, db)
+            
+            lowLimit = float(recipe.get("low_limit", 0.0))
+            target = float(recipe.get("target", 0.0))
+            highLimit = float(recipe.get("high_limit", 0.0))
+            insertSqcRecipeData(recipeDataId, lowLimit, target, highLimit, db)
+            
         elif recipeDataType == "Recipe":
             units = recipe.get("units", "")
-            presentationOrder = recipe.get("presentationOrder", "0")
-            storeTag = recipe.get("storeTag", "")
-            compareTag = recipe.get("compareTag", "")
-            modeAttribute = recipe.get("modeAttribute", "")
-            changeLevel = recipe.get("changeLevel", "")
-            recommendedValue = recipe.get("recommendedValue", "")
-            lowLimit = recipe.get("lowLimit", "")
-            highLimit = recipe.get("highLimit", "")
-            
             recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, recipeDataFolderId, db)
-            insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit, db)
+            
+            presentationOrder = int(recipe.get("pres", -1))
+            storeTag = recipe.get("stag", "")
+            compareTag = recipe.get("ctag", "")
+            changeLevel = recipe.get("chg_lev", "")
+            modeAttribute = recipe.get("modattr", "")
+            modeValue = recipe.get("modattr_val", "")
+            recommendedValue = recipe.get("recc", "")
+            lowLimit = recipe.get("lolim", "")
+            highLimit = recipe.get("hilim", "")
+
+            insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, changeLevel, modeAttribute, modeValue, recommendedValue, lowLimit, highLimit, db)
             
         elif recipeDataType == "Group":
             insertGroupRecipeData(stepId, recipeDataKey, description, label, db)
@@ -403,19 +444,20 @@ def insertRecipeData(stepId, key, recipeDataType, recipeDataTypeId, label, descr
 
 def insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val, db):
     print "          Inserting a Simple Value..."
+    val = string.replace(val,"'","")
+    print "             <%s>" % (val)
     valueId = insertRecipeDataValue(valueType, val, db)
     SQL = "insert into SfcRecipeDataSimpleValue (recipeDataId, valueTypeId, ValueId) values (%d, %d, %d)" % (recipeDataId, valueTypeId, valueId)
     system.db.runUpdateQuery(SQL, database=db)
     
 def insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm, db):
-    print "          Inserting an Output recipe data with timing: %s and val: %s..." % (str(timing), str(val))
+    print "          Inserting an Output recipe data with timing: %s and val: %s (Value Type: %s - %d, Output type: %s - %d)..." % (str(timing), str(val), valueType, valueTypeId, outputType, outputTypeId)
     outputValueId = insertRecipeDataValue(valueType, val, db)
     targetValueId = insertRecipeDataValue(valueType, 0.0, db)
     pvValueId = insertRecipeDataValue(valueType, 0.0, db)
     SQL = "insert into SfcRecipeDataOutput (recipeDataId, valueTypeId, outputTypeId, tag, download, timing, maxTiming, outputValueId, targetValueId, pvValueId, writeConfirm) "\
         "values (%d, %d, %d, '%s', '%s', %s, %s, %d, %d, %d, '%s')" % \
         (recipeDataId, valueTypeId, outputTypeId, tag, download, str(timing), str(maxTiming), outputValueId, targetValueId, pvValueId, writeConfirm)
-    print SQL
     system.db.runUpdateQuery(SQL, database=db)
 
 def insertOutputRampRecipeData(recipeDataId, rampTimeMinutes, updateFrequencySeconds, db):
@@ -453,6 +495,11 @@ def insertMatrixElement(recipeDataId, valueType, valueTypeId, rowIndex, columnIn
     valueId = insertRecipeDataValue(valueType, val, db)
     SQL = "insert into SfcRecipeDataMatrixElement (recipeDataId, rowIndex, columnIndex, ValueId) values (%d, %d, %d, %d)" % (recipeDataId, int(rowIndex), int(columnIndex), valueId)
     system.db.runUpdateQuery(SQL, database=db)
+
+def insertSqcRecipeData(recipeDataId, lowLimit, target, highLimit, db):
+    print "          Inserting a SQC..."
+    SQL = "insert into SfcRecipeDataSQC (recipeDataId, LowLimit, TargetValue, HighLimit) values (%d, %f, %f, %f)" % (recipeDataId, lowLimit, target, highLimit)
+    system.db.runUpdateQuery(SQL, database=db)
     
 def insertTimerRecipeData(recipeDataId, db):
     print "          Inserting a Timer..."
@@ -465,7 +512,7 @@ def insertGroupRecipeData(stepId, recipeDataKey, description, label, db):
     recipeDataFolderId = system.db.runUpdateQuery(SQL, database=db, getKey=True)
     return recipeDataFolderId
 
-def insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit, db):
+def insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, changeLevel, modeAttribute, modeValue, recommendedValue, lowLimit, highLimit, db):
     print "          Inserting a RECIPE recipe data..."
     SQL = "insert into SfcRecipeDataRecipe (recipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
         " values (%d, %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % \
@@ -532,6 +579,9 @@ def loadOutputTypes(db):
     for record in pds:
         recipeOutputTypes[record["OutputType"]] = record["OutputTypeId"]
     
+    print "---------------"
+    print "The known OUTPUT types are: ", recipeOutputTypes
+    print "---------------"
     return recipeOutputTypes
 
 def loadValueTypes(db):
