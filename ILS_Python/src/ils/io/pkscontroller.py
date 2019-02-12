@@ -109,11 +109,11 @@ class PKSController(controller.Controller):
     def writeDatum(self, val, valueType):
         ''' writeDatum for a controller supports writing values to the OP, SP, or MODE, one at a time. '''    
         log.tracef("In %s.writeDatum() %s - %s - %s", __name__, self.path, str(val), valueType)
-        if string.upper(valueType) in ["SP", "SETPOINT"]:
+        if string.upper(valueType) in ["SP", "SETPOINT", "SETPOINT RAMP"]:
             tagRoot = self.path + '/sp'
             targetTag = self.spTag
             valueType = 'sp'
-        elif string.upper(valueType) in ["OP", "OUTPUT"]:
+        elif string.upper(valueType) in ["OP", "OUTPUT", "OUTPUT RAMP"]:
             tagRoot = self.path + '/op'
             targetTag = self.opTag
             valueType = 'op'
@@ -208,9 +208,9 @@ class PKSController(controller.Controller):
         log.tracef("In %s.confirmControllerMode checking the configuration of PKS controller %s for writing %s to %s", __name__, self.path, str(newVal), outputType)
         
         ''' Determine which tag in the controller we are seeking to write to '''
-        if string.upper(outputType) in ["SP", "SETPOINT"]:
+        if string.upper(outputType) in ["SP", "SETPOINT", "SETPOINT RAMP"]:
             tagRoot = self.path + '/sp'
-        elif string.upper(outputType) in ["OP", "OUTPUT"]:
+        elif string.upper(outputType) in ["OP", "OUTPUT", "OUTPUT RAMP"]:
             tagRoot = self.path + '/op'
         else:
             raise Exception("Unexpected value Type: <%s> for a PKS controller %s" % (outputType, self.path))
@@ -253,12 +253,12 @@ class PKSController(controller.Controller):
         log.tracef("%s: %s=%s, windup=%s, mode:%s", self.path, outputType, str(currentValue), windup, mode)
 
         ''' For outputs check that the mode is MANUAL - no other test is required. '''
-        if string.upper(outputType) in ["OP", "OUTPUT"]:
+        if string.upper(outputType) in ["OP", "OUTPUT", "OUTPUT RAMP"]:
             if string.upper(mode) != 'MAN':
                 success = False
                 errorMessage = "the controller is not in MAN (current mode is <%s>)" % (mode)
         
-        elif string.upper(outputType) in ["SP", "SETPOINT"]:
+        elif string.upper(outputType) in ["SP", "SETPOINT", "SETPOINT RAMP"]:
             ''' For setpoints, check that there is a path to the valve, mode = auto and sp = 0.  The path to valve check is optional '''
             if string.upper(windup) == 'HILO' and checkPathToValve:
                 success = False
@@ -297,7 +297,7 @@ class PKSController(controller.Controller):
         log.tracef("In %s.writeRamp() Writing %s for controller %s", __name__, valType, self.path)
 
         if val == None or rampTime == None or writeConfirm == None or valType == None or updateFrequency == None:
-            log.errorf("ERROR writing ramp for PKS controller: %s - One or more of the required arguments is missing", self.path)
+            log.errorf("ERROR writing ramp for PKS controller: %s - One or more of the required arguments is missing val=%s rampTime=%s writeConfirm=%s valType=%s updateFreq=%s" % (self.path,val,rampTime,writeConfirm,valType,updateFrequency))
             return False, "One or more of the required arguments is missing"
 
         ''' Change  the mode of the controller and set the desired ramp type '''
@@ -380,11 +380,11 @@ class PKSController(controller.Controller):
     def writeWithNoCheck(self, val, valueType):
         ''' WiteWithNoCheck for a controller supports writing values to the OP, SP, or MODE, one at a time. '''
         log.tracef("%s.writeWithNoCheck() %s - %s - %s", __name__, self.path, str(val), valueType)
-        if string.upper(valueType) in ["SP", "SETPOINT"]:
+        if string.upper(valueType) in ["SP", "SETPOINT", "SETPOINT RAMP"]:
             tagRoot = self.path + '/sp'
             targetTag = self.spTag
             valueType = 'sp'
-        elif string.upper(valueType) in ["OP", "OUTPUT"]:
+        elif string.upper(valueType) in ["OP", "OUTPUT", "OUTPUT RAMP"]:
             tagRoot = self.path + '/op'
             targetTag = self.opTag
             valueType = 'op'

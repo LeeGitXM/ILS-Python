@@ -14,8 +14,8 @@ from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUM
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP, ID
 
-from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, TIMER, \
-    ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
+from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, SQC, RECIPE, \
+    SIMPLE_VALUE, TIMER, ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.core")
 
@@ -297,6 +297,16 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
             val = record[attribute]
         else:
             raise ValueError, "Unsupported attribute: %s for an input recipe data" % (attribute)
+    
+    elif recipeDataType == SQC:
+        SQL = "select LOWLIMIT, TARGETVALUE, HIGHLIMIT from SfcRecipeDataSQCView where RecipeDataId = %s" % (recipeDataId)
+        pds = system.db.runQuery(SQL, db)
+        record = pds[0]
+        
+        if attribute in ["LOWLIMIT", "TARGETVALUE", "HIGHLIMIT"]:
+            val = record[attribute]
+        else:
+            raise ValueError, "Unsupported attribute: %s for an sqc recipe data" % (attribute)
     
     elif recipeDataType == INPUT:
         SQL = "select TAG, VALUETYPE, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, "\
