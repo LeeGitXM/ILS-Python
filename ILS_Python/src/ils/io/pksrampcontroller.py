@@ -41,7 +41,7 @@ class PKSRampController(pkscontroller.PKSController):
         success = True
 
         if val == None or rampTime == None or writeConfirm == None or valType == None or updateFrequency == None:
-            log.errorf("ERROR writing ramp for PKS controller: %s - One or more of the required arguments is missing", self.path)
+            log.errorf("ERROR writing ramp for PKS Ramp controller: %s - One or more of the required arguments is missing val=%s rampTime=%s writeConfirm=%s valType=%s updateFreq=%s" % (self.path,val,rampTime,writeConfirm,valType,updateFrequency))
             return False, "One or more of the required arguments is missing"
         
         '''

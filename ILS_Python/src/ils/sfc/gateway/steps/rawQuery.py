@@ -5,7 +5,8 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.gateway.api import getDatabaseName, s88Set, getChartLogger, handleUnexpectedGatewayError, getStepProperty
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getStepProperty
+from ils.sfc.recipeData.api import s88Set
 from ils.sfc.common.constants import KEY, RECIPE_LOCATION, SQL
     
 def activate(scopeContext, stepProperties, state):
