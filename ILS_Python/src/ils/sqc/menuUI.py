@@ -9,7 +9,7 @@ from ils.common.config import getDatabaseClient
 log = system.util.getLogger("com.ils.sqc.plotChooser")
 
 def internalFrameOpened(rootContainer):
-    log.info("In internalFrameOpened()")
+    log.infof("In %s.internalFrameOpened()", __name__)
     
     database=system.tag.read("[Client]Database").value
     log.tracef("The database is: %s", database)
@@ -21,12 +21,7 @@ def internalFrameOpened(rootContainer):
 
 # update the list of display tables that are appropriate for the selected console
 def internalFrameActivated(rootContainer):
-    log.trace("In internalFrameActivated()")
-    populateRepeater(rootContainer)
-
-# update the list of display tables that are appropriate for the selected console
-def refresh(rootContainer):
-    log.trace("In refresh()")
+    log.tracef("In %s.internalFrameActivated()", __name__)
     populateRepeater(rootContainer)
 
 def newPostSelected(rootContainer):
@@ -40,7 +35,7 @@ def populateRepeater(rootContainer):
     database=system.tag.read("[Client]Database").value
     log.tracef("The database is: %s", database)
     
-    SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID "\
+    SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID, SQCDiagnosisName as LabValueName,SQCDiagnosisName as LabValueDescription, SQCDiagnosisName as ButtonLabel "\
         "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
         "where SQC.FamilyId = F.FamilyId "\
         " and F.ApplicationId = A.ApplicationId "\
@@ -48,19 +43,50 @@ def populateRepeater(rootContainer):
         " and U.PostId = P.PostId "\
         " and P.Post = '%s' "\
         "Order by SQCDiagnosisName" % (selectedPost)
-    
+
     log.trace(SQL)
     pds = system.db.runQuery(SQL, database)
-    
-    for record in pds:
-        log.tracef("%s - %s", record["SQCDiagnosisName"], record["Status"])
-
     ds = system.dataset.toDataSet(pds)
-    repeater=rootContainer.getComponent("Template Repeater")
-    repeater.templateParams=ds
+    
+    SQL = "Select ValueName, Description from LtValue"
+    LabValuePds = system.db.runQuery(SQL, database)
+    
+    indexParameter = string.upper(system.tag.read("Configuration/LabData/sqcPlotMenuIndexParameter").value)
+    
+    from ils.sqc.plot import getLabValueNameFromDiagram
+    row = 0
+    for record in pds:
+        sqcDiagnosisName = record["SQCDiagnosisName"]
+        sqcDiagnosisUUID = record["SQCDiagnosisUUID"]
+        status =  record["Status"]
+        log.tracef("%s - %s", sqcDiagnosisName, status)
+        
+        ''' Now get the lab value name of the data that feeds the SQC Diagnosis '''
+        unitName, labValueName = getLabValueNameFromDiagram(sqcDiagnosisName, sqcDiagnosisUUID)
+        log.tracef("...%s - %s", unitName, labValueName)
+        ds = system.dataset.setValue(ds, row, "LabValueName", labValueName)
+        
+        ''' Now update the lab Value Description '''
+        for record in LabValuePds:
+            if record["ValueName"] == labValueName:
+                labValueDescription = record["Description"]
+                ds = system.dataset.setValue(ds, row, "LabValueDescription", record["Description"])
+        
+        if indexParameter == "LABVALUEDESCRIPTION":
+            ds = system.dataset.setValue(ds, row, "ButtonLabel", labValueDescription)
+        elif indexParameter == "LABVALUENAME":
+            ds = system.dataset.setValue(ds, row, "ButtonLabel", labValueName)
+        else:
+            ds = system.dataset.setValue(ds, row, "ButtonLabel", sqcDiagnosisName)
+        
+        row = row + 1
+
+    rootContainer.templateParameters = ds
+
 
 def openSQCPlot(event):
-    sqcDiagnosisName = event.source.text
+    log.infof("In %s.openSQCPlot()", __name__)
+    sqcDiagnosisName = event.source.SQCDiagnosisName
     SQCDiagnosisUUID = event.source.SQCDiagnosisUUID
     openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID)
 
@@ -70,7 +96,7 @@ def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID):
     n = 8
     intervalType = "Hours"
     
-    log.tracef("The user selected %s - %s ", sqcDiagnosisName, SQCDiagnosisUUID)
+    log.infof("The user selected %s - %s ", sqcDiagnosisName, SQCDiagnosisUUID)
     
     # If this is the first SQC plot open it at full size and centered, if it is the nth plot
     # then open it tiled at 75%
@@ -99,3 +125,37 @@ def openSQCPlots(sqcDiagnosisNames):
                 SQCDiagnosisUUID = record["SQCDiagnosisUUID"]
         openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID)
         
+
+'''
+Update the status of the SQC diagnosis.  This does not need to do all of the work of a populate.  The database is kept up to date with the 
+Status of the SQC Diagnosis block, so all we have to do is query the DB and update the dataset that is driving the repeater.
+This entires every SQC diagnosis with a single query,
+This runs in client scope every 15 seconds or so from a timer script.
+'''
+def refresh(rootContainer):
+    log.tracef("In %s.refresh()", __name__)
+    selectedPost = rootContainer.selectedPost
+    database=system.tag.read("[Client]Database").value
+    
+    SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID "\
+        "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
+        "where SQC.FamilyId = F.FamilyId "\
+        " and F.ApplicationId = A.ApplicationId "\
+        " and A.UnitId = U. UnitId "\
+        " and U.PostId = P.PostId "\
+        " and P.Post = '%s' "\
+        "Order by SQCDiagnosisName" % (selectedPost)
+    
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    
+    ds=rootContainer.templateParameters
+    
+    for i in range(ds.rowCount):
+        diagnosisName = ds.getValueAt(i, "SQCDiagnosisName")
+        for record in pds:
+            if diagnosisName == record["SQCDiagnosisName"]:
+                log.tracef("Updating the status...")
+                ds = system.dataset.setValue(ds, i, "STATUS", record["Status"])
+    
+    rootContainer.templateParameters=ds

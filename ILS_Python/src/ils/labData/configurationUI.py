@@ -117,18 +117,22 @@ def removeDataRow(event):
 
         system.db.runUpdateQuery(sql)
 
-        # Delete the UDT, if it exists
+        ''' Delete the UDT, if it exists '''
         deleteLabValue(unitName, valueName)
             
-        #delete from LtHistory
-        SQL = "DELETE FROM LtHistory "\
-            " WHERE ValueId = '%s' "\
-            % (valueId)
+        ''' LtHistory clean up '''
+        SQL = "DELETE FROM LtHistory WHERE ValueId = '%s' " % (valueId)
         system.db.runUpdateQuery(SQL)
         
-        '''
-        Clean up the limits, first from the database, then the UDTs
-        '''
+        ''' LtValueViewed clean up'''
+        SQL = "DELETE FROM LtValueViewed WHERE ValueId = '%s' " % (valueId)
+        system.db.runUpdateQuery(SQL)
+        
+        ''' LtDisplayTableDetails clean up'''
+        SQL = "DELETE FROM LtDisplayTableDetails WHERE ValueId = '%s' " % (valueId)
+        system.db.runUpdateQuery(SQL)
+        
+        ''' Clean up the limits, first from the database, then the UDTs '''
         limitTable = rootContainer.getComponent("Lab Limit Table")
         ds = limitTable.data
         pds = system.dataset.toPyDataSet(ds)

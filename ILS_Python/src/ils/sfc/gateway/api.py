@@ -562,7 +562,7 @@ def setCurrentMessageQueue(chartProperties, queue):
     controlPanelId = getControlPanelId(chartProperties)
     system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where controlPanelId = %d" % (queue, controlPanelId), database)
 
-def writeToOperatorLogbook(chartScope, post, message):
+def  writeToOperatorLogbook(chartScope, post, message):
     '''Write a message to the system log file from an SFC.'''
     db = getDatabaseName(chartScope)
     from ils.common.operatorLogbook import insertForPost

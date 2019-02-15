@@ -78,21 +78,32 @@ def notifyClients():
 def tagWriter(tags, vals, mode="synch"):
     
     if mode == "asynchAll":
-        system.tag.writeAll(tags, vals)
+        try:
+            system.tag.writeAll(tags, vals)
+        except:
+            log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(vals), str(tags), mode)
     elif mode == "asynch":
         i = 0;
         for tag in tags:
             val = vals[i]
-            system.tag.write(tag, val)
+            try:
+                system.tag.write(tag, val)
+            except:
+                log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(val), str(tag), mode)
             i = i + 1
     elif mode == "synchAll":
-        system.tag.writeAllSynchronous(tags, vals)
+        try:
+            system.tag.writeAllSynchronous(tags, vals)
+        except:
+            log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(vals), str(tags), mode)
     elif mode == "synch":
         i = 0
         for tag in tags:
             val = vals[i]
-            system.tag.writeSynchronous(tag, val)
-#            print "     writing %s to %s " % (str(val), tag)
+            try:
+                system.tag.writeSynchronous(tag, val)
+            except:
+                log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(val), str(tag), mode)
             i=i+1
             
 #-------------

@@ -8,7 +8,7 @@ from ils.common.config import getTagProviderClient, getDatabaseClient
 log = system.util.getLogger("com.ils.sqc.plot")
 
 def internalFrameOpened(rootContainer):
-    print "In internalFrameOpened()"
+    log.infof("In %s.internalFrameOpened()", __name__)
     
     tagProvider = getTagProviderClient()
     db = getDatabaseClient()
@@ -355,17 +355,17 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
 # upstream to find a labdata entry block.  Then from that we need to extract the name of the tag
 # bound to the value tag path property.  We do some work to strip things off to end up with the 
 # lab data name.
-def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisId):
+def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisUUID):
     import system.ils.blt.diagram as diagram
     
     unitName=None
     labValueName=None
     
-    print "Getting Lab value name for SQC Diagnosis named: <%s> with id: <%s>" % (sqcBlockName, sqcDiagnosisId)
+    print "Getting Lab value name for SQC Diagnosis named: <%s> with UUID: <%s>" % (sqcBlockName, sqcDiagnosisUUID)
    
-    diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisId)
+    diagramDescriptor=diagram.getDiagramForBlock(sqcDiagnosisUUID)
     if diagramDescriptor == None:
-        print "   *** Unable to locate the diagram for block with id: ", sqcDiagnosisId
+        print "   *** Unable to locate the diagram for block with UUID: ", sqcDiagnosisUUID
         return unitName, labValueName
     
     diagramId=diagramDescriptor.getId()
