@@ -510,8 +510,13 @@ def fetchRecipeDataRecord(stepUUID, folderId, key, db):
 def fetchRecipeDataRecordsInFolder(stepId, folderId, db):
     logger.tracef("Fetching records from %s - %s", stepId, folderId)
     
-    SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+    
+    if folderId:     
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
             " from SfcRecipeDataView where stepId = %s and RecipeDataFolderId = %s" % (stepId, folderId)
+    else:
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+            " from SfcRecipeDataView where stepId = %s and RecipeDataFolderId is NULL" % stepId
     pds = system.db.runQuery(SQL, db)
     
     return pds
@@ -552,17 +557,19 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     elif recipeDataType == ARRAY:
         # This really doesn't work for an array, have some work to do...
         val = []
-        SQL = "select RECIPEDATAID, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+        SQL = "select A.RECIPEDATAID, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
             " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
             " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
+        logger.errorf("EREIAM JH - SQL :%s:", SQL)
         pds = system.db.runQuery(SQL, db)
         for record in pds:
             valueType = record['VALUETYPE']
             aVal = record["%sVALUE" % string.upper(valueType)]
             val.append(aVal)
         logger.tracef("Fetched the whole array: %s", str(val))
+        return val
 
-        raise ValueError, "Unsupported operation for an array recipe data"
+#        raise ValueError, "Unsupported operation for an array recipe data"
     
     else:
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
@@ -1175,7 +1182,7 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         logger.tracef("Copying timer recipe data HAS NOT BEEN IMPLEMENTED...")
     
     elif recipeDataType == ARRAY:
-        logger.tracef('Copying array recipe data HAS NOT BEEN IMPLEMENTED...')
+        logger.errorf('Copying array recipe data HAS NOT BEEN IMPLEMENTED...')
        
     elif recipeDataType == MATRIX:
         logger.tracef('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
