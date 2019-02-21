@@ -570,8 +570,12 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
             " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
         logger.errorf("EREIAM JH - SQL :%s:", SQL)
         pds = system.db.runQuery(SQL, db)
+#         first = True
         for record in pds:
             valueType = record['VALUETYPE']
+#             if first:
+#                 val.append(valueType)
+#                 first = False
             aVal = record["%sVALUE" % string.upper(valueType)]
             val.append(aVal)
         logger.tracef("Fetched the whole array: %s", str(val))
@@ -1085,6 +1089,7 @@ def copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, from
     for fromKey in fromKeys:
         if fromKey in toKeys:
             logger.tracef("  Copying %s...", fromKey)
+            logger.errorf(" EREIAM JH  Copying %s...", fromKey)
             fromRecord = fromPds[i]
             fromRecord = fetchRecipeDataRecordFromRecipeDataId(fromRecord["RECIPEDATAID"], fromRecord["RECIPEDATATYPE"], db)
             
@@ -1157,13 +1162,23 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         logger.tracef("Updated %d rows in updateSfcRecipeDataOutput", rows)
     
     ''' --------------------------------------------- End of Private Methods ------------------------------------------------- '''
-    
-    if sourceRecord["RECIPEDATATYPE"] != targetRecord["RECIPEDATATYPE"]:
-        errorText = "Unable to copy recipe data of dissimilar type!"
+    if isinstance(sourceRecord, list):  
+        ''' handle ARRAY types '''
+        logger.errorf('EREIAM JH - LIST!!!! %s' % str(sourceRecord))
+        recipeDataType = ARRAY
+        if isinstance(targetRecord, list):
+            targetRecipeDataType = ARRAY
+        else:
+            targetRecipeDataType = SIMPLE_VALUE
+    else:
+        recipeDataType = sourceRecord["RECIPEDATATYPE"]
+        targetRecipeDataType = targetRecord["RECIPEDATATYPE"]
+    if recipeDataType != targetRecipeDataType:
+        logger.errorf('EREIAM JH - %s != %s' % (str(sourceRecord), str(targetRecord)))
+        errorText = "Unable to copy recipe data of dissimilar type!  %s != %s" % (recipeDataType, targetRecipeDataType)
         raise ValueError, errorText
         return
     
-    recipeDataType = sourceRecord["RECIPEDATATYPE"]
     if recipeDataType == SIMPLE_VALUE:
         logger.tracef('Copying simple recipe data...')
         updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
@@ -1187,13 +1202,16 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
     
     elif recipeDataType == TIMER:
-        logger.tracef("Copying timer recipe data HAS NOT BEEN IMPLEMENTED...")
+        logger.errorf("Copying timer recipe data HAS NOT BEEN IMPLEMENTED...")
     
     elif recipeDataType == ARRAY:
         logger.errorf('Copying array recipe data HAS NOT BEEN IMPLEMENTED...')
        
     elif recipeDataType == MATRIX:
-        logger.tracef('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
+        logger.errorf('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
+
+    elif recipeDataType == OUTPUT_RAMP:
+        logger.errorf('Copying output ramp recipe data HAS NOT BEEN IMPLEMENTED...')
         
     else:
         logger.errorf("Unsupported recipe data type: %s", recipeDataType)
