@@ -562,4 +562,10 @@ def s88GetStepUUIDFolderKeyAttribute(chartProperties, stepProperties, keyAndAttr
     stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
     folder,key,attribute = splitKey(keyAndAttribute)
     return stepUUID, folder, key, attribute
+
+def getKeyedIndex(keyName, keyValue, db):
+    ''' A convenient way to get the index into the array once you already have the entire array '''
+    from ils.sfc.recipeData.core import getKeyedIndex as getKeyedIndexFromCore
+    keyIndex = getKeyedIndexFromCore(keyName, keyValue, db)
+    return keyIndex 
     

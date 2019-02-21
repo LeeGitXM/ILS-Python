@@ -446,7 +446,8 @@ def writeMessageHandler(payload):
     This handler is not designed to do the writes in parallel, but the most strenuous use case is recipe download which uses 
     WriteWithNoCheck which should be a fast operation.  Of course on Mike's real system this might be a problem and some refactoring 
     may be required.
-    '''    
+    '''
+        
     command = payload.get("command", "writeDatum")    
     tagList = payload.get("tagList", [])
     log.info("----------------------------------------------------")
@@ -454,44 +455,45 @@ def writeMessageHandler(payload):
     log.trace("%s" % (str(payload)))
     log.info( "----------------------------------------------------")
     
+    i = 0
     for tagDict in tagList:
-    
-        try:
-            log.trace(str(tagDict))
-            if command == "writeDatum":
-                tagPath = tagDict.get("tagPath", "")
-                tagValue = tagDict.get("tagValue", "")
-                valueType = tagDict.get("valueType", "value")
-                writeDatum(tagPath, tagValue, valueType)
-            elif command == "writeWithNoCheck":
-                tagPath = tagDict.get("tagPath", "")
-                tagValue = tagDict.get("tagValue", "")
-                valueType = tagDict.get("valueType", "value")
-                writeWithNoCheck(tagPath, tagValue, valueType)
-            elif command == "writeRamp":
-                tagPath = tagDict.get("tagPath", "")
-                tagValue = tagDict.get("tagValue", "")
-                valueType = tagDict.get("valueType", "value")
-                rampTime = tagDict.get("rampTime", 1.0)
-                updateFrequency = tagDict.get("updateFrequency", 1.0)
-                writeConfirm = tagDict.get("writeConfirm", True)
-                writeRamp(tagPath, tagValue, valueType, rampTime, updateFrequency, writeConfirm)
-            elif command == "writeRecipeDetail":
-                tagPath = tagDict.get("tagPath", "")
-                newValue = tagDict.get("newValue", "")
-                newHighLimit = tagDict.get("newHighLimit", "")
-                newLowLimit = tagDict.get("newLowLimit", "")
-                writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit)
-            else:
-                log.error("Unrecognized command: %s in ils.io.api.writeMessageHandler" % (command))
-        except:
-            errorText = catchError(__name__, command)
-            log.error(errorText)
         
-        # This is just a short dwell that may or may not be necessary, it definetly seemed to help during 
-        # testing from the standpoint of keeping log messages from getting intertwined.
-        time.sleep(0.2)
-    
-    log.info("-------------------------------------------------")
-    log.info("   completed writing to %i tags" % (len(tagList)))
-    log.info("-------------------------------------------------")
+        def worker(command=command, tagDict=tagDict, i=i):
+            log.tracef("In worker, i: %d, command: %s, tagDict: %s", i, command, str(tagDict))
+
+            try:
+                log.trace(str(tagDict))
+                if command == "writeDatum":
+                    tagPath = tagDict.get("tagPath", "")
+                    tagValue = tagDict.get("tagValue", "")
+                    valueType = tagDict.get("valueType", "value")
+                    writeDatum(tagPath, tagValue, valueType)
+                elif command == "writeWithNoCheck":
+                    tagPath = tagDict.get("tagPath", "")
+                    tagValue = tagDict.get("tagValue", "")
+                    valueType = tagDict.get("valueType", "value")
+                    writeWithNoCheck(tagPath, tagValue, valueType)
+                elif command == "writeRamp":
+                    tagPath = tagDict.get("tagPath", "")
+                    tagValue = tagDict.get("tagValue", "")
+                    valueType = tagDict.get("valueType", "value")
+                    rampTime = tagDict.get("rampTime", 1.0)
+                    updateFrequency = tagDict.get("updateFrequency", 1.0)
+                    writeConfirm = tagDict.get("writeConfirm", True)
+                    writeRamp(tagPath, tagValue, valueType, rampTime, updateFrequency, writeConfirm)
+                elif command == "writeRecipeDetail":
+                    tagPath = tagDict.get("tagPath", "")
+                    newValue = tagDict.get("newValue", "")
+                    newHighLimit = tagDict.get("newHighLimit", "")
+                    newLowLimit = tagDict.get("newLowLimit", "")
+                    writeRecipeDetail(tagPath, newValue, newHighLimit, newLowLimit)
+                else:
+                    log.error("Unrecognized command: %s in ils.io.api.writeMessageHandler" % (command))
+            except:
+                errorText = catchError(__name__, command)
+                log.error(errorText)
+        
+        print "...calling an asynchronous worker thread..."
+        system.util.invokeAsynchronous(worker)
+        i = i + 1
+            

@@ -472,11 +472,19 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
     return val
 
 def getIndexForKey(keyId, keyValue, db):
-    print "***** Getting the index for: %d - %s" % (keyId, keyValue)
     SQL = "Select keyIndex "\
         "from SfcRecipeDataKeyView "\
         "where keyId = %d "\
         " and keyValue = '%s'" % (keyId, keyValue)
+    keyIndex = system.db.runScalarQuery(SQL, db)
+    return keyIndex 
+
+def getKeyedIndex(keyName, keyValue, db):
+    ''' Very similar to the one above but this uses the keyName rather than the Id '''
+    SQL = "Select keyIndex "\
+        "from SfcRecipeDataKeyView "\
+        "where keyName = '%s' "\
+        " and keyValue = '%s'" % (keyName, keyValue)
     keyIndex = system.db.runScalarQuery(SQL, db)
     return keyIndex 
 

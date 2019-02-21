@@ -4,7 +4,7 @@ Created on Jul 9, 2014
 @author: chuckc
 '''
 import ils.io.recipe as recipe
-import system, string
+import system, string, time
 import ils.io.opcoutput as opcoutput
 import ils.io.opcconditionaloutput as opcconditionaloutput
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
@@ -18,6 +18,7 @@ class RecipeDetail(recipe.Recipe):
     writeLowLimit = False
     writeSp = False
     pythonClass = ""
+    LATENCY_TIME = 5.0
     
     def __init__(self, path):
         recipe.Recipe.__init__(self, path)
@@ -101,34 +102,38 @@ class RecipeDetail(recipe.Recipe):
             if newHighLimitValue > oldHighLimitValue:
                 log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
                 highLimitWritten = True
-                confirmed, r = self.highLimitTag.writeDatum(newHighLimitValue)
+                confirmed, r = self.highLimitTag.writeWithNoCheck(newHighLimitValue)
                 reason = reason + r
                 status = status and confirmed
+                log.info("...dwelling after high limit write before SP write...")
+                time.sleep(self.LATENCY_TIME)
 
         # If moving the upper limit up then writ it before the value
         if self.writeLowLimit:
             if newLowLimitValue < oldLowLimitValue:
                 log.trace("** Writing the Low limit: %s **" % (str(newLowLimitValue)))
                 lowLimitWritten = True
-                confirmed, r = self.lowLimitTag.writeDatum(newLowLimitValue)
+                confirmed, r = self.lowLimitTag.writeWithNoCheck(newLowLimitValue)
                 reason = reason + r
                 status = status and confirmed
+                log.info("...dwelling after low limit write before SP write...")
+                time.sleep(self.LATENCY_TIME)
  
         if self.writeSp:
             log.trace("** Writing the Value: %s **" % (str(newValue)))
-            confirmed, r = self.spTag.writeDatum(newValue)
+            confirmed, r = self.spTag.writeWithNoCheck(newValue)
             reason = reason + r
             status = status and confirmed
                 
         if self.writeHighLimit and not(highLimitWritten):
             log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
-            confirmed, r = self.highLimitTag.writeDatum(newHighLimitValue)
+            confirmed, r = self.highLimitTag.writeWithNoCheck(newHighLimitValue)
             reason = reason + r
             status = status and confirmed
                 
         if self.writeLowLimit and not(lowLimitWritten):
             log.trace("** Write the low limit: %s **" % (str(newLowLimitValue)))
-            confirmed, r = self.lowLimitTag.writeDatum(newLowLimitValue)
+            confirmed, r = self.lowLimitTag.writeWithNoCheck(newLowLimitValue)
             reason = reason + r
             status = status and confirmed
                 
