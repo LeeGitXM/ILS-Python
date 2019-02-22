@@ -564,20 +564,24 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     
     elif recipeDataType == ARRAY:
         # This really doesn't work for an array, have some work to do...
+        valueType = 'Unset'
         val = []
+        indices = []
         SQL = "select A.RECIPEDATAID, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
             " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
             " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
-        logger.errorf("EREIAM JH - SQL :%s:", SQL)
         pds = system.db.runQuery(SQL, db)
-#         first = True
         for record in pds:
             valueType = record['VALUETYPE']
-#             if first:
-#                 val.append(valueType)
-#                 first = False
             aVal = record["%sVALUE" % string.upper(valueType)]
             val.append(aVal)
+            bVal = record['ARRAYINDEX']
+            indices.append(bVal)
+
+        ''' This assumes all entries in the array are of the same type (should be a safe assumption)  ''' 
+        ''' I'm not sure if arrayindex is always used and/or unique, so I'm not using key:value pairs '''
+        val = {'RECIPEDATATYPE':ARRAY, 'VALUETYPE':valueType, 'INDEXVALUES':indices ,'ARRAYVALUES':val}
+        
         logger.tracef("Fetched the whole array: %s", str(val))
         return val
 
@@ -1089,14 +1093,13 @@ def copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, from
     for fromKey in fromKeys:
         if fromKey in toKeys:
             logger.tracef("  Copying %s...", fromKey)
-            logger.errorf(" EREIAM JH  Copying %s...", fromKey)
             fromRecord = fromPds[i]
             fromRecord = fetchRecipeDataRecordFromRecipeDataId(fromRecord["RECIPEDATAID"], fromRecord["RECIPEDATATYPE"], db)
             
             for toRecord in toPds:
                 if toRecord["RECIPEDATAKEY"] == fromKey:
                     toRecord = fetchRecipeDataRecordFromRecipeDataId(toRecord["RECIPEDATAID"], toRecord["RECIPEDATATYPE"], db)
-                    copySourceToTarget(fromRecord, toRecord, db)
+                    copySourceToTargetValues(fromRecord, toRecord, db)
             
         else:
             logger.tracef("Skipping %s because it is not in the destination", fromKey)
@@ -1130,6 +1133,69 @@ def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
     
     copySourceToTarget(sourceRecord, targetRecord, db)
     
+def copySourceToTargetValues(sourceRecord, targetRecord, db):
+    '''
+    This is used when copying the value of a recipe item only.  It allows copying from simple value to other recipe types
+    '''
+    
+    def updateSfcRecipeDataValue(valueId, floatValue, integerValue, stringValue, booleanValue, db):
+        SQL = "update SfcRecipeDataValue set FloatValue = ?, IntegerValue = ?, StringValue = ?, BooleanValue = ? where ValueId = ?"
+        rows = system.db.runPrepUpdate(SQL, [floatValue, integerValue, stringValue, booleanValue, valueId], database=db)
+        logger.tracef("Updated %d rows in SfcRecipeDataValue", rows)
+        
+    def updateSfcRecipeDataSimpleValue(recipeDataId, valueTypeId, db):
+        SQL = "update SfcRecipeDataSimpleValue set ValueTypeId = ? where RecipeDataId = ?"
+        rows = system.db.runPrepUpdate(SQL, [valueTypeId, recipeDataId], database=db)
+        logger.tracef("Updated %d rows in SfcRecipeDataSimpleValue", rows)
+    
+    ''' --------------------------------------------- End of Private Methods ------------------------------------------------- '''
+    sourceRecipeDataType = sourceRecord["RECIPEDATATYPE"]
+    targetRecipeDataType = targetRecord["RECIPEDATATYPE"]
+        
+        
+    if sourceRecipeDataType != targetRecipeDataType:
+        errorText = "Unable to copy recipe data of dissimilar type!  %s != %s" % (sourceRecipeDataType, targetRecipeDataType)
+        raise ValueError, errorText
+        return
+    
+    if sourceRecipeDataType == SIMPLE_VALUE:
+        logger.tracef('Copying simple recipe data...')
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeDataSimpleValue(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], db)
+        updateSfcRecipeDataValue(targetRecord["VALUEID"], sourceRecord["FLOATVALUE"], sourceRecord["INTEGERVALUE"], sourceRecord["STRINGVALUE"], sourceRecord["BOOLEANVALUE"], db)
+        
+    elif sourceRecipeDataType == INPUT:
+        logger.tracef('Copying input recipe data...')
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeDataInput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["TAG"], db)
+        updateSfcRecipeDataValue(targetRecord["TARGETVALUEID"], sourceRecord["TARGETFLOATVALUE"], sourceRecord["TARGETINTEGERVALUE"], sourceRecord["TARGETSTRINGVALUE"], sourceRecord["TARGETBOOLEANVALUE"], db)
+        updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
+    
+    elif sourceRecipeDataType == OUTPUT:
+        logger.tracef('Copying output recipe data...')
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeDataOutput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["OUTPUTTYPEID"], sourceRecord["TAG"], 
+                                  sourceRecord["DOWNLOAD"], sourceRecord["TIMING"], sourceRecord["MAXTIMING"], sourceRecord["WRITECONFIRM"], db)
+        updateSfcRecipeDataValue(targetRecord["OUTPUTVALUEID"], sourceRecord["OUTPUTFLOATVALUE"], sourceRecord["OUTPUTINTEGERVALUE"], sourceRecord["OUTPUTSTRINGVALUE"], sourceRecord["OUTPUTBOOLEANVALUE"], db)
+        updateSfcRecipeDataValue(targetRecord["TARGETVALUEID"], sourceRecord["TARGETFLOATVALUE"], sourceRecord["TARGETINTEGERVALUE"], sourceRecord["TARGETSTRINGVALUE"], sourceRecord["TARGETBOOLEANVALUE"], db)
+        updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
+    
+    elif sourceRecipeDataType == TIMER:
+        logger.errorf("Copying timer recipe data HAS NOT BEEN IMPLEMENTED...")
+    
+    elif sourceRecipeDataType == ARRAY:
+        logger.errorf('Copying array recipe data HAS NOT BEEN IMPLEMENTED...')
+       
+    elif sourceRecipeDataType == MATRIX:
+        logger.errorf('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
+
+    elif sourceRecipeDataType == OUTPUT_RAMP:
+        logger.errorf('Copying output ramp recipe data HAS NOT BEEN IMPLEMENTED...')
+        
+    else:
+        logger.errorf("Unsupported recipe data type: %s", sourceRecipeDataType)
+        raise ValueError, "Unsupported recipe data type: %s" % (sourceRecipeDataType)
+
 def copySourceToTarget(sourceRecord, targetRecord, db):
     '''
     This is used when copying a single datum to another or when copying all of the datums in one folder to another folder
@@ -1162,19 +1228,11 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         logger.tracef("Updated %d rows in updateSfcRecipeDataOutput", rows)
     
     ''' --------------------------------------------- End of Private Methods ------------------------------------------------- '''
-    if isinstance(sourceRecord, list):  
-        ''' handle ARRAY types '''
-        logger.errorf('EREIAM JH - LIST!!!! %s' % str(sourceRecord))
-        recipeDataType = ARRAY
-        if isinstance(targetRecord, list):
-            targetRecipeDataType = ARRAY
-        else:
-            targetRecipeDataType = SIMPLE_VALUE
-    else:
-        recipeDataType = sourceRecord["RECIPEDATATYPE"]
-        targetRecipeDataType = targetRecord["RECIPEDATATYPE"]
+    recipeDataType = sourceRecord["RECIPEDATATYPE"]
+    targetRecipeDataType = targetRecord["RECIPEDATATYPE"]
+        
+        
     if recipeDataType != targetRecipeDataType:
-        logger.errorf('EREIAM JH - %s != %s' % (str(sourceRecord), str(targetRecord)))
         errorText = "Unable to copy recipe data of dissimilar type!  %s != %s" % (recipeDataType, targetRecipeDataType)
         raise ValueError, errorText
         return
