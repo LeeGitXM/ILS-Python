@@ -563,24 +563,27 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
             "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == ARRAY:
-        # This really doesn't work for an array, have some work to do...
+        # This is pretty close, but it needs ValueId in the view- CJL
         valueType = 'Unset'
+        valueIds = []
         val = []
         indices = []
-        SQL = "select A.RECIPEDATAID, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+        SQL = "select A.RECIPEDATAID, E.VALUEID, VALUETYPE, ARRAYINDEX, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
             " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
             " and E.RecipeDataId = %d order by ARRAYINDEX" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
         for record in pds:
-            valueType = record['VALUETYPE']
+            valueType = record["VALUETYPE"]
             aVal = record["%sVALUE" % string.upper(valueType)]
             val.append(aVal)
-            bVal = record['ARRAYINDEX']
+            bVal = record["ARRAYINDEX"]
             indices.append(bVal)
+            cVal = record["VALUEID"]
+            valueIds.append(cVal)
 
         ''' This assumes all entries in the array are of the same type (should be a safe assumption)  ''' 
         ''' I'm not sure if arrayindex is always used and/or unique, so I'm not using key:value pairs '''
-        val = {'RECIPEDATATYPE':ARRAY, 'VALUETYPE':valueType, 'INDEXVALUES':indices ,'ARRAYVALUES':val}
+        val = {'RECIPEDATATYPE':ARRAY, 'VALUETYPE':valueType, 'INDEXVALUES':indices ,'ARRAYVALUES':val,'VALUEIDS':valueIds}
         
         logger.tracef("Fetched the whole array: %s", str(val))
         return val
@@ -1143,55 +1146,69 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
         rows = system.db.runPrepUpdate(SQL, [floatValue, integerValue, stringValue, booleanValue, valueId], database=db)
         logger.tracef("Updated %d rows in SfcRecipeDataValue", rows)
         
-    def updateSfcRecipeDataSimpleValue(recipeDataId, valueTypeId, db):
-        SQL = "update SfcRecipeDataSimpleValue set ValueTypeId = ? where RecipeDataId = ?"
-        rows = system.db.runPrepUpdate(SQL, [valueTypeId, recipeDataId], database=db)
-        logger.tracef("Updated %d rows in SfcRecipeDataSimpleValue", rows)
-    
+    def updateSfcRecipeDataValueWithType(valueId, value, valueType, db):
+        SQL = "update SfcRecipeDataValue set %sValue = ? where ValueId = ?" % valueType
+        logger.errorf("EREIAM JH ---------------  SQL :%s:", SQL)
+        rows = system.db.runPrepUpdate(SQL, [value, valueId], database=db)
+        logger.tracef("Updated %d rows in SfcRecipeDataValue", rows)
+        
     ''' --------------------------------------------- End of Private Methods ------------------------------------------------- '''
     sourceRecipeDataType = sourceRecord["RECIPEDATATYPE"]
     targetRecipeDataType = targetRecord["RECIPEDATATYPE"]
         
-        
     if sourceRecipeDataType != targetRecipeDataType:
-        errorText = "Unable to copy recipe data of dissimilar type!  %s != %s" % (sourceRecipeDataType, targetRecipeDataType)
-        raise ValueError, errorText
+        logger.errorf("EREIAM JH - Copying input recipe :%s: to :%s:" % (sourceRecipeDataType, targetRecipeDataType))
+
+    if targetRecipeDataType == SIMPLE_VALUE:
+        valueId = targetRecord["VALUEID"]
+    elif targetRecipeDataType == OUTPUT:
+        valueId = targetRecord["OUTPUTVALUEID"]
+    elif targetRecipeDataType == OUTPUT_RAMP:
+        valueId = targetRecord["OUTPUTVALUEID"]
+    elif targetRecipeDataType == ARRAY:
+        logger.errorf('Copying target array recipe!')
+    elif targetRecipeDataType == INPUT:
+        logger.errorf('Copying target input recipe data HAS NOT BEEN IMPLEMENTED...')
+    elif targetRecipeDataType == TIMER:
+        logger.errorf('Copying target input recipe data HAS NOT BEEN IMPLEMENTED...')
+    else:
+        logger.errorf("Unsupported target recipe data type: %s", targetRecipeDataType)
+        raise ValueError, "Unsupported target recipe data type: %s" % targetRecipeDataType
         return
     
     if sourceRecipeDataType == SIMPLE_VALUE:
         logger.tracef('Copying simple recipe data...')
-        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
-        updateSfcRecipeDataSimpleValue(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], db)
-        updateSfcRecipeDataValue(targetRecord["VALUEID"], sourceRecord["FLOATVALUE"], sourceRecord["INTEGERVALUE"], sourceRecord["STRINGVALUE"], sourceRecord["BOOLEANVALUE"], db)
-        
+        updateSfcRecipeDataValue(valueId, sourceRecord["FLOATVALUE"], sourceRecord["INTEGERVALUE"], sourceRecord["STRINGVALUE"], sourceRecord["BOOLEANVALUE"], db)
     elif sourceRecipeDataType == INPUT:
-        logger.tracef('Copying input recipe data...')
-        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
-        updateSfcRecipeDataInput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["TAG"], db)
-        updateSfcRecipeDataValue(targetRecord["TARGETVALUEID"], sourceRecord["TARGETFLOATVALUE"], sourceRecord["TARGETINTEGERVALUE"], sourceRecord["TARGETSTRINGVALUE"], sourceRecord["TARGETBOOLEANVALUE"], db)
-        updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
-    
+        logger.errorf("Copying input recipe data HAS NOT BEEN IMPLEMENTED...")
     elif sourceRecipeDataType == OUTPUT:
         logger.tracef('Copying output recipe data...')
-        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
-        updateSfcRecipeDataOutput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["OUTPUTTYPEID"], sourceRecord["TAG"], 
-                                  sourceRecord["DOWNLOAD"], sourceRecord["TIMING"], sourceRecord["MAXTIMING"], sourceRecord["WRITECONFIRM"], db)
-        updateSfcRecipeDataValue(targetRecord["OUTPUTVALUEID"], sourceRecord["OUTPUTFLOATVALUE"], sourceRecord["OUTPUTINTEGERVALUE"], sourceRecord["OUTPUTSTRINGVALUE"], sourceRecord["OUTPUTBOOLEANVALUE"], db)
-        updateSfcRecipeDataValue(targetRecord["TARGETVALUEID"], sourceRecord["TARGETFLOATVALUE"], sourceRecord["TARGETINTEGERVALUE"], sourceRecord["TARGETSTRINGVALUE"], sourceRecord["TARGETBOOLEANVALUE"], db)
-        updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
-    
+        updateSfcRecipeDataValue(valueId, sourceRecord["OUTPUTFLOATVALUE"], sourceRecord["OUTPUTINTEGERVALUE"], sourceRecord["OUTPUTSTRINGVALUE"], sourceRecord["OUTPUTBOOLEANVALUE"], db)
+    elif sourceRecipeDataType == OUTPUT_RAMP:
+        logger.tracef('Copying output recipe data...')
+        updateSfcRecipeDataValue(valueId, sourceRecord["OUTPUTFLOATVALUE"], sourceRecord["OUTPUTINTEGERVALUE"], sourceRecord["OUTPUTSTRINGVALUE"], sourceRecord["OUTPUTBOOLEANVALUE"], db)
     elif sourceRecipeDataType == TIMER:
         logger.errorf("Copying timer recipe data HAS NOT BEEN IMPLEMENTED...")
-    
     elif sourceRecipeDataType == ARRAY:
+        ''' Nested for loop is inefficient, but maybe OK since this is seldom used and arrays are generally small '''
+        sourceValueType = sourceRecord["VALUETYPE"]
+        sourceIndices = sourceRecord["INDEXVALUES"]
+        sourceValues = sourceRecord["ARRAYVALUES"]
+        sourceValueIds = sourceRecord["VALUEIDS"]
+        targetValueType = targetRecord["VALUETYPE"]
+        targetIndices = targetRecord["INDEXVALUES"]
+        targetValues = targetRecord["ARRAYVALUES"]
+        targetValueIds = targetRecord["VALUEIDS"]
+        
+        for i in range(len(sourceValues)):
+            for j in range(len(targetValues)):
+                if sourceIndices[i] == targetIndices[j]:
+                    updateSfcRecipeDataValueWithType(targetValueIds[j], sourceValues[i], sourceValueType, db)
+            
+        ''' Disassemble arrays and copy values '''
         logger.errorf('Copying array recipe data HAS NOT BEEN IMPLEMENTED...')
-       
     elif sourceRecipeDataType == MATRIX:
         logger.errorf('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
-
-    elif sourceRecipeDataType == OUTPUT_RAMP:
-        logger.errorf('Copying output ramp recipe data HAS NOT BEEN IMPLEMENTED...')
-        
     else:
         logger.errorf("Unsupported recipe data type: %s", sourceRecipeDataType)
         raise ValueError, "Unsupported recipe data type: %s" % (sourceRecipeDataType)
