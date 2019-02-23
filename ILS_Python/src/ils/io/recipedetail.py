@@ -99,41 +99,41 @@ class RecipeDetail(recipe.Recipe):
         
         # If moving the upper limit up then writ it before the value
         if self.writeHighLimit:
-            if newHighLimitValue > oldHighLimitValue:
+            if float(newHighLimitValue) > float(oldHighLimitValue):
                 log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
                 highLimitWritten = True
-                confirmed, r = self.highLimitTag.writeWithNoCheck(newHighLimitValue)
+                confirmed, r = self.highLimitTag.writeDatum(newHighLimitValue)
                 reason = reason + r
                 status = status and confirmed
-                log.info("...dwelling after high limit write before SP write...")
-                time.sleep(self.LATENCY_TIME)
+#                log.info("...dwelling after high limit write before SP write...")
+#                time.sleep(self.LATENCY_TIME)
 
         # If moving the upper limit up then writ it before the value
         if self.writeLowLimit:
-            if newLowLimitValue < oldLowLimitValue:
+            if float(newLowLimitValue) < float(oldLowLimitValue):
                 log.trace("** Writing the Low limit: %s **" % (str(newLowLimitValue)))
                 lowLimitWritten = True
-                confirmed, r = self.lowLimitTag.writeWithNoCheck(newLowLimitValue)
+                confirmed, r = self.lowLimitTag.writeDatum(newLowLimitValue)
                 reason = reason + r
                 status = status and confirmed
-                log.info("...dwelling after low limit write before SP write...")
-                time.sleep(self.LATENCY_TIME)
+#               log.info("...dwelling after low limit write before SP write...")
+#               time.sleep(self.LATENCY_TIME)
  
         if self.writeSp:
             log.trace("** Writing the Value: %s **" % (str(newValue)))
-            confirmed, r = self.spTag.writeWithNoCheck(newValue)
+            confirmed, r = self.spTag.writeDatum(newValue)
             reason = reason + r
             status = status and confirmed
                 
         if self.writeHighLimit and not(highLimitWritten):
             log.trace("** Writing the high limit: %s **" % (str(newHighLimitValue)))
-            confirmed, r = self.highLimitTag.writeWithNoCheck(newHighLimitValue)
+            confirmed, r = self.highLimitTag.writeDatum(newHighLimitValue)
             reason = reason + r
             status = status and confirmed
                 
         if self.writeLowLimit and not(lowLimitWritten):
             log.trace("** Write the low limit: %s **" % (str(newLowLimitValue)))
-            confirmed, r = self.lowLimitTag.writeWithNoCheck(newLowLimitValue)
+            confirmed, r = self.lowLimitTag.writeDatum(newLowLimitValue)
             reason = reason + r
             status = status and confirmed
                 

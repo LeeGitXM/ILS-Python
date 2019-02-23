@@ -8,6 +8,7 @@ import system
 from ils.sfc.recipeData.api import s88Set, s88Get, s88SetWithUnits, s88GetWithUnits
 from ils.sfc.gateway.api import sendMessageToClient, getControlPanelId, registerWindowWithControlPanel, getStepProperty, \
     logStepDeactivated, getTopChartRunId, deleteAndSendClose, getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getProject
+from ils.sfc.recipeData.api import substituteScopeReferences
 from ils.sfc.common.util import isEmpty
 from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, WINDOW_PATH, MESSAGE, IS_SFC_WINDOW, \
     KEY, TARGET_STEP_UUID, DEACTIVATED, POSITION, SCALE, WINDOW_TITLE, STATIC, RECIPE_LOCATION, STRATEGY, ACK_REQUIRED, BUTTON_LABEL
@@ -54,7 +55,9 @@ def activate(scopeContext, stepProperties, state):
             else: # RECIPE
                 recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
                 key = getStepProperty(stepProperties, KEY)
-                message = s88Get(chartScope, stepScope, key, recipeLocation)  
+                message = s88Get(chartScope, stepScope, key, recipeLocation)
+                
+            message = substituteScopeReferences(chartScope, stepScope, message)
             
             # create db window records:
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
