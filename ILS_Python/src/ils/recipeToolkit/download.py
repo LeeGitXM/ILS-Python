@@ -13,7 +13,7 @@ import ils.recipeToolkit.log as recipeToolkit_log
 import ils.recipeToolkit.refresh as recipeToolkit_refresh
 import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
-from ils.io.client import writeWithNoChecks, writeRecipeDetails
+from ils.io.client import writeWithNoChecks, writeRecipeDetails, writeDatums
 from ils.common.config import getTagProvider, getTagProviderClient, getDatabaseClient,\
     getIsolationModeClient
 from ils.common.ocAlert import sendAlert
@@ -413,7 +413,8 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
     if writeEnabled:
         log.info("Writing to %i immediate LOCAL tags..." % (len(localTagValues)))
         log.trace("  %s" % (str(localTagValues)))
-        writeWithNoChecks(localTagValues, project)
+        #writeWithNoChecks(localTagValues, project)
+        writeDatums(localTagValues, project)
     else:
         log.info("*** Skipping write to immediate LOCAL tags ***")
 
@@ -422,7 +423,8 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
     log.trace("====================================")
     if writeEnabled:
         log.info("Writing to %i immediate OPC tags..." % len(opcTagValues)) 
-        writeWithNoChecks(opcTagValues, project)
+        #writeWithNoChecks(opcTagValues, project)
+        writeDatums(opcTagValues, project)
     else:
         log.info("*** Skipping write to immediate OPC tags ***")
 
