@@ -5,45 +5,73 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.gateway.api import getDatabaseName, s88Get, getChartLogger, handleUnexpectedGatewayError, getStepProperty,copyRowToDict
-from ils.sfc.common.constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE_OR_CREATE, STATIC, DYNAMIC, RECIPE_LOCATION
-from ils.sfc.recipeData.api import substituteScopeReferences
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getStepProperty,copyRowToDict
+from ils.sfc.common.constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE, UPDATE_OR_CREATE, STATIC, DYNAMIC, RECIPE_LOCATION, SINGLE
+from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists
+from ils.sfc.recipeData.api import s88Get, s88Set, s88DataExists
 
 def activate(scopeContext, stepProperties, state):
     
     try:
-        chartScope = scopeContext.getChartScope()
-        stepScope = scopeContext.getStepScope()
-        logger = getChartLogger(chartScope)
-        database = getDatabaseName(chartScope)
+        chart = scopeContext.getChartScope()
+        step = scopeContext.getStepScope()
+        logger = getChartLogger(chart)
+        database = getDatabaseName(chart)
+        fetchMode = getStepProperty(stepProperties, FETCH_MODE) # SINGLE or MULTIPLE
+        resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
+        recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
+        keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
+        key = getStepProperty(stepProperties, KEY) 
+    
         sql = getStepProperty(stepProperties, SQL)
-        processedSql = substituteScopeReferences(chartScope, stepScope, sql)
-        dbRows = system.db.runQuery(processedSql, database).getUnderlyingDataset() 
-        if dbRows.rowCount == 0:
-            logger.error('No rows returned for query %s', processedSql)
-            return
-        simpleQueryProcessRows(scopeContext, stepProperties, dbRows)
+        processedSql = substituteScopeReferences(chart, step, sql)
+        logger.tracef("SQL: %s", processedSql)
+        
+        if fetchMode == SINGLE:
+            val = system.db.runScalarQuery(processedSql, database)
+            
+            if keyMode == STATIC:
+                recordExists = s88DataExists(chart, step, key, recipeLocation)
+                if not(recordExists) and resultsMode == UPDATE:
+                    handleUnexpectedGatewayError(chart, step, "Error: key <%s.%s> does not exist" % (recipeLocation, key), logger)
+                    return
+                if not(recordExists) and resultsMode == UPDATE_OR_CREATE:
+                    print "Create it"
+                    
+                s88Set(chart, step, key, val, recipeLocation)
+            else:
+                handleUnexpectedGatewayError(chart, step, "Error: Dynamic key is not supported in single fetch mode", logger)
+                return
+        else:
+            
+            pds = system.db.runQuery(processedSql, database) 
+            if len(pds) == 0:
+                logger.error('No rows returned for query %s', processedSql)
+                return
+            logger.tracef("...returned %d rows", len(pds))
+            simpleQueryProcessRows(scopeContext, stepProperties, pds)
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in simpleQuery.py', logger)
+        handleUnexpectedGatewayError(chart, step, 'Unexpected error in simpleQuery.py', logger)
     finally:
         return True
     
-def simpleQueryProcessRows(scopeContext, stepProperties, dbRows):
+def simpleQueryProcessRows(scopeContext, stepProperties, pds):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
-    fetchMode = getStepProperty(stepProperties, FETCH_MODE) # SINGLE or MULTIPLE
+    
     recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
     keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
     key = getStepProperty(stepProperties, KEY) 
     create = (resultsMode == UPDATE_OR_CREATE)
+
     if keyMode == STATIC: # TODO: fetchMode must be SINGLE
-        for rowNum in range(dbRows.rowCount):
-            transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, rowNum, create)
+        for rowNum in range(pds.rowCount):
+            transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, pds, rowNum, create)
     elif keyMode == DYNAMIC:
-        for rowNum in range(dbRows.rowCount):
-            dynamicKey = dbRows.getValueAt(rowNum,key)
-            transferSimpleQueryData(chartScope, stepScope, dynamicKey, recipeLocation, dbRows, rowNum, create)
+        for rowNum in range(pds.rowCount):
+            dynamicKey = pds.getValueAt(rowNum,key)
+            transferSimpleQueryData(chartScope, stepScope, dynamicKey, recipeLocation, pds, rowNum, create)
 
 def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, rowNum, create ):
     from system.ils.sfc import s88GetScope, s88ScopeChanged
