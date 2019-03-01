@@ -1148,7 +1148,6 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
         
     def updateSfcRecipeDataValueWithType(valueId, value, valueType, db):
         SQL = "update SfcRecipeDataValue set %sValue = ? where ValueId = ?" % valueType
-        logger.errorf("EREIAM JH ---------------  SQL :%s:", SQL)
         rows = system.db.runPrepUpdate(SQL, [value, valueId], database=db)
         logger.tracef("Updated %d rows in SfcRecipeDataValue", rows)
         
@@ -1156,8 +1155,8 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
     sourceRecipeDataType = sourceRecord["RECIPEDATATYPE"]
     targetRecipeDataType = targetRecord["RECIPEDATATYPE"]
         
-    if sourceRecipeDataType != targetRecipeDataType:
-        logger.errorf("EREIAM JH - Copying input recipe :%s: to :%s:" % (sourceRecipeDataType, targetRecipeDataType))
+#     if sourceRecipeDataType != targetRecipeDataType:
+#         logger.errorf("EREIAM JH - Copying input recipe :%s: to :%s:" % (sourceRecipeDataType, targetRecipeDataType))
 
     if targetRecipeDataType == SIMPLE_VALUE:
         valueId = targetRecord["VALUEID"]
@@ -1200,13 +1199,12 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
         targetValues = targetRecord["ARRAYVALUES"]
         targetValueIds = targetRecord["VALUEIDS"]
         
+        ''' Disassemble arrays and copy values '''
         for i in range(len(sourceValues)):
             for j in range(len(targetValues)):
                 if sourceIndices[i] == targetIndices[j]:
                     updateSfcRecipeDataValueWithType(targetValueIds[j], sourceValues[i], sourceValueType, db)
             
-        ''' Disassemble arrays and copy values '''
-        logger.errorf('Copying array recipe data HAS NOT BEEN IMPLEMENTED...')
     elif sourceRecipeDataType == MATRIX:
         logger.errorf('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
     else:

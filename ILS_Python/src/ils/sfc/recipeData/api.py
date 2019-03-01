@@ -19,6 +19,7 @@ logger=system.util.getLogger("com.ils.sfc.recipeData.api")
 
 def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
     ''' Check that the desired setpoint (from recipe), the actual setpoint, and the actual PV are within tolerance.  '''
+    ''' Returns   success, var-failure, Tag Read Error, pv-failure, sp-failure  ''' 
 
     logger.tracef("In %s.s88CheckPV() checking %s...", __name__, key)
  
@@ -541,7 +542,7 @@ Utilities for dealing with folders
 '''
 def s88CopyFolderValues(fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder, recursive, category, db):
     logger.tracef("Copying recipe data from %s-%s-%s to %s-%s-%s", fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder)
-    
+     
     fromStepUUID, fromStepId = s88GetStepFromName(fromChartPath, fromStepName, db)
     logger.tracef("...fromStepUUID: %s, fromStepId: %s", fromStepUUID, str(fromStepId))
     
@@ -562,10 +563,4 @@ def s88GetStepUUIDFolderKeyAttribute(chartProperties, stepProperties, keyAndAttr
     stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
     folder,key,attribute = splitKey(keyAndAttribute)
     return stepUUID, folder, key, attribute
-
-def getKeyedIndex(keyName, keyValue, db):
-    ''' A convenient way to get the index into the array once you already have the entire array '''
-    from ils.sfc.recipeData.core import getKeyedIndex as getKeyedIndexFromCore
-    keyIndex = getKeyedIndexFromCore(keyName, keyValue, db)
-    return keyIndex 
     
