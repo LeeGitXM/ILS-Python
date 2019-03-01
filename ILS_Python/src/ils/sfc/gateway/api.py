@@ -485,14 +485,14 @@ def postToQueue(chartScope, status, message, queueKey=None):
     from ils.queue.message import insert as insertQueueMessage
     insertQueueMessage(queueKey, status, message, db, project, consoleName)
 
-def postError(chartScope, message):
-    '''  Post an error message to the SFC Message Queue.  '''
+def postError(chartScope, message, queueKey=SFC_MESSAGE_QUEUE):
+    '''  Post an error message to the SFC Message Queue if no other queue is specified.  '''
 
     db=getDatabaseName(chartScope)
     project=getProject(chartScope)
     consoleName=getConsoleName(chartScope, db)
     from ils.queue.message import insert as insertQueueMessage
-    insertQueueMessage(SFC_MESSAGE_QUEUE, QUEUE_ERROR, message, db, project, consoleName)
+    insertQueueMessage(queueKey, QUEUE_ERROR, message, db, project, consoleName)
 
 def printSpace(level, out):
     for i in range(level):
