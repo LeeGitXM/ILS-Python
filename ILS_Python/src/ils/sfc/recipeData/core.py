@@ -1169,7 +1169,7 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
     elif targetRecipeDataType == INPUT:
         logger.errorf('Copying target input recipe data HAS NOT BEEN IMPLEMENTED...')
     elif targetRecipeDataType == TIMER:
-        logger.errorf('Copying target input recipe data HAS NOT BEEN IMPLEMENTED...')
+        logger.errorf('Copying target timer recipe data HAS NOT BEEN IMPLEMENTED...')
     else:
         logger.errorf("Unsupported target recipe data type: %s", targetRecipeDataType)
         raise ValueError, "Unsupported target recipe data type: %s" % targetRecipeDataType
