@@ -747,7 +747,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
             SQL = "update SfcRecipeDataOutputRamp set %s = %s where recipeDataId = %s" % (attribute, str(val), recipeDataId)
         else: 
             logger.errorf("Unsupported attribute <%s> for output recipe data", attribute)
-            raise ValueError, "Unsupported attribute <%s> for output recipe data" % (attribute)
+            raise ValueError, "Unsupported attribute <%s> for %s recipe data" % (attribute, recipeDataType)
             
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d output recipe data records', rows)
