@@ -48,11 +48,11 @@ def deleteRow(button):
 
     rownum = table.selectedRow
     ds = table.data
-    familtId = ds.getValueAt(rownum,'RecipeFamilyId')
+    familyId = ds.getValueAt(rownum,'RecipeFamilyId')
     familyName = ds.getValueAt(rownum,'RecipeFamilyName')
     confirm = system.gui.confirm("Are you sure that you want to delete family <%s> and all of its associated recipes?" % (familyName))
     if confirm:
-        SQL = "DELETE FROM RtRecipeFamily WHERE RecipeFamilyId="+str(familtId)
+        SQL = "DELETE FROM RtRecipeFamily WHERE RecipeFamilyId="+str(familyId)
         system.db.runUpdateQuery(SQL)
         ds = system.dataset.deleteRow(ds,rownum)
         table.data = ds
