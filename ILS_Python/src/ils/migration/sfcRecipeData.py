@@ -204,7 +204,7 @@ def importRecipeData(rootContainer):
                         parentGroup = None
                         recipeDataKeyWithGroup = recipeDataKey
     
-                    if recipeDataExists(stepUUID, recipeDataKeyWithGroup, "description", db):
+                    if recipeDataExists(stepUUID, parentGroup, recipeDataKey, "description", db):
                         print "%s, a %s (folder: %s)...  exists" % (recipeDataKey, recipeDataType, parentGroup)
                     else:
                         print "%s, a %s (folder: %s)...  DOES NOT EXIST" % (recipeDataKey, recipeDataType, parentGroup)

@@ -123,8 +123,8 @@ def recipeGroupExists(stepUUID, key, parentKey, db):
     logger.tracef("...it does not exist!")
     return False
 
-def recipeDataExists(stepUUID, key, attribute, db):
-    logger.tracef("Checking if %s.%s from %s exists...", key, attribute, stepUUID)
+def recipeDataExists(stepUUID, folder, key, attribute, db):
+    logger.tracef("Checking if %s.%s.%s from %s exists...", folder, key, attribute, stepUUID)
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
@@ -133,9 +133,6 @@ def recipeDataExists(stepUUID, key, attribute, db):
     I can't use the handy utility getRecieDataId() which does all of this work because it logs an error and throws an exception if the 
     recipe data doesn't exist.  The whole point of this is do a test to see if it exists ao that an error can be avoided!
     '''
-    
-    ''' This utility requires a key and an attribute, so add a fake attribute and then ignore it  '''
-    folder,key,attribute = splitKey(key + "." + attribute)
     
     if folder == "":
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\

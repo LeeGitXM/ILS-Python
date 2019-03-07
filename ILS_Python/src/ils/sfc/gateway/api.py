@@ -454,6 +454,27 @@ def notifyGatewayError(chartScope, stepProperties, msg, logger=None):
     payload[MESSAGE] = payloadMsg
     sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
     
+def handleExpectedGatewayError(chartScope, stepName, msg, logger=None):
+    '''
+    Report an expected error so that it is visible to the operator--
+    e.g. put in a message queue. Then cancel the chart.
+    '''
+
+    chartPath = chartScope.get("chartPath", "")
+    payloadMsg = "%s\nChart: %s\nStep: %s" % (msg, chartPath, stepName)
+    payload = dict()
+    payload[MESSAGE] = payloadMsg
+
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+    
+    if logger <> None:
+        logger.error("Canceling the chart due to an error.")
+    else:
+        print "Canceling the chart due to an error."
+
+    cancelChart(chartScope)    
+    
+    
 def hasStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
     for prop in stepProperties.getProperties():
