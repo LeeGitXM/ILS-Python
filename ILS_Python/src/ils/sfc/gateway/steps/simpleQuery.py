@@ -4,12 +4,13 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-import system
+import system, string
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, handleExpectedGatewayError, getStepProperty,copyRowToDict,\
     getChartPath
-from ils.sfc.common.constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE, UPDATE_OR_CREATE, STATIC, DYNAMIC, RECIPE_LOCATION, SINGLE, STEP_NAME
-from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists
-from ils.sfc.recipeData.api import s88Get, s88Set, s88DataExists
+from ils.sfc.common.constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE, UPDATE_OR_CREATE, STATIC, DYNAMIC, RECIPE_LOCATION, SINGLE, STEP_NAME, CLASS_TO_CREATE
+from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists, s88Get, s88Set, s88DataExists, s88GetStep
+from ils.sfc.recipeData.core import getStepIdFromUUID
+from ils.sfc.recipeData.createApi import createDynamicRecipe
 
 def activate(scopeContext, stepProperties, state):
     
@@ -20,6 +21,7 @@ def activate(scopeContext, stepProperties, state):
         print "ChartScope: ", str(chartScope)
         stepScope = scopeContext.getStepScope()
         print "StepScope: ", stepScope
+        print "Step Properties: ", stepProperties
         chartPath = getChartPath(chartScope)
         stepName = getStepProperty(stepProperties, STEP_NAME)
         log = getChartLogger(chartScope)
@@ -29,39 +31,84 @@ def activate(scopeContext, stepProperties, state):
         resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
         keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
+        classToCreate = getStepProperty(stepProperties, CLASS_TO_CREATE)
+
         
         ''' Validate the configuration '''
         if not(resultsMode == UPDATE or resultsMode == UPDATE_OR_CREATE):
             txt = "ERROR: Illegal RESULTS mode: <%s>, legal values are %s or %s" % (resultsMode, UPDATE, UPDATE_OR_CREATE)
-            log.errorf(txt)
             handleExpectedGatewayError(chartScope, stepName, txt, log)
             return
-                
-        key = getStepProperty(stepProperties, KEY) 
     
         sql = getStepProperty(stepProperties, SQL)
         processedSql = substituteScopeReferences(chartScope, stepScope, sql)
         log.tracef("SQL: %s", processedSql)
         log.tracef("Fetch mode: %s, Key mode: %s, Results mode: %s", fetchMode, keyMode, resultsMode)
         
-        if fetchMode == SINGLE:
-
+        if fetchMode == SINGLE:    
+            pds = system.db.runQuery(processedSql, database)
+            
+            if len(pds) == 0:
+                txt = "Query did not return any rows, %s" % (processedSql)
+                handleExpectedGatewayError(chartScope, stepName, txt, log)
+                return
+            
+            if len(pds) > 1:
+                txt = "Query return %d rows when configured in SINGLE fetch mode, %s" % (len(pds), processedSql)
+                handleExpectedGatewayError(chartScope, stepName, txt, log)
+                return
+            
+            ds = system.dataset.toDataSet(pds)
+            columnNames = ds.getColumnNames()
+            print "The columns are: ", columnNames
+            
             if keyMode == STATIC:
-                val = system.db.runScalarQuery(processedSql, database)
-                log.tracef("   Fetched value: %s", str(val))
+                key = getStepProperty(stepProperties, KEY)
+                attr = columnNames[0]
+                print "The static key is %s" % (key)
+            else:
+                key = ds.getValueAt(0, 0)
+                attr = columnNames[1]
+                print "The dynamic key is: %s" % (str(key))
+
+            ''' I need an attribute, even if we are returning multiple values, in order to call dataEists. '''
+            keyAndAttr = key + "." + attr
+
+            recordExists = s88DataExists(chartScope, stepScope, keyAndAttr, recipeLocation)
+            if not(recordExists) and resultsMode == UPDATE:
+                txt = "The recipe data with key <%s> does not exist at scope: %s for a static simple query" % (keyAndAttr, recipeLocation)
+                handleExpectedGatewayError(chartScope, stepName, txt, log)
+                return
             
-                recordExists = s88DataExists(chartScope, stepScope, key, recipeLocation)
-                if not(recordExists) and resultsMode == UPDATE:
-                    log.errorf("ERROR: The recipe data with key <%s> does not exist at scope: %s for a static simple query", key, recipeLocation)
-                    handleExpectedGatewayError(chartScope, stepName, "Error executing a Simple Query step, Fetch mode: <%s>, Key mode: <%s>. Key <%s.%s> does not exist" % (fetchMode, keyMode, recipeLocation, key), log)
-                    return
-                if not(recordExists) and resultsMode == UPDATE_OR_CREATE:
-                    print "Create it"
-                    
-                s88Set(chartScope, stepScope, key, val, recipeLocation)
+            if not(recordExists) and resultsMode == UPDATE_OR_CREATE:
+                print "**** Create a Recipe data guy ***"
+                stepUUID, stepName, crap = s88GetStep(chartScope, stepScope, recipeLocation, "foo.value")
+                stepId = getStepIdFromUUID(stepUUID, database)
+                recipeDataId = createDynamicRecipe(stepId, classToCreate, key, database)
+                print "Created new recipe data with id: ", recipeDataId
             
+#                log.tracef("   Fetched value: %s", str(val))
+            i = 0
+            for columnName in columnNames: 
+                val = ds.getValueAt(0, i)
+                print "%s: %s" % (columnName, val)
+                
+                if keyMode == DYNAMIC and i == 0:
+                    log.tracef("...skipping the key...")
+                else:    
+                    keyAndAttr = key + "." + columnName
+                    print "keyAndAttr: ", keyAndAttr
+                    s88Set(chartScope, stepScope, keyAndAttr, val, recipeLocation)
+                
+                i = i + 1
+                
+
+                
+            
+            
+            '''
             elif keyMode == DYNAMIC:
-                pds = system.db.runQuery(processedSql, database)
+                pds = system..runQuery(processedSql, database)
                 if len(pds) == 0:
                     log.errorf("ERROR: The static record with key <%s> does not exist at scope: %s", key, recipeLocation)
                     handleExpectedGatewayError(chartScope, stepName, "Error executing a Simple Query step, Fetch mode: <%s>, Key mode: <%s>. Key <%s.%s> does not exist" % (fetchMode, keyMode, recipeLocation, key), log)
@@ -83,58 +130,74 @@ def activate(scopeContext, stepProperties, state):
                     s88Set(chartScope, stepScope, key, val, recipeLocation)
                 elif resultsMode == UPDATE_OR_CREATE:
                     print "CRAP"
+            
 
             else:
                 handleExpectedGatewayError(chartScope, stepName, "Error executing a Simple Query step, Fetch mode: <%s>, Key mode: <%s>. Illegal key mode" % (fetchMode, keyMode), log)
                 return
+            '''
         else:
-            
-            pds = system.db.runQuery(processedSql, database) 
-            if len(pds) == 0:
-                log.error('No rows returned for query %s', processedSql)
+            ''' MULTIPLE RECORDS '''
+            if keyMode == STATIC:
+                txt = "Invalid step configuration!  A query that returns multiple rows MUST specify a dynamic key!"
+                handleExpectedGatewayError(chartScope, stepName, txt, log)
                 return
-            log.tracef("...returned %d rows", len(pds))
-            simpleQueryProcessRows(scopeContext, stepProperties, pds)
+                
+            pds = system.db.runQuery(processedSql, database)
+            log.infof("%s returned %d records", processedSql, len(pds))
+            
+            if len(pds) == 0:
+                log.warnf("A Query that was defined to return multiple rows did not return any, this may or may not be an error! %s" % (processedSql))
+                return
+
+            ds = system.dataset.toDataSet(pds)
+            columnNames = ds.getColumnNames()
+            print "The columns are: ", columnNames
+            
+            
+            for row in range(ds.getRowCount()):
+                print "----------------------------"
+                print "Handling record #%d" % (row)
+                key = ds.getValueAt(row, 0)
+                print "Raw Key: ", key
+                key = string.replace(key, ".", "_")
+                print "Modified Key: ", key
+                attr = columnNames[1]
+                print "The dynamic key is: %s" % (str(key))
+
+                ''' I need an attribute, even if we are returning multiple values, in order to call dataEists. '''
+                keyAndAttr = key + "." + attr
+    
+                recordExists = s88DataExists(chartScope, stepScope, keyAndAttr, recipeLocation)
+                if not(recordExists) and resultsMode == UPDATE:
+                    txt = "The recipe data with key <%s> does not exist at scope: <%s> for a static simple query" % (keyAndAttr, recipeLocation)
+                    handleExpectedGatewayError(chartScope, stepName, txt, log)
+                    return
+                
+                if not(recordExists) and resultsMode == UPDATE_OR_CREATE:
+                    print "**** Create a Recipe data guy ***"
+                    stepUUID, stepName, crap = s88GetStep(chartScope, stepScope, recipeLocation, "foo.value")
+                    stepId = getStepIdFromUUID(stepUUID, database)
+                    recipeDataId = createDynamicRecipe(stepId, classToCreate, key, database)
+                    print "Created new recipe data with id: ", recipeDataId
+            
+#                log.tracef("   Fetched value: %s", str(val))
+                i = 0
+                for columnName in columnNames: 
+                    val = ds.getValueAt(row, i)
+                    print "%s: %s" % (columnName, val)
+                    keyAndAttr = key + "." + columnName
+                    print "Setting keyAndAttr: %s to %s" % (keyAndAttr, str(val))
+                    s88Set(chartScope, stepScope, keyAndAttr, val, recipeLocation)
+                    
+                    i = i + 1
+            
+
     except:
         print "**** CAUGHT AN UNEXPECTED ERROR ****"
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in simpleQuery.py', log)
     finally:
         return True
     
-def simpleQueryProcessRows(scopeContext, stepProperties, pds):
-    chartScope = scopeContext.getChartScope()
-    stepScope = scopeContext.getStepScope()
-    resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
+
     
-    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
-    key = getStepProperty(stepProperties, KEY) 
-    create = (resultsMode == UPDATE_OR_CREATE)
-
-    if keyMode == STATIC: # TODO: fetchMode must be SINGLE
-        for rowNum in range(pds.rowCount):
-            transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, pds, rowNum, create)
-    elif keyMode == DYNAMIC:
-        for rowNum in range(pds.rowCount):
-            dynamicKey = pds.getValueAt(rowNum,key)
-            transferSimpleQueryData(chartScope, stepScope, dynamicKey, recipeLocation, pds, rowNum, create)
-
-def transferSimpleQueryData(chartScope, stepScope, key, recipeLocation, dbRows, rowNum, create ):
-    from system.ils.sfc import s88GetScope, s88ScopeChanged
-    from system.util import jsonEncode
-    if create:
-        recipeScope = s88GetScope(chartScope, stepScope, recipeLocation)
-        # create a structure like a deserialized Structure recipe data object
-        structData = dict()
-        recipeScope[key] = structData
-        structData['class'] = 'Structure'
-        structData['key'] = key
-        valueData = dict()
-        copyRowToDict(dbRows, rowNum, valueData, create)
-        jsonValue = jsonEncode(valueData)
-        # print 'key', key, 'jsonValue', jsonValue
-        structData['value'] = jsonValue
-        s88ScopeChanged(chartScope, recipeScope)     
-    else:
-        recipeData = s88Get(chartScope, stepScope, key, recipeLocation)
-        copyRowToDict(dbRows, rowNum, recipeData, create)

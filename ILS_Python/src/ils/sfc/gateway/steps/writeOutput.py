@@ -77,13 +77,13 @@ def activate(scopeContext, stepProperties, state):
             recipeDataScope = getStepProperty(stepProperties, RECIPE_LOCATION)
 
             if recipeDataScope == REFERENCE_SCOPE: 
-                print "The key for this row is: ", row.key
-                print "chartScope: ", str(chartScope)
+                logger.tracef("The key for this row is: %s", row.key)
+                logger.tracef("chartScope: %s", str(chartScope))
                 
                 # These didn't work
                 #scopeAndKey = chartScope[row.key]
                 scopeAndKey = chartScope.get(row.key)
-                print "The de-referenced key is: ", scopeAndKey
+                logger.tracef("The de-referenced key is: %s", scopeAndKey)
                 
                 scope = scopeAndKey[0:scopeAndKey.find(".")]
                 key = scopeAndKey[scopeAndKey.find(".")+1:]
@@ -155,6 +155,7 @@ def activate(scopeContext, stepProperties, state):
             writeComplete = True
             writeConfirmComplete = True
         if timerNeeded:
+            logger.tracef("Getting the recipeDataId for the timer...")
             timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
             timerKey = getStepProperty(stepProperties, TIMER_KEY)
             timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)

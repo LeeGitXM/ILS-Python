@@ -10,10 +10,10 @@ from ils.sfc.common.util import isEmpty
 from ils.common.cast import isFloat, isInteger
 from ils.sfc.gateway.api import getStepId, registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
     getStepProperty, logStepDeactivated, dbStringForFloat, getTopChartRunId, getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88SetWithUnits, s88GetWithUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88SetWithUnits, s88GetWithUnits, getRecipeByReference, substituteScopeReferences
 from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, \
     AUTO_MODE, AUTOMATIC, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, WINDOW_HEADER, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
-    DEACTIVATED, CANCELLED, IS_SFC_WINDOW, WINDOW_PATH, NAME, TARGET_STEP_UUID, KEY
+    DEACTIVATED, CANCELLED, IS_SFC_WINDOW, WINDOW_PATH, NAME, TARGET_STEP_UUID, KEY, REFERENCE_SCOPE
 from ils.common.util import escapeSqlQuotes
 
 def activate(scopeContext, stepProperties, state):    
@@ -63,12 +63,21 @@ def activate(scopeContext, stepProperties, state):
                 buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
                 if isEmpty(buttonLabel):
                     buttonLabel = 'Enter Data'
+                else:
+                    buttonLabel = substituteScopeReferences(chartScope, stepScope, buttonLabel)
+                    buttonLabel = escapeSqlQuotes(buttonLabel)
 
                 position = getStepProperty(stepProperties, POSITION) 
                 scale = getStepProperty(stepProperties, SCALE) 
+                
                 title = getStepProperty(stepProperties, WINDOW_TITLE)
+                title = substituteScopeReferences(chartScope, stepScope, title)
+                title = escapeSqlQuotes(title)
+                
                 header = getStepProperty(stepProperties, WINDOW_HEADER)
+                header = substituteScopeReferences(chartScope, stepScope, header)
                 header = escapeSqlQuotes(header)
+                
                 logger.tracef("...registering window %s at %s scaled by %s", windowPath, position, str(scale)) 
                 windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
                 
@@ -82,6 +91,8 @@ def activate(scopeContext, stepProperties, state):
                 rowNum = 0
                 for row in config.rows:
                     prompt = row.prompt
+                    
+                    
                     if prompt in [None, "None"]:
                         prompt = ""
                         units = ""
@@ -96,15 +107,16 @@ def activate(scopeContext, stepProperties, state):
                         destination = row.destination
                         key = row.key
                         
+                        
                         '''
                         If the engineer wants the default value to be blank, then they either need to type None into the default value field
                         or clear out the tag or recipe data.
                         '''
-                        if row.defaultValue in ["None"]:
+                        if row.defaultValue in ["None", None]:
                             logger.tracef("   ...using <None> as the default value... ")
                             defaultValue = ""
                         
-                        elif str(row.defaultValue).strip() == "" or row.defaultValue == None:
+                        elif str(row.defaultValue).strip() == "":
                             logger.tracef("...reading the current value from destination: %s", row.destination)
                             if string.upper(row.destination) == "TAG":
                                 tagPath = "[%s]%s" % (provider, row.key)
@@ -143,6 +155,14 @@ def activate(scopeContext, stepProperties, state):
                         
                         if row.destination == None or string.upper(row.destination) == "TAG":
                             targetStepUUID = ''
+                        elif row.destination == REFERENCE_SCOPE:
+                            '''
+                            If the destination is reference then we need to dereference it now and store the action scope and key in the 
+                            database record that will be used by the client.
+                            '''
+                            destination, key = getRecipeByReference(chartScope, key)
+                            print "The dereferenced scope and key are %s - %s" % (destination, key)
+                            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, destination, key)
                         else:
                             targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, row.destination, key)
                             

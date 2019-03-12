@@ -156,6 +156,30 @@ def recipeDataExists(stepUUID, folder, key, attribute, db):
     logger.tracef("...it does not exist!")
     return False
 
+def recipeDataExistsForStepId(stepID, folderID, key, db):
+    logger.tracef("Checking if %s.%s from %s exists...", folderID, key, stepID)
+    
+    '''
+    I can't use the handy utility getRecieDataId() which does all of this work because it logs an error and throws an exception if the 
+    recipe data doesn't exist.  The whole point of this is do a test to see if it exists ao that an error can be avoided!
+    '''
+    
+    if folderID < 0:
+        SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
+            " from SfcRecipeDataView where stepID = %s and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (str(stepID), key) 
+    else:        
+        SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
+            " from SfcRecipeDataView where stepUUID = %s and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (str(stepID), key, str(folderID)) 
+
+    pds = system.db.runQuery(SQL, db)
+    
+    if len(pds) == 1:
+        logger.tracef("...it exists!")
+        return True
+    
+    logger.tracef("...it does not exist!")
+    return False
+
 def getRecipeDataId(stepUUID, keyOriginal, db):
     logger.tracef("Fetching recipe data id for %s - %s", stepUUID, keyOriginal)
     
@@ -660,7 +684,12 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
         SQL = "update SfcRecipeDataRecipe set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d simple value recipe data records', rows)
-            
+    
+    elif recipeDataType == SQC:
+        SQL = "update SfcRecipeDataSQC set %s = %s where recipeDataId = %s" % (attribute, str(val), recipeDataId)
+        rows = system.db.runUpdateQuery(SQL, db)
+        logger.tracef('...updated %d SQC recipe data records', rows)
+        
     elif recipeDataType == INPUT:
         if attribute in ['TAG', 'ERRORCODE', 'ERRORTEXT', 'PVMONITORSTATUS']:
             SQL = "update SfcRecipeDataInput set %s = '%s' where recipeDataId = %s" % (attribute, str(val), recipeDataId)
@@ -977,6 +1006,11 @@ def getStepUUID(stepProperties):
 
 def getStepName(stepProperties):
     return stepProperties.get(STEP_NAME, "")
+
+def getStepIdFromUUID(stepUUID, db):
+    SQL = "select stepId from SfcStep where stepUUID = '%s'" % (stepUUID) 
+    stepId = system.db.runScalarQuery(SQL, db)
+    return stepId
 
 # This handles a simple "key.attribute" notation, but does not handle folder reference or arrays
 def splitKey(keyAndAttribute):
