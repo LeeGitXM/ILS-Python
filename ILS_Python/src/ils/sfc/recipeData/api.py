@@ -151,7 +151,7 @@ def s88GetFromName(chartPath, stepName, keyAndAttribute, db):
 # Return the UUID of the step  
 def s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute):
     scope = scope.lower()
-    logger.tracef("Getting target step for scope %s...", scope)
+    logger.tracef("Getting target step for scope: %s, key: %s...", scope, keyAndAttribute)
     
     ''' If the scope is reference, then analyze the keyAndAttribute, which should be a chart skope variable '''
     if scope == REFERENCE_SCOPE:
@@ -348,6 +348,10 @@ def s88GetRecipeDataId(chartProperties, stepProperties, key, scope):
     scope = scope.lower()
     db = getDatabaseName(chartProperties)
     logger.tracef("Getting step for scope <%s>...", scope)
+    
+    # Added 3/9/19
+    if scope == REFERENCE_SCOPE:
+        scope, key = getRecipeByReference(chartProperties, key)
     
     ''' I don't care about the attribute, but I need one to use splitKey, so add one and throw it away '''
     folder,key,attribute = splitKey(key + ".value")

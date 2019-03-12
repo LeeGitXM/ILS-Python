@@ -4,7 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system
+import system, string
 from __builtin__ import str
 
 def toDateTime(txt):
@@ -74,3 +74,22 @@ def jsonToDict(json):
     dict=ast.literal_eval(str(json))
 #    dict=eval(str(json))
     return dict
+
+
+def determineType(val):
+    '''
+    If they supplied the value None then make a completely arbitrary decision to create a Float.
+    '''
+    if val == None:
+        return "Float", 0.0
+    
+    if val in [True, 'TRUE', 'True', 'true']:
+        return "Boolean", True
+    elif val in [False, 'FALSE', 'False', 'false']:
+        return "Boolean", False
+    elif isInteger(val):
+        return "Integer", int(val)
+    elif isFloat(val):
+        return "Float", float(val)
+    
+    return "String", val

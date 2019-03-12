@@ -832,6 +832,38 @@ def deleteRecipeData(recipeDataType, recipeDataId, db):
     for valueId in valueIds:
         SQL = "delete from SfcRecipeDataValue where ValueId = %d" % (valueId)
         system.db.runUpdateQuery(SQL, db)
+
+
+
+
+
+
+def editCallbackForDoubleClick(event):
+    editCallback(event)
+    
+    '''
+    db = getDatabaseClient()
+    container = event.source.parent
+    tree = container.getComponent("Tree View")
+    path = tree.selectedPath
+    
+    log.infof("In %s.editCallbackForDoubleClick() - The path is: %s", __name__, path)
+    
+    stepTable = container.parent.getComponent("Step Container").getComponent("Steps")
+    selectedRow = stepTable.selectedRow
+    log.infof("The selected row is: %s", str(selectedRow))
+    stepDs = stepTable.data
+    stepId = stepDs.getValueAt(selectedRow,"StepId")
+    log.infof("The step id is: %s", str(stepId))
+    
+    recipeDataKey, recipeDataType, recipeDataId = fetchRecipeInfo(stepId, path, db)
+    recipeDataFolderId = -1
+    
+    log.infof("The recipe data id is: %s", str(recipeDataId))
+    window = system.nav.openWindowInstance('SFC/RecipeDataEditor', {'stepId':stepId, 'recipeDataType':recipeDataType, 'recipeDataId':recipeDataId, 'recipeDataKey':recipeDataKey, "recipeDataFolderId":recipeDataFolderId})
+    system.nav.centerWindow(window)
+    '''
+
             
 def editCallback(event):
     db = getDatabaseClient()

@@ -7,7 +7,7 @@ Created on Feb 1, 2017
 import system, string
 from ils.common.cast import toBit
 from ils.common.error import catchError, notifyError
-from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
+from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId, recipeDataExists, recipeDataExistsForStepId
 from ils.common.config import getDatabaseClient
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
@@ -877,9 +877,63 @@ def addUnselectionChoice(combo):
     ds = combo.data
     ds = system.dataset.addRow(ds, 0, [-1, "<Select One>"])
     combo.data = ds
+    
+def validateKey(source):
+    ''' 
+    This is called from the focusLost handler.  
+    Source is the key text field.
+    Key validation is:
+        1) there aren't any periods
+        2) isn't NULL
+        3) is unique
+    '''
+    
+    db = getDatabaseClient()
+    key = source.text
+    
+    ''' Validate for an empty key '''
+    if key == "":
+        system.gui.warningBox("Warning: you must specify a key")
+        return False
+    
+    ''' Validate that the key does not contain periods '''
+    if key.find(".") >= 0:
+        system.gui.warningBox("Warning: the key cannot contain periods")
+        return False
+    
+    ''' Validate that a key for a new recipe entity is unique. '''
+    rootContainer = source.parent
+    stepId = rootContainer.stepId
+    folderId = rootContainer.recipeDataFolderId
+    recipeDataId = rootContainer.recipeDataId
+    if recipeDataId < 0:
+        print "Validate key uniqueness for a new recipe data entity"
+        if (recipeDataExistsForStepId(stepId, folderId, key, db)):
+            system.gui.warningBox("Warning: the key already exists, keys must be unique!")
+            return False
+    
+    ''' Validate that the key is unique when the key is being changed '''
+    if recipeDataId > 0:
+        oldKey = getKeyForId(recipeDataId, db)
+        if oldKey != key:
+            print "Validate uniqueness of a renamed KEY"
+            if (recipeDataExistsForStepId(stepId, folderId, key, db)):
+                system.gui.warningBox("Warning: the key already exists, keys must be unique!")
+                return False
+    
+    return True 
 
-def saveGroup(rootContainer):
+def getKeyForId(recipeDataId, db):
+    key = system.db.runScalarQuery("select RecipeDataKey from SfcRecipeData where RecipeDataId = %s" % (str(recipeDataId)), db)
+    return key
+
+def saveGroup(event):
     print "Saving a group"
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -915,13 +969,20 @@ def saveGroup(rootContainer):
     except:
         notifyError("ils.sfc.recipeData.visionEditor.saveGroup", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
-        system.db.closeTransaction(tx) 
+        system.db.closeTransaction(tx)
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
 
-def saveSimpleValue(rootContainer):
+def saveSimpleValue(event):
     print "Saving a simple value"
+
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -998,12 +1059,19 @@ def saveSimpleValue(rootContainer):
     except:
         catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
-        system.db.closeTransaction(tx) 
+        system.db.closeTransaction(tx)
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
-def saveInput(rootContainer):
+def saveInput(event):
     print "Saving an Input"
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1060,12 +1128,19 @@ def saveInput(rootContainer):
         catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
 
-def saveOutput(rootContainer):
+def saveOutput(event):
     print "Saving an Output"
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1160,13 +1235,20 @@ def saveOutput(rootContainer):
     except:
         catchError("ils.sfc.recipeData.visionEditor.saveOutput", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
-        system.db.closeTransaction(tx) 
+        system.db.closeTransaction(tx)
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
 
-def saveOutputRamp(rootContainer):
+def saveOutputRamp(event):
     print "Saving an Output Ramp"
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1274,12 +1356,19 @@ def saveOutputRamp(rootContainer):
         catchError("ils.sfc.recipeData.visionEditor.saveOutputRamp", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
 
-def saveTimerValue(rootContainer):
+def saveTimerValue(event):
     print "Saving a timer value"
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1323,12 +1412,19 @@ def saveTimerValue(rootContainer):
     except:
         catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
-        system.db.closeTransaction(tx) 
+        system.db.closeTransaction(tx)
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
-def saveSqcValue(rootContainer):
+def saveSqcValue(event):
     print "Saving a SQC value"
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1373,13 +1469,20 @@ def saveSqcValue(rootContainer):
     except:
         catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
-        system.db.closeTransaction(tx) 
+        system.db.closeTransaction(tx)
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
 
-def saveRecipe(rootContainer):
+def saveRecipe(event):
     print "Saving a recipe"
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1435,15 +1538,22 @@ def saveRecipe(rootContainer):
     except:
         catchError("ils.sfc.recipeData.visionEditor.saveRecipe", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
-        system.db.closeTransaction(tx) 
+        system.db.closeTransaction(tx)
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
 '''
 This code is shared between an array and a Keyed array, there are seperate containers on the window.
 '''
-def saveArray(rootContainer):
+def saveArray(event):
     print "Saving an array...."
+    
+    rootContainer = event.source.parent.parent
+    
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1532,12 +1642,19 @@ def saveArray(rootContainer):
     except:
         catchError("ils.sfc.recipeData.visionEditor.saveArray", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
-        system.db.closeTransaction(tx) 
+        system.db.closeTransaction(tx)
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
-def saveMatrix(rootContainer):
+def saveMatrix(event):
     print "Saving an matrix...."
+    
+    rootContainer = event.source.parent.parent
+
+    if not(validateKey(rootContainer.getComponent("Key"))):
+        return
 
     db = getDatabaseClient()
     recipeDataId = rootContainer.recipeDataId
@@ -1643,8 +1760,10 @@ def saveMatrix(rootContainer):
         catchError("ils.sfc.recipeData.visionEditor.saveMatrix", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
+        return
     
     print "Done!"
+    closeAndOpenBrowser(event)
 
 def updateRecipeDataValue(valueId, valueType, val, tx):
     if valueType == "Float":
@@ -1670,3 +1789,7 @@ def insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, f
     print SQL
     recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
     return recipeDataId
+
+def closeAndOpenBrowser(event):
+    system.nav.openWindow("SFC/SfcHierarchyWithRecipeBrowser")
+    system.nav.closeParentWindow(event)
