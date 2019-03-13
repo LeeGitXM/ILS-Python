@@ -15,25 +15,20 @@ from ils.sfc.recipeData.createApi import createDynamicRecipe
 def activate(scopeContext, stepProperties, state):
     
     try: 
-        print "==============================================================="
-        print "ScopeContext: ", str(scopeContext)
         chartScope = scopeContext.getChartScope()
-        print "ChartScope: ", str(chartScope)
         stepScope = scopeContext.getStepScope()
-        print "StepScope: ", stepScope
-        print "Step Properties: ", stepProperties
         chartPath = getChartPath(chartScope)
         stepName = getStepProperty(stepProperties, STEP_NAME)
         log = getChartLogger(chartScope)
         log.tracef("In %s.activate(), with chart: %s, step: %s", __name__, chartPath, stepName)
         database = getDatabaseName(chartScope)
+        
         fetchMode = getStepProperty(stepProperties, FETCH_MODE) # SINGLE or MULTIPLE
         resultsMode = getStepProperty(stepProperties, RESULTS_MODE) # UPDATE or CREATE
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
         keyMode = getStepProperty(stepProperties, KEY_MODE) # STATIC or DYNAMIC
         classToCreate = getStepProperty(stepProperties, CLASS_TO_CREATE)
 
-        
         ''' Validate the configuration '''
         if not(resultsMode == UPDATE or resultsMode == UPDATE_OR_CREATE):
             txt = "ERROR: Illegal RESULTS mode: <%s>, legal values are %s or %s" % (resultsMode, UPDATE, UPDATE_OR_CREATE)

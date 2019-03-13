@@ -5,23 +5,37 @@ Created on Dec 17, 2015
 '''
 
 import system
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getStepProperty
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getStepProperty, getChartPath
 from ils.sfc.recipeData.api import s88Set
-from ils.sfc.common.constants import KEY, RECIPE_LOCATION, SQL
+from ils.sfc.common.constants import KEY_AND_ATTRIBUTE, RECIPE_LOCATION, SQL, STEP_NAME
+from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists, s88Get, s88Set, s88DataExists, s88GetStep
     
 def activate(scopeContext, stepProperties, state):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
-        chartLogger = getChartLogger(chartScope)
+        chartPath = getChartPath(chartScope)
+        stepName = getStepProperty(stepProperties, STEP_NAME)
+        log = getChartLogger(chartScope)
         database = getDatabaseName(chartScope)
+        recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+        keyAndAttribute = getStepProperty(stepProperties, KEY_AND_ATTRIBUTE)
+        
+        log.tracef("In %s.activate(), with chart: %s, step: %s", __name__, chartPath, stepName)
+        
         sql = getStepProperty(stepProperties, SQL) 
-        result = system.db.runQuery(sql, database) # returns a PyDataSet
-        jsonResult = system.util.jsonEncode(result)
-        recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-        key = getStepProperty(stepProperties, KEY) 
-        s88Set(chartScope, stepScope, key, jsonResult, recipeLocation)
+        processedSql = substituteScopeReferences(chartScope, stepScope, sql)
+        log.tracef("SQL: %s", processedSql)
+        
+        pds = system.db.runQuery(processedSql, database) # returns a PyDataSet
+        log.tracef("...query returned %d records...", len(pds))
+        
+        vals = []
+        for record in pds:
+            vals.append(record[0])
+
+        s88Set(chartScope, stepScope, keyAndAttribute, vals, recipeLocation)
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in rawQuery.py', chartLogger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in rawQuery.py', log)
     finally:
         return True
