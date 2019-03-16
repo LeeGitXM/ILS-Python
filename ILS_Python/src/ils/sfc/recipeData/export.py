@@ -6,65 +6,71 @@ Created on May 31, 2017
 
 import system, os
 from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy, getChildren
-from ils.sfc.recipeData.core import fetchChartPathFromChartId
 from ils.common.config import getDatabaseClient
-log=system.util.getLogger("com.ils.sfc.recipeBrowser")
+from ils.common.error import catchError, notifyError
+log=system.util.getLogger("com.ils.sfc.recipeBrowser.export")
 
 def exportCallback(event):
-    db = getDatabaseClient()
-    log.infof("In %s.exportCallback()...", __name__)
-    treeWidget = event.source.parent.getComponent("Tree View")
-    
-    # First get the last node in the path
-    chartPath = treeWidget.selectedPath
-    log.infof("The raw selected path is: <%s>", chartPath)
-    chartPath = chartPath[chartPath.rfind("/")+1:]
-    log.infof("The selected chart path is <%s>", chartPath)
-    
-    # Now replace " / " with "/"
-    chartPath = chartPath.replace(' \ ', '/')
-    log.infof("The selected chart path is <%s>", chartPath)
-    if chartPath == "" or chartPath == None:
-        return
-    
-    SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
-    chartId = system.db.runScalarQuery(SQL, db) 
-    log.infof("Fetched chart id: %s", str(chartId))
-    if chartId == None:
-        return
-    
-    rootContainer = event.source.parent.parent
-    folder = rootContainer.importExportFolder
-    filename = folder + "/recipeExport.xml"
-    filename = system.file.saveFile(filename, "xml", "name of xml export file")
-    if filename == None:
-        return
-    
-    folder = os.path.dirname(filename)
-    rootContainer.importExportFolder = folder
-    
-    sfcRecipeDataShowProductionOnly = False
-    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly, db)
-    log.tracef("Selected %d chart hierarchy records...", len(hierarchyPDS))
-    
-    chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", db)
-    log.tracef("Selected info for %d charts...", len(chartPDS))
-    
-    SQL = "Select * from SfcRecipeDataFolder"
-    folderPDS = system.db.runQuery(SQL, db)
-    
-    ''' Export any keys that are used by keyed arrays or matrices. '''
-    keyTxt = exportKeysForTree(chartId, hierarchyPDS, chartPDS, db)
-    
-    ''' Export the tree (Charts, steps, and recipe data) '''
-    txt, structureTxt = exportTree(chartId, hierarchyPDS, chartPDS, folderPDS, db)
-    
-    txt = "<data>\n" + keyTxt + txt + structureTxt + "</data>"
-    system.file.writeFile(filename, txt, False)
+    try:
+        db = getDatabaseClient()
+        log.infof("In %s.exportCallback()...", __name__)
+        treeWidget = event.source.parent.getComponent("Tree View")
+        
+        # First get the last node in the path
+        chartPath = treeWidget.selectedPath
+        log.tracef("The raw selected path is: <%s>", chartPath)
+        chartPath = chartPath[chartPath.rfind("/")+1:]
+        log.tracef("The selected chart path is <%s>", chartPath)
+        
+        # Now replace " / " with "/"
+        chartPath = chartPath.replace(' \ ', '/')
+        log.infof("The selected chart path is <%s>", chartPath)
+        if chartPath == "" or chartPath == None:
+            return
+        
+        SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
+        chartId = system.db.runScalarQuery(SQL, db) 
+        log.infof("...fetched chart id: %s", str(chartId))
+        if chartId == None:
+            return
+        
+        rootContainer = event.source.parent.parent
+        folder = rootContainer.importExportFolder
+        filename = folder + "/recipeExport.xml"
+        filename = system.file.saveFile(filename, "xml", "name of xml export file")
+        if filename == None:
+            return
+        
+        folder = os.path.dirname(filename)
+        rootContainer.importExportFolder = folder
+        
+        sfcRecipeDataShowProductionOnly = False
+        hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly, db)
+        log.tracef("Selected all %d chart hierarchy records...", len(hierarchyPDS))
+        
+        chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", db)
+        log.tracef("Selected info for all %d charts...", len(chartPDS))
+        
+        SQL = "Select * from SfcRecipeDataFolder"
+        folderPDS = system.db.runQuery(SQL, db)
+        
+        ''' Export any keys that are used by keyed arrays or matrices. '''
+        keyTxt = exportKeysForTree(chartId, hierarchyPDS, chartPDS, db)
+        
+        ''' Export the tree (Charts, steps, and recipe data) '''
+        txt, structureTxt = exportTree(chartId, chartPath, hierarchyPDS, chartPDS, folderPDS, db)
+        
+        txt = "<data>\n" + keyTxt + txt + structureTxt + "</data>"
+        system.file.writeFile(filename, txt, False)
+        system.gui.messageBox("Chart and recipe were successfully exported!")
+    except:
+        notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
 
 
 def exportKeysForTree(chartId, hierarchyPDS, chartPDS, db):
+    log.infof("=====================================")
     log.infof("Exporting keys for chart Id: %d", chartId)
+    log.infof("=====================================")
     
     chartIds = [chartId]
     newKids = True
@@ -114,6 +120,7 @@ def exportKeysForTree(chartId, hierarchyPDS, chartPDS, db):
 #        txt = txt + exportKeysForChart(chartId, db)
     log.tracef("The referenced keys are: %s", str(keys))
     
+    cnt = 0
     for key in keys:
         SQL = "select * from SfcRecipeDataKeyView where KeyId = %d order by KeyIndex" % (key)
         pds = system.db.runQuery(SQL, db)
@@ -123,9 +130,11 @@ def exportKeysForTree(chartId, hierarchyPDS, chartPDS, db):
                 txt = txt + "<key name='%s'>\n" % (record["KeyName"])
             txt = txt + "<element value='%s' index='%d'/>\n" % (record["KeyValue"], record["KeyIndex"])
             row = row + 1
+            cnt = cnt + 1
         txt = txt + "</key>\n"
     
     log.tracef("The key XML is: %s", txt)
+    log.infof("Exported %d array keys", cnt)
     return txt
 
 
@@ -136,8 +145,10 @@ def getChartPathFromPDS(chartId, chartPDS):
     return ""
 
 
-def exportTree(chartId, hierarchyPDS, chartPDS, folderPDS, db):
-    log.infof("Exporting chart Id: %d", chartId)
+def exportTree(chartId, chartPath, hierarchyPDS, chartPDS, folderPDS, db):
+    log.infof("===========================================================================")
+    log.infof("Exporting steps and recipe data for chart hierarchy rooted at %s (Id: %d)", chartPath, chartId)
+    log.infof("===========================================================================")
     
     chartIds = [chartId]
     parentChildList = []
@@ -152,12 +163,12 @@ def exportTree(chartId, hierarchyPDS, chartPDS, folderPDS, db):
                 newKids = True
                 chartIds = chartIds + newChildren
 
-    log.tracef("The chart ids are: %s", str(chartIds))
+    log.tracef("The chart ids that will be exported are: %s", str(chartIds))
     
     txt = ""
     
     for chartId in chartIds:
-        txt = txt + exportChart(chartId, folderPDS, db)
+        txt = txt + exportChart(chartId, folderPDS, chartPDS, db)
     
     hierarchyXML = ""
     for record in parentChildList:
@@ -176,7 +187,7 @@ def fetchChildren(chartId, visitedCharts, parentChildList, hierarchyPDS, chartPD
     log.tracef("Getting the children of chart: %s", str(chartId))
     for record in hierarchyPDS:
         if record["ChartId"] == chartId and record["ChildChartId"] not in children:
-            d = {"parent":record["ChartId"], "child": record["ChildChartId"], "stepName": record["StepName"]}
+            d = {"parent":record["ChartId"], "child": record["ChildChartId"], "stepName": record["StepName"], "parentChartPath": record["ChartPath"], "childChartPath": record["ChildChartPath"]}
             if d not in parentChildList:
                 parentChildList.append(d)
             children.append(record["ChildChartId"])
@@ -191,12 +202,12 @@ def fetchChildren(chartId, visitedCharts, parentChildList, hierarchyPDS, chartPD
     return newChildren, parentChildList
 
 
-def exportChart(chartId, folderPDS, db):
-    log.infof("Exporting chart %s", str(chartId))
+def exportChart(chartId, folderPDS, chartPDS, db):
+    chartPath = findChartPathFromId(chartPDS, chartId)
+    log.infof("Exporting chart %s (%s)", chartPath, str(chartId))
     
-    stepTxt = exportChartSteps(chartId, folderPDS, db)
+    stepTxt = exportChartSteps(chartId, chartPath, folderPDS, db)
     
-    chartPath = fetchChartPathFromChartId(chartId)
     txt = "<chart chartId=\"%d\" chartPath=\"%s\" >\n" % (chartId, chartPath)
     txt = txt + stepTxt
     txt = txt + "</chart>\n\n"
@@ -204,8 +215,8 @@ def exportChart(chartId, folderPDS, db):
     return txt
 
 
-def exportChartSteps(chartId, folderPDS, db):
-    log.infof("Exporting chart steps for chart %s", str(chartId))
+def exportChartSteps(chartId, chartPath, folderPDS, db):
+    log.infof("...exporting chart steps...")
     
     SQL = "select stepId, stepName, stepUUID, stepType from SfcStepView where chartId = %d" % (chartId)
     pds = system.db.runQuery(SQL, db)
@@ -214,16 +225,17 @@ def exportChartSteps(chartId, folderPDS, db):
     
     for record in pds:
         stepId = record["stepId"]
-        recipeFolderTxt = exportRecipeDataFoldersForStep(stepId, db)
-        recipeDataTxt = exportRecipeDataForStep(stepId, folderPDS, db)
+        stepName = record["stepName"]
+        recipeFolderTxt = exportRecipeDataFoldersForStep(stepId, stepName, db)
+        recipeDataTxt = exportRecipeDataForStep(stepId, stepName, folderPDS, db)
         stepTxt = stepTxt + "<step stepName='%s' stepType='%s' stepUUID='%s' >\n" % (record["stepName"], record["stepType"], record["stepUUID"])
         stepTxt = stepTxt + recipeFolderTxt + recipeDataTxt
         stepTxt = stepTxt + "</step>\n\n"
     
     return stepTxt
 
-def exportRecipeDataFoldersForStep(stepId, db):
-    log.infof("Exporting recipe data folders for step %s", str(stepId))
+def exportRecipeDataFoldersForStep(stepId, stepName, db):
+    log.infof("   ...exporting recipe data folders for step %s - %s", stepName, str(stepId))
     txt = ""
 
     SQL = "Select RecipeDataKey, RecipeDataFolderId, ParentRecipeDataFolderId, Description, Label from SfcRecipeDataFolder where stepId = %d" % (stepId)
@@ -235,27 +247,29 @@ def exportRecipeDataFoldersForStep(stepId, db):
 
     return txt
 
-def exportRecipeDataForStep(stepId, folderPDS, db):
-    log.infof("Exporting recipe data for step %s", str(stepId))
+def exportRecipeDataForStep(stepId, stepName, folderPDS, db):
+    log.infof("   ...exporting recipe data for step %s - %s", stepName, str(stepId))
     
     def fetchFirstRecord(SQL, db):
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         return record
     
-    SQL = "select recipeDataId, recipeDataKey, recipeDataType, label, description, units, recipeDataFolderId from SfcRecipeDataView where stepId = %d" % (stepId)
+    SQL = "select chartPath, stepName, recipeDataId, recipeDataKey, recipeDataType, label, description, units, recipeDataFolderId from SfcRecipeDataView where stepId = %d" % (stepId)
     pds = system.db.runQuery(SQL, db)
     
     recipeDataTxt = ""
     
     for record in pds:
+        chartPath = record["chartPath"]
+        stepName = record["stepName"]
         recipeDataId = record["recipeDataId"]
         recipeDataType = record["recipeDataType"]
         recipeDataKey = record["recipeDataKey"]
         folderId = record["recipeDataFolderId"]
         
         parentFolder = findParent(folderPDS, folderId)
-        log.tracef("Found recipe data %s - %s ", recipeDataKey, recipeDataType)
+        log.infof("      ...processing recipe data %s - %s - %d (%s - %s)", recipeDataKey, recipeDataType, recipeDataId, chartPath, stepName)
         
         baseTxt = "<recipe recipeDataKey='%s' recipeDataType='%s' label='%s' description='%s' units='%s' parent='%s'" % \
             (recipeDataKey, recipeDataType, record["label"], record["description"], record["units"], parentFolder)
@@ -402,25 +416,38 @@ def exportRecipeDataForStep(stepId, folderPDS, db):
 #recipeDataTxt = recipeDataTxt + "</recipe>\n\n"
     return recipeDataTxt
 
-'''
-Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
-'''
+
 def findParent(folderPDS, folderId):
+    '''
+    Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
+    '''
     if folderId == "":
         return ""
     
     log.tracef("------------------")
     path = ""
-    log.tracef("Finding the path for %d", folderId)
+    log.tracef("Finding the path for folder %d", folderId)
     
     while folderId != None:
         
         for record in folderPDS:
             if record["RecipeDataFolderId"] == folderId:
-                log.tracef("Found the parent")
+                log.tracef("...found the parent")
                 path = "%s/%s" % (record["RecipeDataKey"], path)
                 folderId = record["ParentRecipeDataFolderId"]
-                log.tracef("The new parent id is: %s", str(folderId))
+                log.tracef("...the new parent id is: %s", str(folderId))
 
     log.tracef("The path is: %s", path)
     return path
+
+def findChartPathFromId(chartPDS, chartId):
+    '''
+    Given a specific chart id, and a dataset of the every chart, find the chart path for a given id.
+    '''
+ 
+    for record in chartPDS:
+        if record["ChartId"] == chartId:
+            return record["ChartPath"]
+
+    log.errorf("Error in findChartPathFromId(), Unable to find chart id: %d in the chart dataset", chartId)
+    return "NOT FOUND"
