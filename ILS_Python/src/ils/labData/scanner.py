@@ -448,14 +448,26 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
 
     #----------------------------------------------------------------
     def checkForANewPHDLabValue(valueName, itemId, valueList, endDate):
+        myValueNames = ["GFLA9-CT-ATP", "GFLA9-CT-HALO", "GFLA9-CT-TOC-UU4CTWR"]
+        if valueName in myValueNames:
+            debug = True
+        else:
+            debug = False
+        
         phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
+        if debug:
+            phdLog.info("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
         
         if str(valueList.serviceResult) != 'Good':
             phdLog.error("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
+            if debug:
+                phdLog.info("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
             return False, -1, -1, valueList.serviceResult
         
         if valueList.size()==0:
             phdLog.trace("   -- no data found for %s --" % (itemId))
+            if debug:
+                phdLog.info("   -- no data found for %s --" % (itemId))
             return False, -1, -1, "NoDataFound"
         
         # There is something strange about SOME of the lab data at EM - for some of the lab data, the results include a 
@@ -479,6 +491,8 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         quality=qv.quality
         
         phdLog.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
+        if debug:
+            phdLog.info("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
         new = checkIfValueIsNew(valueName, rawValue, sampleTime, phdLog)
         return new, rawValue, sampleTime, ""
     #----------------------------------------------------------------
