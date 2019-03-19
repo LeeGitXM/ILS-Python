@@ -469,7 +469,7 @@ def getRecipeDataDescription(record, db):
                 else:
                     desc = "%s, Tag: %s, Type: %s, Timing: %s" % (desc, tag, outputType, str(timing))
                     
-                desc = getOutputValueDescriptionFromRecord(valueRecord, desc)
+                desc = getOutputValueDescriptionFromRecord(valueRecord, desc, "an output")
         
         elif recipeDataType == "Output Ramp":
             SQL = "select * from SfcRecipeDataOutputRampView where recipeDataId = %d" % (recipeDataId)
@@ -487,7 +487,7 @@ def getRecipeDataDescription(record, db):
                 else:
                     desc = "%s, Tag: %s, Type: %s, Timing: %s, Ramp Time: %s" % (desc, tag, outputType, str(timing), str(rampTime))
                     
-                desc = getOutputValueDescriptionFromRecord(valueRecord, desc)
+                desc = getOutputValueDescriptionFromRecord(valueRecord, desc, "an output ramp")
         
         elif recipeDataType == "Input":
             SQL = "select * from SfcRecipeDataInputView where recipeDataId = %d" % (recipeDataId)
@@ -656,7 +656,7 @@ def getValueDescriptionFromRecord(record, desc):
     return desc
 
 #
-def getOutputValueDescriptionFromRecord(record, desc):
+def getOutputValueDescriptionFromRecord(record, desc, recipeDesc):
     valueType = record["ValueType"]
     units = record["Units"]
     
@@ -674,10 +674,10 @@ def getOutputValueDescriptionFromRecord(record, desc):
             val = "False"
     
     if desc == "":
-        desc = "an output, %s" % (str(val))
+        desc = "%s, %s" % (recipeDesc, str(val))
     else:
-        desc = "an output, %s, %s" % (desc, str(val))
-    
+        desc = "%s, %s, %s" % (recipeDesc, desc, str(val))
+
     if units <> "" and units <> None:
         desc = "%s (%s)" % (desc, units)
 

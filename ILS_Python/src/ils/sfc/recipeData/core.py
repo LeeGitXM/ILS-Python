@@ -424,7 +424,6 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
                     SQL = "select indexKeyId from SfcRecipeDataArray where recipeDataId = %d" % (recipeDataId)
                     keyId = system.db.runScalarQuery(SQL, db)
                     arrayIndex = getIndexForKey(keyId, arrayIndex, db)
-                    print "Fetched array index: ", arrayIndex
                     
                 SQL = "select VALUETYPE, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
                     " from SfcRecipeDataArrayView A, SfcRecipeDataArrayElementView E where A.RecipeDataId = E.RecipeDataId "\
@@ -627,7 +626,7 @@ def setRecipeData(stepUUID, folder, key, attribute, val, db, units=""):
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    recipeDataId, recipeDataType, targetUnits = getRecipeDataId(stepUUID, folder + "." + key, db)    
+    recipeDataId, recipeDataType, targetUnits = getRecipeDataId(stepUUID, folder + "." + key, db)
     
     setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db)
 
