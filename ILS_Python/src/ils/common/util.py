@@ -399,6 +399,20 @@ def integralOverTime(historyTagProvider, tagProvider, tagPath, startDate, endDat
     
     return integral
 
+def timeStringToSeconds(timeString):
+    '''  Assumes a time string in the format: HH:MM:SS.sssss '''
+
+    txt = timeString[0:timeString.find(":")]
+    secs = int(txt) * 60 * 60
+    timeString = timeString[timeString.find(":")+1:] 
+    txt = timeString[0:timeString.find(":")]
+    secs = secs + int(txt) * 60
+    timeString = timeString[timeString.find(":")+1:] 
+    txt = timeString[0:timeString.find(".")]
+    secs = secs + int(txt)
+    
+    return secs
+
 '''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).
