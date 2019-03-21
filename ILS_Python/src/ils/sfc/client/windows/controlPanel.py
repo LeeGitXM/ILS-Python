@@ -19,6 +19,8 @@ immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SF
 
 sfcWindowPrefix = 'SFC/'
 
+log = system.util.getLogger("com.ils.sfc.client")
+
 def internalFrameOpened(event):
     print "In internalFrameOpened..."
     rootContainer = event.source.rootContainer
@@ -285,20 +287,22 @@ def findOpenControlPanel(controlPanelName):
     return None
 
 def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, position="CENTER"):
-    '''Open a control panel to run the given chart, starting the chart
-       if startImmediately is true. If no control panel is associated 
-       with the given chart, use the one with the given name (creating that
-       if it doesnt exist).
-       This method is useful for development where a "scratch"
-       control panel is used to run many different ad-hoc charts'''
+    '''
+    Open a control panel to run the given chart, starting the chart
+    if startImmediately is true. If no control panel is associated 
+    with the given chart, use the one with the given name (creating that
+    if it doesnt exist).
+    This method is useful for development where a "scratch"
+    control panel is used to run many different ad-hoc charts
+    '''
     # First, check for an existing panel associated with this chart:
     controlPanelId = getControlPanelIdForChartPath(chartPath)
-    print "In openDynamicControlPanel() - The id for chart %s is %s" % (chartPath, str(controlPanelId)) 
+    log.infof("In %s.openDynamicControlPanel() - The id for chart %s is %s", __name__, chartPath, str(controlPanelId)) 
 
     if controlPanelId == None:
         # next, check for an existing panel with the given name, creating if not found:
         controlPanelId = getControlPanelIdForName(controlPanelName)
-        print "The id for chart %s is %s" % (controlPanelName, str(controlPanelId))
+        print "The control panel id for chart %s is %s" % (controlPanelName, str(controlPanelId))
         if controlPanelId == None:
             print "Creating a control panel..."
             controlPanelId = createControlPanel(controlPanelName)
