@@ -96,5 +96,5 @@ def actionPerformed(event, response):
         responseKey = responseKey + ".value"
 
     folder,key,attribute = splitKey(responseKey)
-    setRecipeData(targetStepUUID, folder,key,attribute, response, db)
+    setRecipeData(targetStepUUID, folder, key, attribute, response, db)
     system.nav.closeParentWindow(event)

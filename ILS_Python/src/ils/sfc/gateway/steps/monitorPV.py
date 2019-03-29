@@ -184,6 +184,7 @@ def activate(scopeContext, stepProperties, state):
                         logger.tracef("...Tagpath: %s, Output Type: %s", tagPath, outputType)
                         
                         # I'm not sure why I need to put this into the configrow PAH 2/19/17
+                        logger.infof("get from id target id: %s target type: %s", targetRecipeDataId, targetRecipeDataType)
                         configRow.targetValue = s88GetFromId(targetRecipeDataId, targetRecipeDataType, 'OutputValue', database)
                         
                     elif targetType == VALUE:
