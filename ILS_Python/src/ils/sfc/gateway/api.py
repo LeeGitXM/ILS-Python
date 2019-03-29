@@ -199,8 +199,14 @@ def createFilepath(chartScope, stepProperties, includeExtension):
     else:
         timestamp = ""
     
-    filepath = filename + timestamp + extension
-    return directory, filepath
+    filename = filename + timestamp + extension
+    
+    if directory[len(directory)-1] in ["/", "\\"]:
+        filePath = directory + filename
+    else:
+        filePath = directory + "/" + filename
+
+    return directory, filename, filePath
 
 def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database):
     print "********************************************************************************"

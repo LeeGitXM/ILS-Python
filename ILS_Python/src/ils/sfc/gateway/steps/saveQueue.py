@@ -15,8 +15,7 @@ def activate(scopeContext, stepProperties, state):
         logger = getChartLogger(chartScope)
         currentMsgQueue = getCurrentMessageQueue(chartScope)
         database = getDatabaseName(chartScope)
-        path, filename = createFilepath(chartScope, stepProperties, False)
-        filePath = path + "/" + filename
+        path, filename, filePath = createFilepath(chartScope, stepProperties, False)
         logger.infof("Saving message queue <%s> to <%s>", currentMsgQueue, filePath)
         save(currentMsgQueue, True, filePath, database)
     except:

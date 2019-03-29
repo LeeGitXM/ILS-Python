@@ -95,8 +95,8 @@ def activate(scopeContext, stepProperties, state):
                 
                 for configRow in config.rows:
                     
-                    logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s - Deadtime: %s" % 
-                                 (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy, str(configRow.deadTime)))
+                    logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s - Deadtime: %s, Persistence: %s, tolerance: %s" % 
+                                 (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy, str(configRow.deadTime), str(configRow.persistence), str(configRow.tolerance)))
 
                     if recipeDataLocation == REFERENCE_SCOPE:
                         logger.trace("...dereferencing a config row for the value...")
@@ -222,7 +222,7 @@ def activate(scopeContext, stepProperties, state):
                 activationCallback = getStepProperty(stepProperties, ACTIVATION_CALLBACK)
                 print "The activation callback is: ", activationCallback
                 if activationCallback <> "":
-                    logger.tracef("Calling custom activationCallback: %s", ACTIVATION_CALLBACK)
+                    logger.tracef("Calling custom activationCallback: <%s>", activationCallback)
     
                     keys = ['scopeContext', 'stepProperties', 'config']
                     values = [scopeContext, stepProperties, config]
@@ -232,9 +232,9 @@ def activate(scopeContext, stepProperties, state):
                     except Exception, e:
                         try:
                             cause = e.getCause()
-                            errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, cause.getMessage())
+                            errMsg = "Error calling activation callback %s: %s" % (activationCallback, cause.getMessage())
                         except:
-                            errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, str(e))
+                            errMsg = "Error calling activation callback (2) %s: %s" % (activationCallback, str(e))
 
                         logger.errorf(errMsg)
 
@@ -304,7 +304,8 @@ def activate(scopeContext, stepProperties, state):
                         if configRow.status == PV_OK:
                             continue
                         
-                        logger.tracef('(%s) PV: %s, Target type: %s, Recipe Data Type: %s, Target: %s, Strategy: %s', stepName, configRow.pvKey, configRow.targetType, targetRecipeDataType, configRow.targetNameIdOrValue, configRow.strategy)
+                        logger.tracef('(%s) PV Key: %s, Target type: %s, Recipe Data Type: %s, Target: %s, Strategy: %s, Deadtime: %s, Persistence: %s, tolerance: %s', 
+                                stepName, configRow.pvKey, configRow.targetType, targetRecipeDataType, configRow.targetNameIdOrValue, configRow.strategy, str(configRow.deadTime), str(configRow.persistence), str(configRow.tolerance))
     
                         pvKey = configRow.pvKey
  

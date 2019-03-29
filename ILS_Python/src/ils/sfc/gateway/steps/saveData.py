@@ -33,7 +33,7 @@ def activate(scopeContext, stepProperties, state):
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         windowTitle = getStepProperty(stepProperties, WINDOW_TITLE)
         extension = getStepProperty(stepProperties, EXTENSION) 
-        path, filename = createFilepath(chartScope, stepProperties, False)
+        path, filename, filePath = createFilepath(chartScope, stepProperties, False)
 
         if path == "" or filename == "":
             logger.errorf("ERROR: SaveData step named <%S> on chart <%s> does not specify a directory and/or filename", stepName, chartPath)
@@ -50,6 +50,31 @@ def activate(scopeContext, stepProperties, state):
         printFile = getStepProperty(stepProperties, PRINT_FILE)
         print "Print: ", printFile
         
+        '''
+        Always save the report to a file
+        '''
+        try:
+            reportPath = "Recipe Data"
+            project = "XOM"
+            parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset, "Header": windowTitle}
+            action = "save"
+            
+            if string.upper(extension) in ["CSV", ".CSV"]:
+                format = "csv"
+            else:
+                format = "pdf"
+                
+            actionSettings = {"path": path, "fileName": filename, "format": format}
+            system.report.executeAndDistribute(path=reportPath, project=project, parameters=parameters, action=action, actionSettings=actionSettings)
+        except:
+            txt = "Error saving recipe data to: %s file: %s" % (path, filename)
+            logger.error(txt)
+            postToQueue(chartScope, QUEUE_ERROR, txt)
+        
+        
+        '''
+        Printing is optional
+        '''
         if printFile:
             logger.infof("generating a report...")
             try:
@@ -73,6 +98,9 @@ def activate(scopeContext, stepProperties, state):
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 
         print "View: ", viewFile
         
+        '''
+        Viewing is optional
+        '''
         if viewFile:
             logger.infof("Sending a message to clients to view th erecipe data report...")
             ''' Insert a window record into the database '''
