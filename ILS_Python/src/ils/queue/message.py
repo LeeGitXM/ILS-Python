@@ -214,7 +214,7 @@ def updateView(rootContainer, db=""):
     queueKey = rootContainer.key
     useCheckpoint = rootContainer.useCheckpoint
     
-    SQL = queueSQL(queueKey, useCheckpoint, "DESC")
+    SQL = queueSQL(queueKey, useCheckpoint, "DESC", db)
     pds = system.db.runQuery(SQL, db)
     table.data = pds
 
