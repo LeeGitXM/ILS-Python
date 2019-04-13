@@ -30,7 +30,7 @@ def newPostSelected(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    log.trace("In populateTablesForConsole")
+    log.trace("In %s.populateRepeater")
     selectedPost = rootContainer.selectedPost
     database=system.tag.read("[Client]Database").value
     log.tracef("The database is: %s", database)
