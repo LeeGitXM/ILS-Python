@@ -18,6 +18,12 @@ def deleteModel(key,modelId):
 def getExecutionCycles(key):
     return 42
 
+def getExecutionCycles2(key):
+    return 666
+
+def getCovarianceMatrix(key,modelId):
+    return []
+
 def getExecutionResults(key):
     return []
 
