@@ -63,13 +63,26 @@ def openWindow(payload):
         positionWindow(window, position, scale)
     else:
         print "Ignoring the request to show the window!"
+
+
+def closeWindow(payload):
+    '''
+    Unlike the openWindow causing of this message, I don't think I need to check the console.  This message goes to every client
+    and if the window is open then close it.  
+    '''
+    print "Closing:", payload
+    window = payload["window"]
         
-'''
-Determine if this client is the console.  There are two slightly different ways that we could do this.  I could look at the usernames or
-or I could look to see if the console window is open.  These are generally one in the same, but the latter approach makes it easier to test because
-all I need to do is open a console and then I am the operatoe.  It might also help an AE who wants to see what an operator sees.
-'''
+    print "Hiding window: ", window
+    system.nav.closeWindow(window)
+    
+
 def consoleMatch(consoleName):
+    '''
+    Determine if this client is the console.  There are two slightly different ways that we could do this.  I could look at the usernames or
+    or I could look to see if the console window is open.  These are generally one in the same, but the latter approach makes it easier to test because
+    all I need to do is open a console and then I am the operatoe.  It might also help an AE who wants to see what an operator sees.
+    '''
     if consoleName == "":
         return False
 

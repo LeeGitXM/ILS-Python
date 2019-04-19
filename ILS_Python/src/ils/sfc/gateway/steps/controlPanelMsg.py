@@ -29,12 +29,9 @@ def activate(scopeContext, stepProperties, state):
         
         if not waitingForReply:
             message = getStepProperty(stepProperties, MESSAGE)
-            logger.tracef("The untranslated message is <%s>...", message)
-            message = substituteScopeReferences(chartScope, stepScope, message)
-            logger.tracef("...the translated message is <%s>", message)
             ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
             priority = getStepProperty(stepProperties, PRIORITY)
-            msgId = addControlPanelMessage(chartScope, message, priority, ackRequired)
+            msgId = addControlPanelMessage(chartScope, stepProperties, message, priority, ackRequired)
             stepScope[MESSAGE_ID] = msgId
             postToQueue = getStepProperty(stepProperties, POST_TO_QUEUE)
             if postToQueue:

@@ -1319,3 +1319,59 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
     else:
         logger.errorf("Unsupported recipe data type: %s", recipeDataType)
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
+    
+'''
+************************************************************************************************************
+These are here to prevent a circular import problem for sfc.recipeData.api back into sfc.gateway.api
+************************************************************************************************************
+'''
+from ils.common.util import substituteProvider
+
+def getDatabaseName(chartProperties):
+    '''Get the name of the database this chart is using, taking isolation mode into account'''
+    isolationMode = getIsolationMode(chartProperties)
+    
+    ''' I added some strange looking Python to get this to work from the Test Framework. '''
+
+    if isolationMode:
+        IM = True
+    else:
+        IM = False
+    
+    ''' Leave this include here to avoid name clash '''
+    from system.ils.sfc import getDatabaseName as systemGetDatabaseName
+    db = systemGetDatabaseName(IM)
+    return db
+
+def getIsolationMode(chartProperties):
+    '''Returns true if the chart is running in isolation mode'''
+    from ils.sfc.common.constants import ISOLATION_MODE
+    topProperties = getTopLevelProperties(chartProperties)
+    return topProperties[ISOLATION_MODE]
+
+def getTopLevelProperties(chartProperties):
+#    print "------------------"
+#    print "In getTopLevelProperties..."
+    from ils.sfc.common.constants import PARENT
+#    print "Checking: ", chartProperties.get(PARENT, None)
+#    print "   level: ", chartProperties.get("s88Level", None)
+    while chartProperties.get(PARENT, None) != None:
+#        print chartProperties
+        chartProperties = chartProperties.get(PARENT)
+#        print "Checking: ", chartProperties.get(PARENT, None)
+#        print "   level: ", chartProperties.get("s88Level", None)
+#    print " --- returning --- "
+    return chartProperties
+
+def readTag(chartScope, tagPath):
+    '''  Read a tag substituting provider according to isolation mode.  '''
+    provider = getProviderName(chartScope)
+    fullPath = substituteProvider(tagPath, provider)
+    qv = system.tag.read(fullPath)
+    return qv.value
+
+def getProviderName(chartProperties):
+    '''Get the name of the tag provider for this chart, taking isolation mode into account'''
+    from system.ils.sfc import getProviderName, getIsolationMode
+    return getProviderName(getIsolationMode(chartProperties))
+

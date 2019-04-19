@@ -5,6 +5,7 @@ Created on Apr 8, 2016
 '''
 
 import system, string
+from ils.common.util import stripHTML
 LOGBOOK_DETAIL_MESSAGE_LENGTH = 2000
 
 def insert(logbook, message, database=""):
@@ -17,6 +18,7 @@ def insertForPost(post, message, database=""):
 
 def _insert(logbookId, message, database=""):
     # The length of the message is limited to 2000 characters
+    message=stripHTML(message)
     message=message[:LOGBOOK_DETAIL_MESSAGE_LENGTH - 2]
     SQL = "insert into TkLogbookDetail (LogbookId, Timestamp, Message) values (?, getdate(), ?)"
     system.db.runPrepUpdate(SQL, [logbookId, message], database)

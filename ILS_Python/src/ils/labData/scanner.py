@@ -211,7 +211,7 @@ def checkForDerivedValueTriggers(database):
 # calculation procedure had the responsibility to collect consistent lab data.  In the new framework, the engine will collect
 # all of the necessary information and then call the calculation method.
 def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
-    derivedLog.info("Checking the derived calculations...")
+    derivedLog.tracef("Checking the derived calculations...")
     
     cal = Calendar.getInstance()
     labDataWriteEnabled=system.tag.read("[" + tagProvider + "]" + "Configuration/LabData/labDataWriteEnabled").value
@@ -382,7 +382,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         
         return new
         
-    dcsLog.info("Checking for new DCS Lab values ... ")    
+    dcsLog.tracef("Checking for new DCS Lab values ... ")    
     
     SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds "\
         "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, LtOpcInterface OPC "\
@@ -419,7 +419,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
             # we'll fill the queue with errors, yet log.error isn't seen by anyone...
             dcsLog.warn("...skipping %s because its quality is %s" % (valueName, qv.quality))
 
-    dcsLog.info("...done checking for new DCS Lab values!")
+    dcsLog.tracef("...done checking for new DCS Lab values!")
     
     return writeTags, writeTagValues
 
@@ -448,26 +448,15 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
 
     #----------------------------------------------------------------
     def checkForANewPHDLabValue(valueName, itemId, valueList, endDate):
-        myValueNames = ["GFLA9-CT-ATP", "GFLA9-CT-HALO", "GFLA9-CT-TOC-UU4CTWR"]
-        if valueName in myValueNames:
-            debug = True
-        else:
-            debug = False
         
         phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
-        if debug:
-            phdLog.info("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
         
         if str(valueList.serviceResult) != 'Good':
             phdLog.error("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
-            if debug:
-                phdLog.info("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
             return False, -1, -1, valueList.serviceResult
         
         if valueList.size()==0:
             phdLog.trace("   -- no data found for %s --" % (itemId))
-            if debug:
-                phdLog.info("   -- no data found for %s --" % (itemId))
             return False, -1, -1, "NoDataFound"
         
         # There is something strange about SOME of the lab data at EM - for some of the lab data, the results include a 
@@ -491,13 +480,11 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         quality=qv.quality
         
         phdLog.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
-        if debug:
-            phdLog.info("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
         new = checkIfValueIsNew(valueName, rawValue, sampleTime, phdLog)
         return new, rawValue, sampleTime, ""
     #----------------------------------------------------------------
     
-    phdLog.info("Checking for new PHD Lab values ... ")
+    phdLog.tracef("Checking for new PHD Lab values ... ")
     
     endDate = util.getDate()
     from java.util import Calendar
@@ -557,7 +544,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         
     phdLog.trace("Writing %s to %s" % (str(writeTagValues), str(writeTags)))
 
-    phdLog.info("Done reading PHD lab values")
+    phdLog.tracef("Done reading PHD lab values")
     return writeTags, writeTagValues
     
     

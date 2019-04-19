@@ -19,21 +19,21 @@ def uirNotify(project, post, windowName, windowPayload):
         "windowPayload": windowPayload
         }
     
-    log.tracef("In %s.uirNotify(), Sending <%s> message to project: <%s>, post: <%s>, payload: <%s>", __name__, str(message), str(project), str(post), str(payload))
+    log.infof("In %s.uirNotify(), Sending <%s> message to project: <%s>, post: <%s>, payload: <%s>", __name__, str(message), str(project), str(post), str(payload))
     
     system.util.sendMessage(project, messageHandler=message, payload=payload, scope="C")
     
 def uirNotifyHandler(payload):
     '''This runs in a client when it receives a uirNotify message.  It determines if the window should be opened based on the console window for the specified post being open. '''
-    
-    log.infof("In uirNotifyHandler() - payload: %s", str(payload))
+
+    print "In %s.uirNotifyHandler() - payload: %s" % (__name__, str(payload))
     db = getDatabaseClient()
     windowName = payload["windowName"]
     post = payload["post"]
     consoleWindowName = getConsoleWindowNameForPost(post, db)
     windowPayload = payload["windowPayload"]
     
-    log.infof("Checking for console window named: %s", consoleWindowName) 
+    print "Checking for console window named: %s" % (consoleWindowName) 
     windows = system.gui.getOpenedWindows()
     found = False
     for window in windows:
@@ -43,4 +43,4 @@ def uirNotifyHandler(payload):
     if found:       
         system.nav.openWindow(windowName, windowPayload)
     else:
-        log.infof("Ignoring the notification because the console for %s is not open" % (post))
+        print "Ignoring the notification because the console for %s is not open" % (post)

@@ -303,7 +303,7 @@ def scanner():
 
         
 def _scanner(database, tagProvider):
-    log.infof("Checking to see if there are applications to manage using database: %s...", database)
+    log.tracef("Checking to see if there are applications to manage using database: %s...", database)
     projectName = system.util.getProjectName()
 
     SQL = "select AMQ.ApplicationName, Provider, Timestamp "\
@@ -370,8 +370,7 @@ def _scanner(database, tagProvider):
             else:
                 log.errorf("ERROR: Unknown notification strategy <%s>", notificationStrategy)
                 
-
-    log.infof("...done managing for database: %s!", database)
+    log.tracef("...done managing for database: %s!", database)
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID):
     print "Mining explanation for %s - <%s> <%s>" % (finalDiagnosisName, str(diagramUUID), str(UUID)) 
@@ -492,9 +491,13 @@ def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, dia
 
 # Fetch the text recommendation for a final diagnosis from the database.  For FDs that have 
 # static text this is easy, but we might need to call a callback that will return dynamic text.
-#TODO check if we need to call a callback.
 def fetchTextRecommendation(finalDiagnosisId, database):
     SQL = "select textRecommendation from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId)) 
+    txt=system.db.runScalarQuery(SQL, database)
+    return txt
+
+def fetchTextRecommendationUsingName(applicationName, finalDiagnosisName, database):
+    SQL = "select textRecommendation from DtFinalDiagnosisView where ApplicationName = '%s' and FinalDiagnosisName = '%s'" % (applicationName, finalDiagnosisName) 
     txt=system.db.runScalarQuery(SQL, database)
     return txt
 

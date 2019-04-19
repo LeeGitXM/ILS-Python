@@ -26,8 +26,6 @@ def internalFrameOpened(event):
     rootContainer = event.source.rootContainer
     rootContainer.selectedMessage=0
     rootContainer.autoIndex=True
-    isolationMode = getIsolationModeClient()
-    rootContainer.isolationMode = isolationMode
     
 def openControlPanel(controlPanelName, controlPanelId, startImmediately, position="CENTER"):
     print "In openControlPanel()..."

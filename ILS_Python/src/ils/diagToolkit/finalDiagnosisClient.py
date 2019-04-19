@@ -365,8 +365,11 @@ def ackTextRecommendation(event, payload):
         notificationText = record["TextRecommendation"]
         diagnosisEntryId = record["DiagnosisEntryId"]
         
-        notificationText = formatHTML(notificationText, 50)
-        
+        ''' If the user wrote a big massively long text string, the messageBox does not workwrap it, but it will stretch the window, so instead try to wrap it in HTML and insert <br> codes 
+        at the right spots.  If the user already specied <HTML> then assume they did a nice job and let it through untouched. '''
+        if notificationText.find("<HTML>") < 0:
+            notificationText = formatHTML(notificationText, 50)
+         
         system.gui.messageBox(notificationText, "Text Recommendation")
         # Once the text recommendation is acknowledged proceed to perform the standard resets
         print "Proceeding to acknowledge the text recommendation..."    

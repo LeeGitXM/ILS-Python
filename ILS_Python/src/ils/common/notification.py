@@ -8,7 +8,7 @@ import system
 logger=system.util.getLogger("com.ils.common.notification")
 
 def notifyError(project, message, payload, post, db, isolationMode):
-    logger.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, isolation: %s, payload: <%s>" % (__name__, str(message), str(project), str(post), str(isolationMode), str(payload)))
+    logger.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, isolation: %s, payload: <%s>", __name__, str(message), str(project), str(post), str(isolationMode), str(payload))
     notifiedClients = []
     
     '''
@@ -44,7 +44,7 @@ def notifyError(project, message, payload, post, db, isolationMode):
             foundClient = True
             for clientSessionId in clientSessionIds:
                 if clientSessionId not in notifiedClients:
-                    logger.trace("Found a client with the console displayed %s with client Id %s" % (post, str(clientSessionId)))
+                    logger.tracef("Found a client with the console displayed %s with client Id %s", post, str(clientSessionId))
                     notifiedClients.append(clientSessionId)
                     system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
         

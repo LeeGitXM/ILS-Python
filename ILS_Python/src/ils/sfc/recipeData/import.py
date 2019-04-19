@@ -87,6 +87,7 @@ def importRecipeData(filename, db):
     '''
     
     try:
+        arrayIndexKeys = loadArrayIndexKeys(db)
         chartCounter = 0
         stepCounter = 0
         recipeDataCounter = 0
@@ -220,10 +221,9 @@ def importRecipeData(filename, db):
                         valueTypeId = valueTypes.get(valueType, -99)
                         units = recipe.get("units", "")
                         indexKey = recipe.get("indexKey", None)
-                        if indexKey not in [None, 'None']:
-                            insertIndexKey(indexKey, txId)
+                        print "The array index key is: ", indexKey
                         recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
-                        insertArray(recipeDataId, valueType, valueTypeId, txId)
+                        insertArray(recipeDataId, valueType, valueTypeId, indexKey, arrayIndexKeys, txId)
                         recipeDataCounter = recipeDataCounter + 1
                         
                         for element in recipe.findall("element"):
@@ -239,19 +239,10 @@ def importRecipeData(filename, db):
                         columns = recipe.get("columns", "")
                         
                         rowIndexKey = recipe.get("rowIndexKey", None)
-                        if rowIndexKey not in [None, 'None']:
-                            rowIndexKeyId = insertIndexKey(rowIndexKey, txId)
-                        else:
-                            rowIndexKeyId = -1
-                            
                         columnIndexKey = recipe.get("columnIndexKey", None)
-                        if rowIndexKey not in [None, 'None']:
-                            columnIndexKeyId = insertIndexKey(columnIndexKey, txId)
-                        else:
-                            columnIndexKeyId = -1
                             
                         recipeDataId = insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId, txId)
-                        insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey, txId)
+                        insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey, arrayIndexKeys, txId)
                         recipeDataCounter = recipeDataCounter + 1
                         
                         for element in recipe.findall("element"):
@@ -450,9 +441,15 @@ def insertInputRecipeData(recipeDataId, valueType, valueTypeId, tag, txId):
         (recipeDataId, valueTypeId, tag, pvValueId, targetValueId)
     system.db.runUpdateQuery(SQL, tx=txId)
     
-def insertArray(recipeDataId, valueType, valueTypeId, txId):
+def insertArray(recipeDataId, valueType, valueTypeId, indexKey, arrayIndexKeys, txId):
     log.tracef("          Inserting an array...")
-    SQL = "insert into SfcRecipeDataArray (recipeDataId, valueTypeId) values (%d, %d)" % (recipeDataId, valueTypeId)
+    if indexKey == None:
+        log.tracef("          Inserting an array...")
+        SQL = "insert into SfcRecipeDataArray (recipeDataId, valueTypeId) values (%d, %d)" % (recipeDataId, valueTypeId)
+    else:
+        log.tracef("          Inserting a KEYED array...")
+        indexKeyId = arrayIndexKeys.get(indexKey,"ERROR")
+        SQL = "insert into SfcRecipeDataArray (recipeDataId, valueTypeId, indexKeyId) values (%d, %d, %d)" % (recipeDataId, valueTypeId, indexKeyId)
     system.db.runUpdateQuery(SQL, tx=txId)
     
 def insertArrayElement(recipeDataId, valueType, valueTypeId, arrayIndex, val, txId):
@@ -461,9 +458,21 @@ def insertArrayElement(recipeDataId, valueType, valueTypeId, arrayIndex, val, tx
     SQL = "insert into SfcRecipeDataArrayElement (recipeDataId, arrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, int(arrayIndex), valueId)
     system.db.runUpdateQuery(SQL, tx=txId)
 
-def insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey, txId):
+def insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey, arrayIndexKeys, txId):
     log.tracef("          Inserting a matrix...")
-    SQL = "insert into SfcRecipeDataMatrix (recipeDataId, valueTypeId, rows, columns) values (%d, %d, %d, %d)" % (recipeDataId, valueTypeId, int(rows), int(columns))
+    
+    if rowIndexKey == None:
+        rowIndexKeyId = 'NULL'
+    else:
+        rowIndexKeyId = arrayIndexKeys.get(rowIndexKey, 'NULL')
+
+    if columnIndexKey == None:
+        columnIndexKeyId = 'NULL'
+    else:
+        columnIndexKeyId = arrayIndexKeys.get(columnIndexKey, 'NULL')
+    
+    SQL = "insert into SfcRecipeDataMatrix (recipeDataId, valueTypeId, rows, columns, rowIndexKeyId, columnIndexKeyId) values (%d, %d, %d, %d, %s, %s)" % (recipeDataId, valueTypeId, int(rows), int(columns), rowIndexKeyId, columnIndexKeyId)
+    print SQL
     system.db.runUpdateQuery(SQL, tx=txId)
     
 def insertMatrixElement(recipeDataId, valueType, valueTypeId, rowIndex, columnIndex, val, txId):
@@ -566,12 +575,12 @@ def loadValueTypes(db):
     
     return valueTypes
 
-def insertIndexKey(indexKey, txId):
-    SQL = "select ValueTypeId, ValueType from SfcValueType"
-    pds = system.db.runQuery(SQL, tx=txId)
+def loadArrayIndexKeys(db):
+    SQL = "select KeyId, KeyName from SfcRecipeDataKeyMaster"
+    pds = system.db.runQuery(SQL, db)
     
-    valueTypes = {}
+    arrayKeys = {}
     for record in pds:
-        valueTypes[record["ValueType"]] = record["ValueTypeId"]
+        arrayKeys[record["KeyName"]] = record["KeyId"]
     
-    return valueTypes
+    return arrayKeys

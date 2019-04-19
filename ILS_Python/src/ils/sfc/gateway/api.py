@@ -14,6 +14,7 @@ from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.sfc.client.windows.controlPanel import getControlPanelIdForChartRunId
 from ils.queue.constants import QUEUE_ERROR
+from ils.sfc.recipeData.api import substituteScopeReferences
 
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
@@ -67,9 +68,12 @@ def endHandlerSetup(chart):
 This is called from the gateway by a running chart, it does not have a window handle or rootContainer.  In fact there may not be 
 a window.  Display a message on the control panel
 '''
-def addControlPanelMessage(chartProperties, message, priority, ackRequired):
-    escapedMessage = escapeSqlQuotes(message)
-    chartRunId = getTopChartRunId(chartProperties)
+def addControlPanelMessage(chartProperties, stepScope, message, priority, ackRequired):    
+    logger.tracef("The untranslated message is <%s>...", message)
+    message = substituteScopeReferences(chartProperties, stepScope, message)
+    message = escapeSqlQuotes(message)
+    logger.tracef("...the translated message is <%s>", message)
+    
     database = getDatabaseName(chartProperties)
     controlPanelId = getControlPanelId(chartProperties)
 #    controlPanelId=getControlPanelIdForChartRunId(chartRunId, database)
@@ -79,7 +83,7 @@ def addControlPanelMessage(chartProperties, message, priority, ackRequired):
         print "Unable to insert a control panel message because the control panel was not found, hopefully because we are in test mode."
     else:
         SQL = "insert into SfcControlPanelMessage (controlPanelId, message, priority, createTime, ackRequired) "\
-           "values (%s,'%s','%s',getdate(),%d)" % (str(controlPanelId), escapedMessage, priority, boolToBit(ackRequired) )
+           "values (%s,'%s','%s',getdate(),%d)" % (str(controlPanelId), message, priority, boolToBit(ackRequired) )
         msgId = system.db.runUpdateQuery(SQL, database, getKey=True)
 
     return msgId

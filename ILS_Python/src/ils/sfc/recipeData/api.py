@@ -9,7 +9,7 @@ import system, string
 from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
     getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
     fetchRecipeDataRecordFromRecipeDataId, getFolderForStep, copyFolderValues
-from ils.sfc.gateway.api import getDatabaseName, readTag, postToQueue, getProviderName
+from ils.sfc.recipeData.core import getDatabaseName, readTag, getProviderName
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, REFERENCE_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
@@ -29,9 +29,8 @@ def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
     logger.tracef("Checking if %s exists...", tagName)
     tagExists = system.tag.exists(tagName)
     if not(tagExists):
-        txt = "Unable to locate an output variable named <%s>" % (tagName)
-        postToQueue(chartProperties, QUEUE_ERROR, txt)
-        return "var-failure" 
+        raise ValueError, "Unable to locate an output variable named <%s>" % (tagName)
+        return "var-failure"
 
     spDesired = s88Get(chartProperties, stepProperties, key + ".outputValue", scope)
 
@@ -57,8 +56,7 @@ def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
             status = "pv-failure"
 
     else:
-        txt = "The SP of %s: %.4f does not match the desired SP (%s): %.4f." % (tagName, sp, key, spDesired)
-        postToQueue(chartProperties, QUEUE_WARNING, txt)
+        ''' The actual SP of does not match the desired SP '''
         status = "sp-failure"
     
     return status
@@ -472,11 +470,11 @@ def findBracketedScopeReference(string):
 Substitute for scope variable references in text strings, e.g. '{local:selected-emp.value}'
 This makes a text string dynamic by updating recipe data references.
 '''
-def substituteScopeReferences(chartProperties, stepProperties, sql):
+def substituteScopeReferences(chartProperties, stepProperties, txt):
 
     # really wish Python had a do-while loop...
     while True:
-        ref = findBracketedScopeReference(sql)
+        ref = findBracketedScopeReference(txt)
         if ref != None:
             location, key = parseBracketedScopeReference(ref)
             location = location.lower()
@@ -491,10 +489,10 @@ def substituteScopeReferences(chartProperties, stepProperties, sql):
                     value = s88Get(chartProperties, stepProperties, key, location)
                 except:
                     value = "<Error: %s.%s not found>" % (location, key)
-            sql = sql.replace(ref, str(value))
+            txt = txt.replace(ref, str(value))
         else:
             break
-    return sql
+    return txt
 
 def getRecipeByReference(chartScope, keyAndAttribute):
     #TODO Figure out how to make this case insensitive - everything else is case insensitive w/ recipe data

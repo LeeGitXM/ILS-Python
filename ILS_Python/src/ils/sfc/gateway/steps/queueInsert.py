@@ -12,7 +12,10 @@ from ils.sfc.gateway.api import getProject, getCurrentMessageQueue, getChartLogg
 from ils.sfc.recipeData.api import substituteScopeReferences
 
 def activate(scopeContext, stepProperties, state):
-
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    logger = getChartLogger(chartScope)
+    
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
@@ -20,7 +23,9 @@ def activate(scopeContext, stepProperties, state):
         currentMsgQueue = getCurrentMessageQueue(chartScope)
         project = getProject(chartScope)
         message = getStepProperty(stepProperties, MESSAGE)
+        logger.tracef("The untranslated message is <%s>...", message)
         message = substituteScopeReferences(chartScope, stepScope, message)
+        logger.tracef("...the translated message is <%s>", message)
         priority = getStepProperty(stepProperties, PRIORITY)  
         database = getDatabaseName(chartScope)
         consoleName = getConsoleName(chartScope, database)

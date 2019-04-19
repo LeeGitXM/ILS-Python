@@ -18,6 +18,8 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         callbackPayloadDataset = None
     else:
         callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
+        
+    print "Main Message: ", mainMessage
 
     # Now make the payload for the OC alert window
     payload = {
@@ -33,7 +35,9 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         "isolationMode": isolationMode
         }
 
-    logger.trace("Payload: %s" % (str(payload))) 
+    print "Payload: ", payload
+
+    logger.tracef("Payload: %s", str(payload))
     
     message = "ocAlert"
 
