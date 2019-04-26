@@ -20,3 +20,9 @@ def client():
     
     from ils.common.menuBar import removeUnwantedMenus
     removeUnwantedMenus(menubar, "dbManager")
+    
+    # Initialize the client tagSelector
+    system.tag.write("[Client]Active Only", True)
+    system.tag.write("[Client]Family", "<Family>")
+    system.tag.write("[Client]Grade", "<Grade>")
+    system.tag.write("[Client]Version", "<Version>")

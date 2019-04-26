@@ -10,18 +10,17 @@ for common configuration of widgets in the UI.
 import system
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
-
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.common.cast import toBit
 
 # When the window is closed, make sure that any open transaction
 # is cleaned up (rolled-back and closed). 
 def handleWindowClosed(window):
-    log.info("ui.handleWindowClosed ...")
+    print "In %s.handleWindowClosed()..." % (__name__)
 
 # When the window is opened, look for a "clear" button on the screen.
 # Fire its actionPerformed method
 def handleWindowOpened(window):
-    log.info("ui.handleWindowOpened ...")
+    print "In %s..handleWindowOpened ..." % (__name__)
     
 # Populate  combo-box with a dataset of containing names
 # of parameters available for a grade.
@@ -46,22 +45,36 @@ def populateParameterForGradeDropdown(dropdown):
         dropdown.setSelectedStringValue(current)
         # Loose old edits if we select a different database
         if oldSelection!=current:
-            log.info("ui.populateUnitDropdown: New selection %s ..." % (current))
+            print "New selection %s ..." % (current)
 
-#
 # Populate combo-box with a dataset of containing names
 # of grades available to a unit. Do not rollback on a change
 def populateGradeForFamilyDropdown(dropdown):
-    SQL = "SELECT DISTINCT Grade from RtGradeMaster"
+    print "In %s.populateGradeForFamilyDropdown()" % (__name__)
     family = getUserDefaults("FAMILY")
-    if not family=="ALL":
-        SQL = SQL+" WHERE RecipeFamilyId = (SELECT RecipeFamilyId FROM RtRecipeFamily WHERE RecipeFamilyName='"+family+"')"
+    active = getUserDefaults("ACTIVE")
+    activeBit = toBit(str(active))
+    
+    if family == "<Family>":
+        print "Skipping grade list population because they have not selected a family"
+        return
+    
+    if family=="ALL":
+        SQL = "SELECT DISTINCT Grade from RtGradeMaster "
+        if active:
+            SQL = SQL +  " WHERE active = %s" % (str(activeBit))
+    else:
+        SQL = "SELECT DISTINCT Grade from RtGradeMaster WHERE RecipeFamilyId = (SELECT RecipeFamilyId FROM RtRecipeFamily WHERE RecipeFamilyName='%s') " % (family)
+        if active:
+            SQL = SQL +  " and active = %s" % (str(activeBit))
+    
+    print "     SQL: ", SQL
     pds = system.db.runQuery(SQL)
+    print "     ...fetched %d unique grades" % (len(pds))
     
     # Create a new dataset using only the Name column
     header = ["Grade"]
     names = []
-    names.append(["ALL"])
     for row in pds:
         name = row['Grade']
         nl = []
@@ -69,21 +82,24 @@ def populateGradeForFamilyDropdown(dropdown):
         names.append(nl)
         
     dropdown.data = system.dataset.toDataSet(header,names)
+    
     # Select the current value. We expect it to be in a custom property
-    root = getRootContainer(dropdown)
-    print "Setting selected grade to (populateGradeForFamilyDropdown): ", root.grade
-    dropdown.setSelectedStringValue(root.grade)
+    print "     Setting selected grade to (populateGradeForFamilyDropdown): ", getUserDefaults("GRADE")
+    dropdown.setSelectedStringValue(getUserDefaults("GRADE"))
 
 # Populate  combo-box with a dataset of containing names
 # of recipe Families, plus "ALL". Select the current UNIT
-def populateRecipeFamilyDropdown(dropdown):
+def populateRecipeFamilyDropdown(dropdown, includeAll=True):
+    print "In %s.populateRecipeFamilyDropdown()" % (__name__)
     SQL = "Select RecipeFamilyName from RtRecipeFamily order by RecipeFamilyName"
     pds = system.db.runQuery(SQL)
     
     # Create a new dataset using only the Name column
     header = ["Family"]
     names = []
-    names.append(["ALL"])
+    if includeAll:
+        names.append(["ALL"])
+    
     for row in pds:
         name = row['RecipeFamilyName']
         nl = []
@@ -98,22 +114,31 @@ def populateRecipeFamilyDropdown(dropdown):
         dropdown.setSelectedStringValue(current)
         # Loose old edits if we select a different database
         if oldSelection!=current:
-            log.info("ui.populateFamilyDropdown: New family selection %s ..." % (current))
+            print "...new family selection %s ..." % (current)
 
 # Populate combo-box with a dataset of containing versions
 # available for a grade on a unit. Custom grade component assumed.
 def populateVersionForGradeDropdown(dropdown):
+    print "In %s.populateVersionForGradeDropdown()" % (__name__)
     SQL = "SELECT DISTINCT Version from RtGradeMaster "
     family = getUserDefaults("FAMILY")
+    grade = getUserDefaults("GRADE") 
+    
+    if family == "<Family>" or grade == "<Grade>":
+        print "Skipping version popultae because they have not selected a grade"
+        return
+    
     if not family=="ALL":
         SQL = SQL+" WHERE RecipeFamilyId = (SELECT RecipeFamilyId FROM RtRecipeFamily WHERE RecipeFamilyName='"+family+"')"
     
         root = getRootContainer(dropdown)
-        grade = root.grade
         if not grade == None and not grade=="ALL":
             SQL = SQL+" AND Grade = '"+grade+"'"
     
+    print "    SQL: ", SQL
     pds = system.db.runQuery(SQL)
+    print "...fetched %d rows", len(pds)
+    
     # Create a new dataset using only the Name column
     header = ["Grade"]
     versions = []
@@ -125,6 +150,6 @@ def populateVersionForGradeDropdown(dropdown):
         versions.append(nl)
         
     dropdown.data = system.dataset.toDataSet(header,versions)
+    
     # Select the current value. We expect it to be in a custom property
-    root = getRootContainer(dropdown)
-    dropdown.setSelectedStringValue(str(root.version))
+    dropdown.setSelectedStringValue(str(getUserDefaults("VERSION")))

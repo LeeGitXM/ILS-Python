@@ -29,6 +29,8 @@ def get(key):
         val = system.tag.read('[Client]Grade').value
     elif string.upper(key) == "VERSION":
         val = system.tag.read('[Client]Version').value
+    elif string.upper(key) == "ACTIVE":
+        val = system.tag.read('[Client]Active Only').value
     
     log.trace("userdefaults.get %s = %s" % (key,val))
     return val
@@ -41,3 +43,5 @@ def set(key,value):
         system.tag.write('[Client]Grade', value)
     elif string.upper(key) == "VERSION":
         system.tag.write('[Client]Version', value)
+    elif string.upper(key) == "ACTIVE":
+        system.tag.write('[Client]Active Only', value)

@@ -8,7 +8,7 @@ the popup screen that allows grade creation and deletion
 '''
 
 import system
-from ils.dbManager.ui import populateRecipeFamilyDropdown
+from ils.dbManager.ui import populateRecipeFamilyDropdown, populateGradeForFamilyDropdown
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
@@ -22,9 +22,6 @@ def internalFrameOpened(component):
         
     dropdown = container.getComponent("FamilyDropdown")
     dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
-    
-    dropdown = container.getComponent("GradeDropdown")
-    dropdown.setSelectedStringValue(getUserDefaults("GRADE"))
 
     root = getRootContainer(component)
     active = root.getComponent("ActiveOnlyCheckBox")
@@ -37,29 +34,35 @@ def internalFrameActivated(component):
     log.trace("InternalFrameActivated")
     container = getRootContainer(component)
     dropdown = container.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown)
+    populateRecipeFamilyDropdown(dropdown, includeAll=False)
     requery(container)
 
 # Re-query the database and update the screen accordingly.
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("grademaster.requery ...")
-    container = getRootContainer(component)
-    table = container.getComponent("DatabaseTable")
+    rootContainer = getRootContainer(component)
+    table = rootContainer.getComponent("DatabaseTable")
+    
+    where = ""
+    family = getUserDefaults("FAMILY")
+    if family != "ALL":
+        where = " AND F.RecipeFamilyName = '"+family+"'"
+
+    active = rootContainer.getComponent("ActiveOnlyCheckBox")
+    if active.selected:
+        where = where + " AND Active=1"
     
     SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,GM.Grade,GM.Version,GM.Active, GM.Timestamp"\
         " FROM RtRecipeFamily F, RtGradeMaster GM"\
         " WHERE F.RecipeFamilyId = GM.RecipeFamilyId"\
         " %s "\
-        " ORDER BY F.RecipeFamilyName,GM.Grade" % (getWhereExtension(component))
-    
+        " ORDER BY F.RecipeFamilyName,GM.Grade" % (where)
+
     log.trace(SQL)
     
-    try:
-        pds = system.db.runQuery(SQL)
-        table.data = pds
-    except:
-        notifyError(__name__, "Fetching grades")
+    pds = system.db.runQuery(SQL)
+    table.data = pds
 
 
 # Clear the popup screen.
@@ -186,19 +189,7 @@ def duplicateRow(button):
         system.gui.messageBox("The new version was created as Inactive - in order to see it you must uncheck the 'Active Only' checkbox.")
 
 
-def getWhereExtension(component):
-    where = ""
-    family = getUserDefaults("FAMILY")
-    if family != "ALL":
-        where = " AND F.RecipeFamilyName = '"+family+"'"
-    root = getRootContainer(component)
-    grade = root.grade
-    if grade!="ALL":
-        where = where + " AND Grade='"+grade+"'"
-    active = root.getComponent("ActiveOnlyCheckBox")
-    if active.selected:
-        where = where + " AND Active=1"
-    return where
+
 
 
 #     
@@ -215,37 +206,32 @@ def showWindow():
     system.nav.openWindow(window)
     system.nav.centerWindow(window)
     
-#
-# Update database for a cell edit. We only allow edits of the active flag.
-# Cell does a re-query
+'''
+Update database for a cell edit. 
+We only allow edits of the active flag.
+Cell does a re-query
+'''
 def update(table,row,colname,value):
-    log.info("grademaster.update (%d:%s)=%s ..." %(row,colname,str(value)))
+    log.info("grademaster.update, row:%d, column:%s, value:%s ..." % (row, colname, str(value)))
     
     ds = table.data
-    #column is LowerLimit or UpperLimit. Others are not editable.
     recipeFamilyId = ds.getValueAt(row,"RecipeFamilyId")
-    grade= ds.getValueAt(row,"Grade")
-    vers= ds.getValueAt(row,"Version")
-    
-    tx = system.db.beginTransaction()
-    try:
-        # If we're clearing a value, it's easy
-        if value==0:
-            SQL = "UPDATE RtGradeMaster SET ACTIVE=0 WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"' AND Version="+str(vers)
-            system.db.runUpdateQuery(SQL, tx=tx)
-        # Before setting the value, we need to make all other versions inactive
-        else:
-            SQL = "UPDATE RtGradeMaster SET ACTIVE=0 WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"'"
-            system.db.runUpdateQuery(SQL, tx=tx)
-            
-            SQL = "UPDATE RtGradeMaster SET ACTIVE=1"
-            SQL = SQL+" WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"' AND Version="+str(vers)
-            system.db.runUpdateQuery(SQL, tx=tx)
-    except:
-        system.db.rollbackTransaction(tx)
-        notifyError(__name__, "Updating a grade")
-        
-    else:
-        system.db.commitTransaction(tx)
+    grade = ds.getValueAt(row,"Grade")
+    vers = ds.getValueAt(row,"Version")
+    print "Grade: ", grade
 
-    system.db.closeTransaction(tx)
+    # If we're clearing a value, it's easy
+    if str(value) == "0":
+        SQL = "UPDATE RtGradeMaster SET ACTIVE=0 WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"' AND Version="+str(vers)
+        print SQL
+        rows = system.db.runUpdateQuery(SQL)
+        print "Updated %d rows" % (rows)
+    
+    else:
+        # Before setting the value, we need to make all other versions inactive
+        SQL = "UPDATE RtGradeMaster SET ACTIVE=0 WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"'"
+        system.db.runUpdateQuery(SQL)
+        
+        SQL = "UPDATE RtGradeMaster SET ACTIVE=1"
+        SQL = SQL+" WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"' AND Version="+str(vers)
+        system.db.runUpdateQuery(SQL)

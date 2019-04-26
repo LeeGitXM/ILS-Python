@@ -56,6 +56,20 @@ def idForFamily(name):
         "WHERE RecipeFamilyName like '"+name+"'")
     return familyid
 
+# Given the family and SQC parameter name, return the Id of the SQC parameter
+def idForParameter(familyId, parameterName):
+    SQL = "SELECT ParameterId FROM RtSQCParameter "\
+        "WHERE RecipeFamilyId = %d and Parameter = '%s'"   % (familyId, parameterName)
+    parameterId=system.db.runScalarQuery(SQL)
+    return parameterId
+
+# Given the family and Gain parameter name, return the Id of the Gain parameter
+def idForGain(familyId, parameterName):
+    SQL = "SELECT ParameterId FROM RtGain "\
+        "WHERE RecipeFamilyId = %d and Parameter = '%s'"   % (familyId, parameterName)
+    parameterId=system.db.runScalarQuery(SQL)
+    return parameterId
+
 # Given the post name, return the Id
 def idForPost(post):
     postId = system.db.runScalarQuery("SELECT PostId FROM TkPost WHERE Post like '"+post+"'")

@@ -23,7 +23,7 @@ def internalFrameOpened(component):
     # When the screen is first displayed, set widgets for user defaults
     container = getRootContainer(component)
     dropdown = container.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown)
+    populateRecipeFamilyDropdown(dropdown, False)
     dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
 
     requery(component)

@@ -7,13 +7,13 @@ Created on Apr 19, 2019
 import system
 from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
-from ils.dbManager.sql import idForFamily, idForParameter
+from ils.dbManager.sql import idForFamily, idForGain
 from ils.common.error import notifyError
 log = system.util.getLogger("com.ils.recipe.ui")
 
 # Called from the client startup script: View menu
 def showWindow():
-    window = "DBManager/SQCLimitsTable"
+    window = "DBManager/GainsTable"
     system.nav.openWindow(window)
     system.nav.centerWindow(window)
 
@@ -52,22 +52,23 @@ def requery(rootContainer):
             table.setColumnWidth(col, 110)
     
 def fetchColumns(recipeFamilyName):
-    SQL = "select  P.Parameter "\
-        "from RtSQCParameter P,  RtRecipeFamily F "\
-        "where P.RecipeFamilyId = F.RecipeFamilyId "\
+    SQL = "select  G.Parameter "\
+        "from RtGain G,  RtRecipeFamily F "\
+        "where G.RecipeFamilyId = F.RecipeFamilyId "\
         " and F.RecipeFamilyName = '%s' order by Parameter" % (recipeFamilyName)
     pds = system.db.runQuery(SQL)
     
     columns = []
     for record in pds:
-        columns.append(record["Parameter"] + "_LL")
-        columns.append(record["Parameter"] + "_UL")
+        columns.append(record["Parameter"])
         
     print "Columns: ", columns
     return columns
     
 def fetchRows(recipeFamilyName):
-    SQL = "select distinct Grade from RtSQCLimitView where RecipeFamilyName = '%s' order by Grade" % (recipeFamilyName)
+    SQL = "select distinct Grade "\
+        "from RtGradeMaster G, RtRecipeFamily F "\
+        "where F.RecipeFamilyName = '%s' order by Grade" % (recipeFamilyName)
     pds = system.db.runQuery(SQL)
     
     rows = []
@@ -78,13 +79,16 @@ def fetchRows(recipeFamilyName):
     return rows
 
 def fetchData(recipeFamilyName):
-    SQL = "select Grade, Parameter, UpperLimit, LowerLimit from RtSQCLimitView where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
+    SQL = "select Grade, Parameter, Gain "\
+        " from RtGainView "\
+        "where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
     pds = system.db.runQuery(SQL)
     print "Fetched %d rows of data..." % (len(pds))
     return pds
 
 def mergeData(rootContainer, grades, columns, pds):
     print "In %s.mergeData()" % (__name__)
+    print "Grades: ", grades
     data = []
     for grade in grades:
         row = [None]*(len(columns) + 1)
@@ -96,12 +100,14 @@ def mergeData(rootContainer, grades, columns, pds):
     
     for record in pds:
         grade = record["Grade"]
-        rowNum = grades.index(grade)
-        column = record["Parameter"]
-        upperLimit = record["UpperLimit"]
-        lowerLimit = record["LowerLimit"]
-        ds = system.dataset.setValue(ds, rowNum, column + "_UL", upperLimit)
-        ds = system.dataset.setValue(ds, rowNum, column + "_LL", lowerLimit)
+        if grade in grades:
+            rowNum = grades.index(grade)
+            column = record["Parameter"]
+            gain = record["Gain"]
+            ds = system.dataset.setValue(ds, rowNum, column, gain)
+        else:
+            log.errorf("Unknown grade: %s - this grade does not exist in the Grade Master table.", grade)
+
     return ds
 
 def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
@@ -114,37 +120,50 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     grade = ds.getValueAt(rowIndex, 0)
     
     column = self.selectedColumn
-    columnName = ds.getColumnName(column)
-    parameterName = columnName[:len(columnName)-3]
-    parameterId = idForParameter(familyId, parameterName)
-    
-    limitType = columnName[len(columnName)-2:]
-    if limitType == "LL":
-        limitType = "LowerLimit"
-    else:
-        limitType = "UpperLimit"
+    parameterName = ds.getColumnName(column)
+    parameterId = idForGain(familyId, parameterName)
     
     if newValue == "":
-        SQL ="update RtSQCLimit set %s = NULL where ParameterId = %d and Grade = '%s'" % (limitType, parameterId, grade)
+        SQL ="update RtGainGrade set gain = NULL where ParameterId = %d and Grade = '%s'" % (parameterId, grade)
     else:
-        SQL = "update RtSQCLimit set %s = %s where ParameterId = %d and Grade = '%s'" % (limitType, str(newValue), parameterId, grade)
+        SQL = "update RtGainGrade set gain = %s where ParameterId = %d and Grade = '%s'" % (str(newValue), parameterId, grade)
     print SQL
     system.db.runUpdateQuery(SQL)
     self.data = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
 
-def deleteColumns(event):
-    print "In %s.deleteColumns()" % (__name__)
+def deleteColumn(event):
+    print "In %s.deleteColumn()" % (__name__)
     rootContainer = event.source.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     recipeFamilyId = idForFamily(familyName)
     table = event.source.parent.getComponent("Power Table")
     ds = table.data
     column = table.selectedColumn
-    columnName = ds.getColumnName(column)
-    parameter = columnName[:len(columnName)-3]
-    print "Deleting SQC Parameter: <%s>" % (parameter)
+    parameter = ds.getColumnName(column)
+    print "Deleting Gain: <%s>" % (parameter)
     
-    SQL = "delete from RtSQCParameter where Parameter = '%s' and RecipeFamilyId = %d" % (parameter, recipeFamilyId)
+    ''' Hopefully there is a cascade delete on the RtGainGrade table '''
+    SQL = "delete from RtGain where Parameter = '%s' and RecipeFamilyId = %d" % (parameter, recipeFamilyId)
     system.db.runUpdateQuery(SQL)
     
     requery(rootContainer)
+
+
+def addGainParameter(button, parameter):
+    rootContainer = button.parent
+    
+    # Family
+    family = rootContainer.getComponent("FamilyDropdown").selectedStringValue
+    if family == "" or family == "All":
+        system.gui.messageBox("Please select a specific family!")
+        return
+    
+    familyId = idForFamily(getUserDefaults("FAMILY"))
+
+    # Parameter
+    if parameter!=None and len(parameter)>0:
+        SQL = "INSERT INTO RtGain (RecipeFamilyId, Parameter) VALUES (%i, '%s')" % (familyId, parameter)
+        log.trace(SQL)
+        system.db.runUpdateQuery(SQL)            
+    else:
+        system.gui.messageBox("Please enter a parameter name!")
