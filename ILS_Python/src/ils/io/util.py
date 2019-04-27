@@ -97,11 +97,6 @@ def isUDTorFolder(fullTagPath, strategy="PYTHONCLASS"):
             return False
     else:
         print "Unexpected strategy"
-    '''
-    
-    '''
-
-
    
     return False
 
@@ -144,7 +139,7 @@ def getOutputForTagPath(tagPath, outputType):
         instead I did the cheap and cheerful case statement.  It would be more robust to take the OO method approach.
         '''
         pythonClass = system.tag.read(tagPath + "/pythonClass").value
-        if pythonClass in ["PKSController", "PKSACEController"]:
+        if pythonClass in ["PKSController", "PKSACEController", "PKSRampController"]:
             tagPath = "%s/%s/value" % (tagPath, outputType)
         elif pythonClass in ["OPCOutput", "OPCTag"]:
             tagPath = "%s/value" % (tagPath)

@@ -124,15 +124,18 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                 quantOutput = recommendation.get('QuantOutput', None)
                 if quantOutput == None:
                     log.errorf("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key", calculationMethod)
+                
                 val = recommendation.get('Value', None)
                 if val == None:
                     log.errorf("ERROR: A recommendation returned from %s did not contain a 'Value' key", calculationMethod)
+                    
+                rampTime = recommendation.get('RampTime', None)
         
                 if quantOutput != None and val != None:
                     log.infof("      Output: %s - Value: %s", quantOutput, str(val))
                     recommendation['AutoRecommendation']=val
                     recommendation['AutoOrManual']='Auto'
-                    recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, database)
+                    recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, rampTime, database)
                     recommendation['RecommendationId']=recommendationId
                     del recommendation['Value']
                     recommendationList.append(recommendation)
@@ -140,7 +143,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     return recommendationList, str(explanation), "SUCCESS"
 
 # Insert a recommendation into the database
-def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, database):
+def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName, val, rampTime, database):
     SQL = "select RecommendationDefinitionId "\
         "from DtRecommendationDefinition RD, DtQuantOutput QO "\
         "where RD.QuantOutputID = QO.QuantOutputId "\
@@ -153,8 +156,11 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
         log.error("Unable to fetch a recommendation definition for output <%s> for finalDiagnosis with id: %i" % (quantOutputName, finalDiagnosisId))
         return -1
     
-    SQL = "insert into DtRecommendation (RecommendationDefinitionId,DiagnosisEntryId,Recommendation,AutoRecommendation,AutoOrManual) "\
-        "values (%i,%i,%f,%f,'Auto')" % (recommendationDefinitionId, diagnosisEntryId, val, val)
+    if rampTime == None:
+        rampTime = "NULL"
+    
+    SQL = "insert into DtRecommendation (RecommendationDefinitionId, DiagnosisEntryId, Recommendation, AutoRecommendation, AutoOrManual, RampTime) "\
+        "values (%i, %i, %f, %f, 'Auto', %s)" % (recommendationDefinitionId, diagnosisEntryId, val, val, str(rampTime))
     logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
     log.infof("      ...inserted recommendation id: %s for recommendation definition id: %s", recommendationId, str(recommendationDefinitionId))
@@ -175,7 +181,8 @@ def calculateFinalRecommendation(quantOutput):
     if len(recommendations) == 0:
         log.error("No recommendations were found for quant output: %s" % (quantOutput.get("QuantOutput", "Unknown")))
         return None
-        
+    
+    rampTime = None
     for recommendation in recommendations:
         log.infof("  The raw recommendation is: %s", str(recommendation))
             
@@ -189,6 +196,14 @@ def calculateFinalRecommendation(quantOutput):
     
         feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
         log.infof("   ...using feedback method %s to combine recommendations...", feedbackMethod)
+
+        '''
+        If the recommendation is for a ramp controller then it MUST contain a rampTime property
+        (If there are multiple recommendations for the same ramp output with different ramp times then the last one wins - that probably isn't right TODO
+        '''
+        if recommendation.get("RampTime", None) != None:
+            rampTime = recommendation.get("RampTime", None)
+            quantOutput['Ramp'] = rampTime
 
         if feedbackMethod == 'MOST POSITIVE':
             if i == 0: 

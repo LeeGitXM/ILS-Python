@@ -47,10 +47,10 @@ def getSetpointSpreadsheetDataset(post, db):
     print "...fetched %d active outputs" % (len(pds))
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
-    header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus','numberFormat']
+    header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus','numberFormat','ramp']
     rows=[]
     # The data types for the column is set from the first row, so I need to put floats where I want floats, even though they don't show up for the header
-    row = ['header',0,0,0,'Action',0,'','Outputs','',1.2,False,1.2,1.2,'','','']
+    row = ['header',0,0,0,'Action',0,'','Outputs','',1.2,False,1.2,1.2,'','','',""]
     rows.append(row)
     
     application = ""
@@ -70,7 +70,7 @@ def getSetpointSpreadsheetDataset(post, db):
                 actionValue = 0
             else:
                 actionValue = 1
-            applicationRow = ['app',i,0,0,downloadAction,actionValue,application,'','',0,False,0,0,'','','']
+            applicationRow = ['app',i,0,0,downloadAction,actionValue,application,'','',0,False,0,0,'','','',""]
             rows.append(applicationRow)
             i = i + 1
 
@@ -113,7 +113,7 @@ def getSetpointSpreadsheetDataset(post, db):
             else:
                 actionValue = 1
             row = ['row',i,0,record['QuantOutputId'],action,actionValue,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],
-                   record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,record['DownloadStatus'],numberPattern]
+                   record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,record['DownloadStatus'],numberPattern, str(record['Ramp'])]
             rows.append(row)
             i = i + 1
 

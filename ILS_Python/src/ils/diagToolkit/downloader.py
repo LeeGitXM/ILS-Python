@@ -10,6 +10,9 @@ from ils.queue.message import insertPostMessage
 log = system.util.getLogger("com.ils.diagToolkit.downloader")
 
 class DownloadThread(threading.Thread):
+    '''
+    This inherits from a thread class, so it inherits a start method, which executes a run method.
+    '''
     downloader = None
     quantOutputId = None
     tagPath = None
@@ -44,6 +47,10 @@ class DownloadThread(threading.Thread):
         log.infof("...finished a download thread for writing %s to %s!", str(self.newSetpoint), self.tagPath)
 
 class Downloader():
+    '''
+    This class is created when we receive a serviceDownload message from the client.  This class creates a download thread for each output that needs to be 
+    downloaded.  This class lives until all of the threads are done.
+    '''
     post = None
     ds = None
     tagProvider = None
@@ -128,7 +135,7 @@ class Downloader():
             log.infof("There are %d threads still running", self.runningCount)
             time.sleep(1)
         
-        log.infof("All of the dowwnloads are complete")
+        log.infof("All of the downloads are complete")
         
         ''' Now make a logbook message for the download '''
 #        self.downloadMessage()

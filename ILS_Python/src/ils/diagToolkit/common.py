@@ -147,7 +147,7 @@ def clearQuantOutputRecommendations(application, database=""):
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = DtQuantOutput.QuantOutputId "\
         " and A.Application = '%s' " % (application)
-    log.trace(SQL)
+    log.tracef("%s.clearQuantOutputRecommendations(): %s", __name__, SQL)
     system.db.runUpdateQuery(SQL, database)
     return
 
@@ -167,7 +167,7 @@ def fetchActiveDiagnosis(applicationName, database=""):
         " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.ApplicationName = '%s'"\
         " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
-    log.trace(SQL)
+    log.tracef("%s.fetchActiveDiagnosis(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
 
@@ -187,7 +187,7 @@ def fetchHighestActiveDiagnosis(applicationName, database=""):
         " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) "\
         " and A.ApplicationName = '%s'"\
         " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
-    log.trace(SQL)
+    log.tracef("%s.fetchHighestActiveDiagnosis(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
 
@@ -205,7 +205,7 @@ def fetchActiveFamilies(applicationName, database=""):
         " and not (FD.CalculationMethod != 'Constant' and (DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.ApplicationName = '%s'"\
         " order by FamilyName ASC"  % (applicationName) 
-    log.trace(SQL)
+    log.tracef("%s.fetchActiveFamilies(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
 
@@ -224,7 +224,7 @@ def fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, database=""
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and FD.Active = 1 "\
         " and QO.QuantOutputId = %s " % (application, str(quantOutputId))
-    log.trace(SQL)
+    log.tracef("%s.fetchActiveFinalDiagnosisForAnOutput(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
 
@@ -232,19 +232,38 @@ def fetchActiveOutputsForPost(post, database=""):
     SQL = "select distinct A.ApplicationName, "\
         " QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
-        " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId, QO.DownloadAction, QO.DownloadStatus "\
-        " from TkPost P, TkUnit U, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO "\
+        " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId, QO.DownloadAction, QO.DownloadStatus, QOR.RampTime "\
+        " from TkPost P, TkUnit U, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtQuantOutputRamp QOR "\
         " where P.PostId = U.PostId "\
         " and U.UnitId = A.UnitId "\
         " and A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
+        "and QO.QuantOutputId = QOR.QuantOutputId "\
         " and P.Post = '%s' "\
         " and QO.Active = 1"\
         " order by A.ApplicationName, QO.QuantOutputName"  % (post)
-    log.trace(SQL)
+        
+    SQL = "SELECT DtApplication.ApplicationName, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, DtQuantOutput.OutputLimitedStatus, DtQuantOutput.OutputLimited, "\
+        "DtQuantOutput.FeedbackOutput, DtQuantOutput.FeedbackOutputManual, DtQuantOutput.FeedbackOutputConditioned, DtQuantOutput.ManualOverride, "\
+        "DtQuantOutput.IncrementalOutput, DtQuantOutput.CurrentSetpoint, DtQuantOutput.FinalSetpoint, DtQuantOutput.DisplayedRecommendation, DtQuantOutput.QuantOutputId, "\
+        "DtQuantOutput.DownloadAction, DtQuantOutput.DownloadStatus, DtQuantOutputRamp.Ramp "\
+        "FROM TkPost  INNER JOIN "\
+        "TkUnit ON TkPost.PostId = TkUnit.PostId INNER JOIN "\
+        "DtApplication  ON TkUnit.UnitId = DtApplication.UnitId INNER JOIN "\
+        "DtFamily  ON DtApplication.ApplicationId = DtFamily.ApplicationId INNER JOIN "\
+        "DtFinalDiagnosis  ON DtFamily.FamilyId = DtFinalDiagnosis.FamilyId INNER JOIN "\
+        "DtRecommendationDefinition  ON DtFinalDiagnosis.FinalDiagnosisId = DtRecommendationDefinition.FinalDiagnosisId INNER JOIN "\
+        "DtQuantOutput  ON DtApplication.ApplicationId = DtQuantOutput.ApplicationId AND DtRecommendationDefinition.QuantOutputId = DtQuantOutput.QuantOutputId LEFT OUTER JOIN "\
+        "DtQuantOutputRamp ON DtQuantOutput.QuantOutputId = DtQuantOutputRamp.QuantOutputId "\
+        "WHERE DtQuantOutput.Active = 1 "\
+        "and TkPost.Post = '%s' "\
+        "ORDER BY DtApplication.ApplicationName, DtQuantOutput.QuantOutputName" % (post)
+    
+    log.tracef("%s.fetchActiveOutputsForPost(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
+    log.tracef("   ...returned %d records", len(pds))
     return pds
 
 def fetchActiveTextRecommendationsForPost(post, database=""):
@@ -257,7 +276,7 @@ def fetchActiveTextRecommendationsForPost(post, database=""):
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and DE.DiagnosisEntryId = TR.DiagnosisEntryId "\
         " and P.Post = '%s' "  % (post)
-    log.trace(SQL)
+    log.tracef("%s.fetchActiveTextRecommendationsForPost(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     for record in pds:
         log.tracef("%s - %s - %s", record["ApplicationName"], record["DiagnosisEntryId"], record["TextRecommendation"])
@@ -271,28 +290,28 @@ def fetchApplicationsForPost(post, database=""):
         " and U.UnitId = A.UnitId "\
         " and P.Post = '%s' "\
         " order by A.ApplicationName"  % (post)
-    log.trace(SQL)
+    log.tracef("%s.fetchApplicationsForPost(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
 
 # Lookup the application Id given the name
 def fetchApplicationManaged(applicationName, database=""):
     SQL = "select Managed from DtApplication where ApplicationName = '%s'" % (applicationName)
-    log.trace(SQL)
+    log.tracef("%s.fetchApplicationManaged(): %s", __name__, SQL)
     managed = system.db.runScalarQuery(SQL, database)
     return managed
 
 # Lookup the application Id given the name
 def fetchApplicationId(applicationName, database=""):
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
-    log.trace(SQL)
+    log.tracef("%s.fetchApplicationId(): %s", __name__, SQL)
     applicationId = system.db.runScalarQuery(SQL, database)
     return applicationId
 
 # Lookup the family Id given the name
 def fetchFamilyId(familyName, database=""):
     SQL = "select FamilyId from DtFamily where FamilyName = '%s'" % (familyName)
-    log.trace(SQL)
+    log.tracef("%s.fetchFamilyId(): %s", __name__, SQL)
     familyId = system.db.runScalarQuery(SQL, database)
     return familyId
 
@@ -301,6 +320,7 @@ def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
     SQL = "select DiagramUUID "\
         " from DtFinalDiagnosis "\
         " where FinalDiagnosisId = %i" % (finalDiagnosisId)
+    log.tracef("%s.fetchFinalDiagnosisDiagramUUID(): %s", __name__, SQL)
     diagramUUID = system.db.runScalarQuery(SQL, database)
     return diagramUUID
 
@@ -315,7 +335,7 @@ def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
         " and A.ApplicationName = '%s'" \
         " and F.FamilyName = '%s'" \
         " and FD.FinalDiagnosisName = '%s'" % (application, family, finalDiagnosis)
-    log.trace(SQL)
+    log.tracef("%s.fetchFinalDiagnosis(): %s", __name__, SQL)
     try:
         pds = system.db.runQuery(SQL, database)
         from ils.common.database import toDict
@@ -338,7 +358,7 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
         " and QO.QuantOutputId = %i "\
         " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
         " order by QO.QuantOutputName"  % (QuantOutputId)
-    log.trace(SQL)
+    log.tracef("%s.fetchRecommendationsForOutput(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
 
@@ -360,7 +380,7 @@ def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisNam
         " and F.FamilyName = '%s' "\
         " and FD.FinalDiagnosisName = '%s' "\
         " order by QuantOutputName"  % (applicationName, familyName, finalDiagnosisName)
-    log.trace(SQL)
+    log.tracef("%s.fetchOutputsForFinalDiagnosis(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     outputList = []
     for record in pds:
@@ -387,7 +407,7 @@ def fetchActiveOutputsForFinalDiagnosis(applicationName, familyName, finalDiagno
         " and FD.FinalDiagnosisName = '%s' "\
         " and QO.Active = 1"\
         " order by QuantOutputName"  % (applicationName, familyName, finalDiagnosisName)
-    log.trace(SQL)
+    log.tracef("%s.fetchActiveOutputsForFinalDiagnosis(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     outputList = []
     for record in pds:
@@ -457,7 +477,7 @@ def fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds, database=""):
         SQL = "select distinct QuantOutputId "\
             " from DtRecommendationDefinition "\
             " where FinalDiagnosisId in ( %s ) " % (idString)
-        log.trace(SQL)
+        log.tracef("%s.fetchQuantOutputsForFinalDiagnosisIds(): %s", __name__, SQL)
         pds = system.db.runQuery(SQL, database)
         
         quantOutputIds=[]
@@ -476,14 +496,14 @@ def fetchQuantOutput(quantOutputId, database=""):
         " from DtQuantOutput QO, Lookup L "\
         " where QO.QuantOutputId = %i "\
         " and QO.FeedbackMethodId = L.LookupId"  % (quantOutputId)
-    log.trace(SQL)
+    log.tracef("%s.fetchQuantOutput(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
 
 #
 def fetchTagPathForQuantOutputName(quantOutputName, database=""):
     SQL = "select QuantOutputName from DtQuantOutput where QuantOutputName = '%s'"  % (quantOutputName)
-    log.trace(SQL)
+    log.tracef("%s.fetchTagPathForQuantOutputName(): %s", __name__, SQL)
     tagPath = system.db.runScalarQuery(SQL, database)
     return tagPath
 
@@ -495,7 +515,7 @@ def fetchPostForApplication(application, database=""):
         " where P.PostId = U.PostId "\
         " and U.UnitId = A.UnitId "\
         " and A.ApplicationName = '%s' " % (application)
-    log.trace(SQL)
+    log.tracef("%s.fetchPostForApplication(): %s", __name__, SQL)
     post = system.db.runScalarQuery(SQL, database)
     return post
 
@@ -505,7 +525,7 @@ def fetchPostForUnit(unit, database=""):
         " from TkPost P, TkUnit U "\
         " where P.PostId = U.PostId "\
         " and U.UnitName = '%s' " % (unit)
-    log.trace(SQL)
+    log.tracef("%s.fetchPostForUnit(): %s", __name__, SQL)
     post = system.db.runScalarQuery(SQL, database)
     return post
 
@@ -513,7 +533,7 @@ def fetchPostForUnit(unit, database=""):
 # Fetch the post for an application
 def fetchNotificationStrategy(application, database=""):
     SQL = "select NotificationStrategy, ClientId from DtApplication where ApplicationName = '%s' " % (application)
-    log.trace(SQL)
+    log.tracef("%s.fetchNotificationStrategy(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     record = pds[0]
     return record["NotificationStrategy"], record["ClientId"]
@@ -539,7 +559,7 @@ def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
 # Update the application priority
 def updateFamilyPriority(familyName, familyPriority, database=""):
     SQL = "update DtFamily set FamilyPriority = %i where FamilyName = '%s'" % (familyPriority, familyName)
-    log.trace(SQL)
+    log.tracef("%s.updateFamilyPriority(): %s", __name__, SQL)
     rows = system.db.runUpdateQuery(SQL, database)
     log.trace("Updated %i rows" % (rows))
     
