@@ -1313,6 +1313,16 @@ def updateQuantOutput(quantOutput, database='', provider=''):
            manualOverride, str(currentSetpoint), str(finalSetpoint), str(displayedRecommendation), quantOutputId)
     logSQL.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
+    
+    '''
+    If this quant output is for a ramp controller, then the recommendation MUST contain a Ramp time 
+    (Due to some confusion, when I move the rampTime into the quant output I change the name to Ramp to match the database)
+    '''
+    ramp = quantOutput.get('Ramp', None)
+    if ramp != None:
+        SQL = "update DtQuantOutputRamp set Ramp = %s where QuantOutputId = %i " % (str(ramp), quantOutputId)
+        logSQL.trace(SQL)
+        system.db.runUpdateQuery(SQL, database)
 
 # Set the flag for all of the outputs used by this FD to ignore the minimumIncrement specifications.  This MUST
 # be called in the FDs calculation method and only lasts until another FinalDiagnosis using the same QusantOutput becomes active 

@@ -5,7 +5,7 @@ Created on Jul 17, 2018
 '''
 import system, string, threading, time
 from ils.io.util import getOuterUDT
-from ils.io.api import write
+from ils.io.api import write, writeRamp
 from ils.queue.message import insertPostMessage
 log = system.util.getLogger("com.ils.diagToolkit.downloader")
 
@@ -19,8 +19,12 @@ class DownloadThread(threading.Thread):
     newSetpoint = None
     writeConfirm = None
     valueType = None
+    rampTime = None
+    row = None
+    valType = "SETPOINT RAMP"
+    updateFrequency = 10
     
-    def __init__(self, downloader, quantOutputId, tagPath, newSetpoint, writeConfirm, valueType):
+    def __init__(self, downloader, row, quantOutputId, tagPath, newSetpoint, rampTime, writeConfirm, valueType):
         log.info("Initializing...")
         threading.Thread.__init__(self)
         self.downloader = downloader
@@ -29,11 +33,16 @@ class DownloadThread(threading.Thread):
         self.newSetpoint = newSetpoint
         self.writeConfirm = writeConfirm
         self.valueType = valueType
+        self.rampTime = rampTime
+        self.row = row
         
     def run(self):
-        log.infof("Running download thread for writing %s to %s...", str(self.newSetpoint), self.tagPath)
+        log.infof("Running download thread #%d for writing %s to %s...", self.row, str(self.newSetpoint), self.tagPath)
         
-        success, errorMessage = write(self.tagPath, self.newSetpoint, self.writeConfirm, self.valueType)
+        if self.rampTime in [""]:
+            success, errorMessage = write(self.tagPath, self.newSetpoint, self.writeConfirm, self.valueType)
+        else:
+            success, errorMessage = writeRamp(self.tagPath, self.newSetpoint, self.valType, self.rampTime, self.updateFrequency, self.writeConfirm)
         
         if success:
             self.downloader.updateQuantOutputDownloadStatus(self.quantOutputId, "Success")
@@ -44,7 +53,7 @@ class DownloadThread(threading.Thread):
             self.downloader.updateQuantOutputDownloadStatus(self.quantOutputId, "Error")
             self.downloader.logbookMessage += "failed because of an error: %s\n" % (errorMessage)
 
-        log.infof("...finished a download thread for writing %s to %s!", str(self.newSetpoint), self.tagPath)
+        log.infof("...finished a download thread #%d for writing %s to %s!", self.row, str(self.newSetpoint), self.tagPath)
 
 class Downloader():
     '''
@@ -61,6 +70,7 @@ class Downloader():
     downloadStatus = {}
 
     def __init__(self, post, ds, tagProvider, db):
+        log.infof("In %s, creating a Downloader for %s...", __name__, post)
         self.post = post
         self.ds = ds
         self.tagProvider = tagProvider
@@ -87,11 +97,9 @@ class Downloader():
                 
         '''
         Not sure what the purpose of this sleep is.  Not sure if there are database transactions that we want to give time to complete.
-        This was 10 seconds, which is an eternity.  Changing to 1 second.
+        This was 10 seconds, which is an eternity.  Changing to 1 second.  I think this was to make sure 
         '''
-        print "Sleeping..."
         time.sleep(1)
-        print "Waking up..."
         
         ''' Now get to work on the download... '''
         for row in range(self.ds.rowCount):
@@ -105,6 +113,7 @@ class Downloader():
                 if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:        
                     quantOutput = self.ds.getValueAt(row, "output")
                     quantOutputId = self.ds.getValueAt(row, "qoId")
+                    rampTime = self.ds.getValueAt(row, "ramp")
                     tag = self.ds.getValueAt(row, "tag")
                     newSetpoint = self.ds.getValueAt(row, "finalSetpoint")
                     tagPath="[%s]%s" % (self.tagProvider, tag)
@@ -115,7 +124,7 @@ class Downloader():
                         # From the tagpath determine if we are writing directly to an OPC tag or to a controller
                         UDTType, tagPath = getOuterUDT(tagPath)
                         
-                        downloadThread = DownloadThread(self, quantOutputId, tagPath, newSetpoint, writeConfirm=True, valueType='setpoint')
+                        downloadThread = DownloadThread(self, row, quantOutputId, tagPath, newSetpoint, rampTime, writeConfirm=True, valueType='setpoint')
                         downloadThread.start()
                         self.threads.append(downloadThread)
                         self.runningCount = self.runningCount + 1
