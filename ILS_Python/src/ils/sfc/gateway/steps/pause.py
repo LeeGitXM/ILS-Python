@@ -15,7 +15,7 @@ def activate(scopeContext, stepProperties, state):
         if not (state == DEACTIVATED or state == PAUSED):
             chartLogger = getChartLogger(chartScope)
             pauseChart(chartScope)
-            addControlPanelMessage(chartScope, "Chart paused", "Error", False)
+            addControlPanelMessage(chartScope, stepProperties, "Chart paused", "Error", False)
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in pause.py', chartLogger)
     finally:

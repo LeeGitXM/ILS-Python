@@ -15,7 +15,7 @@ def activate(scopeContext, stepProperties, state):
         chartLogger = getChartLogger(chartScope)
         if not (state == DEACTIVATED or state == CANCELLED):
             cancelChart(chartScope)
-            addControlPanelMessage(chartScope, "Chart canceled", "Error", False)
+            addControlPanelMessage(chartScope, stepProperties, "Chart canceled", "Error", False)
     except SystemExit:
         chartLogger.info("The chart has been cancelled!")
     except:
