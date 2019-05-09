@@ -443,7 +443,7 @@ def insertInputRecipeData(recipeDataId, valueType, valueTypeId, tag, txId):
     
 def insertArray(recipeDataId, valueType, valueTypeId, indexKey, arrayIndexKeys, txId):
     log.tracef("          Inserting an array...")
-    if indexKey == None:
+    if indexKey in [None, 'None']:
         log.tracef("          Inserting an array...")
         SQL = "insert into SfcRecipeDataArray (recipeDataId, valueTypeId) values (%d, %d)" % (recipeDataId, valueTypeId)
     else:
