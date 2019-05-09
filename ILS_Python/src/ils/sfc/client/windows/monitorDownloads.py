@@ -73,7 +73,7 @@ def setWindowSize(rootContainer, window):
         
         
 def update(rootContainer):
-    print "In monitorDownloads.update()"
+    print "In %s.update()" % (__name__)
 
     windowId = rootContainer.windowId
     timerRecipeDataId = rootContainer.timerRecipeDataId
@@ -187,24 +187,42 @@ def initializeDatabaseTable(windowId, database, tagProvider):
     for record in pds:
         recipeDataId = record["RecipeDataId"]
         recipeDataType = record["RecipeDataType"]
-        
         recipeRecord = s88GetRecordFromId(recipeDataId, recipeDataType, database)
         print "Fetched recipe record: ", recipeRecord
-
-        rawTiming = recipeRecord["TIMING"]
-        tagPath = recipeRecord["TAG"]
-        setpoint = recipeRecord["OUTPUTFLOATVALUE"]
-        downloadStatus = recipeRecord["DOWNLOADSTATUS"]
-        pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
-        pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
-        setpointStatus = recipeRecord["SETPOINTSTATUS"]
-        pvValue = recipeRecord["PVFLOATVALUE"]
-        stepTimestamp = recipeRecord["ACTUALDATETIME"]
-        description = recipeRecord["DESCRIPTION"]
-        valueType = recipeRecord["VALUETYPE"]
-        units = recipeRecord["UNITS"]
-#        guiUnits = tagValues[12].value
-
+        
+        if  string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:
+            rawTiming = recipeRecord["TIMING"]
+            tagPath = recipeRecord["TAG"]
+            setpoint = recipeRecord["OUTPUTFLOATVALUE"]
+            downloadStatus = recipeRecord["DOWNLOADSTATUS"]
+            pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
+            pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
+            setpointStatus = recipeRecord["SETPOINTSTATUS"]
+            pvValue = recipeRecord["PVFLOATVALUE"]
+            stepTimestamp = recipeRecord["ACTUALDATETIME"]
+            description = recipeRecord["DESCRIPTION"]
+            valueType = recipeRecord["VALUETYPE"]
+            units = recipeRecord["UNITS"]
+        elif string.upper(recipeDataType) == "INPUT":
+            rawTiming = "NULL"
+            tagPath = recipeRecord["TAG"]
+            setpoint = recipeRecord["TARGETFLOATVALUE"]
+            downloadStatus = "pending"   # This will make cell background white
+            pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
+            pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
+            setpointStatus = ""
+            pvValue = recipeRecord["PVFLOATVALUE"]
+            stepTimestamp = None
+            description = recipeRecord["DESCRIPTION"]
+            valueType = recipeRecord["VALUETYPE"]
+            units = recipeRecord["UNITS"]
+        else:
+            print "*** Illegal recipe data type: ", recipeDataType
+            return
+        
+        if setpoint in [None, "None"]:
+            setpoint = ""
+    
         if stepTimestamp == None or stepTimestamp == "None":
             stepTimestamp = ""
         else:
@@ -236,7 +254,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
             (str(rawTiming), str(timing), displayName, str(setpoint), formattedPV, \
              stepTimestamp, str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
              description, windowId, recipeDataId)
-
+    
         system.db.runUpdateQuery(SQL, database)
 
 # This is very similar to the initialize method above except that it does not update rows that have already 
@@ -255,15 +273,25 @@ def updateDatabaseTable(windowId, database):
     for record in pds:
         recipeDataId = record["RecipeDataId"]
         recipeDataType = record["RecipeDataType"]
-        
         recipeRecord = s88GetRecordFromId(recipeDataId, recipeDataType, database)
         
-        downloadStatus = recipeRecord["DOWNLOADSTATUS"]
-        pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
-        pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
-        setpointStatus = recipeRecord["SETPOINTSTATUS"]
-        pvValue = recipeRecord["PVFLOATVALUE"]
-        stepTimestamp = recipeRecord["ACTUALDATETIME"]
+        if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:
+            downloadStatus = recipeRecord["DOWNLOADSTATUS"]
+            pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
+            pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
+            setpointStatus = recipeRecord["SETPOINTSTATUS"]
+            pvValue = recipeRecord["PVFLOATVALUE"]
+            stepTimestamp = recipeRecord["ACTUALDATETIME"]
+        elif string.upper(recipeDataType) == "INPUT":
+            downloadStatus = "pending"  # This will make cell background white
+            pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
+            pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
+            setpointStatus = ""
+            pvValue = recipeRecord["PVFLOATVALUE"]
+            stepTimestamp = None
+        else:
+            print "*** Illegal recipe data type: ", recipeDataType
+            return
         
         if pvValue == None:
             formattedPV = ""

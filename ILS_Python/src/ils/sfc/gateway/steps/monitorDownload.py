@@ -6,7 +6,7 @@ This step used to be known as Download GUI
 @author: rforbes
 '''
 
-import system
+import system, string
 from ils.sfc.recipeData.api import s88Set, s88GetStep, s88Get, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88SetFromId
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, DOWNLOAD, \
@@ -16,6 +16,14 @@ from system.ils.sfc import getMonitorDownloadsConfig
 from ils.sfc.gateway.downloads import handleTimer
 from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpectedGatewayError, sendMessageToClient, getStepProperty, getControlPanelId, \
     registerWindowWithControlPanel, getTopChartRunId, getDatabaseName
+
+'''
+I'd like the Download GUI block to work the same as PV Monitoring, but this block doesn't have a watch/monitoring setting!
+The ONLY reason to put an input or output in watch mode in the PV Monitoring block is to display the PV in the download monitor block.
+Since there is no way to reach out to the PV monitoring block from here, I have to assume that everything that is configured for this block 
+should show up in the GUI. 
+'''
+IGNORE_DOWNLOAD_FLAG = False
 
 def activate(scopeContext, stepProperties, state): 
 
@@ -70,25 +78,40 @@ def activate(scopeContext, stepProperties, state):
         for row in monitorDownloadsConfig.rows:
             logger.trace("Resetting recipe data with key: %s at %s" % (row.key, recipeLocation))
             
-            download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeLocation)
-            if download:
-                recipeDataId, recipeDataType = s88GetRecipeDataId(chartScope, stepProperties, row.key, recipeLocation)
-                
-                # Initialize properties used by the write output process
-                s88SetFromId(recipeDataId, recipeDataType, DOWNLOAD_STATUS, STEP_PENDING, database)
-                s88SetFromId(recipeDataId, recipeDataType, WRITE_CONFIRMED, "NULL", database)
+            recipeDataId, recipeDataType = s88GetRecipeDataId(chartScope, stepProperties, row.key, recipeLocation)
+            print "Recipe Data Type: ", recipeDataType
+
+            if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:            
+                download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeLocation)
+                if download or IGNORE_DOWNLOAD_FLAG:
+                    # Initialize properties used by the write output process
+                    s88SetFromId(recipeDataId, recipeDataType, DOWNLOAD_STATUS, STEP_PENDING, database)
+                    s88SetFromId(recipeDataId, recipeDataType, WRITE_CONFIRMED, "NULL", database)
+                        
+                    # Initialize properties used by a PV monitoring process
+                    s88SetFromId(recipeDataId, recipeDataType, PV_MONITOR_ACTIVE, False, database)
+                    s88SetFromId(recipeDataId, recipeDataType, PV_VALUE, "NULL", database)
+                    s88SetFromId(recipeDataId, recipeDataType, PV_MONITOR_STATUS, PV_NOT_MONITORED, database)
+                    s88SetFromId(recipeDataId, recipeDataType, SETPOINT_STATUS, SETPOINT_OK, database)
+                    s88SetFromId(recipeDataId, recipeDataType, ACTUAL_TIMING, "NULL", database)
+                    s88SetFromId(recipeDataId, recipeDataType, ACTUAL_DATETIME, "NULL", database)
                     
+                    SQL = "insert into SfcDownloadGUITable (windowId, RecipeDataId, RecipeDataType, labelAttribute) "\
+                        "values ('%s', '%s', '%s', '%s')" % (windowId, recipeDataId, recipeDataType, row.labelAttribute)
+                    print SQL
+                    system.db.runUpdateQuery(SQL, database)
+                else:
+                    logger.tracef("Skipping output: <%s> because DOWNLOAD is False ", row.key)
+            
+            elif string.upper(recipeDataType) == "INPUT":
                 # Initialize properties used by a PV monitoring process
                 s88SetFromId(recipeDataId, recipeDataType, PV_MONITOR_ACTIVE, False, database)
                 s88SetFromId(recipeDataId, recipeDataType, PV_VALUE, "NULL", database)
                 s88SetFromId(recipeDataId, recipeDataType, PV_MONITOR_STATUS, PV_NOT_MONITORED, database)
-                s88SetFromId(recipeDataId, recipeDataType, SETPOINT_STATUS, SETPOINT_OK, database)
-                s88SetFromId(recipeDataId, recipeDataType, ACTUAL_TIMING, "NULL", database)
-                s88SetFromId(recipeDataId, recipeDataType, ACTUAL_DATETIME, "NULL", database)
                 
                 SQL = "insert into SfcDownloadGUITable (windowId, RecipeDataId, RecipeDataType, labelAttribute) "\
-                    "values ('%s', '%s', '%s', '%s')" % (windowId, recipeDataId, recipeDataType, row.labelAttribute)
-    
+                        "values ('%s', '%s', '%s', '%s')" % (windowId, recipeDataId, recipeDataType, row.labelAttribute)
+                print SQL
                 system.db.runUpdateQuery(SQL, database)
         
         #TODO This is temprary to see if this is even used!

@@ -118,6 +118,7 @@ MONITORING = "Monitoring"
 MSG_QUEUE_WINDOW = "Queue/Message Queue"
 MULTIPLE = "multiple"
 NAME = "name"
+NO_LIMIT = "No Limit"   # Duration strategy
 NUMBER_OF_TIMEOUTS = "numberOfTimeouts"
 NUMBER_OF_ERRORS = "numberOfErrors"
 OK = "Ok"
