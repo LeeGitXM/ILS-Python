@@ -425,7 +425,7 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
             pythonClass = system.tag.read(fullTagPath + '/pythonClass').value
             if string.upper(pythonClass) in ["OPCTAG", "OPCCONDITIONALOUTPUT", "OPCOUTPUT"]:
                 displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
-            elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSACECONTROLLER", "PKSACERAMPCONTROLLER", "PKSDIGITALCONTROLLER", "TDCCONTROLLER", "TDCDIGITALCONTROLLER", "TDCRAMPCONTROLLER"]:
+            elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSRAMPCONTROLLER", "PKSACECONTROLLER", "PKSACERAMPCONTROLLER", "PKSDIGITALCONTROLLER", "TDCCONTROLLER", "TDCDIGITALCONTROLLER", "TDCRAMPCONTROLLER"]:
                 displayName = system.tag.read(fullTagPath + '/sp/value.OPCItemPath').value
             else:
                 raise ValueError, "Unknown I/O class: %s" % (pythonClass)      

@@ -1195,7 +1195,7 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
     elif targetRecipeDataType == OUTPUT_RAMP:
         valueId = targetRecord["OUTPUTVALUEID"]
     elif targetRecipeDataType == ARRAY:
-        logger.errorf('Copying target array recipe!')
+        logger.tracef('Copying target array recipe!')
     elif targetRecipeDataType == INPUT:
         logger.errorf('Copying target input recipe data HAS NOT BEEN IMPLEMENTED...')
     elif targetRecipeDataType == TIMER:
