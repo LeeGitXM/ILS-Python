@@ -291,7 +291,6 @@ def activate(scopeContext, stepProperties, state):
                     stepScope["timerStarted"] = True
                 
                 elapsedMinutes = s88GetFromId(timerRecipeDataId, TIMER, "ELAPSEDMINUTES", database)
-                logger.tracef("The elapsed minutes are: %s", str(elapsedMinutes))
                 persistencePending = stepScope[PERSISTENCE_PENDING]
                 monitorActiveCount = stepScope[MONITOR_ACTIVE_COUNT]
                 maxPersistence = stepScope[MAX_PERSISTENCE]
@@ -301,6 +300,8 @@ def activate(scopeContext, stepProperties, state):
                 else:
                     extendedDuration = elapsedMinutes + 1.0
                 
+                logger.tracef("  monitorActiveCount: %s, timeLimitMin: %s, elapsedMinutes: %s, persistencePending: %s, extendedDuration: %s", 
+                              str(monitorActiveCount), str(), str(elapsedMinutes), str(persistencePending), str(extendedDuration))
                 if monitorActiveCount > 0 and ((timeLimitMin < 0) or (elapsedMinutes < timeLimitMin) or (persistencePending and elapsedMinutes < extendedDuration)) or watchOnly:
                     logger.tracef("(%s) Starting a PV monitor pass, (elapsed minutes: %s) ...", stepName, str(elapsedMinutes))
            
