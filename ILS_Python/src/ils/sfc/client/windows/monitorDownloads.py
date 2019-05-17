@@ -58,7 +58,7 @@ def setWindowSize(rootContainer, window):
     header = 75
     footer = 45
     rowHeight = 21
-    maxAdjustment = 1.5
+    maxAdjustment = 1.7
     
     windowHeight = window.getHeight()
     windowWidth = window.getWidth()
