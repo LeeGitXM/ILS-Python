@@ -908,6 +908,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
         postProcessingCallback = record["PostProcessingCallback"]
         calculationMethod = record["CalculationMethod"]
         textRecommendation = record["TextRecommendation"]
+        staticExplanation = record["Explanation"]
+        showExplanationWithRecommendation = record["ShowExplanationWithRecommendation"]
         
         log.info("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%i), Constant: %s" % (applicationName, familyName, finalDiagnosisName, finalDiagnosisId, str(constantFD)))
 
@@ -961,6 +963,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
             log.infof( "-----------------")
             
             if postTextRecommendation and explanation != "":
+                if showExplanationWithRecommendation and len(staticExplanation) > 0:
+                    explanation = "<HTML>" + staticExplanation + "<br><br>" + explanation
                 explanations.append({"explanation": explanation, "diagnosisEntryId": diagnosisEntryId})
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")

@@ -6,8 +6,8 @@ Created on Jun 30, 2015
 import system, string
 from ils.diagToolkit.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
 from ils.common.config import getDatabaseClient
-from ils.common.util import formatHTML
 from ils.diagToolkit.common import fetchApplicationsForPost, fetchActiveTextRecommendationsForPost
+log=system.util.getLogger("com.ils.diagToolkit")
 
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
@@ -19,7 +19,7 @@ def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, d
 # This is called when the press the Setpoint Spreadsheet Button on a console.  This needs to check if we should show the setpoint
 # spreadsheet, with numeric recommendations or the loud workspace with text recommendations.
 def openSetpointSpreadsheetCallback(post):
-    print "In %s.openSetpointSpreadsheetCallback() checking what to open..." % (__name__)
+    log.infof("In %s.openSetpointSpreadsheetCallback() checking what to open...", __name__)
     
     # First, see if there is a loud workspace on this window.  If there is and I decide to press the red button instead then
     # hide the loud workspace.
@@ -53,6 +53,7 @@ def openSetpointSpreadsheetCallback(post):
             diagnosisEntryId = record["DiagnosisEntryId"]
             
             # Now display the text recommendation
+            log.infof("Displaying a text recommendation from %s.openSetpointSpreadsheetCallback()", __name__)
             system.gui.messageBox(notificationText, "Text Recommendation")
         
             # Once the text recommendation is acknowledged proceed to perform the standard resets
@@ -91,7 +92,6 @@ def handleOpenSpreadsheetForSpecificClientNotification(payload):
     system.nav.centerWindow('DiagToolkit/Setpoint Spreadsheet')
 
 
-
 '''
 The purpose of this notification handler is to open the setpoint spreadsheet on the appropriate client when there is a 
 change in a FD / Recommendation.  The idea is that the gateway will send a message to all clients.  The payload of the 
@@ -116,15 +116,6 @@ def handleNotification(payload):
         return
 
     windows = system.gui.getOpenedWindows()
-    
-#    
-        # If the setpoint spreadsheet is open, then quietly update it.  If it isn't open then post the loud workspace
-#        print "YO"
-        
-#    else:
-        
-    # First check if the setpoint spreadsheet is already open.  This does not check which console's
-    # spreadsheet is open, it assumes a client can only be interested in one console.
     
     '''
     This seems like it might not be right - if console A is showing the loud workspace and a notification for console B
@@ -264,7 +255,6 @@ def handleNotification(payload):
     handleMessage(ocPayload)
     
 
-#
 # The purpose of this notification handler is to notify the operator of a text recommendation.
 # The idea is that the gateway will send a message to all clients.  The payload of the 
 # message includes the console name.  If the client is responsible for the console specified then a loud workspace is 
@@ -344,10 +334,32 @@ def handleTextRecommendationNotification(payload):
     # we already caught a message so we are in the client            
     from ils.common.ocAlert import handleMessage
     handleMessage(ocPayload)
+    
+
+
+
+# The purpose of this notification handler is to notify the operator of a really generic text message.
+# The idea is that the gateway will send a message to all clients.  The payload of the 
+# message includes the console name.  If the client is responsible for the console specified then generic
+# modal message is displayed.
+def handleTextNotification(payload):
+    print "-----------------------"
+    print "In %s.handleTextNotification with %s" % (__name__, str(payload))
+    
+    post=payload.get('post', '')
+    notificationText=payload.get('notificationText', '')
+    database=payload.get('database', '')
+    clientDatabase=getDatabaseClient()
+    
+    if database != "" and database <> clientDatabase:
+        print "Exiting handleTextNotification() because the gateway database does not match the client database"
+        return
+    
+    system.gui.messageBox(notificationText)
 
 
 def ackTextRecommendation(event, payload):
-    print "In %s.ackTextRecommendation() ACKing a text recommendation - the payload is: %s" % (__name__, str(payload))
+    log.infof("In %s.ackTextRecommendation() ACKing a text recommendation - the payload is: %s", __name__, str(payload))
     
     post=payload.get("post", "")
     application=payload.get("application","")
@@ -365,11 +377,12 @@ def ackTextRecommendation(event, payload):
         notificationText = record["TextRecommendation"]
         diagnosisEntryId = record["DiagnosisEntryId"]
         
-        ''' If the user wrote a big massively long text string, the messageBox does not workwrap it, but it will stretch the window, so instead try to wrap it in HTML and insert <br> codes 
-        at the right spots.  If the user already specied <HTML> then assume they did a nice job and let it through untouched. '''
+        ''' The system messageBox supports <HTML> formatting!  The word wrapping is less than ideal (in my opinion), it will stretch to the width of the display, not the window, THE DISPLAY!
+        I can't think of a reasaonable way to change the behavior of this.  Of course the writer of the recommendation can insert <br> tags where they make sense to make the recommendation look good.  '''        
         if notificationText.find("<HTML>") < 0:
-            notificationText = formatHTML(notificationText, 50)
-         
+            notificationText = "<HTML> " + notificationText
+            
+        log.infof("Displaying a text recommendation from %s.ackTextRecommendation(): %s", __name__, notificationText)
         system.gui.messageBox(notificationText, "Text Recommendation")
         # Once the text recommendation is acknowledged proceed to perform the standard resets
         print "Proceeding to acknowledge the text recommendation..."    

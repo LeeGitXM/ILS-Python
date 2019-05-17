@@ -37,16 +37,18 @@ def getLogbookForPost(post):
 
 def initializeView(rootContainer):
     print "Initializing..."
+    selectedStringValue = rootContainer.logbook
+    
     dropdown = rootContainer.getComponent("Logbook Dropdown")
     dropdown.selectedStringValue = ""
-    selectedStringValue =rootContainer.logbook
     ds = system.db.runQuery("select LogbookId, LogbookName from TkLogbook order by logbookName")
     dropdown.data = ds
     
     def setSelectedValue(dropdown=dropdown, selectedStringValue=selectedStringValue):
         print "Setting the selected Value to: ", selectedStringValue
-        time.sleep(0.5)
+        time.sleep(1.5)
         dropdown.selectedStringValue=selectedStringValue
+        dropdown.selectedLabel=selectedStringValue
 
     system.util.invokeLater(setSelectedValue)
 

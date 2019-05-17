@@ -213,6 +213,13 @@ def checkForDerivedValueTriggers(database):
 def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
     derivedLog.tracef("Checking the derived calculations...")
     
+    def writeToPHD(resultServerName, resultItemId, newVal, sampleTime):
+        try:
+            system.opchda.insert(resultServerName, resultItemId, newVal, sampleTime, 192)
+            log.infof("         Writing derived value to PHD via HDA: %f for %s to %s at %s", newVal, valueName, resultItemId, str(sampleTime))
+        except:
+            log.errorf("**** Error writing derived value to PHD via HDA: %f for %s to %s at %s ****", newVal, valueName, resultItemId, str(sampleTime))
+    
     cal = Calendar.getInstance()
     labDataWriteEnabled=system.tag.read("[" + tagProvider + "]" + "Configuration/LabData/labDataWriteEnabled").value
     globalWriteEnabled=system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
@@ -306,8 +313,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 
                     # Derived lab data also has a target OPC tag that it needs to update - do this immediately
                     if writeEnabled:
-                        system.opchda.insert(resultServerName, resultItemId, newVal, system.date.now(), 192)
-                        log.trace("         Writing derived value %f for %s to %s" % (newVal, valueName, resultItemId))
+                        writeToPHD(resultServerName, resultItemId, newVal, sampleTime)
                     else:
                         log.info("         *** Skipping *** Write of derived value %f for %s to %s" % (newVal, valueName, resultItemId))
                 else:

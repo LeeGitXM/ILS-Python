@@ -25,7 +25,7 @@ def toDateTime(txt):
 
 def toBool(txt):
 
-    if txt == "true" or txt == "True" or txt == "TRUE" or txt == True or txt == '1' or txt == 1:
+    if txt in ["true", "True", "TRUE", True, '1', 1, "1.0"]:
         val = True
     else:
         val = False

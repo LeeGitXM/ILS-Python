@@ -44,3 +44,19 @@ def okAction(event):
     manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database, provider)
     
     system.nav.closeParentWindow(event)
+    
+
+'''
+This can be called from the gateway in a FD calculation method.
+'''
+def fetchManualMoveInfo(finalDiagnosisName, db):
+    print "In %s.fetchManualMoveInfo()" % (__name__)
+
+    SQL = "select ManualMoveAllowed, ManualMove from DtFinalDiagnosis where FinalDiagnosisName = '%s' " % str(finalDiagnosisName)
+    pds = system.db.runQuery(SQL, db)
+    record = pds[0]
+    
+    manualMove = record["ManualMove"]
+    manualMoveAllowed = record["ManualMoveAllowed"]
+
+    return manualMove, manualMoveAllowed
