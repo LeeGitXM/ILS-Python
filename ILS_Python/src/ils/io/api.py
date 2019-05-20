@@ -404,10 +404,10 @@ def validateValueType(valueType):
     return valueType
     
 
-def getDisplayName(provider, tagPath, valueType, displayAttribute):
+def getDisplayName(provider, tagPath, valueType, displayAttribute, outputType):
     ''' Get the string that will typically be displayed in the DCS Tag Id column of the download monitor '''
     fullTagPath='[%s]%s' % (provider, tagPath)
-    log.tracef("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s", fullTagPath, displayAttribute)
+    log.tracef("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s, valueType: %s", fullTagPath, displayAttribute, valueType)
 
     ''' Check if the tag exists '''
     tagExists = system.tag.exists(fullTagPath)
@@ -426,7 +426,10 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute):
             if string.upper(pythonClass) in ["OPCTAG", "OPCCONDITIONALOUTPUT", "OPCOUTPUT"]:
                 displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
             elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSRAMPCONTROLLER", "PKSACECONTROLLER", "PKSACERAMPCONTROLLER", "PKSDIGITALCONTROLLER", "TDCCONTROLLER", "TDCDIGITALCONTROLLER", "TDCRAMPCONTROLLER"]:
-                displayName = system.tag.read(fullTagPath + '/sp/value.OPCItemPath').value
+                if string.upper(outputType) in ["SETPOINT", "SETPOINT RAMP"]:
+                    displayName = system.tag.read(fullTagPath + '/sp/value.OPCItemPath').value
+                else:
+                    displayName = system.tag.read(fullTagPath + '/op/value.OPCItemPath').value
             else:
                 raise ValueError, "Unknown I/O class: %s" % (pythonClass)      
         else:

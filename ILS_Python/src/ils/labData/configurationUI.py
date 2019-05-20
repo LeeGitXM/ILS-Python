@@ -274,6 +274,7 @@ def updateLimit(rootContainer):
 #update the database when user directly changes table 
 def dataCellEdited(table, rowIndex, colName, newValue):
     print "A cell has been edited so update the database..."
+    print "Row: %s, Column: %s, Value: %s" % (str(rowIndex), colName, str(newValue))
     rootContainer = table.parent.parent
 
     ds = table.data
@@ -282,34 +283,31 @@ def dataCellEdited(table, rowIndex, colName, newValue):
     SQL = ""
     
     if colName == "ValueName":
-        SQL = "UPDATE LtValue SET ValueName = '%s' "\
-            "WHERE ValueId = %i " % (newValue, valueId)
+        SQL = "UPDATE LtValue SET ValueName = '%s' WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "Description":
-        SQL = "UPDATE LtValue SET Description = '%s' "\
-            "WHERE ValueId = %i " % (newValue, valueId)
+        SQL = "UPDATE LtValue SET Description = '%s' WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "DisplayDecimals":
-        SQL = "UPDATE LtValue SET DisplayDecimals = %i "\
-            "WHERE ValueId = %i " % (newValue, valueId)
+        SQL = "UPDATE LtValue SET DisplayDecimals = %i WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "ItemId":
         if dataType == "PHD":
-            SQL = "UPDATE LtPHDValue SET ItemId = %i "\
-                "WHERE ValueId = %i " % (newValue, valueId)
+            SQL = "UPDATE LtPHDValue SET ItemId = %i WHERE ValueId = %i " % (newValue, valueId)
         elif dataType == "DCS":
-            SQL = "UPDATE LtDCSValue SET ItemId = %i "\
-                "WHERE ValueId = %i " % (newValue, valueId)
+            SQL = "UPDATE LtDCSValue SET ItemId = %i WHERE ValueId = %i " % (newValue, valueId)
         elif dataType == "Local":
-            SQL = "UPDATE LtLocalValue SET ItemId = %i "\
-                "WHERE ValueId = %i " % (newValue, valueId)
+            SQL = "UPDATE LtLocalValue SET ItemId = %i WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "InterfaceName":
-        SQL = "UPDATE LtHDAInterface SET InterfaceName = %i "\
-            "WHERE LtHDAInterface.InterfaceId = LtPHDValue.InterfaceId " % (newValue)
+        SQL = "select InterfaceId from LtOPCInterface where InterfaceName = '%s'" % (newValue)
+        interfaceId = system.db.runScalarQuery(SQL)
+        if dataType == "PHD":
+            print "Error: InterfaceName is not a valid column for a PHD lab value!"
+        elif dataType == "DCS":
+            SQL = "UPDATE LtDCSValue SET InterfaceId = %i WHERE ValueId = %i " % (interfaceId, valueId)
+
     elif colName == "ValidationProcedure":
         if newValue == "":
-            SQL = "UPDATE LtValue SET ValidationProcedure = NULL "\
-                "WHERE ValueId = %i " % (valueId)
+            SQL = "UPDATE LtValue SET ValidationProcedure = NULL WHERE ValueId = %i " % (valueId)
         else:
-            SQL = "UPDATE LtValue SET ValidationProcedure = '%s' "\
-                "WHERE ValueId = %i " % (newValue, valueId)
+            SQL = "UPDATE LtValue SET ValidationProcedure = '%s' WHERE ValueId = %i " % (newValue, valueId)
     
     elif colName == "MinimumSampleIntervalSeconds":
         SQL = "UPDATE LtDCSValue SET MinimumSampleIntervalSeconds = %d WHERE ValueId = %d " % (newValue, valueId)

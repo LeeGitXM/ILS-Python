@@ -49,8 +49,6 @@ def activate(scopeContext, stepProperties, state):
             handleTimer(timerRecipeDataId, START_TIMER, logger, database)
         
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-#TODO This may not be needed
-#        recipeDataStepUUID, stepName = s88GetStep(chartScope, stepScope, recipeLocation)
         
         configJson = getStepProperty(stepProperties, MONITOR_DOWNLOADS_CONFIG)
         monitorDownloadsConfig = getMonitorDownloadsConfig(configJson)

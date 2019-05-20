@@ -6,14 +6,16 @@ Created on Sep 12, 2014
 
 import system, string
 import system.ils.blt.diagram as scriptingInterface
-from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged,\
-    fetchActiveOutputsForPost
+from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged, fetchActiveOutputsForPost
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.api import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
     RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD, RECOMMENDATION_TEXT_POSTED
 from ils.io.util import getOutputForTagPath
 from system.ils.blt.diagram import getProductionDatabase
+from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
+from ils.common.operatorLogbook import insertForPost
+
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
@@ -399,7 +401,7 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
     rows = system.db.runUpdateQuery(SQL, database)
     log.trace("Cleared %i diagnosis entries" % (rows))
 
-    # PAH 1/22/17 consolidated this SQL with the one above that hasd the same where clause...
+    # PAH 1/22/17 consolidated this SQL with the one above that had the same where clause...
 #    SQL = "update DtDiagnosisEntry set Status = 'InActive' where FinalDiagnosisId = %i and Status = 'Active'" % (finalDiagnosisId)
 #    logSQL.trace(SQL)
 #    rows = system.db.runUpdateQuery(SQL, database)
@@ -443,10 +445,11 @@ def recalcMessageHandler(payload):
             notifyClients(project, post, notificationText="", numOutputs=totalActiveOutputs, database=database, notificationMode="quiet", provider=provider)
 
 
-# This is based on the original G2 procedure outout-msg-core()
-# This inserts a message into the recommendation queue which is accessed from the "M" button
-# on the common console.
 def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, diagnosisEntryId, recommendations, quantOutputs, database):
+    '''
+    This is based on the original G2 procedure outout-msg-core()
+    This inserts a message into the recommendation queue which is accessed from the "M" button on the common console.
+    '''
     log.infof("In postRecommendationMessage(), the recommendations are: %s", str(recommendations))
 
     fdTextRecommendation = fetchTextRecommendation(finalDiagnosisId, database)
@@ -795,8 +798,10 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 ids.append(finalDiagnosisId)
                 _setDiagnosisEntryErrorStatus(finalDiagnosisId, database)
 
-    # Update the diagnosis entry and the final diagnosis for an unexpected error.
     def _setDiagnosisEntryErrorStatus(finalDiagnosisId, database):
+        '''
+        Update the diagnosis entry and the final diagnosis for an unexpected error.
+        '''
         log.info("   ...setting error status for active diagnosis entries for final diagnosis: %i..." % (finalDiagnosisId))
         SQL = "update dtDiagnosisEntry set RecommendationStatus = '%s', status = 'InActive' where FinalDiagnosisId = %i "\
             " and status = 'Active'" % (RECOMMENDATION_ERROR, finalDiagnosisId)
@@ -963,9 +968,13 @@ def manage(application, recalcRequested=False, database="", provider=""):
             log.infof( "-----------------")
             
             if postTextRecommendation and explanation != "":
+                originalExplanation = explanation
                 if showExplanationWithRecommendation and len(staticExplanation) > 0:
                     explanation = "<HTML>" + staticExplanation + "<br><br>" + explanation
                 explanations.append({"explanation": explanation, "diagnosisEntryId": diagnosisEntryId})
+                writeToLogbook = system.tag.read("[%s]Configuration/DiagnosticToolkit/writeTextRecommendationsToLogbook" % provider)
+                if writeToLogbook:
+                    writeTextRecommendationsToLogbook(applicationName, post, staticExplanation, originalExplanation, database)
 
     log.info("--- Recommendations have been made, now calculating the final recommendations ---")
     finalQuantOutputs = []
@@ -1350,3 +1359,16 @@ def setOutputLimits(finalDiagnosisId, state, database=""):
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId)" % (state, finalDiagnosisId)
     rows = system.db.runUpdateQuery(SQL, database)
     return rows
+
+def writeTextRecommendationsToLogbook(applicationName, post, staticExplanation, explanation, db):
+    log.infof("Writing a text recommendation to the logbook: %s  %s", staticExplanation, explanation)
+    if staticExplanation != "":
+        txt = staticExplanation + "  " + explanation
+    else:
+        txt = explanation
+        
+    ''' Write the text recommendation to the application Queue '''
+    insertApplicationQueueMessage(applicationName, txt, QUEUE_INFO, db)
+    
+    ''' Write the text recommendation to the operator logbook '''
+    insertForPost(post, txt, db)

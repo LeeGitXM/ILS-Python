@@ -69,15 +69,16 @@ def createTags(tagProvider):
     data = []
     path = tagProvider + "Configuration/DiagnosticToolkit/"
 
-    data.append([path, "vectorClampMode", "String", "Implement"])
-    data.append([path, "itemIdPrefix", "String", ""])
     data.append([path, "diagnosticToolkitWriteEnabled", "Boolean", "True"])
     data.append([path, "downloadConfirmationEnabled", "Boolean", "False"])
     data.append([path, "diagnosticAgeInterval", "Int8", "5"])
     data.append([path, "freshnessToleranceSeconds", "Float8", "5.0"])
     data.append([path, "freshnessTimeoutSeconds", "Float8", "10.0"])
-    data.append([path, "zeroChangeThreshold", "Float8", "0.00005"])
+    data.append([path, "itemIdPrefix", "String", ""])
     data.append([path, "manualChangeUsernames", "DataSet", None])
+    data.append([path, "vectorClampMode", "String", "Implement"])
+    data.append([path, "writeTextRecommendationsToLogbook", "Boolean", "False"])
+    data.append([path, "zeroChangeThreshold", "Float8", "0.00005"])
           
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

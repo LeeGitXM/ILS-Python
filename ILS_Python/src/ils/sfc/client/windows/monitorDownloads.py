@@ -58,7 +58,7 @@ def setWindowSize(rootContainer, window):
     header = 75
     footer = 45
     rowHeight = 21
-    maxAdjustment = 1.5
+    maxAdjustment = 1.7
     
     windowHeight = window.getHeight()
     windowWidth = window.getWidth()
@@ -203,6 +203,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
             description = recipeRecord["DESCRIPTION"]
             valueType = recipeRecord["VALUETYPE"]
             units = recipeRecord["UNITS"]
+            outputType = recipeRecord["OUTPUTTYPE"]
         elif string.upper(recipeDataType) == "INPUT":
             rawTiming = "NULL"
             tagPath = recipeRecord["TAG"]
@@ -216,6 +217,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
             description = recipeRecord["DESCRIPTION"]
             valueType = recipeRecord["VALUETYPE"]
             units = recipeRecord["UNITS"]
+            outputType = "INPUT"
         else:
             print "*** Illegal recipe data type: ", recipeDataType
             return
@@ -243,7 +245,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
         # Determine the DCS Tag ID - this can either be the name of the tag/UDT or the item id
         import ils.io.api as api
         displayAttribute = record["LabelAttribute"]
-        displayName = api.getDisplayName(tagProvider, tagPath, valueType, displayAttribute)
+        displayName = api.getDisplayName(tagProvider, tagPath, valueType, displayAttribute, outputType)
 
         if units != "":
             description = "%s (%s)" % (description, units)
