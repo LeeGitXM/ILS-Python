@@ -8,7 +8,7 @@ from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName, s88SetFromStep, s88GetRecipeDataIdFromStep, s88GetFromId, s88GetRecordFromId, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
 from ils.common.util import formatDateTime
-from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
+from ils.sfc.common.util import getChartStatus
 
 # This is called when the Download GUI window is opened.  The window is opened in response to a message sent 
 # from the gateway to the client when the download GUI task runs in the gateway.  The gateway task populates the 

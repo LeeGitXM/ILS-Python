@@ -290,11 +290,11 @@ def dataCellEdited(table, rowIndex, colName, newValue):
         SQL = "UPDATE LtValue SET DisplayDecimals = %i WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "ItemId":
         if dataType == "PHD":
-            SQL = "UPDATE LtPHDValue SET ItemId = %i WHERE ValueId = %i " % (newValue, valueId)
+            SQL = "UPDATE LtPHDValue SET ItemId = '%s' WHERE ValueId = %i " % (newValue, valueId)
         elif dataType == "DCS":
-            SQL = "UPDATE LtDCSValue SET ItemId = %i WHERE ValueId = %i " % (newValue, valueId)
+            SQL = "UPDATE LtDCSValue SET ItemId = '%s' WHERE ValueId = %i " % (newValue, valueId)
         elif dataType == "Local":
-            SQL = "UPDATE LtLocalValue SET ItemId = %i WHERE ValueId = %i " % (newValue, valueId)
+            SQL = "UPDATE LtLocalValue SET ItemId = '%s' WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "InterfaceName":
         SQL = "select InterfaceId from LtOPCInterface where InterfaceName = '%s'" % (newValue)
         interfaceId = system.db.runScalarQuery(SQL)

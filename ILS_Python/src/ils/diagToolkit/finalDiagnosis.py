@@ -499,6 +499,11 @@ def fetchTextRecommendation(finalDiagnosisId, database):
     txt=system.db.runScalarQuery(SQL, database)
     return txt
 
+def fetchExplanationUsingName(applicationName, finalDiagnosisName, database):
+    SQL = "select explanation from DtFinalDiagnosisView where ApplicationName = '%s' and FinalDiagnosisName = '%s'" % (applicationName, finalDiagnosisName) 
+    txt=system.db.runScalarQuery(SQL, database)
+    return txt
+
 def fetchTextRecommendationUsingName(applicationName, finalDiagnosisName, database):
     SQL = "select textRecommendation from DtFinalDiagnosisView where ApplicationName = '%s' and FinalDiagnosisName = '%s'" % (applicationName, finalDiagnosisName) 
     txt=system.db.runScalarQuery(SQL, database)

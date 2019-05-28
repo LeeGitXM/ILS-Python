@@ -6,13 +6,12 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
     
-import system, time, sys
-from ils.sfc.common.util import boolToBit, logExceptionCause, chartIsRunning, getChartStatus
+import system, time
+from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
 from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
-from ils.sfc.client.windows.controlPanel import getControlPanelIdForChartRunId
 from ils.queue.constants import QUEUE_ERROR
 from ils.sfc.recipeData.api import substituteScopeReferences
 

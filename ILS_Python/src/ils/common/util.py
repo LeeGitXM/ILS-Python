@@ -255,6 +255,39 @@ def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes,
     return badValue, ds
 
 '''
+return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
+It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
+I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
+testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
+in project scope.
+'''
+def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDate, endDate, aggregationMode, log):
+
+    fullTagPaths = []
+    for tagPath in tagPaths:
+        fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
+    
+    log.tracef("Calculating the %s for %s between %s and %s", aggregationMode, str(fullTagPaths), str(startDate), str(endDate))
+    
+    ds = system.tag.queryTagHistory(
+        paths=fullTagPaths,
+        startDate=startDate, 
+        endDate=endDate, 
+        aggregationMode=aggregationMode, 
+        returnSize=1, 
+        ignoreBadQuality=True
+        )
+    
+    badValue = False
+    for i in range(0,len(tagPaths)):
+        isGood = ds.getQualityAt(0, i + 1).isGood()
+        if not(isGood):
+            badValue = True
+            log.warnf("Unable to collect average value for %s", tagPaths[i])
+
+    return badValue, ds
+
+'''
 Return a list of qualified values and a flag that indicates if any one of the tags is bad or None
 '''
 def readInstantaneousValues(tagPaths, tagProvider, log):
