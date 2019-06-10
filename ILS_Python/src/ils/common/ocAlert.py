@@ -24,9 +24,9 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     # Now make the payload for the OC alert window
     payload = {
         "post": post,
-        "topMessage": topMessage, 
-        "bottomMessage": bottomMessage, 
-        "mainMessage": mainMessage,
+        "topMessage": "<HTML>" + topMessage, 
+        "bottomMessage": "<HTML>" + bottomMessage, 
+        "mainMessage": "<HTML>" + mainMessage,
         "buttonLabel": buttonLabel,
         "callback": callback,
         "callbackPayloadDataset": callbackPayloadDataset,

@@ -3,11 +3,11 @@ Created on Nov 30, 2014
 
 @author: Pete
 '''
-import string, system, time, traceback
-from ils.io.util import isUDTorFolder
+import string, system, traceback
+from ils.io.util import isUDTorFolder, checkConfig
 from ils.common.error import catchError
 
-# These next three lines may have warnings in eclipse, but they ARE needed!
+# These imports may have warnings in eclipse, but they ARE needed!
 import ils.io
 import ils.io.opcoutput
 import ils.io.opcconditionaloutput
@@ -30,7 +30,7 @@ log = system.util.getLogger("com.ils.io.api")
 
 def write(fullTagPath, val, writeConfirm, valueType="value"):
     '''
-    This is a convenience function that determines the correct API to use based on the target of the write.
+    This is a convenience function that determines the correct API to use based on the target of the write and if a confirmation is required.
     (If this is a convenience function, why would I ever use the INCONVENIENT functions?)
     If the target is a simple memory tag, an OPC tag or one of our OPC tag UDTs then either writeDatum or writeWithNoCheck 
     will be used.  If the target is a UDT controller then writeOutput or writeRamp will be used.  If writing to a simple tag, 
@@ -38,10 +38,9 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
     '''
     log.info("(api.write) Writing <%s> to the <%s> of <%s> (Confirm write: %s)" % (str(val), valueType, fullTagPath, str(writeConfirm)))
     
-    tagExists = system.tag.exists(fullTagPath)
-    if not(tagExists):
-        print "No Taggy"
-        return False, "%s does not exist" % (fullTagPath)
+    success, reason = checkConfig(fullTagPath)
+    if not(success):
+        return False, reason
 
     success = True
     errorMessage = ""
@@ -56,7 +55,7 @@ def write(fullTagPath, val, writeConfirm, valueType="value"):
 
     else:
         log.tracef("It is a simple tag")
-        ''' The 'Tag" is either a simple memory tag or an simple OPC tag '''
+        ''' The 'Tag" is either a simple memory tag or a simple OPC tag '''
         log.trace("Simple write of %s to %s..." % (str(val), fullTagPath))
         if writeConfirm:
             success, errorMessage = writeDatum(fullTagPath, val)
@@ -135,6 +134,10 @@ def writeDatum(tagPath, val, valueType=""):
     The tagPath should contain the provider.
     '''
     log.infof("In %s.writeDatum() - writing %s to %s, type=%s", __name__, str(val), tagPath, str(valueType))
+    
+    success, reason = checkConfig(tagPath)
+    if not(success):
+        return False, reason
 
     success, errorMessage = writer(tagPath, val, valueType, "writeDatum")
     '''
@@ -160,7 +163,11 @@ def writeWithNoCheck(tagPath, val, valueType=""):
     The tagPath should contain the provider.
     '''
     log.infof("In %s.writeWithNoCheck() - writing %s to %s, type=%s (writeWithNoCheck)", __name__, str(val), tagPath, str(valueType))
-
+    
+    success, reason = checkConfig(tagPath)
+    if not(success):
+        return False, reason
+    
     success, errorMessage = writer(tagPath, val, valueType, "writeWithNoCheck")
     
     if success:
@@ -181,13 +188,13 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
     Ramp time is in minutes, update frequency is in seconds.
     '''
     log.infof("In %s.writeRamp() for %s", __name__, tagPath)
-        
+    
+    success, reason = checkConfig(tagPath)
+    if not(success):
+        return False, reason
+    
     errorMessage=""
     confirmed = False
-    
-    tagExists = system.tag.exists(tagPath)
-    if not(tagExists):
-        return False, "%s does not exist" % (tagPath)
     
     if isUDTorFolder(tagPath):
         log.trace("The target is a UDT - resetting...")
@@ -268,12 +275,12 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
     '''
     log.tracef("In %s.writer() with %s - %s - %s - %s", __name__, tagPath, str(val), valueType, command)
     
+    success, reason = checkConfig(tagPath)
+    if not(success):
+        return False, reason
+    
     errorMessage=""
     success = False
-    
-    tagExists = system.tag.exists(tagPath)
-    if not(tagExists):
-        return False, "%s does not exist" % (tagPath)
     
     if isUDTorFolder(tagPath):
         log.trace("The target is a UDT - resetting...")
@@ -310,7 +317,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
         log.trace("Checking the basic configuration for a simple write to %s..." % (tagPath))
         
         ''' Check that the tag exists and writing is enabled '''
-        from ils.io.util import checkConfig
+        
         configOK, errorMessage = checkConfig(tagPath)
         
         if not(configOK):

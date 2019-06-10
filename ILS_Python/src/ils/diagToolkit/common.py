@@ -349,6 +349,15 @@ def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
         record={}
     return record
 
+# Look up the final diagnosis id given the application, family, and final Diagnosis names
+def fetchFinalDiagnosisNameFromId(finalDiagnosisId, database=""):
+    SQL = "select FinalDiagnosisName "\
+        " from DtFinalDiagnosis "\
+        " where FinalDiagnosisId = %s "  % (finalDiagnosisId)
+    log.tracef("%s.fetchFinalDiagnosis(): %s", __name__, SQL)
+    finalDiagnosisName = system.db.runScalarQuery(SQL, database)
+    return finalDiagnosisName
+
 # Fetch all of the recommendations that touch a quant output.
 def fetchRecommendationsForOutput(QuantOutputId, database=""):
     SQL = "select R.RecommendationId, R.Recommendation, R.AutoRecommendation, R.AutoRecommendation, R.ManualRecommendation, "\

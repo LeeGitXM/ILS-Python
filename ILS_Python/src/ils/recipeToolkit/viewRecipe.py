@@ -470,7 +470,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                     tagRoot, tagSuffix, tagName = parseRecipeTagName(storOrCompTag)
                     modeAttribute, modeAttributeValue = determineOPCTypeModeAndVal(modeAttribute, modeAttributeValue)
                     UDTType, conditionalDataType = determineTagClass(recc, valueType, modeAttribute, modeAttributeValue, specialValueNAN)
-                    log.tracef("The OPC server is: %s and class name (UDT) is: %s", opcServer,UDTType)
+                    log.tracef("   %s: OPC server: %s,  class name (UDT): %s, tag suffix: %s", storOrCompTag, opcServer, UDTType, tagSuffix)
                     itemId = itemIdPrefix + storOrCompTag
     
                     path = "/Recipe/" + recipeKey
@@ -484,79 +484,81 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                     if tagName not in tags:
                         tags.append(tagName)
     
-                    # If I encounter a tag with a any of these suffixes then create a recipe detail so
-                    # that the write can be coordinated.  Just because there is a SP doesn't necessarily 
-                    # mean that there will be limits / clamps, but that is OK, better to have the object
-                    # and not need it than to need it and not have it! 
+
+                    ''' Determine the download type using the STOR tag '''
+                    if storOrCompTag == storeTag:
+                        
+                        '''
+                        If I encounter a tag with a any of these suffixes then create a recipe detail so
+                        that the write can be coordinated.  Just because there is a SP doesn't necessarily 
+                        mean that there will be limits / clamps, but that is OK, better to have the object
+                        and not need it than to need it and not have it! 
+                        '''
+                        if string.upper(tagSuffix) in ['SP', 'SPCH', 'SPCL', 'SPHILM', 'SPLOLM']:
+                            detailTagName = tagRoot + '-SPDETAILS'
+                            createRecipeDetailUDT('Recipe Details', provider, path, detailTagName)
+        
+                            if string.upper(tagSuffix) in string.upper(tagSuffix) in ['SPCH', 'SPHILM']:
+                                downloadType = "Deferred High Limit"
+                                detailAttribute = 'highLimit'
+                            elif string.upper(tagSuffix) in ['SPCL', 'SPLOLM']:
+                                downloadType = "Deferred Low Limit"
+                                detailAttribute = 'lowLimit'
+                            else:
+                                downloadType = "Deferred Value"
+                                detailAttribute = 'value'
+                            
+                            # Update the recipe detail objects appropriately
+                            recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute)
+                            recipeDetailTagValues.append(1)
+                            recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute + 'TagName')
+                            recipeDetailTagValues.append(tagName)
+                            
+                            if detailTagName not in tags: tags.append(detailTagName)
+                            
+                        elif string.upper(tagSuffix) in ['PV', 'PVHILM', 'PVLOLM']:
+                            detailTagName = tagRoot + '-PVDETAILS'
+                            createRecipeDetailUDT('Recipe Details', provider, path, detailTagName)
+        
+                            if string.upper(tagSuffix) in ['PVHILM']:
+                                downloadType = "Deferred High Limit"
+                                detailAttribute = 'highLimit'
+                            elif string.upper(tagSuffix) in ['PVLOLM']:
+                                downloadType = "Deferred Low Limit"
+                                detailAttribute = 'lowLimit'
+                            else:
+                                downloadType = "Deferred Value"
+                                detailAttribute = 'value'
                     
-                    #
-                    # 7/18/14 - Changed the name of the UDT to create to use the same UDT for all 3 types of recipe detail
-                    #
-                    if string.upper(tagSuffix) in ['SP', 'SPCH', 'SPCL', 'SPHILM', 'SPLOLM']:
-                        detailTagName = tagRoot + '-SPDETAILS'
-                        createRecipeDetailUDT('Recipe Details', provider, path, detailTagName)
-    
-                        if string.upper(tagSuffix) in string.upper(tagSuffix) in ['SPCH', 'SPHILM']:
-                            downloadType = "Deferred High Limit"
-                            detailAttribute = 'highLimit'
-                        elif string.upper(tagSuffix) in ['SPCL', 'SPLOLM']:
-                            downloadType = "Deferred Low Limit"
-                            detailAttribute = 'lowLimit'
-                        else:
-                            downloadType = "Deferred Value"
-                            detailAttribute = 'value'
-                        
-                        # Update the recipe detail objects appropriately
-                        recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute)
-                        recipeDetailTagValues.append(1)
-                        recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute + 'TagName')
-                        recipeDetailTagValues.append(tagName)
-                        
-                        if detailTagName not in tags: tags.append(detailTagName)
-                        
-                    elif string.upper(tagSuffix) in ['PV', 'PVHILM', 'PVLOLM']:
-                        detailTagName = tagRoot + '-PVDETAILS'
-                        createRecipeDetailUDT('Recipe Details', provider, path, detailTagName)
-    
-                        if string.upper(tagSuffix) in ['PVHILM']:
-                            downloadType = "Deferred High Limit"
-                            detailAttribute = 'highLimit'
-                        elif string.upper(tagSuffix) in ['PVLOLM']:
-                            downloadType = "Deferred Low Limit"
-                            detailAttribute = 'lowLimit'
-                        else:
-                            downloadType = "Deferred Value"
-                            detailAttribute = 'value'
-                
-                        # Update the recipe detail objects appropriately
-                        recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute)
-                        recipeDetailTagValues.append(1)
-                        recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute + 'TagName')
-                        recipeDetailTagValues.append(tagName)
-                                                
-                        if detailTagName not in tags: tags.append(detailTagName)
-                        
-                    elif string.upper(tagSuffix) in ['OP', 'OPCH', 'OPCL', 'OPHILM', 'OPLOLM']:
-                        detailTagName = tagRoot + '-OPDETAILS'
-                        createRecipeDetailUDT('Recipe Details', provider, path, detailTagName)
-    
-                        if string.upper(tagSuffix) in ['OPCH', 'OPHILM']:
-                            downloadType = "Deferred High Limit"
-                            detailAttribute = 'highLimit'
-                        elif string.upper(tagSuffix) in ['OPCL', 'OPLOLM']:
-                            downloadType = "Deferred Low Limit"
-                            detailAttribute = 'lowLimit'
-                        else:
-                            downloadType = "Deferred Value"
-                            detailAttribute = 'value'
-    
-                        # Update the recipe detail objects appropriately
-                        recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute)
-                        recipeDetailTagValues.append(1)
-                        recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute + 'TagName')
-                        recipeDetailTagValues.append(tagName)
-    
-                        if detailTagName not in tags: tags.append(detailTagName)
+                            # Update the recipe detail objects appropriately
+                            recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute)
+                            recipeDetailTagValues.append(1)
+                            recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute + 'TagName')
+                            recipeDetailTagValues.append(tagName)
+                                                    
+                            if detailTagName not in tags: tags.append(detailTagName)
+                            
+                        elif string.upper(tagSuffix) in ['OP', 'OPCH', 'OPCL', 'OPHILM', 'OPLOLM']:
+                            detailTagName = tagRoot + '-OPDETAILS'
+                            createRecipeDetailUDT('Recipe Details', provider, path, detailTagName)
+        
+                            if string.upper(tagSuffix) in ['OPCH', 'OPHILM']:
+                                downloadType = "Deferred High Limit"
+                                detailAttribute = 'highLimit'
+                            elif string.upper(tagSuffix) in ['OPCL', 'OPLOLM']:
+                                downloadType = "Deferred Low Limit"
+                                detailAttribute = 'lowLimit'
+                            else:
+                                downloadType = "Deferred Value"
+                                detailAttribute = 'value'
+        
+                            # Update the recipe detail objects appropriately
+                            recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute)
+                            recipeDetailTagValues.append(1)
+                            recipeDetailTagNames.append('[' + provider + ']' + path + '/' + detailTagName + '/' + detailAttribute + 'TagName')
+                            recipeDetailTagValues.append(tagName)
+        
+                            if detailTagName not in tags: tags.append(detailTagName)
 
         ds = system.dataset.setValue(ds, i, "Download Type", downloadType) 
         ds = system.dataset.setValue(ds, i, "Data Type", dataType) 

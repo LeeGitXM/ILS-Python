@@ -4,12 +4,13 @@ Created on Mar 25, 2015
 @author: Pete
 '''
 import system
+log = system.util.getLogger("com.ils.labData")
 
 '''
 This runs in client scope and is called from a client message handler...
 '''
 def newLabDataMessageHandler(payload):
-    print "In %s.newLabDataMessageHandler() - Handling a new lab data message..." % (__name__)
+    log.tracef("In %s.newLabDataMessageHandler() - Handling a new lab data message...", __name__)
     
     windows = system.gui.getOpenedWindows()
     for window in windows:
@@ -24,7 +25,7 @@ def newLabDataMessageHandler(payload):
     
 
 def internalFrameOpened(rootContainer):
-    print "In labData.tableChooser.internalFrameOpened()..."
+    log.infof("In %s.internalFrameOpened()", __name__)
     
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
     SQL = "select post from TkPost order by post"
@@ -38,22 +39,22 @@ def internalFrameOpened(rootContainer):
 
 # update the list of display tables that are appropriate for the selected console
 def internalFrameActivated(rootContainer):
-    print "In In labData.tableChooser.internalFrameActivated()"
+    log.infof("In %s.internalFrameActivated()", __name__)
     populateRepeater(rootContainer)
     animatePageTabs(rootContainer)
 
 def newPostSelected(rootContainer):
-    print "In In labData.tableChooser.newPostSelected()"
+    log.infof("In %s.newPostSelected()", __name__)
     setNumberOfPages(rootContainer)
     populateRepeater(rootContainer)
 
 def newPageSelected(rootContainer):
-    print "In In labData.tableChooser.newConsoleSelected()"
+    log.infof("In %s.newPageSelected()", __name__)
     populateRepeater(rootContainer)
 
 # Fetch the number of pages of lab data tables for the console and set up the tab strip    
 def setNumberOfPages(rootContainer):
-    print "In In labData.tableChooser.setNumberOfPages"
+    log.infof("In %s.setNumberOfPages", __name__)
     selectedPost = rootContainer.selectedPost
     
     if selectedPost == "" or selectedPost == None:
@@ -122,7 +123,7 @@ def animatePageTabs(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    print "In %s" % (__name__)
+    log.infof("In %s.populateRepeater()", __name__)
     selectedPost = rootContainer.getPropertyValue("selectedPost")
     print "The selected post is: ", selectedPost
     selectedPage = rootContainer.getPropertyValue("selectedPage")
