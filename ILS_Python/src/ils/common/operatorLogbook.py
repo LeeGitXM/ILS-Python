@@ -8,9 +8,15 @@ import system, string
 from ils.common.util import stripHTML
 LOGBOOK_DETAIL_MESSAGE_LENGTH = 2000
 
+def writeToLogbook(logbook, message, database=""):
+    insert(logbook, message, database)
+
 def insert(logbook, message, database=""):
     logbookId = getLogbookId(logbook, database)
     _insert(logbookId, message, database)
+    
+def writeToLogbookForPost(post, message, database=""):
+    insertForPost(post, message, database)
     
 def insertForPost(post, message, database=""):
     logbookId = getLogbookIdForPost(post, database)

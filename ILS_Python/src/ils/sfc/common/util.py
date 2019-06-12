@@ -80,7 +80,26 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
     updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d, "\
         "EnableCancel = 1, EnablePause = 1, EnableReset = 1, EnableResume = 1, EnableStart = 1 "\
         "where controlPanelId = %s" % (runId, originator, project, isolationFlag, str(controlPanelId))
+    print "SQL: ", updateSql
     system.db.runUpdateQuery(updateSql, database=db)
+    print "...done..."
+    return runId
+
+def startChartWithoutControlPanel(chartPath, project, originator, isolationMode):
+    print "Starting a chart: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, project, originator, str(isolationMode))
+    if chartIsRunning(chartPath):
+        print "Exiting because the chart is already running!"
+        return
+    
+    initialChartParams = dict()
+    initialChartParams[PROJECT] = project
+    initialChartParams[ISOLATION_MODE] = isolationMode
+    initialChartParams[ORIGINATOR] = originator
+    initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
+    
+    print "Starting a chart with: ", initialChartParams
+    runId = system.sfc.startChart(chartPath, initialChartParams)
+    
     return runId
 
 def readFile(filepath):
