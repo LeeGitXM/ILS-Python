@@ -7,9 +7,7 @@ Created on Dec 3, 2014
 import system, string, time
 from java.util import Date
 from ils.common.util import isText
-from ils.common.config import getTagProvider, getIsolationTagProvider
-from system.ils.blt.diagram import getProductionTagProvider,\
-    getProductionDatabase, getIsolationDatabase
+from ils.common.config import getTagProvider, getIsolationTagProvider,  getDatabase, getIsolationDatabase
 log = system.util.getLogger("com.ils.io.util")
 
 def runChecks():
@@ -415,9 +413,10 @@ def getDatabaseFromTagPath(tagPath):
     provider without the brackets.  If a tag provider is not included in the tag path then the production tag provider is returned.
     '''
     provider = getProviderFromTagPath(tagPath)
-    productionProvider = getProductionTagProvider()
+    productionProvider = getTagProvider()
+    
     if provider == productionProvider:
-        db = getProductionDatabase()
+        db = getDatabase()
     else:
         db = getIsolationDatabase()
 
@@ -434,6 +433,22 @@ def getProviderFromTagPath(tagPath):
     else:
         provider=tagPath[1:tagPath.find(']')]
     return provider
+
+
+def getProviderAndDatabaseFromTagPath(tagPath):
+    '''
+    This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
+    provider without the brackets.  If a tag provider is not included in the tag path then the production tag provider is returned.
+    '''
+    tagProvider = getProviderFromTagPath(tagPath)
+    productionTagProvider = getTagProvider()
+    
+    if tagProvider == productionTagProvider:
+        db = getDatabase()
+    else:
+        db = getIsolationDatabase()
+
+    return tagProvider, db
 
 
 def splitTagPath(tagPath):

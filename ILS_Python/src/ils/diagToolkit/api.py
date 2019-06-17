@@ -41,20 +41,7 @@ def insertApplicationQueueMessage(applicationName, message, status=QUEUE_INFO, d
     key = getQueueForDiagnosticApplication(applicationName, db)
     from ils.queue.message import insert
     insert(key, status, message)
-    
-def getManualMove(finalDiagnosisId, db):
-    ''' Return the Manual Move amount for the FD which was presumably just entered by the operator at a client'''
-    log.infof("Getting the Manual Move amount for FD with id: %d", finalDiagnosisId)
-    
-    SQL = "SELECT ManualMove from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
- 
-    log.tracef(SQL)
-    manualMove = system.db.runScalarQuery(SQL, db)
-    
-    if manualMove == None:
-        manualMove = 0.0
-    
-    return manualMove
+
 
 def resetManualMove(finalDiagnosisId, db):
     ''' Reset the Manual Move amount for the FD '''
@@ -64,3 +51,56 @@ def resetManualMove(finalDiagnosisId, db):
  
     log.tracef(SQL)
     system.db.runUpdateQuery(SQL, db)
+    
+# It sounds easy but it takes a lot of work to get the name of the lab value tag for the SQC chart.
+# We start with the SQC diagnosis, because that is the entry point for SQC plotting.  The we go 
+# upstream to find a labdata entry block.  Then from that we need to extract the name of the tag
+# bound to the value tag path property.  We do some work to strip things off to end up with the 
+# lab data name.
+def getLabValueName(blockName, blockUUID, diagramUUID=""):
+    import system.ils.blt.diagram as diagram
+    
+    unitName=None
+    labValueName=None
+    
+    print "Getting Lab value name for block named: <%s> with UUID: <%s> on diagram with UUID: <%s>" % (blockName, blockUUID, diagramUUID)
+   
+    if diagramUUID == "":
+        diagramDescriptor=diagram.getDiagramForBlock(blockUUID)
+        if diagramDescriptor == None:
+            print "   *** Unable to locate the diagram for block with UUID: ", blockUUID
+            return unitName, labValueName
+        
+        diagramUUID=diagramDescriptor.getId()
+    
+    print "   ... fetching upstream block info for chart <%s> ..." % (str(diagramUUID))
+
+    # Get all of the upstream blocks
+    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
+    blocks=diagram.listBlocksUpstreamOf(diagramUUID, blockName)
+    print "Found blocks: ", blocks
+
+    for block in blocks:
+#        print "Found a %s block..." % (block.getClassName())
+        if block.getClassName() == "com.ils.block.LabData":
+            print "   ... found the LabData block..."
+            blockId=block.getIdString()
+            blockName=block.getName()
+            
+            # First get block properties
+            
+            valueTagPath=diagram.getPropertyBinding(diagramUUID, blockId, 'ValueTagPath')
+
+            # Strip off the trailing "/value"
+            if valueTagPath.endswith("/value"):
+                valueTagPath=valueTagPath[:len(valueTagPath) - 6]
+            else:
+                log.warn("Unexpected lab value tag path - expected path to end with /value")
+            
+            # Now strip off everything (provider and path from the left up to the last "/"
+            valueTagPath=valueTagPath[valueTagPath.find("]")+1:]
+            unitName=valueTagPath[valueTagPath.find("/")+1:valueTagPath.rfind("/")]
+            labValueName=valueTagPath[valueTagPath.rfind("/")+1:]
+    
+    print "   Found unit: <%s> - lab value: <%s>" % (unitName, labValueName)
+    return unitName, labValueName

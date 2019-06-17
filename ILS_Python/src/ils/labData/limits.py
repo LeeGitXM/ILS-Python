@@ -4,17 +4,14 @@ Created on Mar 31, 2015
 @author: Pete
 '''
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-from ils.common.config import getTagProvider, getTagProviderClient
 
-log = LogUtil.getLogger("com.ils.labData.limits")
-sqlLog = LogUtil.getLogger("com.ils.SQL.labData.limits")
+log = system.util.getLogger("com.ils.labData.limits")
+sqlLog = system.util.getLogger("com.ils.SQL.labData.limits")
 
 # This is a memory resident dictionary of limit dictionaries that survives from scan to scan.  
 # The key is the valueId. It gets updated each cycle.  The main purpose of this cache is so that we can determine
-# 
-limits={}
 
+limits={}
 
 def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
     log.trace("Checking Validity limits for %s..." % (valueName))
@@ -261,13 +258,18 @@ def updateLabLimitsFromRecipe(recipeFamily, grade, tagProvider, database):
         log.warn("Unable to load SQC limits for an unknown grade.")
         return
     
+    ''' Strip off any decimal portion of the grade '''
+    if grade.rfind(".") > 0:
+        grade = grade[:grade.rfind(".")]
+        log.infof("   modified grade <%s>", grade)
+    
     # I could do this all in one SQL but then I might miss some limits if the parameter names do not match
     # If there is something in recipe that does not exist in lab data then I want to notify someone.
     SQL = "select P.Parameter, L.UpperLimit, L.LowerLimit "\
         " from RtSQCParameter P, RtSQCLimit L, RtRecipeFamily F "\
         " where P.ParameterId = L.ParameterID "\
         " and P.RecipeFamilyId = F.RecipeFamilyId "\
-        " and L.Grade = %s and F.RecipeFamilyName = '%s'" % (grade, recipeFamily)
+        " and L.Grade = '%s' and F.RecipeFamilyName = '%s'" % (grade, recipeFamily)
     sqlLog.trace(SQL)
 
     pds = system.db.runQuery(SQL, database)
@@ -285,6 +287,9 @@ def updateLabLimitsFromRecipe(recipeFamily, grade, tagProvider, database):
         sqlLog.trace(SQL)
         
         ldpds=system.db.runQuery(SQL, database)
+        if len(ldpds) == 0:
+            log.warnf("WARNING - Unable to locate any Lab Data for recipe parameter: %s", parameterName)
+        
         for labDataRecord in ldpds:
             valueName=labDataRecord['ValueName']
             limitId=labDataRecord['limitId']

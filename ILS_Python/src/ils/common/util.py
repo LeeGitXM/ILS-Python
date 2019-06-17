@@ -35,6 +35,26 @@ def okToPrint():
     
     return True
 
+def isClientScope():
+    try:
+        flags = system.util.getSystemFlags()
+        clientScope = (flags & 4) > 0
+    except:
+        clientScope = False
+    
+    print "Running in client scope: ", clientScope
+    return clientScope
+
+def isGatewayScope():
+    try:
+        flags = system.util.getSystemFlags()
+        gatewayScope = (flags & 1) <= 0 and (flags & 4) <= 0
+    except:
+        gatewayScope = True
+
+    print "Running in gateway scope: ", gatewayScope
+    return gatewayScope
+
 def isUserConnected(userName):
     sessions = system.util.getSessionInfo()
     for session in sessions:
@@ -281,6 +301,7 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
     badValue = False
     for i in range(0,len(tagPaths)):
         isGood = ds.getQualityAt(0, i + 1).isGood()
+        print tagPaths[i], isGood
         if not(isGood):
             badValue = True
             log.warnf("Unable to collect average value for %s", tagPaths[i])

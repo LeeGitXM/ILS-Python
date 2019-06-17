@@ -1,6 +1,7 @@
 '''
 Created on June 16, 2015
 '''
+import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import system.ils.blt.diagram as script
 from ils.diagToolkit.common import getDiagram
@@ -17,3 +18,9 @@ def getInputBlocks(diagramPath):
     inputs = script.listDiagramBlocksOfClass(diagid,"com.ils.block.Input")
     observations = script.listDiagramBlocksOfClass(diagid,"xom.block.sqcdiagnosis.SQCDiagnosis")
     return inputs,observations 
+
+
+def getSqcDiagnosisLabelByName(sqcDiagnosisName, db=""):
+    SQL = "select sqcDiagnosisLabel from DtSqcDiagnosis where sqcDiagnosisName = '%s'" % (sqcDiagnosisName)
+    label = system.db.runScalarQuery(SQL, db)
+    return label

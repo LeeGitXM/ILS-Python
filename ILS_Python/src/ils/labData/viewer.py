@@ -5,11 +5,12 @@ Created on Mar 29, 2015
 '''
 import system, string
 import ils.common.util as util
+log = system.util.getLogger("com.ils.labData.client")
 
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
 # but not multiple screens showing the same table.
 def launcher(displayTableTitle):
-    print "In labData.viewer.Launching..."
+    log.infof("In %s.launcher()...", __name__)
 
     # Check to see if this lab table is already open
     windowName = 'Lab Data/Lab Data Viewer'
@@ -32,7 +33,7 @@ def launcher(displayTableTitle):
 # this page.  There is really only one component on this window - the template repeater.
 # Once the repeater is configured, each component in the repeater knows how to configure itself.
 def internalFrameActivated(rootContainer):
-    print "In labData.viewer.internalFrameActivated()"
+    log.infof("In %s.internalFrameActivated()", __name__)
      
     displayTableTitle = rootContainer.displayTableTitle
     print "The table being displayed is: ", displayTableTitle
@@ -43,15 +44,15 @@ def internalFrameActivated(rootContainer):
         " and DTD.valueId = V.ValueId "\
         " and DT.DisplayTableTitle = '%s' "\
         " order by DTD.DisplayOrder" % (displayTableTitle)
-    print SQL
+    log.tracef(SQL)
     pds = system.db.runQuery(SQL)
     for record in pds:
-        print record["LabValueName"], record["ValueId"], record["Description"], record["DisplayDecimals"]
+        log.tracef("%s %s %s %s",record["LabValueName"], str(record["ValueId"]), record["Description"], str(record["DisplayDecimals"]))
     
     repeater=rootContainer.getComponent("Template Repeater")
     repeater.templateParams=pds
 
-    print "...leaving internalFrameActivated()!"
+    log.tracef("...leaving internalFrameActivated()!")
 
 '''
 This runs in client scope and is called from a client message handler...

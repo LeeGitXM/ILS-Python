@@ -726,7 +726,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
             rows=system.db.runUpdateQuery(SQL, database)
             log.info("      ... deleted %i text recommendations..." % (rows))
             
-            SQL = "update DtFinalDiagnosis set Active = 0"\
+            SQL = "update DtFinalDiagnosis set Active = 0 "\
                 "where FinalDiagnosisId = %i" % (fdId)
             logSQL.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, database)
