@@ -503,7 +503,7 @@ def writeMessageHandler(payload):
                 errorText = catchError(__name__, command)
                 log.error(errorText)
         
-        print "...calling an asynchronous worker thread..."
+        log.tracef("...calling an asynchronous worker thread...")
         system.util.invokeAsynchronous(worker)
         i = i + 1
             

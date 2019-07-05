@@ -54,7 +54,7 @@ def automatedDownloadHandler(tagPath, grade):
         return
 
     log.info("******************************")
-    log.info("Starting an automated recipe download of %s - %s - %s (Post: %s, Automated: %s)" % (project, recipeKey, grade, post, str(automatedDownload)))
+    log.info("Starting an automated recipe download of %s - recipe family: %s - %s (Post: %s, Automated: %s, initiated by: %s)" % (project, recipeKey, grade, post, str(automatedDownload), tagPath))
     log.info("******************************")
 
     if automatedDownload:

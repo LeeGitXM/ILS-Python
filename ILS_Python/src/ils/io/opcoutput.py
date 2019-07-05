@@ -68,7 +68,7 @@ class OPCOutput(opctag.OPCTag):
         where we write to the SP tag, which is configured with the .GOP item id, but we confirm from the OP tag, which is configured
         with the .OP item id.
         '''
-        log.infof("%s.writeDatum() - Writing <%s>, <%s> to %s, an OPCOutput", __name__, str(val), str(valueType), self.path)
+        log.tracef("%s.writeDatum() - Writing <%s>, <%s> to %s, an OPCOutput", __name__, str(val), str(valueType), self.path)
         
         if confirmTagPath == "":
             confirmTagPath = self.path + "/value"
@@ -113,7 +113,7 @@ class OPCOutput(opctag.OPCTag):
         if val == None or string.upper(str(val)) == 'NAN':
             val = float("NaN")
 
-        log.infof("%s.writeWithNoCheck() - Writing <%s> to %s, an OPCOutput with no confirmation", __name__, str(val), self.path)
+        log.tracef("%s.writeWithNoCheck() - Writing <%s> to %s, an OPCOutput with no confirmation", __name__, str(val), self.path)
 
         system.tag.write(self.path + "/writeConfirmed", False)
         system.tag.write(self.path + "/writeStatus", "")

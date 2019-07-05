@@ -33,7 +33,7 @@ def getGradeForUnit(unitName, tagProvider):
 '''
 '''
 def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
-    print "Handling a grade change from %s to %s for %s" % (previousValue.value, currentValue.value, tagPath)
+    log.infof( "Handling common grade change logic for  a change from %s to %s for %s...", str(previousValue.value), str(currentValue.value), tagPath)
     
     from ils.io.util import getProviderFromTagPath
     tagProvider = getProviderFromTagPath(tagPath)
@@ -47,7 +47,6 @@ def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
         db = getIsolationDatabase()
         
     tagPathRoot = tagPath[:tagPath.rfind('/')+ 1]
-    print "The tagpath root is: ", tagPathRoot
         
     '''
     Get the unit out of the tagPath which points to the grade tag within the grade UDT
@@ -58,6 +57,8 @@ def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
     
     logGradeChange(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db)
     resetCatInHours(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db)
+    
+    log.infof( "... done with common grade change logic for grade %s (%s)!", str(currentValue.value), tagPath)
 
 
 '''
@@ -98,8 +99,8 @@ def logGradeChange(tagPath, previousValue, currentValue, initialChange, tagPathR
             gradeHours = "BAD QUALITY"
         
         msg = "Grade %s has just been downloaded for the %s unit.  A change from %s." % (str(currentValue.value), unit, str(previousValue.value))
-        msg = msg + "\nGrade %s accumulated %s cat-in run hours during %s total hours" % (str(previousValue.value), str(round(catInHours,2)), str(round(gradeHours, 2)))
-        msg = msg + "\nReactor production was %s klb for the run." % (str(production))
+        msg += "\nGrade %s accumulated %s cat-in run hours during %s total hours" % (str(previousValue.value), str(round(catInHours,2)), str(round(gradeHours, 2)))
+        msg += "\nReactor production was %s klb for the run." % (str(production))
         
         from ils.diagToolkit.common import fetchPostForUnit
         post = fetchPostForUnit(unit, db)

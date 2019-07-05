@@ -921,7 +921,7 @@ def resetDiagram(finalDiagnosisIds, database):
                     
                     elif blockClass == "com.ils.block.LogicLatch":
                         log.info("Found a logic latch")
-                        blocksUpstreamofLatch=diagram.listBlocksGloballyUpstreamOf(diagramUUID, blockName)
+                        blocksUpstreamofLatch=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
                         for upstreamBlock in blocksUpstreamofLatch:
                             if upstreamBlock.getIdString() not in blockUUIDUpstreamOfLatch and upstreamBlock.getClassName() in observationBlockList:
                                 log.tracef("Adding a %s named %s to the list of blocks upstream of a latch...", upstreamBlock.getClassName(), upstreamBlock.getName())
