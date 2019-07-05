@@ -1104,9 +1104,9 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
 
 # This is called when the operator acknowledges a text alert.  It should effectively do a NO Download on the
 # application.  This is called from the ACK button on the loud workspace.
-def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, db, provider):
+def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, db, provider, recalc=True):
     from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
-    log.infof("... in %s.acknowledgeTextRecommendationProcessing() performing Text Recommendation acknowledgement for diagnosis entry %s...", __name__, str(diagnosisEntryId))
+    log.infof("... in %s.acknowledgeTextRecommendationProcessing() performing Text Recommendation acknowledgement for diagnosis entry %s (recalc=%s)...", __name__, str(diagnosisEntryId), str(recalc))
     
     actionMessage=NO_DOWNLOAD
     recommendationStatus="Acknowledged"
@@ -1140,7 +1140,8 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     # that may be displayed on multiple clients.  This callback is running in a client, if I just call 
     # initialize it will just update this client.  Because the database and blocks have been reset,
     # I should be able to call recalc in the gateway which will notify client to update the spreadsheet
-    print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
-    projectName=system.util.getProjectName()
-    payload={"post": post, "database": db, "provider": provider, "applications": [application]}
-    system.util.sendMessage(projectName, "recalc", payload, "G")
+    if recalc:
+        print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
+        projectName=system.util.getProjectName()
+        payload={"post": post, "database": db, "provider": provider, "applications": [application]}
+        system.util.sendMessage(projectName, "recalc", payload, "G")

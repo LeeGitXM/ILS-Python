@@ -976,6 +976,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 originalExplanation = explanation
                 if showExplanationWithRecommendation and len(staticExplanation) > 0:
                     explanation = "<HTML>" + staticExplanation + "<br><br>" + explanation
+                else:
+                    explanation = "<HTML>" + explanation
+    
                 explanations.append({"explanation": explanation, "diagnosisEntryId": diagnosisEntryId})
                 writeToLogbook = system.tag.read("[%s]Configuration/DiagnosticToolkit/writeTextRecommendationsToLogbook" % provider)
                 if writeToLogbook:

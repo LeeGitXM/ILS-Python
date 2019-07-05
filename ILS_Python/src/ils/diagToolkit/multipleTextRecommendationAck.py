@@ -20,7 +20,6 @@ def refresh(rootContainer):
     ackVals = [False] * len(pds)
     ds = system.dataset.toDataSet(pds)
     ds = system.dataset.addColumn(ds,ackVals, "Ackd", bool)
-    rootContainer.data = ds
     table = rootContainer.getComponent("Power Table")
     table.data = ds
     
@@ -34,10 +33,27 @@ def ack(event):
     table = rootContainer.getComponent("Power Table")
     ds = table.data
     
+    ''' Count how many rows are marked for Ack '''
+    rowsToAck = 0
     for row in range(ds.rowCount):
-        print "Acking row ", row
-        diagnosisEntryId = ds.getValueAt(row, "DiagnosisEntryId")
-        applicationName = ds.getValueAt(row, "ApplicationName")
-        acknowledgeTextRecommendationProcessing(post, applicationName, diagnosisEntryId, database, provider)
+        if ds.getValueAt(row, "Ackd"):
+            rowsToAck = rowsToAck + 1
+            
+    if ds.rowCount > 0 and rowsToAck == 0:
+        ans = system.gui.confirm("You have not selected any recommendations to acknowledge, are you sure you want to exit?")
+        if not(ans):
+            return
+
+    ackCnt = 0
+    for row in range(ds.rowCount):
+        if ds.getValueAt(row, "Ackd"):
+            ackCnt = ackCnt + 1
+            diagnosisEntryId = ds.getValueAt(row, "DiagnosisEntryId")
+            applicationName = ds.getValueAt(row, "ApplicationName")
+            if ackCnt == rowsToAck:
+                recalc = True
+            else:
+                recalc = False
+            acknowledgeTextRecommendationProcessing(post, applicationName, diagnosisEntryId, database, provider, recalc)
     
     system.nav.closeParentWindow(event)

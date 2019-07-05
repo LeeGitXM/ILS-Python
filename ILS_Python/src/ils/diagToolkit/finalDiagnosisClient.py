@@ -5,13 +5,14 @@ Created on Jun 30, 2015
 '''
 import system, string
 from ils.diagToolkit.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
-from ils.common.config import getDatabaseClient
+from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.diagToolkit.common import fetchApplicationsForPost, fetchActiveTextRecommendationsForPost
+from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
 log=system.util.getLogger("com.ils.diagToolkit")
 
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
-    print "Sending a message to post a diagnosis entry..."
+    log.infof("Sending a message to post a diagnosis entry...")
     payload={"application": application, "family": family, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database, "provider":provider}
     system.util.sendMessage(projectName, "postDiagnosisEntry", payload, "G")
 
@@ -27,41 +28,46 @@ def openSetpointSpreadsheetCallback(post):
     for window in openWindows:
         if window.getPath() == "Common/OC Alert":
             rootContainer = window.rootContainer
-            print "The window is of type: ", rootContainer.notificationType
+            log.infof("The window is of type: %s", rootContainer.notificationType)
             if  rootContainer.notificationType == "Setpoint Spreadsheet":
-                print "Found an open OC alert that I am closing"
+                log.infof("Found an open OC alert that I am closing")
                 system.nav.closeWindow(window)
 
     noTextRecommendations = False
     noQuantRecommendations = False
-    
-    from ils.common.config import getDatabaseClient
     database=getDatabaseClient()
-    
-    from ils.common.config import getTagProviderClient
     provider=getTagProviderClient()
             
     # Check if there is a text recommendation for this post
-    from ils.diagToolkit.common import fetchActiveTextRecommendationsForPost
     pds = fetchActiveTextRecommendationsForPost(post, database)
-    if len(pds) > 0:
-        print "There are %i text recommendation(s)..." % (len(pds))
-        for record in pds:
-            notificationText = record["TextRecommendation"]
-            callback = record["PostProcessingCallback"]
-            application = record["ApplicationName"]
-            diagnosisEntryId = record["DiagnosisEntryId"]
-            
-            # Now display the text recommendation
-            log.infof("Displaying a text recommendation from %s.openSetpointSpreadsheetCallback()", __name__)
-            system.gui.messageBox(notificationText, "Text Recommendation")
+    
+    if len(pds) == 1:
+        log.infof("I found a single text recommendation!")
+        record = pds[0]
         
-            # Once the text recommendation is acknowledged proceed to perform the standard resets
-            print "Proceeding to acknowledge the text recommendation..."    
-            from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
-            acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
+        notificationText = record["TextRecommendation"]
+        application = record["ApplicationName"]
+        diagnosisEntryId = record["DiagnosisEntryId"]
+        
+        ''' The system messageBox supports <HTML> formatting!  The word wrapping is less than ideal (in my opinion), it will stretch to the width of the display, not the window, THE DISPLAY!
+        I can't think of a reasaonable way to change the behavior of this.  Of course the writer of the recommendation can insert <br> tags where they make sense to make the recommendation look good.  '''        
+        if notificationText.find("<HTML>") < 0:
+            notificationText = "<HTML> " + notificationText
+        
+        # Now display the text recommendation
+        log.infof("Displaying a text recommendation from %s.openSetpointSpreadsheetCallback(): %s", __name__, notificationText)
+        system.gui.messageBox(notificationText, "Text Recommendation")
+    
+        # Once the text recommendation is acknowledged proceed to perform the standard resets
+        log.infof("Proceeding to acknowledge the text recommendation...")
+        acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
+    elif len(pds) > 1:
+        log.infof("Handling multiple text recommendations (%d)...", len(pds))
+        window = system.nav.openWindow("DiagToolkit/Multiple Text Recommendation Ack", {"post": post, "provider": provider})
+        system.nav.centerWindow(window)
+        
     else:
-        print "There are no text recommendations..."
+        log.infof("There are no text recommendations...")
         noTextRecommendations = True
 
     # If there is at least 1 quant recommendation for the post the open the setpoint spreadsheet
@@ -71,7 +77,7 @@ def openSetpointSpreadsheetCallback(post):
         window = system.nav.openWindow('DiagToolkit/Setpoint Spreadsheet', {'post' : post})
         system.nav.centerWindow(window)
     else:
-        print "There are no quantitative recommendations..."
+        log.infof("There are no quantitative recommendations...")
         noQuantRecommendations = True
         
     if noTextRecommendations and noQuantRecommendations:
@@ -83,8 +89,8 @@ The purpose of this notification handler is to handle directly opening the setpo
 for Rate Change specifically.
 '''
 def handleOpenSpreadsheetForSpecificClientNotification(payload):
-    print "-----------------------"
-    print "In %s.handleOpenSpreadsheetForSpecificClientNotification with %s" % (__name__, str(payload))
+    log.infof("-----------------------")
+    log.infof("In %s.handleOpenSpreadsheetForSpecificClientNotification with %s", __name__, str(payload))
     
     post=payload.get("post","")
                     
@@ -101,8 +107,8 @@ responsible for / interested in a certain console.  The first one I will try is 
 is open.  (This depends on a reliable policy for keeping the console displayed)
 '''
 def handleNotification(payload):
-    print "-----------------------"
-    print "In %s.handleNotification with %s" % (__name__, str(payload))
+    log.infof( "-----------------------")
+    log.infof("In %s.handleNotification with %s",__name__, str(payload))
     
     post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
@@ -122,7 +128,7 @@ def handleNotification(payload):
     comes through then it should be ignored.  I think the console should be checked first!  
     (Look at how I did it for text recommendations below)
     '''
-    print "Checking to see if the setpoint spreadsheet or Loud Workspace is already open..."
+    log.infof("Checking to see if the setpoint spreadsheet or Loud Workspace is already open...")
     for window in windows:
         windowPath=window.getPath()
         rootContainer=window.rootContainer
@@ -223,7 +229,7 @@ def handleNotification(payload):
     # The above checks must first determine that the alert is meant for this client
 
     if numOutputs == 0:
-        print "Skipping the load workspace posting because the spreadsheet would be empty..."
+        log.infof( "Skipping the load workspace posting because the spreadsheet would be empty...")
         return
     
     # We didn't find an open setpoint spreadsheet, so post the Loud workspace
@@ -232,7 +238,7 @@ def handleNotification(payload):
     # interested, we don't have to broadcast an OC alert message, so call the message handler which opens
     # the OC alert window on this client.
 
-    print "Posting the loud workspace..."
+    log.infof("Posting the loud workspace...")
     callbackPayloadDictionary = {"post": post, "notificationText": notificationText}
     callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
     
@@ -262,8 +268,8 @@ def handleNotification(payload):
 # responsible for / interested in a certain console.  The first one I will try is to check to see if the console window
 # is open.  (This depends on a reliable policy for keeping the console displayed)
 def handleTextRecommendationNotification(payload):
-    print "-----------------------"
-    print "In %s.handleTextRecommendationNotification with %s" % (__name__, str(payload))
+    log.infof("-----------------------")
+    log.infof("In %s.handleTextRecommendationNotification with %s", __name__, str(payload))
     
     post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
@@ -314,8 +320,6 @@ def handleTextRecommendationNotification(payload):
                 rootContainer.setPropertyValue("bottomMessage", "A new TEXT recommendation is ready!")
                 return
     
-
-            
     print "Posting the loud workspace because there wasn't already one and there wasn't a setpoint spreadsheet either..."
     
     ocPayload = {
@@ -343,10 +347,9 @@ def handleTextRecommendationNotification(payload):
 # message includes the console name.  If the client is responsible for the console specified then generic
 # modal message is displayed.
 def handleTextNotification(payload):
-    print "-----------------------"
-    print "In %s.handleTextNotification with %s" % (__name__, str(payload))
+    log.infof("-----------------------")
+    log.infof("In %s.handleTextNotification with %s", __name__, str(payload))
     
-    post=payload.get('post', '')
     notificationText=payload.get('notificationText', '')
     database=payload.get('database', '')
     clientDatabase=getDatabaseClient()
@@ -371,8 +374,10 @@ def ackTextRecommendation(event, payload):
     # Dismiss the loud workspace
     system.nav.closeParentWindow(event)
     
-    if len(pds) == 1:
-        print "I found a single text recommendation!"
+    if len(pds) == 0:
+        log.warnf("There are no pending text recommendations - they must have cleared since the notification was sent.")
+    elif len(pds) == 1:
+        log.infof("I found a single text recommendation!")
         record = pds[0]
         notificationText = record["TextRecommendation"]
         diagnosisEntryId = record["DiagnosisEntryId"]
@@ -384,15 +389,14 @@ def ackTextRecommendation(event, payload):
             
         log.infof("Displaying a text recommendation from %s.ackTextRecommendation(): %s", __name__, notificationText)
         system.gui.messageBox(notificationText, "Text Recommendation")
+        
         # Once the text recommendation is acknowledged proceed to perform the standard resets
-        print "Proceeding to acknowledge the text recommendation..."    
-        from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
+        log.infof("Proceeding to acknowledge the text recommendation...")
         acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId, database, provider)
     
     else:
-        print "Hey I need to handle multiple here!"
+        log.infof("Handling multiple text recommendations (%d)...", len(pds))
         window = system.nav.openWindow("DiagToolkit/Multiple Text Recommendation Ack", {"post": post, "provider": provider})
-        print "Opened a window: ", window
         system.nav.centerWindow(window)
 
 

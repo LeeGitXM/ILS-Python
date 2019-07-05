@@ -9,6 +9,12 @@ log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
 from system.date import secondsBetween
 
+def fileWriterMessageHandler(payload):
+    log.infof("In %sfileWriterMessageHandler.", __name__)
+    filepath=payload.get("filepath")
+    reportText = payload.get("reportText") 
+    system.file.writeFile(filepath, reportText)
+
 def stripHTML(msg):
     msg=string.replace(msg, "<br>", " ")
     msg=string.replace(msg, "<HTML>", "")
