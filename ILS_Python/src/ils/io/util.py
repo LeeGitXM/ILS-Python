@@ -501,3 +501,18 @@ def checkConfig(tagPath):
     # TODO: Should I read the current value and see if quality is good?  If the tag is bad is there any way a write could succeed?
                                            
     return True, ""
+
+def getTagSuffix(tagName):
+    '''
+    Parse the tagname and return the suffix (PV, SP, MODE, etc.) in uppercase 
+    '''
+    log.tracef("Parsing %s...", tagName)
+    if len(tagName) == 0:
+        return ""
+
+    period = tagName.rfind('.')
+    if period < 0:
+        return ""
+    
+    suffix = string.upper(tagName[period+1:])
+    return suffix

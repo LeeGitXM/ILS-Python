@@ -3,7 +3,7 @@ Created on Sep 10, 2014
 
 @author: Pete
 '''
-import system, string
+import system, string, time
 from ils.recipeToolkit.common import checkForUncommentedChanges
 import ils.common.util as util
 import ils.recipeToolkit.common as recipeToolkit_common
@@ -14,8 +14,8 @@ import ils.recipeToolkit.refresh as recipeToolkit_refresh
 import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 from ils.io.client import writeWithNoChecks, writeRecipeDetails, writeDatums
-from ils.common.config import getTagProvider, getTagProviderClient, getDatabaseClient,\
-    getIsolationModeClient
+from ils.io.util import getTagSuffix
+from ils.common.config import getTagProvider, getTagProviderClient, getDatabaseClient, getIsolationModeClient
 from ils.common.ocAlert import sendAlert
 from ils.io.util import getProviderFromTagPath
 log = system.util.getLogger("com.ils.recipeToolkit.download")
@@ -376,6 +376,7 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
 
     localTagValues = []
     opcTagValues = []
+    opcModeTagValues = []
 
     i = 0
     for record in pds:
@@ -395,13 +396,22 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
                 log.trace("Immediate Local: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
                 localTagValues.append({"tagPath": tagName, "tagValue": pendVal})
             else:
-                # Convert to Ignition tagname            
+                tagSuffix = getTagSuffix(tagName)
+                # Convert to Ignition tagname
                 tagName = formatTagName(provider, familyName, tagName)
-                log.trace("Immediate OPC: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
-                opcTagValues.append({"tagPath": tagName, "tagValue": pendVal})
-                modeAttributeValue = record['Mode Attribute Value']
-                if modeAttributeValue != '' and modeAttributeValue != None:
-                    opcTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
+                
+                if tagSuffix in ["MODE"]:
+                    log.trace("Immediate OPC ** MODE TAG**: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
+                    opcModeTagValues.append({"tagPath": tagName, "tagValue": pendVal})
+                    modeAttributeValue = record['Mode Attribute Value']
+                    if modeAttributeValue != '' and modeAttributeValue != None:
+                        opcModeTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
+                else:
+                    log.trace("Immediate OPC: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
+                    opcTagValues.append({"tagPath": tagName, "tagValue": pendVal})
+                    modeAttributeValue = record['Mode Attribute Value']
+                    if modeAttributeValue != '' and modeAttributeValue != None:
+                        opcTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
 
             ds = system.dataset.setValue(ds, i, 'Download Status', 'Pending')
 
@@ -422,8 +432,20 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
 
     log.trace("====================================")
     if writeEnabled:
+        if len(opcModeTagValues) > 0:
+            log.info("Writing to %i immediate OPC MODE tags..." % len(opcModeTagValues)) 
+            writeDatums(opcModeTagValues, project)
+            
+            ''' 
+            The point of all of this is to set the mode before a corresponding SP or OP write, but this is running in the client and the 
+            writes are actually running in the gateway (via message passing) so I can't easily confirm the writes.  The cheap and easy thing to do
+            is to just wait for the site configurable latency time.
+            If this wait is typically more than a couple of seconds then this should all be put into an asynchronous thread so as not to lock the UI
+            '''
+            latencyTime = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
+            time.sleep(latencyTime)
+            
         log.info("Writing to %i immediate OPC tags..." % len(opcTagValues)) 
-        #writeWithNoChecks(opcTagValues, project)
         writeDatums(opcTagValues, project)
     else:
         log.info("*** Skipping write to immediate OPC tags ***")
@@ -433,16 +455,18 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
     return ds
 
 
-# Deferred writes generally involve a setpoint and one or more limits.  We need to be careful to write things in the correct order 
-# so that the limits are not temporarily violated.  The idea behind the deferred write is that multiple lines in the recipe viewer are
-# related and the write to them needs to be coordinated.  If we want to write to a target that has high and low limits set then we can 
-# also change the high and low limits.  When the limits are changed then we need to consider the order of change that will prevent a
-# momentary violation of limits.
-# The first step is to gather all of the deferred writes and put them in the list.  Then we need to determine if any of then are 
-# related.  We do this by finding all of the recipe detail UDTs.  Every deferred write in the recipe viewer should be referenced in a
-# recipe detail.  The recipe detail UDT contains the association between target and the high and low limits.  
-# Once we have paired things up, then we make a dictionary and send it to the gateway for processing.
 def writeDeferred(ds, provider, familyName, logId, writeEnabled, project, isolationMode=False):
+    '''
+    Deferred writes generally involve a setpoint and one or more limits.  We need to be careful to write things in the correct order 
+    so that the limits are not temporarily violated.  The idea behind the deferred write is that multiple lines in the recipe viewer are
+    related and the write to them needs to be coordinated.  If we want to write to a target that has high and low limits set then we can 
+    also change the high and low limits.  When the limits are changed then we need to consider the order of change that will prevent a
+    momentary violation of limits.
+    The first step is to gather all of the deferred writes and put them in the list.  Then we need to determine if any of then are 
+    related.  We do this by finding all of the recipe detail UDTs.  Every deferred write in the recipe viewer should be referenced in a
+    recipe detail.  The recipe detail UDT contains the association between target and the high and low limits.  
+    Once we have paired things up, then we make a dictionary and send it to the gateway for processing.
+    '''
     from ils.recipeToolkit.common import formatTagName
 
     log.trace("=====================================")

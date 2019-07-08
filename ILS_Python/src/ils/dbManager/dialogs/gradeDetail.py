@@ -103,7 +103,7 @@ def showWindow():
 # Update database for a cell edit. We only allow edits of parameter value or 
 # limits.
 def update(table,row,colname,value):
-    print "In %s.update() - row:%d, col: %s, value: <%s> ..." % (row, colname, str(value))
+    print "In %s.update() - row:%d, col: %s, value: <%s> ..." % (__name__, row, colname, str(value))
 
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
