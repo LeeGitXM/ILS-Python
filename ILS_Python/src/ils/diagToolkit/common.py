@@ -245,7 +245,7 @@ def fetchActiveOutputsForPost(post, database=""):
         " and QO.Active = 1"\
         " order by A.ApplicationName, QO.QuantOutputName"  % (post)
         
-    SQL = "SELECT DtApplication.ApplicationName, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, DtQuantOutput.OutputLimitedStatus, DtQuantOutput.OutputLimited, "\
+    SQL = "SELECT distinct DtApplication.ApplicationName, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, DtQuantOutput.OutputLimitedStatus, DtQuantOutput.OutputLimited, "\
         "DtQuantOutput.FeedbackOutput, DtQuantOutput.FeedbackOutputManual, DtQuantOutput.FeedbackOutputConditioned, DtQuantOutput.ManualOverride, "\
         "DtQuantOutput.IncrementalOutput, DtQuantOutput.CurrentSetpoint, DtQuantOutput.FinalSetpoint, DtQuantOutput.DisplayedRecommendation, DtQuantOutput.QuantOutputId, "\
         "DtQuantOutput.DownloadAction, DtQuantOutput.DownloadStatus, DtQuantOutputRamp.Ramp "\

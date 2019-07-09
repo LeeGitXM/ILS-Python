@@ -24,7 +24,12 @@ def insertForPost(post, message, database=""):
 
 def _insert(logbookId, message, database=""):
     # The length of the message is limited to 2000 characters
-    message=stripHTML(message)
+    
+    '''
+    7/8/19 I'm not sure why I was stripping the HTML formatting from a logbook message.  The download message is carefully formatted using HTML.  
+    If I really need to stripthe HTML, then the message needs to be reformatted with returns spaces and tabs.  And this utiility function would not be needed.
+    '''
+    #message=stripHTML(message)
     message=message[:LOGBOOK_DETAIL_MESSAGE_LENGTH - 2]
     SQL = "insert into TkLogbookDetail (LogbookId, Timestamp, Message) values (?, getdate(), ?)"
     system.db.runPrepUpdate(SQL, [logbookId, message], database)

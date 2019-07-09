@@ -51,8 +51,8 @@ def internalFrameOpened(rootContainer):
     if post == "" or not(checkPost):
         SQL = "SELECT FinalDiagnosisName, FinalDiagnosisUUID, DiagramUUID, FinalDiagnosisId "\
             "FROM DtFinalDiagnosis "\
-            "WHERE Constant = 0"\
-            "AND FD.ManualMoveAllowed = 1 "\
+            "WHERE Constant = 0 "\
+            "AND ManualMoveAllowed = 1 "\
             "ORDER BY FinalDiagnosisName"
     else:
         SQL = "SELECT FD.FinalDiagnosisName, FD.FinalDiagnosisUUID, FD.DiagramUUID, FD.FinalDiagnosisId "\
@@ -62,7 +62,7 @@ def internalFrameOpened(rootContainer):
             "AND A.UnitId = U.UnitId "\
             "AND U.PostId = P.PostId "\
             "AND P.Post = '%s' "\
-            "AND FD.Constant = 0"\
+            "AND FD.Constant = 0 "\
             "AND FD.ManualMoveAllowed = 1 "\
             "ORDER BY FD.FinalDiagnosisName" % (post)
 
