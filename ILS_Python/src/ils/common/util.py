@@ -23,6 +23,11 @@ def stripHTML(msg):
     msg=string.replace(msg, "</b>", "")
     return msg
 
+def addHTML(msg):
+    if msg[0:5] <> "<HTML>":
+        msg = "<HTML>" + msg
+    return msg
+
 def getSiteName(db=""):
     siteName = system.db.runScalarQuery("select SiteName from TkSite", database=db)
     return siteName

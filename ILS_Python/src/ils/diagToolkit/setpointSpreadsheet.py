@@ -831,17 +831,23 @@ def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log,
             # The method contains a full python path, including the method name
             separator=string.rfind(callback, ".")
             packagemodule=callback[0:separator]
+            print "Packagemodule: ", packagemodule
             separator=string.rfind(packagemodule, ".")
             package = packagemodule[0:separator]
             module  = packagemodule[separator+1:]
-            log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
+            log.infof("   ...using External Python, the package is: <%s>.<%s>...", package,module)
+#            exec("from xom.gline.diagToolkit.monitoring.tempControl import showR1Uir")
+            
             exec("import %s" % (package))
             exec("from %s import %s" % (package,module))
+            log.infof("   ...done with import...")
     
         try:
+            log.infof("Calling Python...")
             eval(callback)(applicationName, actionMessage, finalDiagnosisId, provider, database)
-            log.info("...back from the special post processing callback!")
+            log.infof("...back from the special post processing callback!")
         except:
+            log.error("Caught an error...")
             errorType,value,trace = sys.exc_info()
             errorTxt = traceback.format_exception(errorType, value, trace, 500)
             log.error("Caught an exception calling the special post processing callback named %s... \n%s" % (callback, errorTxt) )

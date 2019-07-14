@@ -139,6 +139,10 @@ def deleteColumn(event):
     table = event.source.parent.getComponent("Power Table")
     ds = table.data
     column = table.selectedColumn
+    if column < 0:
+        system.gui.warningBox("Please select the column to delete.")
+        return
+
     parameter = ds.getColumnName(column)
     print "Deleting Gain: <%s>" % (parameter)
     

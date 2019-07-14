@@ -19,6 +19,12 @@ T100_TagName='DiagnosticToolkit/Outputs/T100'
 T101_TagName='DiagnosticToolkit/Outputs/T101'
 DELAY_BETWEEN_PROBLEMS=16
 
+def stub1(arg1):
+    print "In stub1 with ", arg1
+
+def stub2(arg1):
+    print "In stub2 with ", arg1
+
 def test00():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='TESTAPP1'

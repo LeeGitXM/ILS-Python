@@ -67,7 +67,7 @@ def automatedDownloadHandler(tagPath, grade):
         
         callbackPayloadDictionary = {"post": post, "recipeKey": recipeKey, "grade": grade, "version": version, "triggerTagPath": parentTagPath}
         # This is generally called from the gateway, but should work from th
-        mainMessage = "Semi-automated Recipe Download for grade %s - %s" % (str(grade), str(version))
+        mainMessage = "Semi-automated recipe download for grade %s - %s" % (str(grade), str(version))
         topBottomMessage = "Semi-automated recipe download!"
         sendAlert(project, post, topMessage=topBottomMessage, bottomMessage=topBottomMessage, mainMessage=mainMessage, 
                   buttonLabel="View Recipe", callback="ils.recipeToolkit.viewRecipe.semiAutomatedDownloadCallback", 
@@ -377,6 +377,10 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
     localTagValues = []
     opcTagValues = []
     opcModeTagValues = []
+    opcTagCntr = 0
+    opcModeTagCntr = 0
+    permissiveTags = []
+    permissiveValues = []
 
     i = 0
     for record in pds:
@@ -400,22 +404,38 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
                 # Convert to Ignition tagname
                 tagName = formatTagName(provider, familyName, tagName)
                 
-                if tagSuffix in ["MODE"]:
+                modeAttributeValue = record['Mode Attribute Value']
+                
+                if modeAttributeValue != '' and modeAttributeValue != None:
+                    permissiveTags.append(tagName + "/PermissiveValue")
+                    permissiveValues.append(modeAttributeValue)
+                
+                if tagSuffix in ["MODE", "MODE/ENUM", "MODE /ENUM"]:
+                    opcModeTagCntr += 1
                     log.trace("Immediate OPC ** MODE TAG**: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
                     opcModeTagValues.append({"tagPath": tagName, "tagValue": pendVal})
-                    modeAttributeValue = record['Mode Attribute Value']
-                    if modeAttributeValue != '' and modeAttributeValue != None:
-                        opcModeTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
+                    
+                    #modeAttributeValue = record['Mode Attribute Value']
+                    #if modeAttributeValue != '' and modeAttributeValue != None:
+                    #    opcModeTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
                 else:
+                    opcTagCntr += 1
                     log.trace("Immediate OPC: Step: %s, tag: %s, value: %s" % (str(step), tagName, str(pendVal)))
                     opcTagValues.append({"tagPath": tagName, "tagValue": pendVal})
-                    modeAttributeValue = record['Mode Attribute Value']
-                    if modeAttributeValue != '' and modeAttributeValue != None:
-                        opcTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
+                    #modeAttributeValue = record['Mode Attribute Value']
+                    #if modeAttributeValue != '' and modeAttributeValue != None:
+                    #   opcTagValues.append({"tagPath": tagName + '/PermissiveValue', "val": modeAttributeValue})
 
             ds = system.dataset.setValue(ds, i, 'Download Status', 'Pending')
 
         i = i + 1
+
+    # The actual writes are done in the gateway, but setting up the permissive values, which is memory tags, can be written here and now
+    log.infof("Setting up permissive values...")
+    log.tracef("Permissive Tags: %s", str(permissiveTags))
+    log.tracef("Permissive Values: %s", str(permissiveValues))
+    
+    system.tag.writeAll(permissiveTags, permissiveValues)
 
     # Write the writevals all at once - first the local tags (non OPC)
 
@@ -432,8 +452,8 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
 
     log.trace("====================================")
     if writeEnabled:
-        if len(opcModeTagValues) > 0:
-            log.info("Writing to %i immediate OPC MODE tags..." % len(opcModeTagValues)) 
+        if opcModeTagCntr > 0:
+            log.infof("Writing to %d immediate OPC MODE tags...", opcModeTagCntr) 
             writeDatums(opcModeTagValues, project)
             
             ''' 
@@ -445,7 +465,7 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
             latencyTime = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
             time.sleep(latencyTime)
             
-        log.info("Writing to %i immediate OPC tags..." % len(opcTagValues)) 
+        log.infof("Writing to %d immediate OPC tags...", opcTagCntr) 
         writeDatums(opcTagValues, project)
     else:
         log.info("*** Skipping write to immediate OPC tags ***")

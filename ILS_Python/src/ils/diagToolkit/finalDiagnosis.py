@@ -15,6 +15,7 @@ from ils.io.util import getOutputForTagPath
 from system.ils.blt.diagram import getProductionDatabase
 from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
 from ils.common.operatorLogbook import insertForPost
+from ils.common.util import addHTML
 
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
@@ -1379,4 +1380,5 @@ def writeTextRecommendationsToLogbook(applicationName, post, staticExplanation, 
     insertApplicationQueueMessage(applicationName, txt, QUEUE_INFO, db)
     
     ''' Write the text recommendation to the operator logbook '''
+    txt = addHTML(txt)
     insertForPost(post, txt, db)

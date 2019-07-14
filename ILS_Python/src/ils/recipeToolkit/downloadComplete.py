@@ -85,16 +85,20 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
 
     if failures == 0:
         status = "Success"
-        print "Setting recipe family <%s> status to <Download Passed>" % (str(recipeKey))
+        log.infof("Setting recipe family <%s> status to <Download Passed>", str(recipeKey))
         update.recipeFamilyStatus(recipeKey, 'Download Passed', database)
     else:
         status = "Failed"
-        print "Setting recipe family <%s> status to <Download Failed>" % (str(recipeKey))
+        log.infof("Setting recipe family <%s> status to <Download Failed>", str(recipeKey))
         update.recipeFamilyStatus(recipeKey, 'Download Failed', database)
 
     # Write a log book message
-    txt = "%s Recipe download of %s - grade %s - version %s - type %s has completed.  %i writes confirmed.  %i writes NOT confirmed." % \
-        (automatedOrManual, recipeKey, grade, str(version), gradeChangeOrMidRun, successes, failures)
+    if failures == 0:
+        txt = "%s recipe download of %s - grade %s - version %s - type %s has completed.  All %d writes were confirmed." % \
+            (string.capitalize(automatedOrManual), recipeKey, grade, str(version), gradeChangeOrMidRun, successes)
+    else:
+        txt = "%s recipe download of %s - grade %s - version %s - type %s has completed.  %d writes confirmed.  %d writes NOT confirmed." % \
+            (string.capitalize(automatedOrManual), recipeKey, grade, str(version), gradeChangeOrMidRun, successes, failures)
 
     # Insert a message into the log book queue that we are starting a manual download
     from ils.common.operatorLogbook import insert
