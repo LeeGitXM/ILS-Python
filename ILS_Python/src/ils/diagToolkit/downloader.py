@@ -21,11 +21,11 @@ class DownloadThread(threading.Thread):
     valueType = None
     rampTime = None
     row = None
-    valType = "SETPOINT RAMP"
+    valType = "SETPOINT RAMP"  #Presumably this should also support an output ramp??
     updateFrequency = 10
     
     def __init__(self, downloader, row, quantOutputId, tagPath, newSetpoint, rampTime, writeConfirm, valueType):
-        log.info("Initializing...")
+        log.infof("Initializing... (ramp time = %s)", str(rampTime))
         threading.Thread.__init__(self)
         self.downloader = downloader
         self.quantOutputId = quantOutputId
@@ -37,9 +37,12 @@ class DownloadThread(threading.Thread):
         self.row = row
         
     def run(self):
-        log.infof("Running download thread #%d for writing %s to %s...", self.row, str(self.newSetpoint), self.tagPath)
+        '''
+        Be really careful with the handling of rampTime here.  It looks like None but it is really "None".  Not sure exactly who converted it to a text string...
+        '''
+        log.infof("Running download thread #%d for writing %s to %s (ramp time = %s)...", self.row, str(self.newSetpoint), self.tagPath, self.rampTime)
         
-        if self.rampTime in [""]:
+        if self.rampTime in ["", "None", None]:
             success, errorMessage = write(self.tagPath, self.newSetpoint, self.writeConfirm, self.valueType)
         else:
             success, errorMessage = writeRamp(self.tagPath, self.newSetpoint, self.valType, self.rampTime, self.updateFrequency, self.writeConfirm)
@@ -114,12 +117,14 @@ class Downloader():
                     quantOutput = self.ds.getValueAt(row, "output")
                     quantOutputId = self.ds.getValueAt(row, "qoId")
                     rampTime = self.ds.getValueAt(row, "ramp")
+                    if rampTime == None:
+                        print "*** It is None here ***"
                     tag = self.ds.getValueAt(row, "tag")
                     newSetpoint = self.ds.getValueAt(row, "finalSetpoint")
                     tagPath="[%s]%s" % (self.tagProvider, tag)
                     
                     if diagToolkitWriteEnabled:
-                        print "Row %i - Downloading %s to Output %s - Tag %s" % (row, str(newSetpoint), quantOutput, tagPath)
+                        log.infof( "Row %d - Downloading %s to Output %s - Tag %s, Ramp time: %s", row, str(newSetpoint), quantOutput, tagPath, str(rampTime))
                         
                         # From the tagpath determine if we are writing directly to an OPC tag or to a controller
                         UDTType, tagPath = getOuterUDT(tagPath)
@@ -131,6 +136,7 @@ class Downloader():
 
                     else:
                         print "...writes from the diagnostic toolkit are disabled..."
+   
                         insertPostMessage(self.post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), self.db)
                         self.updateQuantOutputDownloadStatus(quantOutputId, "Error")
         

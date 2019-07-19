@@ -67,7 +67,8 @@ def downloadCallback(event, rootContainer):
         
         # Send a serviceDownload message to the gateway
         payload = {"post": post, "tagProvider": tagProvider, "database": db, "ds": ds}
-        log.info("Sending serviceDownload message to the gateway...")
+        log.infof("Sending serviceDownload message to the gateway...")
+        log.infof("Payload: %s", str(payload))
         system.util.sendMessage(project, "serviceDownload", payload, "G")
         
         # Set the download active flag on the UI that triggers the status message and database updates...

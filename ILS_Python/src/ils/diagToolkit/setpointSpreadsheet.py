@@ -9,6 +9,7 @@ from ils.sfc.common.constants import SQL
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
+from ils.diagToolkit.api import resetManualMove
 
 log = system.util.getLogger("com.ils.diagToolkit")
 
@@ -808,6 +809,12 @@ def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, 
         log.info(SQL)
         rows=system.db.runUpdateQuery(SQL, database)
         totalRows = totalRows + rows
+        
+        '''
+        If there was a manual move, a download, no download or wait for data should clear it!
+        In the old application, this was done in the callback method.  This will make it available longer and should make the callback easier.
+        '''
+        resetManualMove(finalDiagnosisId, database)
         
     log.info("Updated %i records for %i final diagnosis..." % (totalRows, len(finalDiagnosisIds)))
 

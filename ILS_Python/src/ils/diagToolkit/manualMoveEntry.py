@@ -41,8 +41,9 @@ def okAction(event):
     familyName = record["FamilyName"]
     database = getDatabaseClient()
     provider = getTagProviderClient()
+    textRecommendation = "Manual Move - operator supplied error: %s" % (str(manualMove))
     
-    manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database, provider)
+    manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
     
     system.nav.closeParentWindow(event)
 

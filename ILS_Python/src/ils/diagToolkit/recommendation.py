@@ -202,6 +202,7 @@ def calculateFinalRecommendation(quantOutput):
         (If there are multiple recommendations for the same ramp output with different ramp times then the last one wins - that probably isn't right TODO
         '''
         if recommendation.get("RampTime", None) != None:
+            log.infof("   ...found a ramp time in the recommendation, adding it to the quantOutput...")
             rampTime = recommendation.get("RampTime", None)
             quantOutput['Ramp'] = rampTime
 

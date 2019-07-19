@@ -16,18 +16,17 @@ from system.ils.blt.diagram import getProductionDatabase
 from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML
+from ils.common.database import lookup
 
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
 #-------------
-
+'''
 # This is called from a client (and runs in a client) to directly manage a final diagnosis.
-def manageFinalDiagnosis(applicationName, family, finalDiagnosis, database="", provider = ""):
+'''
+def manageFinalDiagnosis(applicationName, family, finalDiagnosis, textRecommendation, database="", provider = ""):
     log.infof("In %s.manageFinalDiagnosis()", __name__)
-    
-#    UUID=payload["UUID"]
-#    diagramUUID=payload["diagramUUID"]
 
     projectName = system.util.getProjectName()
  
@@ -59,7 +58,7 @@ def manageFinalDiagnosis(applicationName, family, finalDiagnosis, database="", p
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, Multiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
-        % (finalDiagnosisId, grade, txt, RECOMMENDATION_NONE_MADE)
+        % (finalDiagnosisId, grade, textRecommendation, RECOMMENDATION_NONE_MADE)
     
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     
@@ -1295,7 +1294,20 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     manualOverride = quantOutput.get('ManualOverride', False)
     manualOverride = toBool(manualOverride)
     feedbackOutputManual = quantOutput.get('FeedbackOutputManual', 0.0)
+    
+    '''
+    Do some work to support ramps.  We need to support writing a setpoint directly to a ramp controller or to ramp the setpoint to a ramp controller.  
+    The IO layer also supports ramping of a plain old controller or evenramping a OPC variable or memory tag.  The key that determines if an output
+    is ramped is if the recommendation contains a "rampTime" property.  A QuantOutput may be used one time to write an output directly or a ramp setpoint.
+    '''
 
+    recommendations = quantOutput.get("Recommendations", [])
+    rampTime = None
+    for recommendation in recommendations:
+        rampTime = recommendation.get("RampTime", None)
+        if rampTime <> None:
+            print "*** Found a ramp time ***"
+        
     # The current setpoint was read when we checked the bounds.
     isGood = quantOutput.get('CurrentValueIsGood',False)
     if not(isGood):
@@ -1333,6 +1345,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
         " where QuantOutputId = %i "\
         % (str(feedbackOutput), outputLimitedStatus, outputLimited, str(outputPercent), str(feedbackOutputManual), str(feedbackOutputConditioned), \
            manualOverride, str(currentSetpoint), str(finalSetpoint), str(displayedRecommendation), quantOutputId)
+    
     logSQL.trace(SQL)
     system.db.runUpdateQuery(SQL, database)
     
@@ -1344,7 +1357,21 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     if ramp != None:
         SQL = "update DtQuantOutputRamp set Ramp = %s where QuantOutputId = %i " % (str(ramp), quantOutputId)
         logSQL.trace(SQL)
-        system.db.runUpdateQuery(SQL, database)
+        rows = system.db.runUpdateQuery(SQL, database)
+        if rows > 0:
+            log.infof("   ...updated a quantOutputRamp record...")
+        else:
+            rampTypeId = lookup("RampType", "Time")
+            SQL = "insert into DtQuantOutputRamp (QuantOutputId, Ramp, RampTypeId) values (%d, %f, %d)" % (quantOutputId, ramp, rampTypeId)
+            logSQL.trace(SQL)
+            system.db.runUpdateQuery(SQL, database)
+            log.infof("   ...inserted a quantOutputRamp record...")
+    else:
+        ''' If there isn't a ramp time in the recommendation then make sure that there isn't a ramp record for the quant output '''
+        SQL = "delete from DtQuantOutputRamp where QuantOutputId = %d" % (quantOutputId)
+        rows = system.db.runUpdateQuery(SQL, database)
+        if rows > 0:
+            log.infof("Deleted a DtQuantOutputRamp record for a non-ramp recommendation")
 
 # Set the flag for all of the outputs used by this FD to ignore the minimumIncrement specifications.  This MUST
 # be called in the FDs calculation method and only lasts until another FinalDiagnosis using the same QusantOutput becomes active 
