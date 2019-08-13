@@ -37,6 +37,7 @@ def activate(scopeContext, stepProperties, state):
             if postToQueue:
                 logger.trace("Adding control panel message to the queue")
                 currentMsgQueue = getCurrentMessageQueue(chartScope)   
+                message = substituteScopeReferences(chartScope, stepScope, message)
                 insert(currentMsgQueue, priority, message, database)
             if ackRequired:
                 logger.trace("Setting ACK flag")

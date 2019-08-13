@@ -9,6 +9,7 @@ from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForParameter
 from ils.common.error import notifyError
+from ils.common.cast import toBit
 log = system.util.getLogger("com.ils.recipe.ui")
 
 # Called from the client startup script: View menu
@@ -39,10 +40,13 @@ def requery(rootContainer):
     dropdown = rootContainer.getComponent("FamilyDropdown")
     recipeFamilyName = dropdown.selectedStringValue
     
+    checkBox = rootContainer.getComponent("ActiveOnlyCheckBox")
+    activeOnly = checkBox.selected
+    
     columns = fetchColumns(recipeFamilyName)
-    rows = fetchRows(recipeFamilyName)
+    grades = fetchRows(recipeFamilyName, activeOnly)
     pds = fetchData(recipeFamilyName)
-    ds = mergeData(rootContainer, rows, columns, pds)
+    ds = mergeData(rootContainer, grades, columns, pds)
     table.data = ds
     
     for col in range(ds.getColumnCount()):
@@ -66,19 +70,31 @@ def fetchColumns(recipeFamilyName):
     print "Columns: ", columns
     return columns
     
-def fetchRows(recipeFamilyName):
-    SQL = "select distinct Grade from RtSQCLimitView where RecipeFamilyName = '%s' order by Grade" % (recipeFamilyName)
-    pds = system.db.runQuery(SQL)
-    
-    rows = []
-    for record in pds:
-        rows.append(record["Grade"])
+def fetchRows(recipeFamilyName, activeOnly):
+    if activeOnly:
+        SQL = "select distinct GM.Grade "\
+            " from RtGradeMaster GM,  RtRecipeFamily RF "\
+            " where RF.RecipeFamilyName = '%s' and GM.Active = 1 and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
+    else:
+        SQL = "select distinct GM.Grade "\
+            " from RtGradeMaster GM,  RtRecipeFamily RF "\
+            " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
 
-    print "Rows: ", rows    
-    return rows
+    print "SQL: ", SQL
+    pds = system.db.runQuery(SQL)
+    print "Selected %d grades..." % (len(pds))
+    
+    grades = []
+    for record in pds:
+        grades.append(record["Grade"])
+
+    print "Grades: ", grades    
+    return grades
 
 def fetchData(recipeFamilyName):
-    SQL = "select Grade, Parameter, UpperLimit, LowerLimit from RtSQCLimitView where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
+    SQL = "select Grade, Parameter, UpperLimit, LowerLimit "\
+        " from RtSQCLimitView "\
+        " where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
     pds = system.db.runQuery(SQL)
     print "Fetched %d rows of data..." % (len(pds))
     return pds
@@ -96,12 +112,13 @@ def mergeData(rootContainer, grades, columns, pds):
     
     for record in pds:
         grade = record["Grade"]
-        rowNum = grades.index(grade)
-        column = record["Parameter"]
-        upperLimit = record["UpperLimit"]
-        lowerLimit = record["LowerLimit"]
-        ds = system.dataset.setValue(ds, rowNum, column + "_UL", upperLimit)
-        ds = system.dataset.setValue(ds, rowNum, column + "_LL", lowerLimit)
+        if grade in grades:
+            rowNum = grades.index(grade)
+            column = record["Parameter"]
+            upperLimit = record["UpperLimit"]
+            lowerLimit = record["LowerLimit"]
+            ds = system.dataset.setValue(ds, rowNum, column + "_UL", upperLimit)
+            ds = system.dataset.setValue(ds, rowNum, column + "_LL", lowerLimit)
     return ds
 
 def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):

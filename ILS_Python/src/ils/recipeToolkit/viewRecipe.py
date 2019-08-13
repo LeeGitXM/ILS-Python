@@ -425,11 +425,14 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     log.infof("Looking for tags with limits...")
     tagsWithLimits = []
     for record in pds:
+        changeLevel = record["Change Level"]
         step = record['Step']
         writeLocation = record['Write Location']
         log.tracef("--- Step: %s - %s ---", str(step), writeLocation)
 
-        if string.upper(str(writeLocation)) == string.upper(str(localWriteAlias)):
+        if string.upper(changeLevel) == "CC":
+            log.tracef("Skipping a comment...")
+        elif string.upper(str(writeLocation)) == string.upper(str(localWriteAlias)):
             log.tracef("Skipping a local tag...")
 
         elif writeLocation != "" and writeLocation != None:
@@ -461,7 +464,10 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
         log.tracef("--- Step: %s - %s ---", str(step), writeLocation)
         downloadType = "Skip"
         dataType = ''
-        if string.upper(str(writeLocation)) == string.upper(str(localWriteAlias)):
+        
+        if string.upper(changeLevel) == "CC":
+            log.tracef("Skipping a comment...")
+        elif string.upper(str(writeLocation)) == string.upper(str(localWriteAlias)):
             log.tracef("Handling a local tag")
             downloadType = "Immediate"
 

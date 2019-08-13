@@ -230,6 +230,13 @@ def escapeSqlQuotes(txt):
     txt = string.replace(txt, "'", "''")
     return txt
 
+def escapeJSON(txt):
+    '''
+    In JSON, we need to escape a double quote with a backslash and a double quote
+    '''
+    txt = string.replace(txt, "\"", '\\\"')
+    return txt
+
 def substituteProvider(tagPath, provider):
     '''alter the given tag path to reflect the supplied provider'''
     

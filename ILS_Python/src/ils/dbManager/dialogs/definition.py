@@ -244,10 +244,83 @@ def update(table,row,colname,value):
         colname = "ValueTypeId"
         value = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = '%s'" % (value))
 
-    SQL = "UPDATE RtValueDefinition SET "+colname+" = '"+str(value)+"'"
-    SQL = SQL+" WHERE RecipeFamilyId="+str(familyid)+" AND PresentationOrder="+str(pid)
+    if value == None:
+        SQL = "UPDATE RtValueDefinition SET "+colname+" = NULL " + \
+            " WHERE RecipeFamilyId="+str(familyid)+" AND PresentationOrder="+str(pid)
+    else:
+        SQL = "UPDATE RtValueDefinition SET "+colname+" = '"+str(value)+"'" + \
+            " WHERE RecipeFamilyId="+str(familyid)+" AND PresentationOrder="+str(pid)
+    print SQL
     
     try:
         system.db.runUpdateQuery(SQL)
     except:
         notifyError(__name__, "Error updating a value definition")
+
+
+def validate(rootContainer):
+    print "In %s.validate()" % (__name__)
+    
+    family = getUserDefaults("FAMILY")
+    
+    SQL = "select VD.valueId, RF.RecipeFamilyId "\
+        " from RtValueDefinition VD, RtRecipeFamily RF "\
+        " where RF.RecipeFamilyName = '%s' "\
+        " and RF.RecipeFamilyId = VD.RecipeFamilyId " % (family)  
+        
+    pds = system.db.runQuery(SQL)
+    masterCnt = len(pds)
+    
+    print "Fetched %d value definitions" % (masterCnt)
+    
+    valueIds = []
+    for record in pds:
+        valueIds.append(record["valueId"])
+        recipeFamilyId = record["RecipeFamilyId"]
+        
+    SQL = "select grade, version, count(*) cnt "\
+        " from RtGradeDetail "\
+        " where RecipeFamilyId = %d "\
+        " group by grade, version" % (recipeFamilyId)
+    
+    pds = system.db.runQuery(SQL)
+    repairCounter = 0
+    
+    for record in pds:
+        grade = record["grade"]
+        version = record['version']
+        cnt = record["cnt"]
+        
+        if cnt <> masterCnt:
+            repairCounter += 1
+            print "   Grade %s-%s has %d details and should have %d" % (grade, str(version), cnt, masterCnt)
+            repairGrade(recipeFamilyId, grade, version, valueIds)
+    
+    if repairCounter > 0:
+        system.gui.messageBox("<HTML>%d grades were updated - consult the client console log for details.  <br>Please review the recommended values for these new detail records." % repairCounter, "Recipe Maintenance Notification") 
+
+def repairGrade(recipeFamilyId, grade, version, masterValueIds):
+    
+    SQL = "select ValueId "\
+        " from RtGradeDetail "\
+        " where RecipeFamilyId = %d "\
+        " and grade = '%s' "\
+        " and version = %d " % (recipeFamilyId, grade, version)
+    
+    pds = system.db.runQuery(SQL)
+    
+    gradeValueIds = []
+    for record in pds:
+        valueId = record["ValueId"]
+        if valueId not in masterValueIds:
+            print "         Deleting ", valueId
+            SQL = "delete from RtGradeDetail where RecipeFamilyId = %d and grade = '%s' and version = %d and ValueId = %d " % (recipeFamilyId, grade, version, valueId)
+            system.db.runUpdateQuery(SQL)
+        else:
+            gradeValueIds.append(valueId)
+            
+    for valueId in masterValueIds:
+        if valueId not in gradeValueIds:
+            print "          Adding ", valueId
+            SQL = "insert into RtGradeDetail (RecipeFamilyId, grade, version, ValueId) values (%d, '%s', %d, %d)" % (recipeFamilyId, grade, version, valueId)
+            system.db.runUpdateQuery(SQL)

@@ -68,7 +68,7 @@ def createGrade(rootContainer):
                 rows=system.db.runUpdateQuery(SQL, tx=tx)
                 log.trace("Inserted %i rows into RtGradeDetail" % (rows))
         
-                txt = "Created grade: %s for family %s!\nThe new grade will not be active, make sure to uncheck the 'Active' checkbox to see the grade." % (str(newGrade), str(familyName))
+                txt = "Created grade: %s for family %s!\nThe new grade will not be active, make sure to uncheck the 'Active Only?' checkbox to see the grade." % (str(newGrade), str(familyName))
                 system.gui.messageBox(txt)
             else:
                 msg = "Grade " + newGrade + " exists. Create attempt ignored."

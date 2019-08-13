@@ -9,6 +9,7 @@ from ils.common.cast import toBit
 from ils.common.error import catchError, notifyError
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId, recipeDataExists, recipeDataExistsForStepId
 from ils.common.config import getDatabaseClient
+from ils.common.util import escapeSqlQuotes
 log=system.util.getLogger("com.ils.sfc.visionEditor")
 
 from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, SQC, TIMER
@@ -941,7 +942,9 @@ def saveGroup(event):
     recipeDataFolderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     
     tx = system.db.beginTransaction(db)
     
@@ -967,12 +970,11 @@ def saveGroup(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        notifyError("ils.sfc.recipeData.visionEditor.saveGroup", "Caught an error, rolling back transactions")
+        errorTxt = notifyError("ils.sfc.recipeData.visionEditor.saveGroup", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        return
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
     
-    print "Done!"
     closeAndOpenBrowser(event)
 
 
@@ -990,7 +992,9 @@ def saveSimpleValue(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     simpleValueContainer=rootContainer.getComponent("Simple Value Container")
     valueType = simpleValueContainer.getComponent("Value Type Dropdown").selectedStringValue
@@ -1016,6 +1020,7 @@ def saveSimpleValue(event):
                 SQL = "Insert into SfcRecipeDataValue (IntegerValue) values (%d)" % (val)
             elif valueType == "String":
                 val = simpleValueContainer.getComponent("String Value").text
+                val = escapeSqlQuotes(val)
                 SQL = "Insert into SfcRecipeDataValue (StringValue) values ('%s')" % (val)
             elif valueType == "Boolean":
                 val = simpleValueContainer.getComponent("Boolean Value").selected
@@ -1048,6 +1053,7 @@ def saveSimpleValue(event):
                 val = simpleValueContainer.getComponent("Integer Value").intValue
             elif valueType == "String":
                 val = simpleValueContainer.getComponent("String Value").text
+                val = escapeSqlQuotes(val)
             elif valueType == "Boolean":
                 val = simpleValueContainer.getComponent("Boolean Value").selected
                 val = toBit(val)
@@ -1057,12 +1063,11 @@ def saveSimpleValue(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        return
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
     
-    print "Done!"
     closeAndOpenBrowser(event)
 
 def saveInput(event):
@@ -1079,7 +1084,9 @@ def saveInput(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     inputContainer=rootContainer.getComponent("Input Container")
     
@@ -1125,12 +1132,11 @@ def saveInput(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveInput", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
-        return
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
     
-    print "Done!"
     closeAndOpenBrowser(event)
 
 
@@ -1148,7 +1154,9 @@ def saveOutput(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     outputContainer=rootContainer.getComponent("Output Container")
     
@@ -1233,12 +1241,11 @@ def saveOutput(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveOutput", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveOutput", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        return
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
     
-    print "Done!"
     closeAndOpenBrowser(event)
 
 
@@ -1256,7 +1263,9 @@ def saveOutputRamp(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     outputContainer=rootContainer.getComponent("Output Ramp Container")
     
@@ -1353,12 +1362,11 @@ def saveOutputRamp(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveOutputRamp", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveOutputRamp", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
-        return
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
     
-    print "Done!"
     closeAndOpenBrowser(event)
 
 
@@ -1376,7 +1384,9 @@ def saveTimerValue(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     timerContainer=rootContainer.getComponent("Timer Container")
     
@@ -1410,12 +1420,11 @@ def saveTimerValue(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        return
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
     
-    print "Done!"
     closeAndOpenBrowser(event)
 
 def saveSqcValue(event):
@@ -1432,7 +1441,9 @@ def saveSqcValue(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
      
     sqcContainer=rootContainer.getComponent("SQC Container")
@@ -1467,12 +1478,11 @@ def saveSqcValue(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveTimer", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        return
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
     
-    print "Done!"
     closeAndOpenBrowser(event)
 
 
@@ -1490,7 +1500,9 @@ def saveRecipe(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     container=rootContainer.getComponent("Recipe Container")
     
@@ -1536,12 +1548,11 @@ def saveRecipe(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveRecipe", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveRecipe", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        return
-    
-    print "Done!"
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
+
     closeAndOpenBrowser(event)
 
 '''
@@ -1561,7 +1572,9 @@ def saveArray(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     
     recipeDataType = rootContainer.recipeDataType
@@ -1640,12 +1653,11 @@ def saveArray(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveArray", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveArray", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        return
-    
-    print "Done!"
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
+
     closeAndOpenBrowser(event)
 
 def saveMatrix(event):
@@ -1662,7 +1674,9 @@ def saveMatrix(event):
     folderId = rootContainer.recipeDataFolderId
     key = rootContainer.getComponent("Key").text    
     description = rootContainer.getComponent("Description").text
+    description = escapeSqlQuotes(description)
     label = rootContainer.getComponent("Label").text
+    label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     
     recipeDataType = rootContainer.recipeDataType
@@ -1757,12 +1771,11 @@ def saveMatrix(event):
         system.db.commitTransaction(tx)
         system.db.closeTransaction(tx) 
     except:
-        catchError("ils.sfc.recipeData.visionEditor.saveMatrix", "Caught an error, rolling back transactions")
+        errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveMatrix", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx) 
-        return
-    
-    print "Done!"
+        raise Exception("Save Recipe Data Exception: %s", errorTxt)
+
     closeAndOpenBrowser(event)
 
 def updateRecipeDataValue(valueId, valueType, val, tx):

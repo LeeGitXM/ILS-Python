@@ -39,10 +39,13 @@ def requery(rootContainer):
     dropdown = rootContainer.getComponent("FamilyDropdown")
     recipeFamilyName = dropdown.selectedStringValue
     
+    checkBox = rootContainer.getComponent("ActiveOnlyCheckBox")
+    activeOnly = checkBox.selected
+    
     columns = fetchColumns(recipeFamilyName)
-    rows = fetchRows(recipeFamilyName)
+    grades = fetchRows(recipeFamilyName, activeOnly)
     pds = fetchData(recipeFamilyName)
-    ds = mergeData(rootContainer, rows, columns, pds)
+    ds = mergeData(rootContainer, grades, columns, pds)
     table.data = ds
     
     for col in range(ds.getColumnCount()):
@@ -65,10 +68,18 @@ def fetchColumns(recipeFamilyName):
     print "Columns: ", columns
     return columns
     
-def fetchRows(recipeFamilyName):
-    SQL = "select distinct Grade "\
-        "from RtGradeMaster G, RtRecipeFamily F "\
-        "where F.RecipeFamilyName = '%s' order by Grade" % (recipeFamilyName)
+def fetchRows(recipeFamilyName, activeOnly):
+    
+    if activeOnly:
+        SQL = "select distinct GM.Grade "\
+            " from RtGradeMaster GM,  RtRecipeFamily RF "\
+            " where RF.RecipeFamilyName = '%s' and GM.Active = 1 and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
+    else:
+        SQL = "select distinct GM.Grade "\
+            " from RtGradeMaster GM,  RtRecipeFamily RF "\
+            " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
+    
+    print SQL
     pds = system.db.runQuery(SQL)
     
     rows = []

@@ -87,6 +87,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
     log.trace("  ...extracting tag names from the table...")
     for record in pds:
         step = record['Step']
+        changeLevel = record["Change Level"]
         writeLocation = record['Write Location']
         log.trace("Step: %s <%s> <%s>" % ( str(step), writeLocation, record['Store Tag']))
 
