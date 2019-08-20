@@ -8,7 +8,7 @@ import system
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getStepProperty, getChartPath
 from ils.sfc.recipeData.api import s88Set
 from ils.sfc.common.constants import KEY_AND_ATTRIBUTE, RECIPE_LOCATION, SQL, STEP_NAME
-from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists, s88Get, s88Set, s88DataExists, s88GetStep
+from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists, s88Get, s88Set, s88DataExists
     
 def activate(scopeContext, stepProperties, state):
     try:

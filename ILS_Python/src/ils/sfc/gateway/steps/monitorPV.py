@@ -91,7 +91,7 @@ def activate(scopeContext, stepProperties, state):
                 
                 recipeDataLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
                 if recipeDataLocation != REFERENCE_SCOPE:
-                    targetStepUUID, stepName, keyAndAttribute = s88GetStep(chartScope, stepScope, recipeDataLocation, "")
+                    targetStepUUID, stepName, keyAndAttribute = s88GetStep(chartScope, stepScope, recipeDataLocation, "", database)
                 
                 for configRow in config.rows:
                     
@@ -100,7 +100,7 @@ def activate(scopeContext, stepProperties, state):
 
                     if recipeDataLocation == REFERENCE_SCOPE:
                         logger.trace("...dereferencing a config row for the value...")
-                        targetStepUUID, stepName, keyAndAttribute = s88GetStep(chartScope, stepScope, recipeDataLocation, configRow.pvKey)
+                        targetStepUUID, stepName, keyAndAttribute = s88GetStep(chartScope, stepScope, recipeDataLocation, configRow.pvKey, database)
                         pvRecipeDataId, pvRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, keyAndAttribute, database)
                         logger.tracef("...Target Step: %s, stepName: %s, keyAndAttribute: %s", targetStepUUID, stepName, keyAndAttribute)
                     else:
@@ -126,7 +126,7 @@ def activate(scopeContext, stepProperties, state):
                     
                     if recipeDataLocation == REFERENCE_SCOPE:
                         logger.trace("...dereferencing a config row for the target...")
-                        stepUUID, stepName, targetKey = s88GetStep(chartScope, stepScope, recipeDataLocation, targetKey)
+                        stepUUID, stepName, targetKey = s88GetStep(chartScope, stepScope, recipeDataLocation, targetKey, database)
                         targetRecipeDataId, targetRecipeDataType = s88GetRecipeDataIdFromStep(stepUUID, targetKey, database)
                         logger.tracef("...Target Step: %s, stepName: %s, targetKey: %s, targetRecipeDataId: %s", targetStepUUID, stepName, targetKey, str(targetRecipeDataId))
                     else:    
@@ -235,7 +235,7 @@ def activate(scopeContext, stepProperties, state):
                 
                 # Look for a custom activation callback
                 activationCallback = getStepProperty(stepProperties, ACTIVATION_CALLBACK)
-                print "The activation callback is: ", activationCallback
+                logger.tracef("The activation callback is: %s", activationCallback)
                 if activationCallback <> "":
                     logger.tracef("Calling custom activationCallback: <%s>", activationCallback)
     

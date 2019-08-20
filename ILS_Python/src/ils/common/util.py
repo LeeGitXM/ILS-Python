@@ -4,7 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 
-import system, string
+import system, string, re
 log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
 from system.date import secondsBetween
@@ -16,12 +16,8 @@ def fileWriterMessageHandler(payload):
     system.file.writeFile(filepath, reportText)
 
 def stripHTML(msg):
-    msg=string.replace(msg, "<br>", " ")
-    msg=string.replace(msg, "<HTML>", "")
-    msg=string.replace(msg, "<html>", "")
-    msg=string.replace(msg, "<b>", "")
-    msg=string.replace(msg, "</b>", "")
-    return msg
+    TAG_RE = re.compile(r'<[^>]+>')
+    return TAG_RE.sub('', msg)
 
 def addHTML(msg):
     if msg[0:5] <> "<HTML>":

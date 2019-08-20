@@ -7,7 +7,7 @@ Created on Dec 21, 2015
 import system, time
 from ils.sfc.recipeData.api import s88Set
 from ils.sfc.gateway.api import getStepProperty, getTimeoutTime, getControlPanelId, registerWindowWithControlPanel, \
-        checkForResponse, logStepDeactivated, getStepId, dbStringForFloat, getTopChartRunId, deleteAndSendClose, \
+        checkForResponse, logStepDeactivated, dbStringForFloat, getTopChartRunId, deleteAndSendClose, \
         getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError
 from ils.sfc.common.constants import RECIPE_LOCATION, KEY, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, \
     DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
@@ -27,10 +27,7 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, messa
         cleanup(chartScope, stepScope)
         return False
             
-    try:        
-        # Get info from scope common across invocations 
-        stepId = getStepId(stepProperties) 
-
+    try:
         # Check for previous state:
         workDone = False
         waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);

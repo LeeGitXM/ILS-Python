@@ -130,7 +130,6 @@ def dataTransferWithCountCore(tagPath, currentValue, initialChange):
 This is called from the source tag of the "Data Transfer With Time" UDT.
 '''
 def dataTransferWithTime(tagPath, previousValue, currentValue, initialChange, missedEvents):
-    print "A2"
     dataTransferWithTimeCore(tagPath, currentValue, initialChange)
 
 
@@ -138,13 +137,11 @@ def dataTransferWithTime(tagPath, previousValue, currentValue, initialChange, mi
 This is called from the SampleTime tag of the "Data Transfer With Time" UDT.
 '''
 def dataTransferWithTimeSampleTime(tagPath, previousValue, currentValue, initialChange, missedEvents):
-    print "A1"
     currentValue = system.tag.read("[.]source")
     dataTransferWithTimeCore(tagPath, currentValue, initialChange) 
    
 
 def dataTransferWithTimeCore(tagPath, currentValue, initialChange):
-    print "A3"
     if initialChange:
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return

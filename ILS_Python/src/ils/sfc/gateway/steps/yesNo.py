@@ -24,6 +24,7 @@ def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
+
 #    logger.tracef("YES/NO chart scope %s", str(chartScope))
 #    logger.tracef("YES/NO step scope %s", str(stepScope))
 #    logger.tracef("YES/NO step properties %s", str(stepProperties))
@@ -66,14 +67,14 @@ def activate(scopeContext, stepProperties, state):
             if prompt.find("<HTML") < 0:
                 prompt = "<HTML>" + prompt 
             
-            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
-            logger.tracef("...the step for the response is: %s - %s", stepName, targetStepUUID)
+            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
+            logger.tracef("...the step for the response is: %s - %d", stepName, targetStepId)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
             
-            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute) values (?, ?, ?, ?)"
-            system.db.runPrepUpdate(sql, [windowId, prompt, targetStepUUID, responseKey], database)
+            sql = "insert into SfcInput (windowId, prompt, targetStepId, keyAndAttribute) values (?, ?, ?, ?)"
+            system.db.runPrepUpdate(sql, [windowId, prompt, targetStepId, responseKey], database)
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)

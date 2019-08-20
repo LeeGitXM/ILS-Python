@@ -66,12 +66,12 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
             
-            choicesStepUUID, stepName, choicesKeyAndAttribute = s88GetStep(chartScope, stepScope, choicesRecipeLocation, choicesKey)
+            choicesStepId, stepName, choicesKeyAndAttribute = s88GetStep(chartScope, stepScope, choicesRecipeLocation, choicesKey, database)
             
-            targetStepUUID, stepName, responseKeyAndAttribute = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
+            targetStepId, stepName, responseKeyAndAttribute = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
             
-            sql = "insert into SfcSelectInput (windowId, prompt, choicesStepUUID, choicesKey, targetStepUUID, keyAndAttribute) values (?, ?, ?, ?, ?, ?)"
-            system.db.runPrepUpdate(sql, [windowId, prompt, choicesStepUUID, choicesKeyAndAttribute, targetStepUUID, responseKeyAndAttribute], database)
+            sql = "insert into SfcSelectInput (windowId, prompt, choicesStepId, choicesKey, targetStepId, keyAndAttribute) values (?, ?, ?, ?, ?, ?)"
+            system.db.runPrepUpdate(sql, [windowId, prompt, choicesStepId, choicesKeyAndAttribute, targetStepId, responseKeyAndAttribute], database)
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)

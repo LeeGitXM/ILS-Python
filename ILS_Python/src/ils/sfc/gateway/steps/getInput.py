@@ -60,12 +60,14 @@ def activate(scopeContext, stepProperties, state):
             s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
+            logger.tracef("Registered a window with id: %s", str(windowId))
             stepScope[WINDOW_ID] = windowId
 
-            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
+            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
+            logger.tracef("Target Step Id: %s", str(targetStepId))
 
-            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, defaultValue) values (?, ?, ?, ?, ?)"
-            numInserted = system.db.runPrepUpdate(sql, [windowId, prompt, targetStepUUID, responseKey, defaultValue], database)
+            sql = "insert into SfcInput (windowId, prompt, targetStepId, keyAndAttribute, defaultValue) values (?, ?, ?, ?, ?)"
+            numInserted = system.db.runPrepUpdate(sql, [windowId, prompt, targetStepId, responseKey, defaultValue], database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)
 
@@ -80,7 +82,9 @@ def activate(scopeContext, stepProperties, state):
             if response <> None and response <> "NULL":
                 logger.tracef("Setting the workDone flag")
                 workDone = True
-             
+            else:
+                logger.tracef("...still working...")
+
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', logger)
         workDone = True

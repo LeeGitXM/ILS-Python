@@ -2,6 +2,9 @@
 Created on Jan 2, 2017
 These are all called from the designer while editing data.  
 Currently, when editing recipe data in the Designer, we are alway editing the Production recipe data.
+
+8/13/2019 - I'm not exactly sure how / if this is used.  It is referenced from Java, see PythonCall.java
+                Maybe this was a work in progress or a prototype, but the only recipe editor is via Python 
 @author: phass
 '''
 

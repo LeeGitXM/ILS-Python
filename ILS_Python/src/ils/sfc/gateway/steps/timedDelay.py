@@ -6,7 +6,7 @@ Created on Dec 16, 2015
 
 import system
 from ils.sfc.recipeData.api import s88Get
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError, sendMessageToClient, readTag, getStepId, logStepDeactivated, \
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError, sendMessageToClient, readTag, logStepDeactivated, \
     getControlPanelId, getStepProperty, getControlPanelName, getDelaySeconds, registerWindowWithControlPanel, getTopChartRunId, getOriginator, deleteAndSendClose
 from ils.sfc.common.util import callMethod, isEmpty, callMethodWithParams
 from ils.sfc.gateway.api import getTimeFactor
@@ -41,12 +41,10 @@ def activate(scopeContext, stepProperties, state):
         
         if endTime == None:
             chartLogger.trace("Executing TimedDelay block %s - First time initialization" % (stepName))
-            stepId = getStepId(stepProperties) 
             startTime = system.date.now()
             stepScope['_startTime'] = startTime
             firstTime = True
-            
-            
+
         else:
             startTime = stepScope['_startTime']
             
@@ -191,29 +189,29 @@ def activateOriginal(scopeContext, stepProperties, state):
         
         if endTime == None:
             chartLogger.trace("Executing TimedDelay block %s - First time initialization" % (stepName))
-            stepId = getStepId(stepProperties) 
             timeDelayStrategy = getStepProperty(stepProperties, STRATEGY) 
             chartLogger.tracef("...the strategy is %s", timeDelayStrategy)
+            
             if timeDelayStrategy == STATIC:
                 delay = getStepProperty(stepProperties, DELAY) 
+            
             elif timeDelayStrategy == RECIPE:
                 recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
                 key = getStepProperty(stepProperties, KEY)
                 chartLogger.tracef("  Getting the delay from %s.%s", recipeLocation, key)
                 delay = s88Get(chartScope, stepScope, key, recipeLocation)
                 chartLogger.tracef("    ...the raw delay is %s", str(delay))
+            
             elif timeDelayStrategy == CALLBACK:
                 callback = getStepProperty(stepProperties, CALLBACK) 
-#                delay = callMethod(callback)
-                
                 keys = ['scopeContext', 'stepProperties']
                 values = [scopeContext, stepProperties]
-                delay = callMethodWithParams(callback, keys, values)
-                
+                delay = callMethodWithParams(callback, keys, values)    
                 
             elif timeDelayStrategy == TAG:
                 tagPath = getStepProperty(stepProperties, TAG_PATH)
                 delay = readTag(chartScope, tagPath)
+            
             else:
                 handleUnexpectedGatewayError(chartScope, "unknown delay strategy: " + str(timeDelayStrategy))
                 delay = 0

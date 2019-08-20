@@ -258,7 +258,11 @@ def updateLabLimitsFromRecipe(recipeFamily, grade, tagProvider, database):
         log.warn("Unable to load SQC limits for an unknown grade.")
         return
     
-    ''' Strip off any decimal portion of the grade '''
+    ''' 
+    Strip off any decimal portion of the grade 
+    (Some sites treat grade as a number, others as a text string.  Lab data treats it as a string.)
+    '''
+    grade = str(grade)
     if grade.rfind(".") > 0:
         grade = grade[:grade.rfind(".")]
         log.infof("   modified grade <%s>", grade)

@@ -35,7 +35,7 @@ def internalFrameOpened(event):
 
     rootContainer.prompt = record["prompt"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
-    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.targetStepId = record["targetStepId"]
 
 def yesActionPerformed(event):
     print "YES was pressed"
@@ -48,8 +48,8 @@ def noActionPerformed(event):
 def setResponse(event, response):
     db = getDatabaseClient()
     rootContainer = event.source.parent
-    targetStepUUID = rootContainer.targetStepUUID
+    targetStepId = rootContainer.targetStepId
     keyAndAttribute = rootContainer.keyAndAttribute
     folder,key,attribute = splitKey(keyAndAttribute)
-    setRecipeData(targetStepUUID, folder, key, attribute, response, db)
+    setRecipeData(targetStepId, folder, key, attribute, response, db)
     system.nav.closeParentWindow(event)

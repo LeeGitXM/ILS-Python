@@ -15,6 +15,7 @@ def internalFrameOpened(event):
     rootContainer = event.source.rootContainer
     database = getDatabaseClient()
     windowId = rootContainer.windowId
+    print "Window Id: ", windowId
     
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -40,7 +41,7 @@ def internalFrameOpened(event):
     rootContainer.prompt = record["prompt"]
     rootContainer.lowLimit = lowLimit
     rootContainer.highLimit = highLimit
-    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.targetStepId = record["targetStepId"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
     rootContainer.defaultValue = defaultValue
     
@@ -57,7 +58,7 @@ def okActionPerformed(event):
     database = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
-    targetStepUUID = rootContainer.targetStepUUID
+    targetStepId = rootContainer.targetStepId
     keyAndAttribute = rootContainer.keyAndAttribute
     folder,key,attribute = splitKey(keyAndAttribute)
     responseField = rootContainer.getComponent('responseField')
@@ -76,13 +77,13 @@ def okActionPerformed(event):
         except ValueError:
             valueOk = False
         if valueOk:
-            setRecipeData(targetStepUUID, folder, key, attribute, response, database)
+            setRecipeData(targetStepId, folder, key, attribute, response, database)
             system.nav.closeParentWindow(event)
         else:
             system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
     else:
         # return the response as a string
-        setRecipeData(targetStepUUID, folder, key, attribute, response, database)
+        setRecipeData(targetStepId, folder, key, attribute, response, database)
         system.nav.closeParentWindow(event)
   
 def cancelActionPerformed(event):

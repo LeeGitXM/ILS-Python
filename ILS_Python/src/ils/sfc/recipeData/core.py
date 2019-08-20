@@ -29,13 +29,13 @@ def walkUpHieracrchy(chartProperties, stepType):
         if chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) != None:
             enclosingStepScope = chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) 
             logger.tracef("  The enclosing step scope is: %s", str(enclosingStepScope))
-            superiorUUID = enclosingStepScope.get(STEP_UUID, None)
             superiorName = enclosingStepScope.get(STEP_NAME, None)
             thisStepType = enclosingStepScope.get(S88_LEVEL)
-            chartPath = enclosingStepScope.get("chartPath", None)
             
             chartProperties = chartProperties.get(PARENT)
-            logger.tracef("  The superior step: %s - %s - %s - %s", chartPath, superiorName, superiorUUID, thisStepType)
+            
+            chartPath = chartProperties.get("chartPath", None)
+            logger.tracef("  The superior step: %s - %s - %s", thisStepType, chartPath, superiorName)
         else:
             print "Throw an error here - we are at the top"
             return None, None
@@ -43,8 +43,8 @@ def walkUpHieracrchy(chartProperties, stepType):
         if i > RECURSION_LIMIT:
             logger.error("***** HIT A RECURSION PROBLEM ****")
             return None, None
-        
-    return superiorUUID, superiorName
+    
+    return chartPath, superiorName
        
 
 def getSuperiorStep(chartProperties):
@@ -52,25 +52,27 @@ def getSuperiorStep(chartProperties):
     if chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) != None:
         enclosingStepScope = chartProperties.get(ENCLOSING_STEP_SCOPE_KEY, None) 
         logger.tracef("  The enclosing step scope is: %s", str(enclosingStepScope))
-        superiorUUID = enclosingStepScope.get(STEP_UUID, None)
         superiorName = enclosingStepScope.get(STEP_NAME, None)
-        logger.tracef("  The superior step is %s - %s ", superiorName, superiorUUID)
+        
+        chartProperties = chartProperties.get(PARENT)
+        chartPath = chartProperties.get("chartPath", None)
     else:
         print "Throw an error here - we are at the top"
-        superiorUUID = None
+        return None, None
     
-    return superiorUUID, superiorName
+    logger.tracef("  The superior step is %s - %s ", chartPath, superiorName)
+    return chartPath, superiorName
 
 '''
 This is only called from a transition.  The SFC framework passes the PRIOR step's properties
 in stepProperties.
 '''
 def getPriorStep(chartProperties, stepProperties):
-    logger.tracef("Getting the prior step UUID and Name...")
-    priorName = stepProperties.get(STEP_NAME, None) 
-    priorUUID= stepProperties.get(STEP_UUID, None) 
-    logger.tracef("...returning %s and %s", priorUUID, priorName)
-    return priorUUID, priorName
+    logger.tracef("Getting the chart path and prior step name...")
+    chartPath = chartProperties.get("chartPath", None)
+    priorName = stepProperties.get(STEP_NAME, None)  
+    logger.tracef("...returning %s and %s", chartPath, priorName)
+    return chartPath, priorName
 
 # Get the S88 level of the step superior to this chart.  The chart that is encapsulated under an operation is operation scope.
 def getEnclosingStepScope(chartScope):
@@ -99,18 +101,18 @@ def getSubScope(scope, key):
     print "The sub scope is: ", subScope
     return subScope
 
-def fetchRecipeDataType(stepUUID, folder, key, attribute, db):
-    logger.tracef("Fetching %s.%s.%s from %s", folder, key, attribute, stepUUID)
+def fetchRecipeDataType(stepId, folder, key, attribute, db):
+    logger.tracef("Fetching %s.%s.%s from %d", folder, key, attribute, stepId)
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folder + "." + key, db)
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folder + "." + key, db)
     return recipeDataType
 
-def recipeGroupExists(stepUUID, key, parentKey, db):
+def recipeGroupExists(stepId, key, parentKey, db):
     if parentKey == "":
         SQL = "select * from SfcRecipeDataFolderView "\
-            " where stepUUID = '%s' and RecipeDataKey = '%s' and ParentRecipeDataFolderId is NULL" % (stepUUID, key) 
+            " where stepId = %d and RecipeDataKey = '%s' and ParentRecipeDataFolderId is NULL" % (stepId, key) 
     else:
         logger.error("ERROR Support for nested folders has not been implemented!")
     
@@ -123,8 +125,8 @@ def recipeGroupExists(stepUUID, key, parentKey, db):
     logger.tracef("...it does not exist!")
     return False
 
-def recipeDataExists(stepUUID, folder, key, attribute, db):
-    logger.tracef("Checking if %s.%s.%s from %s exists...", folder, key, attribute, stepUUID)
+def recipeDataExists(stepId, folder, key, attribute, db):
+    logger.tracef("Checking if %s.%s.%s from step id %d exists...", folder, key, attribute, stepId)
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
@@ -136,16 +138,16 @@ def recipeDataExists(stepUUID, folder, key, attribute, db):
     
     if folder == "":
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
-            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
+            " from SfcRecipeDataView where stepId = %d and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepId, key) 
     else:
-        recipeDataFolderId = getFolderForStep(stepUUID, folder, db)
+        recipeDataFolderId = getFolderForStep(stepId, folder, db)
         
         if recipeDataFolderId == None:
             logger.tracef("...the folder does not exist!")
             return False
         
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
-            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, str(recipeDataFolderId)) 
+            " from SfcRecipeDataView where stepId = %d and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepId, key, str(recipeDataFolderId)) 
 
     pds = system.db.runQuery(SQL, db)
     
@@ -156,8 +158,8 @@ def recipeDataExists(stepUUID, folder, key, attribute, db):
     logger.tracef("...it does not exist!")
     return False
 
-def recipeDataExistsForStepId(stepID, folderID, key, db):
-    logger.tracef("Checking if %s.%s from %s exists...", folderID, key, stepID)
+def recipeDataExistsForStepId(stepId, folderID, key, db):
+    logger.tracef("Checking if %s.%s from %s exists...", folderID, key, stepId)
     
     '''
     I can't use the handy utility getRecieDataId() which does all of this work because it logs an error and throws an exception if the 
@@ -166,10 +168,10 @@ def recipeDataExistsForStepId(stepID, folderID, key, db):
     
     if folderID < 0:
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
-            " from SfcRecipeDataView where stepID = %s and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (str(stepID), key) 
+            " from SfcRecipeDataView where stepId = %s and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (str(stepId), key) 
     else:        
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
-            " from SfcRecipeDataView where stepUUID = %s and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (str(stepID), key, str(folderID)) 
+            " from SfcRecipeDataView where stepId = %s and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (str(stepId), key, str(folderID)) 
 
     pds = system.db.runQuery(SQL, db)
     
@@ -180,30 +182,34 @@ def recipeDataExistsForStepId(stepID, folderID, key, db):
     logger.tracef("...it does not exist!")
     return False
 
-def getRecipeDataId(stepUUID, keyOriginal, db):
-    logger.tracef("Fetching recipe data id for %s - %s", stepUUID, keyOriginal)
+def getRecipeDataId(stepId, keyOriginal, db):
+    logger.tracef("Fetching recipe data id for %s - %s", stepId, keyOriginal)
     
     ''' This utility requires a key and an attribute, so add a fake attribute and then ignore it  '''
     folder,key,attribute = splitKey(keyOriginal + ".value")
 
-    if folder in ["", None]:
+    if folder in ["", None, "NULL"]:
         logger.tracef("...there isn't a folder...")
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
-            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key) 
+            " from SfcRecipeDataView where stepId = %s and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (str(stepId), key) 
     else:        
-        recipeDataFolderId = getFolderForStep(stepUUID, folder, db)
+        recipeDataFolderId = getFolderForStep(stepId, folder, db)
         logger.tracef("...found folder Id :%s:", str(recipeDataFolderId))
         SQL = "select RECIPEDATAID, RECIPEDATATYPE, UNITS "\
-            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, str(recipeDataFolderId)) 
+            " from SfcRecipeDataView where stepId = %s and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (str(stepId), key, str(recipeDataFolderId)) 
 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
-        logger.errorf("Error the key <%s> was not found", keyOriginal)
-        raise ValueError, "Key <%s> was not found for step %s" % (keyOriginal, stepUUID)
+        if folder == "":
+            logger.errorf("Error the key <%s> was not found", key)
+            raise ValueError, "Key <%s> was not found for step Id %d" % (key, stepId)
+        else:
+            logger.errorf("Error the key <%s.%s> was not found", folder, key)
+            raise ValueError, "Key <%s.%s> was not found for step Id %d" % (folder, key, stepId)
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> for step %s" % (keyOriginal, stepUUID)
+        raise ValueError, "Multiple records were found for key <%s> for step Id %d" % (keyOriginal, stepId)
     
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
@@ -213,12 +219,12 @@ def getRecipeDataId(stepUUID, keyOriginal, db):
     
     return recipeDataId, recipeDataType, units
 
-def fetchRecipeData(stepUUID, folder, key, attribute, db):
-    logger.tracef("Fetching %s.%s.%s from %s", folder, key, attribute, stepUUID)
+def fetchRecipeData(stepId, folder, key, attribute, db):
+    logger.tracef("Fetching %s.%s.%s from step id: %d", folder, key, attribute, stepId)
  
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folder + "." + key, db)
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folder + "." + key, db)
     
     # These attributes are common to all recipe data classes
     attribute = string.upper(attribute)
@@ -234,11 +240,11 @@ def fetchRecipeData(stepUUID, folder, key, attribute, db):
     
     return val, units
 
-def getFolderForStep(stepUUID, folder, db):
-    logger.tracef("...getting the recipeId for folder <%s> for step <%s>", folder, stepUUID)
+def getFolderForStep(stepId, folder, db):
+    logger.tracef("...getting the recipeId for folder <%s> for step <%d>", folder, stepId)
     SQL = "Select RecipeDataFolderId, RecipeDataKey, ParentRecipeDataFolderId "\
         "from SfcRecipeDataFolderView "\
-        "where StepUUID = '%s'" % (str(stepUUID))
+        "where StepId = '%s'" % (str(stepId))
     folderPDS = system.db.runQuery(SQL, db)
     
     tokens = folder.split(".")
@@ -509,24 +515,24 @@ def getKeyedIndex(keyName, keyValue, db):
     return keyIndex 
 
 
-def fetchRecipeDataRecord(stepUUID, folderId, key, db):
-    logger.tracef("Fetching %s from %s", key, stepUUID)
+def fetchRecipeDataRecord(stepId, folderId, key, db):
+    logger.tracef("Fetching %s from %s", key, stepId)
     
     if folderId == None:
         SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
-            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepUUID, key)
+            " from SfcRecipeDataView where stepId = %d and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepId, key)
     else:
         SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
-            " from SfcRecipeDataView where stepUUID = '%s' and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepUUID, key, folderId)
-    print SQL
+            " from SfcRecipeDataView where stepId = %d and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepId, key, str(folderId))
+
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         logger.errorf("Error the key <%s> was not found", key)
-        raise ValueError, "Key <%s> was not found for step %s" % (key, stepUUID)
+        raise ValueError, "Key <%s> was not found for step %d" % (key, stepId)
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> was not found for step %s" % (key, stepUUID)
+        raise ValueError, "Multiple records were found for key <%s> was not found for step %d" % (key, stepId)
     
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
@@ -621,12 +627,12 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     record = pds[0]
     return record
 
-def setRecipeData(stepUUID, folder, key, attribute, val, db, units=""):
-    logger.tracef("Setting recipe data value for step with stepUUID: %s, folder: %s, key: %s, attribute: %s, value: %s", stepUUID, folder, key, attribute, str(val))
+def setRecipeData(stepId, folder, key, attribute, val, db, units=""):
+    logger.tracef("Setting recipe data value for step with stepId: %d, folder: %s, key: %s, attribute: %s, value: %s", stepId, folder, key, attribute, str(val))
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    recipeDataId, recipeDataType, targetUnits = getRecipeDataId(stepUUID, folder + "." + key, db)
+    recipeDataId, recipeDataType, targetUnits = getRecipeDataId(stepId, folder + "." + key, db)
     
     setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db)
 
@@ -1036,6 +1042,7 @@ def fetchStepTypeIdFromFactoryId(factoryId, tx):
     return stepTypeId
 
 def fetchChartIdFromChartPath(chartPath, tx):
+    chartPath = string.replace(chartPath,'\\','/')
     SQL = "select chartId from SfcChart where ChartPath = '%s'" % (chartPath)
     chartId = system.db.runScalarQuery(SQL, tx=tx)
     return chartId
@@ -1044,6 +1051,15 @@ def fetchChartPathFromChartId(chartId, tx=""):
     SQL = "select chartPath from SfcChart where ChartId = %d" % (chartId)
     chartPath = system.db.runScalarQuery(SQL, tx=tx)
     return chartPath
+
+def getStepId(chartPath, stepName, db):
+    logger.tracef("%s.getStepId with %s - %s", __name__, chartPath, stepName)
+    chartPath = string.replace(chartPath,'\\','/')
+    SQL = "select stepId from SfcStepView where ChartPath = '%s' and stepName = '%s' " % (chartPath, stepName)
+    logger.tracef("SQL: %s", SQL)
+    stepId = system.db.runScalarQuery(SQL, db)
+    logger.tracef("...found step id: %d", stepId)
+    return stepId
 
 def fetchStepIdFromChartIdAndStepName(chartId, stepName, tx):
     SQL = "select stepId from SfcStep where ChartId = %s and stepName = '%s' " % (chartId, stepName)
@@ -1056,14 +1072,14 @@ def fetchStepIdFromUUID(stepUUID, tx):
     return stepId
 
 # Return a value only for a specific key, otherwise raise an exception.
-def s88GetRecipeDataDS(stepUUID, recipeDataType, db):
+def s88GetRecipeDataDS(stepId, recipeDataType, db):
     logger.tracef("%s.s88GetRecipeDataDS(): %s", __name__, recipeDataType)
 
     if recipeDataType == SIMPLE_VALUE:
         SQL = "select RecipeDataKey, Units, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
             "from SfcRecipeDataSimpleValueView  "\
-            "where StepUUID = '%s' "\
-            "order by RecipeDataKey " % (stepUUID) 
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
             
         pds = system.db.runQuery(SQL, db)
         logger.tracef("...fetched %d rows", len(pds))
@@ -1079,8 +1095,8 @@ def s88GetRecipeDataDS(stepUUID, recipeDataType, db):
     elif recipeDataType == OUTPUT:
         SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE "\
             "from SfcRecipeDataOutputView  "\
-            "where StepUUID = '%s' "\
-            "order by RecipeDataKey " % (stepUUID) 
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
             
         pds = system.db.runQuery(SQL, db)
         logger.tracef("...fetched %d rows", len(pds))
@@ -1100,7 +1116,7 @@ def s88GetRecipeDataDS(stepUUID, recipeDataType, db):
     
     return ds
 
-def copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, fromFolder, toChartPath, toStepName, toStepUUID, toStepId, toFolder, recursive, category, db):
+def copyFolderValues(fromChartPath, fromStepName, fromStepId, fromFolder, toChartPath, toStepName, toStepId, toFolder, recursive, category, db):
     logger.tracef("Copying recipe data from %s-%s-%s to %s-%s-%s", fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder)
     
     # ------------------------------------------------------------------------------------
@@ -1111,8 +1127,8 @@ def copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, from
         return keys
     # ------------------------------------------------------------------------------------
 
-    fromFolderId = getFolderForStep(fromStepUUID, fromFolder, db)    
-    toFolderId = getFolderForStep(toStepUUID, toFolder, db)
+    fromFolderId = getFolderForStep(fromStepId, fromFolder, db)    
+    toFolderId = getFolderForStep(toStepId, toFolder, db)
     logger.tracef("  From folder: %s", fromFolderId)
     logger.tracef("    To Folder: %s", toFolderId)
     

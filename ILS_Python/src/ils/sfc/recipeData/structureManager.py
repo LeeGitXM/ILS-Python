@@ -6,7 +6,7 @@ Created on Dec 29, 2016
 
 import system
 from ils.common.util import formatDateTimeForDatabase
-log = system.util.getLogger("com.ils.sfc.python.structureManager")
+log = system.util.getLogger("com.ils.sfc.structureManager.python")
 from ils.common.error import catchError
 from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath
 from ils.common.database import toList
@@ -181,19 +181,12 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
             pds =  system.db.runQuery(SQL, tx=txId)
             
             if len(pds) == 0:
-                log.tracef("...Neither the chart resource id <%s> nor the chart path <%s> exist, check for a moved or renamed chart...", parentResourceId, parentChartPath)
-                
-                chartId = getChartIdFromSteps(steps, txId)
-                if chartId == None:
-                    log.tracef("...the chart must be new...")
-                    SQL = "insert into SfcChart (ChartPath, chartResourceId) values ('%s', %d)" % (parentChartPath, parentResourceId)
-                    chartId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
-                    log.tracef("...inserted chart with id: %d", chartId)
-                else:
-                    log.tracef("...successfully determined the chart id by looking up the step UUIDs, update the UUID and chartPath...")
-                    SQL = "update SfcChart set ChartResourceId = '%s', ChartPath = '%s' where chartId = %d" % (parentResourceId, parentChartPath, chartId)
-                    rows = system.db.runUpdateQuery(SQL, tx=txId)
-                    log.tracef("...updated %d existing sfcChart rows by chartId", rows)
+                log.tracef("...Neither the chart resource id <%s> nor the chart path <%s> exist, the chart must be new...", parentResourceId, parentChartPath)
+
+                SQL = "insert into SfcChart (ChartPath, chartResourceId) values ('%s', %d)" % (parentChartPath, parentResourceId)
+                chartId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
+                log.tracef("...inserted chart with id: %d", chartId)
+
             else:
                 # Update the resource Id
                 record = pds[0]
@@ -403,22 +396,6 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
         system.db.rollbackTransaction(txId)
         system.db.closeTransaction(txId)
         raise Exception("Database Update Exception in structureManager. %s", errorTxt)
-
-def getChartIdFromSteps(steps, txId):
-    lastChartId = None
-    for step in steps:
-        stepId = step["id"]
-        stepName = step["name"]
-        print "Looking at a %s <%s>" % (stepName, stepId)
-        SQL = "select chartId from SfcStep where StepUUID = '%s'" % (stepId)
-        chartId = system.db.runScalarQuery(SQL, tx=txId)
-        if lastChartId != None and chartId != None and lastChartId != chartId:
-            print "The chartIds don't match"
-            return None
-        lastChartId = chartId
-        
-    print "Found the chartId (%s) by looking up steps" % (str(lastChartId))
-    return lastChartId
 
 '''
 Update the SfcHierarchyHandler table.  If there is a record in the table but it is no longer needed, then delete the record.

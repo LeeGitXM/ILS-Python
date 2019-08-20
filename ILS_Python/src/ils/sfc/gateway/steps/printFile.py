@@ -16,7 +16,6 @@ def activate(scopeContext, stepProperties, state):
         chartLogger = getChartLogger(chartScope)
         fileName = getStepProperty(stepProperties, FILENAME) 
         database = getDatabaseName(chartScope)
-        stepId = getStepId(stepProperties) 
         controlPanelId = getControlPanelId(chartScope)
         buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
         if isEmpty(buttonLabel):
@@ -37,7 +36,7 @@ def activate(scopeContext, stepProperties, state):
         viewFile = getStepProperty(stepProperties, VIEW_FILE) 
         windowId = createWindowRecord(controlPanelId, 'SFC/SaveData', buttonLabel, position, scale, title, database)
         createSaveDataRecord(windowId, text, fileName, computer, printFile, showPrintDialog, viewFile, database)
-        sendOpenWindow(chartScope, windowId, stepId, database)
+        sendOpenWindow(chartScope, windowId, database)
   
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in printFile.py', chartLogger)

@@ -7,8 +7,9 @@ Created on Dec 16, 2015
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getChartPath, getStepProperty, getTopChartRunId
 from ils.sfc.common.constants import NAME, MESSAGE_QUEUE
 from ils.common.util import formatDateTime
+from ils.sfc.gateway.steps.commonEncapsulation import monitorCalledChart
 import system
-    
+
 def activate(scopeContext, stepProperties, state):
 
     try:
@@ -16,6 +17,7 @@ def activate(scopeContext, stepProperties, state):
         chartPath = getChartPath(chartScope)
         stepName = getStepProperty(stepProperties, NAME)
         messageQueue = getStepProperty(stepProperties, MESSAGE_QUEUE)
+        calledChartPath = getStepProperty(stepProperties, "chart-path")
         logger = getChartLogger(chartScope)
         db = getDatabaseName(chartScope)
         chartRunId = getTopChartRunId(chartScope)
@@ -25,7 +27,9 @@ def activate(scopeContext, stepProperties, state):
             
         SQL = "Insert into SfcRunLog (ChartPath, StepName, StepType, StartTime) values ('%s', '%s', 'Operation', '%s')" % (chartPath, stepName, formatDateTime(system.date.now(), format='MM/dd/yy HH:mm:ss'))
         runId = system.db.runUpdateQuery(SQL, database=db, getKey=True)
+        monitorCalledChart(runId, calledChartPath, db)
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in operation.py', logger)
     finally:
         return True
+    

@@ -7,7 +7,7 @@ This step used to be known as Download GUI
 '''
 
 import system, string
-from ils.sfc.recipeData.api import s88Set, s88GetStep, s88Get, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88SetFromId
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88SetFromId
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, DOWNLOAD, \
     POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \

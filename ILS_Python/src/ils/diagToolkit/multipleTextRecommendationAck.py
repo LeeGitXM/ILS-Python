@@ -5,6 +5,7 @@ Created on Nov 19, 2018
 '''
 import system
 from ils.common.config import getDatabaseClient
+from ils.common.util import stripHTML
 from ils.diagToolkit.common import fetchActiveTextRecommendationsForPost
 from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
 
@@ -19,7 +20,17 @@ def refresh(rootContainer):
     pds = fetchActiveTextRecommendationsForPost(post, database)
     ackVals = [False] * len(pds)
     ds = system.dataset.toDataSet(pds)
+    ds = system.dataset.addColumn(ds,ackVals, "SpecialActions", bool)
     ds = system.dataset.addColumn(ds,ackVals, "Ackd", bool)
+    
+    
+    for row in range(ds.getRowCount()):
+        textRec = stripHTML(ds.getValueAt(row, "TextRecommendation"))
+        ds = system.dataset.setValue(ds, row, "TextRecommendation", textRec)
+        postProcessingCallback = ds.getValueAt(row, "postProcessingCallback")
+        if postProcessingCallback not in [None, ""]:
+            ds = system.dataset.setValue(ds, row, "SpecialActions", True)
+    
     table = rootContainer.getComponent("Power Table")
     table.data = ds
     
@@ -41,10 +52,12 @@ def ack(event):
             
     if ds.rowCount > 0 and rowsToAck == 0:
         ans = system.gui.confirm("You have not selected any recommendations to acknowledge, are you sure you want to exit?")
-        if not(ans):
+        if ans:
+            system.nav.closeParentWindow(event)
             return
 
     ackCnt = 0
+    skipCnt = 0
     for row in range(ds.rowCount):
         if ds.getValueAt(row, "Ackd"):
             ackCnt = ackCnt + 1
@@ -55,5 +68,8 @@ def ack(event):
             else:
                 recalc = False
             acknowledgeTextRecommendationProcessing(post, applicationName, diagnosisEntryId, database, provider, recalc)
+        else:
+            skipCnt = skipCnt + 1
     
-    system.nav.closeParentWindow(event)
+    if skipCnt == 0:
+        system.nav.closeParentWindow(event)

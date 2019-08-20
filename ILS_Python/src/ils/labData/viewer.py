@@ -58,7 +58,7 @@ def internalFrameActivated(rootContainer):
 This runs in client scope and is called from a client message handler...
 '''
 def newLabDataMessageHandler(payload):
-    print "In %s.newLabDataMessageHandler() - Handling a new lab data message..." % (__name__)
+    log.tracef("In %s.newLabDataMessageHandler() - Handling a new lab data message...", __name__)
     
     windows = system.gui.getOpenedWindows()
     for window in windows:

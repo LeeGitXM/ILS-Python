@@ -8,7 +8,7 @@ import system, string
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
 from ils.common.cast import isFloat, isInteger
-from ils.sfc.gateway.api import getStepId, registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
+from ils.sfc.gateway.api import registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
     getStepProperty, logStepDeactivated, dbStringForFloat, getTopChartRunId, getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88SetWithUnits, s88GetWithUnits, getRecipeByReference, substituteScopeReferences
 from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, \
@@ -82,7 +82,6 @@ def activate(scopeContext, stepProperties, state):
                 windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
                 
                 stepScope[WINDOW_ID] = windowId
-                stepId = getStepId(stepProperties) 
                 requireAllInputs = getStepProperty(stepProperties, REQUIRE_ALL_INPUTS)
 
                 logger.trace("...inserting Manual Data Entry record without a timeout...")
@@ -106,7 +105,6 @@ def activate(scopeContext, stepProperties, state):
                         units = row.units
                         destination = row.destination
                         key = row.key
-                        
                         
                         '''
                         If the engineer wants the default value to be blank, then they either need to type None into the default value field
@@ -154,7 +152,7 @@ def activate(scopeContext, stepProperties, state):
                             valueType = "String"
                         
                         if row.destination == None or string.upper(row.destination) == "TAG":
-                            targetStepUUID = ''
+                            pass
                         elif row.destination == REFERENCE_SCOPE:
                             '''
                             If the destination is reference then we need to dereference it now and store the action scope and key in the 
@@ -162,23 +160,23 @@ def activate(scopeContext, stepProperties, state):
                             '''
                             destination, key = getRecipeByReference(chartScope, key)
                             print "The dereferenced scope and key are %s - %s" % (destination, key)
-                            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, destination, key)
+                            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, destination, key, database)
                         else:
-                            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, row.destination, key)
+                            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, row.destination, key, database)
                             
                         lowLimitDbStr = dbStringForFloat(row.lowLimit)
                         highLimitDbStr = dbStringForFloat(row.highLimit)
                     
                     SQL = "insert into SfcManualDataEntryTable (windowId, rowNum, description, value, units, lowLimit, highLimit, dataKey, "\
-                        "destination, targetStepUUID, type, recipeUnits) values (%s, %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s', '%s')" \
-                        % (str(windowId), rowNum, prompt, defaultValue, str(units), lowLimitDbStr, highLimitDbStr, key, destination, targetStepUUID, valueType, str(units))
+                        "destination, targetStepId, type, recipeUnits) values (%s, %d, '%s', '%s', '%s', %s, %s, '%s', '%s', '%s', '%s', '%s')" \
+                        % (str(windowId), rowNum, prompt, defaultValue, str(units), lowLimitDbStr, highLimitDbStr, key, destination, targetStepId, valueType, str(units))
                     logger.tracef("%s", SQL)
                     system.db.runUpdateQuery(SQL, database)
                     rowNum = rowNum + 1
 
                 # This step does not communicate back though recipe data, rather it uses the step configuration data in the Manuald Data Entry table,
                 # So we don't really need to pass the id and key but we need to keep the API happy.
-                payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: stepId, KEY: "", IS_SFC_WINDOW: True}
+                payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, KEY: "", IS_SFC_WINDOW: True}
                 sendMessageToClient(chartScope, messageHandler, payload)
         else:
             windowId = stepScope[WINDOW_ID]
@@ -220,4 +218,3 @@ def cleanup(chartScope, stepProperties, stepScope):
     except:
         chartLogger = getChartLogger(chartScope)
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in cleanup in manualDataEntry.py', chartLogger)
-

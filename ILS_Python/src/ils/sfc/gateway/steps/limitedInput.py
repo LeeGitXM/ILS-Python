@@ -61,11 +61,11 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
+            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
             
-            sql = "insert into SfcInput (windowId, prompt, targetStepUUID, keyAndAttribute, lowLimit, highLimit, defaultValue) "\
+            sql = "insert into SfcInput (windowId, prompt, targetStepId, keyAndAttribute, lowLimit, highLimit, defaultValue) "\
                 " values ('%s', '%s', '%s', '%s', %s, %s, '%s')" \
-                % (windowId, prompt, targetStepUUID, responseKey, str(minValue), str(maxValue), defaultValue)
+                % (windowId, prompt, targetStepId, responseKey, str(minValue), str(maxValue), defaultValue)
             numInserted = system.db.runUpdateQuery(sql, database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)

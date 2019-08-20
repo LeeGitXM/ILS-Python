@@ -64,10 +64,11 @@ def activate(scopeContext, stepProperties, state):
             else:
                 key = ds.getValueAt(0, 0)
                 attr = columnNames[1]
-                print "The dynamic key is: %s" % (str(key))
+                log.tracef("The dynamic key is: %s", str(key))
 
-            ''' I need an attribute, even if we are returning multiple values, in order to call dataEists. '''
+            ''' I need an attribute, even if we are returning multiple values, in order to call dataExists. '''
             keyAndAttr = key + "." + attr
+            log.tracef("The key and attr is %s", keyAndAttr)
 
             recordExists = s88DataExists(chartScope, stepScope, keyAndAttr, recipeLocation)
             if not(recordExists) and resultsMode == UPDATE:
@@ -77,8 +78,7 @@ def activate(scopeContext, stepProperties, state):
             
             if not(recordExists) and resultsMode == UPDATE_OR_CREATE:
                 log.tracef("**** Create a Recipe data entry ***")
-                stepUUID, stepName, crap = s88GetStep(chartScope, stepScope, recipeLocation, "foo.value")
-                stepId = getStepIdFromUUID(stepUUID, database)
+                stepId, stepName, crap = s88GetStep(chartScope, stepScope, recipeLocation, "foo.value", database)
                 recipeDataId = createDynamicRecipe(stepId, classToCreate, key, database)
                 log.tracef("Created new recipe data %s with id: %d", classToCreate, recipeDataId)
         
@@ -135,8 +135,7 @@ def activate(scopeContext, stepProperties, state):
                 
                 if not(recordExists) and resultsMode == UPDATE_OR_CREATE:
                     print "**** Create a Recipe data entity ***"
-                    stepUUID, stepName, crap = s88GetStep(chartScope, stepScope, recipeLocation, "foo.value")
-                    stepId = getStepIdFromUUID(stepUUID, database)
+                    stepId, stepName, crap = s88GetStep(chartScope, stepScope, recipeLocation, "foo.value", database)
                     recipeDataId = createDynamicRecipe(stepId, classToCreate, key, database)
                     print "Created new recipe data with id: ", recipeDataId
             

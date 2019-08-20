@@ -8,7 +8,7 @@ Created on Nov 30, 2016
 import system, string
 from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
     getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
-    fetchRecipeDataRecordFromRecipeDataId, getFolderForStep, copyFolderValues
+    fetchRecipeDataRecordFromRecipeDataId, getFolderForStep, copyFolderValues, getStepId
 from ils.sfc.recipeData.core import getDatabaseName, readTag, getProviderName
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, REFERENCE_SCOPE, \
@@ -64,14 +64,14 @@ def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
 
 def s88DataExists(chartProperties, stepProperties, keyAndAttribute, scope):
     scope = scope.lower()
-    logger.tracef("s88GetType(): %s - %s", keyAndAttribute, scope)
+    logger.tracef("s88DataExists(): %s - %s", keyAndAttribute, scope)
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
+    logger.tracef("...the target step is: %s - %d", stepName, stepId)
     folder,key,attribute = splitKey(keyAndAttribute)
-    exists = recipeDataExists(stepUUID, folder, key, attribute, db)
+    exists = recipeDataExists(stepId, folder, key, attribute, db)
     return exists
 
 def s88GetType(chartProperties, stepProperties, keyAndAttribute, scope):
@@ -80,10 +80,10 @@ def s88GetType(chartProperties, stepProperties, keyAndAttribute, scope):
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
+    logger.tracef("...the target step is: %s - %d", stepName, stepId)
     folder,key,attribute = splitKey(keyAndAttribute)
-    recipeDataType = fetchRecipeDataType(stepUUID, folder, key, attribute, db)
+    recipeDataType = fetchRecipeDataType(stepId, folder, key, attribute, db)
     return recipeDataType
 
 def s88GetUnits(chartProperties, stepProperties, keyAndAttribute, scope):
@@ -92,10 +92,10 @@ def s88GetUnits(chartProperties, stepProperties, keyAndAttribute, scope):
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
+    logger.tracef("...the target step is: %s - %d", stepName, stepId)
     folder,key,attribute = splitKey(keyAndAttribute)
-    val, units = fetchRecipeData(stepUUID, folder, key, attribute, db)
+    val, units = fetchRecipeData(stepId, folder, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return units
 
@@ -106,10 +106,10 @@ def s88Get(chartProperties, stepProperties, keyAndAttribute, scope):
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
+    logger.tracef("...the target step is: %s - %d", stepName, stepId)
     folder, key, attribute = splitKey(keyAndAttribute)
-    val, units = fetchRecipeData(stepUUID, folder, key, attribute, db)
+    val, units = fetchRecipeData(stepId, folder, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
 
@@ -119,20 +119,20 @@ def s88GetWithUnits(chartProperties, stepProperties, keyAndAttribute, scope, ret
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
+    logger.tracef("...the target step is: %s - %d", stepName, stepId)
     folder,key,attribute = splitKey(keyAndAttribute)
-    val, fetchedUnits = fetchRecipeData(stepUUID, folder, key, attribute, db)
+    val, fetchedUnits = fetchRecipeData(stepId, folder, key, attribute, db)
     logger.tracef("...fetched %s - %s", str(val), str(fetchedUnits))
     convertedValue = convert(fetchedUnits, string.upper(returnUnits), val, db)
     logger.tracef("...converted to %s", str(convertedValue))
     return convertedValue
 
 # Return a value only for a specific key, otherwise raise an exception.
-def s88GetFromStep(stepUUID, keyAndAttribute, db):
+def s88GetFromStep(stepId, keyAndAttribute, db):
     logger.tracef("s88GetFromStep(): %s", keyAndAttribute)
     folder,key,attribute = splitKey(keyAndAttribute)
-    val, units = fetchRecipeData(stepUUID, folder, key, attribute, db)
+    val, units = fetchRecipeData(stepId, folder, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
 
@@ -140,14 +140,14 @@ def s88GetFromStep(stepUUID, keyAndAttribute, db):
 def s88GetFromName(chartPath, stepName, keyAndAttribute, db):
     logger.tracef("s88GetFromName(): geting %s from %s step %s", keyAndAttribute, chartPath, stepName)
     folder,key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
-    logger.tracef("...looking at step %s - %s", str(stepId), str(stepUUID))
-    val, units = fetchRecipeData(stepUUID, folder, key, attribute, db)
+    stepId = s88GetStepFromName(chartPath, stepName, db)
+    logger.tracef("...looking at step %s - %d", str(stepId), stepId)
+    val, units = fetchRecipeData(stepId, folder, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     return val
 
-# Return the UUID of the step  
-def s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute):
+# Return the stepId of the step, the stepName, the key and attribute.
+def s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db):
     scope = scope.lower()
     logger.tracef("Getting target step for scope: %s, key: %s...", scope, keyAndAttribute)
     
@@ -157,29 +157,36 @@ def s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute):
         logger.tracef("...the recipe data reference is: %s - %s", scope, keyAndAttribute)
     
     if scope == LOCAL_SCOPE:
-        stepUUID = getStepUUID(stepProperties)
+        chartPath = chartProperties.get("chartPath", None)
         stepName = getStepName(stepProperties)
-        return stepUUID, stepName, keyAndAttribute
+        logger.tracef("The local chart and step are: %s - %s", chartPath, stepName)
+        stepId = getStepId(chartPath, stepName, db)
+        return stepId, stepName, keyAndAttribute
     
     elif scope == PRIOR_SCOPE:
-        stepUUID, stepName = getPriorStep(chartProperties, stepProperties)
-        return stepUUID, stepName, keyAndAttribute
+        chartPath, stepName = getPriorStep(chartProperties, stepProperties)
+        stepId = getStepId(chartPath, stepName, db)
+        return stepId, stepName, keyAndAttribute
     
     elif scope == SUPERIOR_SCOPE:
-        stepUUID, stepName = getSuperiorStep(chartProperties)
-        return stepUUID, stepName, keyAndAttribute
+        chartPath, stepName = getSuperiorStep(chartProperties)
+        stepId = getStepId(chartPath, stepName, db)
+        return stepId, stepName, keyAndAttribute
     
     elif scope == PHASE_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, PHASE_STEP)   
-        return stepUUID, stepName, keyAndAttribute
+        chartPath, stepName = walkUpHieracrchy(chartProperties, PHASE_STEP)
+        stepId = getStepId(chartPath, stepName, db)
+        return stepId, stepName, keyAndAttribute
     
     elif scope == OPERATION_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, OPERATION_STEP)     
-        return stepUUID, stepName, keyAndAttribute
+        chartPath, stepName = walkUpHieracrchy(chartProperties, OPERATION_STEP)
+        stepId = getStepId(chartPath, stepName, db)
+        return stepId, stepName, keyAndAttribute
     
     elif scope == GLOBAL_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, UNIT_PROCEDURE_STEP)     
-        return stepUUID, stepName, keyAndAttribute
+        chartPath, stepName = walkUpHieracrchy(chartProperties, UNIT_PROCEDURE_STEP)
+        stepId = getStepId(chartPath, stepName, db)
+        return stepId, stepName, keyAndAttribute
         
     else:
         logger.errorf("Undefined scope: <%s>", scope)
@@ -187,7 +194,7 @@ def s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute):
     return -1, "", ""
 
 def s88GetStepFromName(chartPath, stepName, db):
-    SQL = "select StepUUID, StepId from SfcChart C, SfcStep S "\
+    SQL = "select StepId from SfcChart C, SfcStep S "\
         " where S.ChartId = C.ChartId and C.ChartPath = '%s' and S.StepName = '%s' " % (chartPath, stepName)
     pds = system.db.runQuery(SQL, database=db)
     if len(pds) == 0:
@@ -195,15 +202,14 @@ def s88GetStepFromName(chartPath, stepName, db):
     if len(pds) > 1:
         raise ValueError, "Unable to find recipe data for %s - %s, multiple steps found" % (chartPath, stepName)
     record = pds[0]
-    stepUUID = record["StepUUID"]
     stepId = record["StepId"]
-    return stepUUID, stepId
+    return stepId
 
 # This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
 def s88GetFromNameWithUnits(chartPath, stepName, keyAndAttribute, returnUnits, db):
     folder,key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
-    val, units = fetchRecipeData(stepUUID, folder, key, attribute, db)
+    stepId = s88GetStepFromName(chartPath, stepName, db)
+    val, units = fetchRecipeData(stepId, folder, key, attribute, db)
     logger.tracef("...fetched %s", str(val))
     convertedValue = convert(units, returnUnits, val, db)
     logger.tracef("...converted to %s", str(convertedValue))
@@ -250,10 +256,10 @@ Get the CSV as a list of text string for all of the recipe data for a step
 def s88GetRecipeDataDatasetFromName(chartPath, stepName, recipeDataType, db=""):
     logger.tracef("s88GetRecipeDataDatasetFromName(): %s - %s", chartPath, stepName)
 
-    SQL = "select StepUUID from SfcHierarchyView where ChartPath = '%s' and StepName = '%s'" % (chartPath, stepName)
-    stepUUID = system.db.runScalarQuery(SQL, db)
-    print "Fetching dataset for step: ", stepUUID
-    ds = s88GetRecipeDataDS(stepUUID, recipeDataType, db)
+    SQL = "select stepId from SfcHierarchyView where ChartPath = '%s' and StepName = '%s'" % (chartPath, stepName)
+    stepId = system.db.runScalarQuery(SQL, db)
+    print "Fetching dataset for step: ", stepId
+    ds = s88GetRecipeDataDS(stepId, recipeDataType, db)
     return ds
     
 # Return a value only for a specific key, otherwise raise an exception.
@@ -262,24 +268,24 @@ def s88GetRecipeDataDataset(chartScope, stepScope, recipeDataType, scope):
     logger.tracef("s88GetCsv(): %s", scope)
     db = getDatabaseName(chartScope)
     keyAndAttribute = ""
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartScope, stepScope, scope, keyAndAttribute)    
-    ds = s88GetRecipeDataDS(stepUUID, recipeDataType, db)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartScope, stepScope, scope, keyAndAttribute, db)    
+    ds = s88GetRecipeDataDS(stepId, recipeDataType, db)
     return ds
 
 # Return a value only for a specific key, otherwise raise an exception.
-def s88GetRecord(stepUUID, key, db):
+def s88GetRecord(stepId, key, db):
     logger.tracef("s88GetRecord(): %s", key)
     
     tokens = key.split(".")
     if len(tokens) > 1:
         folder = key[:key.rfind(".")]
         key = key[key.rfind(".")+1:]
-        folderId = getFolderForStep(stepUUID, folder, db)
+        folderId = getFolderForStep(stepId, folder, db)
         logger.tracef("<%s>.<%s>", folder, key)
     else:
         folderId = None
     
-    record = fetchRecipeDataRecord(stepUUID, folderId, key, db)
+    record = fetchRecipeDataRecord(stepId, folderId, key, db)
     logger.tracef("...fetched %s", str(record))
     return record
 
@@ -298,10 +304,10 @@ def s88Set(chartProperties, stepProperties, keyAndAttribute, value, scope):
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
+    logger.tracef("...the target step is: %s - %s", stepName, str(stepId))
     folder,key,attribute = splitKey(keyAndAttribute)
-    setRecipeData(stepUUID, folder, key, attribute, value, db)
+    setRecipeData(stepId, folder, key, attribute, value, db)
 
 def s88SetWithUnits(chartProperties, stepProperties,  keyAndAttribute, value, scope, units):
     scope = scope.lower()
@@ -309,33 +315,33 @@ def s88SetWithUnits(chartProperties, stepProperties,  keyAndAttribute, value, sc
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
-    logger.tracef("...the target step is: %s - %s", stepName, stepUUID)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
+    logger.tracef("...the target step is: %s - %d", stepName, stepId)
     folder, key,attribute = splitKey(keyAndAttribute)
-    setRecipeData(stepUUID, folder, key, attribute, value, db, units)
-    
-def s88SetFromStep(stepUUID, keyAndAttribute, value, db):
+    setRecipeData(stepId, folder, key, attribute, value, db, units)
+
+def s88SetFromStep(stepId, keyAndAttribute, value, db):
     logger.tracef("s88SetFromStep(): %s - %s", keyAndAttribute, str(value))
     folder,key,attribute = splitKey(keyAndAttribute)
-    setRecipeData(stepUUID, folder, key, attribute, value, db)
+    setRecipeData(stepId, folder, key, attribute, value, db)
     
-def s88SetFromStepWithUnits(stepUUID, keyAndAttribute, value, db, units):
+def s88SetFromStepWithUnits(stepId, keyAndAttribute, value, db, units):
     logger.tracef("s88SetFromStepWithUnits(): %s - %s - %s", keyAndAttribute, str(value), units)
     folder,key,attribute = splitKey(keyAndAttribute)
-    setRecipeData(stepUUID, folder, key, attribute, value, db, units)
+    setRecipeData(stepId, folder, key, attribute, value, db, units)
     
 # This can be called from anywhere in Ignition.  It assumes that the chart path and stepname is stable
 def s88SetFromName(chartPath, stepName, keyAndAttribute, value, db):
     logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))
     folder,key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
-    setRecipeData(stepUUID, folder, key, attribute, value, db)
+    stepId = s88GetStepFromName(chartPath, stepName, db)
+    setRecipeData(stepId, folder, key, attribute, value, db)
     
 def s88SetFromNameWithUnits(chartPath, stepName, keyAndAttribute, value, units, db):
     logger.tracef("s88SetFromName(): %s - %s, %s: %s", chartPath, stepName, keyAndAttribute, str(value))
     folder,key,attribute = splitKey(keyAndAttribute)
-    stepUUID, stepId = s88GetStepFromName(chartPath, stepName, db)
-    setRecipeData(stepUUID, folder, key, attribute, value, db, units)
+    stepId = s88GetStepFromName(chartPath, stepName, db)
+    setRecipeData(stepId, folder, key, attribute, value, db, units)
 
     
 '''
@@ -359,33 +365,40 @@ def s88GetRecipeDataId(chartProperties, stepProperties, key, scope):
         folderAndKey = folder + "." + key
     
     if scope == LOCAL_SCOPE:
-        stepUUID = getStepUUID(stepProperties)
-        recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folderAndKey, db)
+        chartPath = chartProperties.get("chartPath", None)
+        stepName = getStepName(stepProperties)
+        logger.tracef("The local chart and step are: %s - %s", chartPath, stepName)
+        stepId = getStepId(chartPath, stepName, db)
+        recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folderAndKey, db)
         return recipeDataId, recipeDataType
     
     elif scope == PRIOR_SCOPE:
-        stepUUID, stepName = getPriorStep(chartProperties, stepProperties)
-        ''' Not sure why this isn't completed '''
-        return stepUUID, stepName
+        chartPath, stepName = getPriorStep(chartProperties, stepProperties)
+        stepId = getStepId(chartPath, stepName, db)
+        recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folderAndKey, db)
+        return recipeDataId, recipeDataType
     
     elif scope == SUPERIOR_SCOPE:
-        stepUUID, stepName = getSuperiorStep(chartProperties)
-        recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folderAndKey, db)
+        stepId, stepName = getSuperiorStep(chartProperties)
+        recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folderAndKey, db)
         return recipeDataId, recipeDataType
     
     elif scope == PHASE_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, PHASE_STEP)   
-        recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folderAndKey, db)
+        chartPath, stepName = walkUpHieracrchy(chartProperties, PHASE_STEP)
+        stepId = getStepId(chartPath, stepName, db)   
+        recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folderAndKey, db)
         return recipeDataId, recipeDataType
     
     elif scope == OPERATION_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, OPERATION_STEP)     
-        recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folderAndKey, db)
+        chartPath, stepName = walkUpHieracrchy(chartProperties, OPERATION_STEP)
+        stepId = getStepId(chartPath, stepName, db)   
+        recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folderAndKey, db)
         return recipeDataId, recipeDataType
     
     elif scope == GLOBAL_SCOPE:
-        stepUUID, stepName = walkUpHieracrchy(chartProperties, UNIT_PROCEDURE_STEP)     
-        recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, folderAndKey, db)
+        chartPath, stepName = walkUpHieracrchy(chartProperties, UNIT_PROCEDURE_STEP)
+        stepId = getStepId(chartPath, stepName, db)     
+        recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folderAndKey, db)
         return recipeDataId, recipeDataType
         
     else:
@@ -393,10 +406,10 @@ def s88GetRecipeDataId(chartProperties, stepProperties, key, scope):
         
     return -1, ""
 
-def s88GetRecipeDataIdFromStep(stepUUID, key, db):
+def s88GetRecipeDataIdFromStep(stepId, key, db):
 #    ''' I don't care about the attribute, but I need one to use splitKey, so add one and throw it away '''
 #    folder,key,attribute = splitKey(key + ".value")
-    recipeDataId, recipeDataType, units = getRecipeDataId(stepUUID, key, db)
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepId, key, db)
     return recipeDataId, recipeDataType
 
 # Return a value for a specific key using the recipe data id.  This is intended for long-running steps that update the same recipe data object each iteration.
@@ -545,26 +558,32 @@ Utilities for dealing with folders
 def s88CopyFolderValues(fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder, recursive, category, db):
     logger.tracef("Copying recipe data from %s-%s-%s to %s-%s-%s", fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder)
      
-    fromStepUUID, fromStepId = s88GetStepFromName(fromChartPath, fromStepName, db)
-    logger.tracef("...fromStepUUID: %s, fromStepId: %s", fromStepUUID, str(fromStepId))
+    fromStepId = s88GetStepFromName(fromChartPath, fromStepName, db)
+    logger.tracef("...fromStepId: %s", str(fromStepId))
     
-    toStepUUID, toStepId = s88GetStepFromName(toChartPath, toStepName, db)
-    logger.tracef("...toStepUUID: %s, toStepId: %s", toStepUUID, str(toStepId))
+    toStepId = s88GetStepFromName(toChartPath, toStepName, db)
+    logger.tracef("...toStepId: %s", str(toStepId))
     
-    copyFolderValues(fromChartPath, fromStepName, fromStepUUID, fromStepId, fromFolder, toChartPath, toStepName, toStepUUID, toStepId, toFolder, recursive, category, db)
+    copyFolderValues(fromChartPath, fromStepName, fromStepId, fromFolder, toChartPath, toStepName, toStepId, toFolder, recursive, category, db)
 
 '''
 This is provided to get behind the scenes in an acceptable way.  It is useful when accessing elements of an array recipe data in a library task where 
 the key is passed by reference.
 '''
+ #TODO Delete this   
 def s88GetStepUUIDFolderKeyAttribute(chartProperties, stepProperties, keyAndAttribute, scope):
+    stepId, folder, key, attribute = s88GetStepIdFolderKeyAttribute(chartProperties, stepProperties, keyAndAttribute, scope)
+    return stepId, folder, key, attribute
+
+
+def s88GetStepIdFolderKeyAttribute(chartProperties, stepProperties, keyAndAttribute, scope):
     scope = scope.lower()
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)
-    stepUUID, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute)
+    stepId, stepName, keyAndAttribute = s88GetStep(chartProperties, stepProperties, scope, keyAndAttribute, db)
     folder,key,attribute = splitKey(keyAndAttribute)
-    return stepUUID, folder, key, attribute
+    return stepId, folder, key, attribute
 
 def getKeyedIndex(keyName, keyValue, db):
     ''' A convenient way to get the index into the array once you already have the entire array '''

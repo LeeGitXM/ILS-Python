@@ -21,10 +21,10 @@ def internalFrameOpened(event):
     pds = system.db.runQuery(SQL, db)
     record = pds[0]
     prompt = record["prompt"]
-    choicesStepUUID = record["choicesStepUUID"]
+    choicesStepId = record["choicesStepId"]
     choicesKey = record["choicesKey"]
 
-    choices = s88GetFromStep(choicesStepUUID, choicesKey + ".value", db)
+    choices = s88GetFromStep(choicesStepId, choicesKey + ".value", db)
     print "The choices are: ", choices
     data = []
     for choice in choices:
@@ -34,7 +34,7 @@ def internalFrameOpened(event):
     choices = system.dataset.toDataSet(["choices"], data)
     rootContainer.choices = choices
     rootContainer.prompt = prompt
-    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.targetStepId = record["targetStepId"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
     
 
@@ -42,7 +42,7 @@ def okActionPerformed(event):
     db = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
-    targetStepUUID = rootContainer.targetStepUUID
+    targetStepId = rootContainer.targetStepId
     keyAndAttribute = rootContainer.keyAndAttribute
     folder,key,attribute = splitKey(keyAndAttribute)
     dropdown = rootContainer.getComponent('choices')
@@ -51,4 +51,4 @@ def okActionPerformed(event):
         system.gui.warningBox("Please select a value and press OK!")
         return
     
-    setRecipeData(targetStepUUID, folder, key, attribute, response, db)
+    setRecipeData(targetStepId, folder, key, attribute, response, db)

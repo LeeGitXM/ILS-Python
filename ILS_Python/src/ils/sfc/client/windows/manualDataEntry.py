@@ -44,10 +44,13 @@ def okCallback(rootContainer, timedOut=False):
 
     # anywhere units are specified, check if they also exist in recipe data
     for row in range(dataset.rowCount):
+        print "Row: ", row
         units = dataset.getValueAt(row, "units")
+        print "  Units: ", units
         destination = dataset.getValueAt(row, "destination")
         if not isEmpty(units) and string.upper(destination) <> "TAGS":
-            recipeUnits = dataset.getValueAt(row, 8)
+            recipeUnits = dataset.getValueAt(row, "recipeUnits")
+            print "  Units from recipe: ", recipeUnits
             key = dataset.getValueAt(row, 5)
             if isEmpty(recipeUnits):
                 system.gui.messageBox("Unit %s is specified but recipe data %s has no units. No conversion will be done." % (units, key), 'Warning')
@@ -91,7 +94,7 @@ def saveData(rootContainer, timedOut):
             rowNum = record['rowNum']
             units = record['units']
             keyAndAttribute = record['dataKey']
-            stepUUID = record['targetStepUUID']
+            stepId = record['targetStepId']
             destination = record['destination']
             valueType = record['type']
             
@@ -104,9 +107,9 @@ def saveData(rootContainer, timedOut):
                 system.tag.write(tagPath, val)
             else:
                 if isEmpty(units):
-                    s88SetFromStep(stepUUID, keyAndAttribute, val, db)
+                    s88SetFromStep(stepId, keyAndAttribute, val, db)
                 else:
-                    s88SetFromStepWithUnits(stepUUID, keyAndAttribute, val, db, units)
+                    s88SetFromStepWithUnits(stepId, keyAndAttribute, val, db, units)
 
     SQL = "update SfcManualDataEntry set complete = 1 where windowId = '%s'" % (windowId)
     system.db.runUpdateQuery(SQL, database=db)        

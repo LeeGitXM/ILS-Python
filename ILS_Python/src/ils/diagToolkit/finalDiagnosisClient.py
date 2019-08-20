@@ -294,6 +294,9 @@ def handleTextRecommendationNotification(payload):
     We are handling a text recommendation, so if there is already an open setpoint spreadsheet that has not been dealt with then
     hide it.  The diagnosis entry/recommendation that triggered it will be rescinded.
     >>> This might not be correct, what if they were equal priority??? <<<
+    >>> Hopefully the gateway manager figured out the highest priorities <<<
+    
+    We are checking 3 different scenarios here, there shouldn't ever be two of them...
     '''
     print "Checking for an open setpoint spreadsheet..."
     for window in windows:
@@ -306,6 +309,9 @@ def handleTextRecommendationNotification(payload):
                 system.nav.closeWindow(windowPath)
 
     print "Checking to see if the Loud Workspace is already open..."
+    '''
+    Not sure if I should be checking the type of the OC alert, we shouldn't let an OC alert for comms interfere with this
+    '''
     for window in windows:
         windowPath=window.getPath()
         pos = windowPath.find('OC Alert')
@@ -319,6 +325,16 @@ def handleTextRecommendationNotification(payload):
                 rootContainer.callbackPayloadDataset = callbackPayloadDataset
                 rootContainer.setPropertyValue("bottomMessage", "A new TEXT recommendation is ready!")
                 return
+    
+    print "Checking if the Multiple text rec window is open..."
+    for window in windows:
+        windowPath=window.getPath()
+        pos = windowPath.find('Multiple Text Recommendation Ack')
+        if pos >= 0:
+            rootContainer=window.rootContainer
+            from ils.diagToolkit.multipleTextRecommendationAck import refresh
+            refresh(rootContainer)
+            return
     
     print "Posting the loud workspace because there wasn't already one and there wasn't a setpoint spreadsheet either..."
     

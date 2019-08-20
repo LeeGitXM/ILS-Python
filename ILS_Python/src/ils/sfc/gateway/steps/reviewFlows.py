@@ -77,7 +77,7 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey)
+            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
             
             SQL = "insert into SfcReviewFlows (windowId, heading1, heading2, heading3, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
                 "values (?, ?, ?, ?, ?, ?, ?, ?)"

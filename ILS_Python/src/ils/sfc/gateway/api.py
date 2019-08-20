@@ -377,14 +377,6 @@ def getSessionId(chartProperties):
     from ils.sfc.common.constants import SESSION_ID
     return str(getTopLevelProperties(chartProperties)[SESSION_ID])        
 
-def getStepId(stepProperties):
-    # need to translate the UUID to a string:
-    from ils.sfc.common.constants import ID
-    if stepProperties != None:
-        return str(getStepProperty(stepProperties, ID))
-    else:
-        return None
-
 def getStepProperty(stepProperties, pname):
     for prop in stepProperties.getProperties():
         if prop.getName() == pname:
