@@ -121,6 +121,7 @@ NAME = "name"
 NO_LIMIT = "No Limit"   # Duration strategy
 NUMBER_OF_TIMEOUTS = "numberOfTimeouts"
 NUMBER_OF_ERRORS = "numberOfErrors"
+NUMBER_OF_RECORDS = "numberOfRecords"
 OK = "Ok"
 ORIGINATOR = "originator"
 OUTPUT_VALUE = "OutputValue"

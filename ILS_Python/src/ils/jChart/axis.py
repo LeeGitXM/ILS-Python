@@ -4,23 +4,28 @@ Created on Aug 27, 2014
 @author: ILS
 '''
 
+from ils.jChart.common import getPlot, getJFChart
+
 # For a stacked chart, the top plot is index 0
 
 #
 # X Axis Manipulations 
 #
-# I don't ever envision having more than a single X (Domain) axis, I'm not even sure you can,
-# but I will allow the axisIndex to be passed in just in case.
-def xLimits(chart, lowLimit, highLimit, plotIndex=0, axisIndex=0):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)
-    axis = plot.getDomainAxis(axisIndex)
-    if axis != None:
-        axis.setLowerBound(lowLimit)
-        axis.setUpperBound(highLimit)
+def xAxisLimits(chart, lowLimit, highLimit, axisName = "Default X Axis"):
+    print "In xAxisLimits, setting %s from %f to %f" % (axisName, lowLimit, highLimit)
+    axes = chart.getXAxes()
+    print "axes: ", axes
+    axis = axes.get(axisName)
+    print "axis: ", axis
+    axis.setLowerBound(lowLimit)
+    axis.setUpperBound(highLimit)
+
+    chart.setXAxes(axes)
+
+    #Tells the chart to re-fresh itself
+    chart.createChart()
 
 def xLabel(chart, label, plotIndex=0, axisIndex=0):
-    from ils.jChart.common import getPlot
     axisIndex = 0
     plot = getPlot(chart, plotIndex)
     axis = plot.getDomainAxis(axisIndex)
@@ -75,25 +80,29 @@ def yOrientation(chart, plotIndex, axisIndex, label, leftOrRight):
 
     
 def yLabel(chart, plotIndex, axisIndex, label):
-    from ils.jChart.common import getPlot
     plot = getPlot(chart, plotIndex)
     axis = plot.getRangeAxis(axisIndex)
     if axis != None:
         axis.setLabel(label)
 
 
-def yLimits(chart, plotIndex, axisIndex, lowLimit, highLimit):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)        
-    axis = plot.getRangeAxis(axisIndex)
-    if axis != None:
-        axis.setLowerBound(lowLimit)
-        axis.setUpperBound(highLimit)
+def yAxisLimits(chart, lowLimit, highLimit, axisName = "Default Y Axis"):
+    print "In yAxisLimits"
+    axes = chart.getYAxes()
+    
+    axis = axes.get(axisName)
+    axis.setLowerBound(lowLimit)
+    axis.setUpperBound(highLimit)
+    
+    chart.setYAxes(axes)
+    
+    #Tells the chart to re-fresh itself
+    chart.createChart()
 
 
 def yAutoRange(chart, plotIndex, axisIndex):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)
+    jfChart = getJFChart(chart)
+    plot = getPlot(jfChart, plotIndex)
     axis = plot.getRangeAxis(axisIndex)
     if axis != None:
         axis.setAutoRangeIncludesZero(False)
@@ -101,8 +110,8 @@ def yAutoRange(chart, plotIndex, axisIndex):
 
 
 def yVisibility(chart, plotIndex, axisIndex, visible):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)        
+    jfChart = getJFChart(chart)
+    plot = getPlot(jfChart, plotIndex)        
     axis = plot.getRangeAxis(axisIndex)
     if axis != None:
         axis.setVisible(visible)

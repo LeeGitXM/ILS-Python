@@ -6,12 +6,10 @@ Created on Dec 17, 2015
 
 import system, string
 from ils.queue.constants import QUEUE_ERROR
-from ils.sfc.gateway.api import getIsolationMode
-from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
-from ils.sfc.gateway.api import dictToString, getStepProperty, createFilepath, postToQueue, registerWindowWithControlPanel, getTopChartRunId, \
-     getControlPanelId, createWindowRecord, createSaveDataRecord, getStepId, getChartLogger, handleUnexpectedGatewayError, getDatabaseName, sendMessageToClient
-from ils.sfc.common.constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, SERVER, POSITION, SCALE, WINDOW_TITLE, BUTTON_LABEL, SHOW_PRINT_DIALOG, NAME, \
-    WINDOW_ID, WINDOW_PATH, TARGET_STEP_UUID, IS_SFC_WINDOW, EXTENSION
+from ils.sfc.gateway.api import getStepProperty, createFilepath, postToQueue, registerWindowWithControlPanel, getTopChartRunId, \
+     getControlPanelId, getChartLogger, handleUnexpectedGatewayError, sendMessageToClient, getDatabaseName
+from ils.sfc.common.constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, POSITION, SCALE, WINDOW_TITLE, BUTTON_LABEL, NAME, \
+    WINDOW_ID, WINDOW_PATH, IS_SFC_WINDOW, EXTENSION
 from ils.sfc.recipeData.api import s88GetRecipeDataDataset
 from ils.sfc.recipeData.constants import SIMPLE_VALUE, OUTPUT
     
@@ -34,9 +32,11 @@ def activate(scopeContext, stepProperties, state):
         windowTitle = getStepProperty(stepProperties, WINDOW_TITLE)
         extension = getStepProperty(stepProperties, EXTENSION) 
         path, filename, filePath = createFilepath(chartScope, stepProperties, False)
+        
+        logger.tracef("Filepath: %s", filePath)
 
         if path == "" or filename == "":
-            logger.errorf("ERROR: SaveData step named <%S> on chart <%s> does not specify a directory and/or filename", stepName, chartPath)
+            logger.errorf("ERROR: SaveData step named <%s> on chart <%s> does not specify a directory and/or filename", stepName, chartPath)
             return True
         
         logger.tracef("The <%s> recipe data report will be saved to: %s file: %s", recipeLocation, path, filename)
@@ -59,8 +59,10 @@ def activate(scopeContext, stepProperties, state):
             parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset, "Header": windowTitle}
             action = "save"
             
-            if string.upper(extension) in ["CSV", ".CSV"]:
+            if string.upper(extension) in ["CSV", ".CSV","TXT",".TXT"]:
                 format = "csv"
+            elif string.upper(extension) in ["RTF", ".RTF"]:
+                format = "rtf"
             else:
                 format = "pdf"
                 
@@ -124,7 +126,7 @@ def activate(scopeContext, stepProperties, state):
 
         logger.trace("...leaving saveData.activate()")      
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorDownload.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error saving recipe data', logger)
 
 
     finally:

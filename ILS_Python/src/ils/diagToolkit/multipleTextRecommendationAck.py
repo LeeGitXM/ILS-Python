@@ -12,6 +12,7 @@ from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationPro
 def internalFrameOpened(rootContainer):
     print "In %s.internalFrameOpened()" % (__name__)
     refresh(rootContainer)
+
     
 def refresh(rootContainer):
     print "In %s.refresh()" % (__name__)
@@ -33,6 +34,7 @@ def refresh(rootContainer):
     
     table = rootContainer.getComponent("Power Table")
     table.data = ds
+
     
 def ack(event):
     print "In %s.ack()" % (__name__)
@@ -73,3 +75,29 @@ def ack(event):
     
     if skipCnt == 0:
         system.nav.closeParentWindow(event)
+
+
+def selectAll(event):
+    print "In %s.selectAll()" % (__name__)
+    rootContainer = event.source.parent
+
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data
+    
+    for row in range(ds.rowCount):
+        ds = system.dataset.setValue(ds, row, "Ackd", True)
+
+    table.data = ds
+
+
+def unselectAll(event):
+    print "In %s.unselectAll()" % (__name__)
+    rootContainer = event.source.parent
+
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data
+    
+    for row in range(ds.rowCount):
+        ds = system.dataset.setValue(ds, row, "Ackd", False)
+
+    table.data = ds

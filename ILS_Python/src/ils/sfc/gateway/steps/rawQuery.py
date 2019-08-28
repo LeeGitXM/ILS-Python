@@ -7,7 +7,7 @@ Created on Dec 17, 2015
 import system
 from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, getStepProperty, getChartPath
 from ils.sfc.recipeData.api import s88Set
-from ils.sfc.common.constants import KEY_AND_ATTRIBUTE, RECIPE_LOCATION, SQL, STEP_NAME
+from ils.sfc.common.constants import KEY_AND_ATTRIBUTE, RECIPE_LOCATION, SQL, STEP_NAME, NUMBER_OF_RECORDS
 from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists, s88Get, s88Set, s88DataExists
     
 def activate(scopeContext, stepProperties, state):
@@ -29,6 +29,8 @@ def activate(scopeContext, stepProperties, state):
         
         pds = system.db.runQuery(processedSql, database) # returns a PyDataSet
         log.tracef("...query returned %d records...", len(pds))
+        
+        stepScope[NUMBER_OF_RECORDS] = len(pds)
         
         vals = []
         for record in pds:
