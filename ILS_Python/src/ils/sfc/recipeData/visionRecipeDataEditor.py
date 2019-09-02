@@ -1014,18 +1014,18 @@ def saveSimpleValue(event):
             
             if valueType == "Float":
                 val = simpleValueContainer.getComponent("Float Value").floatValue
-                SQL = "Insert into SfcRecipeDataValue (FloatValue) values (%f)" % (val)
+                SQL = "Insert into SfcRecipeDataValue (RecipeDataId, FloatValue) values (%d, %f)" % (recipeDataId, val)
             elif valueType == "Integer":
                 val = simpleValueContainer.getComponent("Integer Value").intValue
-                SQL = "Insert into SfcRecipeDataValue (IntegerValue) values (%d)" % (val)
+                SQL = "Insert into SfcRecipeDataValue (RecipeDataId, IntegerValue) values (%d, %d)" % (recipeDataId, val)
             elif valueType == "String":
                 val = simpleValueContainer.getComponent("String Value").text
                 val = escapeSqlQuotes(val)
-                SQL = "Insert into SfcRecipeDataValue (StringValue) values ('%s')" % (val)
+                SQL = "Insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (%d, '%s')" % (recipeDataId, val)
             elif valueType == "Boolean":
                 val = simpleValueContainer.getComponent("Boolean Value").selected
                 val = toBit(val)
-                SQL = "Insert into SfcRecipeDataValue (BooleanValue) values (%d)" % (val)
+                SQL = "Insert into SfcRecipeDataValue (RecipeDataId, BooleanValue) values (%d, %d)" % (recipeDataId, val)
             
             print SQL
             valueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
@@ -1108,9 +1108,9 @@ def saveInput(event):
             rootContainer.recipeDataId = recipeDataId
             
             # The values are meaningless until someone uses this data in a PV Monitoring block
-            SQL = "insert into SfcRecipeDataValue (BooleanValue) values (0)"
+            SQL = "insert into SfcRecipeDataValue (recipeDataId, BooleanValue) values (%d, 0)" % (recipeDataId)
             pvValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
-            SQL = "insert into SfcRecipeDataValue (BooleanValue) values (0)"
+            SQL = "insert into SfcRecipeDataValue (recipeDataId, BooleanValue) values (%d, 0)" % (recipeDataId)
             targetValueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
 
             SQL = "Insert into SfcRecipeDataInput (RecipeDataId, ValueTypeId, TargetValueId, PVValueId, Tag) "\
@@ -1192,7 +1192,7 @@ def saveOutput(event):
                     attr = valueType + "Value"
                     if valueType == 'String':
                         val = outputContainer.getComponent("Output String Value").text
-                        SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (attr, val)
+                        SQL = "insert into SfcRecipeDataValue (recipeDataId, %s) values (%d, '%s')" % (attr, recipeDataId, val)
                     else:
                         if valueType == 'Float':
                             val = outputContainer.getComponent("Output Float Value").floatValue
@@ -1201,9 +1201,9 @@ def saveOutput(event):
                         elif valueType == 'Boolean':
                             val = outputContainer.getComponent("Output Boolean Value").selected
                             val = toBit(val)
-                        SQL = "insert into SfcRecipeDataValue (%s) values (%s)" % (attr, str(val))
+                        SQL = "insert into SfcRecipeDataValue (recipeDataId, %s) values (%d, %s)" % (attr, recipeDataId, str(val))
                 else:
-                    SQL = "insert into SfcRecipeDataValue (FloatValue) values (NULL)"
+                    SQL = "insert into SfcRecipeDataValue (recipeDataId, FloatValue) values (%d, NULL)" % (recipeDataId)
                 print SQL
                 valueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
                 valueIds.append(valueId)
@@ -1303,7 +1303,7 @@ def saveOutputRamp(event):
                     attr = valueType + "Value"
                     if valueType == 'String':
                         val = outputContainer.getComponent("Output String Value").text
-                        SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (attr, val)
+                        SQL = "insert into SfcRecipeDataValue (recipeDataId, %s) values (%d, '%s')" % (attr, recipeDataId, val)
                     else:
                         if valueType == 'Float':
                             val = outputContainer.getComponent("Output Float Value").floatValue
@@ -1312,9 +1312,9 @@ def saveOutputRamp(event):
                         elif valueType == 'Boolean':
                             val = outputContainer.getComponent("Output Boolean Value").selected
                             val = toBit(val)
-                        SQL = "insert into SfcRecipeDataValue (%s) values (%s)" % (attr, str(val))
+                        SQL = "insert into SfcRecipeDataValue (recipeDataId, %s) values (%d, %s)" % (attr, recipeDataId, str(val))
                 else:
-                    SQL = "insert into SfcRecipeDataValue (FloatValue) values (NULL)"
+                    SQL = "insert into SfcRecipeDataValue (recipeDataId, FloatValue) values (%d, NULL)" % (recipeDataId)
                 print SQL
                 valueId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
                 valueIds.append(valueId)
