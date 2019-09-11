@@ -284,7 +284,7 @@ def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes,
         isGood = ds.getQualityAt(0, i + 1).isGood()
         if not(isGood):
             badValue = True
-            log.warnf("Unable to collect average value for %s", tagPaths[i])
+            log.warnf("Unable to collect %s for %s", aggregationMode, tagPaths[i])
 
     return badValue, ds
 
