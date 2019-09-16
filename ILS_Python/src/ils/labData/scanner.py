@@ -35,6 +35,11 @@ def main(database, tagProvider):
     
     from ils.labData.limits import fetchLimits
     limits=fetchLimits(tagProvider, database)
+    
+    if system.tag.exists("[%s]Configuration/Common/simulateHDA" % (tagProvider)):
+        simulateHDA = system.tag.read("[%s]Configuration/Common/simulateHDA" % (tagProvider))
+    else:
+        simulateHDA = False
 
     writeMode = "synch"
     newValue = False
