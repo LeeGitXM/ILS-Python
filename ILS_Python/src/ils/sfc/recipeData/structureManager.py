@@ -8,7 +8,7 @@ import system
 from ils.common.util import formatDateTimeForDatabase
 log = system.util.getLogger("com.ils.sfc.structureManager.python")
 from ils.common.error import catchError
-from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath
+from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName
 from ils.common.database import toList
 
 def getTxId(db):
@@ -217,8 +217,8 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
         stepsInDatabase = []
         log.tracef("Existing steps:")
         for record in databaseStepsPds:
-            log.tracef("  %s", record["StepUUID"])
-            stepsInDatabase.append(record["StepUUID"])
+            log.tracef("  %s", record["StepName"])
+            stepsInDatabase.append(record["StepName"])
         
         updateCntr = 0
         insertCntr = 0
@@ -228,16 +228,13 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
             stepName = step["name"]
             stepType = step["type"]
             
-            if stepId in stepsInDatabase:
+            if stepName in stepsInDatabase:
                 log.tracef("Step already exists in database, checking if it needs to be updated...")
                 
                 for stepRecord in databaseStepsPds:
-                    if stepId == stepRecord["StepUUID"]:
-                        log.tracef("...found the step (step type: %s-%s) in the database list...", stepType, str(stepTypeId))
+                    if stepName == stepRecord["StepName"]:
+                        log.tracef("...found the step (name: %s, step type: %s-%s) in the database list...", stepName, stepType, str(stepTypeId))
                         updateIt = False
-                        if stepName <> stepRecord["StepName"]:
-                            log.tracef("...the name has been changed from %s to %s", stepRecord["StepName"], stepName)
-                            updateIt = True
                         if chartId <> stepRecord["ChartId"]:
                             updateIt = True
                             log.tracef("...the chartId has been changed from %s to %s", str(stepRecord["ChartId"]), str(chartId))
@@ -251,7 +248,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
                             log.tracef("...updated %d existing steps", rows)
                             updateCntr = updateCntr + 1
                 
-                stepsInDatabase.remove(step["id"])
+                stepsInDatabase.remove(step["name"])
             else:
                 log.tracef("Inserting a new step %s, a %s with UUID %s into the database...", stepName, stepType, stepId)
                 SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepName, stepId, stepTypeId, chartId)
@@ -281,6 +278,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
         '''
         log.tracef("------------------")
         log.tracef("Updating the chart hierarchy with children...")
+        log.tracef("the children from parsing the chart XML is: %s", str(children))
         log.tracef("------------------")
         
         # Fetch what is already in the database
@@ -319,8 +317,8 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
                             log.errorf("Id not found for child chart, it will be created later hopefully,  with path: %s", child.get("childPath"))
                         
                         else:
-                            stepId = fetchStepIdFromUUID(stepUUID, txId)
-                            log.tracef("The step id of the child step named %s (%s) is: %s", stepName, stepUUID, str(stepId))
+                            stepId = fetchStepIdFromChartIdAndStepName(chartId, stepName, txId)
+                            log.tracef("The step id of the child step named %s on chart %s is: %s", stepName, str(chartId), str(stepId))
 
                             SQL = "Update SfcHierarchy set ChildChartId = %d where StepId = %d" % (childChartId, stepId)
                             log.tracef("SQL: %s", SQL)
@@ -348,7 +346,9 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
                     log.errorf("Id not found for child chart, it will be created later hopefully,  with path: %s", child.get("childPath"))
                 
                 if stepTypeId <> None and childChartId <> None:
-                    stepId = fetchStepIdFromUUID(child.get("id"), txId)
+                    stepId = fetchStepIdFromChartIdAndStepName(chartId, stepName, txId)
+                    log.tracef("The step id of the child step named %s on chart %s is: %s", stepName, str(chartId), str(stepId))
+                            
                     SQL = "Insert into SfcHierarchy (StepId, ChartId, ChildChartId) values (%d, %d, %d)" % (stepId, chartId, childChartId)
                     system.db.runUpdateQuery(SQL, tx=txId)
                     log.tracef("...inserted %d into sfcHierarchy", stepId) 

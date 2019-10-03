@@ -10,6 +10,7 @@ import sys, system, string, traceback
 from ils.common.config import getTagProvider
 from ils.labData.common import postMessage
 from java.util import Calendar
+from ils.common.database import toDateString
 log = system.util.getLogger("com.ils.labData.reader")
 dcsLog = system.util.getLogger("com.ils.labData.reader.dcs")
 phdLog = system.util.getLogger("com.ils.labData.reader.phd")
@@ -45,7 +46,7 @@ def main(database, tagProvider):
     newValue = False
     writeTags=[]
     writeTagValues=[]
-    writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues)
+    writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues, simulateHDA)
     log.debug("Writing %i new PHD lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
     if len(writeTags) > 0:
@@ -62,7 +63,7 @@ def main(database, tagProvider):
     writeTags=[]
     writeTagValues=[] 
     checkForDerivedValueTriggers(database)
-    writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues)
+    writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, simulateHDA)
     log.debug("Writing %i new derived lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
     if len(writeTags) > 0:
@@ -112,9 +113,7 @@ def tagWriter(tags, vals, mode="synch"):
             i=i+1
             
 #-------------
-# Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
-# limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
-# then store the value automatically
+# 
 def checkForDerivedValueTriggers(database):
     derivedLog.trace("Checking the derived value triggers ... ")
 
@@ -215,13 +214,16 @@ def checkForDerivedValueTriggers(database):
 # The logic that drives the derived calculations is a little different here than in the old system.  In the old system each 
 # calculation procedure had the responsibility to collect consistent lab data.  In the new framework, the engine will collect
 # all of the necessary information and then call the calculation method.
-def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
-    derivedLog.tracef("Checking the derived calculations...")
+def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, simulateHDA):
+    derivedLog.infof("Checking the derived calculations...")
     
-    def writeToPHD(resultServerName, resultItemId, newVal, sampleTime):
+    def writeToPHD(resultServerName, resultItemId, newVal, sampleTime, simulateHDA):
         try:
-            system.opchda.insert(resultServerName, resultItemId, newVal, sampleTime, 192)
-            log.infof("         Writing derived value to PHD via HDA: %f for %s to %s at %s", newVal, valueName, resultItemId, str(sampleTime))
+            if simulateHDA:
+                log.tracef("simulating HDA: skipping write of %s - %s ", resultItemId, str(newVal))
+            else:
+                system.opchda.insert(resultServerName, resultItemId, newVal, sampleTime, 192)
+                log.infof("         Writing derived value to PHD via HDA: %f for %s to %s at %s", newVal, valueName, resultItemId, str(sampleTime))
         except:
             log.errorf("**** Error writing derived value to PHD via HDA: %f for %s to %s at %s ****", newVal, valueName, resultItemId, str(sampleTime))
     
@@ -268,6 +270,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                                    'trigger': True}
                             
         relatedDataList=d.get("relatedData", [])
+        order = 0
         for relatedData in relatedDataList:
             relatedValueName=relatedData.get("relatedValueName","")
             relatedValueId=relatedData.get("relatedValueId",-1)
@@ -290,8 +293,10 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                                             'rawValue': rv,
                                             'sampleTime': st,
                                             'reportTime': rt,
+                                            "order": order,
                                             'trigger': False}
                     
+                    order = order + 1
                 else:
                     derivedLog.tracef("      --- The related data's sample time is NOT within the sample time window(%s -> %s)! ---", str(sampleTimeWindowStart), str(sampleTimeWindowEnd))
                     relatedDataIsConsistent = False
@@ -318,7 +323,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 
                     # Derived lab data also has a target OPC tag that it needs to update - do this immediately
                     if writeEnabled:
-                        writeToPHD(resultServerName, resultItemId, newVal, sampleTime)
+                        writeToPHD(resultServerName, resultItemId, newVal, sampleTime, simulateHDA)
                     else:
                         log.info("         *** Skipping *** Write of derived value %f for %s to %s" % (newVal, valueName, resultItemId))
                 else:
@@ -346,7 +351,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues):
                 derivedLog.trace("         The  related sample has still not arrived and probably never will, time to give up!")
                 del derivedCalculationCache[valueName]
 
-    derivedLog.info(" ...done processing the derived values for this cycle... ")
+    derivedLog.info(" ...done processing the derived values for this cycle!")
 
     return writeTags, writeTagValues
 
@@ -435,7 +440,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
     return writeTags, writeTagValues
 
     
-def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues):
+def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues, simulateHDA):
     
     #----------------------------------------------------------------------
     def checkIfValueIsNew(valueName, rawValue, sampleTime, log):
@@ -458,40 +463,69 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         return new
 
     #----------------------------------------------------------------
-    def checkForANewPHDLabValue(valueName, itemId, valueList, endDate):
+    def checkForANewPHDLabValue(valueName, itemId, valueList, endDate, simulateHDA):
         
         phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
         
-        if str(valueList.serviceResult) != 'Good':
-            phdLog.error("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
-            return False, -1, -1, valueList.serviceResult
+        if simulateHDA:
+            if len(valueList) == 0:
+                phdLog.trace("   -- no data found for %s --" % (itemId))
+                return False, -1, -1, "NoDataFound"
+            
+            phdLog.tracef("Found simulated data for %s", itemId)
+            validatedList = []
+            for qv in valueList:
+                phdLog.tracef("Checking qv: %s", str(qv))
+                if qv["timestamp"] < endDate:
+                    validatedList.append(qv)
+                else:
+                    phdLog.warning("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
+    
+            if len(validatedList) == 0:
+                return False, None, None, "NoDataFound"
+    
+            qv=validatedList[len(validatedList) - 1]
+            rawValue=qv["value"]
+            sampleTime=qv["timestamp"]
+            quality=qv["quality"]
+            
+            phdLog.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
+            new = checkIfValueIsNew(valueName, rawValue, sampleTime, phdLog)
+            
+        else:
+            if str(valueList.serviceResult) != 'Good':
+                phdLog.error("   -- The returned value for %s was %s --" % (itemId, valueList.serviceResult))
+                return False, -1, -1, valueList.serviceResult
         
-        if valueList.size()==0:
-            phdLog.trace("   -- no data found for %s --" % (itemId))
-            return False, -1, -1, "NoDataFound"
+            if valueList.size()==0:
+                phdLog.trace("   -- no data found for %s --" % (itemId))
+                return False, -1, -1, "NoDataFound"
         
-        # There is something strange about SOME of the lab data at EM - for some of the lab data, the results include a 
-        # point in the future, so it will be the last point in the list, and it has a value of None.  I'm not sure how a historian
-        # can have a point in the future - sounds more like fiction than history - plus that time is greater than the
-        # end time I specified.  Filter it out nonetheless.
-    #    lastQV=valueList[valueList.size()-1]
-        validatedList = []
-        for qv in valueList:
-            if qv.timestamp < endDate:
-                validatedList.append(qv)
-            else:
-                phdLog.warning("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
+            # There is something strange about SOME of the lab data at EM - for some of the lab data, the results include a 
+            # point in the future, so it will be the last point in the list, and it has a value of None.  I'm not sure how a historian
+            # can have a point in the future - sounds more like fiction than history - plus that time is greater than the
+            # end time I specified.  Filter it out nonetheless.
+        #    lastQV=valueList[valueList.size()-1]
+            phdLog.tracef("Found data for %s", itemId)
+            validatedList = []
+            for qv in valueList:
+                phdLog.tracef("Checking qv: %s", str(qv))
+                if qv.timestamp < endDate:
+                    validatedList.append(qv)
+                else:
+                    phdLog.warning("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
+    
+            if len(validatedList) == 0:
+                return False, None, None, "NoDataFound"
+    
+            qv=validatedList[len(validatedList) - 1]
+            rawValue=qv.value
+            sampleTime=qv.timestamp
+            quality=qv.quality
+            
+            phdLog.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
+            new = checkIfValueIsNew(valueName, rawValue, sampleTime, phdLog)
 
-        if len(validatedList) == 0:
-            return False, None, None, "NoDataFound"
-
-        qv=validatedList[len(validatedList) - 1]
-        rawValue=qv.value
-        sampleTime=qv.timestamp
-        quality=qv.quality
-        
-        phdLog.trace("...checking value %s at %s (%s)..." % (str(rawValue), str(sampleTime), quality))
-        new = checkIfValueIsNew(valueName, rawValue, sampleTime, phdLog)
         return new, rawValue, sampleTime, ""
     #----------------------------------------------------------------
     
@@ -510,7 +544,12 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
     interfacePDS = system.db.runQuery(SQL, database)
     for interfaceRecord in interfacePDS:
         hdaInterface = interfaceRecord["InterfaceName"]
-        serverIsAvailable=system.opchda.isServerAvailable(hdaInterface)
+        
+        if simulateHDA:
+            serverIsAvailable = True
+        else:
+            serverIsAvailable=system.opchda.isServerAvailable(hdaInterface)
+        
         if not(serverIsAvailable):
             phdLog.error("HDA interface %s is not available!" % (hdaInterface))
         else:
@@ -527,8 +566,11 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
 #            print "HDA Lab data items: ", itemIds
             maxValues=0
             boundingValues=0
-            retVals=system.opchda.readRaw(hdaInterface, itemIds, startDate, endDate, maxValues, boundingValues)
-            phdLog.trace("...back from HDA read, read %i values!" % (len(retVals)))
+            if simulateHDA:
+                retVals = simulateReadRaw(itemIds, startDate, endDate)
+            else:
+                retVals=system.opchda.readRaw(hdaInterface, itemIds, startDate, endDate, maxValues, boundingValues)
+                phdLog.trace("...back from HDA read, read %i values!" % (len(retVals)))
 #        log.trace("retVals: %s" % (str(retVals)))
         
             if len(tagInfoPds) != len(retVals):
@@ -546,7 +588,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
                 itemId=tagInfo["ItemId"]
                 validationProcedure=tagInfo["ValidationProcedure"]
 
-                new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList, endDate)
+                new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList, endDate, simulateHDA)
                 if new:
                     writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, \
                         database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, phdLog)
@@ -800,3 +842,16 @@ def initializeCache(database):
         lastValueCache[valueName]={'valueId':valueId, 'rawValue': rawValue, 'sampleTime': sampleTime, 'reportTime': reportTime}
     log.trace("Loaded %i measurements into the last value cache..." % (len(pds)))
 #    print lastValueCache
+
+def simulateReadRaw(itemIds, startDate, endDate):
+    retVals = []
+
+    for itemId in itemIds:
+        valList = []
+        SQL = "select * from history where itemId = '%s' and dateTime > '%s' and dateTime < '%s' " % (itemId, toDateString(startDate), toDateString(endDate))
+        pds = system.db.runQuery(SQL, "PHD_SIMULATOR")
+        for record in pds:
+            valList.append({"value": record["val"], "quality":"Good", "timestamp": record["dateTime"]})
+        retVals.append(valList)
+    
+    return retVals

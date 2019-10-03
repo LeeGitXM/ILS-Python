@@ -308,6 +308,12 @@ def fetchApplicationId(applicationName, database=""):
     applicationId = system.db.runScalarQuery(SQL, database)
     return applicationId
 
+def fetchFamilyNameForFinalDiagnosisId(finalDiagnosisId, db=""):
+    SQL = "select FamilyName from DtFinalDiagnosisView where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+    log.tracef("%s.fetchFamilyId(): %s", __name__, SQL)
+    familyName = system.db.runScalarQuery(SQL, db)
+    return familyName
+
 # Lookup the family Id given the name
 def fetchFamilyId(familyName, database=""):
     SQL = "select FamilyId from DtFamily where FamilyName = '%s'" % (familyName)
