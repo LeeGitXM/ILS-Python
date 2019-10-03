@@ -4,4 +4,4 @@ Created on May 27, 2016
 @author: ils
 '''
 def version():
-    return "0.1r20", "June 4, 2016"
+    return "1.0r0", "October 3, 2019"
