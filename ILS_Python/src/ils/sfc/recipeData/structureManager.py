@@ -262,14 +262,14 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
         log.tracef("Checking for steps to delete from the database that have been deleted from the chart...")
         
         deleteCntr = 0
-        for stepUUID in stepsInDatabase:
-            SQL = "delete from SfcStep where StepUUID = '%s' and ChartId = %d" % (stepUUID, chartId)
+        for stepName in stepsInDatabase:
+            SQL = "delete from SfcStep where StepName = '%s' and ChartId = %d" % (stepName, chartId)
             rows = system.db.runUpdateQuery(SQL, tx=txId)
             deleteCntr = deleteCntr + rows
             if rows <> 1:
-                log.warnf("...error deleting step <%s> from SfcStep - %d rows were deleted", stepUUID, rows)
+                log.warnf("...error deleting step <%s> from SfcStep - %d rows were deleted", stepName, rows)
             else:
-                log.infof("Step <%s> was successfully deleted", stepUUID)
+                log.infof("Step <%s> was successfully deleted", stepName)
 
         log.tracef("... %d steps were deleted!", deleteCntr)
         
