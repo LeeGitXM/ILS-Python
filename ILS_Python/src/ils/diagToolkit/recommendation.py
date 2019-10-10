@@ -189,10 +189,10 @@ def calculateFinalRecommendation(quantOutput):
         autoOrManual = string.upper(quantOutput.get("AutoOrManual", "Auto"))
         if autoOrManual == 'AUTO':
             recommendationValue = recommendation.get('AutoRecommendation', 0.0)
-            log.infof("   ...using the auto value: %f", recommendationValue)
+            log.infof("   ...using the auto value: %s", str(recommendationValue))
         else:
             recommendationValue = recommendation.get('ManualRecommendation', 0.0)
-            log.infof("   ...using the manual value: %f", recommendationValue)
+            log.infof("   ...using the manual value: %s", str(recommendationValue))
     
         feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
         log.infof("   ...using feedback method %s to combine recommendations...", feedbackMethod)
@@ -239,7 +239,7 @@ def calculateFinalRecommendation(quantOutput):
     quantOutput['FeedbackOutput'] = finalRecommendation
     quantOutput['FeedbackOutputConditioned'] = finalRecommendation
 
-    log.infof("  The recommendation after combining multiple recommendations but before bounds checking) is: %f", finalRecommendation)
+    log.infof("  The recommendation after combining multiple recommendations but before bounds checking) is: %s", str(finalRecommendation))
     return quantOutput
 
 def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):

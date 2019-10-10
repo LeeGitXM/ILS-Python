@@ -38,7 +38,7 @@ def main(database, tagProvider):
     limits=fetchLimits(tagProvider, database)
     
     if system.tag.exists("[%s]Configuration/Common/simulateHDA" % (tagProvider)):
-        simulateHDA = system.tag.read("[%s]Configuration/Common/simulateHDA" % (tagProvider))
+        simulateHDA = system.tag.read("[%s]Configuration/Common/simulateHDA" % (tagProvider)).value
     else:
         simulateHDA = False
 
