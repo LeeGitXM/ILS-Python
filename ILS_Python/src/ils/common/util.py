@@ -257,6 +257,7 @@ testing in Baton Rouge, I need to specify the history tag provider.  This might 
 in project scope.
 '''
 def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, aggregationMode, log):
+    badValueTxt = ""
     
     # This function tests over the past n minutes, so make sur ethe time interval is negative
     if timeIntervalMinutes > 0:
@@ -285,8 +286,12 @@ def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes,
         if not(isGood):
             badValue = True
             log.warnf("Unable to collect %s for %s", aggregationMode, tagPaths[i])
+            if badValueTxt == "":
+                badValueTxt = tagPaths[i]
+            else:
+                badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
-    return badValue, ds
+    return badValue, ds, badValueTxt
 
 '''
 return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
@@ -296,6 +301,7 @@ testing in Baton Rouge, I need to specify the history tag provider.  This might 
 in project scope.
 '''
 def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDate, endDate, aggregationMode, log):
+    badValueTxt = ""
 
     fullTagPaths = []
     for tagPath in tagPaths:
@@ -319,8 +325,12 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
         if not(isGood):
             badValue = True
             log.warnf("Unable to collect average value for %s", tagPaths[i])
+            if badValueTxt == "":
+                badValueTxt = tagPaths[i]
+            else:
+                badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
-    return badValue, ds
+    return badValue, ds, badValueTxt
 
 '''
 Return a list of qualified values and a flag that indicates if any one of the tags is bad or None
@@ -485,8 +495,8 @@ def test():
     tagPaths.append("SFC IO/Cold Stick General/VRT700S-3/value") #OUTLET-TEMP-PV
     tagPaths.append("SFC IO/Cold Stick General/VCF262R-2/value") #AL-TO-VA
 
-    badValue, ds = queryHistory(tagPaths, "XOMhistory", "XOM", 30, "Average", log)
-    print "Reading historic average, isBad = ", badValue
+    badValue, ds, badValueTxt = queryHistory(tagPaths, "XOMhistory", "XOM", 30, "Average", log)
+    print "Reading historic average, isBad: %s, bad text: %s" % (str(badValue), badValueTxt)
     
     badValue, qvs = readInstantaneousValues(tagPaths, "XOM", log)
     print "Reading current values, isBad = ", badValue
