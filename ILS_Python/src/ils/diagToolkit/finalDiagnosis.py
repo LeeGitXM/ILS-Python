@@ -21,40 +21,54 @@ from ils.common.database import lookup
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
-#-------------
 '''
-# This is called from a client (and runs in a client) to directly manage a final diagnosis.
+This is called from any global resource, either a SFC or a tag change script.  This runs in the gateway and must contain a project name 
+which is use to send a message for notification.
 '''
-def manageFinalDiagnosis(applicationName, family, finalDiagnosis, textRecommendation, database="", provider = ""):
+def manageFinalDiagnosisGlobally(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
+    log.infof("In %s.manageFinalDiagnosisGlobally()", __name__)
+    _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
+
+
+'''
+This is called from a client (and runs in a client) to directly manage a final diagnosis.
+Because this runs ina client we can get the project automatically
+'''
+def manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
     log.infof("In %s.manageFinalDiagnosis()", __name__)
 
     projectName = system.util.getProjectName()
+    log.infof("...fetched project: %s", projectName)
+    _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
+
+
+'''
+# This directly manages a final diagnosis.  It can be called from a client or in gateway scope from a tag or SFC.
+'''
+def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider):
+    log.infof("In %s._manageFinalDiagnosis()", __name__)
  
-    # Lookup the application Id
+    ''' Lookup the application Id '''
     from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
+    record = fetchFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
     
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, familyName, finalDiagnosisName))
         return
-    
+
     unit=record.get('UnitName',None)
     if unit == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (applicationName, family, finalDiagnosis))
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (applicationName, familyName, finalDiagnosisName))
         return
     
-    # Reset the flag that indicates that minimum change requirements should be ignored.
+    ''' Reset the flag that indicates that minimum change requirements should be ignored. '''
     resetOutputLimits(finalDiagnosisId, database)
-    
-    finalDiagnosisName=record.get('FinalDiagnosisName','Unknown Final Diagnosis')
     
     grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
     log.info("The grade is: %s" % (str(grade)))
-    
-    txt = "Rate Change"
 
-    # Insert an entry into the diagnosis queue
+    ''' Insert an entry into the diagnosis queue '''
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, Multiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
@@ -70,16 +84,24 @@ def manageFinalDiagnosis(applicationName, family, finalDiagnosis, textRecommenda
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
     
+    ''' Set the output state of the Final diagnosis and propagate its value '''
+    diagramUUID = record.get("DiagramUUID")
+    finalDiagnosisUUID = record.get("FinalDiagnosisUUID")
+    system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "TRUE")
+    system.ils.blt.diagram.propagateBlockState(diagramUUID, finalDiagnosisUUID)
+    
     notificationText, activeOutputs, postTextRecommendation, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
     log.info("...back from manage!")
     
-    # This specifically handles the case where a FD that is not the highest priority clears which should not disturb the client.
+    ''' This specifically handles the case where a FD that is not the highest priority clears which should not disturb the client. '''
     if noChange:
         log.info("Nothing has changed so don't notify the clients")
         return
 
-    # The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
-    # then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
+    '''
+    The activeOutputs can only be trusted if the new FD that became True changes the highest priority one.  If it was of a lower priority
+    then activeOutputs will be 0 because there was no change.  Note that this is a totally different logic thread than if a FD became False.
+    '''
     post=fetchPostForApplication(applicationName, database)
     notificationStrategy, clientId = fetchNotificationStrategy(applicationName, database)
     
@@ -92,8 +114,8 @@ def manageFinalDiagnosis(applicationName, family, finalDiagnosis, textRecommenda
     pds = fetchActiveOutputsForPost(post, database)
     activeOutputs = len(pds)
     log.infof("There are still %d active outputs for %s", activeOutputs, post)
-    
-    
+    log.infof("Using notification strategy <%s> for a directly managed final diagnosis.", notificationStrategy)
+
     if notificationStrategy == "ocAlert":
 #            if activeOutputs > 0:
         '''
@@ -1398,7 +1420,8 @@ def setOutputLimits(finalDiagnosisId, state, database=""):
 
 def writeTextRecommendationsToLogbook(applicationName, post, staticExplanation, explanation, db):
     log.infof("Writing a text recommendation to the logbook: %s  %s", staticExplanation, explanation)
-    if staticExplanation != "":
+
+    if staticExplanation not in ("", None):
         txt = staticExplanation + "  " + explanation
     else:
         txt = explanation

@@ -14,7 +14,7 @@ log = system.util.getLogger("com.ils.queue")
 
 def insertPostMessage(post, status, message, db='', project='', console=''):
     from ils.queue.commons import getQueueForPost
-    queueKey=getQueueForPost(post)
+    queueKey=getQueueForPost(post, db)
     
     if queueKey == None:
         log.warn("Unable to insert a message into queue for post <%s> (key: <%s>" % (post, str(queueKey)))
@@ -34,8 +34,11 @@ def insert(queueKey, status, message, db='', project='', console=''):
     _insert(queueKey, queueId, status, message, db, project)
 
 
-# Expected status are Info, Warning, or Error
 def _insert(queueKey, queueId, status, message, db='', project=''):
+    '''
+    This is bad form to pass both the queueKey and the queueId!
+    Expected status are Info, Warning, or Error.
+    '''
     from ils.common.util import escapeSqlQuotes
     message = escapeSqlQuotes(message)
     SQL = "select statusId, severity from QueueMessageStatus where MessageStatus = '%s'" % (status)
@@ -56,6 +59,9 @@ def _insert(queueKey, queueId, status, message, db='', project=''):
 
 
 def autoView(queueKey, queueId, severity, project, db):
+    '''
+    This is bad form to pass both the queueKey and the queueId!
+    '''
     SQL = "select autoViewSeverityThreshold, autoViewAdmin, autoViewAE, autoViewOperator from QueueMaster where queueId = %d" % (queueId)
     pds = system.db.runQuery(SQL, db)
     if len(pds) <> 1:
