@@ -6,7 +6,6 @@ Created on Sep 19, 2014
 
 import system, time
 import system.ils.blt.diagram as scriptingInterface
-from ils.queue.commons import getQueueForDiagnosticApplication
 
 log = system.util.getLogger("com.ils.diagToolkit.common")
 
