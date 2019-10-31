@@ -564,7 +564,7 @@ def s88CopyFolderValues(fromChartPath, fromStepName, fromFolder, toChartPath, to
     toStepId = s88GetStepFromName(toChartPath, toStepName, db)
     logger.tracef("...toStepId: %s", str(toStepId))
     
-    copyFolderValues(fromChartPath, fromStepName, fromStepId, fromFolder, toChartPath, toStepName, toStepId, toFolder, recursive, category, db)
+    copyFolderValues(fromStepId, fromFolder, toStepId, toFolder, recursive, category, db)
 
 '''
 This is provided to get behind the scenes in an acceptable way.  It is useful when accessing elements of an array recipe data in a library task where 
