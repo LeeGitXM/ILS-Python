@@ -37,7 +37,7 @@ def openSetpointSpreadsheetCallback(post):
     noQuantRecommendations = False
     database=getDatabaseClient()
     provider=getTagProviderClient()
-            
+
     # Check if there is a text recommendation for this post
     pds = fetchActiveTextRecommendationsForPost(post, database)
     

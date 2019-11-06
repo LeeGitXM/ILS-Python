@@ -154,6 +154,7 @@ def createTags(tagProvider, log):
     data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
     data.append([path, "opcPermissiveLatencySeconds", "Float4", "4.0"])
     data.append([path, "reportHome", "String", "e:"])
+    data.append([path, "simulateHDA", "Boolean", "False"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags

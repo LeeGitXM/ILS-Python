@@ -8,6 +8,7 @@ import system, string, time
 from ils.sfc.common.constants import SQL
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 from ils.diagToolkit.api import resetManualMove
 
@@ -725,7 +726,7 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
     log.trace("  Quant Output Ids: %s" % (str(quantOutputIds)))
 
     # Post a message to the applications queue documenting what we are doing to the active families    
-    postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, database)
+    postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, recommendationStatus, database)
 
     # Perform all of the database updates necessary to update the affected FDs, 
     # Quant Outputs, recommendations, and diagnosis entries.
@@ -746,16 +747,35 @@ def resetApplication(post, application, families, finalDiagnosisIds, quantOutput
     system.db.runUpdateQuery(SQL, database)
 
 
-def postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, database):
-    log.infof("In %s.postSetpointSpreadsheetActionMessage() - action: %s", __name__, actionMessage)
+def postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, recommendationStatus, database):
+    log.infof("In %s.postSetpointSpreadsheetActionMessage() - action: %s - rec Status: %s - Families: %s", __name__, actionMessage, recommendationStatus, str(families))
+    
+    isTextRec = True
+    for finalDiagnosisId in finalDiagnosisIds:
+        SQL = "select textRecommendationId "\
+            " from DtDiagnosisEntry DE, DtTextRecommendation TR "\
+            " where DE.DiagnosisEntryId = TR.DiagnosisEntryId "\
+            " and DE.FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+        pds = system.db.runQuery(SQL, database)
+        if len(pds) == 0:
+            isTextRec = False
+            
     from ils.queue.commons import getQueueForPost
     queueKey=getQueueForPost(post, database)
 
     delimiter=""
-    msg="%s was selected for: " % (actionMessage)
-    for familyName in families:
-        msg+=delimiter + familyName
-        delimiter=" ,"
+    if isTextRec:
+        msg = "Text recommendation for "
+        for familyName in families:
+            msg+=delimiter + familyName
+            delimiter=" ,"    
+        msg += " was acknowledged."
+    else:
+        msg="%s was selected for: " % (actionMessage)
+        
+        for familyName in families:
+            msg+=delimiter + familyName
+            delimiter=" ,"
     print "Posting <%s>" % (msg)
     from ils.queue.message import insert
     insert(queueKey, "Info", msg, database)
@@ -1123,8 +1143,6 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     
     actionMessage=NO_DOWNLOAD
     recommendationStatus="Acknowledged"
-
-    families=[]
     
     SQL = "select FinalDiagnosisId from DtDiagnosisEntry where DiagnosisEntryId = %i" % (diagnosisEntryId)
     finalDiagnosisId = system.db.runScalarQuery(SQL, database=db) 
@@ -1133,6 +1151,9 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
         return
     
     finalDiagnosisIds=[finalDiagnosisId]
+    
+    familyName = fetchFamilyNameForFinalDiagnosisId(finalDiagnosisId)
+    families = [familyName]
 
     print "Resetting: "
     print "  Application: ", application

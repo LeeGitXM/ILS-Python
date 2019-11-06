@@ -89,17 +89,19 @@ def logGradeChange(tagPath, previousValue, currentValue, initialChange, tagPathR
         
         if qvs[1].quality.isGood():
             catInHours = qvs[1].value
+            catInHours = str(round(catInHours,2))
         else:
             catInHours = "BAD QUALITY"
         
         if qvs[2].quality.isGood():
             gradeChangeTime = qvs[2].value
             gradeHours = system.date.hoursBetween(gradeChangeTime, system.date.now())
+            gradeHours = str(round(gradeHours, 2))
         else:
             gradeHours = "BAD QUALITY"
         
         msg = "Grade %s has just been downloaded for the %s unit.  A change from %s." % (str(currentValue.value), unit, str(previousValue.value))
-        msg += "\nGrade %s accumulated %s cat-in run hours during %s total hours" % (str(previousValue.value), str(round(catInHours,2)), str(round(gradeHours, 2)))
+        msg += "\nGrade %s accumulated %s cat-in run hours during %s total hours" % (str(previousValue.value), catInHours, gradeHours)
         msg += "\nReactor production was %s klb for the run." % (str(production))
         
         from ils.diagToolkit.common import fetchPostForUnit

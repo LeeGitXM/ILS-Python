@@ -178,7 +178,6 @@ def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
             
         for record in hierarchyHandlerPDS:
             if chartId == record["HandlerChartId"]:
-                print "*** Found a EndHandler chart that is called by a chart ***"
                 return False
 
         return True

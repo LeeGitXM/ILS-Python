@@ -383,13 +383,13 @@ def insertApp1():
     return app1Id
 
 def insertApp1Families(appId,T1Id,T2Id,T3Id,
-    FD111calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_1_1',
-    FD121calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_1',
-    FD122calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_2',
-    FD123calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_3',
+    FD111calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_1_1',
+    FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_1',
+    FD122calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_2',
+    FD123calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_3',
     FD124calculationMethod='',
-    FD125calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_5',
-    FD126calculationMethod='xom.vistalon.diagToolkit.test.test.fd1_2_6',
+    FD125calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_5',
+    FD126calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_6',
     postProcessingCallback=None,
     FD111Priority=2.3,
     FD121Priority=4.5,
@@ -473,7 +473,7 @@ def insertApp2():
     return app2Id
 
 def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id,
-    FD211calculationMethod='xom.vistalon.diagToolkit.test.test.fd2_1_1'
+    FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1'
     ):
 
     family = 'TESTFamily2_1'
