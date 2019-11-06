@@ -110,7 +110,7 @@ def activate(scopeContext, stepProperties, state):
                         If the engineer wants the default value to be blank, then they either need to type None into the default value field
                         or clear out the tag or recipe data.
                         '''
-                        if row.defaultValue in ["None", None]:
+                        if row.defaultValue in ["None", None, ""]:
                             logger.tracef("   ...using <None> as the default value... ")
                             defaultValue = ""
                         
