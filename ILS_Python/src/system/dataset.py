@@ -16,6 +16,9 @@ def deleteRow(dataset, row):
 def deleteRows(dataset, rows):
     return dataset
 
+def filterColumns(ds, columns):
+    return ds
+
 def getColumnHeaders():
     headerList = []
     return headerList
