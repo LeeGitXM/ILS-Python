@@ -375,7 +375,8 @@ def statusCallback(event):
                 "could only use %.0f%% of its value" % (quantOutputName, outputLimitedStatus, record['FeedbackOutput'], \
                                                     record['FeedbackOutputConditioned'], record['OutputPercent'])
         else:
-            txt = "The output (%s) is %s limited!\n\n%s" % (quantOutputName, outputLimitedStatus, limitDetails)
+            txt = "The output (%s) is %s limited,\nit was reduced from %.2f to %.2f\n\n%s" % \
+                (quantOutputName, outputLimitedStatus, record['FeedbackOutput'], record['FeedbackOutputConditioned'], limitDetails)
     else:
         txt = "The output (%s) is not limited!\n\n%s" % (quantOutputName, limitDetails)
     

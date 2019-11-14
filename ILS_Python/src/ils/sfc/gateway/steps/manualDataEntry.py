@@ -91,7 +91,6 @@ def activate(scopeContext, stepProperties, state):
                 for row in config.rows:
                     prompt = row.prompt
                     
-                    
                     if prompt in [None, "None"]:
                         prompt = ""
                         units = ""
@@ -102,7 +101,12 @@ def activate(scopeContext, stepProperties, state):
                         key = ""
                     else:
                         logger.tracef("Getting the default value for row: %d <%s>", rowNum, str(row.defaultValue))
-                        units = row.units
+    
+                        if row.units == None:
+                            units = ""
+                        else:
+                            units = row.units
+    
                         destination = row.destination
                         key = row.key
                         
@@ -110,11 +114,11 @@ def activate(scopeContext, stepProperties, state):
                         If the engineer wants the default value to be blank, then they either need to type None into the default value field
                         or clear out the tag or recipe data.
                         '''
-                        if row.defaultValue in ["None", None]:
+                        if row.defaultValue in ["None", None, ""]:
                             logger.tracef("   ...using <None> as the default value... ")
                             defaultValue = ""
                         
-                        elif str(row.defaultValue).strip() == "":
+                        elif string.upper(str(row.defaultValue)) in ["RECIPE", " ", "  ", "   ", "    "]:
                             logger.tracef("...reading the current value from destination: %s", row.destination)
                             if string.upper(row.destination) == "TAG":
                                 tagPath = "[%s]%s" % (provider, row.key)
@@ -127,7 +131,8 @@ def activate(scopeContext, stepProperties, state):
                                     logger.warnf("Unable to acquire a default value for %s whose value is bad", tagPath)
                                 logger.tracef("   ...using the CURRENT value from a tag: <%s>", str(defaultValue))
                             else:
-                                if units == "":
+                                logger.tracef("   ...getting default value from recipe (units = <%s>)", units)
+                                if units in ["", None]:
                                     defaultValue = s88Get(chartScope, stepScope, row.key, destination)
                                     if defaultValue in ["None", None]:
                                         defaultValue = ""

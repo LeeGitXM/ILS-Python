@@ -1116,8 +1116,8 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
     
     return ds
 
-def copyFolderValues(fromChartPath, fromStepName, fromStepId, fromFolder, toChartPath, toStepName, toStepId, toFolder, recursive, category, db):
-    logger.tracef("Copying recipe data from %s-%s-%s to %s-%s-%s", fromChartPath, fromStepName, fromFolder, toChartPath, toStepName, toFolder)
+def copyFolderValues(fromStepId, fromFolder, toStepId, toFolder, recursive, category, db):
+    logger.tracef("Copying recipe data from %d-%s to %d-%s", fromStepId, fromFolder, toStepId, toFolder)
     
     # ------------------------------------------------------------------------------------
     def getKeys(pds):

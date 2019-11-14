@@ -39,8 +39,9 @@ def setTextOfRecommendation(applicationName, familyName, finalDiagnosisName, tex
 
 def insertApplicationQueueMessage(applicationName, message, status=QUEUE_INFO, db=""):
     key = getQueueForDiagnosticApplication(applicationName, db)
+    log.infof("Inserting <%s> into %s", message, key)
     from ils.queue.message import insert
-    insert(key, status, message)
+    insert(key, status, message, db)
 
 
 def resetManualMove(finalDiagnosisId, db):

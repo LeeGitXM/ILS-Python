@@ -36,7 +36,7 @@ def resetApplication(unit, database, tagProvider):
         applicationName = record['ApplicationName']
         log.info("Fetching descriptors for %s" % (applicationName))
 
-        # Fetch all of the diagnostio diagrams for the application
+        # Fetch all of the diagrams for the application
         try:
             descriptorList = diagram.listDescriptorsForApplication(applicationName) 
         except:
@@ -82,7 +82,7 @@ def resetApplication(unit, database, tagProvider):
         if blockClass in ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.trenddiagnosis.TrendDiagnosis"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
 
-            restAndPropagate(block)
+            resetAndPropagate(block)
             
             # Collect all of the blocks upstream of this final diagnosis
             log.trace("      ...collecting blocks downstream from it ...")
@@ -99,7 +99,7 @@ def resetApplication(unit, database, tagProvider):
                     
         elif blockClass in ["com.ils.block.SQC"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
-            restAndPropagate(block)
+            resetAndPropagate(block)
         
         elif blockClass in ["com.ils.block.Inhibitor"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
@@ -127,7 +127,7 @@ def resetApplication(unit, database, tagProvider):
                 log.info("   ... resetting Final Diagnosis: %s with id: %s on diagram: %s..." % (blockName, blockUUID, parentUUID))
                 
                 parentUUID=block.getAttributes().get("parent")
-                restAndPropagate(block)
+                resetAndPropagate(block)
                 
                 # Collect all of the blocks upstream of this final diagnosis
                 log.trace("   ... collecting blocks upstream from it ...")
@@ -178,7 +178,7 @@ def resetApplication(unit, database, tagProvider):
 '''
 Reset a block, set the block state and propagate it's state.
 '''
-def restAndPropagate(block):
+def resetAndPropagate(block):
     blockName=block.getName()
     blockUUID=block.getIdString()
     parentUUID=block.getAttributes().get("parent")
@@ -188,7 +188,7 @@ def restAndPropagate(block):
         system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
         system.ils.blt.diagram.propagateBlockState(parentUUID, blockUUID)
     except:
-        errorText = catchError("%s.restAndPropagate() for block: %s" % (__name__, blockName))
+        errorText = catchError("%s.resetAndPropagate() for block: %s" % (__name__, blockName))
         log.error(errorText)
 
 

@@ -280,6 +280,10 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
 def postApplicationMessage(applicationName, status, message, log, database):
     SQL = "select MessageQueueId from DtApplication where ApplicationName = '%s'" % (applicationName)
     queueId = system.db.runScalarQuery(SQL, database)
+    
+    SQL = "select QueueKey from QueueMaster where QueueId = %s" % (queueId)
+    queueKey = system.db.runScalarQuery(SQL, database)
+    
     from ils.queue.message import _insert
-    _insert(queueId, status, message, database)
+    _insert(queueKey, queueId, status, message, database)
     log.infof("%s - %s", str(status), str(message))

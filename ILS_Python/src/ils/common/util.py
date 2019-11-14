@@ -257,6 +257,7 @@ testing in Baton Rouge, I need to specify the history tag provider.  This might 
 in project scope.
 '''
 def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, aggregationMode, log):
+    badValueTxt = ""
     
     # This function tests over the past n minutes, so make sur ethe time interval is negative
     if timeIntervalMinutes > 0:
@@ -267,26 +268,31 @@ def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes,
         fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
     
     endDate = system.date.addMinutes(system.date.now(), -1)
+    endDate = system.date.now()
     
     log.tracef("Calculating the %s for %s over the past %s minutes", aggregationMode, str(fullTagPaths), str(timeIntervalMinutes))
     
-    ds = system.tag.queryTagHistory(
+    ds = system.tag.queryTagCalculations(
         paths=fullTagPaths, 
         endDate=endDate, 
         rangeMinutes=timeIntervalMinutes, 
-        aggregationMode=aggregationMode, 
-        returnSize=1, 
-        ignoreBadQuality=True
+        calculations=[aggregationMode]
         )
+    
+    # ignoreBadQuality=True
     
     badValue = False
     for i in range(0,len(tagPaths)):
-        isGood = ds.getQualityAt(0, i + 1).isGood()
-        if not(isGood):
+        val = ds.getValueAt(i, 1)
+        if val == None:
             badValue = True
             log.warnf("Unable to collect %s for %s", aggregationMode, tagPaths[i])
+            if badValueTxt == "":
+                badValueTxt = tagPaths[i]
+            else:
+                badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
-    return badValue, ds
+    return badValue, ds, badValueTxt
 
 '''
 return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
@@ -296,6 +302,7 @@ testing in Baton Rouge, I need to specify the history tag provider.  This might 
 in project scope.
 '''
 def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDate, endDate, aggregationMode, log):
+    badValueTxt = ""
 
     fullTagPaths = []
     for tagPath in tagPaths:
@@ -319,8 +326,12 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
         if not(isGood):
             badValue = True
             log.warnf("Unable to collect average value for %s", tagPaths[i])
+            if badValueTxt == "":
+                badValueTxt = tagPaths[i]
+            else:
+                badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
-    return badValue, ds
+    return badValue, ds, badValueTxt
 
 '''
 Return a list of qualified values and a flag that indicates if any one of the tags is bad or None
@@ -485,8 +496,8 @@ def test():
     tagPaths.append("SFC IO/Cold Stick General/VRT700S-3/value") #OUTLET-TEMP-PV
     tagPaths.append("SFC IO/Cold Stick General/VCF262R-2/value") #AL-TO-VA
 
-    badValue, ds = queryHistory(tagPaths, "XOMhistory", "XOM", 30, "Average", log)
-    print "Reading historic average, isBad = ", badValue
+    badValue, ds, badValueTxt = queryHistory(tagPaths, "XOMhistory", "XOM", 30, "Average", log)
+    print "Reading historic average, isBad: %s, bad text: %s" % (str(badValue), badValueTxt)
     
     badValue, qvs = readInstantaneousValues(tagPaths, "XOM", log)
     print "Reading current values, isBad = ", badValue
