@@ -8,8 +8,8 @@ from ils.block import basicblock
 # NOTE: We need these two imports in order to get the classes generically.
 # We require the "wild" import so that we can iterate over classes
 # NOTE: __init__.py defines the modules
-import xom.block
-from xom.block import *
+import ils.block
+from ils.block import *
 
 
 log = LogUtil.getLogger("com.ils.block")
@@ -113,12 +113,12 @@ def getNewBlockInstances():
     log.debug('getNewBlockInstances ...' )
     instances = []
     # dir only lists modules that have actually been imported
-    print dir(xom.block)
+    print dir(ils.block)
     print "======= Names ========="
-    for name in dir(xom.block):
+    for name in dir(ils.block):
         if not name.startswith('__') and not name == 'basicblock':
-            className = eval("xom.block."+name+".getClassName()")
-            constructor = "xom.block."+name.lower() +"."+className+"()"
+            className = eval("ils.block."+name+".getClassName()")
+            constructor = "ils.block."+name.lower() +"."+className+"()"
             obj = eval(constructor)
             print "ils.blt.util.getNewBlockInstances:",name,'=',obj.__class__
             instances.append(obj) 
