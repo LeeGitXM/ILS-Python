@@ -3,7 +3,7 @@ Created on Sep 9, 2014
 
 @author: ILS
 '''
-import system
+import system, string
 from uuid import UUID
 
 def build(rootContainer):
@@ -113,7 +113,7 @@ def updateSqcFlag(diagnoses):
             print "...found %i upstream blocks..." % (len(blocks))
     
             for block in blocks:
-                if block.getClassName() == "xom.block.sqcdiagnosis.SQCDiagnosis":
+                if not(string.find(block.getClassName(),"sqcdiagnosis.SQCDiagnosis") == 0):
                     print "   ... found a SQC diagnosis..."
                     blockId=block.getIdString()
                     blockName=block.getName()

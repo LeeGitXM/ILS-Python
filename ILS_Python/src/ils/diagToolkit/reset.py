@@ -4,7 +4,7 @@ Created on Sep 18, 2016
 @author: Pete
 '''
 
-import system
+import system, string
 import system.ils.blt.diagram as diagram
 from ils.common.error import catchError
 log = system.util.getLogger("com.ils.diagToolkit.reset")
@@ -79,7 +79,7 @@ def resetApplication(unit, database, tagProvider):
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
         log.trace("    Found a %s - %s " % (blockName, blockClass))
         
-        if blockClass in ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.trenddiagnosis.TrendDiagnosis"]:
+        if not(string.find(blockClass, "sqcdiagnosis.SQCDiagnosis") == 0 or string.find(blockClass, "trenddiagnosis.TrendDiagnosis") == 0):
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
 
             resetAndPropagate(block)
@@ -113,7 +113,7 @@ def resetApplication(unit, database, tagProvider):
         blockClass=block.getClassName()
         blockName=block.getName()
         
-        if blockClass in ["xom.block.finaldiagnosis.FinalDiagnosis"]:
+        if not(string.find(blockClass, "finaldiagnosis.FinalDiagnosis") == 0):
             blockUUID=block.getIdString()
             blockName=block.getName()
               

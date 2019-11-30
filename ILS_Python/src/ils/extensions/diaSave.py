@@ -29,7 +29,8 @@ def save(diagramId,aux):
         if not(database=="NONE"):   
             blocks = controllerRequestHandler.listBlocksInDiagram(diagramId)
             for block in blocks:
-                if block.getClassName() == "xom.block.sqcdiagnosis.SQCDiagnosis":
+                className = common.stripClassPrefix(block.getClassName())
+                if className() == "SQCDiagnosis":
                     blockId = block.getIdString()
                     blockName = block.getName()
 
@@ -49,7 +50,7 @@ def save(diagramId,aux):
                         else:
                             log.warn("Unable to update the id of SQC diagnosis named <%s> on diagram <%s>" % (blockName, diagramName))
               
-                elif block.getClassName() == "xom.block.finaldiagnosis.FinalDiagnosis":
+                elif className == "FinalDiagnosis":
                     blockId = block.getIdString()
                     blockName = block.getName()
                     log.info("  ...updating Final Diagnosis named %s" % (blockName))

@@ -592,3 +592,7 @@ def resetDiagnosisEntries(log, database):
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     log.info("...reset %i Diagnosis Entries!" % (rows))
+    
+def stripClassPrefix(className):
+    className = className[className.rfind(".")+1:]
+    return className
