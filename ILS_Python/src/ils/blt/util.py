@@ -23,7 +23,7 @@ def acceptValue(block,port,value,quality,time):
         time    - the timestamp of the incoming value
     '''
     if block!=None:
-        log.trace("%s.acceptValue() a %s received %s - %s on port %s", __name__, str(block.__class__), str(value), str(quality), str(port))
+        log.tracef("%s.acceptValue() a %s received %s - %s on port %s", __name__, str(block.__class__), str(value), str(quality), str(port))
         block.acceptValue(port,value,quality,time)
 
 
@@ -107,7 +107,7 @@ def getNewBlockInstances():
     in the "app.block" package. Our convention is that only executable blocks appear in this package -- and that
     the class has the same name as its file.
     '''
-    log.debug('getNewBlockInstances ...' )
+    log.debugf('%s.getNewBlockInstances...', __name__)
     instances = []
     # dir only lists modules that have actually been imported
     print dir(xom.block)
@@ -139,7 +139,7 @@ def getBlockPrototypes(prototypes):
     Obtain a list of all subclasses of BasicBlock, then create a dictionary of prototype attributes from each. 
     Communicate results in 'prototypes', a list known to the gateway. 
     '''
-    log.debug("%s.getBlockPrototypes", __name__)
+    log.debugf("%s.getBlockPrototypes", __name__)
     instances = getNewBlockInstances()
     for obj in instances:
         prototypes.append(obj.getPrototype())
@@ -166,7 +166,7 @@ def setBlockProperty(block,prop):
     Given an instance of an executable block, set one of its properties. The property
     is a dictionary named "property" as specified in the Gateway startup script.
     '''
-    log.trace('%s.setBlockProperty(block) ...', __name__)
+    log.tracef('%s.setBlockProperty(block) ...', __name__)
     if block!=None:
         block.setProperty(prop.get("name","??"),prop)
     
