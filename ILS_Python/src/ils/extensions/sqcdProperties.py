@@ -11,32 +11,42 @@ isolation mode.
 '''
 import system
 import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
-from ils.common.cast import toBit
+
 handler = ApplicationRequestHandler()
-log = system.util.getLogger("com.ils.diagToolkit.client")
+log = system.util.getLogger("com.ils.diagToolkit.extensions")
 
 def delete(uuid):
+    log.infof("In %s.delete()", __name__)
     pass
 
 # The production an isolation databases need to be kept structurally in-synch.
 # Apply these changes against both instances
 def rename(uuid,oldName,newName):
+    
+    def renameInDatabase(uuid,oldName,newName,db):
+        app = handler.getApplicationName(uuid)
+        family = handler.getFamilyName(uuid)
+        log.infof("Renaming Application / Family / SQC Diagnosis: %S / %s / %s to %s", app, family, oldName, newName)
+    
+        SQL = "UPDATE DtSqcDiagnosis SET SqcDiagnosisName= '%s' WHERE sqcDiagnosisName = '%s'" % (newName, uuid)
+        system.db.runUpdateQuery(SQL,db)
+    
+    log.infof("In %s.rename()", __name__)
     db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
     db = handler.getIsolationDatabase()
     renameInDatabase(uuid,oldName,newName,db)
 
-def renameInDatabase(uuid,oldName,newName,db):
-    app = handler.getApplicationName(uuid)
-    family = handler.getFamilyName(uuid)
-    log.infof("Renaming Application / Family / SQC Diagnosis: %S / %s / %s to %s", app, family, oldName, newName)
 
-    SQL = "UPDATE DtSqcDiagnosis SET SqcDiagnosisName= '%s' WHERE sqcDiagnosisName = '%s'" % (newName, uuid)
-    system.db.runUpdateQuery(SQL,db)
 
 def save(uuid,aux):
-    print "Saving SQC Diagnosis %s - %s" % (uuid, str(aux))
-    pass
+    '''
+    This method IS called when they do a save from the Designer.  
+    It should really insert a new record into the DB for a new application, but I don't have enough info here to
+    do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
+    open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
+    '''
+    log.tracef("In %s.save()", __name__)
 
 '''
 NOTE: The UUID supplied is from the parent, a diagram. The database interactions
