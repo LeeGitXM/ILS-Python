@@ -23,7 +23,7 @@ def save(diagramId,aux):
     diagram = controllerRequestHandler.getDiagram(diagramId)
     if not(diagram == None):
         diagramName=diagram.getName()
-        log.info("xom.extensions.diagSave: saving diagram "+diagramId+" is "+diagramName)
+        log.info("ils.extensions.diagSave: saving diagram "+diagramId+" is "+diagramName)
         database = controllerRequestHandler.getDatabaseForUUID(diagramId)
         # A database of NONE indicates that the diagram is disabled
         if not(database=="NONE"):   
@@ -62,6 +62,6 @@ def save(diagramId,aux):
 
 
     else:
-        log.warn("xom.extensions.diagSave: diagram "+diagramId+" NOT FOUND") 
+        log.warn("ils.extensions.diagSave: diagram "+diagramId+" NOT FOUND") 
     
 #
