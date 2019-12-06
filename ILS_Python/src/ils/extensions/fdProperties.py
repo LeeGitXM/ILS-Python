@@ -6,44 +6,96 @@ import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
 from ils.common.cast import toBit
 from ils.common.database import toDateString
 from ils.sfc.common.util import logExceptionCause
-handler = ApplicationRequestHandler()
-log = system.util.getLogger("com.ils.diagToolkit.client")
 
-def delete(uuid):
-    log.infof("In %s.delete FD %s, nothing to do...", __name__, uuid)
-    pass
+handler = ApplicationRequestHandler()
+log = system.util.getLogger("com.ils.diagToolkit.extensions")
+
+'''
+
+Gateway Scope Functions
+
+'''
+
+def delete(finalDiagnosisUUID):
+    '''
+    Even though a delete is initiated from Designer scope, this runs in gateway scope!
+    '''
+    log.tracef("In %s.delete()", __name__)
+    
+    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+    handler = PythonRequestHandler()
+    db = handler.getProductionDatabase()
+    
+    SQL = "delete from DtFinalDiagnosis where FinalDiagnosisUUID = '%s'" % (finalDiagnosisUUID)
+    rows = system.db.runUpdateQuery(SQL, db)
+    if rows == 1:
+        log.tracef("Successfully deleted %d final diagnosis!", rows)
+    else:
+        log.tracef("Error deleting Final diagnosis with UUID <%s> - %d rows were deleted!", finalDiagnosisUUID, rows)
+    
+    
+#    app = handler.getApplicationName(uuid)
+#   print "     Application: ", app
+#  family = handler.getFamilyName(uuid)
+#    print "    Family: ", family
+#    db = handler.getProductionDatabase()
+#    print "    db: ", db
+   
+ 
+
+
+
+    
+
+def save(uuid, aux):
+    '''
+    This method IS called when they do a save from the Designer.  
+    It should really insert a new record into the DB for a new application, but I don't have enough info here to
+    do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
+    open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
+    '''
+    log.tracef("In %s.save()", __name__)
+
+
+'''
+
+Designer Scope Functions
+
+'''
 
 def rename(uuid,oldName,newName):
     '''
+    This is called in Designer Scope!
     The production and isolation databases need to be kept structurally in-synch.
     Apply these changes against both instances
     '''
+
+    def renameInDatabase(uuid,oldName,newName,db):
+        '''
+        These methods are usually called in Designer scope. However, we may be using either the
+        production or isolation databases. The Gateway makes this call when converting into
+        isolation mode.
+        '''
+        SQL = "UPDATE DtFinalDiagnosis SET FinalDiagnosisName= '%s' WHERE FinalDiagnosisName = '%s'" % (newName,oldName)
+        system.db.runUpdateQuery(SQL,db)
+    
+    log.tracef("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
     db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
     db = handler.getIsolationDatabase()
     renameInDatabase(uuid,oldName,newName,db)
 
-# These methods are usually called in Designer scope. However, we may be using either the
-# production or isolation databases. The Gateway makes this call when converting into
-# isolation mode.
-def renameInDatabase(uuid,oldName,newName,db):
-    SQL = "UPDATE DtFinalDiagnosis SET FinalDiagnosisName= '%s' WHERE FinalDiagnosisName = '%s'" % (newName,oldName)
-    system.db.runUpdateQuery(SQL,db)
+def getAux(uuid, aux, db):
+    '''
+    NOTE: The UUID supplied is from the parent, a diagram. The database interactions
+           are all based on a the block name which is  the data structure.
     
-
-def save(uuid,aux):
-    log.infof("In %s.save FD %s - %s, nothing to do", __name__, uuid, str(aux))
-    pass
-
-# NOTE: The UUID supplied is from the parent, a diagram. The database interactions
-#       are all based on a the block name which is  the data structure.
-#
-# The aux data structure is a Python list of three dictionaries. These are:
-# properties, lists and maplists.
-# 
-# Fill the aux structure with values from the database.
-def getAux(uuid,aux,db):
-    log.infof("In %s.getAux", __name__)
+    The aux data structure is a Python list of three dictionaries. These are:
+    properties, lists and maplists.
+     
+    Fill the aux structure with values from the database.
+    '''
+    log.tracef("In %s.getAux", __name__)
     app = handler.getApplicationName(uuid)
     family = handler.getFamilyName(uuid)
  
@@ -130,11 +182,10 @@ def getAux(uuid,aux,db):
     
 
 def setAux(uuid,aux,db):
-    log.infof("In %s.setAux", __name__)
+    log.tracef("In %s.setAux", __name__)
     app  = handler.getApplicationName(uuid)
-    log.infof("yo")
     family = handler.getFamilyName(uuid)
-    log.infof("...back in setAux...")
+    log.tracef("...back in setAux...")
     properties = aux[0]
     lists = aux[1]
     name = properties.get("Name","")
@@ -169,7 +220,7 @@ def setAux(uuid,aux,db):
     fdId = system.db.runScalarQuery(SQL,db)
     log.tracef("The final diagnosis Id is: %s", str(fdId))
     if fdId == None:
-        log.infof("Inserting a new final diagnosis...")
+        log.tracef("Inserting a new final diagnosis...")
         recTime = system.date.now()
         recTime = system.date.addMonths(recTime, -12)
         recTime = toDateString(recTime)
@@ -192,7 +243,7 @@ def setAux(uuid,aux,db):
             logExceptionCause("Inserting a new Final Diagnosis", log)
             return
     else:
-        log.infof("Updating an existing final diagnosis...")
+        log.tracef("Updating an existing final diagnosis...")
         SQL = "UPDATE DtFinalDiagnosis SET familyId=?, finalDiagnosisPriority=?, calculationMethod=?, finalDiagnosisLabel=?, " \
             "postTextRecommendation=?, postProcessingCallback=?, refreshRate=?, textRecommendation=?, explanation=?, "\
             "trapInsignificantRecommendations=?, constant=?, manualMoveAllowed=?, comment=?, showExplanationWithRecommendation=? "\

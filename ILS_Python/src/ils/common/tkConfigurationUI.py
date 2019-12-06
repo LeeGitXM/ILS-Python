@@ -246,7 +246,31 @@ def deletePost(table):
         return
     ds = table.data
     postId = ds.getValueAt(selectedRow, "PostId")
+    
     if postId > 0:
+    
+        '''
+        Check for Foreign Key constraints that do not have cascade deletes defined.
+        I intentionally do not have cascade deletes to prevent accidental deletion of key components.
+        '''
+        SQL = "select count(*) from LtDisplayTable where PostId = %s" % (str(postId))
+        cnt = system.db.runScalarQuery(SQL)
+        if cnt > 0:
+            system.gui.messageBox("<HTML>Unable to delete this post because it is referenced by a Lab Data display table.<br>All references in Lab Data <b>MUST</b> be removed before the post can be deleted!")
+            return;
+        
+        SQL = "select count(*) from RtRecipeFamily where PostId = %s" % (str(postId))
+        cnt = system.db.runScalarQuery(SQL)
+        if cnt > 0:
+            system.gui.messageBox("<HTML>Unable to delete this post because it is referenced by a Recipe Family.<br>All references in recipe <b>MUST</b> be removed before the post can be deleted!<br>Use DB Manager to delete the post reference!")
+            return;
+    
+        SQL = "select count(*) from SfcControlPanel where PostId = %s" % (str(postId))
+        cnt = system.db.runScalarQuery(SQL)
+        if cnt > 0:
+            system.gui.messageBox("<HTML>Unable to delete this post because it is referenced by a SFC control panel.<br>All references in SfcControlPanel <b>MUST</b> be removed before the post can be deleted!<br>Use SQL*Server to delete the post reference in SfcControlPanel!")
+            return;
+    
         SQL = "delete from TkPost where PostId = %s" % (str(postId))
         system.db.runUpdateQuery(SQL)
 

@@ -5,33 +5,106 @@ import system
 import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
 from ils.common.cast import toBit
 
+log = system.util.getLogger("com.ils.diagToolkit.extensions")
 handler = ApplicationRequestHandler()
-def delete(uuid):
-    pass 
+
+def delete(applicationUUID):
+    '''
+    This is called when the user deletes an application from the designer.  I hope that it already called the delete method for the diagrams and families in the application
+    from the bottom up so that we don't hit a FK constraint here.
+    
+    I'd like to use the application name, which is guarenteed to be unique by the database, but I think that the gateway has already deleted the application so the getApplicationName()
+    call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
+    '''
+    log.tracef("In %s.delete()", __name__)
+    
+    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+    handler = PythonRequestHandler()
+    db = handler.getProductionDatabase()
+    
+    SQL = "delete from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
+    rows = system.db.runUpdateQuery(SQL, db)
+    if rows == 1:
+        log.infof("Successfully deleted application with UUID <%s> from the database!", applicationUUID)
+    elif rows == 0:
+        log.errorf("Unable to delete application with UUID <%s> from the database", applicationUUID)
+    else:
+        log.warnf("Multiple rows <%d> were deleted from the database for application with UUID <%s>", rows, applicationUUID)
 
 def rename(uuid,oldName,newName):
+    '''
+    TODO: It appears that this is NOT called when I rename an application.  
+    I think I can handle this case in the save method, especially if I can figure out how to get the name.
+    '''
+    
+    def renameInDatabase(uuid, oldName, newName, db):
+        SQL = "UPDATE DtApplication SET ApplicationName= '%s' WHERE ApplicationName = '%s'" % (newName,oldName)
+        system.db.runUpdateQuery(SQL, db)
+    
+    log.tracef("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
     db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
-    db = handler.getIsolationDatabase()
-    renameInDatabase(uuid,oldName,newName,db)
+
+
     
-def renameInDatabase(uuid,oldName,newName,db):
-    SQL = "UPDATE DtApplication SET ApplicationName= '%s' WHERE ApplicationName = '%s'" % (newName,oldName)
-    system.db.runUpdateQuery(SQL,db)
+def save(applicationUUID, aux):
+    '''
+    This method IS called when they do a save from the Designer.  
+    It should really insert a new record into the DB for a new application, but I don't have enough info here to
+    do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
+    open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
+    '''
+    log.tracef("In %s.save()", __name__)
     
-def save(uuid,aux):
-    pass 
-  
-# These methods are usually called in Designer scope. However, we may be using either the
-# production or isolation databases. The Gateway makes this call when converting into
-# isolation mode. 
-#
-# The aux data structure is a Python list of three dictionaries. These are:
-# properties, lists and maplists.
-# 
-# Fill the aux structure with values from the database
-# The caller must supply either the production or isolation database name
+    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+    handler = PythonRequestHandler()
+    db = handler.getProductionDatabase()
+    
+    from system.ils.blt.diagram import getApplicationName
+    applicationName = getApplicationName(applicationUUID)
+    log.tracef("...applicationName from system.ils.blt.diagram.getApplicationName: %s", applicationName)
+    
+    SQL = "select ApplicationId from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
+    applicationId = system.db.runScalarQuery(SQL, db)
+
+    if applicationId == None:
+        '''
+        Take some extra steps here to see if this is an old legacy application that was saved before we added applicationUUID to the database.
+        If we find an application name match then update the application's UUID.
+        '''
+        SQL = "select applicationId from DtApplication where applicationName = '%s'" % (applicationName)
+        applicationId = system.db.runScalarQuery(SQL, db)
+        if applicationId == None:
+            SQL = "insert into DtApplication (ApplicationUUID, ApplicationName, NotificationStrategy, Managed) "\
+                "values ('%s', '%s', 'ocAlert', 0)" % (applicationUUID, applicationName)
+            log.tracef("...SQL: %s,", SQL)
+            applicationId = system.db.runUpdateQuery(SQL, db, getKey=1)
+            log.tracef("Inserted a new application with id: %d", applicationId)
+        else:
+            SQL = "update DtApplication set ApplicationUUID = '%s' where applicationId = %s" % (applicationUUID, applicationId)
+            log.tracef("...SQL: %s,", SQL)
+            rows = system.db.runUpdateQuery(SQL, db)
+            log.tracef("...updated the applicationUUID (rows=%d) for a legacy family named %s!", rows, applicationName)
+    else:
+        SQL = "update DtApplication set ApplicationName = '%s' where applicationId = %s" % (applicationName, applicationId)
+        log.tracef("...SQL: %s,", SQL)
+        rows = system.db.runUpdateQuery(SQL, db)
+        log.tracef("...updated %d rows in DtApplication for %s", rows, applicationName)
+
+
+'''
+These methods are usually called in Designer scope. However, we may be using either the
+production or isolation databases. The Gateway makes this call when converting into
+isolation mode. 
+
+The aux data structure is a Python list of three dictionaries. These are:
+properties, lists and maplists.
+ 
+Fill the aux structure with values from the database
+The caller must supply either the production or isolation database name
+'''
 def getAux(uuid,aux,db):
+    log.tracef("In %s.getAux()", __name__)
     applicationId = -1
     name = handler.getApplicationName(uuid)
     
@@ -155,9 +228,10 @@ def getAux(uuid,aux,db):
 
 # Set values in the database from contents of the aux container
 # The caller must supply either the production or isolation database name
-def setAux(uuid,aux,db):
+def setAux(uuid, aux, db):
+    log.tracef("In %s.setAux()", __name__)
     applicationName = handler.getApplicationName(uuid)
-    print "appProperties.setAux  ...the application name is: ", applicationName,", database: ",db
+    log.tracef("  ...the application name is: %s,  database: %s",applicationName, db)
     
     from locale import setlocale, LC_NUMERIC, atof
     setlocale(LC_NUMERIC, '')
