@@ -23,7 +23,7 @@ class Action(basicblock.BasicBlock):
     # Default the trigger to TRUE
     def initialize(self):
         self.className = 'ils.block.action.Action'
-        self.properties['Script'] = {'value':'xom.actions.demo.act','editable':'True'}
+        self.properties['Script'] = {'value':'ils.actions.demo.act','editable':'True'}
         self.properties['Trigger'] = {'value':'TRUE','editable':'True','type':'TRUTHVALUE'}
         self.inports = [{'name':'in','type':'truthvalue'}]
         self.outports= [{'name':'out','type':'truthvalue'}]
