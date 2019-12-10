@@ -140,7 +140,7 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
 def notifyClients(project, post, clientId=-1, notificationText="", notificationMode="loud", numOutputs=0, database="", provider=""):
-    log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, database: %s, mode: %s..." % (project, post, str(clientId), str(numOutputs), database, notificationMode))
+    log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, notificationText: %s, database: %s, mode: %s..." % (project, post, str(clientId), str(numOutputs), notificationText, database, notificationMode))
     messageHandler="consoleManager"
     payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId, 'notificationMode':notificationMode, 'gatewayDatabase':database}
     notifier(project, post, messageHandler, payload, database)
@@ -979,6 +979,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
                                      actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
                 insertApplicationQueueMessage(applicationName, explanation, "error", database)
+    
+                requestToManage(applicationName, database, provider)
                 return "Error", numSignificantRecommendations, False, noChange
     
             elif recommendationStatus == RECOMMENDATION_NONE_MADE:
