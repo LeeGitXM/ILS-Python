@@ -28,13 +28,23 @@ def run():
     
     #-------------------------------------------
     def initializeTags():
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T1", 20.0)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T2", 20.0)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T3", 20.0)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T4", 20.0)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T5", 20.0)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T6", 20.0)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T7", 20.0)
+        logger.infof("Initializing tags...")
+        system.tag.write("[XOM]Configuration/DiagnosticToolkit/zeroChangeThreshold", 0.00005)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T1", 0.1)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T2", 0.2)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T3", 0.3)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T4", 0.4)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T5", 0.5)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T6", 0.6)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T7", 0.7)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T8", 0.8)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T9", 0.9)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T10", 0.1)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T11", 0.2)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T12", 0.3)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T13", 0.4)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T14", 0.5)
+        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T15", 0.6)
         logger.infof("Initializing the database...")
     
     #-------------------------------------------
@@ -62,6 +72,8 @@ def run():
             "delete from DtQuantOutput where QuantOutputName = 'TEST_Q23'", 
             "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q24')", 
             "delete from DtQuantOutput where QuantOutputName = 'TEST_Q24'", 
+            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q25')", 
+            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q25'",
             
             "delete from DtFinalDiagnosis where FinalDiagnosisName like 'TEST%'", 
             "delete from DtFamily where FamilyName like 'TEST%'", 
@@ -258,7 +270,7 @@ def run():
             
             logger.trace("...done! (application = %s)" % (applicationName))
             
-            time.sleep(35)
+            time.sleep(60)
             ds = system.dataset.setValue(ds, row, 'result', 'Analyzing')
             system.tag.write(tableTagPath, ds) 
             
@@ -287,6 +299,8 @@ def run():
 
 
 def scrubDatabase(applicationName):
+    print "Scrubbing recommendations for application: %s", applicationName
+    
     SQL = "select applicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
     applicationId = system.db.runScalarQuery(SQL)
     
@@ -376,7 +390,7 @@ def insertApp1():
     unit = 'TESTUnit'
     logbookId = insertLogbook(logbook)
     postId = insertPost(post, logbookId)
-    groupRampMethod='Simple'
+    groupRampMethod='Shortest'
     queueKey='TEST'
     managed=1
     app1Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed)
@@ -466,13 +480,13 @@ def insertApp2():
     unit = 'TESTUnit'
     logbookId = insertLogbook(logbook)
     postId = insertPost(post, logbookId)
-    groupRampMethod='Simple'
+    groupRampMethod='Shortest'
     queueKey='TEST'
     managed=1
     app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed)
     return app2Id
 
-def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id,
+def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id,
     FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1'
     ):
 
@@ -488,10 +502,13 @@ def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id,
     insertRecommendationDefinition(finalDiagnosisId, Q22_id)
     insertRecommendationDefinition(finalDiagnosisId, Q23_id)
     insertRecommendationDefinition(finalDiagnosisId, Q24_id)
+    insertRecommendationDefinition(finalDiagnosisId, Q25_id)
 
 # Insert a Quant Output
 def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncrement=-500.0, mostPositiveIncrement=500.0, minimumIncrement=0.0001,
         setpointHighLimit=1000.0, setpointLowLimit=-1000.0, feedbackMethod='Most Positive', incrementalOutput=True):
+    
+    logger.tracef("Inserting QuantOutput named: %s", quantOutput)
     feedbackMethodId=fetchFeedbackMethodId(feedbackMethod)
     SQL = "insert into DtQuantOutput (QuantOutputName, ApplicationId, TagPath, MostNegativeIncrement, MostPositiveIncrement, MinimumIncrement, "\
         "SetpointHighLimit, SetpointLowLimit, FeedbackMethodId, IncrementalOutput) values "\
@@ -499,6 +516,7 @@ def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncreme
         (quantOutput, appId, tagPath, mostNegativeIncrement, mostPositiveIncrement, minimumIncrement,
         setpointHighLimit, setpointLowLimit, feedbackMethodId, incrementalOutput)
     id = system.db.runUpdateQuery(SQL, getKey=True)
+    logger.tracef("...inserted a quant output with id: %d", id)
     print "Writing ", tagValue, " to ", tagPath
     system.tag.write(tagPath, tagValue, 60)
     return id
@@ -567,8 +585,8 @@ def insertApplication(application, postId, unit, groupRampMethod, queueKey, mana
     unitId=insertUnit(unit, postId)
     groupRampMethodId=fetchGroupRampMethodId(groupRampMethod)
     queueId=fetchQueueId(queueKey)
-    SQL = "insert into DtApplication (applicationName, UnitId, GroupRampMethodId, IncludeInMainMenu, MessageQueueId, Managed)"\
-        " values ('%s', %s, %s, 1, %s, %s)" % (application, str(unitId), str(groupRampMethodId), str(queueId), str(managed))
+    SQL = "insert into DtApplication (applicationName, UnitId, GroupRampMethodId, IncludeInMainMenu, MessageQueueId, Managed, NotificationStrategy)"\
+        " values ('%s', %s, %s, 1, %s, %s, 'ocAlert')" % (application, str(unitId), str(groupRampMethodId), str(queueId), str(managed))
     applicationId = system.db.runUpdateQuery(SQL, getKey=True)
     return applicationId
 

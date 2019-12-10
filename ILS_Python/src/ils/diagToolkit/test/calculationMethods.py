@@ -226,12 +226,12 @@ def fd1_2_3f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_3h(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3h - returning 3 recommendations, 1 real, 1 insignificant, and 1 = 0"
+    print "In fd1_2_3h - returning 3 recommendations, 1 real, 1 insignificant (less than 0.5), and 1 near 0 (less than 0.01)"
     explanation = "Returning 3 recommendations, 1 real, 1 insignificant, and 1 = 0"
     recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.123456789})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 0.000082345})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 0.0})
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.25})
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 0.25})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": 0.0001})
     return True, explanation, recommendations
 
 def fd1_2_3i(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
@@ -287,6 +287,7 @@ def fd2_1_1a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd2_1_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "*******************************"
     print "In fd2_1_1b"
     explanation = "Get the steak out."
     recommendations = []
@@ -295,53 +296,42 @@ def fd2_1_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     sp = system.tag.read("[%s]DiagnosticToolkit/Inputs/T1_Target" % (provider)).value
     
     manualMove, manualMoveAllowed = fetchManualMoveInfoById(finalDiagnosisId, database)
+    print "   Manual Move Allowed: ", manualMoveAllowed
+    print "   Manual Move: ", manualMove
     
     if manualMove in [0.0, None]:
         error = sp - pv
-        print "Using a calculated value (%f) as the error." % (error)
+        print "   ---  Using a calculated value (%f) as the error.  ---" % (error)
     else:
         error = manualMove
-        print "Using the manual move (%f) as the error." % (error)
-    
-    # Check that the filtered value is fresh by making sure is was updated after the unfiltered lab data value.
-    filteredTagName = "[%s]LabData/RLA3/ETHYLENE-FILTERED-VALUE/filteredValue" % (provider)
-    pvTagName = "[%s]LabData/RLA3/C2-LAB-DATA/value" % (provider)
-    qv = system.tag.read(pvTagName)
-    activeTime = qv.timestamp
-    
-    isFresh=checkFreshness(filteredTagName, activeTime, provider, timeout=30)
-    if not(isFresh):
-        print "%s: The filtered value (%s) is not fresh, proceeding with calculation anyway." % (__name__, filteredTagName)    
-    
-    # The data should be fresh so now read the value.
-    fv = system.tag.read(filteredTagName)
-    if not (fv.quality.isGood()):
-        explanation = "%s - Filtered value is bad (%s) %s" % (__name__, filteredTagName, str(fv.quality))
-        return False, explanation, recommendations
-    fv=fv.value
-    
-    # Now read the source of the recipe data
-    tagName="[%s]LabData/RLA3/FD-C2-LAB-DATA/value" % (provider)
-    pv = system.tag.read(tagName)
-    if not (pv.quality.isGood()):
-        explanation = "%s - present value is bad (%s) %s" % (__name__, tagName, str(pv.quality))
-        return False, explanation, recommendations
-    pv=pv.value
-    
-    print "The PV is %s and the filtered value is %s" % (pv, fv)
-
-#    recommendations.append({"QuantOutput": "TEST_Q21", "Value": 19.88})
-#   recommendations.append({"QuantOutput": "TEST_Q22", "Value": 123.15})
-#  recommendations.append({"QuantOutput": "TEST_Q23", "Value": 2.31})
-#    recommendations.append({"QuantOutput": "TEST_Q24", "Value": 36.23})
+        print "   ---  Using the manual move (%f) as the error.  ---" % (error)
 
     val = error * 5.234
-    t15 = system.tag.read("[%s]DiagnosticToolkit/Inputs/T15" % (provider)).value
-    if t15 < 20:
-        recommendations.append({"QuantOutput": "TEST_Q25", "Value": val, "RampTime": 10.0})
-    else:
-        recommendations.append({"QuantOutput": "TEST_Q25", "Value": val})
+    recommendations.append({"QuantOutput": "TEST_Q25", "Value": val})
+    
+    print "*******************************"
     return True, explanation, recommendations
+
+def fd2_1_1c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    ''' This tests a recommendation to a ramp controller '''
+    print "In fd2_1_1c"
+    explanation = "Get the steak out."
+    recommendations = []
+
+    recommendations.append({"QuantOutput": "TEST_Q25", "Value": 120.0})
+
+    return True, explanation, recommendations
+
+def fd2_1_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    ''' This tests a recommendation to a ramp controller '''
+    print "In fd2_1_1c"
+    explanation = "Get the steak out."
+    recommendations = []
+
+    recommendations.append({"QuantOutput": "TEST_Q25", "Value": 120.0, "RampTime": 5.0})
+
+    return True, explanation, recommendations
+
 
 def postDownloadSpecialActions(applicationName, actionMessage, finalDiagnosisId, provider, database):
     print "********************************"
