@@ -187,7 +187,7 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
     In both cases, the ramp is executed by writing sequentially based on a linear ramp.  
     Ramp time is in minutes, update frequency is in seconds.
     '''
-    log.infof("In %s.writeRamp() for %s", __name__, tagPath)
+    log.infof("In %s.writeRamp() for %s, writing %s over %s", __name__, tagPath, str(val), str(rampTime))
     
     success, reason = checkConfig(tagPath)
     if not(success):

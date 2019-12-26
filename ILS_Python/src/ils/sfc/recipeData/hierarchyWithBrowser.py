@@ -17,6 +17,8 @@ log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 #treeMode = "chartName"
 treeMode = "fullPath"
 
+LIBRARY_ICON = "Builtin/icons/16/copy.png"
+
 '''
 Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.
 '''
@@ -42,11 +44,19 @@ def updateSfcTree(rootContainer, db):
     tagProvider = getTagProviderClient()
     sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
 
-    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly, db)
-    hierarchyHandlerPDS = fetchHierarchyHandler(sfcRecipeDataShowProductionOnly, db)
-    chartPDS = fetchCharts(sfcRecipeDataShowProductionOnly, db)
+    ''' I can use this for testing '''
+    chartPath = 'A%'
+    chartPath = "%"
+
+    hierarchyPDS = fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db)
+    hierarchyHandlerPDS = fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db)
+    chartPDS = fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db)
     trees = fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS)
     
+    ''' 
+    Create a dictionary of charts where the chartId is the key. Replace the path delimiter (a forward slash) 
+    with a backwards slash which needs to be escaped with another backwards slash.
+    '''
     chartDict = {}
     for record in chartPDS:
         chartId=record["ChartId"]
@@ -56,10 +66,14 @@ def updateSfcTree(rootContainer, db):
         # the chart path as the name so replace "/" with ":"
         chartDict[chartId] = chartPath.replace('/',' \\ ')
 
+    '''
+    Now take the SFC tree model and format it for the tree widget.
+    I think the way that we need to prepare data for the tree is widget is that we need a record for each leaf node.
+    '''
     log.tracef("The chart dictionary is %s", str(chartDict))    
     rows=[]
     for tree in trees:
-        row = expandRow(tree, chartDict)
+        row = expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS)
         rows.append(row)
 
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
@@ -68,7 +82,7 @@ def updateSfcTree(rootContainer, db):
     treeWidget.data = ds
 
     
-def expandRow(tree, chartDict): 
+def expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS): 
     log.tracef("Expanding: %s", str(tree))
     tokens = tree.split(",")
     path=""
@@ -84,43 +98,59 @@ def expandRow(tree, chartDict):
     token = tokens[-1]
     fullPath = chartDict.get(int(token),"Unknown")
     
+    refs = countChartReferences(int(token), hierarchyPDS, hierarchyHandlerPDS)
+    print " **** %s has %d references ****" % (fullPath, refs)
+    if refs > 1:
+        icon = LIBRARY_ICON
+    else:
+        icon = "default"
+    
     chartName = fullPath[fullPath.rfind("\\")+1:]
-    log.tracef("%s  --  %s", fullPath, chartName)
+    log.tracef("%s  --  %s  --  %s", path, fullPath, chartName)
 
     if treeMode == "fullPath":
-        row = [path,fullPath,"default","color(255,255,255,255)","color(0,0,0,255)",fullPath,"","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
+        row = [path,fullPath,icon,"color(255,255,255,255)","color(0,0,0,255)",fullPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
     else:
-        row = [path,chartName,"default","color(255,255,255,255)","color(0,0,0,255)",fullPath,"","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
+        row = [path,chartName,icon,"color(255,255,255,255)","color(0,0,0,255)",fullPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
         
     log.tracef("The expanded row is: %s", str(row))
     return row
 
-def fetchCharts(sfcRecipeDataShowProductionOnly, db):
+def countChartReferences(token, hierarchyPDS, hierarchyHandlerPDS):
+    refs = 0
+    for record in hierarchyPDS:
+        if record["ChildChartId"] == token:
+            refs = refs + 1
+
+    return refs
+
+def fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db):
     log.infof("Fetching the charts...")
     
     if sfcRecipeDataShowProductionOnly:
-        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where IsProduction = 1 order by ChartPath"
+        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where IsProduction = 1 and chartPath like '%s' order by ChartPath" % (chartPath)
     else:
-        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart order by ChartPath"
+        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where chartPath like '%s' order by ChartPath" % (chartPath)
         
     pds = system.db.runPrepQuery(SQL, [], db)
     log.tracef("Fetched %d chart records...", len(pds))
     return pds
 
-def fetchHierarchy(sfcRecipeDataShowProductionOnly, db=""):
+def fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db=""):
     if sfcRecipeDataShowProductionOnly:
-        SQL = "select * from SfcHierarchyView where IsProduction = 1 order by ChartPath"
+        SQL = "select * from SfcHierarchyView where IsProduction = 1 and chartPath like '%s' order by ChartPath" % (chartPath)
     else:
-        SQL = "select * from SfcHierarchyView order by ChartPath"
+        SQL = "select * from SfcHierarchyView where chartPath like '%s' order by ChartPath" % (chartPath)
 
+    print SQL
     pds = system.db.runQuery(SQL, db)
     return pds
 
-def fetchHierarchyHandler(sfcRecipeDataShowProductionOnly, db=""):
+def fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db=""):
     if sfcRecipeDataShowProductionOnly:
-        SQL = "select * from SfcHierarchyHandlerView where IsProduction = 1 order by ChartPath"
+        SQL = "select * from SfcHierarchyHandlerView where IsProduction = 1 and chartPath like '%s' order by ChartPath"  % (chartPath)
     else:
-        SQL = "select * from SfcHierarchyHandlerView order by ChartPath"
+        SQL = "select * from SfcHierarchyHandlerView where chartPath like '%s' order by ChartPath"  % (chartPath)
 
     pds = system.db.runQuery(SQL, db)
     return pds
@@ -215,21 +245,7 @@ def refreshSteps(rootContainer, db):
     treeWidget = rootContainer.getComponent("Tree Container").getComponent("Tree View")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     
-    # First get the last node in the path
-    chartPath = treeWidget.selectedPath
-    log.infof("The raw selected path is: <%s>", chartPath)
-    chartPath = chartPath[chartPath.rfind("/")+1:]
-    
-    # Now replace ":" with "/"
-    chartPath = chartPath.replace(' \\ ', '/')
-    log.infof("The selected chart path is <%s>", chartPath)
-    if chartPath == "" or chartPath == None:
-        clearTable(stepTable)
-        return
-    
-    SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
-    chartId = system.db.runScalarQuery(SQL, db) 
-    log.infof("Fetched chart id: %s", str(chartId))
+    chartId = getChartIdForSelectedNode(treeWidget, db)
     if chartId == None:
         clearTable(stepTable)
         return
@@ -244,6 +260,26 @@ def refreshSteps(rootContainer, db):
 
     stepTable.data = pds
     stepTable.selectedRow = -1
+
+def getChartIdForSelectedNode(treeWidget, db):
+    # First get the last node in the path
+    chartPath = treeWidget.selectedPath
+    log.infof("The raw selected path is: <%s>", chartPath)
+    chartPath = chartPath[chartPath.rfind("/")+1:]
+    
+    # Now replace ":" with "/"
+    chartPath = chartPath.replace(' \\ ', '/')
+    log.infof("The selected chart path is <%s>", chartPath)
+    if chartPath == "" or chartPath == None:
+        return None
+    
+    SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
+    chartId = system.db.runScalarQuery(SQL, db) 
+    log.infof("Fetched chart id: %s", str(chartId))
+    if chartId == None:
+        return None
+    
+    return chartId
 
 
 '''
@@ -985,6 +1021,33 @@ def fetchFolderId(folderPDS, tokens):
         log.tracef("The last token is data")
         
     return isFolder, parentRecipeDataFolderId
+
+def mousePressedCallbackForTree(event):
+    print "In mousePressedCallbackForTree....", event.button
+    
+    ''' Only post the popup on the right mouse button '''
+    if int(event.button) <> 3:
+        print "Not the right button!"
+        return
+    
+    def showChartCallerCallback(event):
+        '''
+        This is the callback from the popup menu
+        '''
+        db = getDatabaseClient()
+        treeWidget = event.source
+        chartId = getChartIdForSelectedNode(treeWidget, db)
+        if chartId == None:
+            return
+
+        window = system.nav.openWindow("SFC/Chart Callers",{"chartId": chartId})
+        system.nav.centerWindow(window)
+    
+    print "Creating popup..."
+    menu = system.gui.createPopupMenu(["Show Chart Callers"], [showChartCallerCallback])
+    menu.show(event)
+    
+     
 '''
 This is just a good text book example of recursion.
 '''    

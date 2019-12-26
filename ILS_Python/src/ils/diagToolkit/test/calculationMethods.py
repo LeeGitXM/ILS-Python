@@ -155,6 +155,15 @@ def fd1_2_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     recommendations.append({"QuantOutput": "TESTQ3", "Value": -20.4})
     return True, explanation, recommendations
 
+def fd1_2_2a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd1_2_2a"
+    explanation = "Turn down the flame and open the window."
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 40.0,  "RampTime": 5.0})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": 60.0,  "RampTime": 6.0})
+    return True, explanation, recommendations
+
+
 def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In fd1_2_3 "
     explanation = "Turn down the flame and open the window."
@@ -223,6 +232,15 @@ def fd1_2_3f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     recommendations.append({"QuantOutput": "TESTQ1", "Value": myVal})
     recommendations.append({"QuantOutput": "TESTQ2", "Value": 5.12348})
     recommendations.append({"QuantOutput": "TESTQ3", "Value": 3.123456789})
+    return True, explanation, recommendations
+
+def fd1_2_3g(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd1_2_3g"
+    explanation = "The TESTFD1_2_3g making recs with ramps"
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 20.0,  "RampTime": 2.0})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": 100.0,  "RampTime": 3.0})
     return True, explanation, recommendations
 
 def fd1_2_3h(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
@@ -324,11 +342,21 @@ def fd2_1_1c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
 
 def fd2_1_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     ''' This tests a recommendation to a ramp controller '''
-    print "In fd2_1_1c"
+    print "In fd2_1_1d"
     explanation = "Get the steak out."
     recommendations = []
 
     recommendations.append({"QuantOutput": "TEST_Q25", "Value": 120.0, "RampTime": 5.0})
+
+    return True, explanation, recommendations
+
+def fd2_1_1e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    ''' This tests a recommendation to a ramp controller '''
+    print "In fd2_1_1e"
+    explanation = "Ramp a plane controller."
+    recommendations = []
+
+    recommendations.append({"QuantOutput": "TEST_Q21", "Value": 40.0, "RampTime": 5.0})
 
     return True, explanation, recommendations
 

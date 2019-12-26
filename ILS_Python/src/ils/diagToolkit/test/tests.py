@@ -645,7 +645,12 @@ def test16a():
     system.tag.write("[XOM]" + T101_TagName + "/value", 113.81)
     Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81)
     
-    system.tag.write("[XOM]" + TC102_TagName + "/value", 10.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 10.5)
     
     insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a')
@@ -675,6 +680,11 @@ def test16b():
     Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81)
     
     system.tag.write("[XOM]" + TC102_TagName + "/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5)
     
     insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1b')
@@ -711,6 +721,11 @@ def test16c():
     Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81)
     
     system.tag.write("[XOM]" + TC102_TagName + "/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5)
     
     insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1c')
@@ -740,9 +755,14 @@ def test16d():
     Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81)
     
     system.tag.write("[XOM]" + TC102_TagName + "/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1d')
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1c')
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
@@ -769,12 +789,65 @@ def test16e():
     Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81)
     
     system.tag.write("[XOM]" + TC102_TagName + "/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1b')
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1d')
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
+    return applicationName
+
+def test16f():
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    system.tag.write("[XOM]DiagnosticToolkit/Inputs/Lab_Data/value", 20.0)
+    system.tag.write("[XOM]DiagnosticToolkit/Inputs/T1_Target", 25.0)
+
+    applicationName='TESTAPP2'
+    appId=insertApp2()  
+    
+    system.tag.write("[XOM]" + TC100_TagName + "/sp/value", 35.63)
+    system.tag.write("[XOM]" + TC100_TagName + "/mode/value", "AUTO")
+    Q21_id=insertQuantOutput(appId, 'TEST_Q21', TC100_TagName,  35.63)
+    
+    system.tag.write("[XOM]" + TC101_TagName + "/sp/value", 526.89)
+    Q22_id=insertQuantOutput(appId, 'TEST_Q22', TC101_TagName, 526.89)
+    
+    system.tag.write("[XOM]" + T100_TagName + "/value", 27.91)
+    Q23_id=insertQuantOutput(appId, 'TEST_Q23', T100_TagName, 27.91)
+    
+    system.tag.write("[XOM]" + T101_TagName + "/value", 113.81)
+    Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName, 113.81)
+    
+    system.tag.write("[XOM]" + TC102_TagName + "/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
+    Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1e')
+    
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
+    return applicationName
+
+def test16g():
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='TESTAPP1'
+    appId=insertApp1()
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, feedbackMethod='Simple Sum')
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, feedbackMethod='Simple Sum')
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, feedbackMethod='Simple Sum')
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD122Priority=3.4, FD123Priority=3.4, FD122calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_2a', FD123calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_3g')
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test17a():
@@ -803,6 +876,11 @@ def test17a():
     system.tag.write("[XOM]" + T101_TagName + "/value", 36.23)
     
     system.tag.write("[XOM]" + TC102_TagName + "/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/value", 20.5)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5)
     
     insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a')

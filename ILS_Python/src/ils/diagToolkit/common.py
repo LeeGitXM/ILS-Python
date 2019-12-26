@@ -157,17 +157,24 @@ def clearQuantOutputRecommendations(application, database=""):
 def fetchActiveDiagnosis(applicationName, database=""):
     SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.Multiplier, FD.Explanation, FD.ShowExplanationWithRecommendation, "\
-        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
-        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
+        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod,  "\
+        " L.LookupName as GroupRampMethod"\
+        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE,  Lookup L"\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and DE.Status = 'Active' " \
         " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.ApplicationName = '%s'"\
+        " and A.GroupRampMethodId = L.LookupId"\
+        " and L.LookupTypeCode='GroupRampMethod' "\
         " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
     log.tracef("%s.fetchActiveDiagnosis(): %s", __name__, SQL)
+    print "*****************"
+    print SQL
+    print "**********************"
     pds = system.db.runQuery(SQL, database)
+    print "Fetched %d rows" % (len(pds))
     return pds
 
 # Fetch all of the active final diagnosis for an application.
