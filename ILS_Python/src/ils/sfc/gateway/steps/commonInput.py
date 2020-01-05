@@ -62,8 +62,7 @@ def activate(scopeContext, stepProperties, state, buttonLabel, windowType, messa
                 choicesList = system.util.jsonDecode(choices)
                 for choice in choicesList:
                     system.db.runUpdateQuery("insert into SfcInputChoices (windowId, choice) values ('%s', '%s')" % (windowId, choice), database)                   
-                
-#            sendOpenWindow(chartScope, windowId, stepId, database)
+    
         else: # waiting for reply
             response = checkForResponse(chartScope, stepScope, stepProperties)
             if response != None: 

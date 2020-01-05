@@ -36,6 +36,7 @@ def activate(scopeContext, stepProperties, state):
         for record in pds:
             vals.append(record[0])
 
+        log.tracef("...values: %s", str(vals))
         s88Set(chartScope, stepScope, keyAndAttribute, vals, recipeLocation)
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in rawQuery.py', log)

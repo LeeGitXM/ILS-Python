@@ -5,6 +5,7 @@ Created on Dec 29, 2016
 '''
 
 import system
+from ils.common.config import getTagProvider, getDatabase
 from ils.common.util import formatDateTimeForDatabase
 log = system.util.getLogger("com.ils.sfc.structureManager.python")
 from ils.common.error import catchError
@@ -156,8 +157,11 @@ def deleteCharts(resourceMap, db):
 This is only called by Java hook in designer when the user saves the project.  It is passed all of the resources that have been changed since the last time the 
 project was saved.
 '''
-def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
-    log.infof("In %s.updateChartHierarcy() updating the steps and hierarchy for parent: %s...", __name__, parentResourceId)
+def updateChartHierarchy(parentChartPath, parentResourceId, chartXML):
+    log.infof("In %s.updateChartHierarcy() updating the steps and hierarchy for parent: %s", __name__, parentResourceId)
+    
+    db = getDatabase()
+    log.infof("...using production database instance: %s...", db)
     
     log.tracef("The chart XML is: %s", str(chartXML))
     txId = getTxId(db)

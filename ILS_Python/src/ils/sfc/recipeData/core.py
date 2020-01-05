@@ -857,47 +857,34 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         valueType = record['ValueType']
+        recipeDataId = record['RecipeDataId']
             
         if arrayIndex == None:
             logger.tracef("Setting an entire array...")
-            SQL = "select max(ArrayIndex) from SfcRecipeDataArrayElement where RecipeDataId = %s" % (str(recipeDataId))
-            maxIdx = system.db.runScalarQuery(SQL, db)
+            
+            logger.tracef("...deleting all existing elements...")
+            SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %s" % (str(recipeDataId))
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef("...deleted %d  rows...", rows)
             
             idx = 0
             for el in val:
                 logger.tracef("idx: %d => %s", idx, str(el))
-                if idx > maxIdx:
                     
-                    if valueType == 'String':
-                        SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (el)
-                    else:
-                        valueColumnName = valueType + "Value"
-                        if valueType == "Boolean":
-                            el = toBit(el)
-                        SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (valueColumnName, el)
-                    print SQL            
-                    valueId=system.db.runUpdateQuery(SQL, getKey=True, database=db)
-                    
-                    SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, idx, valueId)
-                    system.db.runUpdateQuery(SQL, db)
-                    
+                if valueType == 'String':
+                    SQL = "insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (%d, '%s')" % (recipeDataId, el)
                 else:
-                    SQL = "select valueId from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex = %s" % (str(recipeDataId), str(idx))
-                    valueId = system.db.runScalarQuery(SQL, db)
-            
-                    if valueType == "String":
-                        SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %d" % (valueType, el, valueId)
-                    else:
-                        SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %d" % (valueType, el, valueId)
-                    system.db.runUpdateQuery(SQL, db)
+                    valueColumnName = valueType + "Value"
+                    if valueType == "Boolean":
+                        el = toBit(el)
+                    SQL = "insert into SfcRecipeDataValue (RecipeDataId, %s) values ('%s')" % (recipeDataId, valueColumnName, el)
+                logger.tracef(SQL)
+                valueId=system.db.runUpdateQuery(SQL, getKey=True, database=db)
+                
+                SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, idx, valueId)
+                system.db.runUpdateQuery(SQL, db)
+
                 idx = idx + 1
-                
-            if idx < maxIdx:
-                SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex > %d" % (str(recipeDataId), idx - 1)
-                rows = system.db.runUpdateQuery(SQL, db)
-                print "Deleted %d extra rows" % (rows)
-                
-#            raise ValueError, "Array Recipe data must specify an index - %s - %s" % (key, attribute)           
             
         else:
             '''

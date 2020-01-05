@@ -489,6 +489,8 @@ def getRecipeDataDescription(record, db):
             desc = getTimerDescription(recipeDataId, desc, db)
         elif recipeDataType == "Recipe":
             desc = getRecipeDescription(recipeDataId, desc, db)
+        elif recipeDataType == "SQC":
+            desc = getSqcDescription(recipeDataId, desc, db)
         elif recipeDataType == "Output":
             SQL = "select * from SfcRecipeDataOutputView where recipeDataId = %d" % (recipeDataId)
             valuePDS = system.db.runQuery(SQL, db)
@@ -648,7 +650,7 @@ def getTimerDescription(recipeDataId, desc, db):
 
     return desc
 
-#
+
 def getRecipeDescription(recipeDataId, desc, db):
     SQL = "Select * from SFcRecipeDataRecipeView where recipeDataId = %d" % (recipeDataId)
     valuePDS = system.db.runQuery(SQL, db)
@@ -662,6 +664,23 @@ def getRecipeDescription(recipeDataId, desc, db):
         desc = "a recipe, %s, %s" % (desc, txt)    
 
     return desc 
+
+
+def getSqcDescription(recipeDataId, desc, db):
+    SQL = "Select * from SFcRecipeDataSQCView where recipeDataId = %d" % (recipeDataId)
+    valuePDS = system.db.runQuery(SQL, db)
+    valueRecord = valuePDS[0]
+    label = valueRecord["Label"]
+
+    txt = "Target: %s, Low: %s, High: %s" % (str(valueRecord["TargetValue"]), str(valueRecord["LowLimit"]), str(valueRecord["HighLimit"]))
+
+    if label == "":
+        desc = "a SQC, %s" % (txt)
+    else:
+        desc = "a SQC, %s, %s" % (label, txt)    
+
+    return desc 
+
 
 def getValueDescriptionFromRecord(record, desc):
     valueType = record["ValueType"]
