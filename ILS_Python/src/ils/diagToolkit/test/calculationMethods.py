@@ -156,7 +156,7 @@ def fd1_2_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     return True, explanation, recommendations
 
 def fd1_2_2a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_2a"
+    print "In fd1_2_2a - Hello!"
     explanation = "Turn down the flame and open the window."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ2", "Value": 40.0,  "RampTime": 5.0})
