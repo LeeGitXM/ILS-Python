@@ -51,10 +51,10 @@ def save(diagramUUID, aux):
                             log.warnf("Unable to insert a new SQC diagnosis named <%s> on diagram <%s>", blockName, diagramName)
               
                 elif className == "FinalDiagnosis":
-                    blockUUID = block.getIdString()
+                    blockId = block.getIdString()
                     blockName = block.getName()
                     log.tracef("  ...updating Final Diagnosis named %s", blockName)
-                    SQL = "update DtFinalDiagnosis set FinalDiagnosisUUID = '%s', DiagramUUID = '%s' where FinalDiagnosisName = '%s'" % (str(blockUUID), str(diagramUUID), blockName)
+                    SQL = "update DtFinalDiagnosis set FinalDiagnosisUUID = '%s', DiagramUUID = '%s' where FinalDiagnosisName = '%s'" % (str(blockId), str(diagramUUID), blockName)
                     rows=system.db.runUpdateQuery(SQL, database)
                     if rows > 0:
                         log.tracef("Updated UUID and diagram UUID for final diagnosis named <%s> on <%s>", blockName, diagramName)

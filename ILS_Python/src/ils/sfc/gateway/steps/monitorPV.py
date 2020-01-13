@@ -112,10 +112,12 @@ def activate(scopeContext, stepProperties, state):
                     if configRow.strategy == MONITOR:
                         watchOnly = False
                     
-                    # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
-                    # download GUI block.  The target of a PV monitoring  
-                    # block can be just about anything.  If the target is an OUTPUT - then write results there, if the target is anything else then store the 
-                    # results in the INPUT.
+                    '''
+                    This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
+                    download GUI block.  The target of a PV monitoring  
+                    block can be just about anything.  If the target is an OUTPUT - then write results there, if the target is anything else then store the 
+                    results in the INPUT.
+                    '''
                     targetType = configRow.targetType
                     if targetType == SETPOINT:
                         targetKey = configRow.targetNameIdOrValue
@@ -138,7 +140,8 @@ def activate(scopeContext, stepProperties, state):
                     
                     if string.upper(targetRecipeDataType) == "OUTPUT":
                         download = s88GetFromId(targetRecipeDataId, targetRecipeDataType, DOWNLOAD, database)
-                        logger.tracef("The download flag is: %s", str(download)) 
+                        downloadMode =  configRow.download
+                        logger.tracef("The download flag is: %s and the PV monitor download mode is: %s", str(download), downloadMode) 
                         if not(download):
                             logger.trace("---skipping this row because it is an output that is not slated to be downloaded---")
                             configRow.enabled = False  # Override the enabled flag in a transient way
@@ -379,7 +382,7 @@ def activate(scopeContext, stepProperties, state):
                         tolerance=configRow.tolerance
                         limitType=configRow.limits
                         
-                        # check dead time - assume that immediate writes coincide with starting the timer.      
+                        # check dead time - assume that immediate monitors coincide with starting the timer.      
                         if configRow.download == IMMEDIATE:
                             logger.tracef("  (%s) Using the timer elapsed minutes (%s) to check if the dead time (%s) has been exceeded.", stepName, str(elapsedMinutes), str(configRow.deadTime) )
                             deadTimeExceeded = elapsedMinutes > configRow.deadTime

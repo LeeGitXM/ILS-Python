@@ -432,6 +432,24 @@ def getWithPath(properties, key):
     Get a value using a potentially compound key
     '''
 
+def abortHandler(chartScope, msg):
+    '''
+    This API can be used in the OnAbort handler of a chart.
+    This will cancel the charts from the bottom up of all charts running under the unit procedure.
+    Note: This will cause the CANCEL handlers to be called, not the ABORT handlers.
+    This should only be called from an SFC becauce I hope to be able to figure out how to get the stack trace and include it in the
+    client notification. 
+    '''
+    stepProperties = None
+    notifyGatewayError(chartScope, stepProperties, msg, logger)
+    
+    if logger <> None:
+        logger.error("Canceling the chart due to an error.")
+    else:
+        print "Canceling the chart due to an error."
+    cancelChart(chartScope)
+    
+
 def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
     '''
     Report an unexpected error so that it is visible to the operator--
@@ -449,7 +467,10 @@ def notifyGatewayError(chartScope, stepProperties, msg, logger=None):
     '''  Report an unexpected error so that it is visible to the operator.  '''
     fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
     chartPath = chartScope.get("chartPath", "")
-    stepName = getStepProperty(stepProperties, NAME)
+    if stepProperties == None:
+        stepName = "Unknown"
+    else:
+        stepName = getStepProperty(stepProperties, NAME)
     payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
     payload = dict()
     payload[MESSAGE] = payloadMsg

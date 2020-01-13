@@ -343,6 +343,9 @@ def resetInterface(serverName):
 
 
 def notifyOC(serverName, retryCounter, post):
+    '''
+    This is called from an alarm pipeline, which runs in global scope.
+    '''
     log.infof("In %s.notifyOC()", __name__)
 
     print "OPC Interface: ", serverName
@@ -361,4 +364,3 @@ def notifyOC(serverName, retryCounter, post):
     from ils.common.ocAlert import sendAlert
     sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel,  db=db)
 
-        

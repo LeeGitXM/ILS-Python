@@ -483,8 +483,9 @@ def timeStringToSeconds(timeString):
 '''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).
+I used to have the rovider and history provider names hard coded here, which might be OK since this is a test, but it showed up in searches, so now pass it in!
 '''
-def test():
+def test(provider, historyProvider):
     log = system.util.getLogger("Test")
     tagPaths=[]
 #    tagPaths.append("SFC IO/Rate Change/VRF9101Z/value")  #POLY-RATE
@@ -496,10 +497,10 @@ def test():
     tagPaths.append("SFC IO/Cold Stick General/VRT700S-3/value") #OUTLET-TEMP-PV
     tagPaths.append("SFC IO/Cold Stick General/VCF262R-2/value") #AL-TO-VA
 
-    badValue, ds, badValueTxt = queryHistory(tagPaths, "XOMhistory", "XOM", 30, "Average", log)
+    badValue, ds, badValueTxt = queryHistory(tagPaths, historyProvider, provider, 30, "Average", log)
     print "Reading historic average, isBad: %s, bad text: %s" % (str(badValue), badValueTxt)
     
-    badValue, qvs = readInstantaneousValues(tagPaths, "XOM", log)
+    badValue, qvs = readInstantaneousValues(tagPaths, provider, log)
     print "Reading current values, isBad = ", badValue
 
 def mathTest():

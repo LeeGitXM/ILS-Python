@@ -99,7 +99,7 @@ def send(requestType, project, db, clientSessionId=""):
 This is a generic way to open a window on a client from gateway scope or from one client to another, although that is not common. 
 Normally we specify the console or the post, but not both.
 '''
-def openWindow(window, payload={}, position="center", scale=1.0, post="", console="", project="XOM"):
+def openWindow(window, payload={}, position="center", scale=1.0, post="", console="", project=""):
     messageHandler="openWindow"
     messagePayload = {"console":console, "post":post, "window":window, "windowPayload":payload, "position": position, "scale":scale}
     system.util.sendMessage(project, messageHandler, messagePayload, scope="C")
