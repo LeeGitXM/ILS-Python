@@ -335,8 +335,6 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
                 elif recipeDataType == 'Array':
                     valueType = record["ValueType"]
                     rd["valueType"] = valueType
-                    
-                    # txt = baseTxt + ', "valueType"="%s", ' % (valueType)
                     rd["indexKey"] = record["KeyName"]
                     
                     '''
@@ -368,7 +366,7 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
         
                 elif recipeDataType == "Matrix":
                     valueType = record["ValueType"]
-                    # txt = baseTxt + ', "valueType"="%s", ' % (valueType)
+                    rd["valueType"] = valueType
                     rd["rows"] = record["Rows"]
                     rd["columns"] = record["Columns"]
                     rd["rowIndexKey"] = record["RowIndexKeyName"]
@@ -396,52 +394,35 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
                             
                     rd["vals"] = vals
     
-                elif recipeDataType == "Output":
+                elif recipeDataType in ["Output", "Output Ramp"]:
                     valueType = record["ValueType"]
-                    # txt = baseTxt + ', "valueType"="%s", ' % (valueType)
-                    
-                    txt += ' "tag"="%s", ' % (str(record['Tag'])) 
-                    txt += ' "outputType"="%s", ' % (str(record['OutputType'])) 
-                    txt += ' "download"="%s", ' % (str(record['Download'])) 
-                    txt += ' "timing"="%s", ' % (str(record['Timing'])) 
-                    txt += ' "maxTiming"="%s", ' % (str(record['MaxTiming'])) 
-                    txt += ' "writeConfirm"="%s", ' % (str(record['WriteConfirm']))
+                    rd["valueType"] = valueType
+                    rd["tag"] =record['Tag'] 
+                    rd["outputType"] = record['OutputType'] 
+                    rd["download"] = record['Download'] 
+                    rd["timing"] = record['Timing'] 
+                    rd["maxTiming"] = record['MaxTiming'] 
+                    rd["writeConfirm"] = record['WriteConfirm']
                     
                     if valueType == "Float":
-                        txt += ' "value"="%s" ' % (str(record['OutputFloatValue']))
+                        rd["outputValue"] = record['OutputFloatValue']
+                        rd["targetValue"] = record['TargetFloatValue']
                     elif valueType == "Integer":
-                        txt += ' "value"="%s" ' % (str(record['OutputIntegerValue']))
+                        rd["outputValue"] = record['OutputIntegerValue']
+                        rd["targetValue"] = record['TargetIntegerValue']
                     elif valueType == "String":
-                        txt += ' "value"="%s" ' % (escapeJSON(str(record['OutputStringValue'])))
+                        rd["outputValue"] = escapeJSON(str(record['OutputStringValue']))
+                        rd["targetValue"] = escapeJSON(str(record['TargetStringValue']))
                     elif valueType == "Boolean":
-                        txt += ' "value"="%s" ' % (str(record['OutputBooleanValue']))
+                        rd["outputValue"] = str(record['OutputBooleanValue'])
+                        rd["targetValue"] = str(record['TargetBooleanValue'])
                     else:
                         log.errorf("****** Unknown output value data type: %s", valueType)
-                        txt = ""
                         
-                elif recipeDataType == "Output Ramp":
-                    valueType = record["ValueType"]
-                    # txt = baseTxt + ', "valueType"="%s", ' % (valueType)
-                    txt += ' "tag"="%s", ' % (str(record['Tag'])) 
-                    txt += ' "outputType"="%s", ' % (str(record['OutputType'])) 
-                    txt += ' "download"="%s", ' % (str(record['Download'])) 
-                    txt += ' "timing"="%s", ' % (str(record['Timing'])) 
-                    txt += ' "maxTiming"="%s", ' % (str(record['MaxTiming'])) 
-                    txt += ' "writeConfirm"="%s", ' % (str(record['WriteConfirm']))
-                    txt += ' "rampTimeMinutes"="%s", ' % (str(record['RampTimeMinutes']))
-                    txt += ' "updateFrequencySeconds"="%s", ' % (str(record['UpdateFrequencySeconds']))
-                    
-                    if valueType == "Float":
-                        txt += ' "value"="%s" ' % (str(record['OutputFloatValue']))
-                    elif valueType == "Integer":
-                        txt += ' "value"="%s" ' % (str(record['OutputIntegerValue']))
-                    elif valueType == "String":
-                        txt += ' "value"="%s" ' % (escapeJSON(str(record['OutputStringValue'])))
-                    elif valueType == "Boolean":
-                        txt += ' "value"="%s" ' % (str(record['OutputBooleanValue']))
-                    else:
-                        log.errorf("****** Unknown output ramp value data type: %s", valueType)
-                        txt = ""
+                    if recipeDataType == "Output Ramp":
+                        rd["rampTimeMinutes"] = record['RampTimeMinutes']
+                        rd["updateFrequencySeconds"] = record['UpdateFrequencySeconds']
+                        
         
                 elif recipeDataType == "Recipe":
                     # txt = baseTxt + ' ,"presentationOrder"="%s", ' % (str(record['PresentationOrder']))
@@ -459,7 +440,6 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
                     '''
                     All of the other properties for a Timer are transient and get set at runtime.
                     '''
-                    # txt = baseTxt
         
                 else:
                     print "***************************************************************"

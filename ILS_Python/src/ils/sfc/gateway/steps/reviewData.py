@@ -24,8 +24,6 @@ def activate(scopeContext, stepProperties, state):
     messageHandler = "sfcOpenWindow"
     responseKey = getStepProperty(stepProperties, BUTTON_KEY)
     responseRecipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
-    
-    print "The response location and key are: %s - %s" % (responseRecipeLocation, responseKey)
 
     if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
@@ -126,11 +124,12 @@ def activate(scopeContext, stepProperties, state):
                 except Exception, e:
                     try:
                         cause = e.getCause()
-                        errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, cause.getMessage())
+                        errMsg = "Error calling custom activation callback for a reviewData task %s: %s" % (activationCallback, cause.getMessage())
                     except:
-                        errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, str(e))
+                        errMsg = "Error calling custom activation callback for a reviewData task %s: %s" % (activationCallback, str(e))
 
-                    logger.errorf(errMsg)
+                    handleUnexpectedGatewayError(chartScope, stepProperties, errMsg, logger)
+                    workDone = True
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             time.sleep(0.1)

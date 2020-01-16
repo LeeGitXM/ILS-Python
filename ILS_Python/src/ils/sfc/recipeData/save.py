@@ -17,6 +17,9 @@ log=system.util.getLogger("com.ils.sfc.recipeData.save")
 
 
 def storeToDatabase(chartPath, chartXML):
+    '''
+    I believe this gets called once for each chart.
+    '''
     log.infof("***************  PYTHON  *******************")
     log.infof("In %s.storeToDatabase()", __name__)
     
@@ -24,8 +27,9 @@ def storeToDatabase(chartPath, chartXML):
     tx = system.db.beginTransaction(database=db, timeout=86400000)    # timeout is one day
     
     try:
-        log.tracef("The incoming chart XML is: %s", chartXML)
+        log.tracef("The incoming chart XML for %s is: %s", chartPath, chartXML)
         chartId = fetchChartIdFromChartPath(chartPath, tx)
+        log.tracef("...the chart id is: %d", chartId)
         root = ET.fromstring(chartXML)
         steps = parseXML(root)
 
@@ -133,8 +137,14 @@ def processRecipeData(chartId, step, db, tx):
                 simpleValue(stepId, recipeDataFolderId, recipeData, db, tx)
             elif string.upper(recipeDataType) == "INPUT":
                 inputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+            elif string.upper(recipeDataType) == "OUTPUT":
+                outputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+            elif string.upper(recipeDataType) == "OUTPUT RAMP":
+                outputRampRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
             elif string.upper(recipeDataType) == "ARRAY":
                 arrayRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+            elif string.upper(recipeDataType) == "MATRIX":
+                matrixRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
             else:
                 log.errorf("Unsupported recipe data type: >>>> %s <<<<", recipeDataType)
             
@@ -167,7 +177,9 @@ def inputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
     label = recipeData.get("label","")
     units = recipeData.get("units","")
     tag = recipeData.get("tag", "")
-    recipeDataTypeId=fetchRecipeDataTypeId("Input", db)
+    
+    recipeDataType = recipeData.get("recipeDataType", None)
+    recipeDataTypeId=fetchRecipeDataTypeId(recipeDataType, db)
     
     recipeDataId = insertRecipeData(stepId, recipeDataFolderId, key, recipeDataTypeId, description, label, units, tx)
     
@@ -182,6 +194,81 @@ def inputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
     system.db.runUpdateQuery(SQL, tx=tx)
 
     log.tracef("   ...done inserting an input!")
+    
+def outputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
+    key = recipeData.get("recipeDataKey","")
+    log.tracef("  Saving an OUTPUT with key: %s", key)
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    tag = recipeData.get("tag", "")
+    download = recipeData.get("download", 0)
+    timing = recipeData.get("timing", 0.0)
+    maxTiming = recipeData.get("maxTiming", 0.0)
+    outputValue = recipeData.get("outputValue", None)
+    writeConfirm = recipeData.get("writeConfirm", None)
+    
+    recipeDataType = recipeData.get("recipeDataType", None)
+    recipeDataTypeId=fetchRecipeDataTypeId(recipeDataType, db)
+    
+    recipeDataId = insertRecipeData(stepId, recipeDataFolderId, key, recipeDataTypeId, description, label, units, tx)
+    
+    valueType = recipeData.get("valueType","String")
+    valueTypeId = fetchValueTypeId(valueType, db)
+    
+    outputType = recipeData.get("outputType","Setpoint")
+    outputTypeId = fetchOutputTypeId(outputType, db)
+    
+    defaultValue = getDefaultValue(valueType)
+    outputValueId = insertRecipeValue(key, recipeDataId, outputValue, valueType, tx)
+    pvValueId = insertRecipeValue(key, recipeDataId, defaultValue, valueType, tx)
+    targetValueId = insertRecipeValue(key, recipeDataId, defaultValue, valueType, tx)
+    
+    SQL = "insert into SfcRecipeDataOutput (RecipeDataId, ValueTypeId, OutputTypeId, Tag, Download, Timing, MaxTiming, OutputValueId, PVValueId, TargetValueId, WriteConfirm) "\
+        "values (%d, %d, %d, '%s', %d, %f, %f, %d, %d, %d, %d)" % \
+        (recipeDataId, valueTypeId, outputTypeId, tag, download, timing, maxTiming, outputValueId, pvValueId, targetValueId, writeConfirm)
+
+    print "SQL: ", SQL
+    system.db.runUpdateQuery(SQL, tx=tx)
+
+    log.tracef("   ...done inserting an output!")
+    
+    return recipeDataId
+    
+def outputRampRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
+    '''
+    An output ramp has everything that an output has plus two additional fields in SfcRecipeDataOutputRamp
+    '''
+    recipeDataId = outputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+    
+    rampTimeMinutes = recipeData.get("rampTimeMinutes", 0.0)
+    updateFrequencySeconds = recipeData.get("updateFrequencySeconds", 0.0)
+    
+    SQL = "insert into SfcRecipeDataOutputRamp (RecipeDataId, RampTimeMinutes, UpdateFrequencySeconds) "\
+        "values (%d, %f, %f)" %  (recipeDataId, rampTimeMinutes, updateFrequencySeconds)
+
+    print "SQL: ", SQL
+    system.db.runUpdateQuery(SQL, tx=tx)
+
+    log.tracef("   ...done inserting an output ramp!")
+    
+def timerRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
+    key = recipeData.get("recipeDataKey","")
+    log.tracef("  Saving an TIMER with key: %s", key)
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+
+    recipeDataType = recipeData.get("recipeDataType", None)
+    recipeDataTypeId=fetchRecipeDataTypeId(recipeDataType, db)
+    
+    recipeDataId = insertRecipeData(stepId, recipeDataFolderId, key, recipeDataTypeId, description, label, units, tx)
+    
+    SQL = "insert into SfcRecipeDataInput (RecipeDataId, ValueTypeId, Tag, PVValueId, TargetValueId) values (%d, %d, '%s', %d, %d)" % (recipeDataId, valueTypeId, tag, pvValueId, targetValueId)
+    system.db.runUpdateQuery(SQL, tx=tx)
+
+    log.tracef("   ...done inserting a timer!")
+    
     
 def arrayRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
     key = recipeData.get("recipeDataKey","")
@@ -217,7 +304,66 @@ def arrayRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
         system.db.runUpdateQuery(SQL, tx=tx)
         log.tracef("      ...inserted value %s with index %d", str(val), idx)
         
-    log.tracef("   ...done inserting an input!")
+    log.tracef("   ...done inserting an array!")
+    
+    
+def matrixRecipeData(stepId, recipeDataFolderId, recipeData, db, tx):
+    key = recipeData.get("recipeDataKey","")
+    log.tracef("  Saving a MATRIX with key: %s", key)
+    description = recipeData.get("description","")
+    label = recipeData.get("label","")
+    units = recipeData.get("units","")
+    rows = recipeData.get("rows", 0)
+    columns = recipeData.get("columns", 0)
+    
+    rowIndexKey = recipeData.get("rowIndexKey","")
+    rowIndexKeyId = fetchIndexKeyId(rowIndexKey, db)
+    
+    columnIndexKey = recipeData.get("columnIndexKey","")
+    columnIndexKeyId = fetchIndexKeyId(columnIndexKey, db)
+
+    recipeDataTypeId=fetchRecipeDataTypeId("Matrix", db)
+    
+    recipeDataId = insertRecipeData(stepId, recipeDataFolderId, key, recipeDataTypeId, description, label, units, tx)
+    
+    valueType = recipeData.get("valueType","Float")
+    valueTypeId = fetchValueTypeId(valueType, db)
+    
+    ''' Insert a record into SfcRecipeDataMatrix '''
+    colTxt = ""
+    valTxt = ""
+    if rowIndexKeyId <> None:
+        colTxt = ", RowIndexKeyId"
+        valTxt = ", %d" % (rowIndexKeyId)
+                         
+    if columnIndexKeyId <> None:
+        colTxt = colTxt + ", ColumnIndexKeyId"
+        valTxt = valTxt + ", %d" % (columnIndexKeyId)
+
+    SQL = "insert into SfcRecipeDataMatrix(RecipeDataId, ValueTypeId, rows, columns %s) values (%d, %d, %d, %d %s)" % (colTxt, recipeDataId, valueTypeId, rows, columns, valTxt)
+    log.tracef("SQL: %s", SQL)
+    system.db.runUpdateQuery(SQL, tx=tx)
+    
+    ''' Insert the values '''
+    vals = recipeData.get("vals",[])
+    idx = 0
+    rowIdx = 0
+    columnIdx = 0
+    for val in vals:
+        valueId = insertRecipeValue(key, recipeDataId, val, valueType, tx)
+        SQL = "insert into SfcRecipeDataMatrixElement (RecipeDataId, RowIndex, ColumnIndex, ValueId) values (%d, %d, %d, %d)" % (recipeDataId, rowIdx, columnIdx, valueId)
+        
+        columnIdx = columnIdx + 1
+        
+        if columnIdx >= columns:
+            columnIdx = 0
+            rowIdx = rowIdx + 1
+
+        print "Inserted Matrix value: ", SQL
+        system.db.runUpdateQuery(SQL, tx=tx)
+        log.tracef("      ...inserted value %s with index %d", str(val), idx)
+        
+    log.tracef("   ...done inserting a matrix!")
 
 
 def insertRecipeData(stepId, recipeDataFolderId, key, recipeDataTypeId, description, label, units, tx):
