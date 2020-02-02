@@ -30,7 +30,7 @@ This is called from the Tools menu and the designer hook
 '''
 def internalize(chartPath, chartXML):
     log.infof("***************  PYTHON  *******************")
-    log.infof("In %s.internalize() with %s", __name__, chartPath)
+    log.infof("In %s.internalize() for chart: %s", __name__, chartPath)
     log.tracef("The initial chart XML is: %s", chartXML)
     db = getDatabaseClient()
     chartInfo, chartPaths, folderInfo = getChartInfo(db)
@@ -214,7 +214,7 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
         This makes it easy to put back together at the end.  We are going to insert recipe data into the steps part, but the pre and 
         post parts remain unchanged.
         '''
-        print "------------------ SPLITTING XML ---------------------"
+        log.tracef("------------------ SPLITTING XML ---------------------")
         steps =  []
         start = chartXML.find("<step")
         end = chartXML.rfind("</step>") + 7
@@ -226,20 +226,20 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
             stepStart = middle.find("<step")
             stepEnd = middle.find("</step>") + 7
             stepTxt = middle[stepStart:stepEnd]
-            print ""
-            print "Step: ", stepTxt
-            print ""
+            log.tracef("")
+            log.tracef("Step: %s", stepTxt)
+            log.tracef("")
             associatedDataStart = stepTxt.find("<associated-data>")
             associatedDataEnd = stepTxt.rfind("</associated-data>") + 18
             
             if associatedDataStart > 0 and associatedDataEnd > 0:
                 stepTxt = stepTxt[:associatedDataStart] + stepTxt[associatedDataEnd:]
-                print "Step AFTER removing old associated data: ", stepTxt
+                log.tracef("Step AFTER removing old associated data: %s", stepTxt)
     
             steps.append(stepTxt)
             middle = middle[stepEnd:]
         
-        print "----------------------------------------------------------"
+        log.tracef("----------------------------------------------------------")
         return preamble, postamble, steps
     #----------------------------------------------------
     
@@ -279,33 +279,30 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
             log.tracef("           Inserting the recipe data...")
             
             recipeDataType = record["RecipeDataType"]
-            if recipeDataType == "Folder":
-                print "**************************************"
-                print "**  NEED TO PROCESS A FOLDER  **"
-                print "**************************************"
-                
+            if recipeDataType == "Folder":                
                 recipeDataKey = record["RecipeDataKey"]
                 log.infof("      ...processing FOLDER recipe data %s...", recipeDataKey)
                 
-                folderId = record["RecipeDataFolderId"]
-                path = folderInfo.get(folderId).get("path")
+                ''' For a folder, I want the path of the parent '''
+                folderId = record["ParentRecipeDataFolderId"]
+                log.tracef("Parent Recipe Data Folder Id: %s", str(folderId))
                 
-                txt = ' "recipeDataKey"="%s", ' % (recipeDataKey)
-                txt += ' "recipeDataType"="%s", ' % (recipeDataType) 
-                txt += ' "label"="%s", ' % (escapeJSON(record["Label"]))
-                txt += ' "description"="%s", ' % (escapeJSON(record["Description"]))
-                txt += ' "folderId"="%s", ' % (str(record["RecipeDataFolderId"]))
-                txt += ' "parentFolderId"="%s", ' % (str(record["ParentRecipeDataFolderId"]))
-                txt += ' "path"="%s" ' % (path)
- 
-                ''' TODO - I might need the parent folder key when it comes time to import '''
+                if folderId in [None, "null", "None"]:
+                    path = None
+                else:
+                    path = folderInfo.get(folderId).get("path")
+                    
+                rd = {}
+                rd["recipeDataKey"] = recipeDataKey
+                rd["recipeDataType"] = recipeDataType
+                rd["label"] = escapeJSON(record["Label"])
+                rd["description"] = escapeJSON(record["Description"])
+                rd["path"] = path
+
             else:
                 recipeDataId = record["RecipeDataId"]
                 recipeDataKey = record["RecipeDataKey"]
-                log.infof("      ...processing recipe data %s - %s - %d (%s - %s)", recipeDataKey, recipeDataType, recipeDataId, chartPath, stepName)
-                
-                folderId = record["FolderId"]
-                folderKey = record["FolderKey"]
+                log.infof("      ...processing a <%s> recipe data with key: %s - %d (%s - %s)", recipeDataType, recipeDataKey, recipeDataId, chartPath, stepName)
                 
                 rd = {}
                 rd["recipeDataKey"] = recipeDataKey
@@ -313,8 +310,14 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
                 rd["label"] = escapeJSON(record["Label"])
                 rd["description"] = escapeJSON(record["Description"])
                 rd["units"] = record["Units"]
-                rd["parent"] = folderKey
-                rd["folderId"] = str(folderId)
+                
+                folderKey = record["FolderKey"]
+                if folderKey in [None, "null"]:
+                    rd["path"] = None
+                else:
+                    folderId = record["FolderId"]
+                    path = folderInfo.get(folderId).get("path")
+                    rd["path"] = path
                 
                 if recipeDataType == "Simple Value":
                     valueType = record["ValueType"]
@@ -422,35 +425,37 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
                     if recipeDataType == "Output Ramp":
                         rd["rampTimeMinutes"] = record['RampTimeMinutes']
                         rd["updateFrequencySeconds"] = record['UpdateFrequencySeconds']
-                        
         
                 elif recipeDataType == "Recipe":
-                    # txt = baseTxt + ' ,"presentationOrder"="%s", ' % (str(record['PresentationOrder']))
-                    txt += ' "storeTag"="%s", ' % (str(record['StoreTag']))
-                    txt += ' "compareTag"="%s", ' % (str(record['CompareTag'])) 
-                    txt += ' "ModeAttribute"="%s", ' % (str(record['ModeAttribute']))
-                    txt += ' "modeValue"="%s", ' % (str(record['ModeValue']))
-                    txt += ' "changeLevel"="%s", ' % (str(record['ChangeLevel']))
-                    txt += ' "recommendedValue"="%s", ' % (str(record['RecommendedValue'])) 
-                    txt += ' "lowLimit"="%s", ' % (str(record['LowLimit']))
-                    txt += ' "highLimit"="%s" ' % (str(record['HighLimit']))
-            
+                    rd["presentationOrder"] =record['PresentationOrder'] 
+                    rd["storeTag"] =record['StoreTag'] 
+                    rd["compareTag"] = record['CompareTag'] 
+                    rd["modeAttribute"] = record['ModeAttribute'] 
+                    rd["modeValue"] = record['ModeValue'] 
+                    rd["changeLevel"] = record['ChangeLevel'] 
+                    rd["recommendedValue"] = record['RecommendedValue']
+                    rd["lowLimit"] =record['LowLimit'] 
+                    rd["highLimit"] =record['HighLimit'] 
+                    
+                elif recipeDataType == "SQC":
+                    rd["lowLimit"] =record['LowLimit'] 
+                    rd["targetValue"] =record['TargetValue'] 
+                    rd["highLimit"] = record['HighLimit'] 
             
                 elif recipeDataType == "Timer":
                     '''
                     All of the other properties for a Timer are transient and get set at runtime.
                     '''
-        
                 else:
                     print "***************************************************************"
                     print "*****  ERROR: Unexpected recipe data type: ", recipeDataType
                     print "***************************************************************"
     
-            print "Appending the structure to the list..."
+            log.tracef("Appending the structure to the list...")
             recipe.append(rd)
     
         if len(recipe) > 0:
-            print "There is recipe, inserting it into the XML..."
+            log.tracef("There is recipe data, inserting it into the XML...")
             recipeTxtJson = system.util.jsonEncode(recipe)
             recipeTxt ='<associated-data> {"recipe": ' + recipeTxtJson + "} </associated-data> "
         

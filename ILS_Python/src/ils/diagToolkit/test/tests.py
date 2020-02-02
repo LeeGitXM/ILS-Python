@@ -287,15 +287,30 @@ def test11c():
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
+
+def test12aa():
+    '''
+    This uses the same calculation method as the rest of the 
+    '''
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Implement")
+    applicationName='TESTAPP1'
+    appId=insertApp1()
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, mostPositiveIncrement=1000.0, mostNegativeIncrement=-1000, setpointHighLimit=1000, setpointLowLimit=-1000)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_1a', insertExtraRecDef=True)
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    return applicationName
     
 def test12a():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Implement")
     applicationName='TESTAPP1'
     appId=insertApp1()
-    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, mostPositiveIncrement=10.0)
-    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, mostPositiveIncrement=25.0)
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
-    insertApp1Families(appId,T1Id,T2Id,T3Id)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_1a', insertExtraRecDef=True)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
@@ -304,10 +319,10 @@ def test12b():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Advise")
     applicationName='TESTAPP1'
     appId=insertApp1()
-    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, mostPositiveIncrement=10.0)
-    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, mostPositiveIncrement=25.0)
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
-    insertApp1Families(appId,T1Id,T2Id,T3Id)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_1a', insertExtraRecDef=True)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
@@ -316,10 +331,10 @@ def test12c():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='TESTAPP1'
     appId=insertApp1()
-    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, mostPositiveIncrement=10.0)
-    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, mostPositiveIncrement=25.0)
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
-    insertApp1Families(appId,T1Id,T2Id,T3Id)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_1a', insertExtraRecDef=True)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
@@ -331,7 +346,7 @@ def test12d():
     T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, mostPositiveIncrement=5.0)
     T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5)
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3)
-    insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_3a')
+    insertApp1Families(appId,T1Id,T2Id,T3Id,FD123calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_3a', insertExtraRecDef=True)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
@@ -343,9 +358,21 @@ def test12e():
     T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, mostPositiveIncrement=2.0, mostNegativeIncrement=-2.0)
     T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, mostPositiveIncrement=2.0, mostNegativeIncrement=-2.0)
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, mostPositiveIncrement=2.0, mostNegativeIncrement=-2.0)
-    insertApp1Families(appId,T1Id,T2Id,T3Id)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_1a', insertExtraRecDef=True)
     # Insert a diagnosis Entry - This simulates the FD becoming True
-    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_2', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    return applicationName
+
+def test12f():
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='TESTAPP1'
+    appId=insertApp1()
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, mostPositiveIncrement=2.0, mostNegativeIncrement=-2.0)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, mostPositiveIncrement=2.0, mostNegativeIncrement=-2.0)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, mostPositiveIncrement=2.0, mostNegativeIncrement=-2.0)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_1a', insertExtraRecDef=True)
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
     return applicationName
 
 def test13a():

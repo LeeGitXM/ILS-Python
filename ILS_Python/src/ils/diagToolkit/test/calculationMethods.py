@@ -103,6 +103,15 @@ def fd1_2_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     recommendations.append({"QuantOutput": "TESTQ2", "Value": 53.4})
     return True, explanation, recommendations
 
+def fd1_2_1a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd1_2_1a"
+    explanation = "The TESTFD1_2_1 will use data of gain = 1.2, 1.5, and 0.9, SP = 23.4."
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 50.0})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": -5.3})
+    return True, explanation, recommendations
+
 def fd1_2_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In fd1_2_1b"
     explanation = "The TESTFD1_2_1 will use data of gain = 1.2, 1.5, and 0.9, SP = 23.4."

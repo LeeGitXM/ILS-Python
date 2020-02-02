@@ -1084,6 +1084,7 @@ def partialResetDiagram(finalDiagnosisIds, database):
 def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, newValue):
     # I'm not sure if this will work out, but it would be nice to validate the manual entry and provide some 
     # feedback back to the operator
+    log.infof("In %s.manualEdit()", __name__)
     valid=True
     txt=""
     
@@ -1092,7 +1093,7 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     
     SQL = "update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %f "\
         "where QuantOutputId = %i" % (newValue, quantOutputId)
-    print SQL
+    log.tracef("SQL: %s", SQL)
     system.db.runUpdateQuery(SQL, database)
     
     # Now check the bounds - fetch everything about the quant output first
@@ -1106,12 +1107,12 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     from ils.diagToolkit.common import convertOutputRecordToDictionary
     quantOutput=convertOutputRecordToDictionary(record)
     quantOutputName=quantOutput.get("QuantOutput","")
-    print "Before*: ", quantOutput
+    log.tracef("Before: %s", str(quantOutput))
     
     from ils.diagToolkit.finalDiagnosis import checkBounds
     quantOutput, madeSignificantRecommendation = checkBounds(applicationName, quantOutput, quantOutputName, database, tagProvider)
     
-    print "After: ", quantOutput
+    log.tracef("After: %s", str(quantOutput))
     
     from ils.diagToolkit.finalDiagnosis import updateQuantOutput
     updateQuantOutput(quantOutput, database, tagProvider)
