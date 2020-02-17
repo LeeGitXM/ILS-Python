@@ -150,6 +150,7 @@ def createTags(tagProvider, log):
     data.append([path, "writeEnabled", "Boolean", "True"])
     data.append([path, "printingAllowed", "Boolean", "True"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
+    data.append([path, "ocAlertCallback", "String", ""])
     data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
     data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
     data.append([path, "opcPermissiveLatencySeconds", "Float4", "4.0"])
