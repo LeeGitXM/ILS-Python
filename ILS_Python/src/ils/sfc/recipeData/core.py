@@ -877,7 +877,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
                     valueColumnName = valueType + "Value"
                     if valueType == "Boolean":
                         el = toBit(el)
-                    SQL = "insert into SfcRecipeDataValue (RecipeDataId, %s) values ('%s')" % (recipeDataId, valueColumnName, el)
+                    SQL = "insert into SfcRecipeDataValue (RecipeDataId, %s) values (%d, %s)" % (valueColumnName, recipeDataId, str(el))
                 logger.tracef(SQL)
                 valueId=system.db.runUpdateQuery(SQL, getKey=True, database=db)
                 

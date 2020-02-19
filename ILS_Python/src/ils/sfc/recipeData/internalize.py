@@ -207,40 +207,7 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
     manipulation to add things in. 
     '''
     
-    #---------------------------------------------------
-    def splitChartXML(chartXML):
-        '''
-        Split the XML for a chart into 3 parts: the preamble, the postamble, and the middle - which contains the steps.
-        This makes it easy to put back together at the end.  We are going to insert recipe data into the steps part, but the pre and 
-        post parts remain unchanged.
-        '''
-        log.tracef("------------------ SPLITTING XML ---------------------")
-        steps =  []
-        start = chartXML.find("<step")
-        end = chartXML.rfind("</step>") + 7
-        preamble = chartXML[:start]
-        middle = chartXML[start:end]
-        postamble = chartXML[end:]
 
-        while len(middle) > 0:
-            stepStart = middle.find("<step")
-            stepEnd = middle.find("</step>") + 7
-            stepTxt = middle[stepStart:stepEnd]
-            log.tracef("")
-            log.tracef("Step: %s", stepTxt)
-            log.tracef("")
-            associatedDataStart = stepTxt.find("<associated-data>")
-            associatedDataEnd = stepTxt.rfind("</associated-data>") + 18
-            
-            if associatedDataStart > 0 and associatedDataEnd > 0:
-                stepTxt = stepTxt[:associatedDataStart] + stepTxt[associatedDataEnd:]
-                log.tracef("Step AFTER removing old associated data: %s", stepTxt)
-    
-            steps.append(stepTxt)
-            middle = middle[stepEnd:]
-        
-        log.tracef("----------------------------------------------------------")
-        return preamble, postamble, steps
     #----------------------------------------------------
     
     log.infof("=====================================")
@@ -258,7 +225,7 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
     stepInfo = chartDict['stepInfo']
     log.tracef("The step info is: %s", str(stepInfo))
     
-    preamble, postamble, steps = splitChartXML(chartXML)
+    preamble, postamble, steps = splitChartXML(chartXML, log)
 
     chartXML = preamble
     for step in steps:
@@ -724,8 +691,6 @@ def internalizeRecipeDataForChartText(chartPath, chartXML, chartPaths, chartInfo
                 recipeTxt = "{" + txt + "}"
             else:
                 recipeTxt = recipeTxt + ",{" + txt + "}"
-                
-                
     
         if recipeTxt <> "":
             recipeTxtJson = system.util.jsonEncode(recipeTxt)
@@ -740,3 +705,39 @@ def internalizeRecipeDataForChartText(chartPath, chartXML, chartPaths, chartInfo
     
     log.tracef("Chart After: %s", str(chartXML))
     return chartXML
+
+
+#---------------------------------------------------
+def splitChartXML(chartXML, log):
+    '''
+    Split the XML for a chart into 3 parts: the preamble, the postamble, and the middle - which contains the steps.
+    This makes it easy to put back together at the end.  We are going to insert recipe data into the steps part, but the pre and 
+    post parts remain unchanged.
+    '''
+    log.tracef("------------------ SPLITTING XML ---------------------")
+    steps =  []
+    start = chartXML.find("<step")
+    end = chartXML.rfind("</step>") + 7
+    preamble = chartXML[:start]
+    middle = chartXML[start:end]
+    postamble = chartXML[end:]
+
+    while len(middle) > 0:
+        stepStart = middle.find("<step")
+        stepEnd = middle.find("</step>") + 7
+        stepTxt = middle[stepStart:stepEnd]
+        log.tracef("")
+        log.tracef("Step: %s", stepTxt)
+        log.tracef("")
+        associatedDataStart = stepTxt.find("<associated-data>")
+        associatedDataEnd = stepTxt.rfind("</associated-data>") + 18
+        
+        if associatedDataStart > 0 and associatedDataEnd > 0:
+            stepTxt = stepTxt[:associatedDataStart] + stepTxt[associatedDataEnd:]
+            log.tracef("Step AFTER removing old associated data: %s", stepTxt)
+
+        steps.append(stepTxt)
+        middle = middle[stepEnd:]
+    
+    log.tracef("----------------------------------------------------------")
+    return preamble, postamble, steps

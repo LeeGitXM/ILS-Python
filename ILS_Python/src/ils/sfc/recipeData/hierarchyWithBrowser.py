@@ -20,7 +20,7 @@ treeMode = "fullPath"
 LIBRARY_ICON = "Builtin/icons/16/copy.png"
 
 '''
-Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.
+Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.   
 '''
 def internalFrameOpened(rootContainer, db):
     log.infof("In %s.internalFrameOpened()", __name__) 
@@ -99,7 +99,7 @@ def expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS):
     fullPath = chartDict.get(int(token),"Unknown")
     
     refs = countChartReferences(int(token), hierarchyPDS, hierarchyHandlerPDS)
-    print " **** %s has %d references ****" % (fullPath, refs)
+    log.tracef(" **** %s has %d references ****", fullPath, refs)
     if refs > 1:
         icon = LIBRARY_ICON
     else:

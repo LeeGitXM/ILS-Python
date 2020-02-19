@@ -18,7 +18,7 @@ log=system.util.getLogger("com.ils.sfc.recipeData.save")
 
 def storeToDatabase(chartPath, chartXML):
     '''
-    I believe this gets called once for each chart.
+    This gets called once for each chart.
     '''
     log.infof("***************  PYTHON  *******************")
     log.infof("In %s.storeToDatabase(), saving recipe data for chart: %s", __name__, chartPath)
@@ -159,11 +159,11 @@ def processRecipeData(chartId, step, db, tx):
             
             recipeDataType = recipeData.get("recipeDataType", None)
             key = recipeData.get("recipeDataKey","")
-            log.infof("      %s: %s", recipeDataType, key)
-            
             path = recipeData.get("path")
+            
+            log.infof("      %s: %s %s", recipeDataType, path, key)
         
-            if path == None:
+            if path in [None, ""]:
                 recipeDataFolderId = None
             else:
                 recipeDataFolderId = folders[path]
