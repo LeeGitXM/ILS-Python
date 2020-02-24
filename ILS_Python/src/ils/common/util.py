@@ -230,6 +230,7 @@ def escapeJSON(txt):
     '''
     In JSON, we need to escape a double quote with a backslash and a double quote
     '''
+    txt = str(txt)
     txt = string.replace(txt, "\"", '\\\"')
     return txt
 

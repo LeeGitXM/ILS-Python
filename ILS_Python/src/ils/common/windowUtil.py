@@ -45,7 +45,7 @@ def clearTree(tree):
 # Open a window instance with additional capability to TILE, STACK, CENTER or position the 
 # window in the standard well-known positions.
 def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):
-    '''Position and size a window within the main window'''
+    '''Position and size a window within the main window''' 
     print "Opening %s with %s..." % (windowPath, str(props))
     window = system.nav.openWindowInstance(windowPath, props)
     
