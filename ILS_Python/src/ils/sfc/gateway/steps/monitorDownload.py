@@ -31,22 +31,22 @@ def activate(scopeContext, stepProperties, state):
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
         database = getDatabaseName(chartScope)
-        logger = getChartLogger(chartScope)
-        logger.tracef("In monitorDownload.activate()...")
+        log = getChartLogger(chartScope)
+        log.tracef("In monitorDownload.activate()...")
     
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
-        logger.tracef("...using timer %s.%s...", timerLocation, timerKey)
+        log.tracef("...using timer %s.%s...", timerLocation, timerKey)
         timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
         
         clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
         if clearTimer:
-            handleTimer(timerRecipeDataId, CLEAR_TIMER, logger, database)
+            handleTimer(timerRecipeDataId, CLEAR_TIMER, log, database)
             
         # This will clear and/or set the timer if the block is configured to do so               
         startTimer = getStepProperty(stepProperties, TIMER_SET)
         if startTimer:
-            handleTimer(timerRecipeDataId, START_TIMER, logger, database)
+            handleTimer(timerRecipeDataId, START_TIMER, log, database)
         
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         
@@ -67,17 +67,17 @@ def activate(scopeContext, stepProperties, state):
         windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
         stepScope[WINDOW_ID] = windowId # This step completes as soon as the GUI is posted do I doubt I need to save this.
 
-        print "Inserted a window with id: ", windowId
+        log.tracef("Inserted a window with id: %s", str(windowId))
         
         SQL = "insert into SfcDownloadGUI (windowId, state, LastUpdated, TimerRecipeDataId) values ('%s', 'created', CURRENT_TIMESTAMP, %s)" % (windowId, str(timerRecipeDataId) )
         system.db.runUpdateQuery(SQL, database)
         
         # Reset the recipe data download and PV monitoring attributes
         for row in monitorDownloadsConfig.rows:
-            logger.tracef("Resetting recipe data with key: %s at %s", row.key, recipeLocation)
+            log.tracef("Resetting recipe data with key: %s at %s", row.key, recipeLocation)
             
             recipeDataId, recipeDataType = s88GetRecipeDataId(chartScope, stepProperties, row.key, recipeLocation)
-            logger.tracef("...type:: %s", recipeDataType)
+            log.tracef("...type:: %s", recipeDataType)
 
             if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:            
                 download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeLocation)
@@ -96,10 +96,10 @@ def activate(scopeContext, stepProperties, state):
                     
                     SQL = "insert into SfcDownloadGUITable (windowId, RecipeDataId, RecipeDataType, labelAttribute) "\
                         "values ('%s', '%s', '%s', '%s')" % (windowId, recipeDataId, recipeDataType, row.labelAttribute)
-                    print SQL
+    
                     system.db.runUpdateQuery(SQL, database)
                 else:
-                    logger.tracef("Skipping output: <%s> because DOWNLOAD is False ", row.key)
+                    log.tracef("Skipping output: <%s> because DOWNLOAD is False ", row.key)
             
             elif string.upper(recipeDataType) == "INPUT":
                 # Initialize properties used by a PV monitoring process
@@ -117,9 +117,9 @@ def activate(scopeContext, stepProperties, state):
         payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: recipeDataStepUUID, IS_SFC_WINDOW: True}
         sendMessageToClient(chartScope, messageHandler, payload)
         
-        logger.tracef("   Monitor Download payload: %s", str(payload))
-        logger.trace("...leaving monitorDownload.activate()")      
+        log.tracef("   Monitor Download payload: %s", str(payload))
+        log.trace("...leaving monitorDownload.activate()")      
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorDownload.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorDownload.py', log)
 
     return True
