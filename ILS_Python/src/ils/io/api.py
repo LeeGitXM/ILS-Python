@@ -83,13 +83,13 @@ def getMonitoredTagPath(recipeDataId, recipeDataType, tagProvider, db):
     log.tracef("The monitored item is a %s", recipeDataType)
 
     if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:
-        log.tracef("The recipe data IS an OUTPUT class (for %s)", tagPath)
         outputType = string.upper(recipeDataRecord["OUTPUTTYPE"])
+        log.tracef("The recipe data IS an OUTPUT class (for %s), the output type is: %s", tagPath, outputType)
         if outputType == "MODE":
             attributePath = "/mode/value"
         elif outputType == "SETPOINT":
             attributePath = "/value"
-        elif outputType == "OUTPUT":
+        elif outputType in ["OUTPUT", "OUTPUT RAMP"]:
             attributePath = "/op/value"
         else:
             attributePath = "/value"

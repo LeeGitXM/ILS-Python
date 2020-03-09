@@ -107,7 +107,6 @@ def activate(scopeContext, stepProperties, state):
                         pvRecipeDataId, pvRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, configRow.pvKey, database)
                     
                     configRow.status = MONITORING
-                    pvKey = configRow.pvKey
                     
                     if configRow.strategy == MONITOR:
                         watchOnly = False
@@ -325,8 +324,6 @@ def activate(scopeContext, stepProperties, state):
                         
                         logger.tracef('(%s) PV Key: %s, Target type: %s, Recipe Data Type: %s, Target: %s, Strategy: %s, Deadtime: %s, Persistence: %s, tolerance: %s', 
                                 stepName, configRow.pvKey, configRow.targetType, targetRecipeDataType, configRow.targetNameIdOrValue, configRow.strategy, str(configRow.deadTime), str(configRow.persistence), str(configRow.tolerance))
-    
-                        pvKey = configRow.pvKey
  
                         # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
                         # download GUI block.  It appears that the PV of a PV monitoring block is always INPUT recipe data.  The target of a PV monitoring  
