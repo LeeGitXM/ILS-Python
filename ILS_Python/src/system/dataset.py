@@ -10,6 +10,9 @@ def addRow():
 def addColumn(dataset):
     return True
 
+def clearDataset(dataset):
+    return dataset
+
 def deleteRow(dataset, row):
     return dataset
 

@@ -23,3 +23,26 @@ def activationCallback(scopeContext, stepProperties):
     print "Database:  ", database
     print "Window Id: ", windowId
     print "--------------------------"
+    
+def activationCallback2(scopeContext, stepProperties):
+    print "In %s.activationCallback2" % (__name__)
+    
+    chartScope = scopeContext.getChartScope()
+    stepScope = scopeContext.getStepScope()
+    
+    # Test that the arguments that passed are usable
+    title = getStepProperty(stepProperties, WINDOW_TITLE) 
+    database = getDatabaseName(chartScope)
+    windowId = stepScope[WINDOW_ID]
+    
+    print "--------------------------"
+    print "Title:     ", title
+    print "Database:  ", database
+    print "Window Id: ", windowId
+    print "--------------------------"
+    
+    x = 3.4
+    y = 0.0
+    z = x / y
+    
+    print "Reached the end!"

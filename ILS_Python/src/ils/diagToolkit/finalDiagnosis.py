@@ -1188,7 +1188,7 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     finalIncrementalValue = feedbackOutputConditioned
     
     # If the recommendation was absolute, then convert it back to absolute
-    if not(incrementalOutput):
+    if not(incrementalOutput) and not(manualOverride):
         log.info("      ...converting an incremental change (%s) back to an absolute recommendation (%s)..." % (str(feedbackOutputConditioned), str(qv.value + feedbackOutputConditioned)))
         feedbackOutputConditioned = qv.value + feedbackOutputConditioned
 
@@ -1346,7 +1346,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     
     if manualOverride:
         # Manual values are always incremental
-        log.info("     ...using the validated manually entered value... ")
+        log.infof("     ...using the validated manually entered value: %s (raw: %s)... ", str(feedbackOutputConditioned), str(feedbackOutputManual))
         finalSetpoint = currentSetpoint + feedbackOutputConditioned
         displayedRecommendation = feedbackOutputConditioned
     else:

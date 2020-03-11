@@ -411,7 +411,8 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     FD123Priority=9.8,
     FD124Priority=4.5,
     FD125Priority=10.2,
-    FD126Priority=1.2
+    FD126Priority=1.2,
+    insertExtraRecDef=False
     ):
     
     family = 'TESTFamily1_1'
@@ -436,6 +437,8 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
         textRecommendation, postProcessingCallback=postProcessingCallback)
     insertRecommendationDefinition(finalDiagnosisId, T1Id)
     insertRecommendationDefinition(finalDiagnosisId, T2Id)
+    if insertExtraRecDef:
+        insertRecommendationDefinition(finalDiagnosisId, T3Id)
 
     finalDiagnosis = 'TESTFD1_2_2'
     finalDiagnosisPriority=FD122Priority
