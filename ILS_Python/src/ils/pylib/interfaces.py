@@ -152,10 +152,10 @@ def listSourcesForSink(common,dpath,blockName):
 	diagid = getDiagram(dpath).getSelf().toString()
 	# blocks is a list of SerializableBlockStateDescriptor
 	blocks = script.listSourcesForSink(diagid,blockName)
-	#print "==================== sourcesForSink ",blockName,"=============="
+	print "==================== sourcesForSink ",blockName,"=============="
 	lst = []
 	for block in blocks:
-		#print block.getName()
+		print block.getName()
 		lst.append(block.getName())
 
 	common['result'] = lst 
