@@ -23,8 +23,11 @@ def internalFrameOpened(event):
     log.infof("In monitorDownloads.internalFrameOpened()")
 
     database = getDatabaseClient()
+    provider = getTagProviderClient()
     windowId = rootContainer.windowId
     rootContainer.startTime = None
+    
+    maxAdjustment = system.tag.read("[%s]Configuration/SFC/sfcMaxDownloadGuiAdjustment" % provider).value
     
     SQL = "select State, TimerRecipeDataId from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -48,9 +51,9 @@ def internalFrameOpened(event):
         print "ERROR: Unable to find information for the Download GUI in the SfcWindow table."
 
     update(rootContainer)
-    setWindowSize(rootContainer, window)
+    setWindowSize(rootContainer, maxAdjustment, window)
 
-def setWindowSize(rootContainer, window):
+def setWindowSize(rootContainer, maxAdjustment, window):
     log.tracef( "Setting the size of the window ...")
     table = rootContainer.getComponent("table")
     ds = table.data
@@ -59,19 +62,23 @@ def setWindowSize(rootContainer, window):
     header = 75
     footer = 45
     rowHeight = 21
-    maxAdjustment = 1.7
     
     windowHeight = window.getHeight()
     windowWidth = window.getWidth()
     requiredHeight = header + footer + (rows * rowHeight)
-    log.tracef("The window Height is: %d, there are %d rows, the required height is: %d", windowHeight, rows, requiredHeight)
+    log.tracef("The window Height is: %d, there are %d rows, the required height is: %d (max size = %f)", windowHeight, rows, requiredHeight, windowHeight * maxAdjustment)
     
     if requiredHeight > windowHeight * maxAdjustment:
-        system.gui.warningBox("The Download monitor window is too small to display all of the outputs!")
-        log.tracef("The download monitor is too small to display all of the rows to be monitored, but the required size is %f, which is too much of an adjustment", requiredHeight)
+        rootContainer.allRowsShowing = False
+        window.setSize(int(windowWidth), int(windowHeight * maxAdjustment))
+        log.tracef("The download monitor is too small to display all of the rows to be monitored, but the required size is %s, which is too much of an adjustment", str(requiredHeight))
     elif requiredHeight > windowHeight:
         log.tracef("Adjusting the window height to fit all rows.")
+        rootContainer.allRowsShowing = True
         window.setSize(int(windowWidth), int(requiredHeight))
+    else:
+        rootContainer.allRowsShowing = True
+        log.tracef("---the window is big enough---")
         
         
 def update(rootContainer):
