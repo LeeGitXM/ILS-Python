@@ -481,6 +481,16 @@ def timeStringToSeconds(timeString):
     
     return secs
 
+def secondsToTimeString(secs):
+    import math
+
+    hours = math.floor(secs / 3600)
+    mins = math.floor((secs - hours * 3600) / 60)
+    secs = secs - (hours * 3600) - (mins * 60)
+    
+    timestring = "%2d:%2d:%2d" % (hours, mins, secs)
+    return timestring
+
 '''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).

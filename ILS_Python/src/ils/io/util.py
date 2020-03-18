@@ -471,6 +471,18 @@ def splitTagPath(tagPath):
 #    print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
     return parentPath, tagName
 
+
+def stripProvider(tagPath):
+    '''
+    Strip the tag provider from the full tagPath.
+    '''
+
+    if tagPath.find(']') >= 0:
+        tagPath=tagPath[string.rfind(tagPath, ']') + 1:]
+
+    return tagPath
+
+
 # Check for the existence of the tag and that the global write enabled flag is set (only for production tags).
 def checkConfig(tagPath):
     log.trace("In util.checkConfig()...")

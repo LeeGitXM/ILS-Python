@@ -12,6 +12,7 @@ from ils.sfc.gateway.api import getIsolationMode
 from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
 from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
 from ils.io.api import getMonitoredTagPath
+from ils.io.util import stripProvider
 
 from ils.sfc.common.util import callMethodWithParams
 from ils.sfc.recipeData.api import s88Get, s88Set, s88GetStep, s88GetFromStep, s88SetFromStep, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88GetFromId, s88SetFromId
@@ -45,6 +46,7 @@ def activate(scopeContext, stepProperties, state):
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         stepName = getStepProperty(stepProperties, NAME)
         logger = getChartLogger(chartScope)
+        stepScope['tooltip'] = ""
         
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
@@ -391,6 +393,12 @@ def activate(scopeContext, stepProperties, state):
                         logger.tracef("  (%s) Checking if the dead time has been exceeded: %s", stepName, str(deadTimeExceeded))
 
                         # Check if the value is within the limits
+                        strippedTagpath = stripProvider(tagPath)
+                        if stepScope["tooltip"] == "":
+                            stepScope['tooltip'] = "<HTML>Monitoring:<br>     %s, value: %s, target: %s" % (strippedTagpath, str(pv), str(target))
+                        else:
+                            stepScope['tooltip'] = "%s<br>     %s, value: %s, target: %s" % (stepScope["tooltip"], strippedTagpath, str(pv), str(target))
+                            
                         valueOk,txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
                         
                         # check persistence and consistency
