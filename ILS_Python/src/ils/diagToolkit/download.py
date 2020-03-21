@@ -38,6 +38,9 @@ def downloadCallback(event, rootContainer):
     post=rootContainer.post
     
     repeater=rootContainer.getComponent("Template Repeater")
+    
+    from ils.diagToolkit.setpointSpreadsheet import logAction
+    logAction("DOWNLOAD", repeater)
     ds = repeater.templateParams
     
     #TODO - Do I need to check if there is a download in progress

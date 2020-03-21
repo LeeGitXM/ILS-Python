@@ -353,7 +353,7 @@ def _scanner(database, tagProvider):
             provider = record["Provider"]
             log.infof("Calling Manage...")
             notificationText, activeOutputs, postTextRecommendation, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
-            log.infof("...back from manage, activeOutputs: %s, postTextRecommendation: %s, notificationText: %s!", str(activeOutputs), str(postTextRecommendation), notificationText)
+            log.infof("...back from manage for application <%s>: activeOutputs: %s, postTextRecommendation: %s, notificationText: %s!", applicationName, str(activeOutputs), str(postTextRecommendation), notificationText)
             
             # This specifically handles the case where a FD that is not the highest priority clears which should not disturb the client.
             if noChange:
