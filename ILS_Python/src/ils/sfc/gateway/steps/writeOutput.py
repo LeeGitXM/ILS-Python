@@ -129,10 +129,10 @@ def activate(scopeContext, stepProperties, state):
                 row.value = s88Get(chartScope, stepScope, row.key + "." + OUTPUT_VALUE, row.recipeLocation)
                 row.tagPath = s88Get(chartScope, stepScope, row.key + "." + TAG, row.recipeLocation)
                 
-                outputType = s88Get(chartScope, stepScope, row.key + "." + OUTPUT_TYPE, recipeDataScope)
+                outputType = s88Get(chartScope, stepScope, row.key + "." + OUTPUT_TYPE, row.recipeLocation)
                 rampTime = -99
                 if string.upper(outputType) in ["OUTPUT RAMP", "SETPOINT RAMP"]:
-                    rampTime = s88Get(chartScope, stepScope, row.key + "." + RAMP_TIME, recipeDataScope)
+                    rampTime = s88Get(chartScope, stepScope, row.key + "." + RAMP_TIME, row.recipeLocation)
                 tooltips.append(["Writing", row.key, row.tagPath, str(row.value), row.timingMinutes, outputType, rampTime])
     
                 logger.trace("Tag: %s, Value: %s, Time: %s" % (str(row.tagPath), str(row.value), str(row.timingMinutes)))
