@@ -1061,9 +1061,17 @@ def fetchStepIdFromUUID(stepUUID, tx):
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetRecipeDataDS(stepId, recipeDataType, db):
     logger.tracef("%s.s88GetRecipeDataDS(): %s", __name__, recipeDataType)
+    
+    SQL = "select RecipeDataFolderId, RecipeDataKey, ParentRecipeDataFolderId, ParentFolderName "\
+            "from SfcRecipeDataFolderView  "\
+            "where stepId = %d "\
+            "order by RecipeDataFolderId " % (stepId) 
+    folderPDS = system.db.runQuery(SQL, db)
+    logger.tracef("...fetched %d folders", len(folderPDS))
+    print "Fetched %d folders" % (len(folderPDS))
 
     if recipeDataType == SIMPLE_VALUE:
-        SQL = "select RecipeDataKey, Units, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+        SQL = "select RecipeDataKey, Units, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE, folderId "\
             "from SfcRecipeDataSimpleValueView  "\
             "where stepId = %d "\
             "order by RecipeDataKey " % (stepId) 
@@ -1075,12 +1083,18 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
         data = []
         header = ["KEY", "UNITS", "DATATYPE", "VALUE"]
         for record in pds:
+            key = record["RecipeDataKey"]
             valueType = record["ValueType"]
             val = str(record[string.upper(valueType) + "VALUE"])
-            data.append([record["RecipeDataKey"], record["Units"], valueType, val])
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+    
+            data.append([key, record["Units"], valueType, val])
         ds = system.dataset.toDataSet(header, data)
     elif recipeDataType == OUTPUT:
-        SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE "\
+        SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, folderId "\
             "from SfcRecipeDataOutputView  "\
             "where stepId = %d "\
             "order by RecipeDataKey " % (stepId) 
@@ -1092,9 +1106,15 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
         data = []
         header = ["KEY", "UNITS", "TAG", "OUTPUTTYPE", "DOWNLOAD", "WRITECONFIRM", "TIMING", "MAXTIMING", "DATATYPE", "OUTPUTVALUE"]
         for record in pds:
+            key = record["RecipeDataKey"]
             valueType = record["ValueType"]
             outputValue = str(record["OUTPUT" + string.upper(valueType) + "VALUE"])
-            data.append([record["RecipeDataKey"], record["Units"], record["Tag"],  record["OutputType"], record["Download"], record["WriteConfirm"], record["Timing"], record["MaxTiming"], valueType, outputValue])
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+                
+            data.append([ key, record["Units"], record["Tag"],  record["OutputType"], record["Download"], record["WriteConfirm"], record["Timing"], record["MaxTiming"], valueType, outputValue])
         ds = system.dataset.toDataSet(header, data)
         
     else:
@@ -1103,6 +1123,33 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
     
     return ds
 
+def getFolderPath(folderId, pds):
+    '''
+    Given a folder Id, which presumably came from a recipe data record and is not None, use the supplied dataset
+    of folder records to recusively put together the path of arbitrary depth.
+    '''    
+    
+    def getFolderInfo(folderId, pds):
+        for record in pds:
+            if record["RecipeDataFolderId"] == folderId:
+                return record["RecipeDataKey"], record["ParentRecipeDataFolderId"]
+        return None, None
+    
+    logger.tracef("Looking for the folder path for: %s", str(folderId))
+    key, parentId = getFolderInfo(folderId, pds)
+    keys = []
+    keys.append(key)
+    
+    while parentId != None:
+        key, parentId = getFolderInfo(parentId, pds)
+        if key != None:
+            keys.insert(0, key)
+
+    path = "/".join(keys)
+    logger.tracef("The path is: %s", str(path))
+    return path
+        
+        
 def copyFolderValues(fromStepId, fromFolder, toStepId, toFolder, recursive, category, db):
     logger.tracef("Copying recipe data from %d-%s to %d-%s", fromStepId, fromFolder, toStepId, toFolder)
     

@@ -176,7 +176,7 @@ def activate(scopeContext, stepProperties, state):
                     logger.tracef("Starting the timer using: %s", str(timerRecipeDataId))
                     handleTimer(timerRecipeDataId, START_TIMER, logger, db)
     
-            print "tooltips: ", tooltips
+            logger.tracef("tooltips: %s", str(tooltips))
             setTooltips(stepScope, tooltips)
     
         else:
@@ -419,6 +419,4 @@ def formatTooltips(stepScope, ds):
     
     tooltip = "<HTML>" + "<br>".join(tooltips)
     
-    print "Tooltip: (formatted and sorted): ", tooltip
     stepScope[TOOLTIP] = tooltip
-    
