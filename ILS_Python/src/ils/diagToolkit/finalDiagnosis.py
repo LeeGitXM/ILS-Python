@@ -1104,7 +1104,7 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     
     # Read the current setpoint - the tagpath in the QuantOutput does not have the provider
     tagpath = '[' + provider + ']' + quantOutput.get('TagPath','unknown')
-    outputTagPath = getOutputForTagPath(tagpath, "sp")
+    outputTagPath = getOutputForTagPath(provider, tagpath, "sp")
     log.info("   ...reading the current value of tag: %s" % (outputTagPath))
     qv=system.tag.read(outputTagPath)
     if not(qv.quality.isGood()):
