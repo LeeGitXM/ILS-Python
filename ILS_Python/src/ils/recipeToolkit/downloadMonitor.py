@@ -6,6 +6,7 @@ Created on Sep 10, 2014
 
 import system, time
 from ils.common.config import getTagProvider, getDatabaseClient
+from ils.recipeToolkit.common import formatLocalTagName, formatTagName
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
 
@@ -153,14 +154,21 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                         
                     pendVal = record["Pend"]
                     reason = record["Reason"]
+                    
+                    '''
+                    Get the store val even if we aren't going to write so we can format a proper message
+                    '''
+                    if writeLocation == localWriteAlias:
+                        tagName = formatLocalTagName(provider, storTagName)
+                        storVal = system.tag.read(tagName).value
+                        tagName = formatLocalTagName(provider, compTagName)
+                        compVal = system.tag.read(tagName).value
+                    else:
+                        storVal = system.tag.read(formatTagName(provider, familyName, storTagName) + '/value').value
+                        compVal = system.tag.read(formatTagName(provider, familyName, compTagName) + '/value').value
 
                     if writeEnabled:                    
                         if writeLocation == localWriteAlias:
-                            from ils.recipeToolkit.common import formatLocalTagName
-                            tagName = formatLocalTagName(provider, storTagName)
-                            storVal = system.tag.read(tagName).value
-                            tagName = formatLocalTagName(provider, compTagName)
-                            compVal = system.tag.read(tagName).value
                             log.trace("Comparing local value %s to %s..." % (str(pendVal), str(storVal)))
                             ds = system.dataset.setValue(ds, i, "Stor", storVal)
                             ds = system.dataset.setValue(ds, i, "Comp", compVal)
@@ -179,7 +187,6 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                             ds = system.dataset.setValue(ds, i, "Download Status", status)
                             
                         else:
-                            from ils.recipeToolkit.common import formatTagName
                             tagName=formatTagName(provider, familyName, storTagName) + '/writeStatus'
                             qv = system.tag.read(tagName)
                             writeStatus=str(qv.value)
@@ -195,9 +202,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                                     errorMessage = system.tag.read(formatTagName(provider, familyName, storTagName) + '/writeErrorMessage').value
     
                                 ds = system.dataset.setValue(ds, i, "Download Status", status)
-                                storVal = system.tag.read(formatTagName(provider, familyName, storTagName) + '/value').value
                                 ds = system.dataset.setValue(ds, i, "Stor", storVal)
-                                compVal = system.tag.read(formatTagName(provider, familyName, compTagName) + '/value').value
                                 ds = system.dataset.setValue(ds, i, "Comp", compVal)
                                 log.trace("  %s -> %s - %s" % (storTagName, storVal, writeStatus))
                                 logDetail(logId, record["Store Tag"], pendVal, status, storVal, compVal, recommendVal, reason, errorMessage, database) 
@@ -209,6 +214,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                         failures = failures + 1
                         status = 'Failure - Write inhibited'
                         ds = system.dataset.setValue(ds, i, "Download Status", status)
+                        logDetail(logId, record["Store Tag"], pendVal, "Failure", storVal, compVal, recommendVal, "Writes are inhibited", "Writes are inhibited", database) 
                 else:
                     log.info("Unexpected download type: %s on line %s" % (downloadType, str(i)))
 

@@ -6,8 +6,10 @@ Created on Sep 9, 2014
 
 import system, string, time
 from ils.sfc.common.constants import SQL
+from ils.common.constants import CR
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.common.util import dsToText
 from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 from ils.diagToolkit.api import resetManualMove
@@ -401,6 +403,7 @@ def recalcCallback(event):
         return
     
     repeater=rootContainer.getComponent("Template Repeater")
+    logAction("RECALC", repeater)
     
     activeApplication = isThereAnActiveApplication(repeater)
     if not(activeApplication):
@@ -537,6 +540,7 @@ def waitCallback(event):
     db=getDatabaseClient()
     tagProvider=getTagProviderClient()
     repeater=rootContainer.getComponent("Template Repeater")
+    logAction("WAIT", repeater)
     
     activeApplication = isThereAnActiveApplication(repeater)
     if activeApplication:
@@ -566,6 +570,7 @@ def noDownloadCallback(event):
     db=getDatabaseClient()
     tagProvider=getTagProviderClient()
     repeater=rootContainer.getComponent("Template Repeater")
+    logAction("NO DOWNLOAD", repeater)
     
     activeApplication = isThereAnActiveApplication(repeater)
     if activeApplication:
@@ -1166,3 +1171,26 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
         projectName=system.util.getProjectName()
         payload={"post": post, "database": db, "provider": provider, "applications": [application]}
         system.util.sendMessage(projectName, "recalc", payload, "G")
+
+def logAction(action, repeater):
+    '''
+    Send a message to the gateway so that the requested action and the complete state of the setpoint spreadsheet will be logged to a file
+    '''
+    project = system.util.getProjectName()
+    payload = {"action": action, "ds": repeater.templateParams}
+    system.util.sendMessage(project=project, messageHandler="setpointSpreadsheetLogger", payload=payload, scope="G")
+    
+def logActionMessageHandler(payload):
+    log.infof( "In %s.logActionMessageHandler with %s ", __name__, str(payload))
+    
+    action = payload.get("action", "")
+    ds = payload.get("ds", None)
+    timestamp = system.date.format(system.date.now(), "yyyy_MM_dd_HH_mm_ss")
+    reportHome = system.tag.read("Configuration/Common/reportHome").value
+    filename = "%s/Event_Logs/Diagnostic_Actions/%s_%s.csv" % (reportHome, timestamp, action)
+    
+    txt = "action,%s%s" % (action, CR)
+    txt = "%stimestamp,%s%s" % (txt, system.date.format(system.date.now(), "yyyy_MM_dd_HH_mm_ss"), CR)
+    txt = "%s%s" % (txt, dsToText(ds, ","))
+    
+    system.file.writeFile(filename, txt, False)

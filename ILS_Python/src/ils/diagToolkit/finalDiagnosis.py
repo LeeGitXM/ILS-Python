@@ -21,20 +21,21 @@ from ils.common.database import lookup
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
-'''
-This is called from any global resource, either a SFC or a tag change script.  This runs in the gateway and must contain a project name 
-which is use to send a message for notification.
-'''
+
 def manageFinalDiagnosisGlobally(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
+    '''
+    This is called from any global resource, either a SFC or a tag change script.  This runs in the gateway and must contain a project name 
+    which is use to send a message for notification.
+    '''
     log.infof("In %s.manageFinalDiagnosisGlobally()", __name__)
     _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
 
 
-'''
-This is called from a client (and runs in a client) to directly manage a final diagnosis.
-Because this runs ina client we can get the project automatically
-'''
 def manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
+    '''
+    This is called from a client (and runs in a client) to directly manage a final diagnosis.
+    Because this runs ina client we can get the project automatically
+    '''
     log.infof("In %s.manageFinalDiagnosis()", __name__)
 
     projectName = system.util.getProjectName()
@@ -42,10 +43,11 @@ def manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRe
     _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
 
 
-'''
-# This directly manages a final diagnosis.  It can be called from a client or in gateway scope from a tag or SFC.
-'''
 def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider):
+    '''
+    This directly manages a final diagnosis.  It can be called from a client or in gateway scope from a tag or SFC.
+    '''
+    
     log.infof("In %s._manageFinalDiagnosis()", __name__)
  
     ''' Lookup the application Id '''
@@ -66,9 +68,9 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     resetOutputLimits(finalDiagnosisId, database)
     
     grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
-    log.info("The grade is: %s" % (str(grade)))
 
     ''' Insert an entry into the diagnosis queue '''
+    log.info("Posting a diagnosis entry (from _manageFinalDiagnosis) for project: %s, application: %s, family: %s, final diagnosis: %s, grade: %s" % (projectName, applicationName, familyName, finalDiagnosisName, str(grade)))
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, Multiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
@@ -77,9 +79,11 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     
     try:
+        print "***", SQL
         system.db.runUpdateQuery(SQL, database)
         
         SQL = SQL2
+        print "***", SQL
         system.db.runUpdateQuery(SQL, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
@@ -238,7 +242,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     managed = fetchApplicationManaged(applicationName, database)
     
     if not(managed):
-        log.tracef("Exiting because %s is not a managed application!", applicationName)
+        log.infof("Exiting postDiagnosisEntry() because %s is not a managed application!", applicationName)
         return
     
     log.info("Posting a diagnosis entry for project: %s, application: %s, family: %s, final diagnosis: %s" % (projectName, applicationName, family, finalDiagnosis))
@@ -277,9 +281,11 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     
     try:
+        print "**** ", SQL
         system.db.runUpdateQuery(SQL, database)
         
         SQL = SQL2
+        print "**** ", SQL
         system.db.runUpdateQuery(SQL, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
@@ -353,7 +359,7 @@ def _scanner(database, tagProvider):
             provider = record["Provider"]
             log.infof("Calling Manage...")
             notificationText, activeOutputs, postTextRecommendation, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
-            log.infof("...back from manage, activeOutputs: %s, postTextRecommendation: %s, notificationText: %s!", str(activeOutputs), str(postTextRecommendation), notificationText)
+            log.infof("...back from manage for application <%s>: activeOutputs: %s, postTextRecommendation: %s, notificationText: %s!", applicationName, str(activeOutputs), str(postTextRecommendation), notificationText)
             
             # This specifically handles the case where a FD that is not the highest priority clears which should not disturb the client.
             if noChange:

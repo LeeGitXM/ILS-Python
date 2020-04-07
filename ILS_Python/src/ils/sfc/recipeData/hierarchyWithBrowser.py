@@ -18,13 +18,17 @@ log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 treeMode = "fullPath"
 
 LIBRARY_ICON = "Builtin/icons/16/copy.png"
+TREE_MODE = 0
+LIST_MODE = 1
+''
 
 '''
-Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.
+Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.   
 '''
 def internalFrameOpened(rootContainer, db):
     log.infof("In %s.internalFrameOpened()", __name__) 
-    updateSfcTree(rootContainer, db)
+    rootContainer.chartViewState = TREE_MODE
+    updateSfcs(rootContainer, db)
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     clearTable(stepTable)
     recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
@@ -38,15 +42,40 @@ def internalFrameActivated(rootContainer, db):
     log.infof("In %s.internalFrameActivated()", __name__)
 #    refreshSteps(rootContainer, db)
     updateRecipeDataTree(rootContainer, db)
+    
+def viewStateChanged(rootContainer):
+    '''
+    When they change the view from Tree to List then clear the other two panes AND unselect anything that was selected in the tree and the table.
+    '''
+    stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
+    clearTable(stepTable)
+    recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
+    clearTree(recipeDataTree)
+    
+    tree = rootContainer.getComponent("Tree Container").getComponent("Tree View")
+    tree.selectedItem = -1
+    table = rootContainer.getComponent("Tree Container").getComponent("Power Table")
+    table.selectedRow = -1
 
-def updateSfcTree(rootContainer, db):
+def updateSfcs(rootContainer, db):
     log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
     tagProvider = getTagProviderClient()
     sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
-
-    ''' I can use this for testing '''
-    chartPath = 'A%'
     chartPath = "%"
+    updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
+    updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
+
+def updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
+    log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+    
+    SQL = "select chartId, chartPath from SfcChart where chartPath like '%s' order by chartPath" % (chartPath)
+    ds = system.db.runQuery(SQL, database=db)
+    table=rootContainer.getComponent("Tree Container").getComponent("Power Table")
+    table.data = ds
+
+    
+def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
+    log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
 
     hierarchyPDS = fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db)
     hierarchyHandlerPDS = fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db)
@@ -99,7 +128,7 @@ def expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS):
     fullPath = chartDict.get(int(token),"Unknown")
     
     refs = countChartReferences(int(token), hierarchyPDS, hierarchyHandlerPDS)
-    print " **** %s has %d references ****" % (fullPath, refs)
+    log.tracef(" **** %s has %d references ****", fullPath, refs)
     if refs > 1:
         icon = LIBRARY_ICON
     else:
@@ -243,12 +272,21 @@ This gets called in response to a node being selected in the SFC Chart Hierarchy
 def refreshSteps(rootContainer, db):
     log.infof("%s.refreshSteps() - Updating the list of steps...", __name__)
     treeWidget = rootContainer.getComponent("Tree Container").getComponent("Tree View")
+    chartTable = rootContainer.getComponent("Tree Container").getComponent("Power Table")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     
-    chartId = getChartIdForSelectedNode(treeWidget, db)
-    if chartId == None:
-        clearTable(stepTable)
-        return
+    if rootContainer.chartViewState == TREE_MODE:
+        chartId = getChartIdForSelectedNode(treeWidget, db)
+        if chartId == None:
+            clearTable(stepTable)
+            return
+    else:
+        selectedRow = chartTable.selectedRow
+        if selectedRow == -1:
+            clearTable(stepTable)
+            return
+        ds = chartTable.data
+        chartId = ds.getValueAt(selectedRow, 0)
     
     SQL = " select S.StepName, T.StepType, S.StepId, "\
         "(select COUNT(*) from SfcRecipeData D where D.StepId = S.StepId) as myRefs "\
@@ -307,6 +345,7 @@ def updateRecipeDataTree(rootContainer, db=""):
         clearTree(recipeDataTree)
         setTreeButtons(recipeDataTree, False, False, False)
     else:
+        startTime = system.date.now()
         log.infof("In %s.updateRecipeDataTree() - Updating the recipe data tree...", __name__)
         setTreeButtons(recipeDataTree, False, True, False)
         ds = stepTable.data
@@ -329,6 +368,10 @@ def updateRecipeDataTree(rootContainer, db=""):
 
         ds = system.dataset.toDataSet(pds)
         row = 0
+        
+        step1CompleteTime = system.date.now()
+        
+        simpleValuePDS, timerPDS, recipePDS, sqcPDS, sqcPDS, outputPDS, outputRampPDS, inputPDS = fetchDescriptions(stepId, db)
         
         ''' Now update the Tree '''
         icon = "default"
@@ -395,6 +438,10 @@ def updateRecipeDataTree(rootContainer, db=""):
         log.tracef("The tree values are: %s", str(vals))
         ds = system.dataset.toDataSet(header, vals)
         recipeDataTree.data = ds
+        completeTime = system.date.now()
+        ''' I made these info messages so that excessive trace messages wouldn't sque the numbers '''
+        log.infof("Initial query took %s ms", str(system.date.millisBetween(startTime, step1CompleteTime)))
+        log.infof("Description query and tree update time took: %s ms", str(system.date.millisBetween(step1CompleteTime, completeTime)))
 
 def setTreeButtons(recipeDataTree, editState, addState, deleteState):
     log.infof("In %s.setTreeButtons...", __name__)
@@ -467,6 +514,30 @@ def scrubPaths(paths, pathsUsedByData):
     
     log.tracef("The scrubbed paths are: %s", str(scrubbedPaths))
     return scrubbedPaths
+
+def fetchDescriptions(stepId, db):
+    SQL = "select * from SfcRecipeDataSimpleValueView where stepId = %d" % (stepId)
+    simpleValuePDS = system.db.runQuery(SQL, db)
+    
+    SQL = "Select * from SFcRecipeDataTimerView where stepId = %d" % (stepId)
+    timerPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "Select * from SFcRecipeDataRecipeView where stepId = %d" % (stepId)
+    recipePDS = system.db.runQuery(SQL, db)
+    
+    SQL = "Select * from SFcRecipeDataSQCView where stepId = %d" % (stepId)
+    sqcPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "select * from SfcRecipeDataOutputView where stepId = %d" % (stepId)
+    outputPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "select * from SfcRecipeDataOutputRampView where stepId = %d" % (stepId)
+    outputRampPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "select * from SfcRecipeDataInputView where stepId = %d" % (stepId)
+    inputPDS = system.db.runQuery(SQL, db)
+            
+    return simpleValuePDS, timerPDS, recipePDS, sqcPDS, sqcPDS, outputPDS, outputRampPDS, inputPDS
 
 def getRecipeDataDescription(record, db):
     try:
@@ -888,35 +959,8 @@ def deleteRecipeData(recipeDataType, recipeDataId, db):
         system.db.runUpdateQuery(SQL, db)
 
 
-
-
-
-
 def editCallbackForDoubleClick(event):
     editCallback(event)
-    
-    '''
-    db = getDatabaseClient()
-    container = event.source.parent
-    tree = container.getComponent("Tree View")
-    path = tree.selectedPath
-    
-    log.infof("In %s.editCallbackForDoubleClick() - The path is: %s", __name__, path)
-    
-    stepTable = container.parent.getComponent("Step Container").getComponent("Steps")
-    selectedRow = stepTable.selectedRow
-    log.infof("The selected row is: %s", str(selectedRow))
-    stepDs = stepTable.data
-    stepId = stepDs.getValueAt(selectedRow,"StepId")
-    log.infof("The step id is: %s", str(stepId))
-    
-    recipeDataKey, recipeDataType, recipeDataId = fetchRecipeInfo(stepId, path, db)
-    recipeDataFolderId = -1
-    
-    log.infof("The recipe data id is: %s", str(recipeDataId))
-    window = system.nav.openWindowInstance('SFC/RecipeDataEditor', {'stepId':stepId, 'recipeDataType':recipeDataType, 'recipeDataId':recipeDataId, 'recipeDataKey':recipeDataKey, "recipeDataFolderId":recipeDataFolderId})
-    system.nav.centerWindow(window)
-    '''
 
             
 def editCallback(event):

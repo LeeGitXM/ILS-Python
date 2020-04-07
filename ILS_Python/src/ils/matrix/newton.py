@@ -38,12 +38,12 @@ def solverGlobal(x, func, maxIterations):
     
     ''' Test for already at root solution for x's '''
     fNew = fmin(x, fx, func)
-    log.infof("fMin(x) initially = %f", fNew)
+    log.tracef("   fMin(x) initially = %f", fNew)
     
     maxVal = maxOfFirstColumn(fx)
     
     if maxVal < 0.01 * tolFx:
-        log.infof("%f < tol (%f).  Initial guesses for x's are root solutions!", maxVal, 0.01 * tolFx)
+        log.infof("   %f < tol (%f).  Initial guesses for x's are root solutions!", maxVal, 0.01 * tolFx)
         return checkConverge, numIterations
     
     test = 0.0
@@ -58,25 +58,25 @@ def solverGlobal(x, func, maxIterations):
             
             '''  Jacobian (J) by finite difference partial derivatives (versus analytical). '''
             dfxDx = fdjac(x, fx, func, tolEPS)
-            print "dfxDx: ", dfxDx
+            log.tracef("   dfxDx: %s", str(dfxDx))
             
             for i in range(nRows):
                 test = 0.0
                 for j in range(nRows):
                     test = test + dfxDx.getEntry(j, i) * fx.getEntry(j, 0)
                 g.setEntry(i, 0, test)
-            print "g: ", g
+            log.tracef("   g: %s", str(g))
         
         
             fxLU=Vector(nRows)
             for i in range(nRows):
                 fxLU.setEntry(i, -1 * fx.getEntry(i, 0))
         
-            print "The matrix input to LU decomposition is: ", dfxDx
+            log.tracef("   matrix input to LU decomposition is: %s", str(dfxDx))
             solver = LUDecomposition(dfxDx).getSolver()
-            print "The vector input to LU decomposition is: ", fxLU
+            log.tracef("   vector input to LU decomposition is: %s", str(fxLU))
             dxLU = solver.solve(fxLU)
-            print "The solver returned: ", dxLU
+            log.tracef("   solver returned: %s", str(dxLU))
             
             dx = Matrix(nRows, nRows)
             for i in range(nRows):
@@ -86,32 +86,32 @@ def solverGlobal(x, func, maxIterations):
                 xOld.setEntry(i, 0, x.getEntry(i, 0))
             
             checkConverge, fNew = lnsrch (x, xOld, fNew, fx, func, g, dx, stepMax, tolEPS)
-            log.tracef("The linear search returned %s - %f", str(checkConverge), fNew)
+            log.tracef("   linear search returned %s - %f", str(checkConverge), fNew)
             
             test = 0.0
             for i in range(nRows):
                 test = max(test, abs(fx.getEntry(i, 0)))
-            log.tracef("f(x) max = %f", test)
+            log.tracef("   f(x) max = %f", test)
         
             if (test < tolFx):
                 ''' Converged function values (at root solutions for x's) '''
                 checkConverge = False
-                log.infof("%f < tol (%f) with checkConverge: %s - F(x) values at/near zero.", test, tolFx, str(checkConverge))
+                log.infof("   %f < tol (%f) with checkConverge: %s - F(x) values at/near zero.", test, tolFx, str(checkConverge))
                 return checkConverge, numIterations
                 
             test = 0.0;
             for i in range(nRows):
                 test = max(test, abs(g.getEntry(i, 0)) * max(1.0, abs(x.getEntry(i, 0))) / max(fNew, 0.5 * nRows))
-            log.tracef("deltaf * deltax (gradient) max = %f", test)
+            log.tracef("   deltaf * deltax (gradient) max = %f", test)
             
             rechk_convg = checkConverge;
             if (checkConverge):
                 if (test < tolFmin):
                     checkConverge = True        # Gradient of f near zero (but could be spurious convergence)
-                    log.tracef("%f < tol (%f) with checkConverge: %s - Gradient near zero (could be spurious).", test, tolFmin, checkConverge)
+                    log.tracef("   %f < tol (%f) with checkConverge: %s - Gradient near zero (could be spurious).", test, tolFmin, checkConverge)
                 else:
                     checkConverge = False       # At root solutions for x's
-                    log.tracef("Roots found with checkConverge: %s - converged solution for x's!", str(checkConverge))
+                    log.tracef("   Roots found with checkConverge: %s - converged solution for x's!", str(checkConverge))
     
             if (rechk_convg and test < tolFmin):
                 ''' fmin close to zero (may or may not be at root solutions of x's)'''
@@ -125,15 +125,15 @@ def solverGlobal(x, func, maxIterations):
             
             ''' deltax close to zero (small change in x not changing F(x) significantly) '''
             if (test < tolEPS):
-                log.tracef("%f < tol %f with %s - deltax / x close to zero. Check solution!", test, tolEPS, str(checkConverge))
+                log.infof("   %f < tol %f with %s - deltax / x close to zero. Check solution!", test, tolEPS, str(checkConverge))
                 return checkConverge, numIterations    
         
         checkConverge = True
-        log.infof("...leaving %s.solverGlobal() because max iterations has been reached!", __name__)
+        log.infof("   ...leaving %s.solverGlobal() because max iterations has been reached!", __name__)
     except:
         checkConverge = True
         logExceptionCause("Error in  %s.solverGlobal() with ERROR!" % (__name__), log)
-        log.infof("...leaving %s.solverGlobal() with ERROR!", __name__)
+        log.infof("   ...leaving %s.solverGlobal() with ERROR!", __name__)
     
     return checkConverge, numIterations
 

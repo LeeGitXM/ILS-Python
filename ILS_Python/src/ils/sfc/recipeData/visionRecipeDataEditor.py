@@ -1812,5 +1812,10 @@ def insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, f
     return recipeDataId
 
 def closeAndOpenBrowser(event):
+    '''
+    This can be called from two different windows - the SFC Hierarchy Browser and the SFC Viewer so we can't 
+    hard code what to open.  If it was open then it should come back to the top.
+    
     system.nav.openWindow("SFC/SfcHierarchyWithRecipeBrowser")
+    '''
     system.nav.closeParentWindow(event)

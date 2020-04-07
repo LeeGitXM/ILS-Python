@@ -187,7 +187,6 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     else:
         if units == "":
             val = s88Get(chartScope, stepScope, key, scope)
-            print "val = ", val
         else:
             '''
             Because this is GUI, sometimes we want to use the units as a label rather than forcing unit conversion.  If the recipe

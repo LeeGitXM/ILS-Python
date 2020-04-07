@@ -230,6 +230,7 @@ def escapeJSON(txt):
     '''
     In JSON, we need to escape a double quote with a backslash and a double quote
     '''
+    txt = str(txt)
     txt = string.replace(txt, "\"", '\\\"')
     return txt
 
@@ -242,21 +243,23 @@ def substituteProvider(tagPath, provider):
     else:
         return '[' + provider + ']' + tagPath
 
-'''
-A little utility for a one liner that I can never remember.  Clear a dataset keeping the header intact.
-'''
+
 def clearDataset(ds):
+    '''
+    A little utility for a one liner that I can never remember.  Clear a dataset keeping the header intact.
+    '''
     ds = system.dataset.deleteRows(ds, range(ds.rowCount))
     return ds
 
-'''
-return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
-It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
-I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
-testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
-in project scope.
-'''
+
 def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, aggregationMode, log):
+    '''
+    return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
+    It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
+    I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
+    testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
+    in project scope.
+    '''
     badValueTxt = ""
     
     # This function tests over the past n minutes, so make sur ethe time interval is negative
@@ -480,10 +483,20 @@ def timeStringToSeconds(timeString):
     
     return secs
 
+def secondsToTimeString(secs):
+    import math
+
+    hours = math.floor(secs / 3600)
+    mins = math.floor((secs - hours * 3600) / 60)
+    secs = secs - (hours * 3600) - (mins * 60)
+    
+    timestring = "%2d:%2d:%2d" % (hours, mins, secs)
+    return timestring
+
 '''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).
-I used to have the rovider and history provider names hard coded here, which might be OK since this is a test, but it showed up in searches, so now pass it in!
+I used to have the provider and history provider names hard coded here, which might be OK since this is a test, but it showed up in searches, so now pass it in!
 '''
 def test(provider, historyProvider):
     log = system.util.getLogger("Test")
@@ -508,4 +521,16 @@ def mathTest():
     x = math.ceil(10.01)
     print x
     
-#    from apache.commons.org import XYTextAnnotation
+def dsToText(ds, delimiter):
+    from ils.common.constants import CR
+    columns = ds.getColumnNames()
+    txt = delimiter.join(columns)
+    for row in range(ds.getRowCount()):
+        for col in range(ds.getColumnCount()):
+            if col > 0:
+                txt = txt + delimiter
+            txt = txt + str(ds.getValueAt(row, col))
+        txt = txt + CR
+        
+    print "Formatted the dataset as: ", txt
+    return txt

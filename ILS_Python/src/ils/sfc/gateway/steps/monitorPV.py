@@ -12,20 +12,21 @@ from ils.sfc.gateway.api import getIsolationMode
 from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
 from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
 from ils.io.api import getMonitoredTagPath
+from ils.io.util import stripProvider
 
 from ils.sfc.common.util import callMethodWithParams
-from ils.sfc.recipeData.api import s88Get, s88Set, s88GetStep, s88GetFromStep, s88SetFromStep, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88GetFromId, s88SetFromId
+from ils.sfc.recipeData.api import s88Get, s88Set, s88GetStep, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88GetFromId, s88SetFromId
 from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIVATION_CALLBACK, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER,  VALUE, SETPOINT, RECIPE, \
-    STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
-    CLASS, DATA_LOCATION, DOWNLOAD_STATUS, IMMEDIATE, KEY, MONITOR, MONITORING, STRATEGY, RECIPE_DATA_TYPE, \
-    RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, STATIC, NO_LIMIT, TARGET_VALUE, TIMEOUT, WAIT, \
-    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED, RESUMED, \
+    STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, TAG, \
+    DATA_LOCATION, DOWNLOAD_STATUS, IMMEDIATE, KEY, MONITOR, MONITORING, STRATEGY, \
+    RECIPE_LOCATION, PV_MONITOR_ACTIVE, PV_MONITOR_CONFIG, PV_VALUE, STATIC, NO_LIMIT, WAIT, \
+    DEACTIVATED, PAUSED, RESUMED, \
     ERROR_COUNT_SCOPE, ERROR_COUNT_KEY, ERROR_COUNT_MODE, COUNT_ABSOLUTE, \
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, REFERENCE_SCOPE, \
     NAME, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM
-from ils.sfc.recipeData.constants import TIMER, OUTPUT, INPUT
+from ils.sfc.recipeData.constants import TIMER, OUTPUT
 from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget
 
 def activate(scopeContext, stepProperties, state):
@@ -45,6 +46,7 @@ def activate(scopeContext, stepProperties, state):
         recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
         stepName = getStepProperty(stepProperties, NAME)
         logger = getChartLogger(chartScope)
+        stepScope['tooltip'] = ""
         
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
@@ -107,7 +109,6 @@ def activate(scopeContext, stepProperties, state):
                         pvRecipeDataId, pvRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, configRow.pvKey, database)
                     
                     configRow.status = MONITORING
-                    pvKey = configRow.pvKey
                     
                     if configRow.strategy == MONITOR:
                         watchOnly = False
@@ -325,8 +326,6 @@ def activate(scopeContext, stepProperties, state):
                         
                         logger.tracef('(%s) PV Key: %s, Target type: %s, Recipe Data Type: %s, Target: %s, Strategy: %s, Deadtime: %s, Persistence: %s, tolerance: %s', 
                                 stepName, configRow.pvKey, configRow.targetType, targetRecipeDataType, configRow.targetNameIdOrValue, configRow.strategy, str(configRow.deadTime), str(configRow.persistence), str(configRow.tolerance))
-    
-                        pvKey = configRow.pvKey
  
                         # This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
                         # download GUI block.  It appears that the PV of a PV monitoring block is always INPUT recipe data.  The target of a PV monitoring  
@@ -394,6 +393,12 @@ def activate(scopeContext, stepProperties, state):
                         logger.tracef("  (%s) Checking if the dead time has been exceeded: %s", stepName, str(deadTimeExceeded))
 
                         # Check if the value is within the limits
+                        strippedTagpath = stripProvider(tagPath)
+                        if stepScope["tooltip"] == "":
+                            stepScope['tooltip'] = "<HTML>Monitoring:<br>     %s, value: %s, target: %s" % (strippedTagpath, str(pv), str(target))
+                        else:
+                            stepScope['tooltip'] = "%s<br>     %s, value: %s, target: %s" % (stepScope["tooltip"], strippedTagpath, str(pv), str(target))
+                            
                         valueOk,txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
                         
                         # check persistence and consistency

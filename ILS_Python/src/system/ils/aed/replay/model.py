@@ -23,3 +23,7 @@ def getStatus(sessionId):
 def getResults(sessionId):
     results = {}
     return results
+
+def getModelExecutionResults(sessionId):
+    results = {}
+    return results
