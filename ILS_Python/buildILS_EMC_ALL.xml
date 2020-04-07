@@ -6,7 +6,7 @@
 	
 	<target name="deploy" description="Install Python">
 		<echo message="Deploying python scripts to ${blt.py.lib}" />
-		<copy todir="${aed.py.lib}">
+		<copy todir="${blt.py.lib}">
 			<fileset dir="${basedir}/src">
 				<include name="ils/**/*.py" />
 			</fileset>
