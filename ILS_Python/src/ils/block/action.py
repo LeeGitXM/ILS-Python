@@ -80,12 +80,11 @@ class Action(basicblock.BasicBlock):
                     packName = self.packageFromFunctionPath(function)
                     funcName = self.functionFromFunctionPath(function)
                     log.tracef("   ...using External Python, the package is: <%s>.<%s>", packName, funcName)
-                    
                     exec("import %s" % (packName))
                     exec("from %s import %s" % (packName,funcName))
             
-#                eval(function)(blockName, self.uuid, self.parentuuid, provider, database)
-                eval(function)(block)
+                eval(function)(block, provider, database)
+#                eval(function)(block)
 
         else:
             self.state = "FALSE"

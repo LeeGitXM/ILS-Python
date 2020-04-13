@@ -30,7 +30,7 @@ class Arithmetic(basicblock.BasicBlock):
     def initialize(self):
         self.className = 'ils.block.arithmetic.Arithmetic'
         self.properties['Function'] = {'value':'','editable':'True','bindingType':'OPTION',
-                                       'binding':'ABS,CEILING,COSINE,FLOOR,SINE,TANGENT,TO_RADIAN'}
+                                       'binding':'ABS,CEILING,COSINE,FLOOR,SINE,TANGENT,TO_RADIAN,ROUND'}
         self.inports = [{'name':'in','type':'data'}]
         self.outports= [{'name':'out','type':'data'}]
         
