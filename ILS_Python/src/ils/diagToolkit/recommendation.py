@@ -74,6 +74,14 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     
     else:
         log.infof("The calculation method returned explanation: %s", explanation)
+        
+        ''' Make the quant output name case insensitive by casting to uppercase (need to the same for Quant Output names) '''
+        i = 0
+        for rec in rawRecommendationList:
+            qo = string.upper(rec.get("QuantOutput"))
+            rec["QuantOutput"] = qo
+            rawRecommendationList[i] = rec
+            i = i +1
         log.infof("Received recommendations: %s", str(rawRecommendationList))
     
         # Insert text returned by the calculation method into the application Queue

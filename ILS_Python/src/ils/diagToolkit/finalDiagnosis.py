@@ -1280,7 +1280,7 @@ def calculateVectorClamps(quantOutputs, provider):
             if  quantOutput.get('IncrementalOutput'):
                 feedbackOutputConditioned = quantOutput['FeedbackOutput'] * minOutputRatio / 100.0
             else: 
-                print "Adjusting an absolute  recommendation for a vector clamp!"
+                log.infof("Adjusting an absolute  recommendation for a vector clamp!")
                 SP = quantOutput.get('CurrentValue',None)
                 feedbackOutputConditioned = SP + (quantOutput['FeedbackOutput'] - SP)  * (minOutputRatio / 100.0)
                 

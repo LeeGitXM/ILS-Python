@@ -269,6 +269,16 @@ def fd1_2_3i(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     recommendations.append({"QuantOutput": "TESTQ3", "Value": 3})
     return True, explanation, recommendations
 
+def fd1_2_3j(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_3j - testing case sensitive recommendations" % (__name__)
+    explanation = "Returning 3 recommendations"
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.36})
+    recommendations.append({"QuantOutput": "TeStq2", "Value": 5.523})
+    recommendations.append({"QuantOutput": "testq3", "Value": 3.816})
+    return True, explanation, recommendations
+
+
 # A text recommendations
 def fd1_2_5(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In %s.fd1_2_5" % (__name__)

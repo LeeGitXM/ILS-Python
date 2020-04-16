@@ -505,6 +505,21 @@ def test14b3():
     postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
     return applicationName
 
+# Test case insesitive recommendations
+def test14b4():
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    system.tag.write("[XOM]DiagnosticToolkit/Inputs/T3", 20.3)
+    applicationName='TESTAPP1'
+    appId=insertApp1()
+    T1Id=insertQuantOutput(appId, 'testq1', T1TagName, 60.6, incrementalOutput=True)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, incrementalOutput=True)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, incrementalOutput=True)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, FD121calculationMethod='ils.diagToolkit.test.calculationMethods.fd1_2_3j')
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM")
+    postDiagnosisEntry(project, applicationName, 'TESTFamily1_2', 'TESTFD1_2_3', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
+    return applicationName
+
 
 def test14c():
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")

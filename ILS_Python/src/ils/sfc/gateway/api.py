@@ -34,6 +34,7 @@ def abortHandler(chartScope, msg):
     '''
     
     stepProperties = None
+    msg = msg + NEWLINE + chartScope.abortCause
     notifyGatewayError(chartScope, stepProperties, msg, logger)
     
     if logger <> None:
