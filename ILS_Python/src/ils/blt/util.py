@@ -10,6 +10,7 @@ from ils.block import basicblock
 # NOTE: __init__.py defines the modules
 import ils.block
 from ils.block import *
+from ils.user.block import *
 
 
 log = LogUtil.getLogger("com.ils.block")
@@ -106,11 +107,16 @@ def getBlockState(block,properties):
 #
 # Return a new instance of each class of block.
 # This works as long as all the block definitions are 
-# in the "app.block" package. Our convention is that only
+# in the "ils.block" package. Our convention is that only
 # executable blocks appear in this package -- and that
 # the class has the same name as its file.
+#
+# ***Make sure the class/file is also listed in __init.py__ or the import fails
+#
+# ** file and class names MUST be LOWER CASE
+#
 def getNewBlockInstances():
-    log.debug('getNewBlockInstances ...' )
+    log.info('getNewBlockInstances ...' )
     instances = []
     # dir only lists modules that have actually been imported
     print dir(ils.block)
@@ -121,6 +127,36 @@ def getNewBlockInstances():
             constructor = "ils.block."+name.lower() +"."+className+"()"
             obj = eval(constructor)
             print "ils.blt.util.getNewBlockInstances:",name,'=',obj.__class__
+            instances.append(obj) 
+    print "====================="
+    return instances
+#
+#
+# Return a new instance of each class of block created by users
+#
+#  The idea is to create a safe location for user created blocks that won't get overwritten by updates
+#
+# This works as long as all the block definitions are 
+# in the "ils.user.block" package. Our convention is that only
+# executable blocks appear in this package -- and that
+# the class has the same name as its file.
+#
+# ***Make sure the class/file is also listed in __init.py__ or the import fails
+#
+# ** file and class names MUST be LOWER CASE
+#
+def getNewUserBlockInstances():
+    log.info('getNewUserBlockInstances ...' )
+    instances = []
+    # dir only lists modules that have actually been imported
+    print dir(ils.user.block)
+    print "======= Names ========="
+    for name in dir(ils.user.block):
+        if not name.startswith('__') and not name == 'basicblock':
+            className = eval("ils.user.block."+name+".getClassName()")
+            constructor = "ils.user.block."+name.lower() +"."+className+"()"
+            obj = eval(constructor)
+            print "ils.blt.util.getNewUserBlockInstances:",name,'=',obj.__class__
             instances.append(obj) 
     print "====================="
     return instances
@@ -140,6 +176,10 @@ def getNewBlockInstance(className):
 def getBlockPrototypes(prototypes):
     log.debug("ils.blt.util.getBlockPrototypes")
     instances = getNewBlockInstances()
+    for obj in instances:
+        prototypes.append(obj.getPrototype())
+
+    instances = getNewUserBlockInstances()
     for obj in instances:
         prototypes.append(obj.getPrototype())
 #
