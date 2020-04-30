@@ -67,10 +67,12 @@ def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
     logGradeChange(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db)
     resetCatInHours(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db)
     
+    system.tag.write(tagPathRoot + "lastGradeProcessed", currentValue.value)
+    
     log.infof( "... done with common grade change logic for grade %s (%s)!", str(currentValue.value), tagPath)
 
 
-def gradeChangeIsLegit(tagPath, previousValue, currentValue):
+def gradeChangeIsLegit(tagPath, previousValue, currentValue, initialChange):
     legit = True
     
     ''' If the quality of the new value is bad then this can't be legit '''
