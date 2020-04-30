@@ -4,9 +4,10 @@ Created on Sep 9, 2014
 @author: ILS
 '''
 
-import system, string, time
+import system, string
 from ils.sfc.common.constants import SQL
 from ils.common.constants import CR
+from ils.diagToolkit.constants import OBSERVATION_BLOCK_LIST
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.common.util import dsToText
@@ -15,10 +16,6 @@ from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWN
 from ils.diagToolkit.api import resetManualMove
 
 log = system.util.getLogger("com.ils.diagToolkit")
-
-OBSERVATION_BLOCK_LIST = ["SQCDiagnosis", "SubDiagnosis", "SQC", "TrendDetector", "LogicFilter", "TruthValuePulse", "Compare", "CompareAbsolute", "CompareDeadband",
-            "EqualityObservation", "HighLimitObservation", "HighLimitSampleCount", "HighLimitTimeWindow", "InRangeSampleCount", "InRangeTimeWindow", "LowLimitObservation",
-            "LowLimitSampleCount", "OutOfRangeObservation", "RangeObservation", "ZeroCrossing"]
 
 def initialize(rootContainer):
     print "In %s.initialize()..." % (__name__)

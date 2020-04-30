@@ -30,9 +30,18 @@ def getGradeForUnit(unitName, tagProvider):
     
     return grade
 
-'''
-'''
+
 def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
+    '''
+    Implement some really basic logic for a grade change.  
+    All of this is internal to the grade change UDT, it doesn't do anything to diagtoolikt, recipe, or lab data.
+    '''
+    legit, status = gradeChangeIsLegit(tagPath, previousValue, currentValue, initialChange)
+    
+    if not(legit):
+        log.tracef("Ignoring a grade change which is deemed to not be legit because: %s", status)
+        return
+    
     log.infof( "Handling common grade change logic for  a change from %s to %s for %s...", str(previousValue.value), str(currentValue.value), tagPath)
     
     from ils.io.util import getProviderFromTagPath
@@ -61,10 +70,26 @@ def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
     log.infof( "... done with common grade change logic for grade %s (%s)!", str(currentValue.value), tagPath)
 
 
-'''
-When the grade changes, we need to reset the total cat in hours for this grade.
-'''
+def gradeChangeIsLegit(tagPath, previousValue, currentValue):
+    legit = True
+    
+    ''' If the quality of the new value is bad then this can't be legit '''
+    if not(currentValue.quality.isGood()):
+        return False, "This grade change is not legit because the quality is bad."
+    
+    tagPathRoot = tagPath[:tagPath.rfind('/')+ 1]
+    lastGrade = system.tag.read(tagPathRoot + "lastGradeProcessed").value
+    
+    if currentValue.value == lastGrade:
+        return False, "This grade <%s> has already been processed." % (str(lastGrade))
+    
+    return legit, ""
+
+
 def resetCatInHours(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db):
+    '''
+    When the grade changes, we need to reset the total cat in hours for this grade.
+    '''
     print "Resetting the Cat In hours for ", unit
     system.tag.write(tagPathRoot + "catInHours", 0.0)
 

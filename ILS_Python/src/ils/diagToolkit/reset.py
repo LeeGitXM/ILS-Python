@@ -7,6 +7,8 @@ Created on Sep 18, 2016
 import system, string
 import system.ils.blt.diagram as diagram
 from ils.common.error import catchError
+from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
+from ils.diagToolkit.constants import OBSERVATION_BLOCK_LIST
 log = system.util.getLogger("com.ils.diagToolkit.reset")
 
 '''
@@ -19,7 +21,18 @@ The idea here is to:
         Fetch all of the diagnostic diagrams for each application
             Fetch of of the blocks on each diagram
 '''
+
 def resetApplication(unit, database, tagProvider):
+    '''
+    Leave this in for backwards compatability - this is called by Vistalon.
+    There is another resetApplication in setpointSpreadsheet.py which really does reset an application.
+    This one resets all of the applications for a unit!
+    '''
+    log.info("Resetting applications for unit: %s" % (unit)) 
+    resetUnit(unit, database, tagProvider)
+    
+    
+def resetUnit(unit, database, tagProvider):
     log.info("Resetting applications for unit: %s" % (unit)) 
 
     # Fetch all of the diagnostic applications for a unit.
@@ -32,9 +45,10 @@ def resetApplication(unit, database, tagProvider):
     
     descriptorList=[]
     blocks=[]
+    diagramCounter = 0
     for record in pds:
         applicationName = record['ApplicationName']
-        log.info("Fetching descriptors for %s" % (applicationName))
+        log.info("Fetching diagrams for application %s" % (applicationName))
 
         # Fetch all of the diagrams for the application
         try:
@@ -44,7 +58,7 @@ def resetApplication(unit, database, tagProvider):
             log.error(errorText)
             descriptorList = []
         else:
-            log.tracef("Found %d descriptors for application %s", len(descriptorList), applicationName)
+            log.tracef("Found %d diagrams for application %s", len(descriptorList), applicationName)
             
         for descriptor in descriptorList:
             descriptorId=descriptor.getId()
@@ -54,6 +68,7 @@ def resetApplication(unit, database, tagProvider):
             log.trace("Checking:  %s - %s - %s" % (str(descriptorId), descriptorName, descriptorType))
     
             if descriptorType in ["blt.diagram"]:
+                diagramCounter = diagramCounter + 1
                 # Fetch all of the blocks on the diagram
                 try:
                     tBlocks=diagram.listBlocksInDiagram(descriptorId)
@@ -66,112 +81,60 @@ def resetApplication(unit, database, tagProvider):
                     if block not in blocks:
                         blocks.append(block)
 
-    log.info("...there are %i unique blocks to consider..." % (len(blocks)))
+    log.infof("...there are %d unique blocks to consider on %d diagrams...", len(blocks), diagramCounter)
+    
+    '''  Remove latched blocks and blocks upstream of the latched blocks from our list of blocks. ''' 
+    blocks = removeLatchedBlocks(blocks)
+    log.infof("   ...there are %i blocks after removing latches and blocks upstream of them..." % (len(blocks)))
+    
+    '''  Remove constant finaldiagnosis and blocks upstream of them . ''' 
+    blocks = removeConstantFinalDiagnosisAndUpstreamBlocks(blocks, database)
+    log.infof("   ...there are %i blocks after removing constnat FDs and blocks upstream of them..." % (len(blocks)))
 
-    # We now have a list of all blocks, now look through the list for SQC Diagnosis and Trend Diagnosis blocks and 
-    # collect the blocks downstream of them.
-    log.info("...resetting SQC diagnosis and trend diagnosis blocks")
-    downstreamBlocks=[]
+    '''
+    We now have a list of all blocks that should be reset
+    '''
+    log.infof("*******************")
+    log.info("* Resetting blocks *")
+    log.infof("*******************")
+    
     for block in blocks:
         blockName=block.getName()
-        blockClass=block.getClassName()
+        blockClass=stripClassPrefix(block.getClassName())
         blockUUID=block.getIdString()
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
-        log.trace("    Found a %s - %s " % (blockName, blockClass))
+        log.tracef("    checking %s, a %s ", blockName, blockClass)
         
-        if not(string.find(blockClass, "sqcdiagnosis.SQCDiagnosis") == 0 or string.find(blockClass, "trenddiagnosis.TrendDiagnosis") == 0):
-            log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
-
+        if blockClass in OBSERVATION_BLOCK_LIST:
+            log.infof("   ...resetting observation named %s, a %s...", blockName, blockClass)
             resetAndPropagate(block)
             
-            # Collect all of the blocks upstream of this final diagnosis
-            log.trace("      ...collecting blocks downstream from it ...")
-            try:
-                tBlocks = diagram.listBlocksGloballyDownstreamOf(parentUUID, blockName)
-            except:
-                errorText = catchError("%s.resetApplication listing blocks downstream of %s" % (__name__, blockName))
-                log.error(errorText)
-                tBlocks = []
-                
-            for tBlock in tBlocks:
-                if tBlock not in downstreamBlocks:
-                    downstreamBlocks.append(tBlock)
-                    
-        elif blockClass in ["com.ils.block.SQC"]:
-            log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
+        elif blockClass in ['FinalDiagnosis']:
+            log.infof("   ...resetting a %s named %s...", blockClass, blockName)
             resetAndPropagate(block)
-        
-        elif blockClass in ["com.ils.block.Inhibitor"]:
-            log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
-            system.ils.blt.diagram.sendSignal(parentUUID, blockName, "inhibit", "Grade Change")
-
-    # Now reset Final diagnosis downstream from an SQC diagnosis or a trend diagnosis and collect all of the 
-    # blocks upstream of them.
-    log.info("...resetting non-constant final diagnosis that are downstream of SQC diagnosis blocks (there are %i downstream blocks)..." % (len(downstreamBlocks)))
-    upstreamBlocks=[]
-    for block in downstreamBlocks:
-        blockClass=block.getClassName()
-        blockName=block.getName()
-        
-        if not(string.find(blockClass, "finaldiagnosis.FinalDiagnosis") == 0):
-            blockUUID=block.getIdString()
-            blockName=block.getName()
-              
-            # We only want to reset FDs that are not a CONSTANT type of FD.  Constant FDs are typically
-            # plant status diagrams that update quickly in real time and do not make recommendations.
-            # (I'm not sure how a constant FD would ever get in this list because we started from a SQC diagnosis.) 
-            SQL = "Select constant from DtFinalDiagnosis where FinalDiagnosisUUID = '%s'" % (blockUUID)
-            constant = system.db.runScalarQuery(SQL, database)
-
-            if constant == 0:
-                log.info("   ... resetting Final Diagnosis: %s with id: %s on diagram: %s..." % (blockName, blockUUID, parentUUID))
-                
-                parentUUID=block.getAttributes().get("parent")
-                resetAndPropagate(block)
-                
-                # Collect all of the blocks upstream of this final diagnosis
-                log.trace("   ... collecting blocks upstream from it ...")
-                try:
-                    tBlocks = diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
-                except:
-                    errorText = catchError("%s.resetApplication listing blocks upstream of %s" % (__name__, blockName))
-                    log.error(errorText)
-                    tBlocks = []
-                
-                for tBlock in tBlocks:
-                    if tBlock not in upstreamBlocks:
-                        upstreamBlocks.append(tBlock)
-            else:
-                log.info("   ... skipping a constant final diagnosis: %s..." % (blockName))
-
-
-    log.trace("...collected %i blocks upstream of unit %s final diagnosis..." % (len(upstreamBlocks), unit))
-
-    # Remove latched blocks and blocks upstream of the latched blocks from our list of blocks. 
-    log.info("There are %i upstream blocks..." % (len(upstreamBlocks)))
-    upstreamBlocks = removeLatchedBlocks(upstreamBlocks)
-    log.info("   ...there are %i upstream blocks after removing upstream blocks..." % (len(upstreamBlocks)))
     
     '''
-    Now that we have the list of blocks upstream from all of the non-constant final diagnosis that are not upstream of a 
-    latch block the million dollar question is what do we need to do to them.  The difficult thing is to sort out things that
-    were required in the old platform due to some idiosyncrosy with GDA, since the diagnostic toolkit is fundamentally 
-    different in how data propagates, we may not need to do the same thing when the grade changes!  We do know that we
-    need to twiddle the truth pulse objects. 
-    '''    
-    
-    log.info("...touching TruthValuePulse blocks...")
-    for block in upstreamBlocks:
-        blockClass=block.getClassName()
+    Take some special actions on special blocks.
+    '''
+
+    log.infof("****************************************************")
+    log.info("* Touching TruthValuePulse blocks and inhibitors *")
+    log.infof("****************************************************")
+    for block in blocks:
+        blockClass=stripClassPrefix(block.getClassName())
         blockName=block.getName()
         
         log.trace("      looking at %s - %s" % (blockName, blockClass))
 
-        if blockClass in ["com.ils.block.TruthValuePulse"]:
+        if blockClass in ["TruthValuePulse"]:
             parentUUID=block.getAttributes().get("parent")
-
             log.info("   ...resetting a %s named: %s on diagram: %s..." % (blockClass, blockName, parentUUID))
             system.ils.blt.diagram.sendSignal(parentUUID, blockName, "reset", "Grade Change")
+        
+        elif blockClass in ["Inhibitor"]:
+            parentUUID=block.getAttributes().get("parent")
+            log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
+            system.ils.blt.diagram.sendSignal(parentUUID, blockName, "inhibit", "Grade Change")
 
     return
 
@@ -195,28 +158,77 @@ def resetAndPropagate(block):
 '''
 Remove latched blocks and blocks upstream of latched blocks from the list of blocks
 '''
-def removeLatchedBlocks(upstreamBlocks):
+def removeLatchedBlocks(blocks):
     log.info("   ...removing blocks upstream of latches...")
-    blocksUpstreamOfLatches=[]
-    for block in upstreamBlocks:
-        blockClass=block.getClassName()
-        
-        if blockClass in ["com.ils.block.LogicLatch"]:
-            blockName=block.getName()
-            log.info("      Found a latch named %s..." % (blockName))
-            parentUUID=block.getAttributes().get("parent")
-            blocks=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
-            log.info("      ...there are %i blocks upstream of it..." % (len(blocks)))
-            for block in blocks:
-                if block not in blocksUpstreamOfLatches:
-                    log.trace("         Removing an upstream %s named %s" % (blockClass, blockName))
-                    blocksUpstreamOfLatches.append(block)
-
-    log.info("There are a total of %i blocks upstream of latches..." % (len(blocksUpstreamOfLatches)))
-
-    # Remove the blocks upstream latches from the list of all upstream blocks
-    for block in blocksUpstreamOfLatches:
-        if block in upstreamBlocks:
-            upstreamBlocks.remove(block)
+    latchCount = 0
+    upstreamBlockCount = 0
     
-    return upstreamBlocks
+    print "Blocks: ", blocks
+    
+    upstreamUUIDs = []
+    for block in blocks:
+        blockClass=stripClassPrefix(block.getClassName())
+        
+        if blockClass in ["LogicLatch"]:
+            blockName=block.getName()
+            latchCount = latchCount + 1
+            log.infof("      Found a latch named %s: %s...", blockName, str(block))
+            parentUUID=block.getAttributes().get("parent")
+            upstreamBlocks=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
+            log.info("      ...there are %i blocks upstream of it..." % (len(upstreamBlocks)))
+            for upstreamBlock in upstreamBlocks:
+                log.tracef("      %s", str(upstreamBlock))
+                upstreamUUIDs.append( upstreamBlock.getIdString() )
+                
+    for block in blocks:
+        if block.getIdString() in upstreamUUIDs:
+            blockClass=stripClassPrefix(block.getClassName())
+            blockName=block.getName()
+            upstreamBlockCount = upstreamBlockCount + 1
+            log.trace("         Removing an upstream %s named %s" % (blockClass, blockName))
+            blocks.remove(block)
+
+    log.infof("...removed %d latches and %d blocks upstream of them!", latchCount, upstreamBlockCount)    
+    return blocks
+
+def removeConstantFinalDiagnosisAndUpstreamBlocks(blocks, database):
+    '''
+    We only want to reset FDs that are not a CONSTANT type of FD.  Constant FDs are typically plant status diagrams that update quickly in 
+    real time and do not make recommendations.  By removing them from the list they won't get reset.
+    '''
+    log.infof("...removing constant Final Diagnosis and blocks upstream from them, starting with %d blocks...", len(blocks))
+    constantFdCounter = 0
+    upstreamBlockCounter = 0
+    
+    for block in blocks:
+        blockClass=stripClassPrefix(block.getClassName())
+        blockName=block.getName()
+        
+        if blockClass =="FinalDiagnosis":
+            blockUUID=block.getIdString()
+            blockName=block.getName()
+         
+            SQL = "Select constant from DtFinalDiagnosis where FinalDiagnosisUUID = '%s'" % (blockUUID)
+            constant = system.db.runScalarQuery(SQL, database)
+
+            if constant == 1:
+                log.infof("   ... removing a constant Final Diagnosis: %s....", blockName)
+                blocks.remove(block)
+                constantFdCounter = constantFdCounter + 1
+                
+                parentUUID=block.getAttributes().get("parent")
+                log.trace("   ... collecting blocks upstream from it ...")
+                try:
+                    tBlocks = diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
+                except:
+                    errorText = catchError("%s.resetApplication listing blocks upstream of %s" % (__name__, blockName))
+                    log.error(errorText)
+                    tBlocks = []
+                
+                for tBlock in tBlocks:
+                    if tBlock in blocks:
+                        blocks.remove(tBlock)
+                        upstreamBlockCounter = upstreamBlockCounter + 1
+
+    log.infof("...removed %d constant FDs and %d blocks upstream of them...", constantFdCounter, upstreamBlockCounter)
+    return blocks

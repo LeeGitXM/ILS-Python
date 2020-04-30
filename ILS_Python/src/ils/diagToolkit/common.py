@@ -174,7 +174,7 @@ def fetchActiveDiagnosis(applicationName, database=""):
     print SQL
     print "**********************"
     pds = system.db.runQuery(SQL, database)
-    print "Fetched %d rows" % (len(pds))
+    print "Fetched %d active diagnosis" % (len(pds))
     return pds
 
 # Fetch all of the active final diagnosis for an application.
