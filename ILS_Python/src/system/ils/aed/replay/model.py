@@ -27,3 +27,7 @@ def getResults(sessionId):
 def getModelExecutionResults(sessionId):
     results = {}
     return results
+
+def getExtendedModelExecutionResults(sessionId):
+    results = {}
+    return results

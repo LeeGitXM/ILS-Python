@@ -33,3 +33,7 @@ def jsonEncode(obj):
 
 def sendMessage(project, handler, payload, scope):
     pass
+
+def sendRequest(project, handler, payload, scope):
+    response = []
+    return response
