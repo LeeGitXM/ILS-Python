@@ -94,14 +94,13 @@ def resetUnit(unit, database, tagProvider):
     '''
     We now have a list of all blocks that should be reset
     '''
-    log.infof("*******************")
-    log.info("* Resetting blocks *")
-    log.infof("*******************")
+    log.infof("***********************************************")
+    log.info("* Resetting observations and final diagnosis *")
+    log.infof("***********************************************")
     
     for block in blocks:
         blockName=block.getName()
         blockClass=stripClassPrefix(block.getClassName())
-        blockUUID=block.getIdString()
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
         log.tracef("    checking %s, a %s ", blockName, blockClass)
         
@@ -116,7 +115,6 @@ def resetUnit(unit, database, tagProvider):
     '''
     Take some special actions on special blocks.
     '''
-
     log.infof("****************************************************")
     log.info("* Touching TruthValuePulse blocks and inhibitors *")
     log.infof("****************************************************")
@@ -136,6 +134,7 @@ def resetUnit(unit, database, tagProvider):
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
             system.ils.blt.diagram.sendSignal(parentUUID, blockName, "inhibit", "Grade Change")
 
+    log.info("Done resetting applications for unit: %s!" % (unit)) 
     return
 
 '''
@@ -163,8 +162,6 @@ def removeLatchedBlocks(blocks):
     latchCount = 0
     upstreamBlockCount = 0
     
-    print "Blocks: ", blocks
-    
     upstreamUUIDs = []
     for block in blocks:
         blockClass=stripClassPrefix(block.getClassName())
@@ -177,8 +174,10 @@ def removeLatchedBlocks(blocks):
             upstreamBlocks=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
             log.info("      ...there are %i blocks upstream of it..." % (len(upstreamBlocks)))
             for upstreamBlock in upstreamBlocks:
-                log.tracef("      %s", str(upstreamBlock))
-                upstreamUUIDs.append( upstreamBlock.getIdString() )
+                if upstreamBlock.getIdString() not in upstreamUUIDs:
+                    upstreamBlockName=upstreamBlock.getName()
+                    log.infof("          ...adding new block (%s) to the upstream list", str(upstreamBlockName))
+                    upstreamUUIDs.append( upstreamBlock.getIdString() )
                 
     for block in blocks:
         if block.getIdString() in upstreamUUIDs:
