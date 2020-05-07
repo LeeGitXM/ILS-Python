@@ -44,8 +44,9 @@ def resetUnit(unit, database, tagProvider):
     log.info("Fetched %i applications" % (len(pds)))
     
     descriptorList=[]
-    blocks=[]
+    blocks={}
     diagramCounter = 0
+    totalCntr = 0
     for record in pds:
         applicationName = record['ApplicationName']
         log.info("Fetching diagrams for application %s" % (applicationName))
@@ -59,7 +60,7 @@ def resetUnit(unit, database, tagProvider):
             descriptorList = []
         else:
             log.tracef("Found %d diagrams for application %s", len(descriptorList), applicationName)
-            
+        
         for descriptor in descriptorList:
             descriptorId=descriptor.getId()
             descriptorName=descriptor.getName()
@@ -69,19 +70,17 @@ def resetUnit(unit, database, tagProvider):
     
             if descriptorType in ["blt.diagram"]:
                 diagramCounter = diagramCounter + 1
-                # Fetch all of the blocks on the diagram
-                try:
-                    tBlocks=diagram.listBlocksInDiagram(descriptorId)
-                except:
-                    errorText = catchError("%s.resetApplication listing blocks in diagram %s" % (__name__, descriptorName))
-                    log.error(errorText)
-                    tBlocks=[]
-                    
+                tBlocks=diagram.listBlocksInDiagram(descriptorId)
+                
+                cntr = 0
                 for block in tBlocks:
-                    if block not in blocks:
-                        blocks.append(block)
+                    blocks[block.getIdString()] = {"blockName": block.getName(), "parentUUID": descriptorId, "blockClass":stripClassPrefix(block.getClassName()) }
+                    cntr = cntr + 1
+                
+                totalCntr = totalCntr + cntr
+                log.tracef("   ...added %d blocks (total = %d)", cntr, totalCntr)
 
-    log.infof("...there are %d unique blocks to consider on %d diagrams...", len(blocks), diagramCounter)
+    log.infof("...there are %d (%d) unique blocks to consider on %d diagrams...", len(blocks), totalCntr, diagramCounter)
     
     '''  Remove latched blocks and blocks upstream of the latched blocks from our list of blocks. ''' 
     blocks = removeLatchedBlocks(blocks)
@@ -89,7 +88,7 @@ def resetUnit(unit, database, tagProvider):
     
     '''  Remove constant finaldiagnosis and blocks upstream of them . ''' 
     blocks = removeConstantFinalDiagnosisAndUpstreamBlocks(blocks, database)
-    log.infof("   ...there are %i blocks after removing constnat FDs and blocks upstream of them..." % (len(blocks)))
+    log.infof("   ...there are %i blocks after removing constant FDs and blocks upstream of them..." % (len(blocks)))
 
     '''
     We now have a list of all blocks that should be reset
@@ -98,19 +97,20 @@ def resetUnit(unit, database, tagProvider):
     log.info("* Resetting observations and final diagnosis *")
     log.infof("***********************************************")
     
-    for block in blocks:
-        blockName=block.getName()
-        blockClass=stripClassPrefix(block.getClassName())
-        parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
+    for blockUUID in blocks.keys():
+        block = blocks[blockUUID]
+        blockName=block.get("blockName", "")
+        blockClass=block.get("blockClass", "")
+        parentUUID=block.get("parentUUID", "")  # The parent of a block is the diagram it is on
         log.tracef("    checking %s, a %s ", blockName, blockClass)
         
         if blockClass in OBSERVATION_BLOCK_LIST:
             log.infof("   ...resetting observation named %s, a %s...", blockName, blockClass)
-            resetAndPropagate(block)
+            resetAndPropagate(blockName, blockUUID, parentUUID)
             
         elif blockClass in ['FinalDiagnosis']:
             log.infof("   ...resetting a %s named %s...", blockClass, blockName)
-            resetAndPropagate(block)
+            resetAndPropagate(blockName, blockUUID, parentUUID)
     
     '''
     Take some special actions on special blocks.
@@ -118,19 +118,19 @@ def resetUnit(unit, database, tagProvider):
     log.infof("****************************************************")
     log.info("* Touching TruthValuePulse blocks and inhibitors *")
     log.infof("****************************************************")
-    for block in blocks:
-        blockClass=stripClassPrefix(block.getClassName())
-        blockName=block.getName()
+    for blockUUID in blocks.keys():
+        block = blocks[blockUUID]
+        blockName=block.get("blockName", "")
+        blockClass=block.get("blockClass", "")
+        parentUUID=block.get("parentUUID", "")  # The parent of a block is the diagram it is on
         
         log.trace("      looking at %s - %s" % (blockName, blockClass))
 
         if blockClass in ["TruthValuePulse"]:
-            parentUUID=block.getAttributes().get("parent")
             log.info("   ...resetting a %s named: %s on diagram: %s..." % (blockClass, blockName, parentUUID))
             system.ils.blt.diagram.sendSignal(parentUUID, blockName, "reset", "Grade Change")
         
         elif blockClass in ["Inhibitor"]:
-            parentUUID=block.getAttributes().get("parent")
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
             system.ils.blt.diagram.sendSignal(parentUUID, blockName, "inhibit", "Grade Change")
 
@@ -140,10 +140,7 @@ def resetUnit(unit, database, tagProvider):
 '''
 Reset a block, set the block state and propagate it's state.
 '''
-def resetAndPropagate(block):
-    blockName=block.getName()
-    blockUUID=block.getIdString()
-    parentUUID=block.getAttributes().get("parent")
+def resetAndPropagate(blockName, blockUUID, parentUUID):
     
     try:
         system.ils.blt.diagram.resetBlock(parentUUID, blockName)
@@ -160,34 +157,33 @@ Remove latched blocks and blocks upstream of latched blocks from the list of blo
 def removeLatchedBlocks(blocks):
     log.info("   ...removing blocks upstream of latches...")
     latchCount = 0
-    upstreamBlockCount = 0
     
     upstreamUUIDs = []
-    for block in blocks:
-        blockClass=stripClassPrefix(block.getClassName())
+    for blockUUID in blocks.keys():
+        block = blocks[blockUUID]
+        blockClass=block.get("blockClass", "")
+        blockName=block.get("blockName", "")
         
         if blockClass in ["LogicLatch"]:
-            blockName=block.getName()
             latchCount = latchCount + 1
+            del blocks[blockUUID]
             log.infof("      Found a latch named %s: %s...", blockName, str(block))
-            parentUUID=block.getAttributes().get("parent")
+            parentUUID=block.get("parentUUID", "")
             upstreamBlocks=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
-            log.info("      ...there are %i blocks upstream of it..." % (len(upstreamBlocks)))
+            log.tracef("      ...there are %d blocks upstream of it...", len(upstreamBlocks))
             for upstreamBlock in upstreamBlocks:
                 if upstreamBlock.getIdString() not in upstreamUUIDs:
                     upstreamBlockName=upstreamBlock.getName()
-                    log.infof("          ...adding new block (%s) to the upstream list", str(upstreamBlockName))
+                    log.tracef("          ...adding new block (%s) to the upstream list", str(upstreamBlockName))
                     upstreamUUIDs.append( upstreamBlock.getIdString() )
                 
-    for block in blocks:
-        if block.getIdString() in upstreamUUIDs:
-            blockClass=stripClassPrefix(block.getClassName())
-            blockName=block.getName()
-            upstreamBlockCount = upstreamBlockCount + 1
-            log.trace("         Removing an upstream %s named %s" % (blockClass, blockName))
-            blocks.remove(block)
+    '''
+    At this point we have a dictionary of dictionaries of all blocks, where the key is the block UUID and
+    we have a list of block UUIDs that are upstream of latches.  Remove the blocks that are upstream of latches from the big dictionary.
+    '''
+    blocks, cntr = removeBlocks(blocks, upstreamUUIDs)
 
-    log.infof("...removed %d latches and %d blocks upstream of them!", latchCount, upstreamBlockCount)    
+    log.infof("...removed %d latches and %d blocks upstream of them.  Returning %d blocks!", latchCount, cntr, len(blocks))    
     return blocks
 
 def removeConstantFinalDiagnosisAndUpstreamBlocks(blocks, database):
@@ -197,37 +193,57 @@ def removeConstantFinalDiagnosisAndUpstreamBlocks(blocks, database):
     '''
     log.infof("...removing constant Final Diagnosis and blocks upstream from them, starting with %d blocks...", len(blocks))
     constantFdCounter = 0
-    upstreamBlockCounter = 0
+    upstreamUUIDs = []
     
-    for block in blocks:
-        blockClass=stripClassPrefix(block.getClassName())
-        blockName=block.getName()
+    '''
+    If I wanted to optimize performance I would make a single query of all constant FDs, put them in a list and use that list over and over.
+    '''
+    for blockUUID in blocks.keys():
+        block = blocks[blockUUID]
+        blockClass=block.get("blockClass", "")
+        blockName=block.get("blockName", "")
+        parentUUID=block.get("parentUUID", "")
         
         if blockClass =="FinalDiagnosis":
-            blockUUID=block.getIdString()
-            blockName=block.getName()
-         
-            SQL = "Select constant from DtFinalDiagnosis where FinalDiagnosisUUID = '%s'" % (blockUUID)
+            SQL = "select constant from DtFinalDiagnosis where FinalDiagnosisUUID = '%s'" % (blockUUID)
             constant = system.db.runScalarQuery(SQL, database)
 
             if constant == 1:
                 log.infof("   ... removing a constant Final Diagnosis: %s....", blockName)
-                blocks.remove(block)
+                
+                del blocks[blockUUID]
                 constantFdCounter = constantFdCounter + 1
                 
-                parentUUID=block.getAttributes().get("parent")
                 log.trace("   ... collecting blocks upstream from it ...")
-                try:
-                    tBlocks = diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
-                except:
-                    errorText = catchError("%s.resetApplication listing blocks upstream of %s" % (__name__, blockName))
-                    log.error(errorText)
-                    tBlocks = []
-                
-                for tBlock in tBlocks:
-                    if tBlock in blocks:
-                        blocks.remove(tBlock)
-                        upstreamBlockCounter = upstreamBlockCounter + 1
+                upstreamBlocks=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
+                log.tracef("      ...there are %d blocks upstream of it...", len(upstreamBlocks))
+                for upstreamBlock in upstreamBlocks:
+                    if upstreamBlock.getIdString() not in upstreamUUIDs:
+                        upstreamBlockName=upstreamBlock.getName()
+                        log.tracef("          ...adding new block (%s) to the upstream list", str(upstreamBlockName))
+                        upstreamUUIDs.append( upstreamBlock.getIdString() )
+    
+    blocks, cntr = removeBlocks(blocks, upstreamUUIDs)
 
-    log.infof("...removed %d constant FDs and %d blocks upstream of them...", constantFdCounter, upstreamBlockCounter)
+    log.infof("...removed %d constant FDs and %d blocks upstream of them.  Returning %d blocks!", constantFdCounter, cntr, len(blocks))    
     return blocks
+
+
+def removeBlocks(blocks, upstreamUUIDs):
+    '''
+    At this point we have a dictionary of dictionaries of all blocks, where the key is the block UUID and
+    we a list of block UUIDs.  Remove the blocks from the big list.
+    '''
+    log.tracef("   ...reconcile the lists.  There are %d blocks and %d blocks to remove...", len(blocks), len(upstreamUUIDs))
+    cntr = 0
+    for blockUUID in upstreamUUIDs:
+        block =blocks.get(blockUUID, None)
+        if block == None:
+            log.tracef("   ...did not find %s in the master list of blocks", blockUUID)
+        else:
+            log.tracef("   ...removed %s -  %s from the master list of blocks", block.get("blockName", ""), blockUUID)
+            del blocks[blockUUID]
+            cntr = cntr + 1
+    
+    log.infof("...removed %d blocks, return list with %d blocks...", cntr, len(blocks))
+    return blocks, cntr
