@@ -56,9 +56,9 @@ def activate(scopeContext, stepProperties, state):
             parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset, "Header": windowTitle}
             action = "save"
             
-            if string.upper(extension) in ["CSV", ".CSV","TXT",".TXT"]:
+            if string.upper(extension) in ["CSV", ".CSV"]:
                 format = "csv"
-            elif string.upper(extension) in ["RTF", ".RTF"]:
+            elif string.upper(extension) in ["RTF", ".RTF", "TXT",".TXT"]:
                 format = "rtf"
             else:
                 format = "pdf"

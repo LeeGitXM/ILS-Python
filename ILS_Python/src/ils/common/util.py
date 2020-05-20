@@ -7,7 +7,13 @@ Created on Sep 10, 2014
 import system, string, re
 log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
+from ils.common.constants import CR
 from system.date import secondsBetween
+
+def append(t1, t2):
+    if t1 == "":
+        return t2
+    return t1 + CR + t2
 
 def fileWriterMessageHandler(payload):
     log.infof("In %sfileWriterMessageHandler.", __name__)
