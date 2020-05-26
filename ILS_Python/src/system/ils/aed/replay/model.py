@@ -31,3 +31,15 @@ def getModelExecutionResults(sessionId):
 def getExtendedModelExecutionResults(sessionId):
     results = {}
     return results
+
+def getAvailableSessions():
+    sessionList = []
+    return sessionList
+
+def clearRunData(sessionId):
+    status = ""
+    return status
+
+def getGatewayProjectList():
+    projectList = []
+    return projectList
