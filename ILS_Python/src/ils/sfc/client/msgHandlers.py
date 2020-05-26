@@ -5,10 +5,11 @@ These message handlers all run in the client (the client receives the message fr
 
 import system, string
 from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, \
-    KEY, IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTROL_PANEL_WINDOW_PATH
+    IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_WINDOW_PATH
 from ils.sfc.client.windowUtil import shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
 from ils.common.config import getDatabaseClient
+log = system.util.getLogger("com.ils.sfc.client.msgHandlers")
 
 '''
 This is the worst name in the history of bad names.  This is the handler in the client that catches the message, not the sender!
@@ -16,7 +17,7 @@ This is the worst name in the history of bad names.  This is the handler in the 
 def dispatchMessage(payload):
     '''call the appropriate method in this module and pass it the payload'''
     from ils.sfc.common.constants import HANDLER
-    print "In %s.dispatchMessage() received a message, payload: %s" % (__name__, payload)
+    log.infof("In %s.dispatchMessage() received a message, payload: %s", __name__, str(payload))
     handlerMethod = payload[HANDLER]
     
     try:
@@ -53,7 +54,7 @@ def openErrorPopup(msg):
     
  
 def sfcUnexpectedError(payload):
-    print "In sfcUnexpectedError..."
+    log.infof("In %s.sfcUnexpectedError...", __name__)
 
     # Check if this error is relevant to this client
     if not shouldShowWindow(payload):
@@ -66,13 +67,13 @@ def sfcUnexpectedError(payload):
 
 def sfcDialogMessage(payload):
     '''Open the DialogMessage window'''
-    print "In %s.sfcDialogMessage(), the payload is: %s" % (__name__, str(payload))
+    log.infof("In %s.sfcDialogMessage(), the payload is: %s", __name__, str(payload))
     
     windowPath = "SFC/DialogMessage"
     windowId = payload[WINDOW_ID]
 
     if not(shouldShowWindow(payload)):
-        print "The control panel is not open and the originator is not this user so do not show the window here!"
+        log.tracef("The control panel is not open and the originator is not this user so do not show the window here!")
         return
     
     record = fetchWindowInfo(windowId)
@@ -83,70 +84,68 @@ def sfcDialogMessage(payload):
     scale = record[SCALE]
     
     SQL = "select message from SfcDialogMessage where windowId = '%s'" % (windowId)
-    print SQL
+    log.tracef(SQL)
     message = system.db.runScalarQuery(SQL)
-    print message
+    log.tracef(message)
     
     window = system.nav.openWindowInstance(windowPath, {"windowId": windowId, "theMessage": message})
     positionWindow(window, position, scale)
-    print "Done!"
+    log.tracef("Done!")
 
 
 ''' This handles windows that are know to the SFC system'''
 def sfcOpenWindow(payload):
-    print "In sfcOpenWindow()..."
-    print payload
+    log.infof("In %s.sfcOpenWindow() with %s...", __name__, str(payload))
     
     windowPath = payload[WINDOW_PATH]
     windowId = payload[WINDOW_ID]
     isSfcWindow = payload[IS_SFC_WINDOW]
     controlPanelName = payload[CONTROL_PANEL_NAME]
     
-    print "...checking if the window should be shown on this client..."
+    log.tracef("...checking if the window should be shown on this client...")
     if not(shouldShowWindow(payload)):
         return
     
-    print "...the window is meant for this client..."
+    log.tracef("...the window is meant for this client...")
     record = fetchWindowInfo(windowId)
     if record == None:
-        print "Unable to find window info, using defaults..."
+        log.tracef("Unable to find window info, using defaults...")
         position = "center"
         scale = 1.0
     else:
         position = record[POSITION]
         scale = record[SCALE]
         
-    print "Path: %s, Position: %s, Scale: %s" % (windowPath, position, str(scale)) 
+    log.tracef("Path: %s, Position: %s, Scale: %s", windowPath, position, str(scale)) 
     
     if isSfcWindow:    
-        print "The window is an SFC window, passing the WindowId: <%s>..." % (str(windowId))
+        log.tracef("The window is an SFC window, passing the WindowId: <%s>...", str(windowId))
         windowPayload = {WINDOW_ID: windowId}
         
         ''' I really hate this implementation, if there is something extra on the payload ovr the entries that messaging need, then pass them on to the window '''
         if windowPath == "SFC/SaveData":
             windowPayload =  {WINDOW_ID: windowId, "simpleValue": payload["simpleValue"], "output": payload["output"], "header":  payload["header"]}
 
-        print "Opening <%s>" % (windowPath)
-        print "Window Payload: ", windowPayload
+        log.tracef("Opening <%s>", windowPath)
+        log.tracef("Window Payload: %s", str(windowPayload))
         window = openWindowInstance(windowPath, windowPayload, position, scale)
     else:
-        print "The window is a plain window..."
-        print "Opening <%s>" % (windowPath)
+        log.tracef("The window is a plain window...")
+        log.tracef("Opening <%s>", windowPath)
         window = system.nav.openWindowInstance(windowPath)
         positionWindow(window, position, scale)
 
 ''' This opens the control panel.  This is generally used when starting an SFC from a tag change script running in the gateway. '''
 def sfcOpenControlPanel(payload):
-    print "In sfcOpenControlPanel()..."
-    print payload
+    log.tracef("In sfcOpenControlPanel() with %s...", str(payload))
 
     controlPanelWindowPath = payload.get(CONTROL_PANEL_WINDOW_PATH, "SFC/ControlPanel")
     windowNames = system.gui.getOpenedWindowNames()
     for windowName in windowNames:
-        print "Checking: ", windowName
+        log.tracef("Checking: %s", windowName)
         ''' This may need an enhancement to support multiple control panels for different consoles on the same window. '''
         if windowName == controlPanelWindowPath:
-            print "The control panel is already open..."
+            log.tracef("The control panel is already open...")
             return
     
     controlPanelName = payload.get(CONTROL_PANEL_NAME, "")
@@ -155,16 +154,16 @@ def sfcOpenControlPanel(payload):
     database = payload.get(DATABASE, "")
     clientDatabase = getDatabaseClient()
     
-    print "...checking if the control panel should be shown on this client..."
+    log.tracef("...checking if the control panel should be shown on this client...")
     if database <> clientDatabase:
-        print "...the window should NOT be shown because the client database (%s) does not match the message database (%s)" % (clientDatabase, database)
+        log.tracef("...the window should NOT be shown because the client database (%s) does not match the message database (%s)", clientDatabase, database)
         return
      
     if string.upper(originator) <> string.upper(system.security.getUsername()):
-        print "...the window should NOT be shown because the user does not match!"
+        log.tracef("...the window should NOT be shown because the user does not match!")
         return
     
-    print "...the control panel should be shown on this client..."
+    log.tracef("...the control panel should be shown on this client...")
 
     position = payload[POSITION]
     scale = payload[SCALE]    
@@ -173,13 +172,14 @@ def sfcOpenControlPanel(payload):
 
 
 def sfcCloseWindow(payload):
+    log.infof("In %s.sfcCloseWindow() with %s", __name__, str(payload))
     windowId = payload[WINDOW_ID]
     database = payload[DATABASE]
     clientDatabase = getDatabaseClient()
     if database <> clientDatabase:
-        print "Ignoring closeWindow message because database does not match (%s vs %s)" % (database, clientDatabase)
+        log.tracef("Ignoring closeWindow message because database does not match (%s vs %s)", database, clientDatabase)
         
-    print "Attempting to close window with id: ", windowId
+    log.tracef("Attempting to close window with id: %d", windowId)
     if windowId <> None:
         openWindows = system.gui.getOpenedWindows()
         for window in openWindows:
@@ -189,14 +189,25 @@ def sfcCloseWindow(payload):
             if str(openWindowId) == str(windowId):
                 system.nav.closeWindow(window)
 
+
 def sfcCloseWindowByName(payload):
+    log.infof("In %s.sfcCloseWindowByName() with %s", __name__, str(payload))
     windowPath = payload[WINDOW]
+    log.tracef("Attempting to close: %s", windowPath)
     windows = system.gui.findWindow(windowPath)
+    log.tracef("...found %d windows matching the path...", len(windows))
     for window in windows:
+        log.tracef("...closing %s...", window)
         system.nav.closeWindow(window)
+        
+    print "Checking the open windows:"
+    openWindows = system.gui.getOpenedWindows()
+    for window in openWindows:
+        print "   window: ", window.getPath()
+
 
 def sfcShowQueue(payload):
-    print "Payload: ", payload
+    log.infof("In %s.sfcShowQueue with %s", str(payload))
     queueKey=payload['queueKey']
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
@@ -204,7 +215,7 @@ def sfcShowQueue(payload):
     position = payload.get("position", "")
     scale = payload.get("scale", 1.0)
     
-    print "...checking if the queue should be shown on this client..."
+    log.tracef("...checking if the queue should be shown on this client...")
     if not(shouldShowWindow(payload)):
         return
     
@@ -216,6 +227,7 @@ def sfcShowQueue(payload):
     view(queueKey, useCheckpoint=True, silent=True, position=position, scale=scale)
         
 def sfcPrintWindow(payload):
+    log.infof("In %s.sfcPrintWindow with %s", __name__, str(payload))
     from ils.common.util import okToPrint
 
     if okToPrint():
@@ -227,4 +239,4 @@ def sfcPrintWindow(payload):
             printJob.showPrintDialog = showPrintDialog
             printJob.print()
     else:
-        print "Unable to print because printers have not been set up"
+        log.infof("--- IT IS NOT OK TO PRINT BECAUSE THE PRINTERS HAVE NOT BEEN SET UP ---")

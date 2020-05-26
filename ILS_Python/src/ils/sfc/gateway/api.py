@@ -34,7 +34,17 @@ def abortHandler(chartScope, msg):
     '''
     
     stepProperties = None
-    msg = msg + NEWLINE + chartScope.abortCause
+    try:
+        msg = msg + NEWLINE + chartScope.abortCause
+    except:
+        try:
+            print "In first except"
+            abortCause = chartScope.abortCause.getLocalizedMessage()
+        except:
+            print "In second except"
+            abortCause = "Unknown Error"
+            
+    msg = msg + NEWLINE + abortCause
     notifyGatewayError(chartScope, stepProperties, msg, logger)
     
     if logger <> None:

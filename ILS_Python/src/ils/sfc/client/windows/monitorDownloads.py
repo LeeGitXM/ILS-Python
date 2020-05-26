@@ -7,7 +7,7 @@ import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.api import s88GetFromStep, s88GetRecord, s88SetFromName, s88SetFromStep, s88GetRecipeDataIdFromStep, s88GetFromId, s88GetRecordFromId, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
-from ils.common.util import formatDateTime
+from ils.common.util import formatDateTime, escapeSqlQuotes
 from ils.sfc.common.util import getChartStatus
 log = system.util.getLogger("com.ils.client.downloadGUI")
 
@@ -263,7 +263,8 @@ def initializeDatabaseTable(windowId, database, tagProvider):
             timing = "NULL"
         else:
             timing = rawTiming
-            
+        
+        description = escapeSqlQuotes(description)
         formattedPV = formatPV(valueType, pvMonitorActive, pvValue)
         formattedSP = formatPV(valueType, True, setpoint)
         
@@ -295,14 +296,17 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 # happens then we may need to read all tags and update all fields in database.  It doesn't seem like that 
 # would be much additional overhead anyway.
 def updateDatabaseTable(windowId, database):
-    print "...updating the database table..."
+    log.tracef("...updating the database table...")
     SQL = "select * from SfcDownloadGUITable where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
+    i = 0
     for record in pds:
         recipeDataId = record["RecipeDataId"]
         recipeDataType = record["RecipeDataType"]
         recipeRecord = s88GetRecordFromId(recipeDataId, recipeDataType, database)
+        
+        log.tracef("Updating row %d, a %s", i, recipeDataType)
         
         if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:
             downloadStatus = recipeRecord["DOWNLOADSTATUS"]
@@ -330,10 +334,21 @@ def updateDatabaseTable(windowId, database):
             pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
             pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
             setpointStatus = ""
-            pvValue = recipeRecord["PVFLOATVALUE"]
+            
+            valueType = string.upper(recipeRecord["VALUETYPE"])
+            log.tracef("   valueType:%s", valueType)
+            if valueType == "FLOAT":
+                pvValue = recipeRecord["PVFLOATVALUE"]
+            elif valueType == "INTEGER":
+                pvValue = recipeRecord["PVINTEGERVALUE"]
+            elif valueType == "STRING":
+                pvValue = recipeRecord["PVSTRINGVALUE"]
+            elif valueType == "BOOLEAN":
+                pvValue = recipeRecord["PVBOOLEANVALUE"]
+                
             stepTimestamp = None
         else:
-            print "*** Illegal recipe data type: ", recipeDataType
+            log.errorf("*** Illegal recipe data type: %s", recipeDataType)
             return
         
         formattedPV = formatPV(valueType, pvMonitorActive, pvValue)
@@ -349,7 +364,9 @@ def updateDatabaseTable(windowId, database):
             (str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
              stepTimestamp, windowId, str(recipeDataId) )
 
+        log.tracef("SQL: %s", SQL)
         system.db.runUpdateQuery(SQL, database)
+        i = i + 1
 
 #---------------------------------------------------------------------------------------   
 # The following methods support the buttons on the download window
