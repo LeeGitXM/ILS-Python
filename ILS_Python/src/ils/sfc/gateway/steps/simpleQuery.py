@@ -120,8 +120,6 @@ def activate(scopeContext, stepProperties, state):
                 key = string.replace(key, ".", "_")
                 log.tracef("Modified Key: %s", key)
                 attr = columnNames[1]
-                print "column names: ", columnNames
-                print "attr: ", attr
                 log.tracef("The dynamic key is: %s", str(key))
 
                 ''' I need an attribute, even if we are returning multiple values, in order to call dataEists. '''
