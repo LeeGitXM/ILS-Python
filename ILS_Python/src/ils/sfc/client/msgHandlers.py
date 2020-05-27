@@ -207,7 +207,7 @@ def sfcCloseWindowByName(payload):
 
 
 def sfcShowQueue(payload):
-    log.infof("In %s.sfcShowQueue with %s", str(payload))
+    log.infof("In %s.sfcShowQueue with %s", __name__, str(payload))
     queueKey=payload['queueKey']
     originator = payload[ORIGINATOR]
     controlPanelName = payload[CONTROL_PANEL_NAME]
