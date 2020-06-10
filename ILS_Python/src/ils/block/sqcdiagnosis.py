@@ -149,4 +149,3 @@ class SQCDiagnosis(basicblock.BasicBlock):
             from ils.common.error import catchError
             txt=catchError(__name__, "Error resetting a SQC Diagnosis")
             log.error(txt)
-       
