@@ -20,7 +20,7 @@ def delete(finalDiagnosisUUID):
     '''
     Even though a delete is initiated from Designer scope, this runs in gateway scope!
     '''
-    log.tracef("In %s.delete()", __name__)
+    log.infof("In %s.delete()", __name__)
     
     import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
     handler = PythonRequestHandler()

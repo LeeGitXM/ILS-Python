@@ -10,72 +10,39 @@ from ils.sfc.gateway.api import getStepProperty, getTimeoutTime, getControlPanel
         checkForResponse, logStepDeactivated, dbStringForFloat, getTopChartRunId, deleteAndSendClose, \
         getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError
 from ils.sfc.common.constants import RECIPE_LOCATION, KEY, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, \
-    DEACTIVATED, ACTIVATED, PAUSED, CANCELLED
+    DEACTIVATED, RESPONSE_KEY_AND_ATTRIBUTE, RESPONSE_LOCATION, \
+    REFERENCE_SCOPE, GLOBAL_SCOPE, OPERATION_SCOPE, PHASE_SCOPE, SUPERIOR_SCOPE, LOCAL_SCOPE, PRIOR_SCOPE, CHART_SCOPE, STEP_SCOPE, SFC_WINDOW_RESPONSE_KEY
     
-def activate(scopeContext, stepProperties, state, buttonLabel, windowType, message, choices=None, lowLimit=None, highLimit=None):
-    '''
-    Action for java InputStep
-    Get an response from the user; block until a
-    response is received, put response in chart properties
-    '''
 
+def initializeResponse(scopeContext, stepProperties, windowId):
+    '''
+    Clear the response recipe data so we know when the client has updated it.
+    Also set up the entry in the global cache that is updated by the client when they responded to the window
+    '''
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    chartLogger = getChartLogger(chartScope)
-    if state == DEACTIVATED:
-        logStepDeactivated(chartScope, stepProperties)
-        cleanup(chartScope, stepScope)
-        return False
-            
-    try:
-        # Check for previous state:
-        workDone = False
-        waitingForReply = stepScope.get(WAITING_FOR_REPLY, False);
-        
-        if not waitingForReply:
-            # first call; do initialization and cache info in step scope for subsequent calls:
-            # calculate the absolute timeout time in epoch secs:
-            setResponse(chartScope, stepScope, stepProperties, None)
-            stepScope[WAITING_FOR_REPLY] = True
-            timeoutTime = getTimeoutTime(chartScope, stepProperties)
-            stepScope[TIMEOUT_TIME] = timeoutTime
-            controlPanelId = getControlPanelId(chartScope)
-            print 'controlPanelId', controlPanelId
-            position = getStepProperty(stepProperties, POSITION) 
-            scale = getStepProperty(stepProperties, SCALE) 
-            title = getStepProperty(stepProperties, WINDOW_TITLE) 
-            # step-specific properties:
-            prompt = getStepProperty(stepProperties, PROMPT)
-            database = getDatabaseName(chartScope)
-            chartRunId = getTopChartRunId(chartScope)
-            windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowType, buttonLabel, position, scale, title, database)
-            stepScope[WINDOW_ID] = windowId
-            # Note: the low/high limits are formatted as strings so we can insert 'null' if desired
-            lowLimit = dbStringForFloat(lowLimit)
-            highLimit = dbStringForFloat(highLimit)
-            sql = "insert into SfcInput (windowId, prompt, lowLimit, highLimit) values ('%s', '%s', %s, %s)" % (windowId, prompt, lowLimit, highLimit)
-            numInserted = system.db.runUpdateQuery(sql, database)
-            if numInserted == 0:
-                handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', chartLogger)
-                
-            if choices != None:
-                choicesList = system.util.jsonDecode(choices)
-                for choice in choicesList:
-                    system.db.runUpdateQuery("insert into SfcInputChoices (windowId, choice) values ('%s', '%s')" % (windowId, choice), database)                   
+    logger = getChartLogger(chartScope)
     
-        else: # waiting for reply
-            response = checkForResponse(chartScope, stepScope, stepProperties)
-            if response != None: 
-                workDone = True
-                if response != TIMED_OUT:
-                    setResponse(chartScope, stepScope, stepProperties, response)                
-    except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', chartLogger)
-        workDone = True
-    finally:
-        if workDone:
-            cleanup(chartScope, stepProperties, stepScope)
-        return workDone
+    responseKey = getStepProperty(stepProperties, RESPONSE_KEY_AND_ATTRIBUTE)
+    responseLocation = getStepProperty(stepProperties, RESPONSE_LOCATION)
+    logger.tracef("In %s.initializeResponse(), initializing %s.%s", __name__, responseLocation, responseKey)
+    
+    if responseLocation in [ REFERENCE_SCOPE, GLOBAL_SCOPE, OPERATION_SCOPE, PHASE_SCOPE, SUPERIOR_SCOPE, LOCAL_SCOPE, PRIOR_SCOPE]:
+        s88Set(chartScope, stepScope, responseKey, "NULL", responseLocation)
+    elif responseLocation == CHART_SCOPE:
+        chartScope.responseKey = None
+    elif responseLocation == STEP_SCOPE:
+        stepScope.responseKey = None
+    else:
+        #TODO throw an error here!
+        print "BIG ERROR"
+    
+    responses = system.util.getGlobals().get(SFC_WINDOW_RESPONSE_KEY, None)
+    if responses == None:
+        responses = {}
+    responses[windowId] = None
+    system.util.getGlobals()[SFC_WINDOW_RESPONSE_KEY] = responses
+    
 
 def checkForTimeout(stepScope):
     '''Common code for checking the timeout of a step, generally one that has a UI'''
@@ -88,12 +55,6 @@ def checkForTimeout(stepScope):
 
     return timeout
 
-def setResponse(chartScope, stepScope, stepProperties, response):
-    logger = getChartLogger(chartScope)
-    logger.tracef("In %s.setResponse...", __name__)
-    recipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION) 
-    key = getStepProperty(stepProperties, KEY) 
-    s88Set(chartScope, stepScope, key, response, recipeLocation)
     
 def cleanup(chartScope, stepProperties, stepScope):
     logger = getChartLogger(chartScope)

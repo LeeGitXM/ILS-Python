@@ -37,3 +37,7 @@ def sendMessage(project, handler, payload, scope):
 def sendRequest(project, handler, payload, scope):
     response = []
     return response
+
+def sendRequestAsync(project, messageHandler, payload, timeoutSec):
+    handler=1.0
+    return handler    

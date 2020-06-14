@@ -5,6 +5,7 @@ Created on Jun 15, 2015
 '''
 import system, string
 from ils.common.config import getTagProviderClient
+from ils.common.constants import CR
 from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue
 log = system.util.getLogger("com.ils.labData.ui.configuration")
 
@@ -284,7 +285,7 @@ def validate(rootContainer):
     Since we are coming at this from the databases point of view, validate tags for now.
     '''
     
-    def validateTags(unitName, valueName, dataType, tagProvider):
+    def validateTags(unitName, valueName, dataType, tagProvider, txt):
         ''' Now check the lab value tag '''
         
         log.tracef("    ...validating lab data UDT: %s", valueName)
@@ -297,9 +298,12 @@ def validate(rootContainer):
         else:
             log.infof("      --- Creating lab value UDT ---")
             createLabValue(unitName, valueName)
+            txt = "%s%sCreated lab value UDT for %s" % (txt, CR, valueName)
+            
+        return txt
 
 
-    def validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider):
+    def validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt):
         log.tracef("   ...validating DCS lab data: %s - %s - %s", valueName, interfaceName, itemId)
         
         path = "LabData/%s/DCS-Lab-Values" % (unitName)
@@ -311,8 +315,10 @@ def validate(rootContainer):
         else:
             log.infof("      --- Creating OPC Tag ---")
             createDcsTag(unitName, valueName, interfaceName, itemId)
+            txt = "%s%sCreated OPC tag for %s - %s" % (txt, CR, valueName, itemId)
+        return txt
             
-    def validateLimits(unitName, valueName, dataType, tagProvider):
+    def validateLimits(unitName, valueName, dataType, tagProvider, txt):
         ''' 
         Now check the lab limits - This makes sure that all of the required limit UDTs exist.  
         It doesn't clean up extra UDTs.
@@ -350,6 +356,9 @@ def validate(rootContainer):
                 log.infof("         --- Creating lab limit UDT ---")
                 system.tag.addTag(parentPath=parentPath, name=valueName + suffix, tagType="UDT_INST", 
                       attributes={"UDTParentType":udtType})
+                txt = "%s%sCreated Lab Limit UDT for %s - %s" % (txt, CR, valueName + suffix, udtType)
+                
+        return txt
     #--------------------------------------------------------------------------------------
         
     log.infof("In %s.validate()", __name__)
@@ -357,37 +366,56 @@ def validate(rootContainer):
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     dataType = rootContainer.dataType
     log.infof("...validating %s...", dataType)
+    txt = ""
     
     if dataType == "PHD":
         table = rootContainer.getComponent("PHD").getComponent("PHD_Value")
         ds = table.data
         for row in range(ds.getRowCount()):
             valueName = ds. getValueAt(row, "ValueName")
-            validateTags(unitName, valueName, dataType, tagProvider)
-            validateLimits(unitName, valueName, dataType, tagProvider)
+            txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+
+        if txt == "":
+            txt = "PHD Lab data configuration validated, no problems were detected!"
+        else:
+            txt = "Validating PHD Lab data...%s%s" % (CR, txt)
         
     elif dataType == "DCS":
         table = rootContainer.getComponent("DCS").getComponent("DCS_Value")
         ds = table.data
+        
         for row in range(ds.getRowCount()):
             valueName = ds. getValueAt(row, "ValueName")
             interfaceName = ds.getValueAt(row, "InterfaceName")
             itemId =  ds.getValueAt(row, "ItemId")
-            validateTags(unitName, valueName, dataType, tagProvider)
-            validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider)
-            validateLimits(unitName, valueName, dataType, tagProvider)
-            
+            txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+        
+        if txt == "":
+            txt = "DCS Lab data configuration validated, no problems were detected!"
+        else:
+            txt = "Validating DCS Lab data...%s%s" % (CR, txt)
+                        
     elif dataType == "Local":
         table = rootContainer.getComponent("Local").getComponent("Local_Value")
         ds = table.data
         for row in range(ds.getRowCount()):
             valueName = ds. getValueAt(row, "ValueName")
-            validateTags(unitName, valueName, dataType, tagProvider)
-            validateLimits(unitName, valueName, dataType, tagProvider)
+            txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+        
+        if txt == "":
+            txt = "Local Lab data configuration validated, no problems were detected!"
+        else:
+            txt = "Validating Local Lab data...%s%s" % (CR, txt)
         
     else:
+        txt = "Unexpected lab data type: %s" % (rootContainer.dataType)
         print "Unexpected tab: %s" % (rootContainer.dataType)
-
+        
+    system.gui.messageBox(txt)
 
 # Refresh the limit table    
 def updateLimit(rootContainer):

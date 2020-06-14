@@ -44,13 +44,15 @@ def activate(scopeContext, stepProperties, state):
             if autoMode == AUTOMATIC:
                 logger.trace("Executing block in automatic mode...")
                 for row in config.rows:
-                    logger.tracef("...setting %s - %s - %s - %s", row.destination, row.key, row.defaultValue, str(row.units))
                     if string.upper(row.destination) == "TAG":
+                        logger.tracef("...setting from tag: %s - %s - %s - %s", row.destination, row.key, row.defaultValue, str(row.units))
                         tagPath = "[%s]%s" % (provider, row.key)
                         system.tag.write(tagPath, row.defaultValue)
                     elif row.units in ["", None]: 
+                        logger.tracef("...setting: %s - <%s> - <%s> - <%s>", row.destination, row.key, row.defaultValue, str(row.units))
                         s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
                     else:
+                        logger.tracef("...setting with units: %s - <%s> - <%s> - <%s>", row.destination, row.key, row.defaultValue, str(row.units))
                         s88SetWithUnits(chartScope, stepScope, row.key, row.defaultValue, row.destination, row.units)
                 workDone = True
             else:

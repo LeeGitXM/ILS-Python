@@ -5,13 +5,15 @@ Created on Nov 3, 2014
 '''
 
 import system
-from ils.sfc.common.api import callMethodWithParams
-from ils.sfc.common.constants import HANDLER, WINDOW_ID, ID, INSTANCE_ID, DATABASE, WINDOW_ID, TABLE, PROJECT
+from ils.sfc.common.util import callMethodWithParams
+from ils.sfc.common.constants import HANDLER, WINDOW_ID, ID, INSTANCE_ID, DATABASE, WINDOW_ID, TABLE, PROJECT, SFC_WINDOW_RESPONSE_KEY
 from ils.sfc.gateway.api import deleteAndSendClose
-from system.ils.sfc import setResponse
-from ils.sfc.gateway.monitoring import getMonitoringMgr
 
 def dispatchMessage(payload):
+    '''
+    This is called by the Gateway Message Handler named: sfcMessage.
+    This is called whenever a sfcMessage is received by the gateway.
+    '''
     methodName = payload[HANDLER]
     methodPath = 'ils.sfc.gateway.msgHandlers.' + methodName
     keys = ['payload']
@@ -26,20 +28,7 @@ def dispatchMessage(payload):
             errMsg = "Error dispatching gateway message %s: %s" % (methodName, str(e))
         #TODO: whats the right logger here?
         print errMsg
-                              
-def sfcResponse(payload):
-    '''Handle a message that is a response to a request sent from the Gateway'''
-    windowId = payload[WINDOW_ID]
-    setResponse(windowId, payload)
-        
-def sfcUpdateDownloads(payload):
-
-    timerId = payload[ID]
-    chartRunId = payload[INSTANCE_ID]
-    monitoringMgr = getMonitoringMgr(chartRunId, timerId)
-    if monitoringMgr != None:
-        monitoringMgr.sendClientUpdate()
-    # else chart probably ended
+    
     
 def sfcCloseWindow(payload):
     '''close an open window. this is not usually called, as the step methods delete their own 

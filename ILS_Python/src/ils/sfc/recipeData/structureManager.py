@@ -4,7 +4,7 @@ Created on Dec 29, 2016
 @author: phass
 '''
 
-import system
+import system, string
 from ils.common.config import getTagProvider, getDatabase
 from ils.common.util import formatDateTimeForDatabase
 log = system.util.getLogger("com.ils.sfc.structureManager.python")
@@ -222,7 +222,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML):
         log.tracef("Existing steps:")
         for record in databaseStepsPds:
             log.tracef("  %s", record["StepName"])
-            stepsInDatabase.append(record["StepName"])
+            stepsInDatabase.append(string.upper(record["StepName"]))
         
         updateCntr = 0
         insertCntr = 0
@@ -232,11 +232,11 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML):
             stepName = step["name"]
             stepType = step["type"]
             
-            if stepName in stepsInDatabase:
+            if string.upper(stepName) in stepsInDatabase:
                 log.tracef("Step already exists in database, checking if it needs to be updated...")
                 
                 for stepRecord in databaseStepsPds:
-                    if stepName == stepRecord["StepName"]:
+                    if string.upper(stepName) == stepRecord["StepName"]:
                         log.tracef("...found the step (name: %s, step type: %s-%s) in the database list...", stepName, stepType, str(stepTypeId))
                         updateIt = False
                         if chartId <> stepRecord["ChartId"]:
@@ -245,6 +245,9 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML):
                         if stepTypeId <> stepRecord["StepTypeId"]:
                             log.tracef("...the stepType has been changed from %s to %s", str(stepRecord["StepTypeId"]), str(stepTypeId))
                             updateIt = True
+                        if stepName <> stepRecord["StepName"]:
+                            log.tracef("...the step has been renamed slightly from %s to %s", stepName, str(stepRecord["StepName"]) )
+                            updateIt = True
 
                         if updateIt:
                             SQL = "update SfcStep set StepName = '%s', StepTypeId = %d, ChartId = %d where StepUUID = '%s'" % (stepName, stepTypeId, chartId, stepId)
@@ -252,7 +255,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML):
                             log.tracef("...updated %d existing steps", rows)
                             updateCntr = updateCntr + 1
                 
-                stepsInDatabase.remove(step["name"])
+                stepsInDatabase.remove(string.upper(step["name"]))
             else:
                 log.tracef("Inserting a new step %s, a %s with UUID %s into the database...", stepName, stepType, stepId)
                 SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepName, stepId, stepTypeId, chartId)
