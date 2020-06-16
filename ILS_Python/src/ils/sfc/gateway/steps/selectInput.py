@@ -7,13 +7,12 @@ Created on Dec 17, 2015
 import system
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, logStepDeactivated, getTopChartRunId, \
     getChartLogger, getDatabaseName, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.common.constants import CHOICES_RECIPE_LOCATION, CHOICES_KEY, IS_SFC_WINDOW, BUTTON_LABEL, WAITING_FOR_REPLY,\
-    DEACTIVATED, CANCELLED, RESPONSE_LOCATION, KEY, TARGET_STEP_UUID, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, \
+from ils.sfc.common.constants import CHOICES_RECIPE_LOCATION, RECIPE_LOCATION, CHOICES_KEY, IS_SFC_WINDOW, BUTTON_LABEL, WAITING_FOR_REPLY,\
+    DEACTIVATED, CANCELLED, KEY, TARGET_STEP_UUID, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, WINDOW_PATH, \
     RESPONSE_KEY_AND_ATTRIBUTE, ID, STEP_ID, INSTANCE_ID, CHART_ID, WORK_DONE, CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
 from ils.sfc.common.util import isEmpty
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
+from ils.sfc.recipeData.api import s88GetStep, substituteScopeReferences
 from ils.sfc.gateway.steps.commonInput import cleanup, initializeResponse
-from ils.sfc.recipeData.core import splitKey
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -28,7 +27,7 @@ def activate(scopeContext, stepProperties, state):
     messageHandler = "sfcOpenWindow"
     
     responseKey = getStepProperty(stepProperties, RESPONSE_KEY_AND_ATTRIBUTE)
-    responseLocation = getStepProperty(stepProperties, RESPONSE_LOCATION)
+    responseLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     
     logger.tracef("Response Location: %s", responseLocation)
     logger.tracef("Response Key: %s", responseKey)
@@ -73,7 +72,7 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
             
-            # Clear the response recipe data so we know when the client has updated it
+            ''' Clear the response recipe data so we know when the client has updated it '''
             initializeResponse(scopeContext, stepProperties, windowId)
             choicesStepId, stepName, choicesKeyAndAttribute = s88GetStep(chartScope, stepScope, choicesRecipeLocation, choicesKey, database)
             

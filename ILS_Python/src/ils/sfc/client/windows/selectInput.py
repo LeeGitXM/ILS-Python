@@ -54,3 +54,4 @@ def okActionPerformed(event):
     
     setClientResponse(rootContainer, response)
     setClientDone(rootContainer)
+    system.nav.closeParentWindow(event)
