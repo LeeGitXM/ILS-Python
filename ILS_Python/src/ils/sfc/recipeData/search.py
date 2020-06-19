@@ -7,6 +7,7 @@ Created on Feb 12, 2020
 import system
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.hierarchyWithBrowser import deleteRecipeData, deleteRecipeDataGroup
+from ils.common.util import clearDataset
 
 log = system.util.getLogger("ils.client.ui")
 
@@ -88,6 +89,15 @@ def deleteFolderCallback(event):
     
     deleteRecipeDataGroup(recipeDataFolderId, db)
     refreshRecipeDataListCallback(event)
+
+
+def clearCallback(event):
+    log.infof("In %s.clearCallback()...", __name__)    
+    container = event.source.parent
+    table = container.getComponent("Power Table")
+    ds = table.data
+    ds = clearDataset(ds)
+    table.data = ds
 
 
 def getSelectedInfo(event):

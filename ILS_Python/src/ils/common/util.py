@@ -15,6 +15,23 @@ def append(t1, t2):
         return t2
     return t1 + CR + t2
 
+def parseFilename(filename):
+    if filename.find(":") > -1:
+        drive = filename[:filename.find(":")]
+        filename = filename[filename.find(":"):]
+    else:
+        drive = ''
+    
+    if filename.find(".") > -1:
+        print "There is an extensdion"
+        extension = filename[filename.find(".")+1:]
+        print extension
+        filename = filename[:filename.find(".")]
+    else:
+        extension = ''
+    
+    return drive, filename, extension
+
 def fileWriterMessageHandler(payload):
     log.infof("In %sfileWriterMessageHandler.", __name__)
     filepath=payload.get("filepath")
@@ -341,6 +358,28 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
                 badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
     return badValue, ds, badValueTxt
+
+'''
+Return a dataset with one row for each timestamp and one column for each tag.  The first column is a timestamp and each subsequent column is a tagname.
+'''
+def queryRawHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDate, endDate, log):
+    badValueTxt = ""
+
+    fullTagPaths = []
+    for tagPath in tagPaths:
+        fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
+    
+    log.tracef("Fetching history for %s between %s and %s", str(fullTagPaths), str(startDate), str(endDate))
+    
+    ds = system.tag.queryTagHistory(
+        paths=fullTagPaths,
+        startDate=startDate, 
+        endDate=endDate, 
+        returnSize=0, 
+        ignoreBadQuality=True
+        )
+
+    return ds
 
 '''
 Return a list of qualified values and a flag that indicates if any one of the tags is bad or None

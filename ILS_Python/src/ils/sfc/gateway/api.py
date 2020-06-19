@@ -6,7 +6,7 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
     
-import system, time
+import system, time, string
 from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT, MAX_CONTROL_PANEL_MESSAGE_LENGTH
@@ -346,9 +346,27 @@ def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position
     print "********************************************************************************"
     registerWindowWithControlPanel(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database)
 
-def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile, database):
-    print 'windowId', windowId, 'dataText', dataText, 'filepath', filepath, 'computer', computer, 'printFile', printFile, 'showPrintDialog', showPrintDialog, 'viewFile', viewFile
-    system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, showPrintDialog, viewText) values ('%s', '%s', '%s', '%s', %d, %d, %d)" % (windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile), database)
+def createSaveDataRecord(windowId, textData, binaryData, filepath, fileLocation, printFile, showPrintDialog, viewFile, database, extension="txt"):
+    print 'windowId: ', windowId 
+    print 'filepath: ', filepath
+    print 'fileLocation:', fileLocation
+    print 'printFile: ', printFile
+    print 'showPrintDialog: ', showPrintDialog
+    print 'viewFile: ', viewFile
+    
+    if string.upper(fileLocation) == "CLIENT":
+            SQL = "insert into SfcSaveData (windowId, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
+    else:
+        if string.upper(extension) == "PDF":
+            SQL = "insert into SfcSaveData (windowId, binaryData, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, binaryData, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
+        else:
+            SQL = "insert into SfcSaveData (windowId, textData, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, textData, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
 
 def dbStringForString(strValue):
     '''return a string representation of the given string suitable for a nullable SQL varchar column'''

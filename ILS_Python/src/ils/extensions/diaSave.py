@@ -14,11 +14,11 @@ controllerRequestHandler = ControllerRequestHandler.getInstance()
 pythonHandler = diagram.getHandler()
 
 def delete(diagramUUID):
-    log.tracef("In %s.delete()", __name__)
+    log.infof("In %s.delete()", __name__)
     
 
 def save(diagramUUID, aux):
-    log.tracef("In %s.save()", __name__)
+    log.infof("In %s.save()", __name__)
     diagram = controllerRequestHandler.getDiagram(diagramUUID)
     if not(diagram == None):
         diagramName=diagram.getName()

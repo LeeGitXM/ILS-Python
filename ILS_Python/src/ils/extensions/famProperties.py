@@ -38,6 +38,7 @@ def delete(familyUUID):
 # The production an isolation databases need to be kept structurally in-synch.
 # Apply these changes against both instances.
 def rename(uuid,oldName,newName):
+    log.infof("In %s.rename() from %s to %s", __name__, oldName, newName)
     
     def renameInDatabase(uuid,oldName,newName,db):
         SQL = "UPDATE DtFamily SET FamilyName= '%s' WHERE FamilyName = '%s'" % (newName,oldName)
@@ -46,9 +47,8 @@ def rename(uuid,oldName,newName):
     log.infof("In %s.rename()", __name__)
     db = applicationRequestHandler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
-    db = applicationRequestHandler.getIsolationDatabase()
-    renameInDatabase(uuid,oldName,newName,db)
-    
+#    db = applicationRequestHandler.getIsolationDatabase()
+#    renameInDatabase(uuid,oldName,newName,db)
 
    
 def save(familyUUID, aux):
@@ -60,7 +60,7 @@ def save(familyUUID, aux):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    log.tracef("In %s.save()", __name__)
+    log.infof("In %s.save()", __name__)
     
     import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
     handler = PythonRequestHandler()
@@ -116,12 +116,11 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid,aux,db):
+    log.infof("In %s.getAux()...", __name__)
     app  = applicationRequestHandler.getApplicationName(uuid)
     name = applicationRequestHandler.getFamilyName(uuid)
     
     properties = aux[0]
-    
-    print "famProperties,getAux():  ...the family name is ", name
     
     SQL = "SELECT FAM.Description,FAM.FamilyPriority "\
           " FROM DtFamily FAM,DtApplication APP "\
@@ -135,10 +134,13 @@ def getAux(uuid,aux,db):
 
 
 def setAux(uuid,aux,db):
+    log.infof("In %s.setAux()...", __name__)
     app  = applicationRequestHandler.getApplicationName(uuid)
     name = applicationRequestHandler.getFamilyName(uuid)
     properties = aux[0]
-    print "famProperties.setAux()  ...the application/family name is: ",app,"/",name,", properties:", properties
+    
+    log.tracef("...the application/family name is: %s/%s", app, name)
+    log.tracef("Properties: %s", str(properties))
     
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (app)
     applicationId = system.db.runScalarQuery(SQL,db)
@@ -150,14 +152,15 @@ def setAux(uuid,aux,db):
           " WHERE ApplicationId = %s"\
           "  AND familyName = '%s'" % (applicationId,name)
     familyId = system.db.runScalarQuery(SQL,db)
+    
     if familyId == None:
         SQL = "INSERT INTO DtFamily(applicationId,familyName,description,familyPriority)"\
                " VALUES(?,?,?,?)"
         familyId = system.db.runPrepUpdate(SQL, [applicationId, name, properties.get("Description",""),  
                                                  properties.get("Priority","0.0")], db, getKey=1)
-        print "famProperties.setAux(): Inserted a new family with id: ", familyId
+        log.tracef("setAux(): Inserted a new family with id: %d", familyId)
     else:
         SQL = "UPDATE DtFamily SET familyName = ?, description = ?, familyPriority = ?" \
             " where familyId = ? "
         system.db.runPrepUpdate(SQL, [name, properties.get("Description",""), properties.get("Priority","0.0"),familyId],db)
-        print "famProperties.setAux(): Updated an existing family with id: ", familyId
+        log.tracef("Updated an existing family with id: %d", familyId)

@@ -11,7 +11,7 @@ from ils.sfc.gateway.api import getStepProperty, getTimeoutTime, getControlPanel
         getDatabaseName, getChartLogger, getProject, handleUnexpectedGatewayError
 from ils.sfc.common.constants import RECIPE_LOCATION, KEY, TIMED_OUT, WAITING_FOR_REPLY, TIMEOUT_TIME, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, \
     DEACTIVATED, RESPONSE_KEY_AND_ATTRIBUTE, RESPONSE_LOCATION, \
-    REFERENCE_SCOPE, GLOBAL_SCOPE, OPERATION_SCOPE, PHASE_SCOPE, SUPERIOR_SCOPE, LOCAL_SCOPE, PRIOR_SCOPE, CHART_SCOPE, STEP_SCOPE, SFC_WINDOW_RESPONSE_KEY
+    REFERENCE_SCOPE, GLOBAL_SCOPE, OPERATION_SCOPE, PHASE_SCOPE, SUPERIOR_SCOPE, LOCAL_SCOPE, PRIOR_SCOPE, CHART_SCOPE, STEP_SCOPE
     
 
 def initializeResponse(scopeContext, stepProperties, windowId):
@@ -34,14 +34,7 @@ def initializeResponse(scopeContext, stepProperties, windowId):
     elif responseLocation == STEP_SCOPE:
         stepScope.responseKey = None
     else:
-        #TODO throw an error here!
-        print "BIG ERROR"
-    
-    responses = system.util.getGlobals().get(SFC_WINDOW_RESPONSE_KEY, None)
-    if responses == None:
-        responses = {}
-    responses[windowId] = None
-    system.util.getGlobals()[SFC_WINDOW_RESPONSE_KEY] = responses
+        logger.errorf("Error in %s.initializeResponse():, unexpected responseLocation: %s", __name__, responseLocation)
     
 
 def checkForTimeout(stepScope):

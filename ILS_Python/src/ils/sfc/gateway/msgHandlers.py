@@ -6,7 +6,7 @@ Created on Nov 3, 2014
 
 import system
 from ils.sfc.common.util import callMethodWithParams
-from ils.sfc.common.constants import HANDLER, WINDOW_ID, ID, INSTANCE_ID, DATABASE, WINDOW_ID, TABLE, PROJECT, SFC_WINDOW_RESPONSE_KEY
+from ils.sfc.common.constants import HANDLER, WINDOW_ID, ID, INSTANCE_ID, DATABASE, WINDOW_ID, TABLE, PROJECT
 from ils.sfc.gateway.api import deleteAndSendClose
 
 def dispatchMessage(payload):
