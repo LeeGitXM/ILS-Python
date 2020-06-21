@@ -65,6 +65,7 @@ def okToPrint():
     
     return True
 
+
 def isClientScope():
     try:
         flags = system.util.getSystemFlags()
