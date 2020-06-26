@@ -267,7 +267,7 @@ def serviceDownload(post, ds, tagProvider, db):
                         updateQuantOutputDownloadStatus(quantOutputId, "Error", db)
                         logbookMessage += "failed because of an error: %s\n" % (errorMessage)
                 else:
-                    print "...writes from the diagnostic toolkit are disabled..."
+                    print "...writes from symbolic ai are disabled..."
                     insertPostMessage(post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), db)
                     updateQuantOutputDownloadStatus(quantOutputId, "Error", db)
                     logbookMessage += "failed because diag toolkit writes are disabled\n"

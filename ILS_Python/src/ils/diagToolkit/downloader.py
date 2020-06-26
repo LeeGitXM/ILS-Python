@@ -135,7 +135,7 @@ class Downloader():
                         self.runningCount = self.runningCount + 1
 
                     else:
-                        print "...writes from the diagnostic toolkit are disabled..."
+                        print "...writes from symbolic ai are disabled..."
    
                         insertPostMessage(self.post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), self.db)
                         self.updateQuantOutputDownloadStatus(quantOutputId, "Error")

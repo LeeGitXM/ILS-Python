@@ -155,7 +155,7 @@ def resetApplication(unit, database, tagProvider):
     '''
     Now that we have the list of blocks upstream from all of the non-constant final diagnosis that are not upstream of a 
     latch block the million dollar question is what do we need to do to them.  The difficult thing is to sort out things that
-    were required in the old platform due to some idiosyncrosy with GDA, since the diagnostic toolkit is fundamentally 
+    were required in the old platform due to some idiosyncrosy with GDA, since symbolic ai is fundamentally 
     different in how data propagates, we may not need to do the same thing when the grade changes!  We do know that we
     need to twiddle the truth pulse objects. 
     '''    

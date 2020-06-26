@@ -142,22 +142,28 @@ def setAux(uuid,aux,db):
     
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (app)
     applicationId = system.db.runScalarQuery(SQL,db)
+    print "EREIAM JH - 1: ", SQL
     if applicationId == None:
         SQL = "insert into DtApplication (ApplicationName) values (?)"
         applicationId = system.db.runPrepUpdate(SQL, [app], db, getKey=1)
+        print "EREIAM JH - 2: ", SQL
+
     
     SQL = "SELECT familyId FROM DtFamily "\
           " WHERE ApplicationId = %s"\
           "  AND familyName = '%s'" % (applicationId,name)
     familyId = system.db.runScalarQuery(SQL,db)
+    print "EREIAM JH - 3: ", SQL
     if familyId == None:
         SQL = "INSERT INTO DtFamily(applicationId,familyName,description,familyPriority)"\
                " VALUES(?,?,?,?)"
         familyId = system.db.runPrepUpdate(SQL, [applicationId, name, properties.get("Description",""),  
                                                  properties.get("Priority","0.0")], db, getKey=1)
+        print "EREIAM JH - 4: ", SQL
         print "famProperties.setAux(): Inserted a new family with id: ", familyId
     else:
         SQL = "UPDATE DtFamily SET familyName = ?, description = ?, familyPriority = ?" \
             " where familyId = ? "
         system.db.runPrepUpdate(SQL, [name, properties.get("Description",""), properties.get("Priority","0.0"),familyId],db)
+        print "EREIAM JH - 5: ", SQL
         print "famProperties.setAux(): Updated an existing family with id: ", familyId

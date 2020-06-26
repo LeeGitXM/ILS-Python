@@ -2,7 +2,7 @@
   Copyright 2016. ILS Automation. All rights reserved.
   Gateway scope extension function that is called whenever a diagram is saved.
   We use this as an opportunity to synchronize our database perception of
-  what exists in the diagnostic toolkit world.
+  what exists in the Symbolic AI world.
 '''
 import system
 import ils.diagToolkit.common as common
