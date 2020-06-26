@@ -133,7 +133,7 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                 tagPath="[%s]%s" % (tagProvider, tag)
                 
                 from ils.io.util import getOutputForTagPath
-                outputTagPath=getOutputForTagPath(tagPath, "sp")
+                outputTagPath=getOutputForTagPath(tagProvider, tagPath, "sp")
                 
                 log.info("Checking Quant Output: %s - Tag: %s" % (quantOutput, outputTagPath))
                 

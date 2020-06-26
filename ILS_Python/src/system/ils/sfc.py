@@ -24,20 +24,17 @@ def getResponse(id):
     pass
 def getReviewData(chartScope, stepScope, configJson, addAdvice):
     pass
-
 def getReviewFlows(chartScope, stepScope, configJson, addAdvice):
     pass
-
 def getReviewFlowsConfig():
     pass
-
 def getReviewDataConfig():
     pass
-
-
+def getUserLibPath():
+    path  = ""
+    return path
 def s88DataExists(chartProperties, stepProperties, ckey, location):
     pass
-
 # TODO: delete this
 def s88GetScope(chartProperties, stepProperties, location):
     pass
@@ -45,13 +42,10 @@ def s88GetScope(chartProperties, stepProperties, location):
 # TODO: delete this
 def s88ScopeChanged(chartProperties, stepProperties):
     pass
-
 def getDatabaseName(isolationMode):
     pass
-
 def getProviderName(isolationMode):
     pass
-
 def getIsolationMode(chartScope):
     pass
 
@@ -72,8 +66,6 @@ def getMonitorDownloadsConfig(json):
 
 def getManualDataEntryConfig(json):
     pass
-
-
 
 def getRecipeDataTagPath(chartScope, stepScope, scopeId):
     pass

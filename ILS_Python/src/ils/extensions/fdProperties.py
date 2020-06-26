@@ -11,16 +11,12 @@ handler = ApplicationRequestHandler()
 log = system.util.getLogger("com.ils.diagToolkit.extensions")
 
 '''
-
 Gateway Scope Functions
-
 '''
 
 def delete(finalDiagnosisUUID):
-    '''
-    Even though a delete is initiated from Designer scope, this runs in gateway scope!
-    '''
-    log.tracef("In %s.delete()", __name__)
+    '''    Even though a delete is initiated from Designer scope, this runs in gateway scope!  '''
+    log.infof("In %s.delete()", __name__)
     
     import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
     handler = PythonRequestHandler()
@@ -33,19 +29,6 @@ def delete(finalDiagnosisUUID):
     else:
         log.tracef("Error deleting Final diagnosis with UUID <%s> - %d rows were deleted!", finalDiagnosisUUID, rows)
     
-    
-#    app = handler.getApplicationName(uuid)
-#   print "     Application: ", app
-#  family = handler.getFamilyName(uuid)
-#    print "    Family: ", family
-#    db = handler.getProductionDatabase()
-#    print "    db: ", db
-   
- 
-
-
-
-    
 
 def save(uuid, aux):
     '''
@@ -54,18 +37,15 @@ def save(uuid, aux):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    log.tracef("In %s.save()", __name__)
+    log.infof("In %s.save(), doing nothing", __name__)
 
 
 '''
-
 Designer Scope Functions
-
 '''
 
 def rename(uuid,oldName,newName):
     '''
-    This is called in Designer Scope!
     The production and isolation databases need to be kept structurally in-synch.
     Apply these changes against both instances
     '''
@@ -82,8 +62,9 @@ def rename(uuid,oldName,newName):
     log.tracef("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
     db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
-    db = handler.getIsolationDatabase()
-    renameInDatabase(uuid,oldName,newName,db)
+#    db = handler.getIsolationDatabase()
+#    renameInDatabase(uuid,oldName,newName,db)
+
 
 def getAux(uuid, aux, db):
     '''
@@ -95,15 +76,13 @@ def getAux(uuid, aux, db):
      
     Fill the aux structure with values from the database.
     '''
-    log.tracef("In %s.getAux", __name__)
-    app = handler.getApplicationName(uuid)
-    family = handler.getFamilyName(uuid)
+    appName = handler.getApplicationName(uuid)
+    familyName = handler.getFamilyName(uuid)
  
     properties = aux[0]
     lists = aux[1]
-    name = properties.get("Name","")
-    
-    log.tracef("Application / Family / Diagnosis: %S / %s / %s ", app, family, name)
+    fdName = properties.get("Name","")
+    log.infof("In %s.getAux with %s / %s / %s and %s", __name__, appName, familyName, fdName, db)
 
     SQL = "SELECT FD.FinalDiagnosisPriority,FD.CalculationMethod,FD.PostTextRecommendation,"\
           " FD.PostProcessingCallback,FD.RefreshRate,FD.TextRecommendation,FD.Comment, "\
@@ -116,7 +95,7 @@ def getAux(uuid, aux, db):
           " AND FAM.familyName = '%s'"\
           " AND FAM.familyId = FD.familyId " \
           " AND FD.finalDiagnosisName = '%s'"\
-           % (app,family,name)
+           % (appName, familyName, fdName)
     ds = system.db.runQuery(SQL,db)
     
     if len(ds) == 0:
@@ -149,7 +128,7 @@ def getAux(uuid, aux, db):
         properties["ManualMoveAllowed"] = manualMoveAllowed
         properties["ShowExplanationWithRecommendation"] = showExplanationWithRecommendation
 
-    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (app)
+    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (appName)
     applicationId = system.db.runScalarQuery(SQL,db)
     
     # Create lists of QuantOutputs
@@ -182,10 +161,10 @@ def getAux(uuid, aux, db):
     
 
 def setAux(uuid,aux,db):
-    log.tracef("In %s.setAux", __name__)
+    log.infof("In %s.setAux with %s", __name__, db)
     app  = handler.getApplicationName(uuid)
     family = handler.getFamilyName(uuid)
-    log.tracef("...back in setAux...")
+    
     properties = aux[0]
     lists = aux[1]
     name = properties.get("Name","")
@@ -302,4 +281,4 @@ def setAux(uuid,aux,db):
         log.tracef(SQL)
         rows=system.db.runUpdateQuery(SQL,db)
 
-    print "Inserted %d recommendation definitions" % (rows)
+    log.tracef("Inserted %d recommendation definitions", rows)

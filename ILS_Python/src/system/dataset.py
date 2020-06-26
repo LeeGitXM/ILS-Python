@@ -22,6 +22,9 @@ def deleteRows(dataset, rows):
 def filterColumns(ds, columns):
     return ds
 
+def formatDates(ds, dateFormat):
+    return ds
+
 def getColumnHeaders():
     headerList = []
     return headerList

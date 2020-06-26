@@ -6,10 +6,10 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
     
-import system, time
+import system, time, string
 from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
-    DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
+    DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT, MAX_CONTROL_PANEL_MESSAGE_LENGTH
 from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.queue.constants import QUEUE_ERROR
@@ -17,6 +17,7 @@ from ils.sfc.recipeData.api import substituteScopeReferences
 
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
+
 logger=system.util.getLogger("com.ils.sfc.gateway.api")
 
 def abortHandler(chartScope, msg):
@@ -29,11 +30,23 @@ def abortHandler(chartScope, msg):
     
     This cancels the top chart in an aynchronous thread, with a short wait, to allow the chart on which the error occurred to finish before the cancel command 
     propagates down the tree of active charts in order to avoid a race condition with the abort and cancel states.  The addition of this wait may allow the step 
-    following the encapsulation that called the chart with the error to begin to run, but the wait is short and hopefully no damage will be done.
+    following the encapsulation that called the chart with the error to begin to run, but the wait is short and hopefully no damage will be done.   If the wait is not 
+    long enough then the charts will ghet stuck in the CANCELLING state forever.
+    
     Additionally, we hope to address the shortcoming of the error handling with IA in the 2020 bootcamp.  
     '''
     
     stepProperties = None
+    try:
+        msg = msg + NEWLINE + chartScope.abortCause
+    except:
+        try:
+            ''' This treats the error as a JythonExecException, but doesn't always work. '''
+            abortCause = chartScope.abortCause.getLocalizedMessage()
+        except:
+            abortCause = "Unknown Error"
+            
+    msg = msg + NEWLINE + abortCause
     notifyGatewayError(chartScope, stepProperties, msg, logger)
     
     if logger <> None:
@@ -45,16 +58,45 @@ def abortHandler(chartScope, msg):
     
     '''cancel the entire chart hierarchy'''
     topChartRunId = getTopChartRunId(chartScope)
+    chartPath = getChartPath(chartScope)
+    
+    print "The chart path of the aborting chart is", chartPath
     logger.infof("Cancelling chart with id: %s", str(topChartRunId))
     
-    def cancelWork(topChartRunId=topChartRunId):
-        print "In cancelWork(), an asynchronous thread, sleeping..."
-        time.sleep(1)
-        print "...cancelling..."
+    def cancelWork(topChartRunId=topChartRunId, chartPath=chartPath):
+        logger.infof("In cancelWork(), an asynchronous thread...")
+        
+        i = 0
+        running = chartIsRunning(chartPath)
+        while running:
+            logger.tracef("...sleeping...")
+            time.sleep(0.1)
+            running = chartIsRunning(chartPath)
+    
+            i = i + 1
+            if i > 100:
+                running = False
+        
+        time.sleep(0.1)
+        logger.tracef("...the chart is done aborting, i = %d", i)
+        logger.tracef("...cancelling...")
         system.sfc.cancelChart(topChartRunId)
-        print "...the asynchronous thread is complete!"
+        logger.tracef("...the asynchronous thread is complete!")
     
     system.util.invokeAsynchronous(cancelWork)
+    
+def chartIsRunning(chartPath):
+    running = True
+    ds = system.sfc.getRunningCharts(chartPath)
+    if ds.getRowCount() > 0:
+        chartState = ds.getValueAt(0, "chartState")
+        if str(chartState) == "Aborted":
+            running = False
+        logger.tracef("The chart state is: %s", str(chartState)) 
+    else:
+        running = False
+        
+    return running
     
 
 def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
@@ -156,6 +198,8 @@ def addControlPanelMessage(chartProperties, stepScope, message, priority, ackReq
     logger.tracef("The untranslated message is <%s>...", message)
     message = substituteScopeReferences(chartProperties, stepScope, message)
     message = escapeSqlQuotes(message)
+    message = message[:MAX_CONTROL_PANEL_MESSAGE_LENGTH]
+    
     logger.tracef("...the translated message is <%s>", message)
     
     database = getDatabaseName(chartProperties)
@@ -302,9 +346,27 @@ def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position
     print "********************************************************************************"
     registerWindowWithControlPanel(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database)
 
-def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile, database):
-    print 'windowId', windowId, 'dataText', dataText, 'filepath', filepath, 'computer', computer, 'printFile', printFile, 'showPrintDialog', showPrintDialog, 'viewFile', viewFile
-    system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, showPrintDialog, viewText) values ('%s', '%s', '%s', '%s', %d, %d, %d)" % (windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile), database)
+def createSaveDataRecord(windowId, textData, binaryData, filepath, fileLocation, printFile, showPrintDialog, viewFile, database, extension="txt"):
+    print 'windowId: ', windowId 
+    print 'filepath: ', filepath
+    print 'fileLocation:', fileLocation
+    print 'printFile: ', printFile
+    print 'showPrintDialog: ', showPrintDialog
+    print 'viewFile: ', viewFile
+    
+    if string.upper(fileLocation) == "CLIENT":
+            SQL = "insert into SfcSaveData (windowId, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
+    else:
+        if string.upper(extension) == "PDF":
+            SQL = "insert into SfcSaveData (windowId, binaryData, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, binaryData, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
+        else:
+            SQL = "insert into SfcSaveData (windowId, textData, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, textData, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
 
 def dbStringForString(strValue):
     '''return a string representation of the given string suitable for a nullable SQL varchar column'''

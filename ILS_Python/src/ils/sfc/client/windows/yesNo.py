@@ -3,27 +3,20 @@ Created on Dec 3, 2015
 
 @author: rforbes
 '''
-
-import system, time
+import system
 from ils.sfc.common.constants import YES_RESPONSE, NO_RESPONSE
 from ils.common.config import getDatabaseClient
-from ils.sfc.recipeData.core import splitKey, setRecipeData
+from ils.sfc.client.util import setClientDone, setClientResponse
+log =system.util.getLogger("com.ils.sfc.client.yesNo    ")
 
 def internalFrameOpened(event):
-    print "In internalFrameOpened() for a YesNo window..." 
+    log.infof("In %s.internalFrameOpened()", __name__) 
     rootContainer = event.source.rootContainer
     windowId = rootContainer.windowId
     db = getDatabaseClient()
-    print "The windowId is: ",windowId
     
-    SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL, database=db)
-    if len(pds) <> 1:
-        system.gui.errorBox("Error initializing the YesNo window, window not found in SfcWindow")
-        return
-    
-    record=pds[0]
-    rootContainer.title = record["title"]
+    title = system.db.runScalarQuery("select title from sfcWindow where windowId = '%s'" % (windowId), db)
+    rootContainer.title = title
     
     SQL = "select * from SfcInput where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database=db)
@@ -36,20 +29,20 @@ def internalFrameOpened(event):
     rootContainer.prompt = record["prompt"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
     rootContainer.targetStepId = record["targetStepId"]
+    rootContainer.chartId = record["chartId"]
+    rootContainer.stepId = record["stepId"]
+    rootContainer.responseLocation = record["responseLocation"]
 
 def yesActionPerformed(event):
-    print "YES was pressed"
+    log.infof("YES was pressed")
     setResponse(event, YES_RESPONSE)
   
 def noActionPerformed(event):
-    print "NO was pressed"
+    log.infof("NO was pressed")
     setResponse(event, NO_RESPONSE)
     
 def setResponse(event, response):
-    db = getDatabaseClient()
     rootContainer = event.source.parent
-    targetStepId = rootContainer.targetStepId
-    keyAndAttribute = rootContainer.keyAndAttribute
-    folder,key,attribute = splitKey(keyAndAttribute)
-    setRecipeData(targetStepId, folder, key, attribute, response, db)
+    setClientResponse(rootContainer, response)
+    setClientDone(rootContainer)
     system.nav.closeParentWindow(event)

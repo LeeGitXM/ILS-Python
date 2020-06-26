@@ -134,7 +134,7 @@ def activate(scopeContext, stepProperties, state):
                         logger.tracef("...Target Step: %s, stepName: %s, targetKey: %s, targetRecipeDataId: %s", targetStepUUID, stepName, targetKey, str(targetRecipeDataId))
                     else:    
                         targetRecipeDataId, targetRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, targetKey, database)
-                        
+        
                     configRow.targetRecipeDataId = targetRecipeDataId
                     configRow.targetRecipeDataType = targetRecipeDataType
                     logger.trace(" ...Target Recipe Id: %d - Recipe Data Type: %s" % (targetRecipeDataId, targetRecipeDataType))

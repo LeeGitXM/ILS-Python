@@ -4,6 +4,10 @@ Created on Oct 31, 2014
 @author: rforbes
 '''
 import system.util, time
+from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
+from ils.sfc.recipeData.core import splitKey, setRecipeData
+from ils.common.config import getDatabaseClient
+log =system.util.getLogger("com.ils.sfc.client.util")
 
 # This is called from a timer
 def checkTimeout(rootContainer):
@@ -16,6 +20,48 @@ def checkTimeout(rootContainer):
         return True
     
     return False
+
+def setClientResponse(rootContainer, response):
+    '''
+    This runs in client scope when the user presses OK on any of the myriad of GUI windows that get a response.
+    This stores the response in the appropriate location..
+    '''
+    log.infof("In %s.setClientResponse()...", __name__)
+    
+    responseLocation = rootContainer.responseLocation
+    chartId = rootContainer.chartId
+    stepId = rootContainer.stepId
+    keyAndAttribute = rootContainer.keyAndAttribute
+    
+    if responseLocation == CHART_SCOPE:
+        log.tracef("  chart Id: %s", chartId)
+        log.tracef("   step id: %s", stepId)
+        system.sfc.setVariable(chartId, keyAndAttribute, response)
+        
+    elif responseLocation == STEP_SCOPE:
+        log.tracef("  chart Id: %s", chartId)
+        log.tracef("   step id: %s", stepId)
+        system.sfc.setVariable(chartId, stepId, keyAndAttribute, response)
+    
+    else:
+        targetStepId = rootContainer.targetStepId
+        db = getDatabaseClient()
+        
+        folder,key,attribute = splitKey(keyAndAttribute)
+        setRecipeData(targetStepId, folder, key, attribute, response, db)
+
+
+def setClientDone(rootContainer):
+    '''
+    This runs in client scope when the user presses OK on any of the myriad of GUI windows that get a response.
+    This signals the SFC in the gateway that the user has finished.
+    '''
+    log.infof("In %s.setClientDone()...", __name__)
+    chartId = rootContainer.chartId
+    stepId = rootContainer.stepId
+    log.tracef("  chart Id: %s", chartId)
+    log.tracef("   step id: %s", stepId)
+    system.sfc.setVariable(chartId, stepId, CLIENT_DONE, True)
 
 def sendResponse(messageId, response):
     ''' send a message to the Gateway in response to a previous request message''' 

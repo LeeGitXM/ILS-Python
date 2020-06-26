@@ -6,6 +6,8 @@ Created on Jul 17, 2015
 
 import system, string
 from ils.common.config import getTagProviderClient
+from ils.common.util import append
+log = system.util.getLogger("com.ils.labData.ui.configuration")
 
 def createLabValue(unitName, valueName):
     tagProvider = getTagProviderClient()
@@ -15,9 +17,9 @@ def createLabValue(unitName, valueName):
     tagPath = parentPath + "/" + valueName
     tagExists = system.tag.exists(tagPath)
     if tagExists:
-        print "  ", tagPath, " already exists!"
+        log.tracef("%s already exists!", tagPath)
     else:
-        print "Creating a %s, Name: %s, Path: %s" % (UDTType, valueName, tagPath)
+        log.tracef("Creating a %s, Name: %s, Path: %s", UDTType, valueName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=valueName, tagType="UDT_INST", 
                           attributes={"UDTParentType":UDTType})
 
@@ -38,16 +40,41 @@ def createLabLimit(unitName, valueName, limitType):
     tagPath = parentPath + "/" + labDataName
     tagExists = system.tag.exists(tagPath)
     if tagExists:
-        print "  ", tagPath, " already exists!"
+        log.tracef("%s already exists!", tagPath)
     else:
-        print "  creating a %s, Name: %s, Path: %s" % (udtType, labDataName, tagPath)
+        log.tracef("Creating a %s, Name: %s, Path: %s", udtType, labDataName, tagPath)
         system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
                       attributes={"UDTParentType":udtType})
+
+def createDcsTag(unitName, valueName, interfaceName, itemId):
+    tagProvider = getTagProviderClient()
+    path = "LabData/%s/DCS-Lab-Values" % (unitName)
+    parentPath = "[%s]%s" % (tagProvider, path)  
+    tagPath = parentPath + "/" + valueName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        log.tracef("%s already exists!  ", tagPath)
+    else:
+        log.tracef("Creating an OPC tag for a DCS lab value named: %s, Path: %s", valueName, tagPath)
+        system.tag.addTag(parentPath=parentPath, name=valueName, tagType="OPC", dataType="Float8", 
+                          attributes={"OPCServer": interfaceName, "OPCItemPath": itemId})
 
 
 def deleteLabValue(unitName, valueName):
     tagProvider = getTagProviderClient()
     path = "LabData/" + unitName
+    parentPath = "[%s]%s" % (tagProvider, path)  
+    tagPath = parentPath + "/" + valueName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        print "Deleting tag %s, Path: %s" % (valueName, tagPath)
+        system.tag.removeTag(tagPath)
+    else:
+        print "%s (%s) does not exist!" % (valueName, tagPath)
+        
+def deleteDcsLabValue(unitName, valueName):
+    tagProvider = getTagProviderClient()
+    path = "LabData/%s/DCS-Lab-Values" % (unitName)
     parentPath = "[%s]%s" % (tagProvider, path)  
     tagPath = parentPath + "/" + valueName
     tagExists = system.tag.exists(tagPath)
@@ -77,68 +104,85 @@ def deleteLabLimit(unitName, valueName, limitType):
     else:
         print "%s (%s) does not exist!" % (labDataName, tagPath)
 
-# This synchronizes the Lab Data UDTs and the database.  This can be used on startup, after some tags have been edited
-# or on demand.   
-def synchronize(provider, unitName):
 
-    def synchronizeLabValues(provider, unitName):
-        print ""
-        print "     --- synchronizing lab value tags ---"
-        print ""
+def synchronize(provider, unitName, repair):
+    '''
+    This synchronizes the Lab Data UDTs and the database.  This can be used on startup, after some tags have been edited or on demand.
+    
+    ---- THIS IS INCOMPLETE BUT IT IS A GREAT IDEA!!!  aLSO NEED TO VALIDATE THE DB - FINDING STRANDED DATA IN LTVALUE WITH NO CORRESPONDING RECORD IN PHD, DCS, OR LOCAL ---   
+    '''
+
+    def synchronizeLabValues(provider, unitName, repair, txt):
+        log.infof("synchronizeLabValues")
+        txt=append(txt, "     --- synchronizing lab value tags ---")
         
         # For values, it doesn't matter if it is PHD, DCS, or local.  They all use the same UDT
         SQL = "select V.ValueId, V.ValueName from LtValue V, TkUnit U where V.UnitId = U.UnitId and U.UnitName = '%s'" % (unitName)
         pds = system.db.runQuery(SQL)
+        log.infof("fetched %d lab values from the DB...", len(pds))
         
         # Make a couple of lists to facilitate easy searches
         valueNames = []
         for record in pds:
             valueNames.append(record["ValueName"])
             
-        parentPath=provider+'LabData/'+unitName
-        tags = system.tag.browseTags(parentPath=parentPath, udtParentType="Lab Data/Lab Value", recursive=True)
-        selectors = system.tag.browseTags(parentPath=parentPath, udtParentType="Lab Data/Lab Selector Value", recursive=True)
+        parentPath="[" + provider + "]" + 'LabData/' + unitName
+        udtType="Lab Data/Lab Value"
+        log.tracef("Browsing %s for %s...", parentPath, udtType)
+        tags = system.tag.browseTags(parentPath=parentPath, udtParentType=udtType, recursive=True)
+        log.infof("...found %d UDTs...", len(tags))
+        
+        udtType="Lab Data/Lab Selector Value"
+        log.tracef("Browsing %s for %s...", parentPath, udtType)
+        selectors = system.tag.browseTags(parentPath=parentPath, udtParentType=udtType, recursive=True)
+        log.infof("...found %d UDTs...", len(tags))
         
         # The database is the master list
         # The first phase is to look for UDTs that should be deleted because they do not exist in the database
-        print "Checking for tags to delete..."
+        txt=append(txt, "Checking for tags to delete...")
+        log.infof("Checking for tags to delete...")
         for tag in tags:
+            log.tracef("...checking if UDT %s is needed...", tag.name)
             if tag.name not in valueNames:
-                print "   deleting ", tag.fullPath
-                system.tag.removeTag(tag.fullPath)
+                txt=append(txt, "   deleting %s" % (tag.fullPath))
+                if repair:
+                    system.tag.removeTag(tag.fullPath)
             else:
                 valueNames.remove(tag.name)
         
-        print "Checking for selectors to delete..."
+        txt=append(txt,"Checking for selectors to delete...")
+        log.infof("Checking for selectors to delete...")
         for tag in selectors:
+            log.tracef("...checking if selector %s is needed...", tag.name)
             if tag.name not in valueNames:
-                print "   deleting ", tag.fullPath
-                system.tag.removeTag(tag.fullPath)
+                txt=append(txt,"   deleting %s" % (tag.fullPath))
+                if repair:
+                    system.tag.removeTag(tag.fullPath)
             else:
                 valueNames.remove(tag.name)
 
         # The second phase is for UDTS that need to be created because a record exists in the database but not as a UDT
         
-        print "Checking for tags to create..."
+        txt=append(txt, "Checking for tags to create...")
+        log.infof("Checking for tags to create...")
         #TODO somehow I need to figure out how to distinguish between a selector and a regular lab value here
-        for valueName in valueNames:
-            print "Create ", valueName
-            
+        for valueName in valueNames:            
             UDTType='Lab Data/Lab Value'
             path = "LabData/" + unitName
-            parentPath = provider + path  
+            parentPath = "[" + provider + "]" + path  
             tagPath = parentPath + "/" + valueName
             tagExists = system.tag.exists(tagPath)
             if tagExists:
                 print "  ", tagPath, " already exists!"
             else:
-                print "  creating a %s, Name: %s, Path: %s" % (UDTType, valueName, tagPath)
-                system.tag.addTag(parentPath=parentPath, name=valueName, tagType="UDT_INST", 
-                                  attributes={"UDTParentType":UDTType})
-            
+                txt=append(txt, "creating a %s, Name: %s, Path: %s" % (UDTType, valueName, tagPath))
+                if repair:
+                    system.tag.addTag(parentPath=parentPath, name=valueName, tagType="UDT_INST",  attributes={"UDTParentType":UDTType})
+        
+        return txt
                 
     #----------------------------------------------------------
-    def synchronizeLabLimits(provider, unitName, limitType):
+    def synchronizeLabLimits(provider, unitName, limitType, repair):
 
         print ""
         print "     --- synchronizing %s lab limits tags ---" % (limitType)
@@ -191,8 +235,14 @@ def synchronize(provider, unitName):
                 system.tag.addTag(parentPath=parentPath, name=labDataName, tagType="UDT_INST", 
                               attributes={"UDTParentType":udtType})
     #----------------------------------------------------------
+    
+    log.infof("In %s.synchronize()", __name__)
 
-    synchronizeLabValues(provider, unitName)
-    synchronizeLabLimits(provider, unitName, "SQC")
-    synchronizeLabLimits(provider, unitName, "Release")
-    synchronizeLabLimits(provider, unitName, "Validity")
+    txt = ""
+    txt = synchronizeLabValues(provider, unitName, repair, txt)
+#    txt = synchronizeLabLimits(provider, unitName, "SQC", repair, txt)
+#    txt = synchronizeLabLimits(provider, unitName, "Release", repair, txt)
+#    txt = synchronizeLabLimits(provider, unitName, "Validity", repair, txt)
+
+    log.infof("... leaving synchronize()")
+    return txt

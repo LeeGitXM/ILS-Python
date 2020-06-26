@@ -230,9 +230,12 @@ class Downloader():
                 if len(pds) > 1:
                     fdText = "<LI>Application: %s (Multiple final diagnosis have contributed to the move)<UL>" % applicationName
                     log.tracef("There are multiple diagnosis that contributed to this application.")
-                else:
+                elif len(pds) == 1:
                     fdText = "<LI>Application: %s<UL>" % applicationName
-                    log.tracef("There are SINGLE diagnosis. (%d)", len(pds))
+                    log.tracef("There is a SINGLE diagnosis.")
+                else:
+                    fdText = "<LI>Application: %s<UL> No Active Applications" % applicationName
+                    log.tracef("There are no active diagnosis.")
 
                 finalDiagnosisRecommendations = {}
                 finalDiagnosisIds = []

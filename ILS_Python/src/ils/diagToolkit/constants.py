@@ -16,3 +16,7 @@ AUTO_NO_DOWNLOAD = "Auto No-Download"
 WAIT_FOR_MORE_DATA = "Wait For Data"
 DOWNLOAD = "Download"
 NO_DOWNLOAD = "No Download" 
+
+OBSERVATION_BLOCK_LIST = ["SQCDiagnosis", "SubDiagnosis", "SQC", "TrendDetector", "LogicFilter", "TruthValuePulse", "Compare", "CompareAbsolute", "CompareDeadband",
+            "EqualityObservation", "HighLimitObservation", "HighLimitSampleCount", "HighLimitTimeWindow", "InRangeSampleCount", "InRangeTimeWindow", "LowLimitObservation",
+            "LowLimitSampleCount", "OutOfRangeObservation", "RangeObservation", "ZeroCrossing"]

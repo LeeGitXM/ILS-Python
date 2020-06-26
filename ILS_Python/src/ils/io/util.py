@@ -128,9 +128,14 @@ def isUDT(fullTagPath):
         isUDT = False  
     return isUDT
 
-def getOutputForTagPath(tagPath, outputType):
+def getOutputForTagPath(tagProvider, tagPath, outputType):
     print "Getting the output path for <%s> <%s>" % (tagPath, outputType)
-    if isUDT(tagPath):
+    
+    isolationMode = False
+    if tagProvider == getIsolationTagProvider():
+        isolationMode = True
+    
+    if isUDT(tagPath) or isolationMode:
         '''
         I have not figured out a good way of reading the type of a UDT.  So instead I will read the pythonClass memory tag
         which I have embedded in each of our I/O UDTs.  Then I could create a method to get the output path fri the UDT, but 

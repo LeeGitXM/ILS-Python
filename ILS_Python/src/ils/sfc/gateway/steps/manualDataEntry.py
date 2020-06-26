@@ -13,7 +13,7 @@ from ils.sfc.gateway.api import registerWindowWithControlPanel, deleteAndSendClo
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88SetWithUnits, s88GetWithUnits, getRecipeByReference, substituteScopeReferences
 from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, \
     AUTO_MODE, AUTOMATIC, BUTTON_LABEL, POSITION, SCALE, WINDOW_TITLE, WINDOW_HEADER, REQUIRE_ALL_INPUTS, MANUAL_DATA_CONFIG, \
-    DEACTIVATED, CANCELLED, IS_SFC_WINDOW, WINDOW_PATH, NAME, TARGET_STEP_UUID, KEY, REFERENCE_SCOPE
+    DEACTIVATED, CANCELLED, IS_SFC_WINDOW, WINDOW, WINDOW_PATH, NAME, TARGET_STEP_UUID, KEY, REFERENCE_SCOPE
 from ils.common.util import escapeSqlQuotes
 
 def activate(scopeContext, stepProperties, state):    
@@ -21,7 +21,7 @@ def activate(scopeContext, stepProperties, state):
     stepScope = scopeContext.getStepScope()
     stepName=stepScope.get(NAME, "Unknown")
     logger = getChartLogger(chartScope)
-    windowPath = "SFC/ManualDataEntry"
+    
     messageHandler = "sfcOpenWindow"
 
     if state in [DEACTIVATED, CANCELLED]:
@@ -44,13 +44,15 @@ def activate(scopeContext, stepProperties, state):
             if autoMode == AUTOMATIC:
                 logger.trace("Executing block in automatic mode...")
                 for row in config.rows:
-                    logger.tracef("...setting %s - %s - %s - %s", row.destination, row.key, row.defaultValue, str(row.units))
                     if string.upper(row.destination) == "TAG":
+                        logger.tracef("...setting from tag: %s - %s - %s - %s", row.destination, row.key, row.defaultValue, str(row.units))
                         tagPath = "[%s]%s" % (provider, row.key)
                         system.tag.write(tagPath, row.defaultValue)
                     elif row.units in ["", None]: 
+                        logger.tracef("...setting: %s - <%s> - <%s> - <%s>", row.destination, row.key, row.defaultValue, str(row.units))
                         s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
                     else:
+                        logger.tracef("...setting with units: %s - <%s> - <%s> - <%s>", row.destination, row.key, row.defaultValue, str(row.units))
                         s88SetWithUnits(chartScope, stepScope, row.key, row.defaultValue, row.destination, row.units)
                 workDone = True
             else:
@@ -66,6 +68,11 @@ def activate(scopeContext, stepProperties, state):
                 else:
                     buttonLabel = substituteScopeReferences(chartScope, stepScope, buttonLabel)
                     buttonLabel = escapeSqlQuotes(buttonLabel)
+
+                windowPath = getStepProperty(stepProperties, WINDOW)
+                if windowPath in [""]: 
+                    windowPath = "SFC/ManualDataEntry"
+                logger.tracef("Using window path: %s", windowPath)
 
                 position = getStepProperty(stepProperties, POSITION) 
                 scale = getStepProperty(stepProperties, SCALE) 

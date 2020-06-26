@@ -1104,7 +1104,7 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     
     # Read the current setpoint - the tagpath in the QuantOutput does not have the provider
     tagpath = '[' + provider + ']' + quantOutput.get('TagPath','unknown')
-    outputTagPath = getOutputForTagPath(tagpath, "sp")
+    outputTagPath = getOutputForTagPath(provider, tagpath, "sp")
     log.info("   ...reading the current value of tag: %s" % (outputTagPath))
     qv=system.tag.read(outputTagPath)
     if not(qv.quality.isGood()):
@@ -1136,8 +1136,9 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
 
     # If the recommendation was absolute, then convert it to incremental for the may be absolute or incremental, but we always display incremental    
     if not(incrementalOutput):
-        log.info("      ...calculating an incremental change for an absolute recommendation...")
+        originalAbsoluteRecommendation = feedbackOutput
         feedbackOutput = feedbackOutput - qv.value
+        log.info("      ...calculating an incremental change for an absolute recommendation(absolute:%s, incremental: %s)..." % (str(originalAbsoluteRecommendation), str(feedbackOutput)))
 
     # If the operator manually change the recommendation then use it - manual overrides are always incremental
     if manualOverride:
@@ -1274,9 +1275,16 @@ def calculateVectorClamps(quantOutputs, provider):
         # Look for an output that isn't bound but needs to be Vector clamped
         if quantOutput['OutputPercent'] > minOutputRatio and quantOutput['OutputLimitedStatus'] != 'Minimum Change Bound':
             outputPercent = minOutputRatio
-            feedbackOutputConditioned = quantOutput['FeedbackOutput'] * minOutputRatio / 100.0
-            txt = "%s\n%s should be reduced from %.4f to %.4f" % (txt, quantOutput['QuantOutput'], quantOutput['FeedbackOutput'], 
-                                                              feedbackOutputConditioned)
+            
+            ''' Calculate the vector clamp but don't store it unless the vector clamp mode is implement! '''
+            if  quantOutput.get('IncrementalOutput'):
+                feedbackOutputConditioned = quantOutput['FeedbackOutput'] * minOutputRatio / 100.0
+            else: 
+                log.infof("Adjusting an absolute  recommendation for a vector clamp!")
+                SP = quantOutput.get('CurrentValue',None)
+                feedbackOutputConditioned = SP + (quantOutput['FeedbackOutput'] - SP)  * (minOutputRatio / 100.0)
+                
+            txt = "%s\n%s should be reduced from %.4f to %.4f" % (txt, quantOutput['QuantOutput'], quantOutput['FeedbackOutput'], feedbackOutputConditioned)
 
             # Now check if the new conditioned output is less than the minimum change amount
             minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)

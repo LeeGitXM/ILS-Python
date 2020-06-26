@@ -10,7 +10,7 @@ from ils.common.cast import jsonToDict, isFloat
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, hasStepProperty, deleteAndSendClose, getDatabaseName, getChartLogger, \
         sendMessageToClient, getProject, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88GetWithUnits, s88GetUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88GetWithUnits, s88GetUnits, substituteScopeReferences
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, \
     DEACTIVATED, CANCELLED, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \
     BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL, REFERENCE_SCOPE
@@ -160,7 +160,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     logger.tracef("Adding row: %s", str(row))
     
     if showAdvice:
-        advice = row.get("advice", None)
+        advice = substituteScopeReferences(chartScope, stepScope,  row.get("advice", None) )
     else:
         advice = ''
         
@@ -169,7 +169,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     configKey = row.get("configKey", None)
     key = row.get("valueKey", None)
     scope = row.get("recipeScope", "")
-    prompt = row.get("prompt", "Prompt:")
+    prompt = substituteScopeReferences(chartScope, stepScope, row.get("prompt", "Prompt:") )
     
     if advice == "null":
         advice = ""

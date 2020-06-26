@@ -5,38 +5,31 @@ Created on Jan 16, 2015
 
 This handles both the GetInput step and the GetInputWithLimits step.
 '''
-
+import system, time
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
-import system, time
+from ils.sfc.client.util import setClientDone, setClientResponse
+log =system.util.getLogger("com.ils.sfc.client.getInput")
 
 def internalFrameOpened(event):
-    print "In %s.internalFrameOpened()" % (__name__)
+    log.infof("In %s.internalFrameOpened()", __name__)
+    db = getDatabaseClient()
     rootContainer = event.source.rootContainer
-    database = getDatabaseClient()
     windowId = rootContainer.windowId
-    print "Window Id: ", windowId
     
-    SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL, database)
-    record=pds[0]
-    rootContainer.title = record["title"]
+    title = system.db.runScalarQuery("select title from sfcWindow where windowId = '%s'" % (windowId), db)
+    rootContainer.title = title
     
     SQL = "select * from SfcInput where windowId = '%s'" % (windowId)
-    pds = system.db.runQuery(SQL, database)
-    while len(pds) < 1 :
-        print "Window was not found, requerying..."    
-        time.sleep(1)
-        pds = system.db.runQuery(SQL, database)
-
+    pds = system.db.runQuery(SQL, db)
     record=pds[0]
     
     lowLimit = record["lowLimit"]
     highLimit = record["highLimit"]
     defaultValue = record["defaultValue"]
-    print "    High limit: ", lowLimit
-    print "     Low Limit: ", highLimit
-    print "       Default: ", defaultValue
+    log.tracef("    High limit: %s", str(lowLimit))
+    log.tracef("     Low Limit: %s", str(highLimit))
+    log.tracef("       Default: %s", str(defaultValue))
     
     rootContainer.prompt = record["prompt"]
     rootContainer.lowLimit = lowLimit
@@ -44,6 +37,9 @@ def internalFrameOpened(event):
     rootContainer.targetStepId = record["targetStepId"]
     rootContainer.keyAndAttribute = record["keyAndAttribute"]
     rootContainer.defaultValue = defaultValue
+    rootContainer.chartId = record["chartId"]
+    rootContainer.stepId = record["stepId"]
+    rootContainer.responseLocation = record["responseLocation"]
     
     if lowLimit == None or highLimit == None:
         limitText = ""
@@ -55,12 +51,9 @@ def internalFrameOpened(event):
 
 def okActionPerformed(event):
     print "%s.okActionPerformed()" % (__name__)
-    database = getDatabaseClient()
+
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
-    targetStepId = rootContainer.targetStepId
-    keyAndAttribute = rootContainer.keyAndAttribute
-    folder,key,attribute = splitKey(keyAndAttribute)
     responseField = rootContainer.getComponent('responseField')
     response = responseField.text
     if response == "":
@@ -76,15 +69,16 @@ def okActionPerformed(event):
             valueOk = (floatResponse >= lowLimit) and (floatResponse <= highLimit)
         except ValueError:
             valueOk = False
-        if valueOk:
-            setRecipeData(targetStepId, folder, key, attribute, response, database)
-            system.nav.closeParentWindow(event)
-        else:
-            system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
     else:
-        # return the response as a string
-        setRecipeData(targetStepId, folder, key, attribute, response, database)
+        valueOk = True
+
+
+    if valueOk:
+        setClientResponse(rootContainer, response)
+        setClientDone(rootContainer)
         system.nav.closeParentWindow(event)
+    else:
+        system.gui.messageBox('Value must be between %f and %f' % (lowLimit, highLimit))
   
 def cancelActionPerformed(event):
     window=system.gui.getParentWindow(event)

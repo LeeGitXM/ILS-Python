@@ -174,7 +174,7 @@ def fetchActiveDiagnosis(applicationName, database=""):
     print SQL
     print "**********************"
     pds = system.db.runQuery(SQL, database)
-    print "Fetched %d rows" % (len(pds))
+    print "Fetched %d active diagnosis" % (len(pds))
     return pds
 
 # Fetch all of the active final diagnosis for an application.
@@ -387,7 +387,7 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
 # I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
 # that are used when calculating/managing recommendations and the output of those recommendations.
 def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
-    SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+    SQL = "select upper(QO.QuantOutputName) QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
         " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\

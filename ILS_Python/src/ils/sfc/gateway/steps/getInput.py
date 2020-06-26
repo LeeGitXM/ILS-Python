@@ -6,12 +6,13 @@ Created on Dec 17, 2015
 
 import system, time
 from ils.sfc.common.util import isEmpty
-from ils.sfc.gateway.steps.commonInput import cleanup
+from ils.sfc.gateway.steps.commonInput import cleanup, initializeResponse
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
-    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, DEFAULT_VALUE, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY
+    WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, DEFAULT_VALUE, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY, \
+    ID, STEP_ID, INSTANCE_ID, CHART_ID, WORK_DONE, CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
@@ -24,7 +25,10 @@ def activate(scopeContext, stepProperties, state):
     windowPath = "SFC/Input"
     messageHandler = "sfcOpenWindow"
     responseKey = getStepProperty(stepProperties, KEY)
-    responseRecipeLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+    responseLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
+    
+    logger.tracef("Response Location: %s", responseLocation)
+    logger.tracef("Response Key: %s", responseKey)
 
     if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
@@ -39,8 +43,14 @@ def activate(scopeContext, stepProperties, state):
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
             logger.trace("Initializing a getInput step")
+
+            chartId = chartScope.get(INSTANCE_ID, -1)
+            stepId = getStepProperty(stepProperties, ID)
+            logger.tracef("Chart id: %s", chartId)
+            logger.tracef("Step id: %s", stepId)
             
             stepScope[WAITING_FOR_REPLY] = True
+            stepScope[CLIENT_DONE] = False
             
             controlPanelId = getControlPanelId(chartScope)
             database = getDatabaseName(chartScope)
@@ -56,34 +66,33 @@ def activate(scopeContext, stepProperties, state):
             if prompt.find("<HTML") < 0:
                 prompt = "<HTML>" + prompt 
             
-            # Clear the response recipe data so we know when the client has updated it
-            s88Set(chartScope, stepScope, responseKey, "NULL", responseRecipeLocation)
-            
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
-            logger.tracef("Registered a window with id: %s", str(windowId))
             stepScope[WINDOW_ID] = windowId
+            
+            ''' Clear the response recipe data so we know when the client has updated it '''
+            initializeResponse(scopeContext, stepProperties, windowId)
+            
+            if responseLocation in [CHART_SCOPE, STEP_SCOPE]:
+                responseKeyAndAttribute = responseKey
+                targetStepId = -1
+            else:
+                targetStepId, stepName, responseKeyAndAttribute = s88GetStep(chartScope, stepScope, responseLocation, responseKey, database)
+                logger.tracef("TargetStepId: %s, stepName: %s", targetStepId, stepName)
 
-            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
-            logger.tracef("Target Step Id: %s", str(targetStepId))
-
-            sql = "insert into SfcInput (windowId, prompt, targetStepId, keyAndAttribute, defaultValue) values (?, ?, ?, ?, ?)"
-            numInserted = system.db.runPrepUpdate(sql, [windowId, prompt, targetStepId, responseKey, defaultValue], database)
+            SQL = "insert into SfcInput (windowId, prompt, targetStepId, keyAndAttribute, defaultValue, responseLocation, chartId, stepId) values (?, ?, ?, ?, ?, ?, ?, ?)"
+            numInserted = system.db.runPrepUpdate(SQL, [windowId, prompt, targetStepId, responseKeyAndAttribute, defaultValue,  responseLocation, str(chartId), str(stepId)], database)
             if numInserted == 0:
                 handleUnexpectedGatewayError(chartScope, stepProperties, 'Failed to insert row into SfcInput', logger)
 
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
-            time.sleep(0.1)
             sendMessageToClient(chartScope, messageHandler, payload)
         
-        else: # waiting for reply
-            response = s88Get(chartScope, stepScope, responseKey, responseRecipeLocation)
-            logger.tracef("...the current response to a Get Input step is: %s", str(response))
-            
-            if response <> None and response <> "NULL":
-                logger.tracef("Setting the workDone flag")
-                workDone = True
-            else:
-                logger.tracef("...still working...")
+        else: 
+            ''' waiting for reply '''
+            clientDone = stepScope.get(CLIENT_DONE, False);
+            logger.tracef("...checking clientDone: %s", str(clientDone))
+            if clientDone:
+                workDone =True
 
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', logger)

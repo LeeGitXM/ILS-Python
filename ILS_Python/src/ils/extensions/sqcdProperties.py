@@ -46,7 +46,7 @@ def save(uuid,aux):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    log.tracef("In %s.save()", __name__)
+    log.infof("In %s.save()", __name__)
 
 '''
 NOTE: The UUID supplied is from the parent, a diagram. The database interactions
