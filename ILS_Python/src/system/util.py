@@ -41,3 +41,6 @@ def sendRequest(project, handler, payload, scope):
 def sendRequestAsync(project, messageHandler, payload, timeoutSec):
     handler=1.0
     return handler    
+
+def setLoggingLevel(loggerName, logLevel):
+    pass

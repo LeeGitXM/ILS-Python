@@ -402,10 +402,10 @@ def addLogbook(table):
     ds = table.data
     if ds.rowCount == 0:
         # take extra care to add the first row
-        ds = system.dataset.toDataSet(["LogbookId", "LogbookName", "LogbookFilename"], [[-1, None, None]])
+        ds = system.dataset.toDataSet(["LogbookId", "LogbookName"], [[-1, None]])
         table.data = ds
     else:
-        table.data = system.dataset.addRow(table.data, [-1, None, None])
+        table.data = system.dataset.addRow(table.data, [-1, None])
 
 def deleteLogbook(table):
     selectedRow = table.selectedRow
@@ -451,9 +451,8 @@ def logbookEdited(table, rowIndex, colIndex, colName, oldValue, newValue):
         ds = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
         print "New row in row: ", rowIndex
         logbookName = ds.getValueAt(rowIndex, "LogbookName")
-        logbookFilename = ds.getValueAt(rowIndex, "LogbookFilename")
         if logbookName <> "" and logbookName <> None and logbookName <> "<logbook name>":
-            logbookId = system.db.runPrepUpdate("Insert into TkLogbook (LogbookName, LogbookFilename) values (?, ?)", [logbookName, logbookFilename], getKey=True)
+            logbookId = system.db.runPrepUpdate("Insert into TkLogbook (LogbookName) values (?)", [logbookName], getKey=True)
             ds = system.dataset.setValue(ds, rowIndex, "LogbookId", logbookId)
             print "Inserted a new Logbook with id: %d" % (logbookId)
         else:

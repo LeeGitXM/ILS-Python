@@ -10,6 +10,7 @@ from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
 from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, removeUnwantedConsoles, removeNonOperatorMenus,\
     removeUnwantedMenus
+from ils.common.error import catchError
 log = system.util.getLogger("com.ils.common.startup")
 IMPLEMENT = "IMPLEMENT"
 PLAN = "PLAN"
@@ -24,7 +25,8 @@ def gateway():
     project = system.util.getProjectName()
     log.infof("The project is: %s (ils.common.startup.gateway)", project)
     
-    tagProvider = getTagProvider()
+    ''' Call a special function that will wait until BLT is ready and running - this goes into a wait loop until it succeeds. '''
+    tagProvider = getTagProviderFromBltModule()
     productionDatabase = getDatabase()
     isolationDatabase = getIsolationDatabase()
     
@@ -193,8 +195,17 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})
         dbVersions.append({"versionId": 2, "version": "1.2r0", "filename": "update_1.2r0.sql", "releaseData": "2020-06-22"})
         
-        log.infof("In %s.updateDatabaseSchema()", __name__)
-        strategy = string.upper(system.tag.read("[%s]/Configuration/common/dbUpdateStrategy" % (tagProvider)).value)
+        projectName = system.util.getProjectName()
+        system.util.setLoggingLevel("com.ils.common.startup", "trace")
+        log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
+        
+        tagPath = "[%s]/Configuration/common/dbUpdateStrategy" % (tagProvider)
+        exists = system.tag.exists(tagPath)
+        if exists:
+            strategy = string.upper(system.tag.read(tagPath).value)
+        else:
+            log.warnf("Exiting updateDatabaseSchema because %s does not exist, (hopefully this is the first startup after an install and the tag will be created later)", tagPath)
+            return
         
         ''' Use the magic function in the SFC module that tells us where Ignition is installered and therefore where the SQL scripts are. '''
         homeDir = getUserLibPathFromSfcModule()
@@ -215,7 +226,9 @@ def updateDatabaseSchema(tagProvider, db):
                 
         log.infof("...done updating database schema!")
     except:
-        log.errorf("Caught an error while updating the database schema for %s" % (db))
+        txt = "Caught an error while updating the database schema for %s" % (db)
+        txt = catchError(__name__, txt)
+        log.errorf("%s", str(txt))
         
     
 def getUserLibPathFromSfcModule():
@@ -236,6 +249,25 @@ def getUserLibPathFromSfcModule():
         
     return homeDir
 
+
+def getTagProviderFromBltModule():
+    def getter():
+        log.infof("...getting tagProvider from BLT...")
+        try:
+            tagProvider = getTagProvider()
+        except:
+            log.tracef("...BLT module isn't quite ready, sleeping...")
+            time.sleep(5)
+            tagProvider = None
+            
+        return tagProvider
+    
+    tagProvider = None
+    while tagProvider == None:
+        tagProvider = getter()
+        
+    return tagProvider
+
 def readCurrentDbVersionId(strategy, db):
     ''' Check if the table exists'''
     log.tracef("Checking if the version table exists....")
@@ -243,8 +275,8 @@ def readCurrentDbVersionId(strategy, db):
     count = system.db.runScalarQuery(SQL, db)
     
     if count == 0:
-        log.tracef("*** The VERSION table doesn't exist! ***")
-        createVersionTable(db)
+        log.infof("*** The VERSION table doesn't exist! ***")
+        createVersionTable(strategy, db)
         currentId = -1
     else:
         ''' 
@@ -261,25 +293,25 @@ def readCurrentDbVersionId(strategy, db):
         count = system.db.runScalarQuery(SQL, db)
     
         if count == 0:
-            log.tracef("...the versionId column does not exist, we are either version 0 or 1, check if the applicationUUID column exists...")
+            log.infof("...the versionId column does not exist, we are either version 0 or 1, check if the applicationUUID column exists...")
             ''' If the VersionId column doesn't exist, then we have an early version of the table, either 0 or 1. '''
             SQL = "SELECT COUNT(*)   FROM INFORMATION_SCHEMA.COLUMNS  WHERE TABLE_NAME = 'DtApplication' and COLUMN_NAME = 'ApplicationUUID' "
             count = system.db.runScalarQuery(SQL, db)
             if count == 0:
                 currentId = 0
-                log.tracef("...it DOES NOT exist, so we are version 0!")
+                log.infof("...it DOES NOT exist, so we are version 0!")
                 if strategy == IMPLEMENT:
-                    system.db.runUpdateQuery("drop table Version")
+                    system.db.runUpdateQuery("drop table Version", db)
                     createVersionTable(strategy, db)
-                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01')")
+                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01')", db)
             else:
                 currentId = 1
-                log.tracef("...it exists, so we are version 1!")
+                log.infof("...it exists, so we are version 1!")
                 if strategy == IMPLEMENT:
-                    system.db.runUpdateQuery("drop table Version")
+                    system.db.runUpdateQuery("drop table Version", db)
                     createVersionTable(strategy, db)
-                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01') ")
-                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (1, '1.1r0', '2020-04-01', '2020-04-01') ")
+                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01') ", db)
+                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (1, '1.1r0', '2020-04-01', '2020-04-01') ", db)
         else:
             log.tracef("...it is the latest version table, select the max version...")
             SQL = "select max(versionId) from Version"
@@ -290,7 +322,9 @@ def readCurrentDbVersionId(strategy, db):
 
 
 def createVersionTable(strategy, db):
-    filename = "D:\ProjectlockerSVN\EMChemicals\Database\createVersion.sql"
+    homeDir = getUserLibPathFromSfcModule()
+    filename = homeDir + "/database/createVersion.sql"
+
     log.infof("Creating Version table")
     
     ''' Read the sql commands from the SQL file '''
@@ -299,7 +333,7 @@ def createVersionTable(strategy, db):
     for cmd in cmds:
         cmd = cmd.strip()
         if cmd <> "":
-            log.tracef("Command: <%s>", cmd)
+            log.infof("Command: <%s>", cmd)
             if strategy == IMPLEMENT:
                 system.db.runUpdateQuery(cmd, db)
 
@@ -314,7 +348,9 @@ def installDbUpdate(versionId, version, filename, releaseDate, strategy, db):
         try:
             system.db.runUpdateQuery(cmd, db)
         except:
-            log.errorf("Error running database update command: %s", cmd)
+            txt = "Error running database update on %s - %s" % (db, cmd)
+            txt = catchError(__name__, txt)
+            log.errorf(txt)
 
 
     ''' Read the sql commands from the SQL file '''

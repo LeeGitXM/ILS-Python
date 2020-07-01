@@ -5,4 +5,4 @@ Created on Jun 18, 2018
 '''
 
 def version():
-    return "1.0r0", "June 14, 2018"
+    return "1.2r2", "June 30, 2020"
