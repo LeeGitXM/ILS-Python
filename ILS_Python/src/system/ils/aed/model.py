@@ -21,6 +21,9 @@ def getExecutionCycles(key):
 def getExecutionCycles2(key):
     return 666
 
+def getExecutionStatus(key):
+    return "Running"
+
 def getCovarianceMatrix(key,modelId):
     return []
 

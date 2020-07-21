@@ -17,8 +17,10 @@ def diff(resultFilename, goldenFilename, logger, dateColumn=False, verbose=False
         for line in records:
             if (i == 0):
                 header = line.split(',')
+                logger.tracef("  Header: %s - %d", line, len(header))
             else:
                 tokens = line.split(',')
+                logger.tracef("  Line: %s - %d", line, len(tokens))
                 data.append(tokens)    
 
             i = i + 1
@@ -66,15 +68,22 @@ def diff(resultFilename, goldenFilename, logger, dateColumn=False, verbose=False
         
     #------------------------------------------------------
 
+    logger.infof("Comparing results: ")
+    
+    logger.tracef( "...checking if <%s> exists..." % (resultFilename))
     if not(system.file.fileExists(resultFilename)):
         logger.warn( "The result file (%s) does not exist!" % (resultFilename))
         return False, "The result file (%s) does not exist!" % (resultFilename)
 
+    logger.tracef( "...checking if <%s> exists..." % (goldenFilename))
     if not(system.file.fileExists(goldenFilename)):
         logger.warn( "The golden file (%s) does not exist!" % (goldenFilename))
         return False, "The golden file (%s) does not exist!" % (goldenFilename)
 
+    logger.tracef( "...reading <%s>..." % (resultFilename))
     dsResult = readFile(resultFilename)
+    
+    logger.tracef( "...reading <%s>..." % (goldenFilename))
     dsGolden = readFile(goldenFilename)
     
     logger.trace("   ...performing gross file comparisons...")
