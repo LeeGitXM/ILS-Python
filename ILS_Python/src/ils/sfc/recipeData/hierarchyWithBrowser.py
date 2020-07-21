@@ -17,36 +17,79 @@ log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 #treeMode = "chartName"
 treeMode = "fullPath"
 
-'''
-Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.
-'''
+LIBRARY_ICON = "Builtin/icons/16/copy.png"
+TREE_MODE = 0
+LIST_MODE = 1
+
+
 def internalFrameOpened(rootContainer, db):
+    '''
+    Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.   
+    '''
     log.infof("In %s.internalFrameOpened()", __name__) 
-    updateSfcTree(rootContainer, db)
+    rootContainer.chartViewState = TREE_MODE
+    updateSfcs(rootContainer, db)
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     clearTable(stepTable)
     recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
     clearTree(recipeDataTree)
 
-'''
-This is called whenever the windows gains focus.  his happens as part of the noral workflow of creating or editing recipe data
-so update the recipe data table to reflect the edit.
-'''
+
 def internalFrameActivated(rootContainer, db):
+    '''
+    This is called whenever the windows gains focus.  his happens as part of the noral workflow of creating or editing recipe data
+    so update the recipe data table to reflect the edit.
+    '''
     log.infof("In %s.internalFrameActivated()", __name__)
 #    refreshSteps(rootContainer, db)
     updateRecipeDataTree(rootContainer, db)
 
-def updateSfcTree(rootContainer, db):
+
+def viewStateChanged(rootContainer):
+    '''
+    When they change the view from Tree to List then clear the other two panes AND unselect anything that was selected in the tree and the table.
+    '''
+    stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
+    clearTable(stepTable)
+    recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
+    clearTree(recipeDataTree)
+    
+    tree = rootContainer.getComponent("Tree Container").getComponent("Tree View")
+    tree.selectedItem = -1
+    table = rootContainer.getComponent("Tree Container").getComponent("Power Table")
+    table.selectedRow = -1
+
+
+def updateSfcs(rootContainer, db):
     log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
     tagProvider = getTagProviderClient()
     sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
+    chartPath = "%"
+    updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
+    updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
 
-    hierarchyPDS = fetchHierarchy(sfcRecipeDataShowProductionOnly, db)
-    hierarchyHandlerPDS = fetchHierarchyHandler(sfcRecipeDataShowProductionOnly, db)
-    chartPDS = fetchCharts(sfcRecipeDataShowProductionOnly, db)
+
+def updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
+    log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+    
+    SQL = "select chartId, chartPath from SfcChart where chartPath like '%s' order by chartPath" % (chartPath)
+    ds = system.db.runQuery(SQL, database=db)
+    table=rootContainer.getComponent("Tree Container").getComponent("Power Table")
+    table.data = ds
+
+    
+def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
+    log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+
+    hierarchyPDS = fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db)
+    hierarchyHandlerPDS = fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db)
+    chartPDS = fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db)
     trees = fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS)
     
+    ''' 
+    Create a dictionary of charts where the chartId is the key. Replace the path delimiter (a forward slash) 
+    with a backwards slash which needs to be escaped with another backwards slash.
+    '''
     chartDict = {}
     for record in chartPDS:
         chartId=record["ChartId"]
@@ -56,10 +99,14 @@ def updateSfcTree(rootContainer, db):
         # the chart path as the name so replace "/" with ":"
         chartDict[chartId] = chartPath.replace('/',' \\ ')
 
+    '''
+    Now take the SFC tree model and format it for the tree widget.
+    I think the way that we need to prepare data for the tree is widget is that we need a record for each leaf node.
+    '''
     log.tracef("The chart dictionary is %s", str(chartDict))    
     rows=[]
     for tree in trees:
-        row = expandRow(tree, chartDict)
+        row = expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS)
         rows.append(row)
 
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
@@ -68,7 +115,7 @@ def updateSfcTree(rootContainer, db):
     treeWidget.data = ds
 
     
-def expandRow(tree, chartDict): 
+def expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS): 
     log.tracef("Expanding: %s", str(tree))
     tokens = tree.split(",")
     path=""
@@ -84,46 +131,67 @@ def expandRow(tree, chartDict):
     token = tokens[-1]
     fullPath = chartDict.get(int(token),"Unknown")
     
+    refs = countChartReferences(int(token), hierarchyPDS, hierarchyHandlerPDS)
+    log.tracef(" **** %s has %d references ****", fullPath, refs)
+    if refs > 1:
+        icon = LIBRARY_ICON
+    else:
+        icon = "default"
+    
     chartName = fullPath[fullPath.rfind("\\")+1:]
-    log.tracef("%s  --  %s", fullPath, chartName)
+    log.tracef("%s  --  %s  --  %s", path, fullPath, chartName)
 
     if treeMode == "fullPath":
-        row = [path,fullPath,"default","color(255,255,255,255)","color(0,0,0,255)",fullPath,"","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
+        row = [path,fullPath,icon,"color(255,255,255,255)","color(0,0,0,255)",fullPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
     else:
-        row = [path,chartName,"default","color(255,255,255,255)","color(0,0,0,255)",fullPath,"","","default","color(250,214,138,255)","color(0,0,0,255)","",""]
+        row = [path,chartName,icon,"color(255,255,255,255)","color(0,0,0,255)",fullPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
         
     log.tracef("The expanded row is: %s", str(row))
     return row
 
-def fetchCharts(sfcRecipeDataShowProductionOnly, db):
+
+def countChartReferences(token, hierarchyPDS, hierarchyHandlerPDS):
+    refs = 0
+    for record in hierarchyPDS:
+        if record["ChildChartId"] == token:
+            refs = refs + 1
+
+    return refs
+
+
+def fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db):
     log.infof("Fetching the charts...")
     
     if sfcRecipeDataShowProductionOnly:
-        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where IsProduction = 1 order by ChartPath"
+        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where IsProduction = 1 and chartPath like '%s' order by ChartPath" % (chartPath)
     else:
-        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart order by ChartPath"
+        SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where chartPath like '%s' order by ChartPath" % (chartPath)
         
     pds = system.db.runPrepQuery(SQL, [], db)
     log.tracef("Fetched %d chart records...", len(pds))
     return pds
 
-def fetchHierarchy(sfcRecipeDataShowProductionOnly, db=""):
+
+def fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db=""):
     if sfcRecipeDataShowProductionOnly:
-        SQL = "select * from SfcHierarchyView where IsProduction = 1 order by ChartPath"
+        SQL = "select * from SfcHierarchyView where IsProduction = 1 and chartPath like '%s' order by ChartPath" % (chartPath)
     else:
-        SQL = "select * from SfcHierarchyView order by ChartPath"
+        SQL = "select * from SfcHierarchyView where chartPath like '%s' order by ChartPath" % (chartPath)
+
+    print SQL
+    pds = system.db.runQuery(SQL, db)
+    return pds
+
+
+def fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db=""):
+    if sfcRecipeDataShowProductionOnly:
+        SQL = "select * from SfcHierarchyHandlerView where IsProduction = 1 and chartPath like '%s' order by ChartPath"  % (chartPath)
+    else:
+        SQL = "select * from SfcHierarchyHandlerView where chartPath like '%s' order by ChartPath"  % (chartPath)
 
     pds = system.db.runQuery(SQL, db)
     return pds
 
-def fetchHierarchyHandler(sfcRecipeDataShowProductionOnly, db=""):
-    if sfcRecipeDataShowProductionOnly:
-        SQL = "select * from SfcHierarchyHandlerView where IsProduction = 1 order by ChartPath"
-    else:
-        SQL = "select * from SfcHierarchyHandlerView order by ChartPath"
-
-    pds = system.db.runQuery(SQL, db)
-    return pds
     
 def getChildren(chartId, hierarchyPDS, hierarchyHandlerPDS):
     children = []
@@ -206,33 +274,27 @@ def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
 '''
 These methods have to do with the list of steps
 '''
-
-'''
-This gets called in response to a node being selected in the SFC Chart Hierarchy tree.
-'''
 def refreshSteps(rootContainer, db):
+    '''
+    This gets called in response to a node being selected in the SFC Chart Hierarchy tree.
+    '''
     log.infof("%s.refreshSteps() - Updating the list of steps...", __name__)
     treeWidget = rootContainer.getComponent("Tree Container").getComponent("Tree View")
+    chartTable = rootContainer.getComponent("Tree Container").getComponent("Power Table")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     
-    # First get the last node in the path
-    chartPath = treeWidget.selectedPath
-    log.infof("The raw selected path is: <%s>", chartPath)
-    chartPath = chartPath[chartPath.rfind("/")+1:]
-    
-    # Now replace ":" with "/"
-    chartPath = chartPath.replace(' \\ ', '/')
-    log.infof("The selected chart path is <%s>", chartPath)
-    if chartPath == "" or chartPath == None:
-        clearTable(stepTable)
-        return
-    
-    SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
-    chartId = system.db.runScalarQuery(SQL, db) 
-    log.infof("Fetched chart id: %s", str(chartId))
-    if chartId == None:
-        clearTable(stepTable)
-        return
+    if rootContainer.chartViewState == TREE_MODE:
+        chartId = getChartIdForSelectedNode(treeWidget, db)
+        if chartId == None:
+            clearTable(stepTable)
+            return
+    else:
+        selectedRow = chartTable.selectedRow
+        if selectedRow == -1:
+            clearTable(stepTable)
+            return
+        ds = chartTable.data
+        chartId = ds.getValueAt(selectedRow, 0)
     
     SQL = " select S.StepName, T.StepType, S.StepId, "\
         "(select COUNT(*) from SfcRecipeData D where D.StepId = S.StepId) as myRefs "\
@@ -246,12 +308,33 @@ def refreshSteps(rootContainer, db):
     stepTable.selectedRow = -1
 
 
-'''
-This is used to format the tooltip for the Recipe Data table.  The description can get really long and I 
-decided that the tooltop for the row should be the description, but if it is really long it needs to be word
-wrapped.  The tooltip supports HTML.
-'''
+def getChartIdForSelectedNode(treeWidget, db):
+    # First get the last node in the path
+    chartPath = treeWidget.selectedPath
+    log.infof("The raw selected path is: <%s>", chartPath)
+    chartPath = chartPath[chartPath.rfind("/")+1:]
+    
+    # Now replace ":" with "/"
+    chartPath = chartPath.replace(' \\ ', '/')
+    log.infof("The selected chart path is <%s>", chartPath)
+    if chartPath == "" or chartPath == None:
+        return None
+    
+    SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
+    chartId = system.db.runScalarQuery(SQL, db) 
+    log.infof("Fetched chart id: %s", str(chartId))
+    if chartId == None:
+        return None
+    
+    return chartId
+
+
 def tooltipFormatter(desc, lineLen=80):
+    '''
+    This is used to format the tooltip for the Recipe Data table.  The description can get really long and I 
+    decided that the tooltop for the row should be the description, but if it is really long it needs to be word
+    wrapped.  The tooltip supports HTML.
+    '''
     lines = []
     for i in xrange(0, len(desc), lineLen):
         lines.append(desc[i:i+lineLen])
@@ -271,6 +354,7 @@ def updateRecipeDataTree(rootContainer, db=""):
         clearTree(recipeDataTree)
         setTreeButtons(recipeDataTree, False, False, False)
     else:
+        startTime = system.date.now()
         log.infof("In %s.updateRecipeDataTree() - Updating the recipe data tree...", __name__)
         setTreeButtons(recipeDataTree, False, True, False)
         ds = stepTable.data
@@ -293,6 +377,10 @@ def updateRecipeDataTree(rootContainer, db=""):
 
         ds = system.dataset.toDataSet(pds)
         row = 0
+        
+        step1CompleteTime = system.date.now()
+        
+        simpleValuePDS, timerPDS, recipePDS, sqcPDS, outputPDS, outputRampPDS, inputPDS = fetchDescriptions(stepId, db)
         
         ''' Now update the Tree '''
         icon = "default"
@@ -317,7 +405,7 @@ def updateRecipeDataTree(rootContainer, db=""):
         for record in pds:
             key = record["RecipeDataKey"]
             log.tracef("   Adding %s", key)
-            desc = getRecipeDataDescription(record, db)
+            desc = getRecipeDataDescription(record, simpleValuePDS, timerPDS, recipePDS, sqcPDS, outputPDS, outputRampPDS, inputPDS, db)
             key = "%s :: %s" % (key, desc)
             folderId = record["RecipeDataFolderId"]
             if folderId == None:
@@ -359,6 +447,10 @@ def updateRecipeDataTree(rootContainer, db=""):
         log.tracef("The tree values are: %s", str(vals))
         ds = system.dataset.toDataSet(header, vals)
         recipeDataTree.data = ds
+        completeTime = system.date.now()
+        ''' I made these info messages so that excessive trace messages wouldn't sque the numbers '''
+        log.infof("Initial query took %s ms", str(system.date.millisBetween(startTime, step1CompleteTime)))
+        log.infof("Description query and tree update time took: %s ms for %d items", str(system.date.millisBetween(step1CompleteTime, completeTime)), len(pds) )
 
 def setTreeButtons(recipeDataTree, editState, addState, deleteState):
     log.infof("In %s.setTreeButtons...", __name__)
@@ -366,10 +458,11 @@ def setTreeButtons(recipeDataTree, editState, addState, deleteState):
     recipeDataTree.enableAddButton = addState
     recipeDataTree.enableDeleteButton = deleteState
 
-'''
-Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
-'''
+
 def findRecipeParent(parentId, key, folderPDS):
+    '''
+    Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
+    '''
     log.tracef("=====================")
     log.tracef("Finding the full path for %s - %d", key, parentId)
     path = ""
@@ -389,10 +482,11 @@ def findRecipeParent(parentId, key, folderPDS):
     log.tracef("The parent path is: %s", path)
     return path
 
-'''
-Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
-'''
+
 def findParent(folderPDS, record):
+    '''
+    Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
+    '''
     log.tracef("------------------")
     path = record["RecipeDataKey"]
     parent = record["ParentRecipeDataFolderId"]
@@ -410,10 +504,11 @@ def findParent(folderPDS, record):
     log.tracef("The path is: %s", path)
     return path
 
-'''
-Scrub the list of paths to remove paths that are wholly contained in another path.
-'''
+
 def scrubPaths(paths, pathsUsedByData):
+    '''
+    Scrub the list of paths to remove paths that are wholly contained in another path.
+    '''
     log.tracef("In %s.scrubPaths() - Scrubbing...", __name__)
     scrubbedPaths = []
     
@@ -432,85 +527,95 @@ def scrubPaths(paths, pathsUsedByData):
     log.tracef("The scrubbed paths are: %s", str(scrubbedPaths))
     return scrubbedPaths
 
-def getRecipeDataDescription(record, db):
+
+def fetchDescriptions(stepId, db):
+    '''
+    This fetches all of descriptions at once and we will sort out it all out as we go through the individual recipe items one at a time.
+    '''
+    SQL = "select * from SfcRecipeDataSimpleValueView where stepId = %d" % (stepId)
+    simpleValuePDS = system.db.runQuery(SQL, db)
+    
+    SQL = "Select * from SFcRecipeDataTimerView where stepId = %d" % (stepId)
+    timerPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "Select * from SFcRecipeDataRecipeView where stepId = %d" % (stepId)
+    recipePDS = system.db.runQuery(SQL, db)
+    
+    SQL = "Select * from SFcRecipeDataSQCView where stepId = %d" % (stepId)
+    sqcPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "select * from SfcRecipeDataOutputView where stepId = %d" % (stepId)
+    outputPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "select * from SfcRecipeDataOutputRampView where stepId = %d" % (stepId)
+    outputRampPDS = system.db.runQuery(SQL, db)
+    
+    SQL = "select * from SfcRecipeDataInputView where stepId = %d" % (stepId)
+    inputPDS = system.db.runQuery(SQL, db)
+            
+    return simpleValuePDS, timerPDS, recipePDS, sqcPDS, outputPDS, outputRampPDS, inputPDS
+
+def getRecipeDataDescription(record, simpleValuePDS, timerPDS, recipePDS, sqcPDS, outputPDS, outputRampPDS, inputPDS, db):
     try:
+        desc = record["Description"]
         recipeDataId = record["RecipeDataId"]
         recipeDataType = record["RecipeDataType"]
-        desc = record["Description"]
-        log.tracef("Looking at %s - %s", recipeDataId, recipeDataType)
         
         if recipeDataType == "Simple Value":
-            SQL = "select * from SfcRecipeDataSimpleValueView where recipeDataId = %d" % (recipeDataId)
-            valuePDS = system.db.runQuery(SQL, db)
-            if len(valuePDS) == 1:
-                valueRecord = valuePDS[0]
-                desc = getValueDescriptionFromRecord(valueRecord, desc)
+            for valueRecord in simpleValuePDS:
+                if recipeDataId == valueRecord["RecipeDataId"]:
+                    desc = getSimpleValueDescription(valueRecord, desc)
+                    break
+
         elif recipeDataType == "Matrix":
             desc = getMatrixDescription(recipeDataId, desc, db)
+            
         elif recipeDataType == "Array":
-            desc = getArrayDescription(recipeDataId, desc, db)           
+            desc = getArrayDescription(recipeDataId, desc, db)
+            
         elif recipeDataType == "Timer":
-            desc = getTimerDescription(recipeDataId, desc, db)
-        elif recipeDataType == "Recipe":
-            desc = getRecipeDescription(recipeDataId, desc, db)
-        elif recipeDataType == "Output":
-            SQL = "select * from SfcRecipeDataOutputView where recipeDataId = %d" % (recipeDataId)
-            valuePDS = system.db.runQuery(SQL, db)
-            if len(valuePDS) == 1:
-                valueRecord = valuePDS[0]
-                tag = valueRecord["Tag"]
-                tag = tag[tag.rfind('/') + 1:]
-                timing = valueRecord["Timing"]
-                outputType = valueRecord["OutputType"]
-                
-                if desc == "":
-                    desc = "Tag: %s, Type: %s, Timing: %s" % (tag, outputType, str(timing))
-                else:
-                    desc = "%s, Tag: %s, Type: %s, Timing: %s" % (desc, tag, outputType, str(timing))
-                    
-                desc = getOutputValueDescriptionFromRecord(valueRecord, desc, "an output")
-        
-        elif recipeDataType == "Output Ramp":
-            SQL = "select * from SfcRecipeDataOutputRampView where recipeDataId = %d" % (recipeDataId)
-            valuePDS = system.db.runQuery(SQL, db)
-            if len(valuePDS) == 1:
-                valueRecord = valuePDS[0]
-                tag = valueRecord["Tag"]
-                tag = tag[tag.rfind('/') + 1:]
-                timing = valueRecord["Timing"]
-                outputType = valueRecord["OutputType"]
-                rampTime = valueRecord["RampTimeMinutes"]
-                
-                if desc == "":
-                    desc = "Tag: %s, Type: %s, Timing: %s" % (tag, outputType, str(timing))
-                else:
-                    desc = "%s, Tag: %s, Type: %s, Timing: %s, Ramp Time: %s" % (desc, tag, outputType, str(timing), str(rampTime))
-                    
-                desc = getOutputValueDescriptionFromRecord(valueRecord, desc, "an output ramp")
-        
-        elif recipeDataType == "Input":
-            SQL = "select * from SfcRecipeDataInputView where recipeDataId = %d" % (recipeDataId)
-            valuePDS = system.db.runQuery(SQL, db)
-            if len(valuePDS) == 1:
-                valueRecord = valuePDS[0]
-                tag = valueRecord["Tag"]
-                tag = tag[tag.rfind('/') + 1:]
-                
-                if desc == "":
-                    desc = "Tag: %s" % (tag)
-                else:
-                    desc = "%s, Tag: %s" % (desc, tag)
-                    
-                desc = getInputValueDescriptionFromRecord(valueRecord, desc)
-    except:
-        errorDesc = catchError("%s.getRecipeDataDescription()" % (__name__))
-        log.errorf(errorDesc)
+            for valueRecord in timerPDS:
+                if recipeDataId == valueRecord["RecipeDataId"]:
+                    desc = getTimerDescription(valueRecord, desc)
+                    break
 
+        elif recipeDataType == "Recipe":
+            for valueRecord in recipePDS:
+                if recipeDataId == valueRecord["RecipeDataId"]:
+                    desc = getRecipeDescription(valueRecord, desc)
+                    break
+
+        elif recipeDataType == "SQC":
+            for valueRecord in sqcPDS:
+                if recipeDataId == valueRecord["RecipeDataId"]:
+                    desc = getSqcDescription(valueRecord, desc)
+                    break
+
+        elif recipeDataType == "Output":
+            for valueRecord in outputPDS:
+                if recipeDataId == valueRecord["RecipeDataId"]:
+                    desc = getOutputDescription(record, valueRecord, desc)
+                    break
+                
+        elif recipeDataType == "Output Ramp":
+            for valueRecord in outputRampPDS:
+                if recipeDataId == valueRecord["RecipeDataId"]:
+                    desc = getOutputRampDescription(record, valueRecord, desc)
+                    break
+                
+        elif recipeDataType == "Input":
+            for valueRecord in inputPDS:
+                if recipeDataId == valueRecord["RecipeDataId"]:
+                    desc = getInputDescription(record, valueRecord, desc)
+                    break
+
+    except:
+        desc = ""
+        
     return desc
 
     
 def getMatrixDescription(recipeDataId, desc, db):
-    desc = ""
     SQL = "Select * from SFcRecipeDataMatrixView where recipeDataId = %d" % (recipeDataId)
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 1:
@@ -555,7 +660,7 @@ def getMatrixDescription(recipeDataId, desc, db):
             desc = "%s, column key: %s" % (desc, columnKey)
     return desc
 
-#
+
 def getArrayDescription(recipeDataId, desc, db):
     SQL = "Select * from SFcRecipeDataArrayView where recipeDataId = %d" % (recipeDataId)
     pds = system.db.runQuery(SQL, db)
@@ -597,12 +702,8 @@ def getArrayDescription(recipeDataId, desc, db):
 
     return desc
 
-#
-def getTimerDescription(recipeDataId, desc, db):
-    SQL = "Select * from SFcRecipeDataTimerView where recipeDataId = %d" % (recipeDataId)
-    valuePDS = system.db.runQuery(SQL, db)
-    valueRecord = valuePDS[0]
 
+def getTimerDescription(valueRecord, desc):
     txt = "State: %s, Start time: %s" % (valueRecord["TimerState"], valueRecord["StartTime"])
     
     if desc == "":
@@ -612,12 +713,8 @@ def getTimerDescription(recipeDataId, desc, db):
 
     return desc
 
-#
-def getRecipeDescription(recipeDataId, desc, db):
-    SQL = "Select * from SFcRecipeDataRecipeView where recipeDataId = %d" % (recipeDataId)
-    valuePDS = system.db.runQuery(SQL, db)
-    valueRecord = valuePDS[0]
 
+def getRecipeDescription(valueRecord, desc):
     txt = "Tag: %s, Value: %s" % (valueRecord["StoreTag"], str(valueRecord["RecommendedValue"]))
 
     if desc == "":
@@ -627,7 +724,21 @@ def getRecipeDescription(recipeDataId, desc, db):
 
     return desc 
 
-def getValueDescriptionFromRecord(record, desc):
+
+def getSqcDescription(valueRecord, desc):
+    label = valueRecord["Label"]
+
+    txt = "Target: %s, Low: %s, High: %s" % (str(valueRecord["TargetValue"]), str(valueRecord["LowLimit"]), str(valueRecord["HighLimit"]))
+
+    if label == "":
+        desc = "a SQC, %s" % (txt)
+    else:
+        desc = "a SQC, %s, %s" % (label, txt)    
+
+    return desc 
+
+
+def getSimpleValueDescription(record, desc):
     valueType = record["ValueType"]
     units = record["Units"]
     
@@ -655,18 +766,73 @@ def getValueDescriptionFromRecord(record, desc):
     return desc
 
 #
-def getOutputValueDescriptionFromRecord(record, desc, recipeDesc):
+def getOutputDescription(record, valueRecord, desc):
+    tag = valueRecord["Tag"]
+    tag = tag[tag.rfind('/') + 1:]
+    timing = valueRecord["Timing"]
+    outputType = valueRecord["OutputType"]
+    
+    if desc == "":
+        desc = "Tag: %s, Type: %s, Timing: %s" % (tag, outputType, str(timing))
+    else:
+        desc = "%s, Tag: %s, Type: %s, Timing: %s" % (desc, tag, outputType, str(timing))
+        
+    desc = getValueDescription(valueRecord, desc, OUTPUT, "an output")
+    return desc
+
+def getOutputRampDescription(record, valueRecord, desc):
+    tag = valueRecord["Tag"]
+    tag = tag[tag.rfind('/') + 1:]
+    timing = valueRecord["Timing"]
+    outputType = valueRecord["OutputType"]
+    rampTime = valueRecord["RampTimeMinutes"]
+    
+    if desc == "":
+        desc = "Tag: %s, Type: %s, Timing: %s, Ramp Time: %s" % (tag, outputType, str(timing), str(rampTime))
+    else:
+        desc = "%s, Tag: %s, Type: %s, Timing: %s, Ramp Time: %s" % (desc, tag, outputType, str(timing), str(rampTime))
+        
+    desc = getValueDescription(valueRecord, desc, OUTPUT, "an output ramp")
+
+    return desc
+
+def getInputDescription(record, valueRecord, desc):
+    tag = valueRecord["Tag"]
+    tag = tag[tag.rfind('/') + 1:]
+
+    if desc == "":
+        desc = "Tag: %s" % (tag)
+    else:
+        desc = "%s, Tag: %s" % (desc, tag)
+    
+    desc = getValueDescription(valueRecord, desc, INPUT, "an input")
+    return desc
+    
+def getValueDescription(record, desc, recipeType, recipeDesc):
     valueType = record["ValueType"]
     units = record["Units"]
     
     if valueType == "String":
-        val = record["OutputStringValue"]
+        if recipeType == OUTPUT:
+            val = record["OutputStringValue"]
+        else:
+            val = record["PVStringValue"]
     elif valueType == "Float":
-        val = record["OutputFloatValue"]
+        if recipeType == OUTPUT:
+            val = record["OutputFloatValue"]
+        else:
+            val = record["PVFloatValue"]
     elif valueType == "Integer":
-        val = record["OutputIntegerValue"]
+        if recipeType == OUTPUT:
+            val = record["OutputIntegerValue"]
+        else:
+            val = record["PVIntegerValue"]
     elif valueType == "Boolean":
-        val = record["OutputBooleanValue"]
+        if recipeType == OUTPUT:
+            val = record["OutputBooleanValue"]
+        else:
+            val = record["PVBooleanValue"]
+            
         if val == 1:
             val = "True"
         else:
@@ -677,34 +843,6 @@ def getOutputValueDescriptionFromRecord(record, desc, recipeDesc):
     else:
         desc = "%s, %s, %s" % (recipeDesc, desc, str(val))
 
-    if units <> "" and units <> None:
-        desc = "%s (%s)" % (desc, units)
-
-    return desc
-
-#
-def getInputValueDescriptionFromRecord(record, desc):
-    valueType = record["ValueType"]
-    units = record["Units"]
-    
-    if valueType == "String":
-        val = record["PVStringValue"]
-    elif valueType == "Float":
-        val = record["PVFloatValue"]
-    elif valueType == "Integer":
-        val = record["PVIntegerValue"]
-    elif valueType == "Boolean":
-        val = record["PVBooleanValue"]
-        if val == 1:
-            val = "True"
-        else:
-            val = "False"
-    
-    if desc == "":
-        desc = "an input, %s" % (str(val))
-    else:
-        desc = "an input, %s, %s" % (desc, str(val))
-    
     if units <> "" and units <> None:
         desc = "%s (%s)" % (desc, units)
 
@@ -833,35 +971,8 @@ def deleteRecipeData(recipeDataType, recipeDataId, db):
         system.db.runUpdateQuery(SQL, db)
 
 
-
-
-
-
 def editCallbackForDoubleClick(event):
     editCallback(event)
-    
-    '''
-    db = getDatabaseClient()
-    container = event.source.parent
-    tree = container.getComponent("Tree View")
-    path = tree.selectedPath
-    
-    log.infof("In %s.editCallbackForDoubleClick() - The path is: %s", __name__, path)
-    
-    stepTable = container.parent.getComponent("Step Container").getComponent("Steps")
-    selectedRow = stepTable.selectedRow
-    log.infof("The selected row is: %s", str(selectedRow))
-    stepDs = stepTable.data
-    stepId = stepDs.getValueAt(selectedRow,"StepId")
-    log.infof("The step id is: %s", str(stepId))
-    
-    recipeDataKey, recipeDataType, recipeDataId = fetchRecipeInfo(stepId, path, db)
-    recipeDataFolderId = -1
-    
-    log.infof("The recipe data id is: %s", str(recipeDataId))
-    window = system.nav.openWindowInstance('SFC/RecipeDataEditor', {'stepId':stepId, 'recipeDataType':recipeDataType, 'recipeDataId':recipeDataId, 'recipeDataKey':recipeDataKey, "recipeDataFolderId":recipeDataFolderId})
-    system.nav.centerWindow(window)
-    '''
 
             
 def editCallback(event):
@@ -985,6 +1096,30 @@ def fetchFolderId(folderPDS, tokens):
         log.tracef("The last token is data")
         
     return isFolder, parentRecipeDataFolderId
+
+
+def mousePressedCallbackForTree(event):    
+    ''' Only post the popup on the right mouse button '''
+    if int(event.button) <> 3:
+        return
+    
+    def showChartCallerCallback(event):
+        '''
+        This is the callback from the popup menu
+        '''
+        db = getDatabaseClient()
+        treeWidget = event.source
+        chartId = getChartIdForSelectedNode(treeWidget, db)
+        if chartId == None:
+            return
+
+        window = system.nav.openWindow("SFC/Chart Callers",{"chartId": chartId})
+        system.nav.centerWindow(window)
+    
+    menu = system.gui.createPopupMenu(["Show Chart Callers"], [showChartCallerCallback])
+    menu.show(event)
+    
+     
 '''
 This is just a good text book example of recursion.
 '''    

@@ -46,9 +46,6 @@ def activate(scopeContext, stepProperties, state):
         logger.tracef("Found %d simple value recipe data items", simpleValueDataset.rowCount)
         outputDataset = s88GetRecipeDataDataset(chartScope, stepScope, OUTPUT, recipeLocation)
         logger.tracef("Found %d output recipe data items", outputDataset.rowCount)
-            
-        printFile = getStepProperty(stepProperties, PRINT_FILE)
-        print "Print: ", printFile
         
         '''
         Always save the report to a file
@@ -59,24 +56,28 @@ def activate(scopeContext, stepProperties, state):
             parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset, "Header": windowTitle}
             action = "save"
             
-            if string.upper(extension) in ["CSV", ".CSV","TXT",".TXT"]:
+            if string.upper(extension) in ["CSV", ".CSV"]:
                 format = "csv"
-            elif string.upper(extension) in ["RTF", ".RTF"]:
+            elif string.upper(extension) in ["RTF", ".RTF", "TXT",".TXT"]:
                 format = "rtf"
             else:
                 format = "pdf"
                 
             actionSettings = {"path": path, "fileName": filename, "format": format}
+            logger.tracef("Action Settings: %s", str(actionSettings))
+            logger.tracef("Writing recipe data to: %s%s" % (path, filename))
             system.report.executeAndDistribute(path=reportPath, project=project, parameters=parameters, action=action, actionSettings=actionSettings)
         except:
-            txt = "Error saving recipe data to: %s file: %s" % (path, filename)
+            txt = "Error saving recipe data to: %s%s" % (path, filename)
             logger.error(txt)
             postToQueue(chartScope, QUEUE_ERROR, txt)
-        
-        
+
         '''
         Printing is optional
         '''
+        printFile = getStepProperty(stepProperties, PRINT_FILE)
+        logger.tracef("PrintFile: %s", str(printFile))
+        
         if printFile:
             logger.infof("generating a report...")
             try:
@@ -91,18 +92,19 @@ def activate(scopeContext, stepProperties, state):
                     format = "pdf"
                     
                 actionSettings = {"path": path, "fileName": filename, "format": format}
+                logger.tracef("Writing recipe data to: %s%s" % (path, filename))
                 system.report.executeAndDistribute(path=reportPath, project=project, parameters=parameters, action=action, actionSettings=actionSettings)
             except:
                 txt = "Error saving recipe data to: %s file: %s" % (path, filename)
                 logger.error(txt)
                 postToQueue(chartScope, QUEUE_ERROR, txt)
         
-        viewFile = getStepProperty(stepProperties, VIEW_FILE) 
-        print "View: ", viewFile
-        
         '''
         Viewing is optional
         '''
+        viewFile = getStepProperty(stepProperties, VIEW_FILE) 
+        logger.tracef("ViewFile: %s", str(viewFile))
+        
         if viewFile:
             logger.infof("Sending a message to clients to view th erecipe data report...")
             ''' Insert a window record into the database '''

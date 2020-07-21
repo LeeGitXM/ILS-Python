@@ -246,7 +246,31 @@ def deletePost(table):
         return
     ds = table.data
     postId = ds.getValueAt(selectedRow, "PostId")
+    
     if postId > 0:
+    
+        '''
+        Check for Foreign Key constraints that do not have cascade deletes defined.
+        I intentionally do not have cascade deletes to prevent accidental deletion of key components.
+        '''
+        SQL = "select count(*) from LtDisplayTable where PostId = %s" % (str(postId))
+        cnt = system.db.runScalarQuery(SQL)
+        if cnt > 0:
+            system.gui.messageBox("<HTML>Unable to delete this post because it is referenced by a Lab Data display table.<br>All references in Lab Data <b>MUST</b> be removed before the post can be deleted!")
+            return;
+        
+        SQL = "select count(*) from RtRecipeFamily where PostId = %s" % (str(postId))
+        cnt = system.db.runScalarQuery(SQL)
+        if cnt > 0:
+            system.gui.messageBox("<HTML>Unable to delete this post because it is referenced by a Recipe Family.<br>All references in recipe <b>MUST</b> be removed before the post can be deleted!<br>Use DB Manager to delete the post reference!")
+            return;
+    
+        SQL = "select count(*) from SfcControlPanel where PostId = %s" % (str(postId))
+        cnt = system.db.runScalarQuery(SQL)
+        if cnt > 0:
+            system.gui.messageBox("<HTML>Unable to delete this post because it is referenced by a SFC control panel.<br>All references in SfcControlPanel <b>MUST</b> be removed before the post can be deleted!<br>Use SQL*Server to delete the post reference in SfcControlPanel!")
+            return;
+    
         SQL = "delete from TkPost where PostId = %s" % (str(postId))
         system.db.runUpdateQuery(SQL)
 
@@ -378,10 +402,10 @@ def addLogbook(table):
     ds = table.data
     if ds.rowCount == 0:
         # take extra care to add the first row
-        ds = system.dataset.toDataSet(["LogbookId", "LogbookName", "LogbookFilename"], [[-1, None, None]])
+        ds = system.dataset.toDataSet(["LogbookId", "LogbookName"], [[-1, None]])
         table.data = ds
     else:
-        table.data = system.dataset.addRow(table.data, [-1, None, None])
+        table.data = system.dataset.addRow(table.data, [-1, None])
 
 def deleteLogbook(table):
     selectedRow = table.selectedRow
@@ -427,9 +451,8 @@ def logbookEdited(table, rowIndex, colIndex, colName, oldValue, newValue):
         ds = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
         print "New row in row: ", rowIndex
         logbookName = ds.getValueAt(rowIndex, "LogbookName")
-        logbookFilename = ds.getValueAt(rowIndex, "LogbookFilename")
         if logbookName <> "" and logbookName <> None and logbookName <> "<logbook name>":
-            logbookId = system.db.runPrepUpdate("Insert into TkLogbook (LogbookName, LogbookFilename) values (?, ?)", [logbookName, logbookFilename], getKey=True)
+            logbookId = system.db.runPrepUpdate("Insert into TkLogbook (LogbookName) values (?)", [logbookName], getKey=True)
             ds = system.dataset.setValue(ds, rowIndex, "LogbookId", logbookId)
             print "Inserted a new Logbook with id: %d" % (logbookId)
         else:

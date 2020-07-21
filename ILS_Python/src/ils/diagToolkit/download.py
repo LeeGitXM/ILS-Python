@@ -38,6 +38,9 @@ def downloadCallback(event, rootContainer):
     post=rootContainer.post
     
     repeater=rootContainer.getComponent("Template Repeater")
+    
+    from ils.diagToolkit.setpointSpreadsheet import logAction
+    logAction("DOWNLOAD", repeater)
     ds = repeater.templateParams
     
     #TODO - Do I need to check if there is a download in progress
@@ -130,7 +133,7 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                 tagPath="[%s]%s" % (tagProvider, tag)
                 
                 from ils.io.util import getOutputForTagPath
-                outputTagPath=getOutputForTagPath(tagPath, "sp")
+                outputTagPath=getOutputForTagPath(tagProvider, tagPath, "sp")
                 
                 log.info("Checking Quant Output: %s - Tag: %s" % (quantOutput, outputTagPath))
                 
@@ -264,7 +267,7 @@ def serviceDownload(post, ds, tagProvider, db):
                         updateQuantOutputDownloadStatus(quantOutputId, "Error", db)
                         logbookMessage += "failed because of an error: %s\n" % (errorMessage)
                 else:
-                    print "...writes from the diagnostic toolkit are disabled..."
+                    print "...writes from symbolic ai are disabled..."
                     insertPostMessage(post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), db)
                     updateQuantOutputDownloadStatus(quantOutputId, "Error", db)
                     logbookMessage += "failed because diag toolkit writes are disabled\n"

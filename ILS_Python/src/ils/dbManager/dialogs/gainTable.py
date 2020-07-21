@@ -139,7 +139,20 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     else:
         SQL = "update RtGainGrade set gain = %s where ParameterId = %d and Grade = '%s'" % (str(newValue), parameterId, grade)
     print SQL
-    system.db.runUpdateQuery(SQL)
+    
+    rows = system.db.runUpdateQuery(SQL)
+    
+    if rows == 0:
+        print "   --- no rows were updated, try to insert ---"
+        if newValue == "":
+            SQL = "INSERT INTO RtGainGrade (ParameterId, Grade) VALUES (%i, '%s')" % (parameterId, grade)
+        else:
+            SQL = "INSERT INTO RtGainGrade (ParameterId, Grade, Gain) VALUES (%i, '%s', %s)" % (parameterId, grade, str(newValue))
+        print SQL
+        rows = system.db.runUpdateQuery(SQL)
+        if rows == 0:
+            print "*** NO ROWS WERE ADDED ***"
+    
     self.data = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
 
 def deleteColumn(event):

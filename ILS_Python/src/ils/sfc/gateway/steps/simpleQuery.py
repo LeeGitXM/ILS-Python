@@ -5,11 +5,9 @@ Created on Dec 17, 2015
 '''
 
 import system, string
-from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, handleExpectedGatewayError, getStepProperty,copyRowToDict,\
-    getChartPath
+from ils.sfc.gateway.api import getDatabaseName, getChartLogger, handleUnexpectedGatewayError, handleExpectedGatewayError, getStepProperty, getChartPath
 from ils.sfc.common.constants import SQL, KEY, RESULTS_MODE, FETCH_MODE, KEY_MODE, UPDATE, UPDATE_OR_CREATE, STATIC, DYNAMIC, RECIPE_LOCATION, SINGLE, STEP_NAME, CLASS_TO_CREATE
-from ils.sfc.recipeData.api import substituteScopeReferences, s88DataExists, s88Get, s88Set, s88DataExists, s88GetStep
-from ils.sfc.recipeData.core import getStepIdFromUUID
+from ils.sfc.recipeData.api import substituteScopeReferences, s88Set, s88DataExists, s88GetStep
 from ils.sfc.recipeData.createApi import createDynamicRecipe
 
 def activate(scopeContext, stepProperties, state):
@@ -111,18 +109,18 @@ def activate(scopeContext, stepProperties, state):
 
             ds = system.dataset.toDataSet(pds)
             columnNames = ds.getColumnNames()
-            print "The columns are: ", columnNames
+            log.tracef("The columns are: %s", str(columnNames))
             
             
             for row in range(ds.getRowCount()):
-                print "----------------------------"
-                print "Handling record #%d" % (row)
+                log.tracef("----------------------------")
+                log.tracef("Handling record #%d", row)
                 key = ds.getValueAt(row, 0)
-                print "Raw Key: ", key
+                log.tracef("Raw Key: %s", key)
                 key = string.replace(key, ".", "_")
-                print "Modified Key: ", key
+                log.tracef("Modified Key: %s", key)
                 attr = columnNames[1]
-                print "The dynamic key is: %s" % (str(key))
+                log.tracef("The dynamic key is: %s", str(key))
 
                 ''' I need an attribute, even if we are returning multiple values, in order to call dataEists. '''
                 keyAndAttr = key + "." + attr
@@ -134,26 +132,23 @@ def activate(scopeContext, stepProperties, state):
                     return
                 
                 if not(recordExists) and resultsMode == UPDATE_OR_CREATE:
-                    print "**** Create a Recipe data entity ***"
+                    log.tracef("**** Create a Recipe data entity ***")
                     stepId, stepName, crap = s88GetStep(chartScope, stepScope, recipeLocation, "foo.value", database)
                     recipeDataId = createDynamicRecipe(stepId, classToCreate, key, database)
-                    print "Created new recipe data with id: ", recipeDataId
+                    log.tracef("Created new recipe data with id: %s", str(recipeDataId))
             
 #                log.tracef("   Fetched value: %s", str(val))
-                i = 0
-                for columnName in columnNames: 
+                for i in range(1, len(columnNames)): 
+                    columnName = columnNames[i]
                     val = ds.getValueAt(row, i)
-                    print "%s: %s" % (columnName, val)
+                    log.tracef("%s: %s", columnName, str(val))
                     keyAndAttr = key + "." + columnName
-                    print "Setting keyAndAttr: %s to %s" % (keyAndAttr, str(val))
+                    log.tracef("Setting keyAndAttr: %s to %s", keyAndAttr, str(val))
                     s88Set(chartScope, stepScope, keyAndAttr, val, recipeLocation)
-                    
                     i = i + 1
-            
 
     except:
         log.errorf("**** CAUGHT AN UNEXPECTED ERROR ****")
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in simpleQuery.py', log)
     finally:
         return True
-    

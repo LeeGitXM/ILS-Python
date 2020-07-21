@@ -4,11 +4,16 @@ Created on Nov 18, 2014
 @author: Pete
 '''
 
-import system, string
+import system, string, time
+from system.ils.sfc import getUserLibPath
+from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
 from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, removeUnwantedConsoles, removeNonOperatorMenus,\
     removeUnwantedMenus
+from ils.common.error import catchError
 log = system.util.getLogger("com.ils.common.startup")
+IMPLEMENT = "IMPLEMENT"
+PLAN = "PLAN"
 
 '''
 These are the startup dispatchers.  They are called by the project startup scripts and then read the site specific startup scripts
@@ -20,9 +25,17 @@ def gateway():
     project = system.util.getProjectName()
     log.infof("The project is: %s (ils.common.startup.gateway)", project)
     
+    ''' Call a special function that will wait until BLT is ready and running - this goes into a wait loop until it succeeds. '''
+    tagProvider = getTagProviderFromBltModule()
+    productionDatabase = getDatabase()
+    isolationDatabase = getIsolationDatabase()
+    
+    updateDatabaseSchema(tagProvider, productionDatabase)
+    updateDatabaseSchema(tagProvider, isolationDatabase)
+    
     pds = system.db.runQuery("select * from TkSite")
     if len(pds) <> 1:
-        print "Found %d records in TkSite, exactly one is required!"
+        print "Found %d records in TkSite, exactly one is required!" % (len(pds))
         return
     
     record = pds[0]
@@ -145,16 +158,20 @@ def createTags(tagProvider, log):
     print "Creating common configuration tags...."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
+    
     path = tagProvider + "Configuration/Common/"
-
-    data.append([path, "writeEnabled", "Boolean", "True"])
-    data.append([path, "printingAllowed", "Boolean", "True"])
+    
+    data.append([path, "dbPruneDays", "Int8", "365"])
+    data.append([path, "dbUpdateStrategy", "String", "implement"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
     data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
+    data.append([path, "ocAlertCallback", "String", ""])
     data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
     data.append([path, "opcPermissiveLatencySeconds", "Float4", "4.0"])
+    data.append([path, "printingAllowed", "Boolean", "True"])
     data.append([path, "reportHome", "String", "e:"])
     data.append([path, "simulateHDA", "Boolean", "False"])
+    data.append([path, "writeEnabled", "Boolean", "True"])
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
@@ -171,3 +188,190 @@ def createTags(tagProvider, log):
     from ils.common.tagFactory import createConfigurationTags
     createConfigurationTags(ds, log)
     
+    
+def updateDatabaseSchema(tagProvider, db):
+    try:
+        dbVersions = []
+        dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})
+        dbVersions.append({"versionId": 2, "version": "1.2r0", "filename": "update_1.2r0.sql", "releaseData": "2020-06-22"})
+        
+        projectName = system.util.getProjectName()
+        system.util.setLoggingLevel("com.ils.common.startup", "trace")
+        log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
+        
+        tagPath = "[%s]/Configuration/common/dbUpdateStrategy" % (tagProvider)
+        exists = system.tag.exists(tagPath)
+        if exists:
+            strategy = string.upper(system.tag.read(tagPath).value)
+        else:
+            log.warnf("Exiting updateDatabaseSchema because %s does not exist, (hopefully this is the first startup after an install and the tag will be created later)", tagPath)
+            return
+        
+        ''' Use the magic function in the SFC module that tells us where Ignition is installered and therefore where the SQL scripts are. '''
+        homeDir = getUserLibPathFromSfcModule()
+        homeDir = homeDir + "/database/"
+        
+        currentId = readCurrentDbVersionId(strategy, db)
+        log.infof("The current database version is %d (%s)", currentId, strategy)
+        
+        for dbVersion in dbVersions:
+            versionId = dbVersion.get("versionId", None)
+            version = dbVersion.get("version", None)
+            filename = dbVersion.get("filename", None)
+            filename = homeDir + filename
+            releaseDate = dbVersion.get("releaseData", None)
+            
+            if currentId < versionId:
+                installDbUpdate(versionId, version, filename, releaseDate, strategy, db)
+                
+        log.infof("...done updating database schema!")
+    except:
+        txt = "Caught an error while updating the database schema for %s" % (db)
+        txt = catchError(__name__, txt)
+        log.errorf("%s", str(txt))
+        
+    
+def getUserLibPathFromSfcModule():
+    def getter():
+        log.infof("...getting homeDir from SFC...")
+        try:
+            homeDir = getUserLibPath()
+        except:
+            log.tracef("...SFC module isn't quite ready, sleeping...")
+            time.sleep(5)
+            homeDir = None
+            
+        return homeDir
+    
+    homeDir = None
+    while homeDir == None:
+        homeDir = getter()
+        
+    return homeDir
+
+
+def getTagProviderFromBltModule():
+    def getter():
+        log.infof("...getting tagProvider from BLT...")
+        try:
+            tagProvider = getTagProvider()
+        except:
+            log.tracef("...BLT module isn't quite ready, sleeping...")
+            time.sleep(5)
+            tagProvider = None
+            
+        return tagProvider
+    
+    tagProvider = None
+    while tagProvider == None:
+        tagProvider = getter()
+        
+    return tagProvider
+
+def readCurrentDbVersionId(strategy, db):
+    ''' Check if the table exists'''
+    log.tracef("Checking if the version table exists....")
+    SQL = "select count(*) FROM sys.Tables WHERE  Name = 'Version' AND Type = 'U' "
+    count = system.db.runScalarQuery(SQL, db)
+    
+    if count == 0:
+        log.infof("*** The VERSION table doesn't exist! ***")
+        createVersionTable(strategy, db)
+        currentId = -1
+    else:
+        ''' 
+        Check if this was an early version of the table that didn't have all of the columns. 
+        The final version of the Version table didn't get implemented until version 1.2.
+        If the VersionId column exists then we are at least version 1 (1.2r0).
+        If it doesn't exist then I need to figure out if we ar version 0 or version 1.
+        If we are version 0, then just drop the table and initialize the data.
+        I can check for DtApplication.ApplicationUUID to see if we are at 1.1.
+        If we are at 1.1r0, then alter the version Table.
+        '''
+        log.tracef("...the version table exists, check if the versionId column exists....")
+        SQL = "SELECT COUNT(*)   FROM INFORMATION_SCHEMA.COLUMNS  WHERE TABLE_NAME = 'Version' and COLUMN_NAME = 'VersionId' "
+        count = system.db.runScalarQuery(SQL, db)
+    
+        if count == 0:
+            log.infof("...the versionId column does not exist, we are either version 0 or 1, check if the applicationUUID column exists...")
+            ''' If the VersionId column doesn't exist, then we have an early version of the table, either 0 or 1. '''
+            SQL = "SELECT COUNT(*)   FROM INFORMATION_SCHEMA.COLUMNS  WHERE TABLE_NAME = 'DtApplication' and COLUMN_NAME = 'ApplicationUUID' "
+            count = system.db.runScalarQuery(SQL, db)
+            if count == 0:
+                currentId = 0
+                log.infof("...it DOES NOT exist, so we are version 0!")
+                if strategy == IMPLEMENT:
+                    system.db.runUpdateQuery("drop table Version", db)
+                    createVersionTable(strategy, db)
+                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01')", db)
+            else:
+                currentId = 1
+                log.infof("...it exists, so we are version 1!")
+                if strategy == IMPLEMENT:
+                    system.db.runUpdateQuery("drop table Version", db)
+                    createVersionTable(strategy, db)
+                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01') ", db)
+                    system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (1, '1.1r0', '2020-04-01', '2020-04-01') ", db)
+        else:
+            log.tracef("...it is the latest version table, select the max version...")
+            SQL = "select max(versionId) from Version"
+            currentId = system.db.runScalarQuery(SQL, db)
+            log.infof("The current database version is: %d", currentId)
+    
+    return currentId
+
+
+def createVersionTable(strategy, db):
+    homeDir = getUserLibPathFromSfcModule()
+    filename = homeDir + "/database/createVersion.sql"
+
+    log.infof("Creating Version table")
+    
+    ''' Read the sql commands from the SQL file '''
+    sql = system.file.readFileAsString(filename)
+    cmds = sql.split(";")
+    for cmd in cmds:
+        cmd = cmd.strip()
+        if cmd <> "":
+            log.infof("Command: <%s>", cmd)
+            if strategy == IMPLEMENT:
+                system.db.runUpdateQuery(cmd, db)
+
+
+def installDbUpdate(versionId, version, filename, releaseDate, strategy, db):
+    log.infof("**************************************************************")
+    log.infof("** Updating database %s to version %d - %s - %s", db, versionId, version, releaseDate)
+    log.infof("**************************************************************")
+    
+    def runCommand(SQL, db):
+        ''' Run the SQL update inside a try - except so that we keep going even if we hit an error ''' 
+        try:
+            system.db.runUpdateQuery(cmd, db)
+        except:
+            txt = "Error running database update on %s - %s" % (db, cmd)
+            txt = catchError(__name__, txt)
+            log.errorf(txt)
+
+
+    ''' Read the sql commands from the SQL file '''
+    sql = system.file.readFileAsString(filename)
+    cmds = sql.split(";")
+    for cmd in cmds:
+        commentStart = cmd.find("/*")
+        commentEnd = cmd.find("*/")
+        
+        if commentStart >= 0 and commentEnd > commentStart:
+            cmd = cmd[commentEnd+2:]
+            
+        cmd = cmd.strip()
+        cmd = cmd.lstrip()
+            
+        if cmd <> "":
+            log.tracef("Command: <%s>", cmd)
+            if strategy == IMPLEMENT:
+                runCommand(cmd, db)
+    
+    ''' Add a record to the version table'''
+    SQL = "Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (%d, '%s', '%s', GETDATE())" % (versionId, version, releaseDate)
+    if strategy == IMPLEMENT:
+        system.db.runUpdateQuery(SQL, db)

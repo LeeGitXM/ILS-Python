@@ -17,6 +17,7 @@ def internalFrameOpened(rootContainer):
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
     SQL = "select post from TkPost order by post"
     pds = system.db.runQuery(SQL, database)
+    log.tracef("...fetched %d posts", len(pds))
     rootContainer.posts=pds
 
 # update the list of display tables that are appropriate for the selected console
@@ -30,10 +31,10 @@ def newPostSelected(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    log.trace("In %s.populateRepeater")
+    log.tracef("In %s.populateRepeater", __name__)
     selectedPost = rootContainer.selectedPost
     database=system.tag.read("[Client]Database").value
-    log.tracef("The database is: %s", database)
+    log.tracef("The database is: %s and the selected post is: %s", database, str(selectedPost))
     
     SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID, SQCDiagnosisName as LabValueName,SQCDiagnosisName as LabValueDescription, SQCDiagnosisName as ButtonLabel "\
         "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\

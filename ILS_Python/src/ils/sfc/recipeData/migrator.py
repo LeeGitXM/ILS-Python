@@ -11,18 +11,19 @@ from ils.sfc.recipeData.structureManager import getTxId
 from ils.common.error import catchError
 from ils.common.cast import toBit, isFloat
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
-from ils.common.config import getTagProvider
-from system.util import jsonDecode
+from ils.common.config import getTagProvider, getDatabase
 log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
 
-def migrateChart(chartPath, resourceId, chartResourceAsXML, db):
+def migrateChart(chartPath, resourceId, chartResourceAsXML):
+    db = getDatabase()
+    
     provider = getTagProvider()
     recipeDataMigrationEnabled = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataMigrationEnabled" % (provider)).value
     if not(recipeDataMigrationEnabled):
         log.infof("Recipe Data migration is disabled!")
-        print "========================"
-        print chartResourceAsXML
-        print "========================"
+        log.tracef("========================")
+        log.tracef(chartResourceAsXML)
+        log.tracef("========================")
         return
     
     log.infof("***************")

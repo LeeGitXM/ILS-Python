@@ -128,9 +128,14 @@ def isUDT(fullTagPath):
         isUDT = False  
     return isUDT
 
-def getOutputForTagPath(tagPath, outputType):
+def getOutputForTagPath(tagProvider, tagPath, outputType):
     print "Getting the output path for <%s> <%s>" % (tagPath, outputType)
-    if isUDT(tagPath):
+    
+    isolationMode = False
+    if tagProvider == getIsolationTagProvider():
+        isolationMode = True
+    
+    if isUDT(tagPath) or isolationMode:
         '''
         I have not figured out a good way of reading the type of a UDT.  So instead I will read the pythonClass memory tag
         which I have embedded in each of our I/O UDTs.  Then I could create a method to get the output path fri the UDT, but 
@@ -470,6 +475,18 @@ def splitTagPath(tagPath):
         tagName = tagPath[string.rfind(tagPath, '/') + 1:]
 #    print "Split <%s> into <%s> and <%s>" % (tagPath, parentPath, tagName)
     return parentPath, tagName
+
+
+def stripProvider(tagPath):
+    '''
+    Strip the tag provider from the full tagPath.
+    '''
+
+    if tagPath.find(']') >= 0:
+        tagPath=tagPath[string.rfind(tagPath, ']') + 1:]
+
+    return tagPath
+
 
 # Check for the existence of the tag and that the global write enabled flag is set (only for production tags).
 def checkConfig(tagPath):

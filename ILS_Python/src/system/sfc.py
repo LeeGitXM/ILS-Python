@@ -7,27 +7,44 @@ by the ILS SFC module, Gateway scope
 
 def cancelChart(chartId):
     pass
+
+def getRunningCharts():
+    pass
+
+def getVariables():
+    pass
+
+def pauseChart(chartId):
+    pass
+
+def resumeChart(chartId):
+    pass
+
+def setVariable(chartId, stepId, variable, val):
+    pass
+
+def setVariables(chartId, stepId, variableMap):
+    pass
+
+def startChart(chartName, payload):
+    pass
+
+'''
+I think these are in the wrong place
+'''
 def chartState(chartid):
     pass
 def clear(datadict):
     pass
 def debugChart(path,project,user, isIsolation):
     return -1
-def getRunningCharts():
-    pass
-def pauseChart(chartId):
-    pass
 def postResponse(chartPath,stepName,text):
     pass
 def requestCount(chartid,stepName):
     pass
-def resumeChart(chartId):
-    pass
 def setTimeFactor(factor):
     pass
 def start(datadict):
-    pass
-def startChart(chartName, payload):
     pass
 def stepCount(chartid,stepName):
     pass

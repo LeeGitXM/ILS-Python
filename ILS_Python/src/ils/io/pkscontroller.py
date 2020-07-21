@@ -348,9 +348,10 @@ class PKSController(controller.Controller):
         startValue = startValue.value
 
         log.infof("Ramping the %s of EPKS controller <%s> from %s to %s over %s minutes", valType, self.path, str(startValue), str(val), str(rampTime))
-        system.tag.write(self.path + "/writeStatus", "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime)))
+        baseTxt = "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime))
+        system.tag.write(self.path + "/writeStatus", baseTxt)
 
-        rampTimeSeconds = rampTime * 60.0
+        rampTimeSeconds = float(rampTime) * 60.0
 
         from ils.common.util import equationOfLine
         m, b = equationOfLine(0.0, startValue, rampTimeSeconds, val)
@@ -363,6 +364,8 @@ class PKSController(controller.Controller):
             
             log.tracef("EPKS Controller <%s> ramping to %s (elapsed time: %s)", self.path, str(aVal), str(deltaSeconds))
             targetTag.writeWithNoCheck(aVal)
+            txt = "%s (%.2f at %s)" % (baseTxt, aVal, str(deltaSeconds))
+            system.tag.write(self.path + "/writeStatus", txt)
  
             ''' Time in seconds '''
             time.sleep(updateFrequency)

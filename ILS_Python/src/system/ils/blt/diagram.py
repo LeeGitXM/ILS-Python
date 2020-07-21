@@ -95,9 +95,12 @@ def listBlocksGloballyDownstreamOf(diagramId,blockName):
 def listBlocksGloballyUpstreamOf(diagramId,blockName):
     '''Return a list of serializable block state descriptors of blocks upstream on this and connected diagrams'''  
     
+def listDescriptorsForApplication(appName):
+    '''Return a list of descendants down to the level of a diagram ''' 
+
 def listDiagramBlocksOfClass(diagramId,className):
-     '''Return a list of serializable block state descriptors of blocks in this diagram that belong to the specified class''' 
-    
+    '''Return a list of serializable block state descriptors of blocks in this diagram that belong to the specified class''' 
+
 def listBlocksInDiagram(diagramId):
     '''Return a list of serializable block state descriptors that reference blocks the specified diagram'''
   

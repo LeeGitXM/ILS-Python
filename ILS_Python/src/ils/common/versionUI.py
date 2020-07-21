@@ -28,14 +28,19 @@ def internalFrameActivated(rootContainer):
     version, releaseDate = labData.version()
     rootContainer.LabDataToolkitVersion=version
     rootContainer.LabDataToolkitReleaseDate=releaseDate
-    
-    import ils.sqc.version as sqc 
-    version, releaseDate = sqc.version()
-    rootContainer.SQCVersion=version
-    rootContainer.SQCReleaseDate=releaseDate
-    
+
     import ils.recipeToolkit.version as recipe 
     version, releaseDate = recipe.version()
     rootContainer.RecipeToolkitVersion=version
     rootContainer.RecipeToolkitReleaseDate=releaseDate
     
+    import ils.sfc.version as sfc 
+    version, releaseDate = sfc.version()
+    rootContainer.SFCVersion=version
+    rootContainer.SFCReleaseDate=releaseDate
+    print "The SFC version is: ", version
+    
+    import ils.sqc.version as sqc 
+    version, releaseDate = sqc.version()
+    rootContainer.SQCVersion=version
+    rootContainer.SQCReleaseDate=releaseDate

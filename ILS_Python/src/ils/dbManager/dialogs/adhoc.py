@@ -8,29 +8,48 @@ import system, string
 log = system.util.getLogger("com.ils.recipe.ui")
 from ils.common.error import notifyError
 
-# Called from the client startup script: View menu
-# Note: No attempt is made at this point to reconcile with any tab strip
+
 def showWindow():
+    '''
+    Called from the client View menu
+    Note: No attempt is made at this point to reconcile with any tab strip
+    '''
     window = "DBManager/Adhoc"
     system.nav.openWindow(window)
     system.nav.centerWindow(window)
 
-# This is the first handler that is called when the window is displayed once.  It is not 
-# called when the window is brought to the top.
-def internalFrameOpened(rootContainer):
-    log.trace("InternalFrameOpened")
 
-# This is the second handler that is called when the windo is displayed.
-def internalFrameActivated(rootContainer):
-    log.trace("InternalFrameActivated")
+def internalFrameOpened(rootContainer):
+    '''
+    This is the first handler that is called when the window is displayed once.  It is not 
+    called when the window is brought to the top.  
+    '''
+    log.trace("InternalFrameOpened")
+    dropdown = rootContainer.getComponent("TableNameDropdown")
+    dropdown.selectedValue = -1
     requery(rootContainer)
 
-# Re-query the database and update the screen accordingly.
-# If we get an exception, then rollback the transaction.
+
+def internalFrameActivated(rootContainer):
+    '''
+    This is the second handler that is called when the window is displayed.
+    It is also called every time the window gains focus.
+    '''
+    log.trace("InternalFrameActivated")
+    
+
 def requery(rootContainer):
+    '''
+    Re-query the database and update the screen accordingly.
+    If we get an exception, then rollback the transaction.
+    '''
     log.info("adhoc.requery ...")
     dropdown = rootContainer.getComponent("TableNameDropdown")
     tableName = dropdown.selectedStringValue
+    print "The tablename is: ", tableName
+    if tableName in ["<Table>", ""]:
+        return
+    
     table = rootContainer.getComponent("DatabaseTable")
     SQL = "SELECT * FROM %s " % (tableName)
     log.trace(SQL)
@@ -46,10 +65,13 @@ def requery(rootContainer):
         # this is pretty lightweight so it doesn't hurt to run it too often.
         configTable(rootContainer)
 
-# To add a row we need to supply values for each cell in the row.
-# Since a power table does not explicitly have an addRow() function, I'll get the dataset,
-# add a row to it and then put it back into the table.
+
 def addRow(event):
+    '''
+    To add a row we need to supply values for each cell in the row.
+    Since a power table does not explicitly have an addRow() function, I'll get the dataset,
+    add a row to it and then put it back into the table.
+    '''
     log.trace("Adding a row...")
     rootContainer = event.source.parent
     table = rootContainer.getComponent("DatabaseTable")

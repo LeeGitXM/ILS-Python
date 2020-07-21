@@ -7,7 +7,30 @@ Created on Sep 10, 2014
 import system, string, re
 log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
+from ils.common.constants import CR
 from system.date import secondsBetween
+
+def append(t1, t2):
+    if t1 == "":
+        return t2
+    return t1 + CR + t2
+
+def parseFilename(filename):
+    if filename.find(":") > -1:
+        drive = filename[:filename.find(":")]
+        filename = filename[filename.find(":"):]
+    else:
+        drive = ''
+    
+    if filename.find(".") > -1:
+        print "There is an extensdion"
+        extension = filename[filename.find(".")+1:]
+        print extension
+        filename = filename[:filename.find(".")]
+    else:
+        extension = ''
+    
+    return drive, filename, extension
 
 def fileWriterMessageHandler(payload):
     log.infof("In %sfileWriterMessageHandler.", __name__)
@@ -41,6 +64,7 @@ def okToPrint():
         return False
     
     return True
+
 
 def isClientScope():
     try:
@@ -230,6 +254,7 @@ def escapeJSON(txt):
     '''
     In JSON, we need to escape a double quote with a backslash and a double quote
     '''
+    txt = str(txt)
     txt = string.replace(txt, "\"", '\\\"')
     return txt
 
@@ -242,21 +267,23 @@ def substituteProvider(tagPath, provider):
     else:
         return '[' + provider + ']' + tagPath
 
-'''
-A little utility for a one liner that I can never remember.  Clear a dataset keeping the header intact.
-'''
+
 def clearDataset(ds):
+    '''
+    A little utility for a one liner that I can never remember.  Clear a dataset keeping the header intact.
+    '''
     ds = system.dataset.deleteRows(ds, range(ds.rowCount))
     return ds
 
-'''
-return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
-It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
-I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
-testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
-in project scope.
-'''
+
 def queryHistory(tagPaths, historyTagProvider, tagProvider, timeIntervalMinutes, aggregationMode, log):
+    '''
+    return a dataset with one row.  The first column is a timestamp and each subsequent column is a tags aggregated value, one value for each tag.
+    It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
+    I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
+    testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
+    in project scope.
+    '''
     badValueTxt = ""
     
     # This function tests over the past n minutes, so make sur ethe time interval is negative
@@ -332,6 +359,28 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
                 badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
     return badValue, ds, badValueTxt
+
+'''
+Return a dataset with one row for each timestamp and one column for each tag.  The first column is a timestamp and each subsequent column is a tagname.
+'''
+def queryRawHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDate, endDate, log):
+    badValueTxt = ""
+
+    fullTagPaths = []
+    for tagPath in tagPaths:
+        fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
+    
+    log.tracef("Fetching history for %s between %s and %s", str(fullTagPaths), str(startDate), str(endDate))
+    
+    ds = system.tag.queryTagHistory(
+        paths=fullTagPaths,
+        startDate=startDate, 
+        endDate=endDate, 
+        returnSize=0, 
+        ignoreBadQuality=True
+        )
+
+    return ds
 
 '''
 Return a list of qualified values and a flag that indicates if any one of the tags is bad or None
@@ -480,11 +529,22 @@ def timeStringToSeconds(timeString):
     
     return secs
 
+def secondsToTimeString(secs):
+    import math
+
+    hours = math.floor(secs / 3600)
+    mins = math.floor((secs - hours * 3600) / 60)
+    secs = secs - (hours * 3600) - (mins * 60)
+    
+    timestring = "%2d:%2d:%2d" % (hours, mins, secs)
+    return timestring
+
 '''
 This is a test of querying history to determine if we should use the tag provider name or the history tag provider name
 (This should prove that we should use the tagProvider).
+I used to have the provider and history provider names hard coded here, which might be OK since this is a test, but it showed up in searches, so now pass it in!
 '''
-def test():
+def test(provider, historyProvider):
     log = system.util.getLogger("Test")
     tagPaths=[]
 #    tagPaths.append("SFC IO/Rate Change/VRF9101Z/value")  #POLY-RATE
@@ -496,10 +556,10 @@ def test():
     tagPaths.append("SFC IO/Cold Stick General/VRT700S-3/value") #OUTLET-TEMP-PV
     tagPaths.append("SFC IO/Cold Stick General/VCF262R-2/value") #AL-TO-VA
 
-    badValue, ds, badValueTxt = queryHistory(tagPaths, "XOMhistory", "XOM", 30, "Average", log)
+    badValue, ds, badValueTxt = queryHistory(tagPaths, historyProvider, provider, 30, "Average", log)
     print "Reading historic average, isBad: %s, bad text: %s" % (str(badValue), badValueTxt)
     
-    badValue, qvs = readInstantaneousValues(tagPaths, "XOM", log)
+    badValue, qvs = readInstantaneousValues(tagPaths, provider, log)
     print "Reading current values, isBad = ", badValue
 
 def mathTest():
@@ -507,4 +567,16 @@ def mathTest():
     x = math.ceil(10.01)
     print x
     
-#    from apache.commons.org import XYTextAnnotation
+def dsToText(ds, delimiter):
+    from ils.common.constants import CR
+    columns = ds.getColumnNames()
+    txt = delimiter.join(columns)
+    for row in range(ds.getRowCount()):
+        for col in range(ds.getColumnCount()):
+            if col > 0:
+                txt = txt + delimiter
+            txt = txt + str(ds.getValueAt(row, col))
+        txt = txt + CR
+        
+    print "Formatted the dataset as: ", txt
+    return txt

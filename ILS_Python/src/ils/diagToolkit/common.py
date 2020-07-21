@@ -157,17 +157,24 @@ def clearQuantOutputRecommendations(application, database=""):
 def fetchActiveDiagnosis(applicationName, database=""):
     SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.Multiplier, FD.Explanation, FD.ShowExplanationWithRecommendation, "\
-        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
-        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
+        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod,  "\
+        " L.LookupName as GroupRampMethod"\
+        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE,  Lookup L"\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and DE.Status = 'Active' " \
         " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) " \
         " and A.ApplicationName = '%s'"\
+        " and A.GroupRampMethodId = L.LookupId"\
+        " and L.LookupTypeCode='GroupRampMethod' "\
         " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
     log.tracef("%s.fetchActiveDiagnosis(): %s", __name__, SQL)
+    print "*****************"
+    print SQL
+    print "**********************"
     pds = system.db.runQuery(SQL, database)
+    print "Fetched %d active diagnosis" % (len(pds))
     return pds
 
 # Fetch all of the active final diagnosis for an application.
@@ -380,7 +387,7 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
 # I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
 # that are used when calculating/managing recommendations and the output of those recommendations.
 def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
-    SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+    SQL = "select upper(QO.QuantOutputName) QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
         " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
@@ -592,3 +599,7 @@ def resetDiagnosisEntries(log, database):
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     log.info("...reset %i Diagnosis Entries!" % (rows))
+    
+def stripClassPrefix(className):
+    className = className[className.rfind(".")+1:]
+    return className

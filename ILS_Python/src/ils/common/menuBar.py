@@ -7,13 +7,16 @@ import system
 
 # Collection of useful methods for menu configuration
 
-# Remove console menus that are not appropriate for this project.
-# The common XOM ignition project is used by all sites.  The database used at each site uses 
-# a common schema with site specific data.  The TkConsole table lists the consoles that are 
-# appropriate for each site.  So this method removes menus that are not appropriate for this site.
-# The argument is a menubar component.
+
 def removeUnwantedConsoles(bar): 
-    #
+    '''
+    Remove console menus that are not appropriate for this project.
+    The common X-O-M ignition project is used by all sites.  The database used at each site uses 
+    a common schema with site specific data.  The TkConsole table lists the consoles that are 
+    appropriate for each site.  So this method removes menus that are not appropriate for this site.
+    The argument is a menubar component.
+    '''
+
     print "Removing unwanted consoles..."
     count = bar.getMenuCount()
     index = 0
@@ -106,18 +109,20 @@ def getMenuBar(component):
         bar = frame.getJMenuBar()
     return bar
 
-'''
-Remove menus that are not appropriate for this project.
-The common ignition project is used by all sites.  The database used at each site uses 
-a common schema with site specific data.  The TkMenuBar table lists the menus that are 
-appropriate for each site.  The 2nd argument, project type, is XOM or dbManager, it is not 
-the same as the project name.
 
-For some reason I decided to reverse the logic between the Admin and the View menus...
-'''
 def removeUnwantedMenus(bar, projectType): 
+    '''
+    Remove menus that are not appropriate for this project.
+    The common ignition project X-O-M is used by all sites.  The database used at each site uses 
+    a common schema with site specific data.  The TkMenuBar table lists the menus that are 
+    appropriate for each site.  The 2nd argument, project type, is X-O-M or dbManager, it is not 
+    the same as the project name.
+    
+    For some reason I decided to reverse the logic between the Admin and the View menus...
+    '''
+    
     print " "
-    print "Removing unwanted menus for this application..."
+    print "Removing unwanted menus for this application: ", projectType
     
     # Select the configuration of the menus for this site
     pds = system.db.runQuery("Select SubMenu, Enabled from TkMenuBar where Application = '%s' and Menu = 'View'" % (projectType))

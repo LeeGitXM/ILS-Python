@@ -10,6 +10,9 @@ def addRow():
 def addColumn(dataset):
     return True
 
+def clearDataset(dataset):
+    return dataset
+
 def deleteRow(dataset, row):
     return dataset
 
@@ -17,6 +20,9 @@ def deleteRows(dataset, rows):
     return dataset
 
 def filterColumns(ds, columns):
+    return ds
+
+def formatDates(ds, dateFormat):
     return ds
 
 def getColumnHeaders():

@@ -21,20 +21,21 @@ from ils.common.database import lookup
 log = system.util.getLogger("com.ils.diagToolkit")
 logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
 
-'''
-This is called from any global resource, either a SFC or a tag change script.  This runs in the gateway and must contain a project name 
-which is use to send a message for notification.
-'''
+
 def manageFinalDiagnosisGlobally(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
+    '''
+    This is called from any global resource, either a SFC or a tag change script.  This runs in the gateway and must contain a project name 
+    which is use to send a message for notification.
+    '''
     log.infof("In %s.manageFinalDiagnosisGlobally()", __name__)
     _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
 
 
-'''
-This is called from a client (and runs in a client) to directly manage a final diagnosis.
-Because this runs ina client we can get the project automatically
-'''
 def manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
+    '''
+    This is called from a client (and runs in a client) to directly manage a final diagnosis.
+    Because this runs ina client we can get the project automatically
+    '''
     log.infof("In %s.manageFinalDiagnosis()", __name__)
 
     projectName = system.util.getProjectName()
@@ -42,10 +43,11 @@ def manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRe
     _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
 
 
-'''
-# This directly manages a final diagnosis.  It can be called from a client or in gateway scope from a tag or SFC.
-'''
 def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider):
+    '''
+    This directly manages a final diagnosis.  It can be called from a client or in gateway scope from a tag or SFC.
+    '''
+    
     log.infof("In %s._manageFinalDiagnosis()", __name__)
  
     ''' Lookup the application Id '''
@@ -66,9 +68,9 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     resetOutputLimits(finalDiagnosisId, database)
     
     grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
-    log.info("The grade is: %s" % (str(grade)))
 
     ''' Insert an entry into the diagnosis queue '''
+    log.info("Posting a diagnosis entry (from _manageFinalDiagnosis) for project: %s, application: %s, family: %s, final diagnosis: %s, grade: %s" % (projectName, applicationName, familyName, finalDiagnosisName, str(grade)))
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
         "RecommendationStatus, Multiplier) "\
         "values (%i, 'Active', getdate(), '%s', '%s', '%s', 1.0)" \
@@ -77,9 +79,11 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     
     try:
+        print "***", SQL
         system.db.runUpdateQuery(SQL, database)
         
         SQL = SQL2
+        print "***", SQL
         system.db.runUpdateQuery(SQL, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
@@ -140,7 +144,7 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
 # Send a message to clients to update their setpoint spreadsheet, or display it if they are an interested
 # console and the spreadsheet isn't displayed.
 def notifyClients(project, post, clientId=-1, notificationText="", notificationMode="loud", numOutputs=0, database="", provider=""):
-    log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, database: %s, mode: %s..." % (project, post, str(clientId), str(numOutputs), database, notificationMode))
+    log.info("Notifying %s-%s client %s to open/update the setpoint spreadsheet, numOutputs: <%s>, notificationText: %s, database: %s, mode: %s..." % (project, post, str(clientId), str(numOutputs), notificationText, database, notificationMode))
     messageHandler="consoleManager"
     payload={'type':'setpointSpreadsheet', 'post':post, 'notificationText':notificationText, 'numOutputs':numOutputs, 'clientId':clientId, 'notificationMode':notificationMode, 'gatewayDatabase':database}
     notifier(project, post, messageHandler, payload, database)
@@ -238,7 +242,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     managed = fetchApplicationManaged(applicationName, database)
     
     if not(managed):
-        log.tracef("Exiting because %s is not a managed application!", applicationName)
+        log.infof("Exiting postDiagnosisEntry() because %s is not a managed application!", applicationName)
         return
     
     log.info("Posting a diagnosis entry for project: %s, application: %s, family: %s, final diagnosis: %s" % (projectName, applicationName, family, finalDiagnosis))
@@ -277,9 +281,11 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     SQL2 = "update dtFinalDiagnosis set State = 1 where FinalDiagnosisId = %i" % (finalDiagnosisId)
     
     try:
+        print "**** ", SQL
         system.db.runUpdateQuery(SQL, database)
         
         SQL = SQL2
+        print "**** ", SQL
         system.db.runUpdateQuery(SQL, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
@@ -353,7 +359,7 @@ def _scanner(database, tagProvider):
             provider = record["Provider"]
             log.infof("Calling Manage...")
             notificationText, activeOutputs, postTextRecommendation, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
-            log.infof("...back from manage, activeOutputs: %s, postTextRecommendation: %s, notificationText: %s!", str(activeOutputs), str(postTextRecommendation), notificationText)
+            log.infof("...back from manage for application <%s>: activeOutputs: %s, postTextRecommendation: %s, notificationText: %s!", applicationName, str(activeOutputs), str(postTextRecommendation), notificationText)
             
             # This specifically handles the case where a FD that is not the highest priority clears which should not disturb the client.
             if noChange:
@@ -979,6 +985,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 resetApplication(post=post, application=applicationName, families=[familyName], finalDiagnosisIds=[finalDiagnosisId], quantOutputIds=[], 
                                      actionMessage=AUTO_NO_DOWNLOAD, recommendationStatus=RECOMMENDATION_ERROR, database=database, provider=provider)
                 insertApplicationQueueMessage(applicationName, explanation, "error", database)
+    
+                requestToManage(applicationName, database, provider)
                 return "Error", numSignificantRecommendations, False, noChange
     
             elif recommendationStatus == RECOMMENDATION_NONE_MADE:
@@ -1096,7 +1104,7 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     
     # Read the current setpoint - the tagpath in the QuantOutput does not have the provider
     tagpath = '[' + provider + ']' + quantOutput.get('TagPath','unknown')
-    outputTagPath = getOutputForTagPath(tagpath, "sp")
+    outputTagPath = getOutputForTagPath(provider, tagpath, "sp")
     log.info("   ...reading the current value of tag: %s" % (outputTagPath))
     qv=system.tag.read(outputTagPath)
     if not(qv.quality.isGood()):
@@ -1128,8 +1136,9 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
 
     # If the recommendation was absolute, then convert it to incremental for the may be absolute or incremental, but we always display incremental    
     if not(incrementalOutput):
-        log.info("      ...calculating an incremental change for an absolute recommendation...")
+        originalAbsoluteRecommendation = feedbackOutput
         feedbackOutput = feedbackOutput - qv.value
+        log.info("      ...calculating an incremental change for an absolute recommendation(absolute:%s, incremental: %s)..." % (str(originalAbsoluteRecommendation), str(feedbackOutput)))
 
     # If the operator manually change the recommendation then use it - manual overrides are always incremental
     if manualOverride:
@@ -1186,7 +1195,7 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     finalIncrementalValue = feedbackOutputConditioned
     
     # If the recommendation was absolute, then convert it back to absolute
-    if not(incrementalOutput):
+    if not(incrementalOutput) and not(manualOverride):
         log.info("      ...converting an incremental change (%s) back to an absolute recommendation (%s)..." % (str(feedbackOutputConditioned), str(qv.value + feedbackOutputConditioned)))
         feedbackOutputConditioned = qv.value + feedbackOutputConditioned
 
@@ -1266,9 +1275,16 @@ def calculateVectorClamps(quantOutputs, provider):
         # Look for an output that isn't bound but needs to be Vector clamped
         if quantOutput['OutputPercent'] > minOutputRatio and quantOutput['OutputLimitedStatus'] != 'Minimum Change Bound':
             outputPercent = minOutputRatio
-            feedbackOutputConditioned = quantOutput['FeedbackOutput'] * minOutputRatio / 100.0
-            txt = "%s\n%s should be reduced from %.4f to %.4f" % (txt, quantOutput['QuantOutput'], quantOutput['FeedbackOutput'], 
-                                                              feedbackOutputConditioned)
+            
+            ''' Calculate the vector clamp but don't store it unless the vector clamp mode is implement! '''
+            if  quantOutput.get('IncrementalOutput'):
+                feedbackOutputConditioned = quantOutput['FeedbackOutput'] * minOutputRatio / 100.0
+            else: 
+                log.infof("Adjusting an absolute  recommendation for a vector clamp!")
+                SP = quantOutput.get('CurrentValue',None)
+                feedbackOutputConditioned = SP + (quantOutput['FeedbackOutput'] - SP)  * (minOutputRatio / 100.0)
+                
+            txt = "%s\n%s should be reduced from %.4f to %.4f" % (txt, quantOutput['QuantOutput'], quantOutput['FeedbackOutput'], feedbackOutputConditioned)
 
             # Now check if the new conditioned output is less than the minimum change amount
             minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
@@ -1344,7 +1360,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     
     if manualOverride:
         # Manual values are always incremental
-        log.info("     ...using the validated manually entered value... ")
+        log.infof("     ...using the validated manually entered value: %s (raw: %s)... ", str(feedbackOutputConditioned), str(feedbackOutputManual))
         finalSetpoint = currentSetpoint + feedbackOutputConditioned
         displayedRecommendation = feedbackOutputConditioned
     else:

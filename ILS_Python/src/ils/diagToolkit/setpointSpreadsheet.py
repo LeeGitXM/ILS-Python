@@ -4,11 +4,14 @@ Created on Sep 9, 2014
 @author: ILS
 '''
 
-import system, string, time
+import system, string
 from ils.sfc.common.constants import SQL
+from ils.common.constants import CR
+from ils.diagToolkit.constants import OBSERVATION_BLOCK_LIST
 from ils.common.operatorLogbook import insertForPost
 from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId
+from ils.common.util import dsToText
+from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 from ils.diagToolkit.api import resetManualMove
 
@@ -371,11 +374,11 @@ def statusCallback(event):
     
     if outputLimited:
         if outputLimitedStatus == 'Vector':
-            txt = "The output (%s) is %s limited!\n\nIt was reduced from %.2f to %.2f because the most bound output "\
+            txt = "The output (%s) is %s limited!\n\nthe final setpoint was reduced from %.2f to %.2f because the most bound output "\
                 "could only use %.0f%% of its value" % (quantOutputName, outputLimitedStatus, record['FeedbackOutput'], \
                                                     record['FeedbackOutputConditioned'], record['OutputPercent'])
         else:
-            txt = "The output (%s) is %s limited,\nit was reduced from %.2f to %.2f\n\n%s" % \
+            txt = "The output (%s) is %s limited,\nthe final setpoint was reduced from %.2f to %.2f\n\n%s" % \
                 (quantOutputName, outputLimitedStatus, record['FeedbackOutput'], record['FeedbackOutputConditioned'], limitDetails)
     else:
         txt = "The output (%s) is not limited!\n\n%s" % (quantOutputName, limitDetails)
@@ -396,9 +399,8 @@ def recalcCallback(event):
     if rootContainer.downloadActive:
         return
     
-    from ils.common.config import getDatabaseClient
-    db=getDatabaseClient()
     repeater=rootContainer.getComponent("Template Repeater")
+    logAction("RECALC", repeater)
     
     activeApplication = isThereAnActiveApplication(repeater)
     if not(activeApplication):
@@ -532,10 +534,10 @@ def waitCallback(event):
     rootContainer=event.source.parent
     post = rootContainer.post
 
-    from ils.common.config import getDatabaseClient, getTagProviderClient
     db=getDatabaseClient()
     tagProvider=getTagProviderClient()
     repeater=rootContainer.getComponent("Template Repeater")
+    logAction("WAIT", repeater)
     
     activeApplication = isThereAnActiveApplication(repeater)
     if activeApplication:
@@ -565,6 +567,7 @@ def noDownloadCallback(event):
     db=getDatabaseClient()
     tagProvider=getTagProviderClient()
     repeater=rootContainer.getComponent("Template Repeater")
+    logAction("NO DOWNLOAD", repeater)
     
     activeApplication = isThereAnActiveApplication(repeater)
     if activeApplication:
@@ -904,13 +907,6 @@ def resetDiagram(finalDiagnosisIds, database):
     import system.ils.blt.diagram as diagram
     log.infof("In %s.resetDiagram() - Resetting BLT diagrams...", __name__)
     
-    observationBlockList = ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.subdiagnosis.SubDiagnosis",
-        "com.ils.block.SQC", "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse", 
-        "com.ils.block.Compare","com.ils.block.CompareAbsolute","com.ils.block.CompareDeadband",
-        "com.ils.block.EqualityObservation","com.ils.block.HighLimitObservation","com.ils.block.HighLimitSampleCount","com.ils.block.HighLimitTimeWindow",
-        "com.ils.block.InRangeSampleCount","com.ils.block.InRangeTimeWindow","com.ils.block.LowLimitObservation","com.ils.block.LowLimitSampleCount",
-        "com.ils.block.OutOfRangeObservation","com.ils.block.RangeObservation","com.ils.block.ZeroCrossing"]
-    
     for finalDiagnosisId in finalDiagnosisIds:
         log.info("...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
@@ -941,23 +937,23 @@ def resetDiagram(finalDiagnosisIds, database):
                 blockUUIDUpstreamOfLatch = []
                 for block in blocks:
                     blockName=block.getName()
-                    blockClass=block.getClassName()
+                    blockClass=stripClassPrefix(block.getClassName())
                     
                     parentUUID=block.getAttributes().get("parent")
 
-                    if blockClass in observationBlockList:
+                    if blockClass in OBSERVATION_BLOCK_LIST:
                         log.info("   ... adding a %s named: %s to the reset list..." % (blockClass, blockName))
                         upstreamBlocks.append(block)
 
-                    elif blockClass == "com.ils.block.Inhibitor":
+                    elif blockClass == "Inhibitor":
                         log.info("   ... setting a %s named: %s  to inhibit!..." % (blockClass, blockName))
                         upstreamBlocks.append(block)
                     
-                    elif blockClass == "com.ils.block.LogicLatch":
+                    elif blockClass == "LogicLatch":
                         log.info("Found a logic latch")
                         blocksUpstreamofLatch=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
                         for upstreamBlock in blocksUpstreamofLatch:
-                            if upstreamBlock.getIdString() not in blockUUIDUpstreamOfLatch and upstreamBlock.getClassName() in observationBlockList:
+                            if upstreamBlock.getIdString() not in blockUUIDUpstreamOfLatch and stripClassPrefix(upstreamBlock.getClassName()) in OBSERVATION_BLOCK_LIST:
                                 log.tracef("Adding a %s named %s to the list of blocks upstream of a latch...", upstreamBlock.getClassName(), upstreamBlock.getName())
                                 blockUUIDUpstreamOfLatch.append(upstreamBlock.getIdString())
 
@@ -978,17 +974,11 @@ def resetDiagram(finalDiagnosisIds, database):
                 for block in blocksToReset:
                     UUID=block.getIdString()
                     blockName=block.getName()
-                    blockClass=block.getClassName()
+                    blockClass=stripClassPrefix(block.getClassName())
                     blockId=block.getIdString()
                     parentUUID=block.getAttributes().get("parent")
 
-                    if blockClass in ["xom.block.sqcdiagnosis.SQCDiagnosis", "xom.block.subdiagnosis.SubDiagnosis",
-                                "com.ils.block.SQC", "com.ils.block.TrendDetector", "com.ils.block.LogicFilter", "com.ils.block.TruthValuePulse", 
-                                "com.ils.block.Compare","com.ils.block.CompareAbsolute","com.ils.block.CompareDeadband",
-                                "com.ils.block.EqualityObservation","com.ils.block.HighLimitObservation","com.ils.block.HighLimitSampleCount","com.ils.block.HighLimitTimeWindow",
-                                "com.ils.block.InRangeSampleCount","com.ils.block.InRangeTimeWindow","com.ils.block.LowLimitObservation","com.ils.block.LowLimitSampleCount",
-                                "com.ils.block.OutOfRangeObservation","com.ils.block.RangeObservation","com.ils.block.ZeroCrossing"]:
-                        
+                    if blockClass in OBSERVATION_BLOCK_LIST:
                         log.info("   ... resetting a %s named: %s..." % (blockClass, blockName))
                         
                         # Resetting a block sets its state to UNSET, which does not propagate. 
@@ -998,7 +988,7 @@ def resetDiagram(finalDiagnosisIds, database):
                         system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
                         system.ils.blt.diagram.propagateBlockState(parentUUID, blockId)
 
-                    elif blockClass == "com.ils.block.Inhibitor":
+                    elif blockClass == "Inhibitor":
                         log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, UUID))
                         system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
                         
@@ -1046,7 +1036,7 @@ def partialResetDiagram(finalDiagnosisIds, database):
                 for block in blocks:
                     UUID=block.getIdString()
                     blockName=block.getName()
-                    blockClass=block.getClassName()
+                    blockClass=stripClassPrefix(block.getClassName())
                     blockId=block.getIdString()
                     parentUUID=block.getAttributes().get("parent")
 
@@ -1054,11 +1044,11 @@ def partialResetDiagram(finalDiagnosisIds, database):
                     # reason from G2 was to allow high-frequency data to flow through the diagrams, and possibly
                     # trigger other diagnosis, but the diagnosis connected to this logic-filter will effectively
                     # be inhibited from firing based on the configuration of the logic filter. 
-                    if blockClass == "com.ils.block.LogicFilter":
+                    if blockClass == "LogicFilter":
                         print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, UUID)
                         system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
                     
-                    elif blockClass in ["com.ils.block.SQC", "xom.block.sqcdiagnosis.SQCDiagnosis", "com.ils.block.TrendDetector"]:
+                    elif blockClass in ["SQC", "SQCDiagnosis", "TrendDetector"]:
                         # Set the state to UNKNOWN, then propagate
                         print "   ... setting a %s named: %s to UNKNOWN (%s  %s)..." % (blockClass, blockName, parentUUID, UUID)
                         system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
@@ -1096,18 +1086,16 @@ def partialResetDiagram(finalDiagnosisIds, database):
 def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, newValue):
     # I'm not sure if this will work out, but it would be nice to validate the manual entry and provide some 
     # feedback back to the operator
+    log.infof("In %s.manualEdit()", __name__)
     valid=True
     txt=""
     
-    from ils.common.config import getDatabaseClient
     database=getDatabaseClient()
-    
-    from ils.common.config import getTagProviderClient
     tagProvider=getTagProviderClient() 
     
     SQL = "update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %f "\
         "where QuantOutputId = %i" % (newValue, quantOutputId)
-    print SQL
+    log.tracef("SQL: %s", SQL)
     system.db.runUpdateQuery(SQL, database)
     
     # Now check the bounds - fetch everything about the quant output first
@@ -1121,12 +1109,12 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     from ils.diagToolkit.common import convertOutputRecordToDictionary
     quantOutput=convertOutputRecordToDictionary(record)
     quantOutputName=quantOutput.get("QuantOutput","")
-    print "Before*: ", quantOutput
+    log.tracef("Before: %s", str(quantOutput))
     
     from ils.diagToolkit.finalDiagnosis import checkBounds
     quantOutput, madeSignificantRecommendation = checkBounds(applicationName, quantOutput, quantOutputName, database, tagProvider)
     
-    print "After: ", quantOutput
+    log.tracef("After: %s", str(quantOutput))
     
     from ils.diagToolkit.finalDiagnosis import updateQuantOutput
     updateQuantOutput(quantOutput, database, tagProvider)
@@ -1180,3 +1168,26 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
         projectName=system.util.getProjectName()
         payload={"post": post, "database": db, "provider": provider, "applications": [application]}
         system.util.sendMessage(projectName, "recalc", payload, "G")
+
+def logAction(action, repeater):
+    '''
+    Send a message to the gateway so that the requested action and the complete state of the setpoint spreadsheet will be logged to a file
+    '''
+    project = system.util.getProjectName()
+    payload = {"action": action, "ds": repeater.templateParams}
+    system.util.sendMessage(project=project, messageHandler="setpointSpreadsheetLogger", payload=payload, scope="G")
+    
+def logActionMessageHandler(payload):
+    log.infof( "In %s.logActionMessageHandler with %s ", __name__, str(payload))
+    
+    action = payload.get("action", "")
+    ds = payload.get("ds", None)
+    timestamp = system.date.format(system.date.now(), "yyyy_MM_dd_HH_mm_ss")
+    reportHome = system.tag.read("Configuration/Common/reportHome").value
+    filename = "%s/Event_Logs/Diagnostic_Actions/%s_%s.csv" % (reportHome, timestamp, action)
+    
+    txt = "action,%s%s" % (action, CR)
+    txt = "%stimestamp,%s%s" % (txt, system.date.format(system.date.now(), "yyyy_MM_dd_HH_mm_ss"), CR)
+    txt = "%s%s" % (txt, dsToText(ds, ","))
+    
+    system.file.writeFile(filename, txt, False)

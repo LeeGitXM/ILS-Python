@@ -4,9 +4,11 @@ Created on Dec 29, 2016
 @author: phass
 '''
 
-import system
+import system, string
+from ils.common.config import getTagProvider, getDatabase
 from ils.common.util import formatDateTimeForDatabase
 log = system.util.getLogger("com.ils.sfc.structureManager.python")
+parseLog = system.util.getLogger("com.ils.sfc.structureManager.xmlParser")
 from ils.common.error import catchError
 from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName
 from ils.common.database import toList
@@ -156,8 +158,11 @@ def deleteCharts(resourceMap, db):
 This is only called by Java hook in designer when the user saves the project.  It is passed all of the resources that have been changed since the last time the 
 project was saved.
 '''
-def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
-    log.infof("In %s.updateChartHierarcy() updating the steps and hierarchy for parent: %s...", __name__, parentResourceId)
+def updateChartHierarchy(parentChartPath, parentResourceId, chartXML):
+    log.infof("In %s.updateChartHierarcy() updating the steps and hierarchy for parent: %s", __name__, parentResourceId)
+    
+    db = getDatabase()
+    log.infof("...using production database instance: %s...", db)
     
     log.tracef("The chart XML is: %s", str(chartXML))
     txId = getTxId(db)
@@ -168,12 +173,14 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
         
         steps, children = parseXML(root)
         
-        # Determine if the chart exists using the resource Id.  
-        # If a chart path is changed, the resourceId does not change so update the path.
+        '''
+        Determine if the chart exists using the resource Id.  
+        If a chart path is changed, the resourceId does not change so update the path.
+        '''
         SQL = "select * from SfcChart where ChartResourceId = %d" % (parentResourceId)
         pds =  system.db.runQuery(SQL, tx=txId)
         
-        # There really shouldn't be a way that the chart is not already inserted...
+        ''' There really shouldn't be a way that the chart is not already inserted... '''
         if len(pds) == 0:
             log.tracef("The chart resource id <%s> did not exist, checking the chart path...", parentResourceId)
             
@@ -188,7 +195,7 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
                 log.tracef("...inserted chart with id: %d", chartId)
 
             else:
-                # Update the resource Id
+                ''' Update the resource Id '''
                 record = pds[0]
                 chartId = record["ChartId"]
                 log.tracef("Updating the resource id...")
@@ -207,6 +214,26 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
                 log.tracef("...updated %d existing sfcChart", rows)
         
         '''
+        Verify step name uniqueness.
+        '''
+        log.tracef("------------------")
+        log.tracef("Checking that step names are unique...")
+        log.tracef("------------------")
+        
+        ''' Iterate over steps in the chart '''
+        stepNames = []
+        for step in steps:
+            stepTypeId = fetchStepTypeIdFromFactoryId(step["type"], txId)
+            stepName = string.upper(step["name"])
+            if stepName in stepNames:
+                errorTxt = "Error on chart %s - there are two or more steps named: %s" % (chartPath, stepName)
+                print errorTxt
+                print "RAISING AN EXCEPTION"
+                raise Exception(errorTxt)
+ 
+            stepNames.append(stepName)        
+        
+        '''
         Handle the step catalog - we need this so that we can have a recipe editor.
         '''
         log.tracef("------------------")
@@ -215,24 +242,30 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
         
         databaseStepsPds = system.db.runQuery("select * from sfcStep where ChartId = %d" % (chartId), tx=txId)
         stepsInDatabase = []
+        stepUUIDsInDatabase = []
         log.tracef("Existing steps:")
         for record in databaseStepsPds:
             log.tracef("  %s", record["StepName"])
-            stepsInDatabase.append(record["StepName"])
+            stepsInDatabase.append(string.upper(record["StepName"]))
+            stepUUIDsInDatabase.append(str(record["StepUUID"]))
+        
+        log.tracef("...the UUIDs in the database are: %s", str(stepUUIDsInDatabase))
         
         updateCntr = 0
         insertCntr = 0
+        renameCntr = 0
+        ''' Iterate over steps in the chart '''
         for step in steps:
             stepTypeId = fetchStepTypeIdFromFactoryId(step["type"], txId)
-            stepId = step["id"]
+            stepUUID = step["id"]
             stepName = step["name"]
             stepType = step["type"]
             
-            if stepName in stepsInDatabase:
-                log.tracef("Step already exists in database, checking if it needs to be updated...")
+            if string.upper(stepName) in stepsInDatabase:
+                log.tracef("Step <%s> already exists in database, checking if it needs to be updated...", stepName)
                 
                 for stepRecord in databaseStepsPds:
-                    if stepName == stepRecord["StepName"]:
+                    if string.upper(stepName) == stepRecord["StepName"]:
                         log.tracef("...found the step (name: %s, step type: %s-%s) in the database list...", stepName, stepType, str(stepTypeId))
                         updateIt = False
                         if chartId <> stepRecord["ChartId"]:
@@ -241,22 +274,37 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
                         if stepTypeId <> stepRecord["StepTypeId"]:
                             log.tracef("...the stepType has been changed from %s to %s", str(stepRecord["StepTypeId"]), str(stepTypeId))
                             updateIt = True
+                        if stepName <> stepRecord["StepName"]:
+                            log.tracef("...the step has been renamed slightly from %s to %s", stepName, str(stepRecord["StepName"]) )
+                            updateIt = True
 
                         if updateIt:
-                            SQL = "update SfcStep set StepName = '%s', StepTypeId = %d, ChartId = %d where StepUUID = '%s'" % (stepName, stepTypeId, chartId, stepId)
+                            SQL = "update SfcStep set StepName = '%s', StepTypeId = %d, ChartId = %d where StepUUID = '%s'" % (stepName, stepTypeId, chartId, stepUUID)
                             rows = system.db.runUpdateQuery(SQL, tx=txId)
                             log.tracef("...updated %d existing steps", rows)
                             updateCntr = updateCntr + 1
                 
-                stepsInDatabase.remove(step["name"])
+                stepsInDatabase.remove(string.upper(step["name"]))
             else:
-                log.tracef("Inserting a new step %s, a %s with UUID %s into the database...", stepName, stepType, stepId)
-                SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepName, stepId, stepTypeId, chartId)
-                stepId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
-                log.tracef("...inserted a %s step with id: %d", stepType, stepId)
-                insertCntr = insertCntr + 1
+                ''' Before we insert a new step, see if they renamed a step by using the id '''
+                if stepUUID in stepUUIDsInDatabase:
+                    log.tracef("-- found a step <%s> that needs to be renamed --", stepName)
+                    SQL = "update SfcStep set StepName = '%s', StepTypeId = %d, ChartId = %d where StepUUID = '%s'" % (stepName, stepTypeId, chartId, stepUUID)
+                    rows = system.db.runUpdateQuery(SQL, tx=txId)
+                    log.tracef("...updated %d existing steps", rows)
+                    renameCntr = renameCntr + 1
+    
+                    if stepName in stepsInDatabase:
+                        stepsInDatabase.remove(string.upper(stepName))
+                else:
+                    log.tracef("Inserting a new step <%s>, a %s with UUID %s into the database...", stepName, stepType, stepUUID)
+                    SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepName, stepUUID, stepTypeId, chartId)
+                    stepId = system.db.runUpdateQuery(SQL, tx=txId, getKey=True)
+                    log.tracef("...inserted a %s step with id: %d", stepType, stepId)
+                    insertCntr = insertCntr + 1
 
         log.tracef("...%d steps were inserted...", insertCntr)
+        log.tracef("...%d steps were renamed...", renameCntr)
         log.tracef("...%d steps were updated...", updateCntr)
                 
         log.tracef("Checking for steps to delete from the database that have been deleted from the chart...")
@@ -391,11 +439,14 @@ def updateChartHierarchy(parentChartPath, parentResourceId, chartXML, db):
         system.db.closeTransaction(txId)
 
     except:
+        print "CAUGHT AN EXCEPTION"
         errorTxt = catchError("Updating the Chart Hierarchy - rolling back database transactions")
         log.errorf(errorTxt)
         system.db.rollbackTransaction(txId)
         system.db.closeTransaction(txId)
-        raise Exception("Database Update Exception in structureManager. %s", errorTxt)
+        raise Exception("Database Update Exception in structureManager. %s" % (errorTxt))
+    
+    log.infof("...done with updateChartHierarchy()!")
 
 '''
 Update the SfcHierarchyHandler table.  If there is a record in the table but it is no longer needed, then delete the record.
@@ -444,7 +495,7 @@ def parseHandlerXML(root, handlerName):
     
     chartPath = None
     for handler in root.findall(handlerName):
-        log.infof("Found an %s handler...", handlerName)
+        parseLog.infof("Found an %s handler...", handlerName)
         
         ''' 
         Look for a call to endHandlerRunner, then look for the first argument.  If it is a chartVariable then look for it, if it isn't a chart variable
@@ -457,7 +508,7 @@ def parseHandlerXML(root, handlerName):
             startPos = idx + len(key)
             endPos = txt[startPos:].find(",")
             chartPath = txt[startPos: startPos + endPos]
-            log.tracef("The local variable or chart path is: <%s>", chartPath)
+            parseLog.tracef("The local variable or chart path is: <%s>", chartPath)
             
             '''
             chartPath is either a chartPath or a local variable that contains the chartPath.  If it is a local variable, then search the text for
@@ -466,24 +517,25 @@ def parseHandlerXML(root, handlerName):
             idx = txt.find(chartPath)
             if idx < startPos:
                 ''' The reference is a local variable, which must be defined before this reference.  Look from the beginning for the local variable '''
-                log.tracef("...it is a local variable...")
+                parseLog.tracef("...it is a local variable...")
                 startPos = txt[idx:].find('"')
                 chartPath = txt[idx + startPos + 1:]
                 endPos = chartPath.find('"')
                 chartPath = chartPath[:endPos]
             else:
                 ''' The reference is a chartPath, we are done, strip off the Double or single quotes '''
-                log.tracef("...the chartpath is specified in-line")
+                parseLog.tracef("...the chartpath is specified in-line")
                 chartPath = chartPath.lstrip('"')
                 chartPath = chartPath.rstrip('"')
             
-            log.infof("The handler calls chart <%s>", chartPath)
+            parseLog.infof("The handler calls chart <%s>", chartPath)
         else:
-            log.infof("This handler does not appear to call another chart!") 
+            parseLog.infof("This handler does not appear to call another chart!") 
 
     return chartPath
 
 def parseXML(root):
+    parseLog.infof("In %s.parseXML()", __name__)
     steps = []
     children = []
     
@@ -491,26 +543,26 @@ def parseXML(root):
         steps, children = parseStep(step, steps, children)
             
     for parallel in root.findall("parallel"):
-        print "Found a parallel..."
+        parseLog.tracef( "Found a parallel...")
         for step in parallel.findall("step"):
             steps, children = parseStep(step, steps, children)
 
-    print "========================"
-    print "Python Found: "
-    print "     steps: ", steps
-    print "  children: ", children
-    print "========================"
+    parseLog.tracef("========================")
+    parseLog.tracef( "Python Found: ")
+    parseLog.tracef( "     steps: %s", str(steps))
+    parseLog.tracef( "  children: %s", str(children))
+    parseLog.tracef( "========================")
     return steps, children
 
 def parseStep(step, steps, children):
-    print "==================="
+    parseLog.tracef( "===================")
     stepId = step.get("id")
     stepName = step.get("name")
     stepType = step.get("factory-id")
     
     stepDict = {"id": stepId, "name": stepName, "type": stepType}
     steps.append(stepDict)
-    print "Found a step: ", stepDict
+    parseLog.tracef("Found a step: %s", str(stepDict))
 
     childChartPath = step.get("chart-path")
     if (childChartPath != None):

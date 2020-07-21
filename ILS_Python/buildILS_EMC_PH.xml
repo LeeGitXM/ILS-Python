@@ -7,6 +7,20 @@
 	
 	<target name="deploy" description="Install Python">
 		
+		<echo message="Deploying python scripts to ${apcw.py.lib}" />
+		<copy todir="${apcw.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+			
+		<echo message="Deploying python scripts to ${apcwDemo.py.lib}" />
+		<copy todir="${apcwDemo.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+			
 		<echo message="Deploying python scripts to ${blt2.py.lib}" />
 		<copy todir="${blt2.py.lib}">
 			<fileset dir="${basedir}/src">
@@ -58,6 +72,13 @@
 		
 		<echo message="Deploying python scripts to ${vistalon.py.lib}" />
 		<copy todir="${vistalon.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
+		<echo message="Deploying python scripts to ${test.py.lib}" />
+		<copy todir="${test.py.lib}">
 			<fileset dir="${basedir}/src">
 				<include name="ils/**/*.py" />
 			</fileset>

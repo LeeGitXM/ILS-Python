@@ -6,10 +6,10 @@ Created on Oct 30, 2014
 @author: rforbes
 '''
     
-import system, time
+import system, time, string
 from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
-    DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT
+    DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT, MAX_CONTROL_PANEL_MESSAGE_LENGTH
 from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.queue.constants import QUEUE_ERROR
@@ -17,7 +17,134 @@ from ils.sfc.recipeData.api import substituteScopeReferences
 
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
+
 logger=system.util.getLogger("com.ils.sfc.gateway.api")
+
+def abortHandler(chartScope, msg):
+    '''
+    This API can be used in the OnAbort handler of a chart.
+    This will cancel the charts from the bottom up of all charts running under the unit procedure.
+    Note: This will cause the CANCEL handlers to be called, not the ABORT handlers.
+    This should only be called from an SFC because I hope to be able to figure out how to get the stack trace and include it in the
+    client notification. 
+    
+    This cancels the top chart in an aynchronous thread, with a short wait, to allow the chart on which the error occurred to finish before the cancel command 
+    propagates down the tree of active charts in order to avoid a race condition with the abort and cancel states.  The addition of this wait may allow the step 
+    following the encapsulation that called the chart with the error to begin to run, but the wait is short and hopefully no damage will be done.   If the wait is not 
+    long enough then the charts will ghet stuck in the CANCELLING state forever.
+    
+    Additionally, we hope to address the shortcoming of the error handling with IA in the 2020 bootcamp.  
+    '''
+    
+    stepProperties = None
+    try:
+        msg = msg + NEWLINE + chartScope.abortCause
+    except:
+        try:
+            ''' This treats the error as a JythonExecException, but doesn't always work. '''
+            abortCause = chartScope.abortCause.getLocalizedMessage()
+        except:
+            abortCause = "Unknown Error"
+            
+    msg = msg + NEWLINE + abortCause
+    notifyGatewayError(chartScope, stepProperties, msg, logger)
+    
+    if logger <> None:
+        logger.error("Canceling the chart due to an error.")
+    else:
+        print "*****************************************"
+        print "Canceling the chart due to an error."
+        print "*****************************************"
+    
+    '''cancel the entire chart hierarchy'''
+    topChartRunId = getTopChartRunId(chartScope)
+    chartPath = getChartPath(chartScope)
+    
+    print "The chart path of the aborting chart is", chartPath
+    logger.infof("Cancelling chart with id: %s", str(topChartRunId))
+    
+    def cancelWork(topChartRunId=topChartRunId, chartPath=chartPath):
+        logger.infof("In cancelWork(), an asynchronous thread...")
+        
+        i = 0
+        running = chartIsRunning(chartPath)
+        while running:
+            logger.tracef("...sleeping...")
+            time.sleep(0.1)
+            running = chartIsRunning(chartPath)
+    
+            i = i + 1
+            if i > 100:
+                running = False
+        
+        time.sleep(0.1)
+        logger.tracef("...the chart is done aborting, i = %d", i)
+        logger.tracef("...cancelling...")
+        system.sfc.cancelChart(topChartRunId)
+        logger.tracef("...the asynchronous thread is complete!")
+    
+    system.util.invokeAsynchronous(cancelWork)
+    
+def chartIsRunning(chartPath):
+    running = True
+    ds = system.sfc.getRunningCharts(chartPath)
+    if ds.getRowCount() > 0:
+        chartState = ds.getValueAt(0, "chartState")
+        if str(chartState) == "Aborted":
+            running = False
+        logger.tracef("The chart state is: %s", str(chartState)) 
+    else:
+        running = False
+        
+    return running
+    
+
+def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
+    '''
+    Report an unexpected error so that it is visible to the operator--
+    e.g. put in a message queue. Then cancel the chart.
+    '''  
+    notifyGatewayError(chartScope, stepProperties, msg, logger)
+    
+    if logger <> None:
+        logger.error("Canceling the chart due to an error.")
+    else:
+        print "Canceling the chart due to an error."
+    cancelChart(chartScope)
+
+def notifyGatewayError(chartScope, stepProperties, msg, logger=None):
+    '''  Report an unexpected error so that it is visible to the operator.  '''
+    fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
+    chartPath = chartScope.get("chartPath", "")
+    if stepProperties == None:
+        stepName = "Unknown"
+    else:
+        stepName = getStepProperty(stepProperties, NAME)
+    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
+    payload = dict()
+    payload[MESSAGE] = payloadMsg
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+    
+def handleExpectedGatewayError(chartScope, stepName, msg, logger=None):
+    '''
+    Report an expected error so that it is visible to the operator--
+    e.g. put in a message queue. Then cancel the chart.
+    '''
+
+    chartPath = chartScope.get("chartPath", "")
+    payloadMsg = "%s\nChart: %s\nStep: %s" % (msg, chartPath, stepName)
+    payload = dict()
+    payload[MESSAGE] = payloadMsg
+
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+    
+    if logger <> None:
+        logger.error("Canceling the chart due to an error.")
+    else:
+        print "Canceling the chart due to an error."
+
+    cancelChart(chartScope)    
+
 
 '''
 This is used to run a chart from the stop, cancel, or abort end handlers.
@@ -71,6 +198,8 @@ def addControlPanelMessage(chartProperties, stepScope, message, priority, ackReq
     logger.tracef("The untranslated message is <%s>...", message)
     message = substituteScopeReferences(chartProperties, stepScope, message)
     message = escapeSqlQuotes(message)
+    message = message[:MAX_CONTROL_PANEL_MESSAGE_LENGTH]
+    
     logger.tracef("...the translated message is <%s>", message)
     
     database = getDatabaseName(chartProperties)
@@ -217,9 +346,27 @@ def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position
     print "********************************************************************************"
     registerWindowWithControlPanel(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database)
 
-def createSaveDataRecord(windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile, database):
-    print 'windowId', windowId, 'dataText', dataText, 'filepath', filepath, 'computer', computer, 'printFile', printFile, 'showPrintDialog', showPrintDialog, 'viewFile', viewFile
-    system.db.runUpdateQuery("insert into SfcSaveData (windowId, text, filePath, computer, printText, showPrintDialog, viewText) values ('%s', '%s', '%s', '%s', %d, %d, %d)" % (windowId, dataText, filepath, computer, printFile, showPrintDialog, viewFile), database)
+def createSaveDataRecord(windowId, textData, binaryData, filepath, fileLocation, printFile, showPrintDialog, viewFile, database, extension="txt"):
+    print 'windowId: ', windowId 
+    print 'filepath: ', filepath
+    print 'fileLocation:', fileLocation
+    print 'printFile: ', printFile
+    print 'showPrintDialog: ', showPrintDialog
+    print 'viewFile: ', viewFile
+    
+    if string.upper(fileLocation) == "CLIENT":
+            SQL = "insert into SfcSaveData (windowId, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
+    else:
+        if string.upper(extension) == "PDF":
+            SQL = "insert into SfcSaveData (windowId, binaryData, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, binaryData, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
+        else:
+            SQL = "insert into SfcSaveData (windowId, textData, filePath, fileLocation, printText, showPrintDialog, viewText) values (?, ?, ?, ?, ?, ?, ?)"
+            print SQL
+            system.db.runPrepUpdate(SQL, [windowId, textData, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
 
 def dbStringForString(strValue):
     '''return a string representation of the given string suitable for a nullable SQL varchar column'''
@@ -432,48 +579,6 @@ def getWithPath(properties, key):
     Get a value using a potentially compound key
     '''
 
-def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
-    '''
-    Report an unexpected error so that it is visible to the operator--
-    e.g. put in a message queue. Then cancel the chart.
-    '''  
-    notifyGatewayError(chartScope, stepProperties, msg, logger)
-    
-    if logger <> None:
-        logger.error("Canceling the chart due to an error.")
-    else:
-        print "Canceling the chart due to an error."
-    cancelChart(chartScope)
-
-def notifyGatewayError(chartScope, stepProperties, msg, logger=None):
-    '''  Report an unexpected error so that it is visible to the operator.  '''
-    fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
-    chartPath = chartScope.get("chartPath", "")
-    stepName = getStepProperty(stepProperties, NAME)
-    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
-    payload = dict()
-    payload[MESSAGE] = payloadMsg
-    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
-    
-def handleExpectedGatewayError(chartScope, stepName, msg, logger=None):
-    '''
-    Report an expected error so that it is visible to the operator--
-    e.g. put in a message queue. Then cancel the chart.
-    '''
-
-    chartPath = chartScope.get("chartPath", "")
-    payloadMsg = "%s\nChart: %s\nStep: %s" % (msg, chartPath, stepName)
-    payload = dict()
-    payload[MESSAGE] = payloadMsg
-
-    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
-    
-    if logger <> None:
-        logger.error("Canceling the chart due to an error.")
-    else:
-        print "Canceling the chart due to an error."
-
-    cancelChart(chartScope)    
     
     
 def hasStepProperty(stepProperties, pname):

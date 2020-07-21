@@ -12,7 +12,7 @@ from java.util import Date
 from ils.sfc.recipeData.api import s88Set, s88Get, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
 from ils.sfc.common.constants import START_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, ERROR_COUNT_LOCAL, \
-    WRITE_CONFIRMED, DOWNLOAD_STATUS, SUCCESS, FAILURE
+    WRITE_CONFIRMED, DOWNLOAD_STATUS, SUCCESS, FAILURE, OUTPUT_TYPE
 
 '''
 perform the timer-related logic for a step
@@ -52,17 +52,18 @@ This updates the internal error counter in the step, it is the job of the step t
 '''
 def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataScope):
     
+    tagPath = "[%s]%s" % (providerName, config.tagPath)
+    outputType = s88Get(chartScope, stepScope, config.key + "." + OUTPUT_TYPE, recipeDataScope)
+    
     #----------------------------------------------------------------------------------------------------
-    def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, logger=logger, providerName=providerName, recipeDataScope=recipeDataScope):
+    def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, logger=logger, providerName=providerName, 
+                    recipeDataScope=recipeDataScope, tagPath=tagPath, outputType=outputType):
         from ils.io.api import write, writeRamp
         from ils.common.config import getTagProvider
         from ils.sfc.gateway.api import postToQueue
         from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
-        from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, DOWNLOAD_STATUS, PENDING, OUTPUT_TYPE, SETPOINT, WRITE_CONFIRMED, SUCCESS, \
-            FAILURE, RAMP_TIME, RAMP_UPDATE_FREQUENCY
+        from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, RAMP_TIME, RAMP_UPDATE_FREQUENCY
 
-        tagPath = "[%s]%s" % (providerName, config.tagPath)
-        outputType = s88Get(chartScope, stepScope, config.key + "." + OUTPUT_TYPE, recipeDataScope)
         productionProviderName = getTagProvider()   # Get the production tag provider
         
         '''
@@ -118,6 +119,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
         
     #----------------------------------------------------------------------------------------------------
     system.util.invokeAsynchronous(_writeValue)
+    return
 
 
 def confirmWrite(chartScope, config, logger):

@@ -5,11 +5,13 @@ Created on Jun 15, 2015
 '''
 import system, string
 from ils.common.config import getTagProviderClient
-from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit
+from ils.common.constants import CR
+from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue
+log = system.util.getLogger("com.ils.labData.ui.configuration")
 
 
 def internalFrameOpened(rootContainer):
-    print "In internalFrameOpened(), reserving a cursor..."
+    log.infof("In %s.internalFrameOpened(), reserving a cursor...", __name__)
     
     # Reset the tab that is selected
     rootContainer.getComponent("Tab Strip").selectedTab = "PHD"
@@ -26,7 +28,7 @@ def internalFrameOpened(rootContainer):
 
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
-    print "In internaFrameActived()..."
+    log.infof("In %s.internaFrameActived()...", __name__)
     rootContainer.selectedValueId = 0
     
     # Update the datasets used by the combo boxes in the power tables
@@ -48,10 +50,11 @@ def internalFrameActivated(rootContainer):
 
 
 def internalFrameClosing(rootContainer):
-    print "In %s.internalFrameClosing()" % (__name__)
+    log.infof("In %s.internalFrameClosing()", __name__)
             
 #remove the selected row
 def removeDataRow(event):
+    log.infof("In %s.removeDataRow()", __name__)
     table = event.source
     rootContainer = event.source.parent.parent.parent
     tab = rootContainer.getComponent("Tab Strip").selectedTab
@@ -111,6 +114,9 @@ def removeDataRow(event):
         elif tab == "DCS":
             table = rootContainer.getComponent("DCS").getComponent("DCS_Value")
             sql = "DELETE FROM LtDCSValue WHERE ValueId = '%s' " % (valueId)
+            
+            ''' Delete the DCS lab value OPC tag, if it exists '''
+            deleteDcsLabValue(unitName, valueName)
         else:
             table = rootContainer.getComponent("Local").getComponent("Local_Value")
             sql = "DELETE FROM LtLocalValue WHERE ValueId = '%s' " % (valueId)
@@ -157,7 +163,7 @@ def removeDataRow(event):
     
 #add a row to the data table
 def insertDataRow(rootContainer):
-    print "In %s.insertDataRow" % (__name__)
+    log.infof("In %s.insertDataRow", __name__)
     labDataType = rootContainer.labDataType
             
     newName = rootContainer.getComponent("name").text
@@ -186,11 +192,13 @@ def insertDataRow(rootContainer):
         
     elif labDataType == "DCS":
         interfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
+        interfaceName = rootContainer.getComponent("opcServerDropdown").selectedStringValue
         minimumTimeBetweenSamples = rootContainer.getComponent("minimumTimeBetweenSamples").intValue
         itemId = rootContainer.getComponent("itemId").text
         sql = "INSERT INTO LtDCSValue (ValueId, InterfaceId, ItemId, MinimumSampleIntervalSeconds)"\
             "VALUES (%s, %s, '%s', %s)" %(str(valueId), str(interfaceId), str(itemId), str(minimumTimeBetweenSamples))
         system.db.runUpdateQuery(sql)
+        createDcsTag(unitName, newName, interfaceName, itemId)
         
     elif labDataType == "Local":
         interfaceId = rootContainer.getComponent("hdaInterfaceDropdown").selectedValue
@@ -211,43 +219,56 @@ def insertDataRow(rootContainer):
     # Create the UDT
     createLabValue(unitName, newName)
     
-# Refresh the main table
+
 def update(rootContainer):
+    '''
+    This is called on startup when they open the window.
+    It is also called 
+    '''
+    log.infof("In %s.update()", __name__)
     unitId = rootContainer.getComponent("UnitName").selectedValue
+    dataType = rootContainer.dataType
+    log.tracef("...updating %s...", dataType)
     
-    if rootContainer.dataType == "PHD":
+    if dataType == "PHD":
         SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, PV.AllowManualEntry, I.InterfaceName, PV.ItemId, V.ValidationProcedure "\
             "FROM LtValue V, LtPHDValue PV,  LtHDAInterface I "\
             "WHERE V.ValueId = PV.ValueId "\
             "AND PV.InterfaceID = I.InterfaceId "\
             "AND V.UnitId = %i "\
             "ORDER BY ValueName" % (unitId)
-        print SQL
+        log.tracef(SQL)
         pds = system.db.runQuery(SQL)
         table = rootContainer.getComponent("PHD").getComponent("PHD_Value")
         table.updateInProgress = True
         table.data = pds
         table.updateInProgress = False
-    elif rootContainer.dataType == "DCS":
+    elif dataType == "DCS":
         SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, DS.MinimumSampleIntervalSeconds, V.UnitId, DS.AllowManualEntry, OPC.InterfaceName, DS.ItemId, V.ValidationProcedure "\
             " FROM LtValue V, LtDCSValue DS, LtOpcInterface OPC "\
             " WHERE V.ValueId = DS.ValueId "\
             " AND V.UnitId = %i "\
             " and OPC.InterfaceId = DS.InterfaceId "\
             " ORDER BY ValueName" % (unitId)
-        print SQL
+        log.tracef(SQL)
         pds = system.db.runQuery(SQL)
+        ds = system.dataset.toDataSet(pds)
+        
+        ''' At one point I was going to add a status column to indicate if the lab value was OK, but didn't work out '''
+        #status = ["ok"] * ds.getRowCount()
+        #ds = system.dataset.addColumn(ds, 0, status, "Status", str)
+        
         table = rootContainer.getComponent("DCS").getComponent("DCS_Value")
         table.updateInProgress = True
-        table.data = pds
+        table.data = ds
         table.updateInProgress = False
-    elif rootContainer.dataType == "Local":
+    elif dataType == "Local":
         SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, V.UnitId, HDA.InterfaceName, LV.ItemId, V.ValidationProcedure "\
             " FROM LtValue V INNER JOIN LtLocalValue LV ON V.ValueId = LV.ValueId LEFT OUTER JOIN "\
             " LtHDAInterface HDA ON LV.InterfaceId = HDA.InterfaceId "\
             " WHERE V.UnitId = %i "\
             " ORDER BY ValueName" %(unitId)
-        print SQL
+        log.tracef(SQL)
         pds = system.db.runQuery(SQL)
         table = rootContainer.getComponent("Local").getComponent("Local_Value")
         table.updateInProgress = True
@@ -255,9 +276,150 @@ def update(rootContainer):
         table.updateInProgress = False
     else:
         print "Unexpected tab: %s" % (rootContainer.dataType)
+        
+
+def validate(rootContainer):
+    '''
+    This is called on when the user presses the validate button. 
+    It is sort of open when "vallidate" means.  For starters, I want to validate the table vs the tags
+    Since we are coming at this from the databases point of view, validate tags for now.
+    '''
+    
+    def validateTags(unitName, valueName, dataType, tagProvider, txt):
+        ''' Now check the lab value tag '''
+        
+        log.tracef("    ...validating lab data UDT: %s", valueName)
+        path = "LabData/%s" % (unitName)
+        parentPath = "[%s]%s" % (tagProvider, path)  
+        tagPath = parentPath + "/" + valueName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            log.tracef("      ... Lab value UDT exists")
+        else:
+            log.infof("      --- Creating lab value UDT ---")
+            createLabValue(unitName, valueName)
+            txt = "%s%sCreated lab value UDT for %s" % (txt, CR, valueName)
+            
+        return txt
+
+
+    def validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt):
+        log.tracef("   ...validating DCS lab data: %s - %s - %s", valueName, interfaceName, itemId)
+        
+        path = "LabData/%s/DCS-Lab-Values" % (unitName)
+        parentPath = "[%s]%s" % (tagProvider, path)  
+        tagPath = parentPath + "/" + valueName
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            log.tracef("      ... OPC tag exists")
+        else:
+            log.infof("      --- Creating OPC Tag ---")
+            createDcsTag(unitName, valueName, interfaceName, itemId)
+            txt = "%s%sCreated OPC tag for %s - %s" % (txt, CR, valueName, itemId)
+        return txt
+            
+    def validateLimits(unitName, valueName, dataType, tagProvider, txt):
+        ''' 
+        Now check the lab limits - This makes sure that all of the required limit UDTs exist.  
+        It doesn't clean up extra UDTs.
+        It also write values to the UDTs, eventually the lab data handling will update them, but maybe we should do that here - IDK?
+        '''
+        log.tracef("    ...validating lab limits for: %s", valueName)
+        
+        parentPath=tagProvider+'LabData/'+unitName
+        
+        SQL = "select ValueId, ValueName, LimitType "\
+            " from LtLimitView "\
+            " where UnitName = '%s' and ValueName = '%s' order by ValueName" % (unitName, valueName)
+        pds = system.db.runQuery(SQL)
+        
+        for record in pds:
+            limitType = record["LimitType"]    
+            if string.upper(limitType) == 'SQC':
+                udtType='Lab Data/Lab Limit SQC'
+                suffix='-SQC'
+            elif string.upper(limitType) == 'RELEASE':
+                udtType='Lab Data/Lab Limit Release'
+                suffix='-RELEASE'
+            elif string.upper(limitType) == 'VALIDITY':
+                udtType='Lab Data/Lab Limit Validity'
+                suffix='-VALIDITY'
+
+            path = "LabData/%s" % (unitName)
+            parentPath = "[%s]%s" % (tagProvider, path)  
+            tagPath = parentPath + "/" + valueName + suffix
+            log.tracef("      ...checking %s", tagPath)
+            tagExists = system.tag.exists(tagPath)
+            if tagExists:
+                log.tracef("         ... Lab limit UDT exists")
+            else:
+                log.infof("         --- Creating lab limit UDT ---")
+                system.tag.addTag(parentPath=parentPath, name=valueName + suffix, tagType="UDT_INST", 
+                      attributes={"UDTParentType":udtType})
+                txt = "%s%sCreated Lab Limit UDT for %s - %s" % (txt, CR, valueName + suffix, udtType)
+                
+        return txt
+    #--------------------------------------------------------------------------------------
+        
+    log.infof("In %s.validate()", __name__)
+    tagProvider = getTagProviderClient()
+    unitName = rootContainer.getComponent("UnitName").selectedStringValue
+    dataType = rootContainer.dataType
+    log.infof("...validating %s...", dataType)
+    txt = ""
+    
+    if dataType == "PHD":
+        table = rootContainer.getComponent("PHD").getComponent("PHD_Value")
+        ds = table.data
+        for row in range(ds.getRowCount()):
+            valueName = ds. getValueAt(row, "ValueName")
+            txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+
+        if txt == "":
+            txt = "PHD Lab data configuration validated, no problems were detected!"
+        else:
+            txt = "Validating PHD Lab data...%s%s" % (CR, txt)
+        
+    elif dataType == "DCS":
+        table = rootContainer.getComponent("DCS").getComponent("DCS_Value")
+        ds = table.data
+        
+        for row in range(ds.getRowCount()):
+            valueName = ds. getValueAt(row, "ValueName")
+            interfaceName = ds.getValueAt(row, "InterfaceName")
+            itemId =  ds.getValueAt(row, "ItemId")
+            txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+        
+        if txt == "":
+            txt = "DCS Lab data configuration validated, no problems were detected!"
+        else:
+            txt = "Validating DCS Lab data...%s%s" % (CR, txt)
+                        
+    elif dataType == "Local":
+        table = rootContainer.getComponent("Local").getComponent("Local_Value")
+        ds = table.data
+        for row in range(ds.getRowCount()):
+            valueName = ds. getValueAt(row, "ValueName")
+            txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+        
+        if txt == "":
+            txt = "Local Lab data configuration validated, no problems were detected!"
+        else:
+            txt = "Validating Local Lab data...%s%s" % (CR, txt)
+        
+    else:
+        txt = "Unexpected lab data type: %s" % (rootContainer.dataType)
+        print "Unexpected tab: %s" % (rootContainer.dataType)
+        
+    system.gui.messageBox(txt)
 
 # Refresh the limit table    
 def updateLimit(rootContainer):
+    log.infof("In %s.updateLimit()...", __name__)
     selectedValueId = rootContainer.selectedValueId
     sql = "SELECT LimitId, ValueId, LimitType, LimitSource, "\
         " UpperReleaseLimit, LowerReleaseLimit, "\
@@ -273,7 +435,7 @@ def updateLimit(rootContainer):
     
 #update the database when user directly changes table 
 def dataCellEdited(table, rowIndex, colName, newValue):
-    print "A cell has been edited so update the database..."
+    log.infof("In %s.dataCellEdited() - A cell has been edited so update the database...", __name__)
     print "Row: %s, Column: %s, Value: %s" % (str(rowIndex), colName, str(newValue))
     rootContainer = table.parent.parent
 
@@ -331,6 +493,7 @@ def dataCellEdited(table, rowIndex, colName, newValue):
 Add a row to the limit table - the window here is one of the popups, not the big configuration window
 '''
 def insertLimitRow(event):
+    log.infof("In %s.insertLimitRow()...", __name__)
     rootContainer = event.source.parent.parent.parent
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     valueId = rootContainer.selectedValueId
@@ -361,6 +524,7 @@ def insertLimitRow(event):
 
 # Delete the selected row in the limit table
 def removeLimitRow(event):
+    log.infof("In %s.removeLimitRow()...", __name__)
     rootContainer = event.source.parent.parent.parent
     
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
@@ -387,6 +551,7 @@ Called from an onCellEdited handler on the limit table.  By the time this is cal
 (SQC, Validity, Release) then we have to delete the old and create a new UDT
 '''
 def saveLimitRow(table, row, colName, oldValue, newValue):
+    log.infof("In %s.saveLimitRow()...", __name__)
     #--------------------------------------------------
     def updateRow(table, row, colName, limitId, newValue):
         from ils.common.database import lookup

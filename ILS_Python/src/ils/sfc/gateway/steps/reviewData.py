@@ -10,7 +10,7 @@ from ils.common.cast import jsonToDict, isFloat
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, hasStepProperty, deleteAndSendClose, getDatabaseName, getChartLogger, \
         sendMessageToClient, getProject, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88GetWithUnits, s88GetUnits
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88GetWithUnits, s88GetUnits, substituteScopeReferences
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, WINDOW_PATH, \
     DEACTIVATED, CANCELLED, PRIMARY_REVIEW_DATA_WITH_ADVICE, SECONDARY_REVIEW_DATA_WITH_ADVICE, PRIMARY_REVIEW_DATA, SECONDARY_REVIEW_DATA, \
     BUTTON_KEY_LOCATION, BUTTON_KEY, ACTIVATION_CALLBACK, CUSTOM_WINDOW_PATH, IS_SFC_WINDOW, PRIMARY_TAB_LABEL, SECONDARY_TAB_LABEL, REFERENCE_SCOPE
@@ -24,8 +24,6 @@ def activate(scopeContext, stepProperties, state):
     messageHandler = "sfcOpenWindow"
     responseKey = getStepProperty(stepProperties, BUTTON_KEY)
     responseRecipeLocation = getStepProperty(stepProperties, BUTTON_KEY_LOCATION)
-    
-    print "The response location and key are: %s - %s" % (responseRecipeLocation, responseKey)
 
     if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
@@ -126,11 +124,12 @@ def activate(scopeContext, stepProperties, state):
                 except Exception, e:
                     try:
                         cause = e.getCause()
-                        errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, cause.getMessage())
+                        errMsg = "Error calling custom activation callback for a reviewData task %s: %s" % (activationCallback, cause.getMessage())
                     except:
-                        errMsg = "Error dispatching gateway message %s: %s" % (activationCallback, str(e))
+                        errMsg = "Error calling custom activation callback for a reviewData task %s: %s" % (activationCallback, str(e))
 
-                    logger.errorf(errMsg)
+                    handleUnexpectedGatewayError(chartScope, stepProperties, errMsg, logger)
+                    workDone = True
             
             payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
             time.sleep(0.1)
@@ -161,7 +160,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     logger.tracef("Adding row: %s", str(row))
     
     if showAdvice:
-        advice = row.get("advice", None)
+        advice = substituteScopeReferences(chartScope, stepScope,  row.get("advice", None) )
     else:
         advice = ''
         
@@ -170,7 +169,7 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     configKey = row.get("configKey", None)
     key = row.get("valueKey", None)
     scope = row.get("recipeScope", "")
-    prompt = row.get("prompt", "Prompt:")
+    prompt = substituteScopeReferences(chartScope, stepScope, row.get("prompt", "Prompt:") )
     
     if advice == "null":
         advice = ""
@@ -188,7 +187,6 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     else:
         if units == "":
             val = s88Get(chartScope, stepScope, key, scope)
-            print "val = ", val
         else:
             '''
             Because this is GUI, sometimes we want to use the units as a label rather than forcing unit conversion.  If the recipe

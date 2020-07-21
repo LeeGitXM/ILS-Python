@@ -10,6 +10,8 @@ it does not do any validation that the number is correct.  Numbers in & numbers 
 '''
 
 import system, sys, string, traceback
+from ils.diagToolkit.common import checkFreshness, fetchDiagnosisActiveTime
+from ils.diagToolkit.manualMoveEntry import fetchManualMoveInfoById
 
 def populateTable(table, applicationName):
     SQL = "select ApplicationName, FamilyName, FinalDiagnosisName, Constant, CalculationMethod, 0 as Run, '' as Status "\
@@ -67,12 +69,10 @@ def runTest(database, provider, table):
     table.data=ds
     
     
-import system
-from ils.diagToolkit.common import checkFreshness, fetchDiagnosisActiveTime
-from ils.diagToolkit.manualMoveEntry import fetchManualMoveInfoById
+
 
 def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_1_1"
+    print "In %s.fd1_1_1" % (__name__)
     explanation = "Close the valve because the flow is too great and needs to be minimized to reduce flooding in the control room."
     
     manualMove, manualMoveAllowed = fetchManualMoveInfoById(finalDiagnosisId, database)
@@ -90,21 +90,30 @@ def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     return True, explanation, recommendations
 
 def fd1_1_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_1_1d"
+    print "In %s.fd1_1_1d" % (__name__)
     explanation = "Here is some <b>dynamic</b> text from the calculation method."
     recommendations = []
     return True, explanation, recommendations
 
 def fd1_2_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_1"
+    print "In %s.fd1_2_1" % (__name__)
     explanation = "The TESTFD1_2_1 will use data of gain = 1.2, 1.5, and 0.9, SP = 23.4."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
     recommendations.append({"QuantOutput": "TESTQ2", "Value": 53.4})
     return True, explanation, recommendations
 
+def fd1_2_1a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_1a" % (__name__)
+    explanation = "The TESTFD1_2_1 will use data of gain = 1.2, 1.5, and 0.9, SP = 23.4."
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 50.0})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": -5.3})
+    return True, explanation, recommendations
+
 def fd1_2_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_1b"
+    print "In %s.fd1_2_1b" % (__name__)
     explanation = "The TESTFD1_2_1 will use data of gain = 1.2, 1.5, and 0.9, SP = 23.4."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
@@ -112,7 +121,7 @@ def fd1_2_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_1c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_1c"
+    print "In %s.fd1_2_1c" % (__name__)
     explanation = "The TESTFD1_2_1 will return all 0.0 recommendations!"
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 0.0})
@@ -120,7 +129,7 @@ def fd1_2_1c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_1d"
+    print "In %s.fd1_2_1d" % (__name__)
     explanation = "The TESTFD1_2_1 will return insignificant recommendations."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 0.0001})
@@ -128,7 +137,7 @@ def fd1_2_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_1e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_1e"
+    print "In %s.fd1_2_1e" % (__name__)
     
     print "Bypassing the output limits for Final Diagnosis Id: ", finalDiagnosisId
     from ils.diagToolkit.finalDiagnosis import bypassOutputLimits
@@ -141,22 +150,30 @@ def fd1_2_1e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_1f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_1f"
+    print "In %s.fd1_2_1f" % (__name__)
     explanation = "The TESTFD1_2_1 will return one of two outputs."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 13.33})
     return True, explanation, recommendations
 
 def fd1_2_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_2"
+    print "In %s.fd1_2_2" % (__name__)
     explanation = "Turn down the flame and open the window."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ2", "Value": 5.4})
     recommendations.append({"QuantOutput": "TESTQ3", "Value": -20.4})
     return True, explanation, recommendations
 
+def fd1_2_2a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_2a" % (__name__)
+    explanation = "Turn down the flame and open the window."
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 40.0,  "RampTime": 5.0})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": 60.0,  "RampTime": 6.0})
+    return True, explanation, recommendations
+
 def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3 "
+    print "In %s.fd1_2_3 " % (__name__)
     explanation = "Turn down the flame and open the window."
     recommendations = []
     
@@ -170,7 +187,7 @@ def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     return True, explanation, recommendations
 
 def fd1_2_3a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3a - returning a 0.0 recommendation "
+    print "In %s.fd1_2_3a - returning a 0.0 recommendation " % (__name__)
     explanation = "Turn down the flame and open the window."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 6.8})
@@ -179,14 +196,14 @@ def fd1_2_3a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_3b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3b - returning just 1 of the expected 3 recommendations "
+    print "In %s.fd1_2_3b - returning just 1 of the expected 3 recommendations " % (__name__)
     explanation = "Turn down the flame and open the window."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 6.8})
     return True, explanation, recommendations
 
 def fd1_2_3c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3c - returning 3 recommendations which are all 0.0"
+    print "In %s.fd1_2_3c - returning 3 recommendations which are all 0.0" % (__name__)
     explanation = "Returning 3 recommendations which are all 0.0"
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 0.0})
@@ -195,7 +212,7 @@ def fd1_2_3c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_3d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3d - returning 3 recommendations which are all 0.00001"
+    print "In %s.fd1_2_3d - returning 3 recommendations which are all 0.00001" % (__name__)
     explanation = "Returning 3 recommendations which are all 0.0"
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 0.00009})
@@ -204,7 +221,7 @@ def fd1_2_3d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_3e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3e - returning 3 recommendations with lots of decimals"
+    print "In %s.fd1_2_3e - returning 3 recommendations with lots of decimals" % (__name__)
     explanation = "Returning 3 recommendations which lots of precision"
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.123456789})
@@ -216,7 +233,7 @@ def fd1_2_3e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
 This calculation method has a divide by 0 error.
 '''
 def fd1_2_3f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3f - testing a computation error (divide by 0)"
+    print "In %s.fd1_2_3f - testing a computation error (divide by 0)" % (__name__)
     explanation = "Returning 3 recommendations which are all 0.0"
     myVal = 25.4 / 0.0
     recommendations = []
@@ -225,17 +242,26 @@ def fd1_2_3f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     recommendations.append({"QuantOutput": "TESTQ3", "Value": 3.123456789})
     return True, explanation, recommendations
 
+def fd1_2_3g(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_3g" % (__name__)
+    explanation = "The TESTFD1_2_3g making recs with ramps"
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 20.0,  "RampTime": 2.0})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": 100.0,  "RampTime": 3.0})
+    return True, explanation, recommendations
+
 def fd1_2_3h(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3h - returning 3 recommendations, 1 real, 1 insignificant, and 1 = 0"
+    print "In %s.fd1_2_3h - returning 3 recommendations, 1 real, 1 insignificant (less than 0.5), and 1 near 0 (less than 0.01)" % (__name__)
     explanation = "Returning 3 recommendations, 1 real, 1 insignificant, and 1 = 0"
     recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.123456789})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 0.000082345})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 0.0})
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.25})
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 0.25})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": 0.0001})
     return True, explanation, recommendations
 
 def fd1_2_3i(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3i - returning 3 integer recommendations"
+    print "In %s.fd1_2_3i - returning 3 integer recommendations" % (__name__)
     explanation = "Returning 3 integer recommendations"
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 7})
@@ -243,9 +269,19 @@ def fd1_2_3i(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     recommendations.append({"QuantOutput": "TESTQ3", "Value": 3})
     return True, explanation, recommendations
 
+def fd1_2_3j(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_3j - testing case sensitive recommendations" % (__name__)
+    explanation = "Returning 3 recommendations"
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.36})
+    recommendations.append({"QuantOutput": "TeStq2", "Value": 5.523})
+    recommendations.append({"QuantOutput": "testq3", "Value": 3.816})
+    return True, explanation, recommendations
+
+
 # A text recommendations
 def fd1_2_5(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_5"
+    print "In %s.fd1_2_5" % (__name__)
     recommendations = []
     import random
     
@@ -271,12 +307,12 @@ def fd1_2_5(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
 
 # A text recommendations
 def fd1_2_6(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_6"
+    print "In %s.fd1_2_6" % (__name__)
     recommendations = []
     return True, "Turn up the heat", recommendations
 
 def fd2_1_1a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd2_1_1a - returning recommendations for outputs and controllers"
+    print "In %s.fd2_1_1a - returning recommendations for outputs and controllers" % (__name__)
     explanation = "Returning recommendations for outputs and controllers"
     recommendations = []
     recommendations.append({"QuantOutput": "TEST_Q21", "Value": 7.35})
@@ -287,7 +323,7 @@ def fd2_1_1a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd2_1_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd2_1_1b"
+    print "In %s.fd2_1_1b" % (__name__)
     explanation = "Get the steak out."
     recommendations = []
     
@@ -295,62 +331,59 @@ def fd2_1_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     sp = system.tag.read("[%s]DiagnosticToolkit/Inputs/T1_Target" % (provider)).value
     
     manualMove, manualMoveAllowed = fetchManualMoveInfoById(finalDiagnosisId, database)
+    print "   Manual Move Allowed: ", manualMoveAllowed
+    print "   Manual Move: ", manualMove
     
     if manualMove in [0.0, None]:
         error = sp - pv
-        print "Using a calculated value (%f) as the error." % (error)
+        print "   ---  Using a calculated value (%f) as the error.  ---" % (error)
     else:
         error = manualMove
-        print "Using the manual move (%f) as the error." % (error)
-    
-    # Check that the filtered value is fresh by making sure is was updated after the unfiltered lab data value.
-    filteredTagName = "[%s]LabData/RLA3/ETHYLENE-FILTERED-VALUE/filteredValue" % (provider)
-    pvTagName = "[%s]LabData/RLA3/C2-LAB-DATA/value" % (provider)
-    qv = system.tag.read(pvTagName)
-    activeTime = qv.timestamp
-    
-    isFresh=checkFreshness(filteredTagName, activeTime, provider, timeout=30)
-    if not(isFresh):
-        print "%s: The filtered value (%s) is not fresh, proceeding with calculation anyway." % (__name__, filteredTagName)    
-    
-    # The data should be fresh so now read the value.
-    fv = system.tag.read(filteredTagName)
-    if not (fv.quality.isGood()):
-        explanation = "%s - Filtered value is bad (%s) %s" % (__name__, filteredTagName, str(fv.quality))
-        return False, explanation, recommendations
-    fv=fv.value
-    
-    # Now read the source of the recipe data
-    tagName="[%s]LabData/RLA3/FD-C2-LAB-DATA/value" % (provider)
-    pv = system.tag.read(tagName)
-    if not (pv.quality.isGood()):
-        explanation = "%s - present value is bad (%s) %s" % (__name__, tagName, str(pv.quality))
-        return False, explanation, recommendations
-    pv=pv.value
-    
-    print "The PV is %s and the filtered value is %s" % (pv, fv)
-
-#    recommendations.append({"QuantOutput": "TEST_Q21", "Value": 19.88})
-#   recommendations.append({"QuantOutput": "TEST_Q22", "Value": 123.15})
-#  recommendations.append({"QuantOutput": "TEST_Q23", "Value": 2.31})
-#    recommendations.append({"QuantOutput": "TEST_Q24", "Value": 36.23})
+        print "   ---  Using the manual move (%f) as the error.  ---" % (error)
 
     val = error * 5.234
-    t15 = system.tag.read("[%s]DiagnosticToolkit/Inputs/T15" % (provider)).value
-    if t15 < 20:
-        recommendations.append({"QuantOutput": "TEST_Q25", "Value": val, "RampTime": 10.0})
-    else:
-        recommendations.append({"QuantOutput": "TEST_Q25", "Value": val})
+    recommendations.append({"QuantOutput": "TEST_Q25", "Value": val})
     return True, explanation, recommendations
+
+def fd2_1_1c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    ''' This tests a recommendation to a ramp controller '''
+    print "In %s.fd2_1_1c" % (__name__)
+    explanation = "Get the steak out."
+    recommendations = []
+
+    recommendations.append({"QuantOutput": "TEST_Q25", "Value": 120.0})
+
+    return True, explanation, recommendations
+
+def fd2_1_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    ''' This tests a recommendation to a ramp controller '''
+    print "In %s.fd2_1_1d" % (__name__)
+    explanation = "Get the steak out."
+    recommendations = []
+
+    recommendations.append({"QuantOutput": "TEST_Q25", "Value": 120.0, "RampTime": 5.0})
+
+    return True, explanation, recommendations
+
+def fd2_1_1e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    ''' This tests a recommendation to a ramp controller '''
+    print "In %s.fd2_1_1e" % (__name__)
+    explanation = "Ramp a plane controller."
+    recommendations = []
+
+    recommendations.append({"QuantOutput": "TEST_Q21", "Value": 40.0, "RampTime": 5.0})
+
+    return True, explanation, recommendations
+
 
 def postDownloadSpecialActions(applicationName, actionMessage, finalDiagnosisId, provider, database):
     print "********************************"
-    print "* In ", __name__
+    print "* In %s.postDownloadSpecialActions()" % (__name__)
     print "*     DOING SPECIAL ACTIONS    *"
     print "********************************"
 
 def lowViscosityHighFeed(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "Calculating the correction for Low Viscosity & High Feed"
+    print "In %s.lowViscosityHighFeed() - Calculating the correction for Low Viscosity & High Feed" % (__name__)
     
     explanation=""
     recommendations=[]

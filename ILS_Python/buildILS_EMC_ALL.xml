@@ -18,7 +18,7 @@
 				<include name="ils/**/*.py" />
 			</fileset>
 		</copy>
-		
+			
 		<echo message="Deploying python scripts to ${vistalon.py.lib}" />
 		<copy todir="${vistalon.py.lib}">
 			<fileset dir="${basedir}/src">

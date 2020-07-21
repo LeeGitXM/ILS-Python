@@ -13,13 +13,13 @@ def gateway(tagProvider, isolationTagProvider, database):
     
     from ils.common.util import isWarmboot
     if isWarmboot():
-        log.info("Bypassing Diagnostic Toolkit startup for a warmboot")
+        log.info("Bypassing Symbolic AI startup for a warmboot")
         return 
     
     from ils.diagToolkit.version import version
     version, revisionDate = version()
     log.info("---------------------------------------------------------")
-    log.info("Starting Diagnostic Toolkit gateway version %s - %s" % (version, revisionDate))
+    log.info("Starting Symbolic AI gateway version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
     
     createTags("[" + tagProvider + "]")
@@ -38,7 +38,7 @@ def gateway(tagProvider, isolationTagProvider, database):
                 break
             else:
                 if i == 10:
-                    log.warnf("Aborting the diagnostic toolkit startup because the database is still bad after 10 checks.")
+                    log.warnf("Aborting the Symbolic AI startup because the database is still bad after 10 checks.")
                     return
                 log.info("Sleeping...")
                 sleep(sleepSeconds)
@@ -61,10 +61,10 @@ def gateway(tagProvider, isolationTagProvider, database):
 def client():
     from ils.diagToolkit.version import version
     version, releaseDate = version()
-    log.info("Initializing the Diagnostic toolkit client version %s" % (version))
+    log.info("Initializing the Symbolic AI client version %s" % (version))
 
 def createTags(tagProvider):
-    print "Creating Diagnostic Toolkit configuration tags..."
+    print "Creating Symbolic AI configuration tags..."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/DiagnosticToolkit/"

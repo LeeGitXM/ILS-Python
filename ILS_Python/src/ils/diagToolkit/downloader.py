@@ -135,7 +135,7 @@ class Downloader():
                         self.runningCount = self.runningCount + 1
 
                     else:
-                        print "...writes from the diagnostic toolkit are disabled..."
+                        print "...writes from symbolic ai are disabled..."
    
                         insertPostMessage(self.post, "Warning", "Write to %s-%s was skipped because writes from the diag toolkit are disabled." % (quantOutput, tagPath), self.db)
                         self.updateQuantOutputDownloadStatus(quantOutputId, "Error")
@@ -230,9 +230,12 @@ class Downloader():
                 if len(pds) > 1:
                     fdText = "<LI>Application: %s (Multiple final diagnosis have contributed to the move)<UL>" % applicationName
                     log.tracef("There are multiple diagnosis that contributed to this application.")
-                else:
+                elif len(pds) == 1:
                     fdText = "<LI>Application: %s<UL>" % applicationName
-                    log.tracef("There are SINGLE diagnosis. (%d)", len(pds))
+                    log.tracef("There is a SINGLE diagnosis.")
+                else:
+                    fdText = "<LI>Application: %s<UL> No Active Applications" % applicationName
+                    log.tracef("There are no active diagnosis.")
 
                 finalDiagnosisRecommendations = {}
                 finalDiagnosisIds = []

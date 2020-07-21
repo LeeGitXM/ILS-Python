@@ -83,13 +83,13 @@ def getMonitoredTagPath(recipeDataId, recipeDataType, tagProvider, db):
     log.tracef("The monitored item is a %s", recipeDataType)
 
     if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:
-        log.tracef("The recipe data IS an OUTPUT class (for %s)", tagPath)
         outputType = string.upper(recipeDataRecord["OUTPUTTYPE"])
+        log.tracef("The recipe data IS an OUTPUT class (for %s), the output type is: %s", tagPath, outputType)
         if outputType == "MODE":
             attributePath = "/mode/value"
         elif outputType == "SETPOINT":
             attributePath = "/value"
-        elif outputType == "OUTPUT":
+        elif outputType in ["OUTPUT", "OUTPUT RAMP"]:
             attributePath = "/op/value"
         else:
             attributePath = "/value"
@@ -187,7 +187,7 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
     In both cases, the ramp is executed by writing sequentially based on a linear ramp.  
     Ramp time is in minutes, update frequency is in seconds.
     '''
-    log.infof("In %s.writeRamp() for %s", __name__, tagPath)
+    log.infof("In %s.writeRamp() for %s, writing %s over %s", __name__, tagPath, str(val), str(rampTime))
     
     success, reason = checkConfig(tagPath)
     if not(success):

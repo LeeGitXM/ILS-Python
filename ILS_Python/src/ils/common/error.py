@@ -33,6 +33,5 @@ def catchError(source="", contextMsg=""):
     txt = "Caught an error in %s.\n%s\n\n%s:%s:%s" % \
         (source, contextMsg, exception, tracebackMsg, cause)
 
-    print txt
     return txt
     

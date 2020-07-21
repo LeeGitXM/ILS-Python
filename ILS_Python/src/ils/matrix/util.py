@@ -75,7 +75,7 @@ def fdjac (x, fx, func, tolEPS):
         
         for i  in range(nRows):
             ''' Forward difference partial derivative '''
-            dfxDx.setEntry(i, j, fxDx.getEntry(i, 0) - fx.getEntry(i, 0) / tol)
+            dfxDx.setEntry(i, j, (fxDx.getEntry(i, 0) - fx.getEntry(i, 0)) / tol)
     
     log.tracef("...leaving %s.fdjac()!", __name__)
     return dfxDx
@@ -152,7 +152,7 @@ def lnsrch (x, xOld, fOld, fx, func, g, dx, stepMax, tol_EPS):
         for i in range(nRows):
             x.setEntry(i, 0, xOld.getEntry(i, 0) + lam1 * dx.getEntry(i, 0))
         
-        fNew = fmin (x, fx, func)
+        fnew = fmin (x, fx, func)
 
         ''' Converged on deltax but could be spurious (check)  '''
         if (lam1 < lamMin):
@@ -161,13 +161,13 @@ def lnsrch (x, xOld, fOld, fx, func, g, dx, stepMax, tol_EPS):
         
             log.tracef("lam %f < lam_min %f.", lam1, lamMin)
             log.tracef("Leaving %s.lnsrch() - check for spurious convergence.", __name__)
-            return True, fNew
+            return True, fnew
         
         elif (fnew <= fOld + tolALF * lam1 * slope):
             ''' Solution found for deltax! '''
             log.tracef("fmin %f <= %f", fnew, (fOld + tolALF * lam1 * slope))
-            log.tracef("Leaving %s.lnsrch() - Converged solution at fmin %f", __name__, fNew)
-            return False, fNew
+            log.tracef("Leaving %s.lnsrch() - Converged solution at fmin %f", __name__, fnew)
+            return False, fnew
 
         else:
             ''' Find new lambda for next step along gradient.  '''
@@ -182,24 +182,24 @@ def lnsrch (x, xOld, fOld, fx, func, g, dx, stepMax, tol_EPS):
                 temp_b = (-1.0 * lam2 * temp1_rhs / (lam1 * lam1) + lam1 * temp2_rhs / (lam2 * lam2)) / (lam1 - lam2);
                 log.tracef("rhs1 = %f, rhs2 = %f, a = %f, b = %f", temp1_rhs, temp2_rhs, temp_a, temp_b)
 
-            if temp_a == 0.0:
-                '''  Protect against divide by zero  '''
-                temp_lam = -1.0 * slope / (2.0 * temp_b)
-            else:
-                temp = temp_b*temp_b - 3.0 * temp_a * slope
-                if (temp < 0):
-                    temp_lam = 0.5*lam1
-                elif (temp_b < 0):
-                    temp_lam = (-1.0 * temp_b + math.sqrt(temp)) / (3.0 * temp_a)
+                if temp_a == 0.0:
+                    '''  Protect against divide by zero  '''
+                    temp_lam = -1.0 * slope / (2.0 * temp_b)
                 else:
-                    temp_lam = -1.0 * slope / (temp_b + math.sqrt(temp))
+                    temp = temp_b*temp_b - 3.0 * temp_a * slope
+                    if (temp < 0):
+                        temp_lam = 0.5*lam1
+                    elif (temp_b < 0):
+                        temp_lam = (-1.0 * temp_b + math.sqrt(temp)) / (3.0 * temp_a)
+                    else:
+                        temp_lam = -1.0 * slope / (temp_b + math.sqrt(temp))
 
                 temp_lam = min(0.5*lam1, temp_lam)
                
             log.tracef("temp_lam: %f", temp_lam)
             
-            fnew2 = fnew
-            lam2 = lam1
+        fnew2 = fnew
+        lam2 = lam1
 
         ''' Calculate new lambda. Enforce lambda between 0.1*lambda and 0.5*lambda. '''
         lam1 = max(0.1 * lam1, temp_lam)
@@ -213,7 +213,7 @@ def maxOfFirstColumn(x):
     
     maxVal = 0.0
     for i in range(nRows):
-        maxVal = max(maxVal, x.getEntry(i, 0))
+        maxVal = max(maxVal, abs(x.getEntry(i, 0)))
     return maxVal
 
 def scalerMultiply(m, x):

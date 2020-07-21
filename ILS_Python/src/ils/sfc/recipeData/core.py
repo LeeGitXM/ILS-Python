@@ -857,47 +857,34 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
         pds = system.db.runQuery(SQL, db)
         record = pds[0]
         valueType = record['ValueType']
+        recipeDataId = record['RecipeDataId']
             
         if arrayIndex == None:
             logger.tracef("Setting an entire array...")
-            SQL = "select max(ArrayIndex) from SfcRecipeDataArrayElement where RecipeDataId = %s" % (str(recipeDataId))
-            maxIdx = system.db.runScalarQuery(SQL, db)
+            
+            logger.tracef("...deleting all existing elements...")
+            SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %s" % (str(recipeDataId))
+            rows = system.db.runUpdateQuery(SQL, db)
+            logger.tracef("...deleted %d  rows...", rows)
             
             idx = 0
             for el in val:
                 logger.tracef("idx: %d => %s", idx, str(el))
-                if idx > maxIdx:
                     
-                    if valueType == 'String':
-                        SQL = "insert into SfcRecipeDataValue (StringValue) values ('%s')" % (el)
-                    else:
-                        valueColumnName = valueType + "Value"
-                        if valueType == "Boolean":
-                            el = toBit(el)
-                        SQL = "insert into SfcRecipeDataValue (%s) values ('%s')" % (valueColumnName, el)
-                    print SQL            
-                    valueId=system.db.runUpdateQuery(SQL, getKey=True, database=db)
-                    
-                    SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, idx, valueId)
-                    system.db.runUpdateQuery(SQL, db)
-                    
+                if valueType == 'String':
+                    SQL = "insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (%d, '%s')" % (recipeDataId, el)
                 else:
-                    SQL = "select valueId from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex = %s" % (str(recipeDataId), str(idx))
-                    valueId = system.db.runScalarQuery(SQL, db)
-            
-                    if valueType == "String":
-                        SQL = "update SfcRecipeDataValue set %sValue = '%s' where ValueId = %d" % (valueType, el, valueId)
-                    else:
-                        SQL = "update SfcRecipeDataValue set %sValue = %s where ValueId = %d" % (valueType, el, valueId)
-                    system.db.runUpdateQuery(SQL, db)
+                    valueColumnName = valueType + "Value"
+                    if valueType == "Boolean":
+                        el = toBit(el)
+                    SQL = "insert into SfcRecipeDataValue (RecipeDataId, %s) values (%d, %s)" % (valueColumnName, recipeDataId, str(el))
+                logger.tracef(SQL)
+                valueId=system.db.runUpdateQuery(SQL, getKey=True, database=db)
+                
+                SQL = "insert into SfcRecipeDataArrayElement (RecipeDataId, ArrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, idx, valueId)
+                system.db.runUpdateQuery(SQL, db)
+
                 idx = idx + 1
-                
-            if idx < maxIdx:
-                SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %s and ArrayIndex > %d" % (str(recipeDataId), idx - 1)
-                rows = system.db.runUpdateQuery(SQL, db)
-                print "Deleted %d extra rows" % (rows)
-                
-#            raise ValueError, "Array Recipe data must specify an index - %s - %s" % (key, attribute)           
             
         else:
             '''
@@ -1074,9 +1061,17 @@ def fetchStepIdFromUUID(stepUUID, tx):
 # Return a value only for a specific key, otherwise raise an exception.
 def s88GetRecipeDataDS(stepId, recipeDataType, db):
     logger.tracef("%s.s88GetRecipeDataDS(): %s", __name__, recipeDataType)
+    
+    SQL = "select RecipeDataFolderId, RecipeDataKey, ParentRecipeDataFolderId, ParentFolderName "\
+            "from SfcRecipeDataFolderView  "\
+            "where stepId = %d "\
+            "order by RecipeDataFolderId " % (stepId) 
+    folderPDS = system.db.runQuery(SQL, db)
+    logger.tracef("...fetched %d folders", len(folderPDS))
+    print "Fetched %d folders" % (len(folderPDS))
 
     if recipeDataType == SIMPLE_VALUE:
-        SQL = "select RecipeDataKey, Units, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+        SQL = "select RecipeDataKey, Units, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE, folderId "\
             "from SfcRecipeDataSimpleValueView  "\
             "where stepId = %d "\
             "order by RecipeDataKey " % (stepId) 
@@ -1088,12 +1083,18 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
         data = []
         header = ["KEY", "UNITS", "DATATYPE", "VALUE"]
         for record in pds:
+            key = record["RecipeDataKey"]
             valueType = record["ValueType"]
             val = str(record[string.upper(valueType) + "VALUE"])
-            data.append([record["RecipeDataKey"], record["Units"], valueType, val])
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+    
+            data.append([key, record["Units"], valueType, val])
         ds = system.dataset.toDataSet(header, data)
     elif recipeDataType == OUTPUT:
-        SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE "\
+        SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, folderId "\
             "from SfcRecipeDataOutputView  "\
             "where stepId = %d "\
             "order by RecipeDataKey " % (stepId) 
@@ -1105,9 +1106,15 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
         data = []
         header = ["KEY", "UNITS", "TAG", "OUTPUTTYPE", "DOWNLOAD", "WRITECONFIRM", "TIMING", "MAXTIMING", "DATATYPE", "OUTPUTVALUE"]
         for record in pds:
+            key = record["RecipeDataKey"]
             valueType = record["ValueType"]
             outputValue = str(record["OUTPUT" + string.upper(valueType) + "VALUE"])
-            data.append([record["RecipeDataKey"], record["Units"], record["Tag"],  record["OutputType"], record["Download"], record["WriteConfirm"], record["Timing"], record["MaxTiming"], valueType, outputValue])
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+                
+            data.append([ key, record["Units"], record["Tag"],  record["OutputType"], record["Download"], record["WriteConfirm"], record["Timing"], record["MaxTiming"], valueType, outputValue])
         ds = system.dataset.toDataSet(header, data)
         
     else:
@@ -1116,6 +1123,33 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
     
     return ds
 
+def getFolderPath(folderId, pds):
+    '''
+    Given a folder Id, which presumably came from a recipe data record and is not None, use the supplied dataset
+    of folder records to recusively put together the path of arbitrary depth.
+    '''    
+    
+    def getFolderInfo(folderId, pds):
+        for record in pds:
+            if record["RecipeDataFolderId"] == folderId:
+                return record["RecipeDataKey"], record["ParentRecipeDataFolderId"]
+        return None, None
+    
+    logger.tracef("Looking for the folder path for: %s", str(folderId))
+    key, parentId = getFolderInfo(folderId, pds)
+    keys = []
+    keys.append(key)
+    
+    while parentId != None:
+        key, parentId = getFolderInfo(parentId, pds)
+        if key != None:
+            keys.insert(0, key)
+
+    path = "/".join(keys)
+    logger.tracef("The path is: %s", str(path))
+    return path
+        
+        
 def copyFolderValues(fromStepId, fromFolder, toStepId, toFolder, recursive, category, db):
     logger.tracef("Copying recipe data from %d-%s to %d-%s", fromStepId, fromFolder, toStepId, toFolder)
     

@@ -1,34 +1,31 @@
 '''
+This module can be used as a template for a site specific startup.  
+If any modifications are made to this module, then it should be moved out of the ILS-PYTHON folder so that it will not be overwritten
+as new updates are installed.  It can be coipied to external Python in a new folder or into project or shared Python.  The tkSite table must be updated to point
+to the 
+
 Created on Jun 18, 2018
 
 @author: phass
 '''
 
-import system
+import system, time
+from ils.common.config import getTagProvider, getIsolationTagProvider, getHistoryProvider, getDatabase, getIsolationDatabase
 log = system.util.getLogger("com.ils.demo")
 
 def client():
     print "***********************************************"
-    print "*** Running the Demo client startup script. ***"
+    print "*** Running the SITE client startup script. ***"
     print "***********************************************"
 
-
-    from ils.common.config import getTagProvider, getIsolationTagProvider, getHistoryProvider, getDatabase
-         
     tagProvider = getTagProvider()
     isolationTagProvider = getIsolationTagProvider()
     historyProvider = getHistoryProvider()
     database = getDatabase()
-    
-    print "Production Tag Provider: ", tagProvider
-    print " Isolation Tag Provider: ", isolationTagProvider
-    print "       History Provider: ", historyProvider
-    print "               Database: ", database
 
     system.tag.write("[Client]Database", database)
     system.tag.write("[Client]Tag Provider", tagProvider)
-    
-    
+        
     import ils.recipeToolkit.startup as recipeToolkitStartup
     recipeToolkitStartup.client()
 
@@ -37,32 +34,23 @@ def client():
     
 
 def gateway():
+    from ils.common.util import isWarmboot
+    if isWarmboot():
+        log.info("Bypassing Symbolic AI startup for a warmboot")
+        return 
     
+    from ils.demo.version import version
+    version, revisionDate = version()
+    
+    log.info("Starting Symbolic AI version %s - %s" % (version, revisionDate))
+    
+    tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase = getDbAndTagProviderFromBltModule()
+
     #------------------------------------------------------------------------------------------------
     # Putting this in its own function allows the other startups to proceed while this sleeps.
-    def doit(log=log):
-        from ils.common.config import getTagProvider, getIsolationTagProvider, getHistoryProvider, getDatabase
-        
-        # Give the modules time to complete initialization.  Delays are always a bad / tricky thing.
-        # I'm not sure if this is really required, but it sure makes it easier to follow the log messages during startup
-        # where BLT, SFC, and lab data are all intermingled.
-        import time
-        time.sleep(5) 
-        
-        log = system.util.getLogger("com.ils.demo")
+    def doit(tagProvider=tagProvider, isolationTagProvider=isolationTagProvider, historyProvider=historyProvider, database=database, isolationDatabase=isolationDatabase, log=log):
+        log = system.util.getLogger("com.ils.site.startup")
         log.info("Starting the deferred startup...")
-        
-        try:            
-            tagProvider = getTagProvider()
-            isolationTagProvider = getIsolationTagProvider()
-            historyProvider = getHistoryProvider()
-            database = getDatabase()
-        except:
-            print "Unable to obtain tag provider programatically, using hard coded values!"
-            tagProvider = "Production"
-            isolationTagProvider = "Isolation"
-            historyProvider = "History"
-            database = "Production"
 
         # Start all of the packages used at the site
         
@@ -91,24 +79,16 @@ def gateway():
         dataPumpStartup.gateway(tagProvider, isolationTagProvider)
         
         '''
-        Now perform very specific startup for the demo
+        Now perform very specific startup for the client
         '''
         createTags("[" + tagProvider + "]", log)
         createTags("[" + isolationTagProvider + "]", log)
 
-        print "Done with Demo startup..."
+        log.tracef("Done with core startup...")
 
     #---------------------------------------------------------------------------------------------------------
 
-    from ils.common.util import isWarmboot
-    if isWarmboot():
-        log.info("Bypassing Vistalon startup for a warmboot")
-        return 
-    
-    from ils.demo.version import version
-    version, revisionDate = version()
-    
-    log.info("Starting Vistalon version %s - %s" % (version, revisionDate))
+
     system.util.invokeAsynchronous(doit)
     
 
@@ -117,3 +97,29 @@ def createTags(tagProvider, log):
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
 
+def getDbAndTagProviderFromBltModule():
+    
+    def getter():
+        log.infof("...getting db and tagProviders from BLT...")
+        try:
+            tagProvider = getTagProvider()
+            isolationTagProvider = getIsolationTagProvider()
+            historyProvider = getHistoryProvider()
+            database = getDatabase()
+            isolationDatabase = getIsolationDatabase()
+        except:
+            log.tracef("...BLT module isn't quite ready, sleeping...")
+            time.sleep(5)
+            tagProvider = None
+            isolationTagProvider = None
+            historyProvider = None
+            database = None
+            isolationDatabase = None
+            
+        return tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase
+    
+    tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase = getter()
+    while tagProvider == None or isolationTagProvider == None or historyProvider == None or database == None or isolationDatabase == None:
+        tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase = getter()
+        
+    return tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase

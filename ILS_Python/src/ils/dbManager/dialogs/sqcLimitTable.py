@@ -146,7 +146,20 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     else:
         SQL = "update RtSQCLimit set %s = %s where ParameterId = %d and Grade = '%s'" % (limitType, str(newValue), parameterId, grade)
     print SQL
-    system.db.runUpdateQuery(SQL)
+    
+    rows = system.db.runUpdateQuery(SQL)
+    
+    if rows == 0:
+        print "   --- no rows were updated, try to insert ---"
+        if newValue == "":
+            SQL = "INSERT INTO RtSQCLimit (ParameterId, Grade, %s) VALUES (%i, '%s')" % (limitType, parameterId, grade)
+        else:
+            SQL = "INSERT INTO RtSQCLimit (ParameterId, Grade, %s) VALUES (%i, '%s', %s)" % (limitType, parameterId, grade, str(newValue))
+        print SQL
+        rows = system.db.runUpdateQuery(SQL)
+        if rows == 0:
+            print "*** NO ROWS WERE ADDED ***"
+    
     self.data = system.dataset.setValue(ds, rowIndex, colIndex, newValue)
 
 def deleteColumns(event):
