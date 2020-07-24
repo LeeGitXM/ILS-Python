@@ -17,6 +17,7 @@ from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.common.config import getHistoryProvider
 from ils.common.error import catchError
 
+
 def manualOverride(tagPath, previousValue, biasValue, initialchange): 
     try:
         # Find tag provider and the root of the tag by stripping off LabData
@@ -32,6 +33,7 @@ def manualOverride(tagPath, previousValue, biasValue, initialchange):
             return
         
         ''' I think that manual overrides should not be subject to the updatePermitted tag, but I could be convinced to go either way '''
+       
         '''
         updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
         if not(updatePermitted):
@@ -118,7 +120,26 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
         txt=catchError("exponentialFilter", "Caught an error calculating an exponential filter bias for %s" % (tagPath))
         log.error(txt)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
-
+        
+def initializaExponentialFilter(tagPath, initialValue=1.0): 
+    try:
+        # Find tag provider and the root of the tag by stripping off LabData
+        tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
+        tagRoot=tagPath.rstrip('/labValue')
+        
+        # Strip off the path and get just the name of the UDT
+        biasName = tagRoot[:len(tagRoot)]
+        
+        # Initialize the bias
+        biasValue = initialValue
+        log.infof("...initializing the bias value to <%f> for %s", biasValue, biasName)
+    
+        ''' This writes to the bias UDT in Ignition which is NOT an OPC tag.  I'm not sure if I should send this to an external system.  '''
+        system.tag.write(tagRoot + '/biasValue', biasValue)
+    except:
+        txt=catchError("exponentialFilter", "Caught an error initializing an exponential filter bias for %s" % (tagPath))
+        log.error(txt)
+        insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 
 
 def pidFilter(tagPath, previousValue, newValue, initialchange):
@@ -173,11 +194,12 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
         log.error(txt)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 
-'''
-This was formerly the bias-update() methods for the root class bias-value.
-It basically makes sure that the conditions are OK to calculate a new bias.
-'''
+
 def validateConditions(tagRoot, labValue, biasName):
+    '''
+    This was formerly the bias-update() methods for the root class bias-value.
+    It basically makes sure that the conditions are OK to calculate a new bias.
+    '''
     historyProvider = getHistoryProvider()
     rateOfChangeLimit = system.tag.read(tagRoot + '/rateOfChangeLimit')
     if not (rateOfChangeLimit.quality.isGood()) or rateOfChangeLimit.value == None:

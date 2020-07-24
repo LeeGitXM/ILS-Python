@@ -268,6 +268,10 @@ def showMsgQueue(window):
     print "The queue is: ", queueKey
     from ils.queue.message import view
     view(queueKey, useCheckpoint=True)
+    
+def showRecipeDataBrowser():
+    window = system.nav.openWindow("SFC/SfcHierarchyWithRecipeBrowser")
+    system.nav.centerWindow(window)
 
 def ackMessage(window):
     ''' Called from a pushbutton on the control panel.   '''
