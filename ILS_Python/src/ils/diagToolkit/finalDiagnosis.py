@@ -1058,6 +1058,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
         quantOutputIds.append(quantOutput.get("QuantOutputId", -1))
         updateQuantOutput(quantOutput, database, provider)
     
+    log.tracef("...the explanations are: %s", str(explanations))
+    
     postTextRecommendation = False
     if constantFD:
         log.info(" --- handling a constant final diagnosis (by doing nothing) ---")

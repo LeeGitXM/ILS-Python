@@ -155,6 +155,33 @@ def fd2_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     recommendations.append({"QuantOutput": "TEST_Q24", "Value":  36.23})
     return True, explanation, recommendations
 
+def fd1_3_3a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd1_3_3a"
+    explanation = ""
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 12.3})
+    return True, explanation, recommendations
+
+def fd1_3_3b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd1_3_3b"
+    explanation = "Close the valve because the flow is too great and needs to be minimized to reduce flooding in the control room."
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 10.3})
+    return True, explanation, recommendations
+
+def fd1_3_3c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd1_3_3c"
+    explanation = "Open the valve because the the cows need more water!"
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": -5.4})
+    return True, explanation, recommendations
+
+def fd1_3_3d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd1_3_3d"
+    explanation = "Here is a dynamic text recommendation!"
+    recommendations = []
+    return True, explanation, recommendations
+
 def postDownloadSpecialActions(applicationName, actionMessage, finalDiagnosisId, provider, database):
     print "********************************"
     print "* In ", __name__
