@@ -25,7 +25,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.className = 'ils.block.finaldiagnosis.FinalDiagnosis'
 #        self.properties['Label'] = {'value':'FinalDiagnosis','editable':'True'}
         
-        self.inports = [{'name':'in','type':'TRUTHVALUE'}]
+        self.inports = [{'name':'in','type':'TRUTHVALUE','allowMultiple':False}]
         self.outports= [{'name':'out','type':'TRUTHVALUE'}]
     
         

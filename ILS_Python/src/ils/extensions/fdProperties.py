@@ -16,7 +16,7 @@ Gateway Scope Functions
 
 def delete(finalDiagnosisUUID):
     '''    Even though a delete is initiated from Designer scope, this runs in gateway scope!  '''
-    log.infof("In %s.delete()", __name__)
+    log.tracef("In %s.delete()", __name__)
     
     import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
     handler = PythonRequestHandler()
@@ -37,7 +37,7 @@ def save(uuid, aux):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    log.infof("In %s.save(), doing nothing", __name__)
+    log.tracef("In %s.save(), doing nothing", __name__)
 
 
 '''
@@ -82,7 +82,7 @@ def getAux(uuid, aux, db):
     properties = aux[0]
     lists = aux[1]
     fdName = properties.get("Name","")
-    log.infof("In %s.getAux with %s / %s / %s and %s", __name__, appName, familyName, fdName, db)
+    log.tracef("In %s.getAux with %s / %s / %s and %s", __name__, appName, familyName, fdName, db)
 
     SQL = "SELECT FD.FinalDiagnosisPriority,FD.CalculationMethod,FD.PostTextRecommendation,"\
           " FD.PostProcessingCallback,FD.RefreshRate,FD.TextRecommendation,FD.Comment, "\
@@ -161,7 +161,7 @@ def getAux(uuid, aux, db):
     
 
 def setAux(uuid,aux,db):
-    log.infof("In %s.setAux with %s", __name__, db)
+    log.tracef("In %s.setAux with %s", __name__, db)
     app  = handler.getApplicationName(uuid)
     family = handler.getFamilyName(uuid)
     
@@ -212,7 +212,7 @@ def setAux(uuid,aux,db):
         try:
             args =  [familyId, name, properties.get("FinalDiagnosisLabel",""), properties.get("Priority","0.0"), properties.get("CalculationMethod",""),\
                         properties.get("PostTextRecommendation","0"), properties.get("PostProcessingCallback",""),\
-                        properties.get("RefreshRate","1.0"), properties.get("TextRecommendation",""), properties.get("Active","0"), properties.get("Explanation","0"),\
+                        properties.get("RefreshRate","1"), properties.get("TextRecommendation",""), properties.get("Active","0"), properties.get("Explanation","0"),\
                         properties.get("TrapInsignificantRecommendations","1"), properties.get("Constant","0"),\
                         properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), properties.get("ShowExplanationWithRecommendation","0"), recTime]
             log.tracef("Arguments (%d): %s", len(args), str(args))
