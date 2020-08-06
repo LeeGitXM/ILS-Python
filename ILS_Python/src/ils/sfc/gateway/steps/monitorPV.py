@@ -28,6 +28,8 @@ from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIV
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM
 from ils.sfc.recipeData.constants import TIMER, OUTPUT
 from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget
+from ils.sfc.gateway.api import postToQueue
+from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
 
 def activate(scopeContext, stepProperties, state):
     # some local constants
@@ -378,9 +380,11 @@ def activate(scopeContext, stepProperties, state):
                         
                         target=configRow.targetValue
                         toleranceType=configRow.toleranceType
+                        if toleranceType == None:
+                            toleranceType = "Abs"
                         tolerance=configRow.tolerance
                         limitType=configRow.limits
-                        
+
                         # check dead time - assume that immediate monitors coincide with starting the timer.      
                         if configRow.download == IMMEDIATE:
                             logger.tracef("  (%s) Using the timer elapsed minutes (%s) to check if the dead time (%s) has been exceeded.", stepName, str(elapsedMinutes), str(configRow.deadTime) )
@@ -394,11 +398,12 @@ def activate(scopeContext, stepProperties, state):
 
                         # Check if the value is within the limits
                         strippedTagpath = stripProvider(tagPath)
+
                         if stepScope["tooltip"] == "":
                             stepScope['tooltip'] = "<HTML>Monitoring:<br>     %s, value: %s, target: %s" % (strippedTagpath, str(pv), str(target))
                         else:
                             stepScope['tooltip'] = "%s<br>     %s, value: %s, target: %s" % (stepScope["tooltip"], strippedTagpath, str(pv), str(target))
-                            
+
                         valueOk,txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
                         
                         # check persistence and consistency
@@ -418,6 +423,8 @@ def activate(scopeContext, stepProperties, state):
                                 logger.tracef("  --- The value is persistent - this meets all monitoring requirements for this output ---")
                                 configRow.status = PV_OK
                                 s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, False, database)
+                                txt = "The PV of %s reached the target (PV = %s, SP = %s) +/- %s %s at %.2f min (dead time = %s)" % (strippedTagpath, str(pv), str(target), str(tolerance),  string.lower(toleranceType), elapsedMinutes, str(configRow.deadTime))
+                                postToQueue(chartScope, MSG_STATUS_INFO, txt)
                             else:
                                 configRow.status = PV_OK_NOT_PERSISTENT
                                 persistencePending = True
@@ -482,8 +489,22 @@ def activate(scopeContext, stepProperties, state):
                         
                         logger.tracef("(%s) checking row whose status is: %s", stepName, configRow.status)
 
+                        ''' We got all of these values up above, but we are going through the structure again '''
                         targetRecipeDataId = configRow.targetRecipeDataId
                         targetRecipeDataType = configRow.targetRecipeDataType
+                        
+                        pvRecipeDataId = configRow.pvRecipeDataId
+                        pvRecipeDataType = configRow.pvRecipeDataType
+                        tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
+                        strippedTagpath = stripProvider(tagPath)
+
+                        qv = system.tag.read(tagPath)
+                        pv=qv.value
+                        target=configRow.targetValue
+                        toleranceType=configRow.toleranceType
+                        if toleranceType == None:
+                            toleranceType = "Abs"
+                        tolerance=configRow.tolerance
     
                         if configRow.status in [PV_ERROR, PV_WARNING, PV_BAD_NOT_CONSISTENT]:
                             numTimeouts = numTimeouts + 1
@@ -491,6 +512,24 @@ def activate(scopeContext, stepProperties, state):
                                 ''' This could be redundant (and an unnecessary database transaction, I'm not sure how this could escape being set above. '''
                                 s88SetFromId(targetRecipeDataId, targetRecipeDataType, SETPOINT_STATUS, SETPOINT_PROBLEM, database)
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_STATUS, PV_ERROR, database)
+                            
+                            if configRow.status == PV_ERROR:
+                                txt = "The PV of %s has not reached the target (PV = %s, SP = %s) +/- %s %s at %.2f min (dead time = %s)" % (strippedTagpath, str(pv), str(target), str(tolerance),  string.lower(toleranceType), elapsedMinutes, str(configRow.deadTime))
+                                postToQueue(chartScope, MSG_STATUS_WARNING, txt)
+                                
+                            elif configRow.status == PV_WARNING:
+                                txt = "The PV of %s has not reached the target (PV = %s, SP = %s) +/- %s %s at %.2fs min (dead time = %s)" % (strippedTagpath, str(pv), str(target), str(tolerance),  string.lower(toleranceType), elapsedMinutes, str(configRow.deadTime))
+                                postToQueue(chartScope, MSG_STATUS_WARNING, txt)
+                                
+                            elif configRow.status == PV_BAD_NOT_CONSISTENT:
+                                txt = "The PV of %s has not consistently reached the target (PV = %s, SP = %s) +/- %s %s at %.2f min (dead time = %s)" % (strippedTagpath, str(pv), str(target), str(tolerance),  string.lower(toleranceType), elapsedMinutes, str(configRow.deadTime))
+                                postToQueue(chartScope, MSG_STATUS_WARNING, txt)
+                                
+                        elif configRow.status == PV_OK_NOT_PERSISTENT:
+                            ''' I'm not sure why we don't treat this as a timeout, I guess because the PV is OK, but the block ended before we met the persistence criteria. '''
+                            txt = "The PV of %s reached the target (PV = %s, SP = %s) +/- %s %s at %.2f min (dead time = %s) but did not meet the %s min persistence requirement." % (strippedTagpath, str(pv), str(target), str(tolerance),  string.lower(toleranceType), elapsedMinutes, str(configRow.deadTime), str(configRow.persistence))
+                            postToQueue(chartScope, MSG_STATUS_INFO, txt)
+                            
     
                         s88SetFromId(targetRecipeDataId, targetRecipeDataType, PV_MONITOR_ACTIVE, 0, database)
                         
