@@ -26,22 +26,57 @@ def internalFrameOpened(rootContainer, db):
     '''
     Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.   
     '''
-    log.infof("In %s.internalFrameOpened()", __name__) 
-    rootContainer.chartViewState = TREE_MODE
-    updateSfcs(rootContainer, db)
+    log.infof("In %s.internalFrameOpened()", __name__)
+    
+    rootContainer.initializationComplete = False
+    tree = rootContainer.getComponent("Tree Container").getComponent("Tree View")
+    table = rootContainer.getComponent("Tree Container").getComponent("Power Table")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
-    clearTable(stepTable)
-    recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
-    clearTree(recipeDataTree)
+    
+    ''' Try to restore whatever they were looking at the last time the window was open '''
+    viewMode = system.tag.read("[Client]SFC Browser/Chart View State").value
+    selectedChartPath = system.tag.read("[Client]SFC Browser/Selected Chart Path").value
+    selectedChartRow = system.tag.read("[Client]SFC Browser/Selected Chart Row").value
+    selectedStep = system.tag.read("[Client]SFC Browser/Selected Step").value
+    log.debugf("The selected chart path is: %s", selectedChartPath)
+    log.debugf("The selected chart row is: %d", selectedChartRow)
+    log.debugf("The selected step is: %s", selectedStep)
+    
+    def setTableRow(table=table, tree=tree, stepTable=stepTable, selectedChartRow=selectedChartRow, selectedChartPath=selectedChartPath, selectedStep=selectedStep):
+        ''' Select the node of the tree or the row of the table.  I'm not sure why I have to call this in its own thread but I do. '''
+        table.selectedRow = selectedChartRow
+        tree.selectedPath = selectedChartPath
+        ''' This doesn't work because the steps above cause the table to refresh '''
+        #stepTable.selectedRow = selectedStep
+    
+    rootContainer.chartViewState = viewMode
+    updateSfcs(rootContainer, db)    
+
+    if selectedChartPath <> "" or selectedChartRow >= 0:
+        log.debugf("...there is a previously selected path (or table row)...")    
+        
+        ''' I'd like to set the selected row of the chart table here, but for some reason it doesn't do anything, or is undone by something else. '''
+        system.util.invokeLater(setTableRow, 250)
+
+        ''' Normally this is done from an event handler, but we need the steps in the table before we set the selected step. '''
+        # refreshSteps(rootContainer, db)
+    else:
+        log.debugf("...there is NOT a previously selected path...")
+        stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
+        clearTable(stepTable)
+        recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
+        clearTree(recipeDataTree)
+        
+    rootContainer.initializationComplete = True
+    log.debugf("DONE in internalFrameOpened!")
 
 
 def internalFrameActivated(rootContainer, db):
     '''
-    This is called whenever the windows gains focus.  his happens as part of the noral workflow of creating or editing recipe data
+    This is called whenever the windows gains focus.  this happens as part of the normal workflow of creating or editing recipe data
     so update the recipe data table to reflect the edit.
     '''
-    log.infof("In %s.internalFrameActivated()", __name__)
-#    refreshSteps(rootContainer, db)
+    log.debugf("In %s.internalFrameActivated()", __name__)
     updateRecipeDataTree(rootContainer, db)
 
 
@@ -49,6 +84,12 @@ def viewStateChanged(rootContainer):
     '''
     When they change the view from Tree to List then clear the other two panes AND unselect anything that was selected in the tree and the table.
     '''
+    log.debugf("In %s.viewStateChanged(), detected a change in the view state...", __name__)
+    
+    if not(rootContainer.initializationComplete):
+        log.debugf("...exiting because initialization is not complete...")
+        return
+    
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     clearTable(stepTable)
     recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
@@ -61,7 +102,7 @@ def viewStateChanged(rootContainer):
 
 
 def updateSfcs(rootContainer, db):
-    log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+    log.debugf("In %s.updateSfcs(), Updating the SFC Tree and Table Widgets...", __name__)
     tagProvider = getTagProviderClient()
     sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
     chartPath = "%"
@@ -70,7 +111,7 @@ def updateSfcs(rootContainer, db):
 
 
 def updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
-    log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+    log.debugf("In %s.updateSfcTable(), Updating the SFC Table Widget...", __name__)
     
     SQL = "select chartId, chartPath from SfcChart where chartPath like '%s' order by chartPath" % (chartPath)
     ds = system.db.runQuery(SQL, database=db)
@@ -79,7 +120,7 @@ def updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db
 
     
 def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
-    log.infof("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+    log.debugf("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
 
     hierarchyPDS = fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db)
     hierarchyHandlerPDS = fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db)
@@ -160,7 +201,7 @@ def countChartReferences(token, hierarchyPDS, hierarchyHandlerPDS):
 
 
 def fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db):
-    log.infof("Fetching the charts...")
+    log.debugf("Fetching the charts...")
     
     if sfcRecipeDataShowProductionOnly:
         SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where IsProduction = 1 and chartPath like '%s' order by ChartPath" % (chartPath)
@@ -168,7 +209,7 @@ def fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db):
         SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where chartPath like '%s' order by ChartPath" % (chartPath)
         
     pds = system.db.runPrepQuery(SQL, [], db)
-    log.tracef("Fetched %d chart records...", len(pds))
+    log.debugf("Fetched %d chart records...", len(pds))
     return pds
 
 
@@ -178,7 +219,7 @@ def fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db=""):
     else:
         SQL = "select * from SfcHierarchyView where chartPath like '%s' order by ChartPath" % (chartPath)
 
-    print SQL
+    log.tracef("%s", SQL)
     pds = system.db.runQuery(SQL, db)
     return pds
 
@@ -252,7 +293,7 @@ def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     # --------------------------
     
     # Get the roots
-    log.infof("In %s.fetchSfcTree() - Getting the root nodes...", __name__)
+    log.tracef("In %s.fetchSfcTree() - Getting the root nodes...", __name__)
     trees = []
     for chartRecord in chartPDS:
         chartId = chartRecord["ChartId"]
@@ -271,6 +312,18 @@ def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
 
     return trees
 
+def setChartViewState(viewState):
+    system.tag.write("[Client]SFC Browser/Chart View State", viewState)
+
+def setSelectedChartPath(selectedPath):
+    system.tag.write("[Client]SFC Browser/Selected Chart Path", selectedPath)
+
+def setSelectedChartRow(selectedRow):
+    system.tag.write("[Client]SFC Browser/Selected Chart Row", selectedRow)
+    
+def setSelectedStep(selectedRow):
+    system.tag.write("[Client]SFC Browser/Selected Step", selectedRow)
+
 '''
 These methods have to do with the list of steps
 '''
@@ -278,18 +331,20 @@ def refreshSteps(rootContainer, db):
     '''
     This gets called in response to a node being selected in the SFC Chart Hierarchy tree.
     '''
-    log.infof("%s.refreshSteps() - Updating the list of steps...", __name__)
+    log.debugf("In %s.refreshSteps() - Updating the list of steps...", __name__)
     treeWidget = rootContainer.getComponent("Tree Container").getComponent("Tree View")
     chartTable = rootContainer.getComponent("Tree Container").getComponent("Power Table")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     
     if rootContainer.chartViewState == TREE_MODE:
+        log.debugf("...window is in tree mode...")
         chartId = getChartIdForSelectedNode(treeWidget, db)
         if chartId == None:
             clearTable(stepTable)
             return
     else:
         selectedRow = chartTable.selectedRow
+        log.debugf("...window is in table mode, the selectedRow is %d...", selectedRow)
         if selectedRow == -1:
             clearTable(stepTable)
             return
@@ -311,18 +366,18 @@ def refreshSteps(rootContainer, db):
 def getChartIdForSelectedNode(treeWidget, db):
     # First get the last node in the path
     chartPath = treeWidget.selectedPath
-    log.infof("The raw selected path is: <%s>", chartPath)
+    log.debugf("The raw selected path is: <%s>", chartPath)
     chartPath = chartPath[chartPath.rfind("/")+1:]
     
     # Now replace ":" with "/"
     chartPath = chartPath.replace(' \\ ', '/')
-    log.infof("The selected chart path is <%s>", chartPath)
+    log.debugf("The selected chart path is <%s>", chartPath)
     if chartPath == "" or chartPath == None:
         return None
     
     SQL = "select chartId from SfcChart where chartPath = '%s'" % (chartPath)
     chartId = system.db.runScalarQuery(SQL, db) 
-    log.infof("Fetched chart id: %s", str(chartId))
+    log.debugf("Fetched chart id: %s", str(chartId))
     if chartId == None:
         return None
     
@@ -350,12 +405,12 @@ def updateRecipeDataTree(rootContainer, db=""):
     recipeDataTree.selectedPath = ""
     
     if stepTable.selectedRow < 0:
-        log.infof("Clearing the recipe data tree...")
+        log.tracef("Clearing the recipe data tree...")
         clearTree(recipeDataTree)
         setTreeButtons(recipeDataTree, False, False, False)
     else:
         startTime = system.date.now()
-        log.infof("In %s.updateRecipeDataTree() - Updating the recipe data tree...", __name__)
+        log.tracef("In %s.updateRecipeDataTree() - Updating the recipe data tree...", __name__)
         setTreeButtons(recipeDataTree, False, True, False)
         ds = stepTable.data
         stepId = ds.getValueAt(stepTable.selectedRow, "StepId")
@@ -449,11 +504,11 @@ def updateRecipeDataTree(rootContainer, db=""):
         recipeDataTree.data = ds
         completeTime = system.date.now()
         ''' I made these info messages so that excessive trace messages wouldn't sque the numbers '''
-        log.infof("Initial query took %s ms", str(system.date.millisBetween(startTime, step1CompleteTime)))
-        log.infof("Description query and tree update time took: %s ms for %d items", str(system.date.millisBetween(step1CompleteTime, completeTime)), len(pds) )
+        log.tracef("Initial query took %s ms", str(system.date.millisBetween(startTime, step1CompleteTime)))
+        log.tracef("Description query and tree update time took: %s ms for %d items", str(system.date.millisBetween(step1CompleteTime, completeTime)), len(pds) )
 
 def setTreeButtons(recipeDataTree, editState, addState, deleteState):
-    log.infof("In %s.setTreeButtons...", __name__)
+    log.tracef("In %s.setTreeButtons...", __name__)
     recipeDataTree.enableEditButton = editState
     recipeDataTree.enableAddButton = addState
     recipeDataTree.enableDeleteButton = deleteState
@@ -850,7 +905,7 @@ def getValueDescription(record, desc, recipeType, recipeDesc):
 
 
 def deleteCallback(event):
-    log.infof("Deleting a recipe data...")
+    log.tracef("Deleting a recipe data...")
     db = getDatabaseClient()
     rootContainer = event.source.parent.parent
 
@@ -902,7 +957,7 @@ def deleteRecipeDataGroup(recipeDataFolderId, db):
         
     ''' now delete all of the folders '''
     for folderId in embeddedFolderIds:
-        log.infof("Deleting a recipe data folder with id: %d", folderId)
+        log.tracef("Deleting a recipe data folder with id: %d", folderId)
         SQL = "delete from SfcRecipeDataFolder where RecipeDataFolderId = %d" % (folderId)
         system.db.runUpdateQuery(SQL, db)
 
@@ -912,7 +967,7 @@ def fetchEmbeddedFolders(recipeDataFolderId, db):
     while newFolderIds != "":
         log.tracef("Looking for subfolders of <%s>...", str(newFolderIds)) 
         SQL = "select RecipeDataFolderId from SfcRecipeDataFolder where ParentRecipeDataFolderId in (%s)" % (newFolderIds)
-        print SQL
+        log.tracef(SQL)
         pds = system.db.runQuery(SQL, db)
         ids = []
         for record in pds:
@@ -950,7 +1005,7 @@ def deleteRecipeData(recipeDataType, recipeDataId, db):
             valueIds.append(record["ValueId"])
         SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %d" % (recipeDataId)
         rows = system.db.runUpdateQuery(SQL, db)
-        log.infof("Deleted %d rows from SfcRecipeDataArrayElement...", rows)
+        log.tracef("Deleted %d rows from SfcRecipeDataArrayElement...", rows)
     elif recipeDataType == MATRIX:
         SQL = "select ValueId from SfcRecipeDataMatrixElement where recipeDataId = %d" % (recipeDataId)
         pds = system.db.runQuery(SQL, db)
@@ -958,10 +1013,10 @@ def deleteRecipeData(recipeDataType, recipeDataId, db):
             valueIds.append(record["ValueId"])
         SQL = "delete from SfcRecipeDataMatrixElement where RecipeDataId = %d" % (recipeDataId)
         rows = system.db.runUpdateQuery(SQL, db)
-        log.infof("Deleted %d rows from SfcRecipeDataMatrixElement...", rows)
+        log.tracef("Deleted %d rows from SfcRecipeDataMatrixElement...", rows)
     
     # The recipe data tables all have cascade delete foreign keys so we just need to delete from the main table
-    log.infof("Deleting a %s with id: %d", recipeDataType, recipeDataId)
+    log.tracef("Deleting a %s with id: %d", recipeDataType, recipeDataId)
     SQL = "delete from SfcRecipeData where RecipeDataId = %d" % (recipeDataId)
     system.db.runUpdateQuery(SQL, db)
     
@@ -981,24 +1036,24 @@ def editCallback(event):
     tree = container.getComponent("Tree View")
     path = tree.selectedPath
     
-    log.infof("In %s.editCallback() - The path is: %s", __name__, path)
+    log.tracef("In %s.editCallback() - The path is: %s", __name__, path)
     
     stepTable = container.parent.getComponent("Step Container").getComponent("Steps")
     selectedRow = stepTable.selectedRow
-    log.infof("The selected row is: %s", str(selectedRow))
+    log.tracef("The selected row is: %s", str(selectedRow))
     stepDs = stepTable.data
     stepId = stepDs.getValueAt(selectedRow,"StepId")
-    log.infof("The step id is: %s", str(stepId))
+    log.tracef("The step id is: %s", str(stepId))
     
     recipeDataKey, recipeDataType, recipeDataId = fetchRecipeInfo(stepId, path, db)
     recipeDataFolderId = -1
     
-    log.infof("The recipe data id is: %s", str(recipeDataId))
+    log.tracef("The recipe data id is: %s", str(recipeDataId))
     window = system.nav.openWindowInstance('SFC/RecipeDataEditor', {'stepId':stepId, 'recipeDataType':recipeDataType, 'recipeDataId':recipeDataId, 'recipeDataKey':recipeDataKey, "recipeDataFolderId":recipeDataFolderId})
     system.nav.centerWindow(window)            
 
 def addCallback(event):
-    log.infof("In %s.addCallback()...", __name__)
+    log.tracef("In %s.addCallback()...", __name__)
     db = getDatabaseClient()
     rootContainer = event.source.parent.parent
     table = rootContainer.getComponent("Step Container").getComponent("Steps")
@@ -1016,7 +1071,7 @@ def addCallback(event):
         isFolder, recipeDataFolderId = fetchFolderId(folderPDS, tokens)
         
         if not(isFolder):
-            print "ERROR: expected the path to reference a folder"
+            log.errorf("ERROR: expected the path to reference a folder (%s)", SQL)
     else:
         recipeDataFolderId = -99
 
@@ -1024,11 +1079,11 @@ def addCallback(event):
     system.nav.centerWindow(window)
 
 def fetchRecipeInfo(stepId, path, db):
-    print "Fetching recipe info for: ", path
+    log.tracef("Fetching recipe info for: %s", path)
     pos = path.find(" :: ")
     if pos > 0:
         path = path[:path.find(" :: ")]
-        print "The stripped path is <%s>" % (path)
+        log.tracef("The stripped path is <%s>", path)
     
     tokens = path.split("/")
     
@@ -1057,7 +1112,7 @@ def fetchRecipeInfo(stepId, path, db):
                 recipeDataType = GROUP
                 recipeDataId = recipeDataFolderId
             else:
-                print "****** ERROR ********"
+                log.errorf("****** ERROR ********")
     else:
         log.tracef("Fetching folders...")
         SQL = "Select * from SfcRecipeDataFolder where StepId = %s order by ParentRecipeDataFolderId" % (str(stepId))
@@ -1073,7 +1128,7 @@ def fetchRecipeInfo(stepId, path, db):
             SQL = "Select RecipeDataType, RecipeDataId from sfcRecipeDataView where RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (recipeDataKey, recipeDataFolderId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                print "ERROR"
+                log.errorf("ERROR: %d rows were returned for %s where exactly one was expected.", len(pds), SQL)
             record = pds[0]
             recipeDataType = record["RecipeDataType"]
             recipeDataId = record["RecipeDataId"]

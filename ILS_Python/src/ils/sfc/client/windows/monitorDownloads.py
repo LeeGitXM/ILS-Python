@@ -27,7 +27,14 @@ def internalFrameOpened(event):
     windowId = rootContainer.windowId
     rootContainer.startTime = None
     
-    maxAdjustment = system.tag.read("[%s]Configuration/SFC/sfcMaxDownloadGuiAdjustment" % provider).value
+    ''' It would be a good idea to check that the tag exists, if they screwed up the gateway startup script then it may not exist. '''
+    guiAdjustmentTagPath = "[%s]Configuration/SFC/sfcMaxDownloadGuiAdjustment" % provider
+    exists = system.tag.exists(guiAdjustmentTagPath)
+    if exists:
+        maxAdjustment = system.tag.read(guiAdjustmentTagPath).value
+    else:
+        maxAdjustment = 1.7
+        log.warnf("Using default max adjustment of %f because configuration tag %s does not exist!", maxAdjustment, guiAdjustmentTagPath)
     
     SQL = "select State, TimerRecipeDataId from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -66,7 +73,7 @@ def setWindowSize(rootContainer, maxAdjustment, window):
     windowHeight = window.getHeight()
     windowWidth = window.getWidth()
     requiredHeight = header + footer + (rows * rowHeight)
-    log.tracef("The window Height is: %d, there are %d rows, the required height is: %d (max size = %f)", windowHeight, rows, requiredHeight, windowHeight * maxAdjustment)
+    log.tracef("The window Height is: %s, there are %s rows, the required height is: %s (max size = %s)", str(windowHeight), str(rows), str(requiredHeight), str(windowHeight * maxAdjustment))
     
     if requiredHeight > windowHeight * maxAdjustment:
         rootContainer.allRowsShowing = False

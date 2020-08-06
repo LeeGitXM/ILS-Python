@@ -93,3 +93,16 @@ def determineType(val):
         return "Float", float(val)
     
     return "String", val
+
+def extendedPropertiesToDictionary(extendedProperties):
+    dict = {}
+    
+    if extendedProperties is not None:
+        for prop in extendedProperties:
+            propName = str(prop.getProperty().name)
+            propValue = prop.value
+            dict[propName] = propValue
+    
+    print "Dict: ", dict
+    
+    return dict

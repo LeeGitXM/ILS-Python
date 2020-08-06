@@ -7,7 +7,7 @@ The purpose of this module is to scan / poll of of the lab data points for new v
 '''
 
 import sys, system, string, traceback
-from ils.common.config import getTagProvider
+from ils.common.config import getTagProvider, getIsolationTagProvider, getDatabase, getIsolationDatabase
 from ils.labData.common import postMessage
 from java.util import Calendar
 from ils.common.database import toDateString
@@ -27,6 +27,21 @@ derivedCalculationCache = {}
 '''
 This is called from a gateway timer script
 '''
+def scanner():
+    database = getDatabase()
+    isolationDatabase = getIsolationDatabase()
+    tagProvider = getTagProvider()
+    tagProviderIsolation = getIsolationTagProvider()
+    
+    if system.tag.read("[%s]Configuration/LabData/pollingEnabled" % (tagProvider)).value == True:
+        main(database, tagProvider)
+    else:
+        log.tracef("Lab data polling is disabled") 
+
+    if system.tag.read("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
+        main(isolationDatabase, tagProviderIsolation)
+
+
 def main(database, tagProvider):
     log.info("Scanning for lab data (%s, %s)..." % (database, tagProvider))
 
