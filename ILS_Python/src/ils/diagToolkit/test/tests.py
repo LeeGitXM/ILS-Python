@@ -793,7 +793,7 @@ def test16c():
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1c')
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1b')
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'TESTFamily2_1', 'TESTFD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")

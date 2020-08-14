@@ -569,9 +569,16 @@ def resetRecommendations(applicationName, log, database):
 # Delete the quant outputs for an applicatuon.
 def resetOutputs(applicationName, log, database):
     log.infof("Resetting QuantOutputs for application %s", applicationName)
+    
     SQL = "update DtQuantOutput " \
         " set Active = 0, FeedbackOutputManual = 0.0, ManualOverride = 0 where ApplicationId in (select ApplicationId "\
         " from DtApplication where ApplicationName = '%s') and Active = 1" % (applicationName)
+    
+    ''' 8/12/2020 - PAH - removed constraint to only reset active quantOutputs '''
+    SQL = "update DtQuantOutput " \
+        " set Active = 0, FeedbackOutputManual = 0.0, ManualOverride = 0 where ApplicationId in (select ApplicationId "\
+        " from DtApplication where ApplicationName = '%s')" % (applicationName)
+        
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
     log.info("...reset %i QuantOutputs..." % (rows))
