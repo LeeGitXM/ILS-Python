@@ -31,7 +31,7 @@ class Arithmetic(basicblock.BasicBlock):
         self.className = 'ils.block.arithmetic.Arithmetic'
         self.properties['Function'] = {'value':'','editable':'True','bindingType':'OPTION',
                                        'binding':'ABS,CEILING,COSINE,FLOOR,SINE,TANGENT,TO_RADIAN,ROUND'}
-        self.inports = [{'name':'in','type':'data'}]
+        self.inports = [{'name':'in','type':'data','allowMultiple':False}]
         self.outports= [{'name':'out','type':'data'}]
         
     # Return a dictionary describing how to draw an icon
