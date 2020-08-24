@@ -1171,7 +1171,7 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
 
     SQL = "delete from DtTextRecommendation where DiagnosisEntryId = %i" % (diagnosisEntryId)
     rows = system.db.runUpdateQuery(SQL, database=db)
-    log.infof("...deleted %i text recommendations...", rows)
+    log.infof("...deleted %d text recommendations...", rows)
     log.infof("...done acknowledging text recommendation!")
     
     # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
