@@ -90,14 +90,14 @@ class TDCRampController(tdccontroller.TDCController):
         log.infof("Ramping the %s of TDC controller <%s> to %s over %s minutes", valType, self.path, str(val), str(rampTime))
         system.tag.write(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
 
-        rampTimeSeconds = rampTime * 60.0
-
         log.trace("...writing PRESET to the rampstate...")
         system.tag.write(self.path + "/sp/rampState", PRESET)            
         time.sleep(self.OPC_LATENCY_TIME)
 
+        '''   ramp time must always be in minutes '''
+        
         log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
-        system.tag.write(self.path + "/sp/rampTime", rampTimeSeconds)
+        system.tag.write(self.path + "/sp/rampTime", rampTime)
         system.tag.write(self.path + "/sp/setpointTargetValue", val)
         time.sleep(self.OPC_LATENCY_TIME)
         

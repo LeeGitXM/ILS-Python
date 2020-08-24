@@ -25,8 +25,7 @@ import ils.io.tdcdigitalcontroller
 import ils.io.tdcautomancontroller
 from ils.io.client import writeRamp
 
-log = system.util.getLogger("com.ils.io.api")
-
+log = system.util.getLogger("com.ils.dbTransfer")
 
 def write(fullTagPath, val, writeConfirm, valueType="value"):
     '''
