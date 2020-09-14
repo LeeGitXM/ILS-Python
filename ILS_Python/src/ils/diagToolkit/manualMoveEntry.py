@@ -63,7 +63,7 @@ def fetchManualMoveInfo(finalDiagnosisName, db):
     return manualMove, manualMoveAllowed
 
 def fetchManualMoveInfoById(finalDiagnosisId, db):
-    log.infof("In %s.fetchManualMoveInfoById()", __name__)
+    log.tracef("In %s.fetchManualMoveInfoById()", __name__)
 
     SQL = "select ManualMoveAllowed, ManualMove from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
     pds = system.db.runQuery(SQL, db)

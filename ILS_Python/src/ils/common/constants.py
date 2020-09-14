@@ -6,3 +6,4 @@ Created on Apr 5, 2019
 
 CR = "\r\n"
 PERCENT = "%"
+TAG = "tag"

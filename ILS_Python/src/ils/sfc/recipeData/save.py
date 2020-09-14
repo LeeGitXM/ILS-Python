@@ -2,6 +2,9 @@
 Created on Jul 28, 2019
 
 @author: phass
+
+This module deals with storing recipe data that is stored internally in the SFCs into
+the database.  
 '''
 
 import system, os, string
@@ -128,66 +131,70 @@ def processRecipeData(chartId, step, db, tx):
         ''' Process folders first, we need to build the entire folder tree before we can put recipe data into a folder '''
         newRecipeList = []
         for recipeData in recipeList:
-            recipeDataType = recipeData.get("recipeDataType", None)
-            if string.upper(recipeDataType) == "FOLDER":
-                key = recipeData.get("recipeDataKey","")
-                path = recipeData.get("path", "")
-                description = recipeData.get("description","")
-                label = recipeData.get("label","")
-                
-                log.infof("      Folder: %s", str(key))
-                
-                if path in [None, ""]:
-                    parentFolderId = None
-                    newPath = key
-                else:
-                    parentFolderId = folders[path]
-                    newPath = path + "/" + key
-                
-                folderId = insertFolderData(stepId, parentFolderId, key, description, label, tx)
-                folders[newPath] = folderId
-                
+            if  type(recipeData) <> dict:
+                print "Found recipe data that somehow is not a dictionary (recipe data type: %s for step %s)" % (type(recipeData), stepName)
             else:
-                newRecipeList.append(recipeData)
+                recipeDataType = recipeData.get("recipeDataType", None)
+                if string.upper(recipeDataType) == "FOLDER":
+                    key = recipeData.get("recipeDataKey","")
+                    path = recipeData.get("path", "")
+                    description = recipeData.get("description","")
+                    label = recipeData.get("label","")
+                    
+                    log.infof("      Folder: %s", str(key))
+                    
+                    if path in [None, ""]:
+                        parentFolderId = None
+                        newPath = key
+                    else:
+                        parentFolderId = folders[path]
+                        newPath = path + "/" + key
+                    
+                    folderId = insertFolderData(stepId, parentFolderId, key, description, label, tx)
+                    folders[newPath] = folderId
+                    
+                else:
+                    newRecipeList.append(recipeData)
             
         log.tracef(" --- DONE WITH FOLDERS ---")
         log.tracef("Folder Dictionary: %s", str(folders))
         log.tracef(" --- PROCESSING RECIPE DATA ---")
         
         for recipeData in newRecipeList:
-            log.tracef("Processing Recipe: %s", str(recipeData))
+            if  type(recipeData) == dict:
+                log.tracef("Processing Recipe: %s", str(recipeData))
+                
+                recipeDataType = recipeData.get("recipeDataType", None)
+                key = recipeData.get("recipeDataKey","")
+                path = recipeData.get("path")
+                
+                log.infof("      %s: %s %s", recipeDataType, path, key)
             
-            recipeDataType = recipeData.get("recipeDataType", None)
-            key = recipeData.get("recipeDataKey","")
-            path = recipeData.get("path")
-            
-            log.infof("      %s: %s %s", recipeDataType, path, key)
-        
-            if path in [None, ""]:
-                recipeDataFolderId = None
-            else:
-                recipeDataFolderId = folders[path]
-            
-            if string.upper(recipeDataType) == "SIMPLE VALUE":
-                simpleValue(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "INPUT":
-                inputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "OUTPUT":
-                outputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "OUTPUT RAMP":
-                outputRampRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "ARRAY":
-                arrayRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "MATRIX":
-                matrixRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "RECIPE":
-                recipeRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "TIMER":
-                timerRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            elif string.upper(recipeDataType) == "SQC":
-                sqcRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
-            else:
-                log.errorf("Unsupported recipe data type: >>>> %s <<<<", recipeDataType)
+                if path in [None, ""]:
+                    recipeDataFolderId = None
+                else:
+                    recipeDataFolderId = folders[path]
+                
+                if string.upper(recipeDataType) == "SIMPLE VALUE":
+                    simpleValue(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "INPUT":
+                    inputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "OUTPUT":
+                    outputRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "OUTPUT RAMP":
+                    outputRampRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "ARRAY":
+                    arrayRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "MATRIX":
+                    matrixRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "RECIPE":
+                    recipeRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "TIMER":
+                    timerRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                elif string.upper(recipeDataType) == "SQC":
+                    sqcRecipeData(stepId, recipeDataFolderId, recipeData, db, tx)
+                else:
+                    log.errorf("Unsupported recipe data type: >>>> %s <<<<", recipeDataType)
             
 
 def simpleValue(stepId, recipeDataFolderId, recipeData, db, tx):
@@ -497,22 +504,32 @@ def insertRecipeValue(key, recipeDataId, val, valueType, tx):
     
     if valueType == "Float":
         if str(val) == "False":
-            log.info("--Overriding False for a float to 0.0--")
+            log.warnf("--Overriding False for a float to 0.0--")
             val = 0.0
         elif str(val) == "True":
-            log.info("--Overriding True for a float to 1.0--")
+            log.warnf("--Overriding True for a float to 1.0--")
             val = 1.0
+        elif val in ["NULL", None, "None"]:
+            log.warbf("--Overriding NULL for a float to 0.0--")
+            val = 0.0
         SQL = "insert into SfcRecipeDataValue (RecipeDataId, FloatValue) values (?,?)"
+        
     elif valueType == "Integer":
+        if val in ["NULL", None, "None"]:
+            log.warnf("--Overriding NULL for an integer to 0.0--")
+            val = 0.0
         SQL = "insert into SfcRecipeDataValue (RecipeDataId, IntegerValue) values (?,?)"
+    
     elif valueType == "String":
         '''  I think that single quotes will already be escaped (by the recipe data internalizer) when we get this far '''
 #        val = '"' + val[1:len(val)-1] + '"'
 #        print "New Val: <%s>", val
         SQL = "insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (?,?)"
+    
     elif valueType == "Boolean":
         val=toBit(val)
         SQL = "insert into SfcRecipeDataValue (RecipeDataId, BooleanValue) values (?,?)"
+    
     else:
         errorTxt = "Unknown value type: %s" % str(valueType)
         raise ValueError, errorTxt

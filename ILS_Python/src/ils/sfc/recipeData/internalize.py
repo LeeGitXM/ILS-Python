@@ -15,7 +15,7 @@ from ils.common.config import getDatabaseClient
 from ils.common.error import catchError, notifyError
 from ils.common.util import escapeJSON
 
-log=system.util.getLogger("com.ils.sfc.recipeData.internalize")
+log=system.util.getLogger("com.ils.sfc.recipeData.internalize.Python")
 
 # Use this to limit the scope during testing
 WHERE = "where chartId >= 769 and chartId <= 773 or chartId = 801 or chartId = 805"
@@ -29,12 +29,13 @@ AND_WHERE = ""
 This is called from the Tools menu and the designer hook
 '''
 def internalize(chartPath, chartXML):
-    log.infof("***************  PYTHON  *******************")
     log.infof("In %s.internalize() for chart: %s", __name__, chartPath)
+
     log.tracef("The initial chart XML is: %s", chartXML)
     db = getDatabaseClient()
     chartInfo, chartPaths, folderInfo = getChartInfo(db)
     chartXML = internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, folderInfo, db)
+    log.tracef("The processed chart XML is: %s", chartXML)
     
     return chartXML
 
@@ -47,6 +48,7 @@ def internalizeCallback(chartPath, chartXML):
     db = getDatabaseClient()
     chartInfo, chartPaths, folderInfo = getChartInfo(db)
     chartXML = internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, folderInfo, db)
+
     return chartXML
 
 def getChartInfo(db):
@@ -54,7 +56,7 @@ def getChartInfo(db):
     
     if chartInfoTimestamp == None or abs(system.date.secondsBetween(system.date.now(), chartInfoTimestamp)) > 60:
         ''' Refresh the chart info '''
-        log.info("Refreshing the chart info...")
+        log.tracef("Refreshing the chart info...")
         chartInfo, chartPaths = fetchChartInfo(db)
         chartInfo, folderInfo = fetchAllRecipeData(chartInfo, db)
         system.util.getGlobals()["ChartInfoTimestamp"] = system.date.now()
@@ -62,7 +64,7 @@ def getChartInfo(db):
         system.util.getGlobals()["FolderInfo"] = folderInfo
         system.util.getGlobals()["ChartPaths"] = chartPaths
     else:
-        log.infof("Using stored chart info...")
+        log.tracef("Using stored chart info...")
         chartInfo = system.util.getGlobals()["ChartInfo"]
         folderInfo = system.util.getGlobals()["FolderInfo"]
         chartPaths = system.util.getGlobals()["ChartPaths"]
@@ -199,6 +201,7 @@ def fetchAllRecipeData(chartInfo, db):
     
     return chartInfo, folderInfo
 
+
 def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, folderInfo, db):
     '''
     Insert the recipe data into the associated-data slot for each step.  The chart XML is in XML, which is basically text.
@@ -206,17 +209,17 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
     escape characters making it harder to read, which is the whole point of using XML.  So I am going to use text string
     manipulation to add things in. 
     '''
-    
-
-    #----------------------------------------------------
-    
-    log.infof("=====================================")
-    log.infof("Processing recipe data for chart: %s", chartPath)
-    log.infof("=====================================")
+    log.tracef("=====================================")
+    log.tracef("In %s.internalizeRecipeDataForChartTxt() - Processing recipe data for chart: %s", __name__, chartPath)
+    log.tracef("=====================================")
     
     log.tracef("Chart Info: %s", str(chartInfo))
     
-    chartId = chartPaths[chartPath]
+    chartId = chartPaths.get(chartPath, None)
+    if chartId == None:
+        log.warnf("Chart %s was not found in the database - the database and Ignition are out of sync!", chartPath)
+        return chartXML
+    
     log.tracef("The chart Id is: %d", chartId)
     
     chartDict = chartInfo[chartId]
@@ -225,217 +228,261 @@ def internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, fo
     stepInfo = chartDict['stepInfo']
     log.tracef("The step info is: %s", str(stepInfo))
     
-    preamble, postamble, steps = splitChartXML(chartXML, log)
+    
+    #START
+    '''
+    Split the XML for a chart into 3 parts: the preamble, the postamble, and the middle - which contains the steps.
+    This makes it easy to put back together at the end.  We are going to insert recipe data into the steps part, but the pre and 
+    post parts remain unchanged.
+    '''
+    log.tracef("------------------ Processing Steps ---------------------")
 
-    chartXML = preamble
-    for step in steps:
-        log.tracef(" ")
-        log.tracef("Processing: %s", str(step))
+    newChartXML = ""
+    txt = chartXML
+    while len(txt) > 0:
+        stepStart = txt.find("<step")
+        if stepStart >= 0:
+            stepEnd = txt.find("</step>") + 7
+            stepTxt = txt[stepStart:stepEnd]
+            txtEnd = len(txt)
+            
+            newStepTxt = processStep(stepTxt, chartPath, stepInfo, folderInfo, db)
+            
+            newChartXML = newChartXML + txt[0:stepStart] + newStepTxt
+            txt = txt[stepEnd:txtEnd]
+        else:
+            log.tracef("...adding the trailing text...")
+            newChartXML = newChartXML + txt
+            txt = ""
+        
+        '''
+        log.tracef("")
+        log.tracef("Step: %s", stepTxt)
+        log.tracef("")
+        associatedDataStart = stepTxt.find("<associated-data>")
+        associatedDataEnd = stepTxt.rfind("</associated-data>") + 18
+        
+        if associatedDataStart > 0 and associatedDataEnd > 0:
+            stepTxt = stepTxt[:associatedDataStart] + stepTxt[associatedDataEnd:]
+            log.tracef("Step AFTER removing old associated data: %s", stepTxt)
 
-        stepName = step[step.find("name=")+6:]
-        stepName = stepName[:stepName.find("\"")]
-        log.tracef("  StepName: <%s>", stepName)
-        log.tracef("  Looking for recipe data for step: <%s>", stepName)
-        stepDict = stepInfo.get(stepName, None)
+        steps.append(stepTxt)
+        middle = middle[stepEnd:]
+        '''
+    
+    log.tracef("----------------------------------------------------------")
+    
+    log.tracef("Chart After: %s", str(newChartXML))
+    return newChartXML
+
+
+def processStep(step, chartPath, stepInfo, folderInfo, db):
+    log.tracef("Processing: %s", str(step))
+
+    stepName = step[step.find("name=")+6:]
+    stepName = stepName[:stepName.find("\"")]
+    log.tracef("  StepName: <%s>", stepName)
+    log.tracef("  Looking for recipe data for step: <%s>", stepName)
+    stepDict = stepInfo.get(stepName, None)
+    if stepDict == None:
+        log.warnf("  Step %s on chart %s was not found in the database - the database and Ignition are not in sync!", stepName, chartPath)
+        recipeDataList = []
+    else:
         log.tracef("  Step Dictionary: %s", str(stepDict))
         recipeDataList = stepDict.get("recipeData", [])
         log.tracef("  Recipe data for Step: %s", str(recipeDataList))
 
-        recipe = []
-        for record in recipeDataList:
-            log.tracef("           Inserting the recipe data...")
+    recipe = []
+    for record in recipeDataList:
+        log.tracef("           Inserting the recipe data...")
+        
+        recipeDataType = record["RecipeDataType"]
+        if recipeDataType == "Folder":                
+            recipeDataKey = record["RecipeDataKey"]
+            log.tracef("      ...processing FOLDER recipe data %s...", recipeDataKey)
             
-            recipeDataType = record["RecipeDataType"]
-            if recipeDataType == "Folder":                
-                recipeDataKey = record["RecipeDataKey"]
-                log.infof("      ...processing FOLDER recipe data %s...", recipeDataKey)
-                
-                ''' For a folder, I want the path of the parent '''
-                folderId = record["ParentRecipeDataFolderId"]
-                log.tracef("Parent Recipe Data Folder Id: %s", str(folderId))
-                
-                if folderId in [None, "null", "None"]:
-                    path = None
-                else:
-                    path = folderInfo.get(folderId).get("path")
-                    
-                rd = {}
-                rd["recipeDataKey"] = recipeDataKey
-                rd["recipeDataType"] = recipeDataType
-                rd["label"] = escapeJSON(record["Label"])
-                rd["description"] = escapeJSON(record["Description"])
-                rd["path"] = path
-
+            ''' For a folder, I want the path of the parent '''
+            folderId = record["ParentRecipeDataFolderId"]
+            log.tracef("Parent Recipe Data Folder Id: %s", str(folderId))
+            
+            if folderId in [None, "null", "None"]:
+                path = None
             else:
-                recipeDataId = record["RecipeDataId"]
-                recipeDataKey = record["RecipeDataKey"]
-                log.infof("      ...processing a <%s> recipe data with key: %s - %d (%s - %s)", recipeDataType, recipeDataKey, recipeDataId, chartPath, stepName)
+                path = folderInfo.get(folderId).get("path")
                 
-                rd = {}
-                rd["recipeDataKey"] = recipeDataKey
-                rd["recipeDataType"] = recipeDataType
-                rd["label"] = escapeJSON(record["Label"])
-                rd["description"] = escapeJSON(record["Description"])
-                rd["units"] = record["Units"]
+            rd = {}
+            rd["recipeDataKey"] = recipeDataKey
+            rd["recipeDataType"] = recipeDataType
+            rd["label"] = escapeJSON(record["Label"])
+            rd["description"] = escapeJSON(record["Description"])
+            rd["path"] = path
+
+        else:
+            recipeDataId = record["RecipeDataId"]
+            recipeDataKey = record["RecipeDataKey"]
+            log.tracef("      ...processing a <%s> recipe data with key: %s - %d (%s - %s)", recipeDataType, recipeDataKey, recipeDataId, chartPath, stepName)
+            
+            rd = {}
+            rd["recipeDataKey"] = recipeDataKey
+            rd["recipeDataType"] = recipeDataType
+            rd["label"] = escapeJSON(record["Label"])
+            rd["description"] = escapeJSON(record["Description"])
+            rd["units"] = record["Units"]
+            
+            folderKey = record["FolderKey"]
+            if folderKey in [None, "null"]:
+                rd["path"] = None
+            else:
+                folderId = record["FolderId"]
+                path = folderInfo.get(folderId).get("path")
+                rd["path"] = path
+            
+            if recipeDataType == "Simple Value":
+                valueType = record["ValueType"]
+                rd["valueType"] = valueType
                 
-                folderKey = record["FolderKey"]
-                if folderKey in [None, "null"]:
-                    rd["path"] = None
+                if valueType == "Float":
+                    rd["value"] = str(record['FloatValue'])
+                elif valueType == "Integer":
+                    rd["value"] =str(record['IntegerValue'])
+                elif valueType == "String":
+                    rd["value"] = escapeJSON(str(record['StringValue']))
+                elif valueType == "Boolean":
+                    rd["value"] =str(record['BooleanValue'])
                 else:
-                    folderId = record["FolderId"]
-                    path = folderInfo.get(folderId).get("path")
-                    rd["path"] = path
-                
-                if recipeDataType == "Simple Value":
-                    valueType = record["ValueType"]
-                    rd["valueType"] = valueType
-                    
-                    if valueType == "Float":
-                        rd["value"] = str(record['FloatValue'])
-                    elif valueType == "Integer":
-                        rd["value"] =str(record['IntegerValue'])
-                    elif valueType == "String":
-                        rd["value"] = escapeJSON(str(record['StringValue']))
-                    elif valueType == "Boolean":
-                        rd["value"] =str(record['BooleanValue'])
-                    else:
-                        log.errorf("****** Unknown simple value data type: %s", valueType)
-                        rd["value"] = "Unknown value type: %s" % (valueType)
-        
-                elif recipeDataType == 'Array':
-                    valueType = record["ValueType"]
-                    rd["valueType"] = valueType
-                    rd["indexKey"] = record["KeyName"]
-                    
-                    '''
-                    The indexKey is just another array - hopefully it is in the same scope as this.  The order of export/import doesn't matter because the array data is still stored the same, 
-                    the index key is only used as a convenience in the UI and API.
-                    '''
-                    SQL = "select arrayIndex, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataArrayElementView where RecipeDataId = %d" % (recipeDataId)
-                    pds = system.db.runQuery(SQL, db)
-                    
-                    vals = []
-                    for record in pds:
-                        if valueType == "Float":
-                            vals.append(record['floatValue'])
-                        elif valueType == "Integer":
-                            vals.append(record['integerValue'])
-                        elif valueType == "String":
-                            vals.append(record['stringValue'])
-                        elif valueType == "Boolean":
-                            vals.append(record['booleanValue'])
-                        else:
-                            log.errorf("****** Unknown array value data type: %s", valueType)
-                            
-                    rd["vals"] = vals
-                    
-                elif recipeDataType == "Input":
-                    valueType = record["ValueType"]
-                    rd["valueType"] = valueType                
-                    rd["tag"] = str(record['Tag'])
-        
-                elif recipeDataType == "Matrix":
-                    valueType = record["ValueType"]
-                    rd["valueType"] = valueType
-                    rd["rows"] = record["Rows"]
-                    rd["columns"] = record["Columns"]
-                    rd["rowIndexKey"] = record["RowIndexKeyName"]
-                    rd["columnIndexKey"] = record["ColumnIndexKeyName"]
-                    
-                    '''
-                    The index is just a string array (NOT RECIPE DATA).  Hopefully the array key will already exist on the target system.  The order of export/import doesn't matter because 
-                    the array data is still stored the same, the index key is only used as a convenience in the UI and API.
-                    '''
-                    SQL = "select rowIndex, columnIndex, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataMatrixElementView where RecipeDataId = %d order by rowIndex, columnIndex" % (recipeDataId)
-                    pds = system.db.runQuery(SQL, db)
-                    
-                    vals = []
-                    for record in pds:
-                        if valueType == "Float":
-                            vals.append(record['floatValue'])
-                        elif valueType == "Integer":
-                            vals.append(record['integerValue'])
-                        elif valueType == "String":
-                            vals.append(record['stringValue'])
-                        elif valueType == "Boolean":
-                            vals.append(str(record['booleanValue']))
-                        else:
-                            log.errorf("****** Unknown matrix value data type: %s", valueType)
-                            
-                    rd["vals"] = vals
+                    log.errorf("****** Unknown simple value data type: %s", valueType)
+                    rd["value"] = "Unknown value type: %s" % (valueType)
     
-                elif recipeDataType in ["Output", "Output Ramp"]:
-                    valueType = record["ValueType"]
-                    rd["valueType"] = valueType
-                    rd["tag"] =record['Tag'] 
-                    rd["outputType"] = record['OutputType'] 
-                    rd["download"] = record['Download'] 
-                    rd["timing"] = record['Timing'] 
-                    rd["maxTiming"] = record['MaxTiming'] 
-                    rd["writeConfirm"] = record['WriteConfirm']
-                    
+            elif recipeDataType == 'Array':
+                valueType = record["ValueType"]
+                rd["valueType"] = valueType
+                rd["indexKey"] = record["KeyName"]
+                
+                '''
+                The indexKey is just another array - hopefully it is in the same scope as this.  The order of export/import doesn't matter because the array data is still stored the same, 
+                the index key is only used as a convenience in the UI and API.
+                '''
+                SQL = "select arrayIndex, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataArrayElementView where RecipeDataId = %d" % (recipeDataId)
+                pds = system.db.runQuery(SQL, db)
+                
+                vals = []
+                for record in pds:
                     if valueType == "Float":
-                        rd["outputValue"] = record['OutputFloatValue']
-                        rd["targetValue"] = record['TargetFloatValue']
+                        vals.append(record['floatValue'])
                     elif valueType == "Integer":
-                        rd["outputValue"] = record['OutputIntegerValue']
-                        rd["targetValue"] = record['TargetIntegerValue']
+                        vals.append(record['integerValue'])
                     elif valueType == "String":
-                        rd["outputValue"] = escapeJSON(str(record['OutputStringValue']))
-                        rd["targetValue"] = escapeJSON(str(record['TargetStringValue']))
+                        vals.append(record['stringValue'])
                     elif valueType == "Boolean":
-                        rd["outputValue"] = str(record['OutputBooleanValue'])
-                        rd["targetValue"] = str(record['TargetBooleanValue'])
+                        vals.append(record['booleanValue'])
                     else:
-                        log.errorf("****** Unknown output value data type: %s", valueType)
+                        log.errorf("****** Unknown array value data type: %s", valueType)
                         
-                    if recipeDataType == "Output Ramp":
-                        rd["rampTimeMinutes"] = record['RampTimeMinutes']
-                        rd["updateFrequencySeconds"] = record['UpdateFrequencySeconds']
-        
-                elif recipeDataType == "Recipe":
-                    rd["presentationOrder"] =record['PresentationOrder'] 
-                    rd["storeTag"] =record['StoreTag'] 
-                    rd["compareTag"] = record['CompareTag'] 
-                    rd["modeAttribute"] = record['ModeAttribute'] 
-                    rd["modeValue"] = record['ModeValue'] 
-                    rd["changeLevel"] = record['ChangeLevel'] 
-                    rd["recommendedValue"] = record['RecommendedValue']
-                    rd["lowLimit"] =record['LowLimit'] 
-                    rd["highLimit"] =record['HighLimit'] 
-                    
-                elif recipeDataType == "SQC":
-                    rd["lowLimit"] =record['LowLimit'] 
-                    rd["targetValue"] =record['TargetValue'] 
-                    rd["highLimit"] = record['HighLimit'] 
-            
-                elif recipeDataType == "Timer":
-                    '''
-                    All of the other properties for a Timer are transient and get set at runtime.
-                    '''
+                rd["vals"] = vals
+                
+            elif recipeDataType == "Input":
+                valueType = record["ValueType"]
+                rd["valueType"] = valueType                
+                rd["tag"] = str(record['Tag'])
+    
+            elif recipeDataType == "Matrix":
+                valueType = record["ValueType"]
+                rd["valueType"] = valueType
+                rd["rows"] = record["Rows"]
+                rd["columns"] = record["Columns"]
+                rd["rowIndexKey"] = record["RowIndexKeyName"]
+                rd["columnIndexKey"] = record["ColumnIndexKeyName"]
+                
+                '''
+                The index is just a string array (NOT RECIPE DATA).  Hopefully the array key will already exist on the target system.  The order of export/import doesn't matter because 
+                the array data is still stored the same, the index key is only used as a convenience in the UI and API.
+                '''
+                SQL = "select rowIndex, columnIndex, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataMatrixElementView where RecipeDataId = %d order by rowIndex, columnIndex" % (recipeDataId)
+                pds = system.db.runQuery(SQL, db)
+                
+                vals = []
+                for record in pds:
+                    if valueType == "Float":
+                        vals.append(record['floatValue'])
+                    elif valueType == "Integer":
+                        vals.append(record['integerValue'])
+                    elif valueType == "String":
+                        vals.append(record['stringValue'])
+                    elif valueType == "Boolean":
+                        vals.append(str(record['booleanValue']))
+                    else:
+                        log.errorf("****** Unknown matrix value data type: %s", valueType)
+                        
+                rd["vals"] = vals
+
+            elif recipeDataType in ["Output", "Output Ramp"]:
+                valueType = record["ValueType"]
+                rd["valueType"] = valueType
+                rd["tag"] =record['Tag'] 
+                rd["outputType"] = record['OutputType'] 
+                rd["download"] = record['Download'] 
+                rd["timing"] = record['Timing'] 
+                rd["maxTiming"] = record['MaxTiming'] 
+                rd["writeConfirm"] = record['WriteConfirm']
+                
+                if valueType == "Float":
+                    rd["outputValue"] = record['OutputFloatValue']
+                    rd["targetValue"] = record['TargetFloatValue']
+                elif valueType == "Integer":
+                    rd["outputValue"] = record['OutputIntegerValue']
+                    rd["targetValue"] = record['TargetIntegerValue']
+                elif valueType == "String":
+                    rd["outputValue"] = escapeJSON(str(record['OutputStringValue']))
+                    rd["targetValue"] = escapeJSON(str(record['TargetStringValue']))
+                elif valueType == "Boolean":
+                    rd["outputValue"] = str(record['OutputBooleanValue'])
+                    rd["targetValue"] = str(record['TargetBooleanValue'])
                 else:
-                    print "***************************************************************"
-                    print "*****  ERROR: Unexpected recipe data type: ", recipeDataType
-                    print "***************************************************************"
+                    log.errorf("****** Unknown output value data type: %s", valueType)
+                    
+                if recipeDataType == "Output Ramp":
+                    rd["rampTimeMinutes"] = record['RampTimeMinutes']
+                    rd["updateFrequencySeconds"] = record['UpdateFrequencySeconds']
     
-            log.tracef("Appending the structure to the list...")
-            recipe.append(rd)
-    
-        if len(recipe) > 0:
-            log.tracef("There is recipe data, inserting it into the XML...")
-            recipeTxtJson = system.util.jsonEncode(recipe)
-            recipeTxt ='<associated-data> {"recipe": ' + recipeTxtJson + "} </associated-data> "
+            elif recipeDataType == "Recipe":
+                rd["presentationOrder"] =record['PresentationOrder'] 
+                rd["storeTag"] =record['StoreTag'] 
+                rd["compareTag"] = record['CompareTag'] 
+                rd["modeAttribute"] = record['ModeAttribute'] 
+                rd["modeValue"] = record['ModeValue'] 
+                rd["changeLevel"] = record['ChangeLevel'] 
+                rd["recommendedValue"] = record['RecommendedValue']
+                rd["lowLimit"] =record['LowLimit'] 
+                rd["highLimit"] =record['HighLimit'] 
+                
+            elif recipeDataType == "SQC":
+                rd["lowLimit"] =record['LowLimit'] 
+                rd["targetValue"] =record['TargetValue'] 
+                rd["highLimit"] = record['HighLimit'] 
         
-            step = step[:len(step) - 7]
-            step = step + recipeTxt + " </step>" 
-            log.tracef( "   Step After: %s", step)
-            
-        chartXML = chartXML + step
-        
-    chartXML = chartXML + postamble
+            elif recipeDataType == "Timer":
+                '''
+                All of the other properties for a Timer are transient and get set at runtime.
+                '''
+            else:
+                print "***************************************************************"
+                print "*****  ERROR: Unexpected recipe data type: ", recipeDataType
+                print "***************************************************************"
+
+        log.tracef("Appending the structure to the list...")
+        recipe.append(rd)
+
+    if len(recipe) > 0:
+        log.tracef("There is recipe data, inserting it into the XML...")
+        recipeTxtJson = system.util.jsonEncode(recipe)
+        recipeTxt ='<associated-data> {"recipe": ' + recipeTxtJson + "} </associated-data> "
     
-    log.tracef("Chart After: %s", str(chartXML))
-    return chartXML
+        step = step[:len(step) - 7]
+        step = step + recipeTxt + " </step>" 
+        log.tracef( "   Step After: %s", step)
+        
+    return step
+
 
 def internalizeRecipeDataForChartText(chartPath, chartXML, chartPaths, chartInfo, folderInfo, db):
     '''
@@ -469,8 +516,8 @@ def internalizeRecipeDataForChartText(chartPath, chartXML, chartPaths, chartInfo
         return preamble, postamble, steps
     #----------------------------------------------------
     
-    log.infof("=====================================")
-    log.infof("Processing recipe data for chart: %s", chartPath)
+    log.tracef("=====================================")
+    log.infof("In %s.internalizeRecipeDataForChartText() - Processing recipe data for chart: %s", __name__, chartPath)
     log.infof("=====================================")
     
     log.tracef("Chart Info: %s", str(chartInfo))

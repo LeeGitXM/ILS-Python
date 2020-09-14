@@ -1128,12 +1128,13 @@ def getFolderPath(folderId, pds):
     Given a folder Id, which presumably came from a recipe data record and is not None, use the supplied dataset
     of folder records to recusively put together the path of arbitrary depth.
     '''    
-    
+    #---------------------------------------------------------------
     def getFolderInfo(folderId, pds):
         for record in pds:
             if record["RecipeDataFolderId"] == folderId:
                 return record["RecipeDataKey"], record["ParentRecipeDataFolderId"]
         return None, None
+    #---------------------------------------------------------------
     
     logger.tracef("Looking for the folder path for: %s", str(folderId))
     key, parentId = getFolderInfo(folderId, pds)
@@ -1428,4 +1429,3 @@ def getProviderName(chartProperties):
     '''Get the name of the tag provider for this chart, taking isolation mode into account'''
     from system.ils.sfc import getProviderName, getIsolationMode
     return getProviderName(getIsolationMode(chartProperties))
-

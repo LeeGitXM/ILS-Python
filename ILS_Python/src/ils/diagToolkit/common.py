@@ -170,11 +170,8 @@ def fetchActiveDiagnosis(applicationName, database=""):
         " and L.LookupTypeCode='GroupRampMethod' "\
         " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
     log.tracef("%s.fetchActiveDiagnosis(): %s", __name__, SQL)
-    print "*****************"
-    print SQL
-    print "**********************"
     pds = system.db.runQuery(SQL, database)
-    print "Fetched %d active diagnosis" % (len(pds))
+    log.tracef("Fetched %d active diagnosis", len(pds))
     return pds
 
 # Fetch all of the active final diagnosis for an application.
@@ -339,7 +336,7 @@ def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
     SQL = "select U.UnitName, FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FamilyId, FD.FinalDiagnosisPriority, "\
-        " FD.CalculationMethod, FD.FinalDiagnosisUUID, FD.DiagramUUID, "\
+        " FD.CalculationMethod, FD.FinalDiagnosisUUID, FD.DiagramUUID, FD.Explanation, "\
         " FD.PostTextRecommendation, FD.PostProcessingCallback, FD.RefreshRate, FD.TextRecommendation "\
         " from TkUnit U, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
         " where U.UnitId = A.UnitId and A.ApplicationId = F.ApplicationId "\

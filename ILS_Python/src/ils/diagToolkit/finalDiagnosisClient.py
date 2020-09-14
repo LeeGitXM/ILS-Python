@@ -281,7 +281,7 @@ def handleTextRecommendationNotification(payload):
     gatewayDatabase=payload.get("gatewayDatabase")
     clientDatabase=getDatabaseClient()
     if gatewayDatabase <> clientDatabase:
-        print "Exiting handleNotification() because the gateway database does not match the client database"
+        print "Exiting handleTextRecommendationNotification() because the gateway database does not match the client database"
         return
 
     callback="ils.diagToolkit.finalDiagnosisClient.ackTextRecommendation"

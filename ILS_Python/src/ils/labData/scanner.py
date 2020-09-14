@@ -43,7 +43,7 @@ def scanner():
 
 
 def main(database, tagProvider):
-    log.info("Scanning for lab data (%s, %s)..." % (database, tagProvider))
+    log.tracef("Scanning for lab data (%s, %s)...", database, tagProvider)
 
     log.trace("Last Value Cache: %s" % (str(lastValueCache)))
     if len(lastValueCache) == 0:
@@ -87,7 +87,7 @@ def main(database, tagProvider):
     if newValue:
         notifyClients()
 
-    log.infof("...finished lab data scanning!")
+    log.tracef("...finished lab data scanning!")
 
 
 def notifyClients():
@@ -230,7 +230,7 @@ def checkForDerivedValueTriggers(database):
 # calculation procedure had the responsibility to collect consistent lab data.  In the new framework, the engine will collect
 # all of the necessary information and then call the calculation method.
 def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, simulateHDA):
-    derivedLog.infof("Checking the derived calculations...")
+    derivedLog.tracef("Checking the derived calculations...")
     
     def writeToPHD(resultServerName, resultItemId, newVal, sampleTime, simulateHDA):
         try:
@@ -366,7 +366,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, s
                 derivedLog.trace("         The  related sample has still not arrived and probably never will, time to give up!")
                 del derivedCalculationCache[valueName]
 
-    derivedLog.info(" ...done processing the derived values for this cycle!")
+    derivedLog.tracef(" ...done processing the derived values for this cycle!")
 
     return writeTags, writeTagValues
 
@@ -844,7 +844,7 @@ def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, fo
 
 # This is called on startup to load the most recent measurement into the cache
 def initializeCache(database):
-    log.info("Initializing the last Value Cache...")
+    log.tracef("Initializing the last Value Cache...")
     
     SQL = "select * from LtLastValueView"
     pds = system.db.runQuery(SQL, database)

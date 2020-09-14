@@ -19,15 +19,14 @@ def notifyConsole():
 # This is a replacement to em-quant-recommend-gda
 def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnosisId, diagnosisEntryId, constantFD, calculationMethod, 
                        postTextRecommendation, textRecommendation, zeroChangeThreshold, database="", provider=""):
-    log.infof("********** In %s.makeRecommendation() *********", __name__)
+    log.tracef("********** In %s.makeRecommendation() *********", __name__)
 
     log.infof("Making a recommendation for final diagnosis with id: %s using calculation method: <%s>, Constant=<%s>, \
         database: %s, provider: %s", str(finalDiagnosisId), calculationMethod, str(constantFD), database, provider)
 
     # If the FD is constant, then it shouldn't get this far because there really isn't a recommendation to make, so this code should never get exercised.
     if constantFD == True:
-        print "The FD IS a CONSTANT"
-        log.infof("Detected a CONSTANT Final Diagnosis")
+        log.tracef("Detected a CONSTANT Final Diagnosis")
         
         SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_POSTED, diagnosisEntryId)
         logSQL.trace(SQL)
@@ -45,7 +44,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             separator=string.rfind(packagemodule, ".")
             package = packagemodule[0:separator]
             module  = packagemodule[separator+1:]
-            log.info("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
+            log.trace("   ...using External Python, the package is: <%s>.<%s>" % (package,module))
             exec("import %s" % (package))
             exec("from %s import %s" % (package,module))
         except:
@@ -58,13 +57,13 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             
     try:
         if calculationMethod in ["", None]:
-            log.infof("Implementing a static text recommendation because there is not a calculation method.")
+            log.tracef("Implementing a static text recommendation because there is not a calculation method.")
             calculationSuccess = True
             explanation = ""
             rawRecommendationList = []
         else:
             calculationSuccess, explanation, rawRecommendationList = eval(calculationMethod)(application,finalDiagnosisName,finalDiagnosisId,provider,database)
-            log.infof("...back from the calculation method!")
+            log.tracef("...back from the calculation method!")
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 500)
@@ -73,7 +72,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         return [], errorTxt, "ERROR"
     
     else:
-        log.infof("The calculation method returned explanation: %s", explanation)
+        log.tracef("The calculation method returned explanation: %s", explanation)
         
         ''' Make the quant output name case insensitive by casting to uppercase (need to the same for Quant Output names) '''
         i = 0
@@ -82,7 +81,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             rec["QuantOutput"] = qo
             rawRecommendationList[i] = rec
             i = i +1
-        log.infof("Received recommendations: %s", str(rawRecommendationList))
+        log.tracef("Received recommendations: %s", str(rawRecommendationList))
     
         # Insert text returned by the calculation method into the application Queue
         if calculationSuccess:
@@ -97,11 +96,11 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
 
         # We want to weed out a recommendation with a value of 0.0 - We don't want to treat these as a less than minimum change.
         # I'm not exactly sure why we don't let the generic check for insignificant recommendation handle this... seems redundant...
-        log.infof("Screening for no-change recommendations...") 
+        log.tracef("Screening for no-change recommendations...") 
         screenedRecommendationList=[]
         for recommendation in rawRecommendationList:
             if abs(recommendation.get("Value",0.0)) < zeroChangeThreshold:
-                log.infof("...removing a no change recommendation: %s", str(recommendation))
+                log.tracef("...removing a no change recommendation: %s", str(recommendation))
             else:
                 screenedRecommendationList.append(recommendation)
 
@@ -171,13 +170,13 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
         "values (%i, %i, %f, %f, 'Auto', %s)" % (recommendationDefinitionId, diagnosisEntryId, val, val, str(rampTime))
     logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
-    log.infof("      ...inserted recommendation id: %s for recommendation definition id: %s", recommendationId, str(recommendationDefinitionId))
+    log.tracef("      ...inserted recommendation id: %s for recommendation definition id: %s", recommendationId, str(recommendationDefinitionId))
     return recommendationId
 
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made
 # for that QuantOutput - in the case where multiple FDs are active and of equal priority and tough the same quantOutput.
 def calculateFinalRecommendation(quantOutput):
-    log.infof("Calculating the final recommendation for: %s ", quantOutput)
+    log.tracef("Calculating the final recommendation for: %s ", quantOutput)
 
     i = 0
     finalRecommendation = 0.0
@@ -192,25 +191,25 @@ def calculateFinalRecommendation(quantOutput):
     
     rampTime = None
     for recommendation in recommendations:
-        log.infof("  The raw recommendation is: %s", str(recommendation))
+        log.tracef("  The raw recommendation is: %s", str(recommendation))
             
         autoOrManual = string.upper(quantOutput.get("AutoOrManual", "Auto"))
         if autoOrManual == 'AUTO':
             recommendationValue = recommendation.get('AutoRecommendation', 0.0)
-            log.infof("   ...using the auto value: %s", str(recommendationValue))
+            log.tracef("   ...using the auto value: %s", str(recommendationValue))
         else:
             recommendationValue = recommendation.get('ManualRecommendation', 0.0)
-            log.infof("   ...using the manual value: %s", str(recommendationValue))
+            log.tracef("   ...using the manual value: %s", str(recommendationValue))
     
         feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
-        log.infof("   ...using feedback method %s to combine recommendations...", feedbackMethod)
+        log.tracef("   ...using feedback method %s to combine recommendations...", feedbackMethod)
 
         '''
         If the recommendation is for a ramp controller then it MUST contain a rampTime property
         (If there are multiple recommendations for the same ramp output with different ramp times then the last one wins - that probably isn't right TODO
         '''
         if recommendation.get("RampTime", None) != None:
-            log.infof("   ...found a ramp time in the recommendation, adding it to the quantOutput...")
+            log.tracef("   ...found a ramp time in the recommendation, adding it to the quantOutput...")
             rampTime = recommendation.get("RampTime", None)
             quantOutput['Ramp'] = rampTime
 
@@ -247,7 +246,7 @@ def calculateFinalRecommendation(quantOutput):
     quantOutput['FeedbackOutput'] = finalRecommendation
     quantOutput['FeedbackOutputConditioned'] = finalRecommendation
 
-    log.infof("  The recommendation after combining multiple recommendations but before bounds checking) is: %s", str(finalRecommendation))
+    log.tracef("  The recommendation after combining multiple recommendations but before bounds checking) is: %s", str(finalRecommendation))
     return quantOutput
 
 def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):
@@ -257,7 +256,7 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
     fdDict=fetchFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
     finalDiagnosisId = fdDict.get("FinalDiagnosisId")
     
-    print "Testing %s (%i) - %s" % (finalDiagnosisName, finalDiagnosisId, calculationMethod)
+    log.infof("Testing %s (%i) - %s", finalDiagnosisName, finalDiagnosisId, calculationMethod)
 
 #    if string.upper(calculationMethod) == "CONSTANT":
 #        print "Bypassing calculations for a CONSTANT calculation method!"
@@ -276,7 +275,6 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
         exec("from %s import %s" % (package,module))
 
     status, explanation, rawRecommendationList = eval(calculationMethod)(applicationName,finalDiagnosisName, finalDiagnosisId, provider,database)
-    
 
     if len(rawRecommendationList) == 0:
         log.infof("No recommendations were returned!")

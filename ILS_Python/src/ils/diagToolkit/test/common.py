@@ -6,6 +6,7 @@ Created on Sep 13, 2016
 
 import system, time, string
 from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
+from ils.common.util import escapeSqlQuotes
 logger=system.util.getLogger("com.ils.test")
 
 T1TagName='Sandbox/Diagnostic/T1'
@@ -80,14 +81,48 @@ def run():
             "delete from DtApplication where ApplicationName like 'TEST%'"
             ]:
 
-            logger.infof( "   %s", SQL)
+            logger.tracef( "   %s", SQL)
             rows=system.db.runPrepUpdate(SQL, database=db)
-            logger.infof("   ...deleted %d rows", rows)
+            logger.tracef("   ...deleted %d rows", rows)
         
-        logger.infof("...done initializing the database")
+        logger.tracef("...done initializing the database")
         
     #----------------
     # Fetch Recommendations
+    def logTextRecommendations(post, filename, db):
+        SQL = "select count(*) from DtTextRecommendation"
+        rows = system.db.runScalarQuery(SQL)
+        logger.trace("There are %i Text recommendations..." % (rows))
+    
+        SQL = "select F.FamilyName, F.FamilyPriority, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, DE.Status,"\
+            " DE.RecommendationStatus, R.TextRecommendation "\
+            " from DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE, DtTextRecommendation R "\
+            " where F.FamilyId = FD.FamilyId "\
+            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+            " and DE.DiagnosisEntryId = R.DiagnosisEntryId "\
+            " order by FamilyName, FinalDiagnosisName "
+            
+        pds = system.db.runQuery(SQL, database=db)
+        logger.trace("   fetched %i Text recommendation..." % (len(pds)))
+
+        header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
+            'RecommendationStatus,TextRecommendation,'\
+            'A,B,C,D,E,F,G,H,I,J,K,L,M,N'
+        
+        logger.trace("   writing results to filename: %s" % (filename))
+        system.file.writeFile(filename, header, False)
+        
+        for record in pds:
+            textRecommendation=record['TextRecommendation']
+            textRecommendation=string.replace(textRecommendation, '\n',' ')
+            txt = "\n%s,%s,%s, %s,%s,%s, %s,,0,0,0,0,0,0,0,0,0,0,0,0,0,0" % \
+                (record['FamilyName'], str(record['FamilyPriority']), record['FinalDiagnosisName'], \
+                str(record['FinalDiagnosisPriority']), record['Status'], record['RecommendationStatus'], \
+                textRecommendation)
+            logger.trace("%s" % (txt))
+            system.file.writeFile(filename, txt, True)
+    
+    
     def logRecommendations(post, filename, db):
         SQL = "select count(*) from DtRecommendation"
         rows = system.db.runScalarQuery(SQL)
@@ -154,7 +189,7 @@ def run():
             "FeedbackOutput,FeedbackOutputManual,FeedbackOutputConditioned,"\
             "DisplayedRecommendation,ManualOverride,Active,CurrentSetpoint,"\
             "FinalSetpoint,DisplayedRecommendation"
-#        print header
+
         system.file.writeFile(filename, header, True)
 
         for record in pds:
@@ -244,7 +279,9 @@ def run():
     path = system.tag.read("Sandbox/Diagnostic/Final Test/Path").value
     ds = system.tag.read(tableTagPath).value
     post = "XO1TEST"
-    db = "XOM"
+    projectName = "XOM_Test"
+    db = system.tag.read("Sandbox/Diagnostic/Final Test/db").value
+    provider = "XOM"
 
     # Clear the results column for selected rows
     cnt = 0
@@ -256,6 +293,7 @@ def run():
             system.tag.write(tableTagPath, ds) 
                 
             functionName = ds.getValueAt(row, 'function')
+            logger.tracef("Starting to prepare to run: %s", functionName)
 
             # Start with a clean slate            
             initializeDatabase(db)
@@ -264,10 +302,8 @@ def run():
             
             # Run a specific test
             logger.trace("...calling %s..." % (functionName))
-
             from ils.diagToolkit.test import tests
-            applicationName = eval("tests." + functionName)()
-            
+            applicationName = eval("tests." + functionName)(db)
             logger.trace("...done! (application = %s)" % (applicationName))
             
             time.sleep(60)
@@ -383,17 +419,19 @@ def scrubDatabase(applicationName):
     print "Done!" 
     
 # Create everything required for the APP1 test
-def insertApp1():
+def insertApp1(db):
     application='TESTAPP1'
+    messageQueue="Test"
     logbook='Test Logbook'
     post = 'XO1TEST'
     unit = 'TESTUnit'
-    logbookId = insertLogbook(logbook)
-    postId = insertPost(post, logbookId)
+    messageQueueId = insertMessageQueue(messageQueue, db)
+    logbookId = insertLogbook(logbook, db)
+    postId = insertPost(post, messageQueueId, logbookId, db)
     groupRampMethod='Shortest'
-    queueKey='TEST'
+    queueKey='Test'
     managed=1
-    app1Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed)
+    app1Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed, db)
     return app1Id
 
 def insertApp1Families(appId,T1Id,T2Id,T3Id,
@@ -412,197 +450,205 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     FD124Priority=4.5,
     FD125Priority=10.2,
     FD126Priority=1.2,
-    insertExtraRecDef=False
+    insertExtraRecDef=False,
+    db="CRAP"
     ):
     
     family = 'TESTFamily1_1'
     familyPriority=5.4
-    familyId=insertFamily(family, appId, familyPriority)
+    familyId=insertFamily(family, appId, familyPriority, db)
 
     finalDiagnosis = 'TESTFD1_1_1'
     finalDiagnosisPriority=FD111Priority
     textRecommendation = "Final Diagnosis 1.1.1"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD111calculationMethod, 
-        textRecommendation, postProcessingCallback=postProcessingCallback)
-    insertRecommendationDefinition(finalDiagnosisId, T1Id)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD111calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
 
     family = 'TESTFamily1_2'
     familyPriority=7.6
-    familyId=insertFamily(family, appId, familyPriority)
+    familyId=insertFamily(family, appId, familyPriority, db)
     
     finalDiagnosis = 'TESTFD1_2_1'
     finalDiagnosisPriority = FD121Priority
     textRecommendation = "Final Diagnosis 1.2.1"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD121calculationMethod, 
-        textRecommendation, postProcessingCallback=postProcessingCallback)
-    insertRecommendationDefinition(finalDiagnosisId, T1Id)
-    insertRecommendationDefinition(finalDiagnosisId, T2Id)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD121calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
+    insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
     if insertExtraRecDef:
-        insertRecommendationDefinition(finalDiagnosisId, T3Id)
+        insertRecommendationDefinition(finalDiagnosisId, T3Id, db)
 
     finalDiagnosis = 'TESTFD1_2_2'
     finalDiagnosisPriority=FD122Priority
     textRecommendation = "Final Diagnosis 1.2.2"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD122calculationMethod, 
-        textRecommendation, postProcessingCallback=postProcessingCallback)
-    insertRecommendationDefinition(finalDiagnosisId, T2Id)
-    insertRecommendationDefinition(finalDiagnosisId, T3Id)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD122calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
+    insertRecommendationDefinition(finalDiagnosisId, T3Id, db)
     
     finalDiagnosis = 'TESTFD1_2_3'
     finalDiagnosisPriority=FD123Priority
     textRecommendation = "Final Diagnosis 1.2.3"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD123calculationMethod, 
-        textRecommendation, postProcessingCallback=postProcessingCallback)
-    insertRecommendationDefinition(finalDiagnosisId, T1Id)
-    insertRecommendationDefinition(finalDiagnosisId, T2Id)
-    insertRecommendationDefinition(finalDiagnosisId, T3Id)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD123calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
+    insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
+    insertRecommendationDefinition(finalDiagnosisId, T3Id, db)
     
     finalDiagnosis = 'TESTFD1_2_4'
     finalDiagnosisPriority=FD124Priority
     textRecommendation = "Final Diagnosis 1.2.4 is CONstant"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD124calculationMethod, 
-        textRecommendation, constant=1, postProcessingCallback=postProcessingCallback)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD124calculationMethod, textRecommendation, constant=1, postProcessingCallback=postProcessingCallback, db=db)
     
     finalDiagnosis = 'TESTFD1_2_5'
     finalDiagnosisPriority=FD125Priority
     textRecommendation = "Final Diagnosis 1.2.5 is a low priority text recommendation.  "
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD125calculationMethod, 
-        textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD125calculationMethod, textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db)
 
     finalDiagnosis = 'TESTFD1_2_6'
     finalDiagnosisPriority=FD126Priority
     textRecommendation = "Final Diagnosis 1.2.6 is a high priority text recommendation which is correct 95% of the time.  "
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD126calculationMethod, 
-        textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD126calculationMethod, textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db)
 
 # Create everything required for the APP2 test
-def insertApp2():
+def insertApp2(db):
     application='TESTAPP2'
+    messageQueue="Test"
     logbook='Test Logbook'
     post = 'XO1TEST'
     unit = 'TESTUnit'
-    logbookId = insertLogbook(logbook)
-    postId = insertPost(post, logbookId)
+    messageQueueId = insertMessageQueue(messageQueue, db)
+    logbookId = insertLogbook(logbook, db)
+    postId = insertPost(post, messageQueueId, logbookId, db)
     groupRampMethod='Shortest'
-    queueKey='TEST'
+    queueKey='Test'
     managed=1
-    app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed)
+    app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed, db)
     return app2Id
 
-def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id,
-    FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1'
-    ):
+def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1', db="CRAP"):
+    logger.tracef("Entering insertApp2Families...")
 
     family = 'TESTFamily2_1'
     familyPriority=5.2
-    familyId=insertFamily(family, appId, familyPriority)
+    familyId=insertFamily(family, appId, familyPriority, db)
 
     finalDiagnosis = 'TESTFD2_1_1'
     finalDiagnosisPriority=7.8
     textRecommendation = "Final Diagnosis 2.1.1"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD211calculationMethod, textRecommendation)
-    insertRecommendationDefinition(finalDiagnosisId, Q21_id)
-    insertRecommendationDefinition(finalDiagnosisId, Q22_id)
-    insertRecommendationDefinition(finalDiagnosisId, Q23_id)
-    insertRecommendationDefinition(finalDiagnosisId, Q24_id)
-    insertRecommendationDefinition(finalDiagnosisId, Q25_id)
+    logger.tracef("...inserting final diagnosis...")
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD211calculationMethod, textRecommendation, db=db)
+    logger.tracef("...inserting recdefs...")
+    insertRecommendationDefinition(finalDiagnosisId, Q21_id, db)
+    insertRecommendationDefinition(finalDiagnosisId, Q22_id, db)
+    insertRecommendationDefinition(finalDiagnosisId, Q23_id, db)
+    insertRecommendationDefinition(finalDiagnosisId, Q24_id, db)
+    insertRecommendationDefinition(finalDiagnosisId, Q25_id, db)
+    logger.tracef("...done inserting App2!")
 
 # Insert a Quant Output
 def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncrement=-500.0, mostPositiveIncrement=500.0, minimumIncrement=0.0001,
-        setpointHighLimit=1000.0, setpointLowLimit=-1000.0, feedbackMethod='Most Positive', incrementalOutput=True):
+        setpointHighLimit=1000.0, setpointLowLimit=-1000.0, feedbackMethod='Most Positive', incrementalOutput=True, db="CRAP"):
     
     logger.tracef("Inserting QuantOutput named: %s", quantOutput)
-    feedbackMethodId=fetchFeedbackMethodId(feedbackMethod)
+    feedbackMethodId=fetchFeedbackMethodId(feedbackMethod, db)
     SQL = "insert into DtQuantOutput (QuantOutputName, ApplicationId, TagPath, MostNegativeIncrement, MostPositiveIncrement, MinimumIncrement, "\
         "SetpointHighLimit, SetpointLowLimit, FeedbackMethodId, IncrementalOutput) values "\
         "('%s', %i, '%s', %f, %f, %f, %f, %f, %i, '%s')" % \
         (quantOutput, appId, tagPath, mostNegativeIncrement, mostPositiveIncrement, minimumIncrement,
         setpointHighLimit, setpointLowLimit, feedbackMethodId, incrementalOutput)
-    id = system.db.runUpdateQuery(SQL, getKey=True)
-    logger.tracef("...inserted a quant output with id: %d", id)
-    print "Writing ", tagValue, " to ", tagPath
+    logger.tracef("...SQL: %s", SQL)
+    quantOutputId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
+    logger.tracef("...inserted a quant output with id: %d", quantOutputId)
+    logger.tracef("Writing %s to %s", str(tagValue), tagPath)
     system.tag.write(tagPath, tagValue, 60)
-    return id
+    return quantOutputId
+
+# Define a Message Queue
+def insertMessageQueue(messageQueue, db):
+    SQL = "select QueueId from QueueMaster where QueueKey = '%s'" % (messageQueue)
+    queueId = system.db.runScalarQuery(SQL, database=db)
+    
+    if queueId < 0:
+        SQL = "insert into QueueMaster (QueueKey, Title, AutoViewSeverityThreshold, Position, AutoViewAdmin, AutoViewAE, AutoViewOperator) values ('%s', '%s', 10, 'center', 0, 0, 0)" % (messageQueue, messageQueue)
+        queueId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
+    return queueId
 
 # Define a Logbook
-def insertLogbook(logbookName):
+def insertLogbook(logbookName, db):
     SQL = "select logbookId from tkLogbook where LogbookName = '%s'" % (logbookName)
-    logbookId = system.db.runScalarQuery(SQL)
+    logbookId = system.db.runScalarQuery(SQL, database=db)
     
     if logbookId < 0:
         SQL = "insert into TkLogbook (LogbookName) values ('%s')" % (logbookName)
-        logbookId = system.db.runUpdateQuery(SQL, getKey=True)
+        logbookId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     return logbookId
 
 # Define a post
-def insertPost(post, logbookId):
+def insertPost(post, messageQueueId, logbookId, db):
     SQL = "select postId from tkPost where Post = '%s'" % (post)
-    postId = system.db.runScalarQuery(SQL)
+    postId = system.db.runScalarQuery(SQL, database=db)
     
     if postId < 0:
-        SQL = "insert into TkPost (Post, LogbookId) values ('%s', %i)" % (post, logbookId)
-        postId = system.db.runUpdateQuery(SQL, getKey=True)
+        SQL = "insert into TkPost (Post, MessageQueueId, LogbookId, DownloadActive) values ('%s', %d, %d, 0)" % (post, messageQueueId, logbookId)
+        postId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     return postId
 
 # Define a unit
-def insertUnit(unitName, postId):
+def insertUnit(unitName, postId, db):
     SQL = "select unitId from TkUnit where UnitName = '%s'" % (unitName)
-    unitId = system.db.runScalarQuery(SQL)
+    unitId = system.db.runScalarQuery(SQL, database=db)
     
     if unitId < 0:
         SQL = "insert into TkUnit (UnitName, PostId) values ('%s', %s)" % (unitName, str(postId))
-        unitId = system.db.runUpdateQuery(SQL, getKey=True)
+        unitId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     return unitId
 
 # Fetch the Group Ramp Method for the unit
-def fetchGroupRampMethodId(groupRampMethod):
+def fetchGroupRampMethodId(groupRampMethod, db):
     SQL = "select LookupId from Lookup where LookupTypeCode = 'GroupRampMethod' and LookupName = '%s'" % (groupRampMethod)
-    groupRampMethodId = system.db.runScalarQuery(SQL)
+    groupRampMethodId = system.db.runScalarQuery(SQL, database=db)
     return groupRampMethodId
 
-def fetchFeedbackMethodId(feedbackMethod):
+def fetchFeedbackMethodId(feedbackMethod, db):
     SQL = "select LookupId from Lookup where LookupTypeCode = 'FeedbackMethod' and LookupName = '%s'" % (feedbackMethod)
-    feedbackMethodId = system.db.runScalarQuery(SQL)
+    feedbackMethodId = system.db.runScalarQuery(SQL, database=db)
     return feedbackMethodId
 
-def fetchFinalDiagnosisId(finalDiagnosisName):
+def fetchFinalDiagnosisId(finalDiagnosisName, db):
     SQL = "select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName = '%s'" % (finalDiagnosisName)
-    finalDiagnosisId = system.db.runScalarQuery(SQL)
+    finalDiagnosisId = system.db.runScalarQuery(SQL, database=db)
     return finalDiagnosisId
         
 # Fetch the Queue id for the key
-def fetchQueueId(queueKey):
+def fetchQueueId(queueKey, db):
     SQL = "select QueueId from QueueMaster where QueueKey = '%s'" % (queueKey)
-    queueId = system.db.runScalarQuery(SQL)
+    queueId = system.db.runScalarQuery(SQL, database=db)
     return queueId
     
 # Fetch the Post id for the post
-def fetchPostId(post):
+def fetchPostId(post, db):
     SQL = "select PostId from TkPost where Post = '%s'" % (post)
-    postId = system.db.runScalarQuery(SQL)
+    postId = system.db.runScalarQuery(SQL, database=db)
     return postId
     
 # Define an application
-def insertApplication(application, postId, unit, groupRampMethod, queueKey, managed):
-    print "The group ramp method is: ", groupRampMethod
-    unitId=insertUnit(unit, postId)
-    groupRampMethodId=fetchGroupRampMethodId(groupRampMethod)
-    queueId=fetchQueueId(queueKey)
+def insertApplication(application, postId, unit, groupRampMethod, queueKey, managed, db):
+    unitId=insertUnit(unit, postId, db)
+    groupRampMethodId=fetchGroupRampMethodId(groupRampMethod, db)
+    queueId=fetchQueueId(queueKey, db)
     SQL = "insert into DtApplication (applicationName, UnitId, GroupRampMethodId, IncludeInMainMenu, MessageQueueId, Managed, NotificationStrategy)"\
         " values ('%s', %s, %s, 1, %s, %s, 'ocAlert')" % (application, str(unitId), str(groupRampMethodId), str(queueId), str(managed))
-    applicationId = system.db.runUpdateQuery(SQL, getKey=True)
+    applicationId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     return applicationId
 
 # Create all of the families in this Application
-def insertFamily(familyName, applicationId, familyPriority):
+def insertFamily(familyName, applicationId, familyPriority, db):
     SQL = "insert into DtFamily (FamilyName, ApplicationId, FamilyPriority) values ('%s', %i, %f)" % (familyName, applicationId, familyPriority)
-    familyId = system.db.runUpdateQuery(SQL, getKey=True)
+    familyId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     return familyId
 
 # Create a final diagnosis
 def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod='', 
     textRecommendation='', constant=0, postTextRecommendation=0, postProcessingCallback=None, 
-    refreshRate=300):
+    refreshRate=300, db="CRAP"):
 
 #    SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, FamilyId, FinalDiagnosisPriority, CalculationMethod, "\
 #        " TextRecommendation, Constant, PostTextRecommendation, " \
@@ -616,14 +662,26 @@ def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calcu
             " TextRecommendation, Constant, PostTextRecommendation, " \
             " PostProcessingCallback, RefreshRate, Active, State) "\
             " values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)"
+    args = [finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod, 
+        textRecommendation, constant, postTextRecommendation, postProcessingCallback, refreshRate]
+    
+    logger.tracef(SQL)
+    logger.tracef("%s", str(args))
             
-    finalDiagnosisId = system.db.runPrepUpdate(SQL, [finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod, 
-        textRecommendation, constant, postTextRecommendation, postProcessingCallback, refreshRate], getKey=True)
-        
+    finalDiagnosisId = system.db.runPrepUpdate(SQL, args, getKey=True, database=db)
+    logger.tracef("Insert a new Final Diagnosis with id: %d", finalDiagnosisId)
     return finalDiagnosisId
     
 # Create the recommendationDefinitions
-def insertRecommendationDefinition(finalDiagnosisId, quantOutputId):
+def insertRecommendationDefinition(finalDiagnosisId, quantOutputId, db):
     SQL = "insert into DtRecommendationDefinition (FinalDiagnosisId, QuantOutputId) "\
         " values (%i, %i)" % (finalDiagnosisId, quantOutputId)
-    system.db.runUpdateQuery(SQL)
+    system.db.runUpdateQuery(SQL, database=db)
+    
+# Update the text recommendation for a Final Diagnosis
+def updateFinalDiagnosisTextRecommendation(finalDiagnosisName, textRecommendation, db):
+    textRecommendation = escapeSqlQuotes(textRecommendation)
+    SQL = "update DtFinalDiagnosis set TextRecommendation = '%s' where FinalDiagnosisName = '%s' " % (textRecommendation, finalDiagnosisName)
+    logger.tracef(SQL)   
+    rows = system.db.runUpdateQuery(SQL, database=db)
+    logger.tracef("Updated %d rows", rows)
