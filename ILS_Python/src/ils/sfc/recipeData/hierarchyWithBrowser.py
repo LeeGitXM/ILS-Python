@@ -521,10 +521,13 @@ def findRecipeParent(parentId, key, folderPDS):
     log.tracef("=====================")
     log.tracef("Finding the full path for %s - %d", key, parentId)
     path = ""
+    iMax = 100
+    i = 0
 
-    while parentId != None:
+    while parentId != None and i < iMax:
         
         for record in folderPDS:
+            i = i + 1
             if record["RecipeDataFolderId"] == parentId:
                 log.tracef("Found the parent")
                 if path == "":
@@ -545,16 +548,23 @@ def findParent(folderPDS, record):
     log.tracef("------------------")
     path = record["RecipeDataKey"]
     parent = record["ParentRecipeDataFolderId"]
-    log.tracef("Finding the path for %s", path)
+    log.tracef("Finding the path for %s - %s", path, str(parent))
     
     while parent != None:
         
+        ''' If we look through all of the records and we don't find the parent then give up '''
+        found = False
         for record in folderPDS:
             if record["RecipeDataFolderId"] == parent:
                 log.tracef("Found the parent")
                 path = "%s/%s" % (record["RecipeDataKey"], path)
                 parent = record["ParentRecipeDataFolderId"]
                 log.tracef("The new parent id is: %s", parent)
+                found = True
+
+        if not(found):
+            log.errorf("ERROR: Did not find a parent for: %s", str(parent))
+            return path
 
     log.tracef("The path is: %s", path)
     return path

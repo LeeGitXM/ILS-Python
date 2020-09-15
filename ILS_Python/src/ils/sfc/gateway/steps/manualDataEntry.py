@@ -70,7 +70,7 @@ def activate(scopeContext, stepProperties, state):
                     buttonLabel = escapeSqlQuotes(buttonLabel)
 
                 windowPath = getStepProperty(stepProperties, WINDOW)
-                if windowPath in [""]: 
+                if windowPath in ["", "S88-MANUAL-DATA-ENTRY-TASK-DIALOG"]: 
                     windowPath = "SFC/ManualDataEntry"
                 logger.tracef("Using window path: %s", windowPath)
 

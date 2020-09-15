@@ -153,8 +153,7 @@ def internalFrameOpened(rootContainer):
                 else:
                     for i in range(0, numRows):
                         rowLabels.append(str(i))
-                    
-                            
+                         
                 # Now Fetch the array Key
                 if columnIndexKeyId != None:
                     print "Fetching the column key..."
@@ -238,7 +237,7 @@ def internalFrameOpened(rootContainer):
             rootContainer.sqcDataset = pds
         
         elif recipeDataType == GROUP:
-            print "Fetching a Timer"
+            print "Fetching a Folder"
             SQL = "select * from SfcRecipeDataFolder where recipeDataFolderId = %s" % (recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
@@ -253,6 +252,7 @@ def internalFrameOpened(rootContainer):
         rootContainer.label = record["Label"]
         
         if recipeDataType <> GROUP:
+            rootContainer.recipeDataFolderId = record["FolderId"]
             units = record["Units"]
             if units <> None:
                 units = string.upper(units)

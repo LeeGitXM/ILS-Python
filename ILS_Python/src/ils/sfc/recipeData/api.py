@@ -14,6 +14,7 @@ from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, REFERENCE_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
 from ils.queue.constants import QUEUE_WARNING, QUEUE_ERROR
+from ils.common.util import parseBracketedScopeReference, findBracketedScopeReference
 
 logger=system.util.getLogger("com.ils.sfc.recipeData.api")
 
@@ -455,37 +456,12 @@ def clearStashedRecipeData(rxConfig, database):
     SQL = "delete from SfcRecipeDataStash where RxConfigurastion = '%s'" % (rxConfig)
     rows = system.db.runUpdateQuery(SQL, database)
     logger.tracef("   ...deleted %d rows", rows)
-    
-def parseBracketedScopeReference(bracketedRef):
-    '''
-    Break a bracked reference into location and key--e.g. {local:selected-emp.val} gets
-    broken into 'local' and 'selected-emp.val'
-    '''   
-    firstDotIndex = bracketedRef.index('.')
-    location = bracketedRef[1 : firstDotIndex].strip()
-    key = bracketedRef[firstDotIndex + 1 : len(bracketedRef) - 1].strip()
-    return location, key
 
-def findBracketedScopeReference(string):
-    '''
-     Find the first bracketed reference in the string, e.g. {local:selected-emp.val}
-     or return None if not found
-     '''
-    lbIndex = string.find('{')
-    rbIndex = string.find('}')
-    firstDotIndex = string.find('.', lbIndex)
-    if lbIndex != -1 and rbIndex != -1 and firstDotIndex != -1 and rbIndex > firstDotIndex:
-        return string[lbIndex : rbIndex+1]
-    else:
-        return None
-
-'''
-Substitute for scope variable references in text strings, e.g. '{local:selected-emp.value}'
-This makes a text string dynamic by updating recipe data references.
-'''
 def substituteScopeReferences(chartProperties, stepProperties, txt):
-
-    # really wish Python had a do-while loop...
+    '''
+    Substitute for scope variable references in text strings, e.g. '{local:selected-emp.value}'
+    This makes a text string dynamic by updating recipe data references.
+    '''
     while True:
         ref = findBracketedScopeReference(txt)
         if ref != None:

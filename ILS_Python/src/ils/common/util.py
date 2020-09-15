@@ -7,7 +7,7 @@ Created on Sep 10, 2014
 import system, string, re
 log = system.util.getLogger("com.ils.common.util")
 from ils.common.config import getTagProvider
-from ils.common.constants import CR
+from ils.common.constants import CR, TAG
 from system.date import secondsBetween
 
 def append(t1, t2):
@@ -257,6 +257,59 @@ def escapeJSON(txt):
     txt = str(txt)
     txt = string.replace(txt, "\"", '\\\"')
     return txt
+
+def parseBracketedScopeReference(bracketedRef):
+    '''
+    Break a bracketed reference into location and key--e.g. {local:selected-emp.val} gets
+    broken into 'local' and 'selected-emp.val'
+    '''   
+    firstDotIndex = bracketedRef.index('.')
+    location = bracketedRef[1 : firstDotIndex].strip()
+    key = bracketedRef[firstDotIndex + 1 : len(bracketedRef) - 1].strip()
+    return location, key
+
+def findBracketedScopeReference(string):
+    '''
+     Find the first bracketed reference in the string, e.g. {local:selected-emp.val}
+     or return None if not found
+     '''
+    lbIndex = string.find('{')
+    rbIndex = string.find('}')
+    firstDotIndex = string.find('.', lbIndex)
+    if lbIndex != -1 and rbIndex != -1 and firstDotIndex != -1 and rbIndex > firstDotIndex:
+        return string[lbIndex : rbIndex+1]
+    else:
+        return None
+
+
+def substituteScopeReferences(txt, provider):
+    '''
+    Substitute for scope variable references in text strings, e.g. '{local:selected-emp.value}'
+    This makes a text string dynamic by updating tag references.  This is generic, so we do not know about recipe data.
+    There is another version of this in SFC which supports recipe data
+    '''
+    while True:
+        ref = findBracketedScopeReference(txt)
+        if ref != None:
+            location, key = parseBracketedScopeReference(ref)
+            log.infof("...found %s - %s", location, key)
+            location = location.lower()
+            if location == TAG:
+                tagPath = key
+                
+                # If they explicitly specified a tag provider, then do not add the one from the engine that is aware of Production / Isolation mode
+                if tagPath.find("[") < 0:
+                    tagPath = "[%s]%s" % (provider, tagPath)
+                    
+                value = system.tag.read(tagPath).value
+            else:
+                value = ref
+            txt = txt.replace(ref, str(value))
+        else:
+            break
+
+    return txt
+
 
 def substituteProvider(tagPath, provider):
     '''alter the given tag path to reflect the supplied provider'''

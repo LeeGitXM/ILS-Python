@@ -7,6 +7,15 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.SQL")
 
+def version():
+    SQL = "select VersionId, Version, ReleaseDate from Version where VersionId = (select MAX(VersionId) from Version)"
+    pds = system.db.runQuery(SQL)
+    record = pds[0]
+    version = record["Version"]
+    releaseDate = record["ReleaseDate"]
+    releaseDate = system.date.format(releaseDate, "MMMM d, yyyy")
+    return version, releaseDate
+
 # Convert the Python Data Set (PDS) to a list of dictionaries 
 def toDict(pds):
     records = []

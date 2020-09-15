@@ -9,16 +9,18 @@ from ils.sfc.common.constants import SQL
 from ils.common.constants import CR
 from ils.diagToolkit.constants import OBSERVATION_BLOCK_LIST
 from ils.common.operatorLogbook import insertForPost
+from ils.queue.message import insertPostMessage
+from ils.queue.constants import QUEUE_INFO
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.common.util import dsToText
 from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 from ils.diagToolkit.api import resetManualMove
 
-log = system.util.getLogger("com.ils.diagToolkit")
+log = system.util.getLogger("com.ils.diagToolkit.setpointSpreadsheet")
 
 def initialize(rootContainer):
-    print "In %s.initialize()..." % (__name__)
+    log.infof("In %s.initialize()...", __name__)
     rootContainer.initializationComplete = False
     rootContainer.recalculateFlag = False
     rootContainer.lastAction = "opened"
@@ -27,7 +29,7 @@ def initialize(rootContainer):
 
 
 def refresh(rootContainer):
-    print "In %s.refresh()..." % (__name__)
+    log.infof("In %s.refresh()...", __name__)
     db=system.tag.read("[Client]Database").value
     
     post = rootContainer.post
@@ -40,16 +42,18 @@ def refresh(rootContainer):
 
     #----------------------------------------------------------
     def initializationComplete(rootContainer=rootContainer):
-        print "Setting initializationComplete to TRUE"
+        log.tracef("Setting initializationComplete to TRUE")
         rootContainer.initializationComplete = True
     #----------------------------------------------------------
 
     system.util.invokeLater(initializationComplete, 1000)
-    
+
+
 def getSetpointSpreadsheetDataset(post, db):
+    log.infof("In %s.getSetpointSpreadsheetDataset()...", __name__)
     from ils.diagToolkit.common import fetchActiveOutputsForPost
     pds = fetchActiveOutputsForPost(post, db)
-    print "...fetched %d active outputs" % (len(pds))
+    log.infof("...fetched %d active outputs", len(pds))
     
     # Create the data structures that will be used to make the dataset the drives the template repeater
     header=['type','row','selected','qoId','command','commandValue','application','output','tag','setpoint','manualOverride','recommendation','finalSetpoint','status','downloadStatus','numberFormat','ramp']
@@ -61,6 +65,11 @@ def getSetpointSpreadsheetDataset(post, db):
     application = ""
     i = 1
     for record in pds:
+        log.infof("%s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s", \
+                  record['ApplicationName'], record["QuantOutputName"], record["TagPath"], record["OutputLimitedStatus"], record["OutputLimited"], \
+                  str(record["FeedbackOutput"]), str(record["FeedbackOutputManual"]), str(record["FeedbackOutputConditioned"]), str(record["ManualOverride"]), \
+                  str(record["IncrementalOutput"]), str(record["CurrentSetpoint"]), str(record["FinalSetpoint"]), str(record["DisplayedRecommendation"]), str(record["QuantOutputId"]), \
+                  str(record["DownloadAction"]), str(record["DownloadStatus"]), str(record["Ramp"]))
         
         # If the record that we are processing is for a different application, or if this is the first row, then insert an application divider row
         if record['ApplicationName'] != application:
@@ -113,12 +122,15 @@ def getSetpointSpreadsheetDataset(post, db):
             numberPattern= system.tag.read(tagPath + ".FormatString").value
             
             action = record['DownloadAction']
+    
             if action == 'GO':
                 actionValue = 0
             else:
                 actionValue = 1
+
             row = ['row',i,0,record['QuantOutputId'],action,actionValue,application,record['QuantOutputName'],record['TagPath'],record['CurrentSetpoint'],
                    record['ManualOverride'],record['DisplayedRecommendation'],record['FinalSetpoint'],statusMessage,record['DownloadStatus'],numberPattern, str(record['Ramp'])]
+            log.tracef("Appending row: %s", str(row))
             rows.append(row)
             i = i + 1
 
@@ -129,7 +141,7 @@ def getSetpointSpreadsheetDataset(post, db):
 # download status (Error or Success) in each of the outputs that are marked as GO 
 def checkIfDownloadComplete(event):
     rootContainer = event.source.parent
-    print "Checking if the download is complete..."
+    log.infof("Checking if the download is complete...")
     downloadComplete = True
     
     repeater=rootContainer.getComponent("Template Repeater")
@@ -141,12 +153,12 @@ def checkIfDownloadComplete(event):
             if string.upper(command) == 'GO':
                 downloadStatus=ds.getValueAt(row, "downloadStatus")
                 if downloadStatus not in ['Error', 'Success']:
-                    print "   ...found an output still working on row ", row
+                    log.tracef("   ...found an output still working on row: %d ", row)
                     downloadComplete = False
 
     # Only update the database if downloadComplete is True, we assume it is True since this is running
     if downloadComplete:
-        print "...the download is complete..."
+        log.infof("...the download is complete...")
         
         ''' Make a logbook message for the download BEFORE we reset the FDs in the DB '''
         post = rootContainer.post
@@ -178,15 +190,15 @@ def checkIfDownloadComplete(event):
                         writesWereSuccessful = False
 
         if writesWereSuccessful:
-            print "...all of the writes were successful, resetting diagrams and checking if all applications were processed..."
+            log.infof("...all of the writes were successful, resetting diagrams and checking if all applications were processed...")
             allApplicationsProcessed=postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage=DOWNLOAD, recommendationStatus=DOWNLOAD)
         
             # If they disabled some applications then leave the spreadsheet open, otherwise dismiss it
             if allApplicationsProcessed:
-                print "...all applications were processed, closing the setpoint spreadsheet..."
+                log.infof("...all applications were processed, closing the setpoint spreadsheet...")
                 system.nav.closeParentWindow(event)
             else:
-                print "...not all applications were processed, hide the spreadsheet but leave the window open..."
+                log.infof("...not all applications were processed, hide the spreadsheet but leave the window open...")
                 rootContainer.recalculateFlag = True
     
 # This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
@@ -195,7 +207,6 @@ def updateQuantOutputAction(rootContainer, ds, row, action):
     database=system.tag.read("[Client]Database").value
     quantOutputId = ds.getValueAt(row, 'qoId')
     SQL = "update DtQuantOutput set DownloadAction = '%s' where QuantOutputId = %i " % (action, quantOutputId)
-    print SQL
     system.db.runUpdateQuery(SQL, database)
 
 # This fetches the flag from the TkPost table and sets the flag on the rootContainer
@@ -212,7 +223,7 @@ def updateDownloadActiveFlag(post, state, db):
     system.db.runUpdateQuery(SQL, db)
 
 def resetAllApplicationAndOutputActions(rootContainer):
-    print "Resetting the action of all applications"
+    log.infof("Resetting the action of all applications")
     repeater = rootContainer.getComponent("Template Repeater")
     ds = repeater.templateParams
     pds = system.dataset.toPyDataSet(ds)
@@ -223,7 +234,7 @@ def resetAllApplicationAndOutputActions(rootContainer):
         elif record[0] == 'row':
             updateQuantOutputAction(rootContainer, ds, row, "GO")
         else:
-            print "skipped a ", record[0]
+            log.tracef("skipped a %s", str(record[0]))
             
         row = row + 1
 
@@ -234,17 +245,17 @@ def updateApplicationAction(rootContainer, ds, row, action):
     database=system.tag.read("[Client]Database").value
     applicationName = ds.getValueAt(row, 'application')
     SQL = "update DtApplication set DownloadAction = '%s' where ApplicationName = '%s'" % (string.upper(action), applicationName)
-    print SQL
     system.db.runUpdateQuery(SQL, database)
 
 def fetchApplicationDownloadAction(applicationName, database):
+    log.tracef("In %s.fetchApplicationDownloadAction()", __name__)
     SQL = "select DownloadAction from DtApplication where applicationName = '%s'" % (applicationName)
     downloadAction = system.db.runScalarQuery(SQL, db=database)
-    print "Fetched %s for %s" % (downloadAction, applicationName)
+    log.tracef("Fetched %s for %s", downloadAction, applicationName)
     return downloadAction
 
 def writeFileCallback(rootContainer):
-    print "In writeFileCallback()..."
+    log.tracef("In %s.writeFileCallback()...", __name__)
     logFileName=system.file.openFile('*.log')
     if logFileName <> None:
         writeFile(rootContainer, logFileName)
@@ -253,12 +264,12 @@ def writeFileCallback(rootContainer):
 # and as part of a download request.  The contents of the file are not simply the lines of the spreadsheet, in order to keep
 # the same format as the old platform, we need to query the database and get the data that was used to build the spreadsheet.
 def writeFile(rootContainer, filepath):
-    print "In writeFile() to ", filepath
+    log.tracef("In %s.writeFile() to %s", __name__, filepath)
     post = rootContainer.post
 
     exists=system.file.fileExists(filepath)
     if not(exists):
-        print "Write some sort of new file header"
+        log.warnf("Write some sort of new file header")
 
     from ils.diagToolkit.common import fetchApplicationsForPost
     applicationPDS = fetchApplicationsForPost(post)
@@ -274,7 +285,7 @@ def writeFile(rootContainer, filepath):
             finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
             multiplier=finalDiagnosisRecord['Multiplier']
             recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
-            print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
+            log.tracef("Final Diagnosis: %s - %d - %s", finalDiagnosis, finalDiagnosisId, recommendationErrorText)
             
             if multiplier < 0.99 or multiplier > 1.01:
                 system.file.writeFile(filepath, "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier), True)
@@ -287,12 +298,11 @@ def writeFile(rootContainer, filepath):
             from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
             rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
             for rootCause in rootCauseList:
-                print "Root cause: ????", rootCause
+                log.tracef("Root cause: %s", str(rootCause))
 
             from ils.diagToolkit.common import fetchOutputsForFinalDiagnosis
             pds, outputs=fetchOutputsForFinalDiagnosis(application, family, finalDiagnosis)
             for record in outputs:
-                print record
                 quantOutput = record.get('QuantOutput','')
                 tagPath = record.get('TagPath','')
                 feedbackOutput=record.get('FeedbackOutput',0.0)
@@ -300,7 +310,7 @@ def writeFile(rootContainer, filepath):
                 manualOverride=record.get('ManualOverride', False)
                 outputLimited=record.get('OutputLimited', False)
                 outputLimitedStatus=record.get('OutputLimitedStatus', '')
-                print "Manual Override: ", manualOverride
+    
                 txt = "          the desired change in %s = %f" % (tagPath, feedbackOutput)
                 if manualOverride:
                     txt = "%s  (manually specified)" % (txt)
@@ -309,7 +319,6 @@ def writeFile(rootContainer, filepath):
                 if outputLimited and feedbackOutput != 0.0:
                     txt = "          change to %s returnadjusted to %f because %s" % (quantOutput, feedbackOutputConditioned, outputLimitedStatus)
 
-    print "Done!"
 
 def detailsCallback(rootContainer):
     post = rootContainer.post
@@ -420,10 +429,10 @@ def recalcCallback(event):
                 if application not in applications:
                     applications.append(application)
 
-    print "Sending a RECALC message to the gateway for post: %s, applications: %s (database: %s)" % (post, str(applications), database)
+    log.infof("Sending a RECALC message to the gateway for post: %s, applications: %s (database: %s)", post, str(applications), database)
     projectName=system.util.getProjectName()
     payload={"post": post, "database": database, "provider": tagProvider, "applications": applications}
-    print "The payload is: ", payload
+    log.infof("   the payload is: %s", str(payload))
     system.util.sendMessage(projectName, "recalc", payload, "G")  
 
 
@@ -433,12 +442,12 @@ def recalcCallback(event):
 # refresh time anyway.
 def recalcTimer(event):
     rootContainer = event.source.parent
-    print "Checking the recalculation timer..." 
+    log.tracef("Checking the recalculation timer...") 
     
     #--------------------------------------------------------
     def checkRecalcTime(projectName, applicationName, finalDiagnosisIds):
         
-        print "Checking recalculate application: %s, FDs: %s" % (applicationName, str(finalDiagnosisIds))
+        log.tracef("Checking recalculate application: %s, FDs: %s", applicationName, str(finalDiagnosisIds))
 
         recalculateFlag = False
         for finalDiagnosisId in finalDiagnosisIds:
@@ -451,13 +460,12 @@ def recalcTimer(event):
     
             lastRecommendationTime = record["LastRecommendationTime"]
             refreshRate = record["RefreshRate"]
-            print "    Final Diagnosis Id: %s, last Recomendation time: %s, refresh rate: %s" % (str(finalDiagnosisId), str(lastRecommendationTime), str(refreshRate))
+            log.tracef("    Final Diagnosis Id: %s, last Recomendation time: %s, refresh rate: %s", str(finalDiagnosisId), str(lastRecommendationTime), str(refreshRate))
 
             # The refresh rate is in minutes
             minutesSinceLastCalc = system.date.minutesBetween(lastRecommendationTime, system.date.now())
-            print "    The minutes since last recalc is: ", minutesSinceLastCalc
             if minutesSinceLastCalc > refreshRate:
-                print "*** It is time to recalc ***"
+                log.infof("*** It is time to recalc ***")
                 recalculateFlag = True
     
         return recalculateFlag
@@ -524,13 +532,13 @@ def recalcTimer(event):
         post=rootContainer.post
         tagProvider=system.tag.read("[Client]Tag Provider").value
         payload={"post": post, "database": db, "provider": tagProvider, "applications": [applicationName]}
-        print "Sending a RECALC message to the gateway to manage applications: %s (database: %s)" % (str(payload), db)
+        log.infof("Sending a RECALC message to the gateway to manage applications: %s (database: %s)", str(payload), db)
         system.util.sendMessage(projectName, "recalc", payload, "G")  
     
     
 # This is called from the WAIT button on the set-point spreadsheet
 def waitCallback(event):
-    print "Processing a WAIT-FOR-MORE-DATA..."
+    log.infof("In %s.waitCallback() processing a WAIT-FOR-MORE-DATA...", __name__)
     rootContainer=event.source.parent
     post = rootContainer.post
 
@@ -558,7 +566,7 @@ def waitCallback(event):
 
 # This is called from the NO DOWNLOAD button on the set-point spreadsheet
 def noDownloadCallback(event):
-    print "Processing a NO-DOWNLOAD..."
+    log.infof("In %s.noDownloadCallback() processing a NO-DOWNLOAD...", __name__)
     rootContainer=event.source.parent
     post = rootContainer.post
     
@@ -571,7 +579,7 @@ def noDownloadCallback(event):
     
     activeApplication = isThereAnActiveApplication(repeater)
     if activeApplication:
-        print "There IS an active application..."
+        log.tracef("There IS an active application...")
         ds = repeater.templateParams
         
         # Write something useful to the logbook to document this No Download        
@@ -595,11 +603,11 @@ This is called when the operator does a download or a No Download.  It closes an
 It does not check other clients.  It doesn't worry about if the operator only selected one output or application.
 '''
 def hideDetailMap():
-    print "Hiding..."
     windows = system.gui.getOpenedWindows()
     for window in windows:
         if window.getPath() == "DiagToolkit/Recommendation Map":
             system.nav.closeWindow(window)
+
 
 def isThereAnActiveApplication(repeater):
     ds = repeater.templateParams
@@ -614,7 +622,6 @@ def isThereAnActiveApplication(repeater):
             if string.upper(command) == 'ACTIVE':
                 active = True
 
-    print "Active Application: ", active
     return active
 
 # This is called when we do a "No Download" or "Wait For More Data".
@@ -670,7 +677,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
                         if rec["FamilyName"] not in families:
                             families.append(rec["FamilyName"])
             else:
-                print "Checking quant output for an application that is not active..."
+                log.infof("Checking quant output for an application that is not active...")
                 quantOutputId=ds.getValueAt(row, "qoId")
                 log.infof("Updating the DownloadAction for quant output <%s> to <GO>", str(quantOutputId))
                 SQL = "update DtQuantOutput set downloadAction = 'GO' where QuantOutputId = %s" % ( str(quantOutputId) )
@@ -682,7 +689,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     # that may be displayed on multiple clients.  This callback is running in a client, if I just call 
     # initialize it will just update this client.  Because the database and blocks have been reset,
     # I should be able to call recalc in the gateway which will notify client to update the spreadsheet
-    print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
+    log.infof("Sending a message to manage applications for post: %s (database: %s)", post, db)
     projectName=system.util.getProjectName()
     payload={"post": post, "database": db, "provider": tagProvider, "applications": applications}
     system.util.sendMessage(projectName, "recalc", payload, "G")
@@ -690,7 +697,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
     from ils.diagToolkit.finalDiagnosis import requestToManage
     requestToManage(application, db, tagProvider)
     
-    print "...done post action processing!"
+    log.infof("...done post action processing!")
     return allApplicationsProcessed
 
 
@@ -699,17 +706,17 @@ def resetter(post, application, families, finalDiagnosisIds, quantOutputIds, act
     log.infof("In %s.resetter(), the action is %s", __name__, actionMessage)
         
     if len(finalDiagnosisIds) == 0:
-        print "...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones..."
+        log.infof("...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones...")
         from ils.diagToolkit.common import fetchActiveDiagnosis
         pds = fetchActiveDiagnosis(application, db)
         finalDiagnosisIds=[]
         for record in pds:
             finalDiagnosisIds.append(record["FinalDiagnosisId"])
 
-    print "Resetting: "
-    print "  Application: ", application
-    print "  Families:    ", families
-    print "  FDs:         ", finalDiagnosisIds
+    log.infof("Resetting: ")
+    log.infof("   Application: %s", application)
+    log.infof("   Families: %s", str(families))
+    log.infof("   FDs:%s", str(finalDiagnosisIds))
     
     ''' I'm not sure why I am fetching these since they are passed in '''
     quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
@@ -780,7 +787,7 @@ def postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, acti
         for familyName in families:
             msg+=delimiter + familyName
             delimiter=" ,"
-    print "Posting <%s>" % (msg)
+    log.infof("Posting <%s>", msg)
     from ils.queue.message import insert
     insert(queueKey, "Info", msg, database)
 
@@ -813,6 +820,7 @@ def resetRecommendations(quantOutputIds, actionMessage, log, database):
         cnt=system.db.runUpdateQuery(SQL, database)
         rows+=cnt
     log.info("Deleted %i recommendations..." % (rows))
+
 
 def resetFinalDiagnosis(applicationName, actionMessage, finalDiagnosisIds, log, database, provider, enablePostProcessingCallback=True):
     log.info("Resetting Final Diagnosis for application %s" % (applicationName))
@@ -862,7 +870,7 @@ def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log,
             # The method contains a full python path, including the method name
             separator=string.rfind(callback, ".")
             packagemodule=callback[0:separator]
-            print "Packagemodule: ", packagemodule
+            log.infof("Packagemodule: %s", packagemodule)
             separator=string.rfind(packagemodule, ".")
             package = packagemodule[0:separator]
             module  = packagemodule[separator+1:]
@@ -1020,14 +1028,14 @@ def partialResetDiagram(finalDiagnosisIds, database):
                 
             finalDiagnosisUUID=record["FinalDiagnosisUUID"]
             
-            print "Diagram: <%s>, FD: <%s>" % (str(diagramUUID), str(finalDiagnosisUUID))
+            log.infof("   Diagram: <%s>, FD: <%s>", str(diagramUUID), str(finalDiagnosisUUID))           
+            log.infof("   ... Resetting the final diagnosis: %s  %s...", finalDiagnosisName, diagramUUID)
             
-            print "   ... Resetting the final diagnosis: %s  %s..." % (finalDiagnosisName, diagramUUID)
             system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
             system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
             system.ils.blt.diagram.propagateBlockState(diagramUUID, diagramUUID)
                         
-            print "Fetching upstream blocks for diagram <%s> - final diagnosis <%s>..." % (str(diagramUUID), finalDiagnosisName)
+            log.infof("Fetching upstream blocks for diagram <%s> - final diagnosis <%s>...", str(diagramUUID), finalDiagnosisName)
 
             downstreamBlocks=[]
             if diagramUUID != None and finalDiagnosisUUID != None:
@@ -1045,12 +1053,12 @@ def partialResetDiagram(finalDiagnosisIds, database):
                     # trigger other diagnosis, but the diagnosis connected to this logic-filter will effectively
                     # be inhibited from firing based on the configuration of the logic filter. 
                     if blockClass == "LogicFilter":
-                        print "   ... found a logic filter named: %s  %s  %s..." % (blockName,diagramUUID, UUID)
+                        log.infof("   ... found a logic filter named: %s  %s  %s...", blockName,diagramUUID, UUID)
                         system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
                     
                     elif blockClass in ["SQC", "SQCDiagnosis", "TrendDetector"]:
                         # Set the state to UNKNOWN, then propagate
-                        print "   ... setting a %s named: %s to UNKNOWN (%s  %s)..." % (blockClass, blockName, parentUUID, UUID)
+                        log.infof("   ... setting a %s named: %s to UNKNOWN (%s  %s)...", blockClass, blockName, parentUUID, UUID)
                         system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
                         system.ils.blt.diagram.propagateBlockState(parentUUID, UUID)
  
@@ -1080,18 +1088,21 @@ def partialResetDiagram(finalDiagnosisIds, database):
     we set to unknown.  The key is making sure that the watermark disappears when the next datapoint arrives.
     '''
     for diagramUUID in diagramUUIDs:
-        print "Setting the watermark on %s", diagramUUID
+        log.infof("Setting the watermark on %s", diagramUUID)
         system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
 
+
 def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, newValue):
-    # I'm not sure if this will work out, but it would be nice to validate the manual entry and provide some 
-    # feedback back to the operator
+    '''
+    This runs in the client when they edit the Recommendation field of the setpoint spreadsheet.
+    I'm not sure if this will work out, but it would be nice to validate the manual entry and provide some feedback back to the operator.
+    '''
     log.infof("In %s.manualEdit()", __name__)
     valid=True
-    txt=""
     
     database=getDatabaseClient()
-    tagProvider=getTagProviderClient() 
+    tagProvider=getTagProviderClient()
+    projectName = system.util.getProjectName()
     
     SQL = "update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %f "\
         "where QuantOutputId = %i" % (newValue, quantOutputId)
@@ -1111,6 +1122,10 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     quantOutputName=quantOutput.get("QuantOutput","")
     log.tracef("Before: %s", str(quantOutput))
     
+    ''' Insert a message into the queue so that we can help debug the setpoint spreadsheet '''
+    txt = "A manual recommendation of %s was entered for %s (id: %d)" % (str(newValue), quantOutputName, quantOutputId)
+    insertPostMessage(post, QUEUE_INFO, txt, database, projectName)
+    
     from ils.diagToolkit.finalDiagnosis import checkBounds
     quantOutput, madeSignificantRecommendation = checkBounds(applicationName, quantOutput, quantOutputName, database, tagProvider)
     
@@ -1122,7 +1137,8 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     # Now refresh the screen
     initialize(rootContainer)
     
-    return valid, txt
+    return valid, ""
+
 
 # This is called when the operator acknowledges a text alert.  It should effectively do a NO Download on the
 # application.  This is called from the ACK button on the loud workspace.
@@ -1144,10 +1160,10 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
     familyName = fetchFamilyNameForFinalDiagnosisId(finalDiagnosisId)
     families = [familyName]
 
-    print "Resetting: "
-    print "  Application: ", application
-    print "  Families:    ", families
-    print "  FDs:         ", finalDiagnosisIds
+    log.infof("Resetting: ")
+    log.infof("  Application: %s", application)
+    log.infof("  Families:    %s", str(families))
+    log.infof("  FDs:         %s", str(finalDiagnosisIds))
         
     quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
 
@@ -1155,16 +1171,15 @@ def acknowledgeTextRecommendationProcessing(post, application, diagnosisEntryId,
 
     SQL = "delete from DtTextRecommendation where DiagnosisEntryId = %i" % (diagnosisEntryId)
     rows = system.db.runUpdateQuery(SQL, database=db)
-    print "...deleted %i text recommendations..." % (rows)
-
-    print "...done acknowledging text recommendation!"
+    log.infof("...deleted %d text recommendations...", rows)
+    log.infof("...done acknowledging text recommendation!")
     
     # Refresh the spreadsheet - This needs to be done in a general way that will update the spreadsheet 
     # that may be displayed on multiple clients.  This callback is running in a client, if I just call 
     # initialize it will just update this client.  Because the database and blocks have been reset,
     # I should be able to call recalc in the gateway which will notify client to update the spreadsheet
     if recalc:
-        print "Sending a message to manage applications for post: %s (database: %s)" % (post, db)
+        log.infof("Sending a message to manage applications for post: %s (database: %s)", post, db)
         projectName=system.util.getProjectName()
         payload={"post": post, "database": db, "provider": provider, "applications": [application]}
         system.util.sendMessage(projectName, "recalc", payload, "G")

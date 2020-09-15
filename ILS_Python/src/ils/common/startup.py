@@ -121,7 +121,7 @@ def clientCommon():
 
     # I need some window open in order to remove the menu until Chuck can tell me how to get the menubar when there isn't a window
     if window == None:
-        window=system.nav.openWindow("Admin/Versions")
+        window=system.nav.openWindow("Admin/Versions", {"StartupMode": True})
         system.nav.centerWindow(window)
     
     '''
@@ -194,6 +194,7 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions = []
         dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})
         dbVersions.append({"versionId": 2, "version": "1.2r0", "filename": "update_1.2r0.sql", "releaseData": "2020-06-22"})
+        dbVersions.append({"versionId": 3, "version": "1.3r0", "filename": "update_1.3r0.sql", "releaseData": "2020-09-14"})
         
         projectName = system.util.getProjectName()
         system.util.setLoggingLevel("com.ils.common.startup", "trace")

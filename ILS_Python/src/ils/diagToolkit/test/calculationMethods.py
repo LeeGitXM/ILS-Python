@@ -69,8 +69,6 @@ def runTest(database, provider, table):
     table.data=ds
     
     
-
-
 def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In %s.fd1_1_1" % (__name__)
     explanation = "Close the valve because the flow is too great and needs to be minimized to reduce flooding in the control room."
@@ -377,9 +375,14 @@ def fd2_1_1e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
 
 
 def postDownloadSpecialActions(applicationName, actionMessage, finalDiagnosisId, provider, database):
+    '''
+    This will run in client scope!
+    '''
     print "********************************"
     print "* In %s.postDownloadSpecialActions()" % (__name__)
     print "*     DOING SPECIAL ACTIONS    *"
+    print "*     Application: %s" % (applicationName)
+    print "*     Action: %s" % (actionMessage)
     print "********************************"
 
 def lowViscosityHighFeed(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):

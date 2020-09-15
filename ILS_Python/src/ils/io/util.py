@@ -129,8 +129,6 @@ def isUDT(fullTagPath):
     return isUDT
 
 def getOutputForTagPath(tagProvider, tagPath, outputType):
-    print "Getting the output path for <%s> <%s>" % (tagPath, outputType)
-    
     isolationMode = False
     if tagProvider == getIsolationTagProvider():
         isolationMode = True
@@ -149,7 +147,6 @@ def getOutputForTagPath(tagProvider, tagPath, outputType):
         else:
             raise ValueError, "Unexpected python I/O class <%s> for <%s> in %s" % (pythonClass, tagPath, __name__)
         
-    print "...returning <%s>" % (tagPath)
     return tagPath
 
 # This is the easier method but I need to know how to decode the tagTypoe integer

@@ -14,6 +14,11 @@ def internalFrameActivated(rootContainer):
     rootContainer.CommonVersion=version
     rootContainer.CommonReleaseDate=releaseDate
     
+    import ils.common.database as database 
+    version, releaseDate = database.version()
+    rootContainer.DatabaseVersion=version
+    rootContainer.DatabaseReleaseDate=releaseDate
+    
     import ils.diagToolkit.version as diagToolkit 
     version, releaseDate = diagToolkit.version()
     rootContainer.DiagToolkitVersion=version
