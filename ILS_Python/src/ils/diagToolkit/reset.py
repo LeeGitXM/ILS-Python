@@ -74,12 +74,12 @@ def resetApplication(unit, database, tagProvider):
     downstreamBlocks=[]
     for block in blocks:
         blockName=block.getName()
-        blockClass=block.getClassName()
+        blockClass=stripPrefix(block.getClassName())
         blockUUID=block.getIdString()
         parentUUID=block.getAttributes().get("parent")  # The parent of a block is the diagram it is on
         log.trace("    Found a %s - %s " % (blockName, blockClass))
         
-        if not(string.find(blockClass, "sqcdiagnosis.SQCDiagnosis") == 0 or string.find(blockClass, "trenddiagnosis.TrendDiagnosis") == 0):
+        if blockClass in ["SQCDiagnosis", "TrendDiagnosis"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
 
             resetAndPropagate(block)
@@ -97,11 +97,11 @@ def resetApplication(unit, database, tagProvider):
                 if tBlock not in downstreamBlocks:
                     downstreamBlocks.append(tBlock)
                     
-        elif blockClass in ["com.ils.block.SQC"]:
+        elif blockClass in ["SQC"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
             resetAndPropagate(block)
         
-        elif blockClass in ["com.ils.block.Inhibitor"]:
+        elif blockClass in ["Inhibitor"]:
             log.info("   ...resetting %s, a %s <%s>..." % (blockName, blockClass, parentUUID))
             system.ils.blt.diagram.sendSignal(parentUUID, blockName, "inhibit", "Grade Change")
 
@@ -110,10 +110,10 @@ def resetApplication(unit, database, tagProvider):
     log.info("...resetting non-constant final diagnosis that are downstream of SQC diagnosis blocks (there are %i downstream blocks)..." % (len(downstreamBlocks)))
     upstreamBlocks=[]
     for block in downstreamBlocks:
-        blockClass=block.getClassName()
+        blockClass=stripPrefix(block.getClassName())
         blockName=block.getName()
         
-        if not(string.find(blockClass, "finaldiagnosis.FinalDiagnosis") == 0):
+        if blockClass in ["FinalDiagnosis"]:
             blockUUID=block.getIdString()
             blockName=block.getName()
               
@@ -162,12 +162,12 @@ def resetApplication(unit, database, tagProvider):
     
     log.info("...touching TruthValuePulse blocks...")
     for block in upstreamBlocks:
-        blockClass=block.getClassName()
+        blockClass=stripPrefix(block.getClassName())
         blockName=block.getName()
         
         log.trace("      looking at %s - %s" % (blockName, blockClass))
 
-        if blockClass in ["com.ils.block.TruthValuePulse"]:
+        if blockClass in ["TruthValuePulse"]:
             parentUUID=block.getAttributes().get("parent")
 
             log.info("   ...resetting a %s named: %s on diagram: %s..." % (blockClass, blockName, parentUUID))
@@ -199,9 +199,9 @@ def removeLatchedBlocks(upstreamBlocks):
     log.info("   ...removing blocks upstream of latches...")
     blocksUpstreamOfLatches=[]
     for block in upstreamBlocks:
-        blockClass=block.getClassName()
+        blockClass=stripPrefix(block.getClassName())
         
-        if blockClass in ["com.ils.block.LogicLatch"]:
+        if blockClass in ["LogicLatch"]:
             blockName=block.getName()
             log.info("      Found a latch named %s..." % (blockName))
             parentUUID=block.getAttributes().get("parent")
@@ -220,3 +220,6 @@ def removeLatchedBlocks(upstreamBlocks):
             upstreamBlocks.remove(block)
     
     return upstreamBlocks
+
+def stripPrefix(className):
+    return className[className.rfind("."):]
