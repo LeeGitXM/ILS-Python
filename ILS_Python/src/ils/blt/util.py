@@ -80,7 +80,7 @@ def getBlockAnchors(block,anchors):
 
 def getBlockProperties(block,properties):
     '''
-    Given an instance of an executable block, write its properties to the supplied list (properties) as specified in the Gateway startup script.
+    Given an instance of an executable block, write its properties to the supplied list (properties).
     '''
     if block!=None:
         dictionary = block.getProperties()

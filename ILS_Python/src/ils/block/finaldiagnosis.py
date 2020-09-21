@@ -23,7 +23,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
     # Set attributes custom to this class
     def initialize(self):
         self.className = 'ils.block.finaldiagnosis.FinalDiagnosis'
-#        self.properties['Label'] = {'value':'FinalDiagnosis','editable':'True'}
+#        self.properties['Label'] = {'value':'FinalDiagnosis','editable':True}
         
         self.inports = [{'name':'in','type':'TRUTHVALUE','allowMultiple':False}]
         self.outports= [{'name':'out','type':'TRUTHVALUE'}]
@@ -47,7 +47,6 @@ class FinalDiagnosis(basicblock.BasicBlock):
         proto['inports']        = self.getInputPorts()
         proto['outports']       = self.getOutputPorts()
         proto['viewWidth']      = 100
-        proto['editorClass']   = "com.ils.blt.designer.config.FinalDiagnosisConfiguration"
         proto['transmitEnabled']= True
         return proto
             
