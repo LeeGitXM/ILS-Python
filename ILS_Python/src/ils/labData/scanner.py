@@ -483,6 +483,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
         phdLog.trace("Checking for a new lab value for: %s - %s..." % (str(valueName), str(itemId)))
         
         if simulateHDA:
+            phdLog.trace("--- Using PHD Simulator ---")
             if len(valueList) == 0:
                 phdLog.trace("   -- no data found for %s --" % (itemId))
                 return False, -1, -1, "NoDataFound"
@@ -860,10 +861,11 @@ def initializeCache(database):
 
 def simulateReadRaw(itemIds, startDate, endDate):
     retVals = []
-
+    phdLog.trace("--- Simulating Read Raw ---")
     for itemId in itemIds:
         valList = []
         SQL = "select * from history where itemId = '%s' and dateTime > '%s' and dateTime < '%s' " % (itemId, toDateString(startDate), toDateString(endDate))
+        phdLog.trace(SQL)
         pds = system.db.runQuery(SQL, "PHD_SIMULATOR")
         for record in pds:
             valList.append({"value": record["val"], "quality":"Good", "timestamp": record["dateTime"]})

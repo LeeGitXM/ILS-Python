@@ -633,3 +633,40 @@ def dsToText(ds, delimiter):
         
     print "Formatted the dataset as: ", txt
     return txt
+
+def scrollFrozenPane(singleColumnTable, table):
+    '''
+    This is used when a power table has a vertical and a horizontal scroll bar and we want to
+    freeze the first column so it is always visible even when they scroll the horizontal scrtoll bar.
+    This is akin to Excel freezing a pane.
+    This scrolls the single column table automatically when they scroll the big table vertically
+    '''
+    scrollBar = table.getVerticalScrollBar()
+    scrollBarPosition = scrollBar.getValue()
+
+    # If the position has changed since the last check then synchronize the scroll bars
+    if scrollBarPosition <> table.scrollPosition:
+        table.scrollPosition = scrollBarPosition
+        
+        # Set the single column's scroll bar to match the main table.
+        scrollBarSingleColumn = singleColumnTable.getVerticalScrollBar()
+        scrollBarSingleColumn.setValue(scrollBarPosition)
+
+def isthereaHorizontalScrollBar(event):
+    '''
+    This isn't used but it is pretty cool (it was written to be called from a button).  
+    Scroll bars generally come and go on power tables depending on the number of rows and columns.
+    The reason this isn't used is because there is a way to configure the power table to ALWAYS display the scroll bar in the initialization
+    extension function of the power table:
+        
+        from javax.swing import ScrollPaneConstant
+        self.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS)
+    '''
+    
+    table = event.source.parent.getComponent("Power Table")
+    scrollBar = table.getHorizontalScrollBar()
+    model = scrollBar.getModel()
+    if model.getExtent() == model.getMaximum():
+        print "There is NOT a horizontal scroll bar"
+    else:
+        print "There IS a horizontal scroll bar"

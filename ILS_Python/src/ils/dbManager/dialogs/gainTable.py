@@ -5,11 +5,10 @@ Created on Apr 19, 2019
 '''
 
 import system
-from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForGain
-from ils.common.error import notifyError
 log = system.util.getLogger("com.ils.recipe.ui")
+POWER_TABLE_NAME = "Gain Table"
 
 # Called from the client startup script: View menu
 def showWindow():
@@ -30,11 +29,34 @@ def internalFrameActivated(rootContainer):
     log.infof("In %s.InternalFrameActivated", __name__)
     requery(rootContainer)
     dropdown = rootContainer.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown, False)
+
+    SQL = "Select RecipeFamilyName from RtRecipeFamily where HasGains = 1 order by RecipeFamilyName"
+    pds = system.db.runQuery(SQL)
+    
+    # Create a new dataset using only the Name column
+    header = ["Family"]
+    names = []
+    
+    for row in pds:
+        name = row['RecipeFamilyName']
+        nl = []
+        nl.append(name)
+        names.append(nl)
+    dropdown.data = system.dataset.toDataSet(header,names)
+    
+    # Select the current value. 
+    current = getUserDefaults('FAMILY')
+    if len(current)>0:
+        oldSelection = str(dropdown.selectedStringValue)
+        dropdown.setSelectedStringValue(current)
+        # Loose old edits if we select a different database
+        if oldSelection!=current:
+            print "...new family selection %s ..." % (current)    
+    
 
 def requery(rootContainer):
-    log.infof("In %s.InternalFrameActivated", __name__)
-    table = rootContainer.getComponent("Power Table")
+    log.infof("In %s.requery", __name__)
+    table = rootContainer.getComponent(POWER_TABLE_NAME)
     
     dropdown = rootContainer.getComponent("FamilyDropdown")
     recipeFamilyName = dropdown.selectedStringValue
@@ -47,6 +69,13 @@ def requery(rootContainer):
     pds = fetchData(recipeFamilyName)
     ds = mergeData(rootContainer, grades, columns, pds)
     table.data = ds
+    
+    gradeTable = rootContainer.getComponent("Grade Table")
+    data = []
+    for grade in grades:
+        data.append([grade])
+    ds = system.dataset.toDataSet(["Grade"], data)
+    gradeTable.data = ds
     
     for col in range(ds.getColumnCount()):
         if col == 0:
@@ -69,7 +98,6 @@ def fetchColumns(recipeFamilyName):
     return columns
     
 def fetchRows(recipeFamilyName, activeOnly):
-    
     if activeOnly:
         SQL = "select distinct GM.Grade "\
             " from RtGradeMaster GM,  RtRecipeFamily RF "\

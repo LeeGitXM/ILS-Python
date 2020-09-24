@@ -17,8 +17,8 @@ def newLabDataMessageHandler(payload):
         windowPath = window.getPath()
         if windowPath == "Lab Data/Lab Table Chooser":
             rootContainer = window.rootContainer
-            print "-------------------"
-            print "There is an open lab data chooser window "
+            log.tracef("-------------------")
+            log.tracef("There is an open lab data chooser window ")
             
             populateRepeater(rootContainer)
             animatePageTabs(rootContainer)
@@ -39,26 +39,26 @@ def internalFrameOpened(rootContainer):
 
 # update the list of display tables that are appropriate for the selected console
 def internalFrameActivated(rootContainer):
-    log.infof("In %s.internalFrameActivated()", __name__)
+    log.tracef("In %s.internalFrameActivated()", __name__)
     populateRepeater(rootContainer)
     animatePageTabs(rootContainer)
 
 def newPostSelected(rootContainer):
-    log.infof("In %s.newPostSelected()", __name__)
+    log.tracef("In %s.newPostSelected()", __name__)
     setNumberOfPages(rootContainer)
     populateRepeater(rootContainer)
 
 def newPageSelected(rootContainer):
-    log.infof("In %s.newPageSelected()", __name__)
+    log.tracef("In %s.newPageSelected()", __name__)
     populateRepeater(rootContainer)
 
 # Fetch the number of pages of lab data tables for the console and set up the tab strip    
 def setNumberOfPages(rootContainer):
-    log.infof("In %s.setNumberOfPages", __name__)
+    log.tracef("In %s.setNumberOfPages", __name__)
     selectedPost = rootContainer.selectedPost
     
     if selectedPost == "" or selectedPost == None:
-        print "Error: Please select a post"
+        log.errorf("Error: Please select a post")
         return
     
     SQL = "Select max(DT.DisplayPage) "\
@@ -68,7 +68,7 @@ def setNumberOfPages(rootContainer):
     numPages = system.db.runScalarQuery(SQL)
     rootContainer.numberOfPages = numPages
     
-    print "The %s post has %s pages of lab data tables" % (selectedPost, str(numPages))
+    log.tracef("The %s post has %s pages of lab data tables", selectedPost, str(numPages))
     configureTabStrip(rootContainer, numPages)
     rootContainer.selectedPage = 1
 
@@ -81,10 +81,10 @@ def animatePageTabs(rootContainer):
     if numberOfPages <= 1:
         return
     
-    print "In In labData.tableChooser.animatePageTabs"
+    log.tracef("In In labData.tableChooser.animatePageTabs")
     selectedPost = rootContainer.selectedPost
     for selectedPage in range(1, numberOfPages+1):
-        print "Checking Page ", selectedPage
+        log.tracef("Checking Page %s", str(selectedPage))
         SQL = "Select DisplayTableTitle "\
             "from LtDisplayTable DT, TkPost P "\
             "where DT.PostId = P.PostId "\
@@ -107,9 +107,9 @@ def animatePageTabs(rootContainer):
             unselectedGradientStartColor=system.gui.color(255,0,0)
             unselectedGradientEndColor=system.gui.color(217,0,0)
             selectedBackgroundColor=system.gui.color(255,0,0)
-            print "  There is new data - Make it red"
+            log.tracef("  There is new data - Make it red")
         else:
-            print "  There is NOT new data - Make it grey"
+            log.tracef("  There is NOT new data - Make it grey")
             unselectedGradientStartColor=system.gui.color(238,236,232)
             unselectedGradientEndColor=system.gui.color(170,170,170)
             selectedBackgroundColor=system.gui.color(238,236,232,255)
@@ -123,9 +123,8 @@ def animatePageTabs(rootContainer):
 
 # Populate the template repeater with the table names for the selected post and page
 def populateRepeater(rootContainer):
-    log.infof("In %s.populateRepeater()", __name__)
+    log.tracef("In %s.populateRepeater()", __name__)
     selectedPost = rootContainer.getPropertyValue("selectedPost")
-    print "The selected post is: ", selectedPost
     selectedPage = rootContainer.getPropertyValue("selectedPage")
     SQL = "Select DisplayTableTitle "\
         "from LtDisplayTable DT, TkPost P "\
@@ -134,8 +133,7 @@ def populateRepeater(rootContainer):
         " and DT.DisplayPage = %i "\
         " and DT.DisplayFlag = 1 "\
         "Order by DisplayOrder" % (selectedPost, selectedPage)        
-    
-    print SQL
+
     pds = system.db.runQuery(SQL)
     
     SQL = "select ValueName, V.ValueId, MAX(reportTime) maxTime "\
@@ -149,8 +147,6 @@ def populateRepeater(rootContainer):
     data = []
     for record in pds:
         displayTableTitle = record['DisplayTableTitle']
-        print "Checking if %s has new data..." % (displayTableTitle)
-        #newData = checkForNewData(displayTableTitle)
         newData = checkForNewData2(displayTableTitle, maxTimePds)          
         data.append([displayTableTitle,newData])
     
@@ -158,8 +154,8 @@ def populateRepeater(rootContainer):
     rootContainer.displayTableTitles = ds
 
 def checkForNewData(displayTableTitle):
-    print "In labData.tableChooser.checkForNewData()..."
-    print " ---- Checking Table: ", displayTableTitle
+    log.tracef("In labData.tableChooser.checkForNewData()...")
+    log.tracef(" ---- Checking Table: %s", displayTableTitle)
     newData = False
 
     username = system.security.getUsername()
@@ -182,27 +178,27 @@ def checkForNewData(displayTableTitle):
         SQL = "select max(ReportTime) "\
             " from LtHistory "\
             " where ValueId = %i " % (valueId)
-        print SQL
+
         mostRecentReportTime = system.db.runScalarQuery(SQL)
-        print "The most recent report time for %s is %s" % (valueName, str(mostRecentReportTime))  
+        log.tracef("The most recent report time for %s is %s", valueName, str(mostRecentReportTime))
         
         if mostRecentReportTime != None:
             SQL = "select viewTime "\
                 " from LtValueViewed "\
                 " where ValueId = %i "\
                 " and username = '%s' " % (valueId, username)
-            print SQL
+
             lastViewedTime = system.db.runScalarQuery(SQL)
-            print "   ...and the last Viewed time is: %s" % (str(lastViewedTime))
+            log.tracef("   ...and the last Viewed time is: %s", str(lastViewedTime))
             if lastViewedTime == None or mostRecentReportTime > lastViewedTime:
                 newData = True
-                print "   ---There IS new data---"
+                log.tracef("   ---There IS new data---")
         
     return newData
 
 def checkForNewData2(displayTableTitle, maxTimePds):
-    print "In labData.tableChooser.checkForNewData2()..."
-    print " ---- Checking Table: ", displayTableTitle
+    log.tracef("In %s.labData.tableChooser.checkForNewData2()...", __name__)
+    log.tracef(" ---- Checking Table: %s", displayTableTitle)
     newData = False
 
     username = system.security.getUsername()
@@ -224,33 +220,33 @@ def checkForNewData2(displayTableTitle, maxTimePds):
         for rec in maxTimePds:
             if valueId == rec["ValueId"]:
                 mostRecentReportTime = rec["maxTime"]
-                print "Found max time of %s for %s" % (str(mostRecentReportTime), valueName)
+                log.tracef("Found max time of %s for %s", str(mostRecentReportTime), valueName)
         
         # Fetch the newest report time
         SQL = "select max(ReportTime) "\
             " from LtHistory "\
             " where ValueId = %i " % (valueId)
-        print SQL
+
         mostRecentReportTime = system.db.runScalarQuery(SQL)
-        print "The most recent report time for %s is %s" % (valueName, str(mostRecentReportTime))  
+        log.tracef("The most recent report time for %s is %s", valueName, str(mostRecentReportTime))  
         
         if mostRecentReportTime != None:
             SQL = "select viewTime "\
                 " from LtValueViewed "\
                 " where ValueId = %i "\
                 " and username = '%s' " % (valueId, username)
-            print SQL
+    
             lastViewedTime = system.db.runScalarQuery(SQL)
-            print "   ...and the last Viewed time is: %s" % (str(lastViewedTime))
+            log.tracef("   ...and the last Viewed time is: %s", str(lastViewedTime))
             if lastViewedTime == None or mostRecentReportTime > lastViewedTime:
                 newData = True
-                print "   ---There IS new data---"
+                log.tracef("   ---There IS new data---")
         
     return newData
 
 
 def configureTabStrip(rootContainer, numPages):
-    print "In labData.tableChooser.configureTabStrip()..."
+    log.tracef("In %s.configureTabStrip()...", __name__)
     tabStrip=rootContainer.getComponent("Tab Strip")
 
     header=["NAME","DISPLAY_NAME","HOVER_COLOR","SELECTED_IMAGE_PATH","SELECTED_IMAGE_HORIZONTAL_ALIGNMENT","SELECTED_IMAGE_VERTICAL_ALIGNMENT","SELECTED_FOREGROUND_COLOR","SELECTED_BACKGROUND_COLOR","SELECTED_FONT","SELECTED_GRADIENT_START_COLOR","SELECTED_GRADIENT_END_COLOR","UNSELECTED_IMAGE_PATH","UNSELECTED_IMAGE_HORIZONTAL_ALIGNMENT","UNSELECTED_IMAGE_VERTICAL_ALIGNMENT","UNSELECTED_FOREGROUND_COLOR","UNSELECTED_BACKGROUND_COLOR","UNSELECTED_FONT","UNSELECTED_GRADIENT_START_COLOR","UNSELECTED_GRADIENT_END_COLOR","USE_SELECTED_GRADIENT","USE_UNSELECTED_GRADIENT","MOUSEOVER_TEXT"]
@@ -266,32 +262,3 @@ def configureTabStrip(rootContainer, numPages):
     
     ds = system.dataset.toDataSet(header, data)
     tabStrip.tabData=ds
-
-
-# This is called from the arrow button on the Lab Table selector screen.
-# It selects the next post in the circular list of posts
-def nextPostOBSOLETE(rootContainer):
-    selectedPost = rootContainer.selectedPost
-    posts = rootContainer.posts
-    
-    pds = system.dataset.toPyDataSet(posts)
-    if len(pds) < 1:
-        print "There are no posts in the post list"
-        return
-    
-    if len(pds) == 1:
-        print "There is only one post in the post list so there is nothing to scroll"
-        return
-    
-    for row in range(len(pds)):
-        post = pds[row][0]
-        if post == selectedPost:
-            if row == len(pds) - 1:
-                selectedPost = pds[0][0]
-            else:
-                selectedPost = pds[row + 1][0]
-
-            rootContainer.selectedPost = selectedPost
-            # Now update the list of display tables that are appropriate for the newly selected console
-            populateRepeater(rootContainer)
-            return

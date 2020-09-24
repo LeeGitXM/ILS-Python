@@ -31,7 +31,7 @@ def requery(component):
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
     
-    SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, P.Post, F.RecipeUnitPrefix, F.RecipeNameAlias, F.Comment "\
+    SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, P.Post, F.RecipeUnitPrefix, F.RecipeNameAlias, F.HasGains, F.HasSQC, F.Comment "\
         " FROM RtRecipeFamily F, TkPost P "\
         " WHERE F.PostId = P.PostId ORDER by RecipeFamilyName"
     try:
@@ -70,12 +70,19 @@ def showWindow():
 def update(table,row,colname,value):
     log.info("recipeFamily.update (%d:%s)=%s ..." %(row,colname,str(value)))
     ds = table.data
-    id = ds.getValueAt(row,0)
+    familyId = ds.getValueAt(row,0)
     
     if colname == "Post":
         postId = idForPost(str(value))
-        SQL = "UPDATE RtRecipeFamily SET PostId = %s WHERE RecipeFamilyId =  %s" % (str(postId), str(id))
+        SQL = "UPDATE RtRecipeFamily SET PostId = %s WHERE RecipeFamilyId =  %s" % (str(postId), str(familyId))
+    elif colname in ["HasGains", "HasSQC"]:
+        if value:   
+            val = 1
+        else:
+            val = 0
+        SQL = "UPDATE RtRecipeFamily SET " + colname + " = " + str(val) + " WHERE RecipeFamilyId =  " + str(familyId)
     else:
-        SQL = "UPDATE RtRecipeFamily SET "+colname+" = '"+value+"' WHERE RecipeFamilyId="+str(id)
-        
+        SQL = "UPDATE RtRecipeFamily SET "+colname+" = '"+value+"' WHERE RecipeFamilyId="+str(familyId)
+    
+    log.info(SQL)
     system.db.runUpdateQuery(SQL)

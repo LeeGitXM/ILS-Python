@@ -115,4 +115,13 @@ def getSelectedInfo(event):
     log.infof("    %s %s, %s %s %s", str(stepId), recipeDataType, str(recipeDataId), recipeDataKey, str(recipeDataFolderId))
     
     return stepId, recipeDataType, recipeDataId, recipeDataKey, recipeDataFolderId
+
+
+def getSearchResults(chartIds):
+    #print "Arg: ", arg
+    recipeData = []
+    print "Foo"
+    results = {"AAA": "bbb"}
+    return recipeData
+
     

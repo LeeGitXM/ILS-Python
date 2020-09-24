@@ -4,16 +4,17 @@ Created on Nov 28, 2016
 @author: phassler
 '''
 import string, system
+log = system.util.getLogger("com.ils.charts")
 
 def update(rootContainer):
     n = rootContainer.n
     intervalType = rootContainer.intervalType
     intervalType = string.upper(intervalType)
     
-    print "In ils.charts.timer.realTime.py - setting the real-time start and end time using %s - %s" % (intervalType, str(n))
+    log.tracef( "In %s.update()- setting the real-time start and end time using %s - %s", __name__, intervalType, str(n))
     
     now = system.date.now()
-    print "Now: ", now
+    log.tracef("Now: %s", str(now))
 
     if intervalType == "MINUTES":
         startTime = system.date.addMinutes(now, -1 * n)
@@ -22,7 +23,7 @@ def update(rootContainer):
     elif intervalType == "DAYS":
         startTime = system.date.addDays(now, -1 * n)
     else:
-        print "Using the default interval of 8 hours"
+        log.tracef("Using the default interval of 8 hours")
         startTime = system.date.addHours(now, -8)
     
     rootContainer.endTime = now
