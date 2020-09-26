@@ -631,7 +631,17 @@ def dsToText(ds, delimiter):
             txt = txt + str(ds.getValueAt(row, col))
         txt = txt + CR
         
-    print "Formatted the dataset as: ", txt
+    log.tracef("Formatted the dataset as: %s", txt)
+    return txt
+
+def dsRecordToText(ds, row, delimiter):
+    txt = ""
+    for col in range(ds.getColumnCount()):
+        if col > 0:
+            txt = txt + delimiter
+        txt = txt + str(ds.getValueAt(row, col))
+        
+    log.infof("Formatted record %d as: %s", row, txt)
     return txt
 
 def scrollFrozenPane(singleColumnTable, table):
