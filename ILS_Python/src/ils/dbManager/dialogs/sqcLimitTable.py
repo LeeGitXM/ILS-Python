@@ -61,11 +61,8 @@ def requery(rootContainer):
     dropdown = rootContainer.getComponent("FamilyDropdown")
     recipeFamilyName = dropdown.selectedStringValue
     
-    checkBox = rootContainer.getComponent("ActiveOnlyCheckBox")
-    activeOnly = checkBox.selected
-    
     columns = fetchColumns(recipeFamilyName)
-    grades = fetchRows(recipeFamilyName, activeOnly)
+    grades = fetchRows(recipeFamilyName)
     pds = fetchData(recipeFamilyName)
     ds = mergeData(rootContainer, grades, columns, pds)
     table.data = ds
@@ -98,15 +95,10 @@ def fetchColumns(recipeFamilyName):
     print "Columns: ", columns
     return columns
     
-def fetchRows(recipeFamilyName, activeOnly):
-    if activeOnly:
-        SQL = "select distinct GM.Grade "\
-            " from RtGradeMaster GM,  RtRecipeFamily RF "\
-            " where RF.RecipeFamilyName = '%s' and GM.Active = 1 and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
-    else:
-        SQL = "select distinct GM.Grade "\
-            " from RtGradeMaster GM,  RtRecipeFamily RF "\
-            " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
+def fetchRows(recipeFamilyName):
+    SQL = "select distinct GM.Grade "\
+        " from RtGradeMaster GM,  RtRecipeFamily RF "\
+        " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
 
     print "SQL: ", SQL
     pds = system.db.runQuery(SQL)
@@ -206,3 +198,27 @@ def deleteColumns(event):
     system.db.runUpdateQuery(SQL)
     
     requery(rootContainer)
+
+
+def exportCallback(event):
+    where = ""
+    
+    entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
+    if not(entireTable):
+        family = getUserDefaults("FAMILY")
+        if family not in ["ALL", "", "<Family>"]:
+            where = " WHERE  RecipeFamilyName = '" + family+"'"
+        
+    SQL = "select RecipeFamilyName, Grade, Parameter, UpperLimit, LowerLimit "\
+        " from RtSQCLimitView "\
+        " %s order by RecipeFamilyName, Grade, Parameter" % (where)
+    print SQL
+        
+    pds = system.db.runQuery(SQL)
+    log.trace(SQL)
+    print "Fetched %d rows of data..." % (len(pds))
+
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("SqcLimits.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)

@@ -6,9 +6,7 @@ Created on Mar 21, 2017
 This module contains a collection of scripts suitable
 for common configuration of widgets in the UI.
 '''
-
 import system
-from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.cast import toBit
 
@@ -30,7 +28,7 @@ def populateParameterForGradeDropdown(dropdown):
     # Create a new dataset using only the Name column
     header = ["Parameters"]
     names = []
-    names.append(["ALL"])
+    names.append([""])
     for row in pds:
         name = row['FamilyName']
         nl = []
@@ -55,11 +53,7 @@ def populateGradeForFamilyDropdown(dropdown):
     active = getUserDefaults("ACTIVE")
     activeBit = toBit(str(active))
     
-    if family == "<Family>":
-        print "Skipping grade list population because they have not selected a family"
-        return
-    
-    if family=="ALL":
+    if family in ["", "", "<Family>"]:
         SQL = "SELECT DISTINCT Grade from RtGradeMaster "
         if active:
             SQL = SQL +  " WHERE active = %s" % (str(activeBit))
@@ -74,7 +68,7 @@ def populateGradeForFamilyDropdown(dropdown):
     
     # Create a new dataset using only the Name column
     header = ["Grade"]
-    names = []
+    names = [["<Grade>"]]
     for row in pds:
         name = row['Grade']
         nl = []
@@ -88,7 +82,7 @@ def populateGradeForFamilyDropdown(dropdown):
     dropdown.setSelectedStringValue(getUserDefaults("GRADE"))
 
 # Populate  combo-box with a dataset of containing names
-# of recipe Families, plus "ALL". Select the current UNIT
+# of recipe Families, plus "". Select the current UNIT
 def populateRecipeFamilyDropdown(dropdown, includeAll=True):
     print "In %s.populateRecipeFamilyDropdown()" % (__name__)
     SQL = "Select RecipeFamilyName from RtRecipeFamily order by RecipeFamilyName"
@@ -98,7 +92,7 @@ def populateRecipeFamilyDropdown(dropdown, includeAll=True):
     header = ["Family"]
     names = []
     if includeAll:
-        names.append(["ALL"])
+        names.append(["<Family>"])
     
     for row in pds:
         name = row['RecipeFamilyName']
@@ -125,31 +119,29 @@ def populateVersionForGradeDropdown(dropdown):
     grade = getUserDefaults("GRADE") 
     
     if family == "<Family>" or grade == "<Grade>":
-        print "Skipping version popultae because they have not selected a grade"
-        return
+        pds = system.db.runQuery(SQL)
+        print "...fetched %d rows" % (len(pds))
     
-    if not family=="ALL":
-        SQL = SQL+" WHERE RecipeFamilyId = (SELECT RecipeFamilyId FROM RtRecipeFamily WHERE RecipeFamilyName='"+family+"')"
+    else:
+        if not(family in ["", "<Family>"]):
+            SQL = SQL+" WHERE RecipeFamilyId = (SELECT RecipeFamilyId FROM RtRecipeFamily WHERE RecipeFamilyName='"+family+"')"
+        
+            if not (grade in [None, "", "ALL", "<Grade>"]):
+                SQL = SQL+" AND Grade = '"+grade+"'"
+        
+        print "    SQL: ", SQL
+        pds = system.db.runQuery(SQL)
+        print "...fetched %d rows" % (len(pds))
     
-        root = getRootContainer(dropdown)
-        if not grade == None and not grade=="ALL":
-            SQL = SQL+" AND Grade = '"+grade+"'"
-    
-    print "    SQL: ", SQL
-    pds = system.db.runQuery(SQL)
-    print "...fetched %d rows", len(pds)
-    
-    # Create a new dataset using only the Name column
     header = ["Grade"]
-    versions = []
-    versions.append(["ALL"])
+    versions = [["<Version>"]]
     for row in pds:
         version = row['Version']
         nl = []
         nl.append(str(version))
         versions.append(nl)
         
-    dropdown.data = system.dataset.toDataSet(header,versions)
+    dropdown.data = system.dataset.toDataSet(header, versions)
     
     # Select the current value. We expect it to be in a custom property
     dropdown.setSelectedStringValue(str(getUserDefaults("VERSION")))

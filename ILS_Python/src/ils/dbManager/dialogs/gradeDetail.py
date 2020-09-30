@@ -5,73 +5,55 @@ Created on Mar 21, 2017
 
 Scripts in support of the "Grade Detail" dialog
 '''
-
-import system, time
+import system
 from ils.dbManager.ui import populateRecipeFamilyDropdown, populateGradeForFamilyDropdown, populateVersionForGradeDropdown
-from ils.common.util import getRootContainer
-from ils.dbManager.sql import idForFamily
 from ils.dbManager.userdefaults import get as getUserDefaults
-from ils.common.error import notifyError
+
+log = system.util.getLogger("com.ils.recipe.ui")
 
 def internalFrameOpened(rootContainer):
     print "In %s.InternalFrameOpened()" % (__name__)
-    
-    dropdown = rootContainer.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown, includeAll=False)
-    dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
-            
-    dropdown = rootContainer.getComponent("GradeDropdown")
-    populateGradeForFamilyDropdown(dropdown)
-    dropdown.setSelectedStringValue(getUserDefaults("GRADE"))
-            
-    dropdown = rootContainer.getComponent("VersionDropdown")
-    populateVersionForGradeDropdown(dropdown)
-    dropdown.setSelectedStringValue(str(getUserDefaults("VERSION")))
-    
-    activeCheckbox = rootContainer.getComponent("ActiveOnlyCheckBox")
-    activeCheckbox.selected = getUserDefaults("ACTIVE")
-    
-    requery(rootContainer)
+
 
 def internalFrameActivated(rootContainer):
     print "In %s.InternalFrameActivated()" % (__name__)
-    requery(rootContainer)
     
-    def work(rootContainer=rootContainer):
-        time.sleep(2)
-        print "Setting initialized to True"
-        rootContainer.initialized = True
-        
-    system.util.invokeAsynchronous(work)
+    dropdown = rootContainer.getComponent("FamilyDropdown")
+    populateRecipeFamilyDropdown(dropdown, includeAll=True)
+
+    dropdown = rootContainer.getComponent("GradeDropdown")
+    populateGradeForFamilyDropdown(dropdown)
+          
+    dropdown = rootContainer.getComponent("VersionDropdown")
+    populateVersionForGradeDropdown(dropdown)
+    
+    requery(rootContainer)
+
 
 # Re-query the database and update the screen accordingly.
 # If we get an exception, then rollback the transaction.
-def requery(component):
+def requery(rootContainer):
     print "In %s.requery()" % (__name__)
-    container = getRootContainer(component)
-    table = container.getComponent("DatabaseTable")
+    table = rootContainer.getComponent("DatabaseTable")
+    print table
     
     family = getUserDefaults("FAMILY")
     grade = getUserDefaults("GRADE")
     vers = getUserDefaults("VERSION")
     
-#    if family == "<Family>" or grade == "<Grade>" or vers == "Version":
-#        print "bailing from update because they have not selected a family, grade, and version"
-#        return
-    
-    where = ""
+    andWhere = ""
     if family not in ["ALL", "<Unit>", "<Family>"]:
-        where = " AND F.RecipeFamilyName = '"+family+"'"
+        andWhere = " AND F.RecipeFamilyName = '"+family+"'"
 
     if grade not in ["ALL", "<Grade>"]:
-        where = where+ " AND GM.Grade = '"+grade+"'"
+        andWhere = andWhere+ " AND GM.Grade = '"+grade+"'"
             
     if vers not in [ "ALL", "<Version>"]:
-        where = where+ " AND GM.Version = "+ str(vers)
+        andWhere = andWhere+ " AND GM.Version = "+ str(vers)
         
     active = getUserDefaults("ACTIVE")
     if active:
-        where = where+ " AND GM.Active = 1"    
+        andWhere = andWhere+ " AND GM.Active = 1"    
     
     SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,GD.Grade,VD.ValueId,VD.PresentationOrder, "\
         " GD.Version,GM.Active,VD.Description,GD.RecommendedValue,GD.LowLimit,GD.HighLimit, VT.ValueType "\
@@ -81,16 +63,14 @@ def requery(component):
         " AND VD.RecipeFamilyId = F.RecipeFamilyId "\
         " AND GD.Grade = GM.Grade "\
         " AND GD.Version = GM.Version "\
-        " AND GD.ValueId = VD.ValueId %s "\
-        " AND VD.ValueTypeId = VT.ValueTypeId "\
-        " ORDER BY F.RecipeFamilyName,GM.Grade,VD.PresentationOrder,GM.Version" % (where)
+        " AND GD.ValueId = VD.ValueId "\
+        " AND VD.ValueTypeId = VT.ValueTypeId  %s "\
+        " ORDER BY F.RecipeFamilyName,GM.Grade,VD.PresentationOrder,GM.Version" % (andWhere)
     print SQL
 
     pds = system.db.runQuery(SQL)
     table.data = pds
     print "...fetched %d rows" % (len(pds))
-
-    
 
 
 # Called from the client startup script: View menu
@@ -137,3 +117,42 @@ def update(table,row,colname,value):
         system.gui.warningBox(msg)
         ds = system.dataset.setValue(ds,row,colname,'')
         table.data = ds
+
+
+def exportCallback(event):
+    rootContainer = event.source.parent
+    andWhere = ""
+    
+    entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family, grade,  and active flag.  <br>Would you like to export the <b>entire</b> table?")
+    if not(entireTable):
+        family = getUserDefaults("FAMILY")
+        if family not in ["ALL", "", "<Family>"]:
+            andWhere = " AND F.RecipeFamilyName = '"+family+"'"
+            
+        grade = getUserDefaults("GRADE")
+        if grade not in ["ALL", "", "<Grade>"]:
+            andWhere = andWhere+ " AND GM.Grade = '"+grade+"'"    
+
+        active = rootContainer.getComponent("ActiveOnlyCheckBox")
+        if active.selected:
+            andWhere = andWhere + " AND Active=1"
+            
+    SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,GD.Grade,VD.ValueId,VD.PresentationOrder, "\
+        " GD.Version,GM.Active,VD.Description,GD.RecommendedValue,GD.LowLimit,GD.HighLimit, VT.ValueType "\
+        " FROM RtRecipeFamily F, RtGradeMaster GM, RtGradeDetail GD, RtValueDefinition VD, RtValueType VT "\
+        " WHERE GD.RecipeFamilyId = F.RecipeFamilyId "\
+        " AND GM.RecipeFamilyId = F.RecipeFamilyId "\
+        " AND VD.RecipeFamilyId = F.RecipeFamilyId "\
+        " AND GD.Grade = GM.Grade "\
+        " AND GD.Version = GM.Version "\
+        " AND GD.ValueId = VD.ValueId "\
+        " AND VD.ValueTypeId = VT.ValueTypeId  %s "\
+        " ORDER BY F.RecipeFamilyName,GM.Grade,VD.PresentationOrder,GM.Version" % (andWhere)
+    
+    log.trace(SQL)
+
+    pds = system.db.runQuery(SQL)
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("GradeDetail.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)

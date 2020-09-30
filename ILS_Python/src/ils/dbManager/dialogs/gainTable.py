@@ -3,7 +3,6 @@ Created on Apr 19, 2019
 
 @author: phass
 '''
-
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForGain
@@ -61,11 +60,8 @@ def requery(rootContainer):
     dropdown = rootContainer.getComponent("FamilyDropdown")
     recipeFamilyName = dropdown.selectedStringValue
     
-    checkBox = rootContainer.getComponent("ActiveOnlyCheckBox")
-    activeOnly = checkBox.selected
-    
     columns = fetchColumns(recipeFamilyName)
-    grades = fetchRows(recipeFamilyName, activeOnly)
+    grades = fetchRows(recipeFamilyName, False)
     pds = fetchData(recipeFamilyName)
     ds = mergeData(rootContainer, grades, columns, pds)
     table.data = ds
@@ -223,3 +219,27 @@ def addGainParameter(button, parameter):
         system.db.runUpdateQuery(SQL)            
     else:
         system.gui.messageBox("Please enter a parameter name!")
+
+def exportCallback(event):
+    rootContainer = event.source.parent
+    where = ""
+    
+    entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
+    if not(entireTable):
+        family = getUserDefaults("FAMILY")
+        if family not in ["ALL", "", "<Family>"]:
+            where = " WHERE  RecipeFamilyName = '" + family+"'"
+            
+    SQL = "select RecipeFamilyName, Grade, Parameter, Gain "\
+        " from RtGainView "\
+        " %s order by RecipeFamilyName, Grade, Parameter" % (where)
+    print SQL
+        
+    pds = system.db.runQuery(SQL)
+    log.trace(SQL)
+    print "Fetched %d rows of data..." % (len(pds))
+
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("Gains.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)

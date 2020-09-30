@@ -9,7 +9,6 @@ Scripts in support of the "RecipeFamily" dialog
 import system
 from ils.common.util import getRootContainer
 from ils.dbManager.sql import idForPost
-from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
 log = system.util.getLogger("com.ils.recipe.ui")
 
@@ -86,3 +85,16 @@ def update(table,row,colname,value):
     
     log.info(SQL)
     system.db.runUpdateQuery(SQL)
+    
+def exportCallback(event):
+        
+    SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, P.Post, F.RecipeUnitPrefix, F.RecipeNameAlias, F.HasGains, F.HasSQC, F.Comment "\
+        " FROM RtRecipeFamily F, TkPost P "\
+        " WHERE F.PostId = P.PostId ORDER by RecipeFamilyName"
+
+    pds = system.db.runQuery(SQL)
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("RecipeFamily.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)
+    
