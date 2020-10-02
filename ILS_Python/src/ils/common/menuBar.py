@@ -4,20 +4,52 @@ Created on Mar 7, 2016
 @author: ils
 '''
 import system
+from javax.swing import JMenuItem
 
 # Collection of useful methods for menu configuration
+class ConsoleMenus():
+    def __init__(self,bar):
+        self.menus = {}
+        '''
+        Add appropriate consoles for this project
+        '''
+        print "Adding consoles to main menu..."
+        count = bar.getMenuCount()
+        index = 0
+        while index < count:
+            menu = bar.getMenu(index)
+            name = menu.getText()
 
-
-def removeUnwantedConsoles(bar): 
+            if name == 'View':            
+                # Find the console menu
+                viewCount = menu.getItemCount()
+                viewIndex = 0
+                while viewIndex < viewCount:
+                    submenu = menu.getItem(viewIndex)
+                    submenuName = submenu.getText()
+                
+                    if submenuName == 'Consoles':
+                        print "ConsoleMenus: Found the View->Console submenu..."
+                        self.menus["Console1"] = "Window1"
+                        self.menus["Console2"] = "Window2"
+                        for key in self.menus:
+                            submenu.add(JMenuItem(key,actionPerformed=self.menuAction))
+                    viewIndex=viewIndex+1
+            
+            index=index+1
+            
+    def menuAction(self,event):
+        console = event.getSource().getText()
+        print console
+        windowPath = self.menus[console]
+        print windowPath
+        
+def clearConsoles(bar): 
     '''
-    Remove console menus that are not appropriate for this project.
-    The common X-O-M ignition project is used by all sites.  The database used at each site uses 
-    a common schema with site specific data.  The TkConsole table lists the consoles that are 
-    appropriate for each site.  So this method removes menus that are not appropriate for this site.
-    The argument is a menubar component.
+    Remove entries from the View->Console entry on the main menu.
     '''
 
-    print "Removing unwanted consoles..."
+    print "Removing console menu entriess..."
     count = bar.getMenuCount()
     index = 0
     while index < count:
@@ -33,22 +65,8 @@ def removeUnwantedConsoles(bar):
                 submenuName = submenu.getText()
                 
                 if submenuName == 'Consoles':
-                    print "Found the View->Console submenu..."
-                    consoleCount = submenu.getItemCount()
-                    consoleIndex = 0
-                    while consoleIndex < consoleCount:
-                        console = submenu.getItem(consoleIndex)
-                        consoleName = console.getText()
-                        print "  Console menu: ", consoleName
-                        SQL = "select count(*) from TkConsole where ConsoleName = '%s'" % (consoleName)
-                        cnt=system.db.runScalarQuery(SQL)
-                        if cnt == 0:
-                            print "    *** REMOVE IT ***" 
-                            submenu.remove(console)
-                            consoleCount = consoleCount - 1
-                        else:
-                            consoleIndex = consoleIndex + 1
-
+                    print "clearConsoles: Found the View->Console submenu..."
+                    submenu.removeAll()
                 viewIndex=viewIndex+1
             
         index=index+1
