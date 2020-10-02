@@ -23,7 +23,6 @@ def launcher(event):
     authorized = False
     for row in range(ds.getRowCount()):
         user = ds.getValueAt(row,0)
-        print row, user
         if user == username:
             authorized = True
     
@@ -49,13 +48,13 @@ def internalFrameOpened(rootContainer):
     db = getDatabaseClient()
     
     if post == "" or not(checkPost):
-        SQL = "SELECT FinalDiagnosisName, FinalDiagnosisUUID, DiagramUUID, FinalDiagnosisId "\
+        SQL = "SELECT FinalDiagnosisName as Label, FinalDiagnosisName, FinalDiagnosisLabel, FinalDiagnosisUUID, DiagramUUID, FinalDiagnosisId "\
             "FROM DtFinalDiagnosis "\
             "WHERE Constant = 0 "\
             "AND ManualMoveAllowed = 1 "\
             "ORDER BY FinalDiagnosisName"
     else:
-        SQL = "SELECT FD.FinalDiagnosisName, FD.FinalDiagnosisUUID, FD.DiagramUUID, FD.FinalDiagnosisId "\
+        SQL = "SELECT FD.FinalDiagnosisName as Label, FD.FinalDiagnosisName, FD.FinalDiagnosisLabel, FD.FinalDiagnosisUUID, FD.DiagramUUID, FD.FinalDiagnosisId "\
             "FROM DtFinalDiagnosis FD, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
             "WHERE FD.FamilyId = F.FamilyId "\
             "AND F.ApplicationId = A.ApplicationId "\
@@ -68,7 +67,14 @@ def internalFrameOpened(rootContainer):
 
     print SQL
     pds = system.db.runQuery(SQL, db)
-    rootContainer.data = pds
+    ds = system.dataset.toDataSet(pds)
+    for row in range(ds.rowCount):
+        fdLabel = ds.getValueAt(row, "FinalDiagnosisLabel")
+        if fdLabel not in ["", None]:
+            print "Overriding the label: ", fdLabel
+            ds = system.dataset.setValue(ds, row, "Label", fdLabel)
+
+    rootContainer.data = ds
 
 def okAction(rootContainer):
     print "In %s.okAction()" % (__name__)
@@ -78,10 +84,11 @@ def okAction(rootContainer):
     ds = component.data
     
     finalDiagnosisName = ds.getValueAt(row, "FinalDiagnosisName")
+    finalDiagnosisLabel = ds.getValueAt(row, "FinalDiagnosisLabel")
     finalDiagnosisUUID = ds.getValueAt(row, "FinalDiagnosisUUID")
     diagramUUID = ds.getValueAt(row, "DiagramUUID")
     finalDiagnosisId = ds.getValueAt(row, "FinalDiagnosisId")
     
-    params = {"finalDiagnosisId": finalDiagnosisId, "finalDiagnosisName": finalDiagnosisName, "finalDiagnosisUUID": finalDiagnosisUUID, "diagramUUID": diagramUUID}
+    params = {"finalDiagnosisId": finalDiagnosisId, "finalDiagnosisName": finalDiagnosisName, "finalDiagnosisLabel": finalDiagnosisLabel, "finalDiagnosisUUID": finalDiagnosisUUID, "diagramUUID": diagramUUID}
     window = system.nav.openWindow("DiagToolkit/Manual Move Entry", params)
     system.nav.centerWindow(window)

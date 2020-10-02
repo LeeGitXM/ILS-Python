@@ -36,7 +36,7 @@ def populateRepeater(rootContainer):
     database=system.tag.read("[Client]Database").value
     log.tracef("The database is: %s and the selected post is: %s", database, str(selectedPost))
     
-    SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID, SQCDiagnosisName as LabValueName,SQCDiagnosisName as LabValueDescription, SQCDiagnosisName as ButtonLabel "\
+    SQL = "Select SQCDiagnosisName, SQCDiagnosisLabel, Status, SQCDiagnosisUUID, SQCDiagnosisName as LabValueName,SQCDiagnosisName as LabValueDescription, SQCDiagnosisName as ButtonLabel "\
         "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
         "where SQC.FamilyId = F.FamilyId "\
         " and F.ApplicationId = A.ApplicationId "\
@@ -58,6 +58,7 @@ def populateRepeater(rootContainer):
     row = 0
     for record in pds:
         sqcDiagnosisName = record["SQCDiagnosisName"]
+        sqcDiagnosisLabel = record["SQCDiagnosisLabel"]
         sqcDiagnosisUUID = record["SQCDiagnosisUUID"]
         status =  record["Status"]
         log.tracef("%s - %s", sqcDiagnosisName, status)
@@ -78,7 +79,10 @@ def populateRepeater(rootContainer):
         elif indexParameter == "LABVALUENAME":
             ds = system.dataset.setValue(ds, row, "ButtonLabel", labValueName)
         else:
-            ds = system.dataset.setValue(ds, row, "ButtonLabel", sqcDiagnosisName)
+            if sqcDiagnosisLabel in ["", None]:
+                ds = system.dataset.setValue(ds, row, "ButtonLabel", sqcDiagnosisName)
+            else:
+                ds = system.dataset.setValue(ds, row, "ButtonLabel", sqcDiagnosisLabel)
         
         row = row + 1
 

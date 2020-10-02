@@ -6,6 +6,9 @@ Created on Jul 9, 2014
 def addTag(parentPath, name, tagType, dataType, attributes, parameters, overrides):
     return []
 
+def browseConfiguration(path, udtParentType):
+    return []
+
 def browseTags(path, udtParentType):
     return []
 

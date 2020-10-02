@@ -583,13 +583,22 @@ def timeStringToSeconds(timeString):
     return secs
 
 def secondsToTimeString(secs):
+    '''
+    This converts seconds to a time string, not a datetime string.
+    '''
     import math
+    
+    if secs < 0:
+        sign = "-"
+    else:
+        sign = ""
 
+    secs = abs(secs)
     hours = math.floor(secs / 3600)
     mins = math.floor((secs - hours * 3600) / 60)
     secs = secs - (hours * 3600) - (mins * 60)
     
-    timestring = "%2d:%2d:%2d" % (hours, mins, secs)
+    timestring = "%s%s:%s:%s" % (sign, str(int(hours)).zfill(2), str(int(mins)).zfill(2), str(int(secs)).zfill(2))
     return timestring
 
 '''
