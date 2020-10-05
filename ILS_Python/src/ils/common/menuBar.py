@@ -4,20 +4,65 @@ Created on Mar 7, 2016
 @author: ils
 '''
 import system
+from javax.swing import JMenuItem
+log=system.util.getLogger("com.ils.common.menuBar")
 
 # Collection of useful methods for menu configuration
-
-
-def removeUnwantedConsoles(bar): 
+class ConsoleMenus():
     '''
-    Remove console menus that are not appropriate for this project.
-    The common X-O-M ignition project is used by all sites.  The database used at each site uses 
-    a common schema with site specific data.  The TkConsole table lists the consoles that are 
-    appropriate for each site.  So this method removes menus that are not appropriate for this site.
-    The argument is a menubar component.
+    An instance of this class is created from the client startup script.  The instance is stored in the menu somehow.
+    The one instance lives as long as the client is connected.
     '''
+    
+    def __init__(self,bar):
+        self.menus = {}
+        '''
+        Add appropriate consoles for this project
+        '''
+        log.infof("In %s.ConsoleMenus() - Adding consoles to main menu...", __name__)
+        count = bar.getMenuCount()
+        index = 0
+        while index < count:
+            menu = bar.getMenu(index)
+            name = menu.getText()
 
-    print "Removing unwanted consoles..."
+            if name == 'View':            
+                # Find the console menu
+                viewCount = menu.getItemCount()
+                viewIndex = 0
+                while viewIndex < viewCount:
+                    submenu = menu.getItem(viewIndex)
+                    submenuName = submenu.getText()
+                
+                    if submenuName == 'Consoles':
+                        log.infof("ConsoleMenus: Found the View->Console submenu...")
+                        SQL = "select consoleName, windowName from TkConsole order by Priority, consoleName"
+                        pds = system.db.runQuery(SQL)
+                        log.infof("...fetched %d consoles from the database...", len(pds))
+                        for record in pds:
+                            consoleName = record["consoleName"]
+                            windowName = record["windowName"]
+                            self.menus[consoleName] = windowName
+                            submenu.add(JMenuItem(consoleName, actionPerformed=self.menuAction))
+                    viewIndex=viewIndex+1
+            
+            index=index+1
+            
+    def menuAction(self,event):
+        '''
+        This is called when the user selects one of the console choices from the pulldown menu.
+        '''  
+        console = event.getSource().getText()
+        windowPath = self.menus[console]
+        log.infof("In %s.menuAction() - opening %s for console %s", __name__, windowPath, console)
+        system.nav.openWindow(windowPath)
+
+
+def clearConsoles(bar): 
+    '''
+    Remove entries from the View->Console entry on the main menu.
+    '''
+    log.infof("...removing console menu entries...")
     count = bar.getMenuCount()
     index = 0
     while index < count:
@@ -33,40 +78,24 @@ def removeUnwantedConsoles(bar):
                 submenuName = submenu.getText()
                 
                 if submenuName == 'Consoles':
-                    print "Found the View->Console submenu..."
-                    consoleCount = submenu.getItemCount()
-                    consoleIndex = 0
-                    while consoleIndex < consoleCount:
-                        console = submenu.getItem(consoleIndex)
-                        consoleName = console.getText()
-                        print "  Console menu: ", consoleName
-                        SQL = "select count(*) from TkConsole where ConsoleName = '%s'" % (consoleName)
-                        cnt=system.db.runScalarQuery(SQL)
-                        if cnt == 0:
-                            print "    *** REMOVE IT ***" 
-                            submenu.remove(console)
-                            consoleCount = consoleCount - 1
-                        else:
-                            consoleIndex = consoleIndex + 1
-
+                    log.infof("...found the View->Console submenu...")
+                    submenu.removeAll()
                 viewIndex=viewIndex+1
             
         index=index+1
 
 
 def removeNonOperatorMenus(bar):
-    print " "
-    print "Removing the menus which are not appropriate for operators."
+    log.infof("Removing the menus which are not appropriate for operators.")
 
     count = bar.getMenuCount()
-    print "Count = ", count
     index = 0
     while index < count:
         menu = bar.getMenu(index)
         name = menu.getText()
-        print "Menu:",name
+
         if name == 'Admin':
-            print "Removing the Admin menu..."
+            log.infof("Removing the Admin menu...")
             bar.remove(menu)
             count = count - 1
         
@@ -77,10 +106,10 @@ def removeNonOperatorMenus(bar):
             while viewIndex < viewCount:
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
-                print "View Submenu: ", submenuName
+                log.infof("View Submenu: %s", submenuName)
                 
                 if submenuName == 'Consoles':
-                    print "Removing the Consoles menu..."
+                    log.infof("Removing the Consoles menu...")
                     menu.remove(submenu)
                     viewCount = viewCount - 1
                 else:
@@ -121,8 +150,7 @@ def removeUnwantedMenus(bar, projectType):
     For some reason I decided to reverse the logic between the Admin and the View menus...
     '''
     
-    print " "
-    print "Removing unwanted menus for this application: ", projectType
+    log.infof("Removing unwanted menus for this application: %s", projectType)
     
     # Select the configuration of the menus for this site
     pds = system.db.runQuery("Select SubMenu, Enabled from TkMenuBar where Application = '%s' and Menu = 'View'" % (projectType))
@@ -143,7 +171,7 @@ def removeUnwantedMenus(bar, projectType):
     while index < count:
         menu = bar.getMenu(index)
         name = menu.getText()
-        print "Menu:",name
+        log.infof("Menu: %s", name)
         
         if name == 'View':    
             # Find the console menu
@@ -152,9 +180,9 @@ def removeUnwantedMenus(bar, projectType):
             while viewIndex < viewCount:
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
-                print "View Submenu: ", submenuName
+                log.infof("View Submenu: %s", submenuName)
                 if submenuName not in enabledViewMenus:
-                    print "  *** REMOVING ***"
+                    log.infof("  *** REMOVING ***")
                     menu.remove(submenu)
                     viewCount=viewCount-1
                 else:
@@ -166,9 +194,9 @@ def removeUnwantedMenus(bar, projectType):
             while viewIndex < viewCount:
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
-                print "Admin Submenu: ", submenuName
+                log.infof("Admin Submenu: %s", submenuName)
                 if submenuName in disabledAdminMenus:
-                    print "  *** REMOVING ***"
+                    log.infof("  *** REMOVING ***")
                     menu.remove(submenu)
                     viewCount=viewCount-1
                 else:
