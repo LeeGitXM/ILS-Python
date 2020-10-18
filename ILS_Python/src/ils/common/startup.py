@@ -172,6 +172,7 @@ def createTags(tagProvider, log):
     data.append([path, "printingAllowed", "Boolean", "True"])
     data.append([path, "reportHome", "String", "e:"])
     data.append([path, "simulateHDA", "Boolean", "False"])
+    data.append([path, "sqcPlotScaleFactor", "Float4", "0.75"])
     data.append([path, "writeEnabled", "Boolean", "True"])
 
     ds = system.dataset.toDataSet(headers, data)

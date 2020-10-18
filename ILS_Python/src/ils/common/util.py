@@ -402,7 +402,7 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
     badValue = False
     for i in range(0,len(tagPaths)):
         isGood = ds.getQualityAt(0, i + 1).isGood()
-        print tagPaths[i], isGood
+        log.tracef("%s - %s", tagPaths[i], str(isGood))
         if not(isGood):
             badValue = True
             log.warnf("Unable to collect average value for %s", tagPaths[i])
@@ -412,6 +412,51 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
                 badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
     return badValue, ds, badValueTxt
+
+
+def queryHistoricalValue(tagPaths, historyTagProvider, tagProvider, minutesAgo, log):
+    '''
+    I want to query the value of a tag at a precise time ago.  There isn't a clear specific Ignition API to do this, so this is a (hopefully) convenient wrapper
+    around the queryTagHistory() API.  I'll calculate the endData and then specify a one minute interval and request lastValue. 
+    return a dataset with one row.  The first column is a timestamp and each subsequent column is a tag's  value, one value for each tag.
+    It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
+    I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
+    testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
+    in project scope.
+    '''
+    badValueTxt = ""
+
+    fullTagPaths = []
+    for tagPath in tagPaths:
+        fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
+    
+    log.tracef("Querying the value for %s at %s minutes ago", str(fullTagPaths), str(minutesAgo))
+    endDate = system.date.addMinutes(system.date.now(), -1 * minutesAgo)
+    startDate = system.date.addMinutes(endDate, -1)
+    
+    ds = system.tag.queryTagHistory(
+        paths=fullTagPaths,
+        startDate=startDate, 
+        endDate=endDate, 
+        aggregationMode="LastValue", 
+        returnSize=1, 
+        ignoreBadQuality=True
+        )
+    
+    badValue = False
+    for i in range(0,len(tagPaths)):
+        isGood = ds.getQualityAt(0, i + 1).isGood()
+
+        if not(isGood):
+            badValue = True
+            log.warnf("Unable to collect value for %s at %s minutes ago", tagPaths[i], str(minutesAgo))
+            if badValueTxt == "":
+                badValueTxt = tagPaths[i]
+            else:
+                badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
+
+    return badValue, ds, badValueTxt
+
 
 '''
 Return a dataset with one row for each timestamp and one column for each tag.  The first column is a timestamp and each subsequent column is a tagname.
