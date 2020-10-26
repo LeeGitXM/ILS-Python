@@ -138,7 +138,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                 rampTime = recommendation.get('RampTime', None)
         
                 if quantOutput != None and val != None:
-                    log.infof("      Output: %s - Value: %s", quantOutput, str(val))
+                    log.infof("      Output: %s - Value: %s - Ramp Time: %s", quantOutput, str(val), str(rampTime))
                     recommendation['AutoRecommendation']=val
                     recommendation['AutoOrManual']='Auto'
                     recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, rampTime, database)

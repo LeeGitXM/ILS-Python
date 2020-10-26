@@ -23,7 +23,6 @@ def internalFrameActivated(rootContainer):
     log.tracef("In internalFrameActivated()")
 
 def configureChart(rootContainer, db):
-    import system.ils.blt.diagram as diagram
     sqcDiagnosisName=rootContainer.sqcDiagnosisName
     sqcDiagnosisUUID=rootContainer.sqcDiagnosisUUID
     log.tracef("Configuring a chart for %s - %s using %s", sqcDiagnosisName, sqcDiagnosisUUID, db)
@@ -305,9 +304,8 @@ def getSqcInfoFromDiagram(sqcBlockName, sqcDiagnosisId):
     log.tracef("   ... fetching upstream block info for chart <%s> ...", str(diagramId))
 
     # Now get the SQC observation blocks
-    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
-    print "   ... found %i upstream blocks..." % (len(blocks))
+    log.tracef("   ... found %d upstream blocks...", len(blocks))
 
     sqcInfo=[]
     for block in blocks:
@@ -368,14 +366,12 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisUUID):
     log.tracef("   ... fetching upstream block info for chart <%s> ...", str(diagramId))
 
     # Get all of the upstream blocks
-    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
     blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
 
     for block in blocks:
         if block.getClassName() == "com.ils.block.LabData":
             log.tracef("   ... found the LabData block...")
             blockId=block.getIdString()
-            blockName=block.getName()
             
             # First get block properties
             valueTagPath=diagram.getPropertyBinding(diagramId, blockId, 'ValueTagPath')
@@ -410,13 +406,13 @@ def sync(event):
     n = updater.n
     intervalType = updater.intervalType
     
-    print "Synchronizing all of the SQC plots to: %s - %s" % (intervalType, str(n))
+    log.infof("In %s.sync() - Synchronizing all of the SQC plots to: %s - %s", __name__, intervalType, str(n))
     
     windows = system.gui.getOpenedWindows()
-    print 'There are %d windows open' % len(windows)
+    log.tracef('There are %d windows open', len(windows))
     for window in windows:
         if window.getPath() == sqcWindowPath:
-            print "Found an SQC plot..."
+            log.tracef("Found an SQC plot...")
             rootContainer = window.rootContainer
             rootContainer.n = n
             rootContainer.intervalType = intervalType

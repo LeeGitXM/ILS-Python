@@ -46,11 +46,16 @@ def internalFrameActivated(rootContainer):
         " order by DTD.DisplayOrder" % (displayTableTitle)
     log.tracef(SQL)
     pds = system.db.runQuery(SQL)
-    for record in pds:
-        log.tracef("%s %s %s %s",record["LabValueName"], str(record["ValueId"]), record["Description"], str(record["DisplayDecimals"]))
+    ds = system.dataset.toDataSet(pds)
+    for row in range(ds.rowCount):
+        if ds.getValueAt(row, "Description") in [None, ""]:
+            valueName = ds.getValueAt(row, "LabValueName")
+            ds = system.dataset.setValue(ds, row, "Description", valueName)
+             
+        log.tracef("%s %s %s %s",ds.getValueAt(row, "LabValueName"), ds.getValueAt(row, "ValueId"), ds.getValueAt(row, "Description"), ds.getValueAt(row, "DisplayDecimals"))
     
     repeater=rootContainer.getComponent("Template Repeater")
-    repeater.templateParams=pds
+    repeater.templateParams=ds
 
     log.tracef("...leaving internalFrameActivated()!")
 
@@ -235,6 +240,9 @@ def fetchHistory(container):
         valueName = pds[0]["SourceValueName"]
         valueId = pds[0]["SourceValueId"]
         log.tracef("The selected lab data is a selector, redirecting the fetch to the source lab data: %s - %s", valueName, str(valueId))
+        if valueId == None:
+            system.gui.warningBox("A source is not configured for this selector.")
+            return
     
     SQL = "Select InterfaceName, ItemId, UnitName from LtPHDValueView where ValueId = %i" % (valueId)
     pds = system.db.runQuery(SQL)

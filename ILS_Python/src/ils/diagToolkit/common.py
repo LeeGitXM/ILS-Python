@@ -464,7 +464,7 @@ def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName, database=""):
     import system.ils.blt.diagram as diagram
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
 
-    print "Searching for SQC blocks for %s:" % (finalDiagnosisName)
+    log.tracef("Searching for SQC blocks for %s:", finalDiagnosisName)
     
     SQL = "select DiagramUUID from DtFinalDiagnosis where FinalDiagnosisName = '%s'" % (finalDiagnosisName)
     diagramUUID = system.db.runScalarQuery(SQL, database)
@@ -474,14 +474,14 @@ def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName, database=""):
         # Get the upstream blocks, make sure to jump connections
         blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
             
-        print "...found %i upstream blocks..." % (len(blocks))
+        log.tracef("...found %d upstream blocks...", len(blocks))
     
         for block in blocks:
             if block.getClassName() == "com.ils.block.SQC":
-                print "   ... found a SQC block..."
+                log.tracef("   ... found a SQC block...")
                 blockId=block.getIdString()
                 blockName=block.getName()
-                print "Found: %s - %s" % (str(blockId), str(blockName))
+                log.tracef("Found: %s - %s", str(blockId), str(blockName))
 
     return sqcRootCauses
 

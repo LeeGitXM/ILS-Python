@@ -1359,7 +1359,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     
     '''
     Do some work to support ramps.  We need to support writing a setpoint directly to a ramp controller or to ramp the setpoint to a ramp controller.  
-    The IO layer also supports ramping of a plain old controller or evenramping a OPC variable or memory tag.  The key that determines if an output
+    The IO layer also supports ramping of a plain old controller or even ramping an OPC variable or memory tag.  The key that determines if an output
     is ramped is if the recommendation contains a "rampTime" property.  A QuantOutput may be used one time to write an output directly or a ramp setpoint.
     '''
 
@@ -1368,7 +1368,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     for recommendation in recommendations:
         rampTime = recommendation.get("RampTime", None)
         if rampTime <> None:
-            print "*** Found a ramp time ***"
+            log.tracef("*** Found a ramp time ***")
         
     # The current setpoint was read when we checked the bounds.
     isGood = quantOutput.get('CurrentValueIsGood',False)

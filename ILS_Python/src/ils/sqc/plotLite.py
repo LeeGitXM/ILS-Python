@@ -4,29 +4,22 @@ Created on Jan 4, 2019
 @author: phass
 '''
 
-import system, string, math
-from ils.common.config import getTagProviderClient, getDatabaseClient
+import system
+from ils.common.config import getDatabaseClient
 from ils.sqc.plot import configureChartSQCLimit
-from com.jidesoft.grid import Row
 log = system.util.getLogger("com.ils.sqc")
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)
-    
-    tagProvider = getTagProviderClient()
     db = getDatabaseClient()
-    
     configureChart(rootContainer, db)
 
 def internalFrameActivated(rootContainer):
     log.infof("In %s.internalFrameActivated()", __name__)
     
 def configureChart(rootContainer, db):
-    import system.ils.blt.diagram as diagram
-
-    log.infof("In %s.configureChart()...", __name__)
+    log.tracef("In %s.configureChart()...", __name__)
     
-    provider = getTagProviderClient()
     db = getDatabaseClient()
     
     lowerLimit = rootContainer.lowerLimit
@@ -82,7 +75,7 @@ def configureChartValuePen(rootContainer, pen, unitName, labValueName, db):
 
 
 def configureChartExtensionFunction(self, chart):
-    log.infof("In %s.configureChartExtensionFunction()...", __name__)
+    log.tracef("In %s.configureChartExtensionFunction()...", __name__)
 
     import ils.sqc.tooltip as tt
     # Plot is an AutoAnnotateXYPlot. Have verified it is not a subplot.
@@ -111,4 +104,4 @@ def configureChartExtensionFunction(self, chart):
             renderer.setToolTipGenerator(customGenerator)
             series = series+seriesCount
 
-    log.infof("...done with %s.configureChartExtensionFunction()!", __name__)
+    log.tracef("...done with %s.configureChartExtensionFunction()!", __name__)
