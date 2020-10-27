@@ -8,8 +8,8 @@ import system, string, time
 from system.ils.sfc import getUserLibPath
 from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
 from ils.common.user import isOperator
-from ils.common.menuBar import getMenuBar, removeUnwantedConsoles, removeNonOperatorMenus,\
-    removeUnwantedMenus
+from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus,\
+    removeUnwantedMenus, ConsoleMenus
 from ils.common.error import catchError
 log = system.util.getLogger("com.ils.common.startup")
 IMPLEMENT = "IMPLEMENT"
@@ -130,7 +130,8 @@ def clientCommon():
     '''
     if window != None:
         menubar = getMenuBar(window)
-        removeUnwantedConsoles(menubar)
+        clearConsoles(menubar)
+        ConsoleMenus(menubar)
         removeUnwantedMenus(menubar, "XOM") #The second argument is NOT The project name, it is the project type
 
     '''

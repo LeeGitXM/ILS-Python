@@ -60,6 +60,12 @@ def refreshRecipeDataListCallback(event):
     table = container.getComponent("Power Table")
     system.db.refresh(table, "data")
     
+# chartIds are resource Ids of charts to consider
+def getSearchResults(chartIds):
+    print "Fetching recipe data to be used for searching" 
+    recipeData = []
+    return recipeData
+
     
 def editCallback(event):
     log.infof("In %s.editCallback()...", __name__)
