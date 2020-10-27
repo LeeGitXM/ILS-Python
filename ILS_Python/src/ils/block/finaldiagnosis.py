@@ -47,7 +47,8 @@ class FinalDiagnosis(basicblock.BasicBlock):
         proto['inports']        = self.getInputPorts()
         proto['outports']       = self.getOutputPorts()
         proto['viewWidth']      = 100
-        proto['editorClass']   = "com.ils.blt.designer.config.FinalDiagnosisConfiguration"
+# Editor is now embedded into the property editor.  PH 9/29/20
+#        proto['editorClass']   = "com.ils.blt.designer.config.FinalDiagnosisConfiguration"
         proto['transmitEnabled']= True
         return proto
             
