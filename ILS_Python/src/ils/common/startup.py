@@ -344,7 +344,7 @@ def createVersionTable(strategy, db):
 
 def installDbUpdate(versionId, version, filename, releaseDate, strategy, db):
     log.infof("**************************************************************")
-    log.infof("** Updating database %s to version %d - %s - %s", db, versionId, version, releaseDate)
+    log.infof("** Updating database %s to version %d - %s - %s (%s)", db, versionId, version, releaseDate, strategy)
     log.infof("**************************************************************")
     
     def runCommand(SQL, db):
@@ -371,11 +371,12 @@ def installDbUpdate(versionId, version, filename, releaseDate, strategy, db):
         cmd = cmd.lstrip()
             
         if cmd <> "":
-            log.tracef("Command: <%s>", cmd)
+            log.infof("SQL Command: <%s>", cmd)
             if strategy == IMPLEMENT:
                 runCommand(cmd, db)
     
     ''' Add a record to the version table'''
-    SQL = "Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (%d, '%s', '%s', GETDATE())" % (versionId, version, releaseDate)
     if strategy == IMPLEMENT:
+        SQL = "Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (%d, '%s', '%s', GETDATE())" % (versionId, version, releaseDate)
+        log.infof("Final SQL Command: <%s>", SQL)
         system.db.runUpdateQuery(SQL, db)
