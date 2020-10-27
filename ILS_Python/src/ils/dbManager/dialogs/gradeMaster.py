@@ -8,7 +8,7 @@ the popup screen that allows grade creation and deletion
 '''
 
 import system
-from ils.dbManager.ui import populateRecipeFamilyDropdown, populateGradeForFamilyDropdown
+from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
@@ -18,11 +18,6 @@ log = system.util.getLogger("com.ils.recipe.ui")
 # The "active" dropdown is always initialized to "TRUE"
 def internalFrameOpened(component):
     log.trace("InternalFrameOpened")
-    container = getRootContainer(component)
-        
-    dropdown = container.getComponent("FamilyDropdown")
-    dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
-
     root = getRootContainer(component)
     active = root.getComponent("ActiveOnlyCheckBox")
     active.selected = True
@@ -34,7 +29,7 @@ def internalFrameActivated(component):
     log.trace("InternalFrameActivated")
     container = getRootContainer(component)
     dropdown = container.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown, includeAll=False)
+    populateRecipeFamilyDropdown(dropdown, includeAll=True)
     requery(container)
 
 # Re-query the database and update the screen accordingly.
@@ -46,7 +41,7 @@ def requery(component):
     
     where = ""
     family = getUserDefaults("FAMILY")
-    if family != "ALL":
+    if family not in ["", "ALL", "<Family>"]:
         where = " AND F.RecipeFamilyName = '"+family+"'"
 
     active = rootContainer.getComponent("ActiveOnlyCheckBox")
@@ -188,10 +183,6 @@ def duplicateRow(button):
     if checkBox.selected:
         system.gui.messageBox("The new version was created as Inactive - in order to see it you must uncheck the 'Active Only' checkbox.")
 
-
-
-
-
 #     
 def nextVersion(familyId,grade):
     SQL = "SELECT MAX(Version) FROM RtGradeMaster WHERE Grade='"+str(grade)+"' AND RecipeFamilyId="+str(familyId)
@@ -235,3 +226,33 @@ def update(table,row,colname,value):
         SQL = "UPDATE RtGradeMaster SET ACTIVE=1"
         SQL = SQL+" WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"' AND Version="+str(vers)
         system.db.runUpdateQuery(SQL)
+
+
+def exportCallback(event):
+    entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family and active flag.  <br>Would you like to export the <b>entire</b> table?")
+    
+    rootContainer = event.source.parent
+    
+    andWhere = ""
+    if not(entireTable):
+        family = getUserDefaults("FAMILY")
+        if family != "ALL":
+            andWhere = " AND F.RecipeFamilyName = '"+family+"'"
+    
+        active = rootContainer.getComponent("ActiveOnlyCheckBox")
+        if active.selected:
+            andWhere = andWhere + " AND Active=1"
+    
+    SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,GM.Grade,GM.Version,GM.Active, GM.Timestamp"\
+        " FROM RtRecipeFamily F, RtGradeMaster GM"\
+        " WHERE F.RecipeFamilyId = GM.RecipeFamilyId"\
+        " %s "\
+        " ORDER BY F.RecipeFamilyName, GM.Grade" % (andWhere)
+    
+    log.trace(SQL)
+
+    pds = system.db.runQuery(SQL)
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("GradeMaster.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)

@@ -402,7 +402,7 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
     badValue = False
     for i in range(0,len(tagPaths)):
         isGood = ds.getQualityAt(0, i + 1).isGood()
-        print tagPaths[i], isGood
+        log.tracef("%s - %s", tagPaths[i], str(isGood))
         if not(isGood):
             badValue = True
             log.warnf("Unable to collect average value for %s", tagPaths[i])
@@ -412,6 +412,51 @@ def queryHistoryBetweenDates(tagPaths, historyTagProvider, tagProvider, startDat
                 badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
 
     return badValue, ds, badValueTxt
+
+
+def queryHistoricalValue(tagPaths, historyTagProvider, tagProvider, minutesAgo, log):
+    '''
+    I want to query the value of a tag at a precise time ago.  There isn't a clear specific Ignition API to do this, so this is a (hopefully) convenient wrapper
+    around the queryTagHistory() API.  I'll calculate the endData and then specify a one minute interval and request lastValue. 
+    return a dataset with one row.  The first column is a timestamp and each subsequent column is a tag's  value, one value for each tag.
+    It also returns a flag that indicates if any one of the tags is Nan, or None.  This query does not return a quality.
+    I've gone back and forth on how to use queryTagHistory, it seems like Ignition should know which tag provider to use given the tag, but as of today's
+    testing in Baton Rouge, I need to specify the history tag provider.  This might work differently when called from a SFC in global scope and from a client
+    in project scope.
+    '''
+    badValueTxt = ""
+
+    fullTagPaths = []
+    for tagPath in tagPaths:
+        fullTagPaths.append("[%s/.%s]%s" % (historyTagProvider, tagProvider, tagPath))
+    
+    log.tracef("Querying the value for %s at %s minutes ago", str(fullTagPaths), str(minutesAgo))
+    endDate = system.date.addMinutes(system.date.now(), -1 * minutesAgo)
+    startDate = system.date.addMinutes(endDate, -1)
+    
+    ds = system.tag.queryTagHistory(
+        paths=fullTagPaths,
+        startDate=startDate, 
+        endDate=endDate, 
+        aggregationMode="LastValue", 
+        returnSize=1, 
+        ignoreBadQuality=True
+        )
+    
+    badValue = False
+    for i in range(0,len(tagPaths)):
+        isGood = ds.getQualityAt(0, i + 1).isGood()
+
+        if not(isGood):
+            badValue = True
+            log.warnf("Unable to collect value for %s at %s minutes ago", tagPaths[i], str(minutesAgo))
+            if badValueTxt == "":
+                badValueTxt = tagPaths[i]
+            else:
+                badValueTxt = "%s, %s" % (badValueTxt, tagPaths[i])
+
+    return badValue, ds, badValueTxt
+
 
 '''
 Return a dataset with one row for each timestamp and one column for each tag.  The first column is a timestamp and each subsequent column is a tagname.
@@ -583,13 +628,22 @@ def timeStringToSeconds(timeString):
     return secs
 
 def secondsToTimeString(secs):
+    '''
+    This converts seconds to a time string, not a datetime string.
+    '''
     import math
+    
+    if secs < 0:
+        sign = "-"
+    else:
+        sign = ""
 
+    secs = abs(secs)
     hours = math.floor(secs / 3600)
     mins = math.floor((secs - hours * 3600) / 60)
     secs = secs - (hours * 3600) - (mins * 60)
     
-    timestring = "%2d:%2d:%2d" % (hours, mins, secs)
+    timestring = "%s%s:%s:%s" % (sign, str(int(hours)).zfill(2), str(int(mins)).zfill(2), str(int(secs)).zfill(2))
     return timestring
 
 '''
@@ -631,5 +685,52 @@ def dsToText(ds, delimiter):
             txt = txt + str(ds.getValueAt(row, col))
         txt = txt + CR
         
-    print "Formatted the dataset as: ", txt
+    log.tracef("Formatted the dataset as: %s", txt)
     return txt
+
+def dsRecordToText(ds, row, delimiter):
+    txt = ""
+    for col in range(ds.getColumnCount()):
+        if col > 0:
+            txt = txt + delimiter
+        txt = txt + str(ds.getValueAt(row, col))
+        
+    log.infof("Formatted record %d as: %s", row, txt)
+    return txt
+
+def scrollFrozenPane(singleColumnTable, table):
+    '''
+    This is used when a power table has a vertical and a horizontal scroll bar and we want to
+    freeze the first column so it is always visible even when they scroll the horizontal scrtoll bar.
+    This is akin to Excel freezing a pane.
+    This scrolls the single column table automatically when they scroll the big table vertically
+    '''
+    scrollBar = table.getVerticalScrollBar()
+    scrollBarPosition = scrollBar.getValue()
+
+    # If the position has changed since the last check then synchronize the scroll bars
+    if scrollBarPosition <> table.scrollPosition:
+        table.scrollPosition = scrollBarPosition
+        
+        # Set the single column's scroll bar to match the main table.
+        scrollBarSingleColumn = singleColumnTable.getVerticalScrollBar()
+        scrollBarSingleColumn.setValue(scrollBarPosition)
+
+def isthereaHorizontalScrollBar(event):
+    '''
+    This isn't used but it is pretty cool (it was written to be called from a button).  
+    Scroll bars generally come and go on power tables depending on the number of rows and columns.
+    The reason this isn't used is because there is a way to configure the power table to ALWAYS display the scroll bar in the initialization
+    extension function of the power table:
+        
+        from javax.swing import ScrollPaneConstant
+        self.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_ALWAYS)
+    '''
+    
+    table = event.source.parent.getComponent("Power Table")
+    scrollBar = table.getHorizontalScrollBar()
+    model = scrollBar.getModel()
+    if model.getExtent() == model.getMaximum():
+        print "There is NOT a horizontal scroll bar"
+    else:
+        print "There IS a horizontal scroll bar"

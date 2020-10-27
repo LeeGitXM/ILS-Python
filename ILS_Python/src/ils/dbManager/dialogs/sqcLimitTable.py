@@ -5,12 +5,10 @@ Created on Apr 19, 2019
 '''
 
 import system
-from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForParameter
-from ils.common.error import notifyError
-from ils.common.cast import toBit
 log = system.util.getLogger("com.ils.recipe.ui")
+POWER_TABLE_NAME = "SQC Table"
 
 # Called from the client startup script: View menu
 def showWindow():
@@ -31,23 +29,50 @@ def internalFrameActivated(rootContainer):
     log.infof("In %s.InternalFrameActivated", __name__)
     requery(rootContainer)
     dropdown = rootContainer.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown, False)
+    
+    SQL = "Select RecipeFamilyName from RtRecipeFamily where HasSQC = 1 order by RecipeFamilyName"
+    pds = system.db.runQuery(SQL)
+    
+    # Create a new dataset using only the Name column
+    header = ["Family"]
+    names = []
+    
+    for row in pds:
+        name = row['RecipeFamilyName']
+        nl = []
+        nl.append(name)
+        names.append(nl)
+    dropdown.data = system.dataset.toDataSet(header,names)
+    
+    # Select the current value. 
+    current = getUserDefaults('FAMILY')
+    if len(current)>0:
+        oldSelection = str(dropdown.selectedStringValue)
+        dropdown.setSelectedStringValue(current)
+        # Loose old edits if we select a different database
+        if oldSelection!=current:
+            print "...new family selection %s ..." % (current)    
+    
 
 def requery(rootContainer):
-    log.infof("In %s.InternalFrameActivated", __name__)
-    table = rootContainer.getComponent("Power Table")
+    log.infof("In %s.requery", __name__)
+    table = rootContainer.getComponent(POWER_TABLE_NAME)
     
     dropdown = rootContainer.getComponent("FamilyDropdown")
     recipeFamilyName = dropdown.selectedStringValue
     
-    checkBox = rootContainer.getComponent("ActiveOnlyCheckBox")
-    activeOnly = checkBox.selected
-    
     columns = fetchColumns(recipeFamilyName)
-    grades = fetchRows(recipeFamilyName, activeOnly)
+    grades = fetchRows(recipeFamilyName)
     pds = fetchData(recipeFamilyName)
     ds = mergeData(rootContainer, grades, columns, pds)
     table.data = ds
+    
+    gradeTable = rootContainer.getComponent("Grade Table")
+    data = []
+    for grade in grades:
+        data.append([grade])
+    ds = system.dataset.toDataSet(["Grade"], data)
+    gradeTable.data = ds
     
     for col in range(ds.getColumnCount()):
         if col == 0:
@@ -70,15 +95,10 @@ def fetchColumns(recipeFamilyName):
     print "Columns: ", columns
     return columns
     
-def fetchRows(recipeFamilyName, activeOnly):
-    if activeOnly:
-        SQL = "select distinct GM.Grade "\
-            " from RtGradeMaster GM,  RtRecipeFamily RF "\
-            " where RF.RecipeFamilyName = '%s' and GM.Active = 1 and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
-    else:
-        SQL = "select distinct GM.Grade "\
-            " from RtGradeMaster GM,  RtRecipeFamily RF "\
-            " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
+def fetchRows(recipeFamilyName):
+    SQL = "select distinct GM.Grade "\
+        " from RtGradeMaster GM,  RtRecipeFamily RF "\
+        " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
 
     print "SQL: ", SQL
     pds = system.db.runQuery(SQL)
@@ -167,7 +187,7 @@ def deleteColumns(event):
     rootContainer = event.source.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     recipeFamilyId = idForFamily(familyName)
-    table = event.source.parent.getComponent("Power Table")
+    table = event.source.parent.getComponent(POWER_TABLE_NAME)
     ds = table.data
     column = table.selectedColumn
     columnName = ds.getColumnName(column)
@@ -178,3 +198,27 @@ def deleteColumns(event):
     system.db.runUpdateQuery(SQL)
     
     requery(rootContainer)
+
+
+def exportCallback(event):
+    where = ""
+    
+    entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
+    if not(entireTable):
+        family = getUserDefaults("FAMILY")
+        if family not in ["ALL", "", "<Family>"]:
+            where = " WHERE  RecipeFamilyName = '" + family+"'"
+        
+    SQL = "select RecipeFamilyName, Grade, Parameter, UpperLimit, LowerLimit "\
+        " from RtSQCLimitView "\
+        " %s order by RecipeFamilyName, Grade, Parameter" % (where)
+    print SQL
+        
+    pds = system.db.runQuery(SQL)
+    log.trace(SQL)
+    print "Fetched %d rows of data..." % (len(pds))
+
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("SqcLimits.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)

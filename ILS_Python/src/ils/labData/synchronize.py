@@ -59,6 +59,20 @@ def createDcsTag(unitName, valueName, interfaceName, itemId):
         system.tag.addTag(parentPath=parentPath, name=valueName, tagType="OPC", dataType="Float8", 
                           attributes={"OPCServer": interfaceName, "OPCItemPath": itemId})
 
+def createLabSelector(unitName, valueName):
+    tagProvider = getTagProviderClient()
+    UDTType='Lab Data/Lab Selector Value'
+    path = "LabData/" + unitName
+    parentPath = "[%s]%s" % (tagProvider, path)  
+    tagPath = parentPath + "/" + valueName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        log.tracef("%s already exists!", tagPath)
+    else:
+        log.tracef("Creating a %s, Name: %s, Path: %s", UDTType, valueName, tagPath)
+        system.tag.addTag(parentPath=parentPath, name=valueName, tagType="UDT_INST", 
+                          attributes={"UDTParentType":UDTType})
+
 
 def deleteLabValue(unitName, valueName):
     tagProvider = getTagProviderClient()
@@ -103,6 +117,32 @@ def deleteLabLimit(unitName, valueName, limitType):
         system.tag.removeTag(tagPath)
     else:
         print "%s (%s) does not exist!" % (labDataName, tagPath)
+
+
+def deleteLabSelector(unitName, valueName):
+    tagProvider = getTagProviderClient()
+    path = "LabData/" + unitName
+    parentPath = "[%s]%s" % (tagProvider, path) 
+     
+    tagPath = parentPath + "/" + valueName
+    tagExists = system.tag.exists(tagPath)
+    if tagExists:
+        print "Deleting tag %s, Path: %s" % (valueName, tagPath)
+        system.tag.removeTag(tagPath)
+    else:
+        print "%s (%s) does not exist!" % (valueName, tagPath)
+
+    '''
+    Delete the limit selector 
+    '''
+    for limitType in ["-SQC", "-RELEASE", "-VALIDITY"]:
+        tagPath = parentPath + "/" + valueName +limitType
+        tagExists = system.tag.exists(tagPath)
+        if tagExists:
+            print "Deleting tag %s, Path: %s" % (valueName, tagPath)
+            system.tag.removeTag(tagPath)
+        else:
+            print "%s (%s) does not exist!" % (valueName, tagPath)
 
 
 def synchronize(provider, unitName, repair):

@@ -16,15 +16,19 @@ from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
 log = system.util.getLogger("com.ils.recipe.ui")
 
-# When the screen is first displayed, set widgets for user defaults
+
 def internalFrameOpened(component):
     log.trace("InternalFrameOpened")
+
+
+def internalFrameActivated(component):
+    log.trace("InternalFrameActivated")
     
-    # When the screen is first displayed, set widgets for user defaults
+    # Update the dropdown list of choices whenever the window comes to the top.
     container = getRootContainer(component)
     dropdown = container.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown, False)
-    dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
+    populateRecipeFamilyDropdown(dropdown, True)
+#    dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
 
     requery(component)
 
@@ -167,7 +171,7 @@ def duplicateRow(button):
 def getWhereExtension():
     where = ""
     family = getUserDefaults("FAMILY")
-    if family != "ALL" and family != "":
+    if family not in ["", "ALL", "<Family>"]:
         where = " WHERE F.RecipeFamilyName = '"+family+"'"
     return where
 
@@ -324,3 +328,30 @@ def repairGrade(recipeFamilyId, grade, version, masterValueIds):
             print "          Adding ", valueId
             SQL = "insert into RtGradeDetail (RecipeFamilyId, grade, version, ValueId) values (%d, '%s', %d, %d)" % (recipeFamilyId, grade, version, valueId)
             system.db.runUpdateQuery(SQL)
+
+   
+def exportCallback(event):
+    entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
+    
+    if entireTable:
+        whereExtension = ""
+    else:
+        whereExtension = getWhereExtension()
+        
+    print "The where extension was: ", whereExtension
+        
+    SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,VD.PresentationOrder,VD.ValueId, "\
+        " VD.Description,VD.StoreTag,VD.CompareTag,VD.ChangeLevel,VD.ModeAttribute,VD.ModeValue, WL.Alias, VT.ValueType"\
+        " FROM RtValueDefinition VD INNER JOIN "\
+        " RtValueType VT ON VT.ValueTypeId = VD.ValueTypeId INNER JOIN "\
+        " RtRecipeFamily F ON F.RecipeFamilyId = VD.RecipeFamilyId LEFT OUTER JOIN "\
+        " TkWriteLocation WL ON WL.WriteLocationId = VD.WriteLocationId "\
+        " %s ORDER BY F.RecipeFamilyName,VD.PresentationOrder" % (whereExtension)
+    log.trace(SQL)
+
+    pds = system.db.runQuery(SQL)
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("ValueDefinition.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)
+    

@@ -5,15 +5,21 @@ Created on Mar 7, 2016
 '''
 import system
 from javax.swing import JMenuItem
+log=system.util.getLogger("com.ils.common.menuBar")
 
 # Collection of useful methods for menu configuration
 class ConsoleMenus():
+    '''
+    An instance of this class is created from the client startup script.  The instance is stored in the menu somehow.
+    The one instance lives as long as the client is connected.
+    '''
+    
     def __init__(self,bar):
         self.menus = {}
         '''
         Add appropriate consoles for this project
         '''
-        print "Adding consoles to main menu..."
+        log.infof("In %s.ConsoleMenus() - Adding consoles to main menu...", __name__)
         count = bar.getMenuCount()
         index = 0
         while index < count:
@@ -29,27 +35,34 @@ class ConsoleMenus():
                     submenuName = submenu.getText()
                 
                     if submenuName == 'Consoles':
-                        print "ConsoleMenus: Found the View->Console submenu..."
-                        self.menus["Console1"] = "Window1"
-                        self.menus["Console2"] = "Window2"
-                        for key in self.menus:
-                            submenu.add(JMenuItem(key,actionPerformed=self.menuAction))
+                        log.infof("ConsoleMenus: Found the View->Console submenu...")
+                        SQL = "select consoleName, windowName from TkConsole order by Priority, consoleName"
+                        pds = system.db.runQuery(SQL)
+                        log.infof("...fetched %d consoles from the database...", len(pds))
+                        for record in pds:
+                            consoleName = record["consoleName"]
+                            windowName = record["windowName"]
+                            self.menus[consoleName] = windowName
+                            submenu.add(JMenuItem(consoleName, actionPerformed=self.menuAction))
                     viewIndex=viewIndex+1
             
             index=index+1
             
     def menuAction(self,event):
+        '''
+        This is called when the user selects one of the console choices from the pulldown menu.
+        '''  
         console = event.getSource().getText()
-        print console
         windowPath = self.menus[console]
-        print windowPath
-        
+        log.infof("In %s.menuAction() - opening %s for console %s", __name__, windowPath, console)
+        system.nav.openWindow(windowPath)
+
+
 def clearConsoles(bar): 
     '''
     Remove entries from the View->Console entry on the main menu.
     '''
-
-    print "Removing console menu entriess..."
+    log.infof("...removing console menu entries...")
     count = bar.getMenuCount()
     index = 0
     while index < count:
@@ -65,7 +78,7 @@ def clearConsoles(bar):
                 submenuName = submenu.getText()
                 
                 if submenuName == 'Consoles':
-                    print "clearConsoles: Found the View->Console submenu..."
+                    log.infof("...found the View->Console submenu...")
                     submenu.removeAll()
                 viewIndex=viewIndex+1
             
@@ -73,18 +86,16 @@ def clearConsoles(bar):
 
 
 def removeNonOperatorMenus(bar):
-    print " "
-    print "Removing the menus which are not appropriate for operators."
+    log.infof("Removing the menus which are not appropriate for operators.")
 
     count = bar.getMenuCount()
-    print "Count = ", count
     index = 0
     while index < count:
         menu = bar.getMenu(index)
         name = menu.getText()
-        print "Menu:",name
+
         if name == 'Admin':
-            print "Removing the Admin menu..."
+            log.infof("Removing the Admin menu...")
             bar.remove(menu)
             count = count - 1
         
@@ -95,10 +106,10 @@ def removeNonOperatorMenus(bar):
             while viewIndex < viewCount:
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
-                print "View Submenu: ", submenuName
+                log.infof("View Submenu: %s", submenuName)
                 
                 if submenuName == 'Consoles':
-                    print "Removing the Consoles menu..."
+                    log.infof("Removing the Consoles menu...")
                     menu.remove(submenu)
                     viewCount = viewCount - 1
                 else:
@@ -139,8 +150,7 @@ def removeUnwantedMenus(bar, projectType):
     For some reason I decided to reverse the logic between the Admin and the View menus...
     '''
     
-    print " "
-    print "Removing unwanted menus for this application: ", projectType
+    log.infof("Removing unwanted menus for this application: %s", projectType)
     
     # Select the configuration of the menus for this site
     pds = system.db.runQuery("Select SubMenu, Enabled from TkMenuBar where Application = '%s' and Menu = 'View'" % (projectType))
@@ -161,7 +171,7 @@ def removeUnwantedMenus(bar, projectType):
     while index < count:
         menu = bar.getMenu(index)
         name = menu.getText()
-        print "Menu:",name
+        log.infof("Menu: %s", name)
         
         if name == 'View':    
             # Find the console menu
@@ -170,9 +180,9 @@ def removeUnwantedMenus(bar, projectType):
             while viewIndex < viewCount:
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
-                print "View Submenu: ", submenuName
+                log.infof("View Submenu: %s", submenuName)
                 if submenuName not in enabledViewMenus:
-                    print "  *** REMOVING ***"
+                    log.infof("  *** REMOVING ***")
                     menu.remove(submenu)
                     viewCount=viewCount-1
                 else:
@@ -184,9 +194,9 @@ def removeUnwantedMenus(bar, projectType):
             while viewIndex < viewCount:
                 submenu = menu.getItem(viewIndex)
                 submenuName = submenu.getText()
-                print "Admin Submenu: ", submenuName
+                log.infof("Admin Submenu: %s", submenuName)
                 if submenuName in disabledAdminMenus:
-                    print "  *** REMOVING ***"
+                    log.infof("  *** REMOVING ***")
                     menu.remove(submenu)
                     viewCount=viewCount-1
                 else:

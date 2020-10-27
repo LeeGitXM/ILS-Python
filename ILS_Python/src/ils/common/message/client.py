@@ -51,15 +51,15 @@ def openWindow(payload):
         
     if console == "" and post == "":
         print "Showing the window because neither the post or console were specified"
-        window = system.gui.openWindow(window, windowPayload)
+        window = system.nav.openWindow(window, windowPayload)
         positionWindow(window, position, scale)
     elif console != "" and consoleMatch(console):
         print "The console Matches..."
-        window = system.gui.openWindow(window, windowPayload)
+        window = system.nav.openWindow(window, windowPayload)
         positionWindow(window, position, scale)
     elif post != "" and postMatch(post):
         print "The post Matches..."
-        window = system.gui.openWindow(window, windowPayload)
+        window = system.nav.openWindow(window, windowPayload)
         positionWindow(window, position, scale)
     else:
         print "Ignoring the request to show the window!"

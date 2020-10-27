@@ -4,6 +4,7 @@ Created on Jan 12, 2016
 @author: ils
 '''
 import system, math, string
+log = system.util.getLogger("com.ils.windowUtil")
 
 def bringWindowToFront(windowName):
     windows = system.gui.findWindow(windowName)
@@ -46,7 +47,6 @@ def clearTree(tree):
 # window in the standard well-known positions.
 def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):
     '''Position and size a window within the main window''' 
-    print "Opening %s with %s..." % (windowPath, str(props))
     window = system.nav.openWindowInstance(windowPath, props)
     
     mode=string.upper(mode)
@@ -70,48 +70,48 @@ def openWindowInstance(windowPath, props={}, mode="CENTER", scale=1.0):
 Position the upper left corner of the window.
 '''
 def positionWindow(window, mode, scale=1.0):
-    print "Positioning the window to: ", mode
+    log.tracef("%s.Positioning the window to: %s", __name__, mode)
     mainWindow = window.parent
     mainWidth = mainWindow.getWidth()
     mainHeight = mainWindow.getHeight()
-    print "Main window is %i X %i (Width X Height)" % (mainWidth, mainHeight)
+    log.tracef("Main window is %d X %d (Width X Height)", mainWidth, mainHeight)
     width = window.getWidth()
     height = window.getHeight()
-    print "This window is %i X %i (Width X Height)" % (width, height)
+    log.tracef("This window is %d X %d (Width X Height)", width, height)
     window.setSize(int(width * scale), int(height * scale))
     xOffset,yOffset=getDockOffset()
-    print "Dock Offset is (%i, %i)" % (xOffset,yOffset)
+    log.tracef("Dock Offset is (%d, %d)", xOffset, yOffset)
 
     mode = string.upper(mode)
     if mode in ['UPPER-LEFT', 'UPPERLEFT', 'TOPLEFT']:
         ulx = xOffset
         uly = 0
-        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        log.tracef("...positioning window at %d X %d (Width X Height)", ulx, uly)
         window.setLocation(ulx, uly)
     elif mode in ['UPPER-CENTER', 'UPPERCENTER', 'TOPCENTER']:
         ulx = xOffset + (mainWidth - xOffset) / 2 - (width * scale) / 2
         uly = 0
-        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        log.tracef("...positioning window at %d X %d (Width X Height)", ulx, uly)
         window.setLocation(int(ulx), uly)
     elif mode in ['UPPER-RIGHT', 'UPPERRIGHT', 'TOPRIGHT']:
         ulx = mainWidth - (width * scale) 
         uly = 0
-        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        log.tracef("...positioning window at %d X %d (Width X Height)", ulx, uly)
         window.setLocation(int(ulx), uly)
     elif mode in ['LOWER-LEFT', 'LOWERLEFT', 'BOTTOMLEFT']:
         ulx = xOffset
         uly = mainHeight - int(height * scale)
-        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        log.tracef("...positioning window at %d X %d (Width X Height)", ulx, uly)
         window.setLocation(int(ulx), int(uly))
     elif mode in ['LOWER-CENTER', 'LOWERCENTER', 'BOTTOMCENTER']:
         ulx = xOffset + (mainWidth - xOffset) / 2 - (width * scale) / 2
         uly = mainHeight - int(height * scale)
-        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        log.tracef("...positioning window at %d X %d (Width X Height)", ulx, uly)
         window.setLocation(int(ulx), int(uly))
     elif mode in ['LOWER-RIGHT', 'LOWERRIGHT', 'BOTTOMRIGHT']:
         ulx = mainWidth - (width * scale)
         uly = mainHeight - int(height * scale)
-        print "...positioning window at %d X %d (Width X Height)" % (ulx, uly)
+        log.tracef("...positioning window at %d X %d (Width X Height)", ulx, uly)
         window.setLocation(int(ulx), int(uly))
     elif mode in ['CENTER']:
         system.nav.centerWindow(window)   
@@ -179,7 +179,7 @@ def tileWindow(window, scale=1.0):
                 height = firstWindow.getHeight()
                 firstWindow.setSize(int(width * scale), int(height * scale))
             
-        # Figure out a grid based on the main window size and the child window size
+        ''' Figure out a grid based on the main window size and the child window size '''
         rows = math.floor(mainHeight / (height * scale))
         cols = math.floor(mainWidth / (width * scale))
         print "The main window has room for %i rows by %i columns" % (rows, cols) 
@@ -191,35 +191,36 @@ def tileWindow(window, scale=1.0):
         ulx=originX + (col - 1) * width * scale
         uly=originY + (row - 1) * height * scale
         
-        # These limits shouldn't be violated but check just in case to make sure the window is visible.
+        ''' These limits shouldn't be violated but check just in case to make sure the window is visible. '''
         ulx, uly = validateWindowLocation(ulx, uly, mainWidth, mainHeight)
         
         window.setLocation(int(ulx), int(uly))
 
 
-#
-# Tile windows that allow multiple instances.  This was specifically developed for the SQC plot window but is generic.
-# It will support docked windows that have the word "CONSOLE" and are WEST
-# This does not support scaling, although that is a reasonable extension
 def stackWindow(window, scale=1.0): 
+    '''
+    Tile windows that allow multiple instances.  This was specifically developed for the SQC plot window but is generic.
+    It will support docked windows that have the word "CONSOLE" and are WEST
+    This does not support scaling, although that is a reasonable extension
+    '''
     mainWindow = window.parent
     mainWidth = mainWindow.getWidth()
     mainHeight = mainWindow.getHeight()
     thisWindowPath=window.getPath()
     stackOffset = 15
     
-    print "==========="
-    print "Main window size: %i X %i" % (mainWidth, mainHeight)
+    log.tracef("===========")
+    log.tracef("Main window size: %d X %d", mainWidth, mainHeight)
     
     width = window.getWidth()
     height = window.getHeight()
-    print "User window size: %i X %i" % (width, height)
+    log.tracef("User window size: %d X %d", width, height)
 
-    # The origin is used to compensate for a west docked window
+    ''' The origin is used to compensate for a west docked window '''
     originX=0
     originY=0
     
-    # Determine how many of these windows are open on this client
+    ''' Determine how many of these windows are open on this client '''
     instanceCount = 0
     windows = system.gui.getOpenedWindows()
     for w in windows:
@@ -228,35 +229,36 @@ def stackWindow(window, scale=1.0):
             instanceCount = instanceCount + 1
             if w != window:
                 firstWindow = w
+                
         elif string.upper(windowPath).find("CONSOLE") > 0:
-            # I'm not sure how to determine where the window is docked, so assume West for now 
-            print "Resetting the origin for a docked console window..."
+            '''  I'm not sure how to determine where the window is docked, so assume West for now  '''
+            log.tracef("Resetting the origin for a docked console window...")
             originX = w.getWidth()
-#            originY = w.getHeight()
-            print "The console is %i X %i (W X H)" % (w.getWidth(), w.getHeight())
+            log.tracef("The console is %d X %d (W X H)", w.getWidth(), w.getHeight())
                 
     if originX != 0 or originY != 0:
         mainWidth = mainWidth - originX
         mainHeight = mainHeight - originY
-        print "The main window size adjusted for a docked window is : %i X %i" % (mainWidth, mainHeight)
+        log.tracef("The main window size adjusted for a docked window is : %d X %d", mainWidth, mainHeight)
 
-    # The first window is always centered.    
+    ''' The first window is always centered. '''
     if instanceCount == 1:
         system.nav.centerWindow(window)
     else:
-        print "Need to do some stacking!!!!"
+        log.tracef("Need to do some stacking!!!!")
         
-        # Since the first window is never tiled, when the second window is posted move the first 
-        # window to the first position
+        '''
+        Since the first window is never tiled, when the second window is posted move the first window to the first position.
+        '''
         if instanceCount == 2:
-            print "Need to reposition the first window..."
+            log.tracef("Need to reposition the first window...")
             firstWindow.setLocation(originX, originY)
         
-        # Calculate the location of the upper-left corner of the window so that the windows are stacked.
+        ''' Calculate the location of the upper-left corner of the window so that the windows are stacked. '''
         ulx=originX + (instanceCount - 1) * stackOffset
         uly=originY + (instanceCount - 1) * stackOffset
         
-        # These limits shouldn't be violated but check just in case to make sure the window is visible.
+        '''  These limits shouldn't be violated but check just in case to make sure the window is visible. '''
         ulx, uly = validateWindowLocation(ulx, uly, mainWidth, mainHeight)
         
         window.setLocation(int(ulx), int(uly))
@@ -269,30 +271,30 @@ def getDockOffset():
     for w in windows:
         windowPath = w.getPath()
         if string.upper(windowPath).find("CONSOLE") > 0:
-            # I'm not sure how to determine where the window is docked, so assume West for now 
-            print "Resetting the origin for a docked console window..."
+            ''' I'm not sure how to determine where the window is docked, so assume West for now '''
+            log.tracef("Resetting the origin for a docked console window...")
             xOffset = w.getWidth()
-#            originY = w.getHeight()
-            print "The console is %i X %i (W X H)" % (w.getWidth(), w.getHeight())
+            log.tracef("The console is %d X %d (W X H)", w.getWidth(), w.getHeight())
     return xOffset, yOffset
 
 def validateWindowLocation(ulx, uly, mainWidth, mainHeight):
-            
-    # These limits shouldn't be violated but check just in case to make sure the window is visible.
+    '''
+    These limits shouldn't be violated but check just in case to make sure the window is visible.
+    '''
     if ulx < 0:
-        print "Overriding min x = %i" % (ulx)
+        log.tracef("Overriding min x = %d", ulx)
         ulx = 0
         
     if ulx > mainWidth:
-        print "Overriding max x = %i" % (ulx)
+        log.tracef("Overriding max x = %d", ulx)
         ulx = 0
         
     if uly < 0:
-        print "Overriding min y = %i" % (uly)
+        log.tracef("Overriding min y = %d", uly)
         uly = 0
         
     if uly > mainHeight:
-        print "Overriding max y = %i" % (uly)
+        log.tracef("Overriding max y = %d", uly)
         uly = 0
     
     return ulx, uly

@@ -19,7 +19,7 @@ def launcher(displayTableTitle):
     windows = system.gui.findWindow(windowName)
     for window in windows:
         windowDisplayTableTitle = window.rootContainer.displayTableTitle
-        print "found a window with key: ", windowDisplayTableTitle
+        log.tracef("...found a window with key: %s", windowDisplayTableTitle)
         if windowDisplayTableTitle == displayTableTitle:
             system.nav.centerWindow(window)
             system.gui.messageBox("The lab table is already open!")
@@ -33,10 +33,10 @@ def launcher(displayTableTitle):
 # this page.  There is really only one component on this window - the template repeater.
 # Once the repeater is configured, each component in the repeater knows how to configure itself.
 def internalFrameActivated(rootContainer):
-    log.infof("In %s.internalFrameActivated()", __name__)
+    log.tracef("In %s.internalFrameActivated()", __name__)
      
     displayTableTitle = rootContainer.displayTableTitle
-    print "The table being displayed is: ", displayTableTitle
+    log.tracef("The table being displayed is: %s", displayTableTitle)
     
     SQL = "select V.ValueName LabValueName, V.ValueId, V.Description, V.DisplayDecimals "\
         " from LtValue V, LtDisplayTable DT, LtDisplayTableDetails DTD "\
@@ -46,11 +46,16 @@ def internalFrameActivated(rootContainer):
         " order by DTD.DisplayOrder" % (displayTableTitle)
     log.tracef(SQL)
     pds = system.db.runQuery(SQL)
-    for record in pds:
-        log.tracef("%s %s %s %s",record["LabValueName"], str(record["ValueId"]), record["Description"], str(record["DisplayDecimals"]))
+    ds = system.dataset.toDataSet(pds)
+    for row in range(ds.rowCount):
+        if ds.getValueAt(row, "Description") in [None, ""]:
+            valueName = ds.getValueAt(row, "LabValueName")
+            ds = system.dataset.setValue(ds, row, "Description", valueName)
+             
+        log.tracef("%s %s %s %s",ds.getValueAt(row, "LabValueName"), ds.getValueAt(row, "ValueId"), ds.getValueAt(row, "Description"), ds.getValueAt(row, "DisplayDecimals"))
     
     repeater=rootContainer.getComponent("Template Repeater")
-    repeater.templateParams=pds
+    repeater.templateParams=ds
 
     log.tracef("...leaving internalFrameActivated()!")
 
@@ -65,25 +70,25 @@ def newLabDataMessageHandler(payload):
         windowPath = window.getPath()
         if windowPath == "Lab Data/Lab Data Viewer":
             rootContainer = window.rootContainer
-            print "-------------------"
-            print "There is an open lab data viewer titled: ", rootContainer.displayTableTitle
+            log.tracef("-------------------")
+            log.tracef("There is an open lab data viewer titled: %s", rootContainer.displayTableTitle)
             
             repeater = rootContainer.getComponent("Template Repeater")
             
             templateList = repeater.getLoadedTemplates()
             
             for template in templateList:
-                print "  Processing ", template.LabValueName
+                log.tracef("  Processing %s", template.LabValueName)
                 configureLabDatumTable(template)
     
 #  This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
 def configureLabDatumTable(container):
     username = system.security.getUsername()
-    print "In labData.viewer.configureLabDatumTable(), checking for lab data viewed by ", username
+    log.tracef("In %s.configureLabDatumTable(), checking for lab data viewed by %s", __name__, username)
     valueName=container.LabValueName
     valueDescription=container.Description
     displayDecimals=container.DisplayDecimals
-    print "Configuring the Lab Datum Viewer table for ", valueName
+    log.tracef("Configuring the Lab Datum Viewer table for %s", valueName)
     
     from ils.labData.common import fetchValueId
     valueId = fetchValueId(valueName)
@@ -92,14 +97,14 @@ def configureLabDatumTable(container):
         " from LtHistory "\
         " where ValueId = %i "\
         " order by SampleTime desc" % (valueName, valueId)
-    print SQL
+    log.tracef(SQL)
     pds = system.db.runQuery(SQL)
     
     SQL = "Select ViewTime from LtValueViewed where ValueId = %i and Username = '%s'" % (valueId, username)
     lastViewedTime = system.db.runScalarQuery(SQL)
 
     header = [str(valueDescription), 'seen', 'historyId']
-    print "Fetched ", len(pds), " rows, the header is ", header
+    log.tracef("Fetched %d rows, the header is %s", len(pds),  str(header))
     data = []
     tableData = []
     newestHistoryId=-1
@@ -175,7 +180,7 @@ def getTemplates(repeater, templateName):
 # The original implementation looked at the last value id for the value and then updated that value for the user as having been seen,
 # but somehow that didn't work for Mike and he had rows in the middle that were red, so somehow things came in in some strange order.
 def setSeen(rootContainer):
-    print "In labData.viewer.setSeen()..."
+    log.tracef("In %s.labData.viewer.setSeen()...", __name__)
     username = system.security.getUsername()
     
     repeater=rootContainer.getComponent("Template Repeater")
@@ -184,19 +189,17 @@ def setSeen(rootContainer):
     for template in templates:
         valueId = template.getPropertyValue("ValueId")
         valueName = template.getPropertyValue("LabValueName")
-        print "Processing values that have been seen for %s - %i by %s" % (valueName, valueId, username)
+        log.tracef("Processing values that have been seen for %s - %d by %s", valueName, valueId, username)
         
         # Get the id that is stored for this user and this value.
         SQL = "update LtValueViewed set ViewTime = getdate() where ValueId = %i and username = '%s' " % (valueId, username)
-        print SQL
         rows = system.db.runUpdateQuery(SQL)
         
         if rows == 0:
             # If no rows were updated then do an insert
             SQL = "insert into LtValueViewed (ValueId, UserName, ViewTime) values (%i, '%s', getdate())" % (valueId, username)
-            print SQL
             rows = system.db.runUpdateQuery(SQL)
-            print "Inserted %i rows into LtValueViewed"
+            log.tracef("Inserted %i rows into LtValueViewed", rows)
 
     '''
     Send a message to every client to update their Lab Data Chooser so that red buttons can be turned grey.
@@ -214,7 +217,7 @@ def fetchHistory(container):
     valueName=container.LabValueName
     valueId=container.ValueId
     
-    print "In labData.viewer.fetchHistory(), fetching missing data for %s - %i" % (valueName, valueId)
+    log.tracef("In labData.viewer.fetchHistory(), fetching missing data for %s - %d", valueName, valueId)
     
     '''
     For now, "Get History" is not supported for derived lab values
@@ -223,7 +226,7 @@ def fetchHistory(container):
     pds = system.db.runQuery(SQL)
     
     if len(pds) > 0:
-        print "The selected lab data is a derived value, Get History is not supported"
+        log.tracef("The selected lab data is a derived value, Get History is not supported")
         system.gui.warningBox("%s is a derived value which does not support Get History!" % (valueName))
         return
     
@@ -236,7 +239,10 @@ def fetchHistory(container):
     if len(pds) > 0:
         valueName = pds[0]["SourceValueName"]
         valueId = pds[0]["SourceValueId"]
-        print "The selected lab data is a selector, redirecting the fetch to the source lab data: %s - %s" % (valueName, valueId)
+        log.tracef("The selected lab data is a selector, redirecting the fetch to the source lab data: %s - %s", valueName, str(valueId))
+        if valueId == None:
+            system.gui.warningBox("A source is not configured for this selector.")
+            return
     
     SQL = "Select InterfaceName, ItemId, UnitName from LtPHDValueView where ValueId = %i" % (valueId)
     pds = system.db.runQuery(SQL)
@@ -269,7 +275,7 @@ def fetchHistory(container):
     startDate = cal.getTime()
 
     retVals=system.opchda.readRaw(hdaInterface, [itemId], startDate, endDate, maxValues, boundingValues)
-    print "...back from HDA read, read %i values!" % (len(retVals))
+    log.tracef("...back from HDA read, read %d values!", len(retVals))
 
     # We are fetching the history for a single lab value.
     valueList=retVals[0]
@@ -301,7 +307,7 @@ def fetchHistory(container):
             SQL = "select HistoryId from LtHistory where ValueId = ? and RawValue = ? and SampleTime = ?"
             pds = system.db.runPrepQuery(SQL, [valueId, rawValue, sampleTime]) 
             if len(pds) == 0:
-                print "...Inserting a missing value: ", valueName, itemId, rawValue, sampleTime
+                log.tracef("...Inserting a missing value: %s - %s - %s - %s", valueName, itemId, str(rawValue), str(sampleTime))
                 
                 # Insert the value into the lab history table.
                 from ils.labData.scanner import insertHistoryValue
@@ -314,4 +320,3 @@ def fetchHistory(container):
     else:
         configureLabDatumTable(container)
         system.gui.messageBox("%i new values were loaded!" % (rows))
-        

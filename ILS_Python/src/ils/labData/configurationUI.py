@@ -13,6 +13,10 @@ log = system.util.getLogger("com.ils.labData.ui.configuration")
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened(), reserving a cursor...", __name__)
     
+    unitDropdown = rootContainer.getComponent("UnitName")
+    unitDropdown.selectedValue = -1
+    unitDropdown.selectedStringValue = "<Select One>"
+    
     # Reset the tab that is selected
     rootContainer.getComponent("Tab Strip").selectedTab = "PHD"
     
@@ -167,13 +171,70 @@ def insertDataRow(rootContainer):
     labDataType = rootContainer.labDataType
             
     newName = rootContainer.getComponent("name").text
+    if newName == "":
+        system.gui.messageBox("You must specify a name for the lab value!", "Warning")
+        return False
+    
     description = rootContainer.getComponent("description").text
     decimals = rootContainer.getComponent("decimals").intValue
     unitId = rootContainer.unitId
     unitName = rootContainer.unitName
+    if unitId == -1 or unitName == "":
+        system.gui.messageBox("You must select a unit for the lab value!", "Warning")
+        return False
+
     validationProcedure = rootContainer.getComponent("validationProcedure").text
+
+    '''
+    Do some validation of everything before we insert anything.
+    '''
     
-    #insert the user's data as a new row
+    if labDataType == "PHD":
+        interfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
+        interfaceName = rootContainer.getComponent("opcServerDropdown").selectedStringValue
+        if interfaceId == -1 or interfaceName == "":
+            system.gui.messageBox("You must select an OPC HDA Server!", "Warning")
+            return False
+    
+        itemId = rootContainer.getComponent("itemId").text
+        if itemId == "":
+            system.gui.messageBox("You must specify an Item-Id for the lab value!", "Warning")
+            return False
+        
+    elif labDataType == "DCS":
+        interfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
+        interfaceName = rootContainer.getComponent("opcServerDropdown").selectedStringValue
+        if interfaceId == -1 or interfaceName == "":
+            system.gui.messageBox("You must select an OPC Server!", "Warning")
+            return False
+        
+        minimumTimeBetweenSamples = rootContainer.getComponent("minimumTimeBetweenSamples").intValue
+        itemId = rootContainer.getComponent("itemId").text
+        if itemId == "":
+            system.gui.messageBox("You must specify an Item-Id for the lab value!", "Warning")
+            return False
+    
+    elif labDataType == "Local":
+        '''
+        For local lab data, the PHD interface and item-id are optional if we don't want to write the local value to PHD.
+        But if they specify one or the other then they need both
+        '''
+        interfaceId = rootContainer.getComponent("hdaInterfaceDropdown").selectedValue
+        interfaceName = rootContainer.getComponent("hdaInterfaceDropdown").selectedStringValue
+        itemId = rootContainer.getComponent("itemId").text
+        if interfaceId <> -1 or interfaceName <> "" or itemId <> "":
+            if interfaceId == -1 or interfaceName == "":
+                system.gui.messageBox("You must select an HDA Server!", "Warning")
+                return False
+            
+            if itemId == "":
+                system.gui.messageBox("You must specify an Item-Id for the lab value!", "Warning")
+                return False
+    
+    '''
+    Now we are ready to insert into the database and create the tags.
+    Insert the base record and then the matching PHD, DCS, or local record
+    '''
     if validationProcedure == "":
         SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
             "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
@@ -184,17 +245,11 @@ def insertDataRow(rootContainer):
     valueId = system.db.runUpdateQuery(SQL, getKey=True)
     
     if labDataType == "PHD":
-        interfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
-        itemId = rootContainer.getComponent("itemId").text
         sql = "INSERT INTO LtPHDValue (ValueId, ItemId, InterfaceId)"\
             "VALUES (%s, '%s', %s)" %(str(valueId), str(itemId), str(interfaceId))
         system.db.runUpdateQuery(sql)
         
     elif labDataType == "DCS":
-        interfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
-        interfaceName = rootContainer.getComponent("opcServerDropdown").selectedStringValue
-        minimumTimeBetweenSamples = rootContainer.getComponent("minimumTimeBetweenSamples").intValue
-        itemId = rootContainer.getComponent("itemId").text
         sql = "INSERT INTO LtDCSValue (ValueId, InterfaceId, ItemId, MinimumSampleIntervalSeconds)"\
             "VALUES (%s, %s, '%s', %s)" %(str(valueId), str(interfaceId), str(itemId), str(minimumTimeBetweenSamples))
         system.db.runUpdateQuery(sql)
@@ -214,10 +269,11 @@ def insertDataRow(rootContainer):
         system.db.runUpdateQuery(sql)
     else:
         print "Unexpected lab data type: ", labDataType
-        return
+        return False
     
     # Create the UDT
     createLabValue(unitName, newName)
+    return True
     
 
 def update(rootContainer):

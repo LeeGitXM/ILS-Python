@@ -366,10 +366,10 @@ def fd2_1_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
 def fd2_1_1e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     ''' This tests a recommendation to a ramp controller '''
     print "In %s.fd2_1_1e" % (__name__)
-    explanation = "Ramp a plane controller."
+    explanation = "Ramp a plain controller."
     recommendations = []
 
-    recommendations.append({"QuantOutput": "TEST_Q21", "Value": 40.0, "RampTime": 5.0})
+    recommendations.append({"QuantOutput": "TEST_Q21", "Value": 40.0, "RampTime": 1.0})
 
     return True, explanation, recommendations
 

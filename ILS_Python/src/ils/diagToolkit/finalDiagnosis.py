@@ -905,9 +905,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     log.tracef("The active diagnosis are: ")
     for record in pds:
-        log.tracef("  Family: %s, Final Diagnosis: %s, Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s", 
+        log.tracef("  Family: %s, Final Diagnosis: %s, Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s, Group Ramp Method: %s", 
                   record["FamilyName"], record["FinalDiagnosisName"], str(record["Constant"]), str(record["FamilyPriority"]), 
-                   str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"]) )
+                   str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"]), record['GroupRampMethod'] )
     
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
     # descending order.
@@ -921,9 +921,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # Calculate the recommendations for each final diagnosis
     log.trace("The families / final diagnosis with the highest priorities are: ")
     for record in list2:
-        log.trace("  Family: %s, Final Diagnosis: %s (%d), Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s" % 
-                  (record["FamilyName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], str(record["Constant"]), 
-                   str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"])))
+        log.tracef("  Family: %s, Final Diagnosis: %s (%d), Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s, Group Ramp Method: %s",
+                  record["FamilyName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], str(record["Constant"]), 
+                   str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"]), record['GroupRampMethod'] )
     
     log.trace("Checking if there has been a change in the highest priority final diagnosis...")
     changed,lowPriorityList=compareFinalDiagnosisState(oldList, list2)
@@ -965,8 +965,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
         textRecommendation = record["TextRecommendation"]
         staticExplanation = record["Explanation"]
         showExplanationWithRecommendation = record["ShowExplanationWithRecommendation"]
+        groupRampMethod = record["GroupRampMethod"]
         
-        log.trace("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%d), Constant: %s" % (applicationName, familyName, finalDiagnosisName, finalDiagnosisId, str(constantFD)))
+        log.tracef("Making a recommendation for application: %s, family: %s, final diagnosis:%s (%d), Constant: %s, Group Ramp Method: %s", applicationName, familyName, finalDiagnosisName, finalDiagnosisId, str(constantFD), groupRampMethod)
 
         # There could be multiple Final Diagnosis that are of equal priority, so we can't just bail if the first one is constant or a text recommendation
 
@@ -1034,10 +1035,14 @@ def manage(application, recalcRequested=False, database="", provider=""):
     log.trace("--- Recommendations have been made, now calculating the final recommendations ---")
     finalQuantOutputs = []
     
+    ''' Determine the ramptime if there are multiple ramp recommendations '''
+    from ils.diagToolkit.recommendation import determineRampTime
+    groupRampTime = determineRampTime(quantOutputs, groupRampMethod)
+    
     for quantOutput in quantOutputs:
         from ils.diagToolkit.recommendation import calculateFinalRecommendation
         quantOutputName = quantOutput.get("QuantOutput", "Unknown")
-        quantOutput = calculateFinalRecommendation(quantOutput)
+        quantOutput = calculateFinalRecommendation(quantOutput, groupRampTime)
         if quantOutput == None:
             # The case where a FD has 5 quant outputs defined but there are only recommendations to change 3 of them is not an error
             pass
@@ -1354,7 +1359,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     
     '''
     Do some work to support ramps.  We need to support writing a setpoint directly to a ramp controller or to ramp the setpoint to a ramp controller.  
-    The IO layer also supports ramping of a plain old controller or evenramping a OPC variable or memory tag.  The key that determines if an output
+    The IO layer also supports ramping of a plain old controller or even ramping an OPC variable or memory tag.  The key that determines if an output
     is ramped is if the recommendation contains a "rampTime" property.  A QuantOutput may be used one time to write an output directly or a ramp setpoint.
     '''
 
@@ -1363,7 +1368,7 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     for recommendation in recommendations:
         rampTime = recommendation.get("RampTime", None)
         if rampTime <> None:
-            print "*** Found a ramp time ***"
+            log.tracef("*** Found a ramp time ***")
         
     # The current setpoint was read when we checked the bounds.
     isGood = quantOutput.get('CurrentValueIsGood',False)

@@ -21,8 +21,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                        postTextRecommendation, textRecommendation, zeroChangeThreshold, database="", provider=""):
     log.tracef("********** In %s.makeRecommendation() *********", __name__)
 
-    log.infof("Making a recommendation for final diagnosis with id: %s using calculation method: <%s>, Constant=<%s>, \
-        database: %s, provider: %s", str(finalDiagnosisId), calculationMethod, str(constantFD), database, provider)
+    log.infof("Making a recommendation for final diagnosis with id: %s using calculation method: <%s>, Constant=<%s>, database: %s, provider: %s", str(finalDiagnosisId), calculationMethod, str(constantFD), database, provider)
 
     # If the FD is constant, then it shouldn't get this far because there really isn't a recommendation to make, so this code should never get exercised.
     if constantFD == True:
@@ -139,7 +138,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
                 rampTime = recommendation.get('RampTime', None)
         
                 if quantOutput != None and val != None:
-                    log.infof("      Output: %s - Value: %s", quantOutput, str(val))
+                    log.infof("      Output: %s - Value: %s - Ramp Time: %s", quantOutput, str(val), str(rampTime))
                     recommendation['AutoRecommendation']=val
                     recommendation['AutoOrManual']='Auto'
                     recommendationId = insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutput, val, rampTime, database)
@@ -173,23 +172,68 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
     log.tracef("      ...inserted recommendation id: %s for recommendation definition id: %s", recommendationId, str(recommendationDefinitionId))
     return recommendationId
 
+def determineRampTime(quantOutputs, groupRampMethod):
+    '''
+    If the recommendation is for a ramp controller then it MUST contain a rampTime property
+    (If there are multiple recommendations for the same ramp output with different ramp times then the last one wins - that probably isn't right TODO
+    '''
+    log.tracef("Determining the group ramp time using strategy %s ", groupRampMethod)
+    rampTimes = []
+    
+    for quantOutput in quantOutputs:
+        recommendations = quantOutput.get("Recommendations", [])    
+
+        for recommendation in recommendations:
+            log.tracef("  The raw recommendation is: %s", str(recommendation))
+            
+            if recommendation.get("RampTime", None) != None:
+                log.tracef("   ...found a ramp time in the recommendation, adding it to the quantOutput...")
+                rampTime = recommendation.get("RampTime", None)
+                if rampTime <> None:
+                    rampTimes.append(rampTime)
+        
+    if len(rampTimes) > 0:
+        if string.upper(groupRampMethod) == "LONGEST": 
+            rampTime = max(rampTimes)
+        elif string.upper(groupRampMethod) == "SHORTEST": 
+            rampTime = min(rampTimes)
+        elif string.upper(groupRampMethod) == "AVERAGE":
+            total = 0
+            for val in rampTimes:
+                total = total + val
+            rampTime = total / len(rampTimes)
+        else:
+            rampTime = None
+
+        log.tracef("Calculated a ramp time of %f using %s strategy from %s", rampTime, groupRampMethod, str(rampTimes))
+    else:
+        log.tracef("There are no ramp recommendations!")
+        rampTime = None
+
+    return rampTime
+
 # QuantOutput is a dictionary with all of the attributes of a QuantOut and a list of the recommendations that have been made
 # for that QuantOutput - in the case where multiple FDs are active and of equal priority and tough the same quantOutput.
-def calculateFinalRecommendation(quantOutput):
-    log.tracef("Calculating the final recommendation for: %s ", quantOutput)
+def calculateFinalRecommendation(quantOutput, groupRampTime):
+    log.tracef("Calculating the final recommendation for: %s with group ramp time: %s", quantOutput, str(groupRampTime))
+    
+    feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
+    log.tracef("   ...using feedback method %s to combine recommendations...", feedbackMethod)
 
     i = 0
     finalRecommendation = 0.0
     recommendations = quantOutput.get("Recommendations", [])
     
-    # It certainly isn't normal to get to this point and NOT have any recommendations but it is possible that a FD may have 5 outputs defined
-    # and for a certain situation may only decide to change 3 of them, for example.  This should not be treated as an error and should not cause
-    # the minimum change warning to kick in for the 2 quant outputs that were not changed.
+    '''
+     It certainly isn't normal to get to this point and NOT have any recommendations but it is possible that a FD may have 5 outputs defined
+    and for a certain situation may only decide to change 3 of them, for example.  This should not be treated as an error and should not cause
+    the minimum change warning to kick in for the 2 quant outputs that were not changed.
+    '''
     if len(recommendations) == 0:
         log.error("No recommendations were found for quant output: %s" % (quantOutput.get("QuantOutput", "Unknown")))
         return None
-    
-    rampTime = None
+
+    isaRamp = False
     for recommendation in recommendations:
         log.tracef("  The raw recommendation is: %s", str(recommendation))
             
@@ -200,18 +244,10 @@ def calculateFinalRecommendation(quantOutput):
         else:
             recommendationValue = recommendation.get('ManualRecommendation', 0.0)
             log.tracef("   ...using the manual value: %s", str(recommendationValue))
-    
-        feedbackMethod = string.upper(quantOutput.get('FeedbackMethod','Simple Sum'))
-        log.tracef("   ...using feedback method %s to combine recommendations...", feedbackMethod)
-
-        '''
-        If the recommendation is for a ramp controller then it MUST contain a rampTime property
-        (If there are multiple recommendations for the same ramp output with different ramp times then the last one wins - that probably isn't right TODO
-        '''
-        if recommendation.get("RampTime", None) != None:
-            log.tracef("   ...found a ramp time in the recommendation, adding it to the quantOutput...")
-            rampTime = recommendation.get("RampTime", None)
-            quantOutput['Ramp'] = rampTime
+        
+        rampTime = recommendation.get("RampTime", None)
+        if rampTime <> None:
+            isaRamp = True
 
         if feedbackMethod == 'MOST POSITIVE':
             if i == 0: 
@@ -245,9 +281,16 @@ def calculateFinalRecommendation(quantOutput):
     quantOutput['OutputPercent'] = 100.0
     quantOutput['FeedbackOutput'] = finalRecommendation
     quantOutput['FeedbackOutputConditioned'] = finalRecommendation
+    
+    if isaRamp:
+        if groupRampTime in [None, "None"]:
+            quantOutput["Ramp"] = rampTime
+        else:
+            quantOutput["Ramp"] = groupRampTime
 
     log.tracef("  The recommendation after combining multiple recommendations but before bounds checking) is: %s", str(finalRecommendation))
     return quantOutput
+
 
 def test(applicationName, familyName, finalDiagnosisName, calculationMethod, database="", provider=""):
     log.infof("*** In recommendation.test() ***")

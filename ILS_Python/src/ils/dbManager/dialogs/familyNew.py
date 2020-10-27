@@ -22,6 +22,8 @@ def createFamily(rootContainer):
     unitPrefix = rootContainer.getComponent("Unit Prefix").text
     recipeAlias = rootContainer.getComponent("Recipe Alias").text
     comment = rootContainer.getComponent("Comment").text
+    hasSQC = rootContainer.getComponent("HasSQC").selected
+    hasGains = rootContainer.getComponent("HasGains").selected
     
     if family == None:
         system.gui.messageBox("Family is required.")
@@ -46,10 +48,10 @@ def createFamily(rootContainer):
     print "Creating a new family..."
 
     # Insert row into RtRecipeFamily
-    SQL="INSERT INTO RtRecipeFamily(RecipeFamilyName, RecipeUnitPrefix, RecipeNameAlias, PostId, Comment) VALUES(?,?,?,?,?)"
+    SQL="INSERT INTO RtRecipeFamily(RecipeFamilyName, RecipeUnitPrefix, RecipeNameAlias, PostId, HasSQC, HasGains, Comment) VALUES(?,?,?,?,?,?,?)"
     
     try:
-        system.db.runPrepUpdate(SQL,[family, unitPrefix, recipeAlias, postId, comment])
+        system.db.runPrepUpdate(SQL,[family, unitPrefix, recipeAlias, postId, hasSQC, hasGains, comment])
     except:
         notifyError(__name__, "Inserting a new family")
         

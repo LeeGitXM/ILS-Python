@@ -172,6 +172,7 @@ def createTags(tagProvider, log):
     data.append([path, "printingAllowed", "Boolean", "True"])
     data.append([path, "reportHome", "String", "e:"])
     data.append([path, "simulateHDA", "Boolean", "False"])
+    data.append([path, "sqcPlotScaleFactor", "Float4", "0.75"])
     data.append([path, "writeEnabled", "Boolean", "True"])
 
     ds = system.dataset.toDataSet(headers, data)
@@ -196,6 +197,7 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})
         dbVersions.append({"versionId": 2, "version": "1.2r0", "filename": "update_1.2r0.sql", "releaseData": "2020-06-22"})
         dbVersions.append({"versionId": 3, "version": "1.3r0", "filename": "update_1.3r0.sql", "releaseData": "2020-09-14"})
+        dbVersions.append({"versionId": 4, "version": "1.4r0", "filename": "update_1.4r0.sql", "releaseData": "2020-10-25"})
         
         projectName = system.util.getProjectName()
         system.util.setLoggingLevel("com.ils.common.startup", "trace")
@@ -342,7 +344,7 @@ def createVersionTable(strategy, db):
 
 def installDbUpdate(versionId, version, filename, releaseDate, strategy, db):
     log.infof("**************************************************************")
-    log.infof("** Updating database %s to version %d - %s - %s", db, versionId, version, releaseDate)
+    log.infof("** Updating database %s to version %d - %s - %s (%s)", db, versionId, version, releaseDate, strategy)
     log.infof("**************************************************************")
     
     def runCommand(SQL, db):
@@ -369,11 +371,12 @@ def installDbUpdate(versionId, version, filename, releaseDate, strategy, db):
         cmd = cmd.lstrip()
             
         if cmd <> "":
-            log.tracef("Command: <%s>", cmd)
+            log.infof("SQL Command: <%s>", cmd)
             if strategy == IMPLEMENT:
                 runCommand(cmd, db)
     
     ''' Add a record to the version table'''
-    SQL = "Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (%d, '%s', '%s', GETDATE())" % (versionId, version, releaseDate)
     if strategy == IMPLEMENT:
+        SQL = "Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (%d, '%s', '%s', GETDATE())" % (versionId, version, releaseDate)
+        log.infof("Final SQL Command: <%s>", SQL)
         system.db.runUpdateQuery(SQL, db)

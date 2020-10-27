@@ -4,7 +4,7 @@ Created on Feb 12, 2020
 @author: phass
 '''
 
-import system
+import system, string
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.hierarchyWithBrowser import deleteRecipeData, deleteRecipeDataGroup
 from ils.common.util import clearDataset
@@ -121,4 +121,146 @@ def getSelectedInfo(event):
     log.infof("    %s %s, %s %s %s", str(stepId), recipeDataType, str(recipeDataId), recipeDataKey, str(recipeDataFolderId))
     
     return stepId, recipeDataType, recipeDataId, recipeDataKey, recipeDataFolderId
+
+
+def searchForReferenceCallback(container):
+    TEST_MODE = False
+    log.infof("In %s.searchForReferenceCallback", __name__)
+    db = getDatabaseClient()
+    key = container.getComponent("Key Field").text
+    log.tracef("Searching for: %s", key)
     
+    if TEST_MODE:
+        log.tracef("Using a list of TEST chart paths...")
+        chartPaths = ["A/A", "A/AA", "A/AB", "A/ABA", "A/ABB"]
+    else:
+        log.tracef("Searching ALL chart paths...")
+        chartPaths = ['%']
+        
+    searchCandidates = []
+    for chartPath in chartPaths:
+        searchCandidates = getSearchCandidates(chartPath, searchCandidates, db)
+        
+    log.tracef("There are %d search candidates", len(searchCandidates))
+    
+    matches = []
+    for searchCandidate in searchCandidates:
+        txt = string.upper(searchCandidate.get("TEXT", ""))
+        log.tracef("Search candidate: %s",  str(searchCandidate))
+        if txt.find(string.upper(key)) > 0:
+            log.tracef( "*** FOUND ****")
+            matches.append(searchCandidate)
+             
+    from ils.dataset.util import listOfDictionariesToDataset
+    log.infof("Found %d matches", len(matches))
+    ds = listOfDictionariesToDataset(matches)
+    container.getComponent("Power Table").data = ds
+
+
+def getSearchResults(chartPath):
+    '''
+    This is called by the Ignition Find and Replace utility.  Chuck has extended it through Java to support SFCs and this is called if they elect to search for recipe data.
+    This needs to return the recipe data for the selected chart as a big text string.
+    '''
+    log.tracef("In %s.getSearchResults() - searching Chart Path: %s", __name__, chartPath)
+    
+    ignitionGlobals  = system.util.getGlobals()
+    searchResults = ignitionGlobals.get('searchResults', None)
+    
+    if searchResults == None:
+        queryTime = None
+    else:
+        queryTime = searchResults.get("queryTime", None)
+
+    if queryTime == None or (system.date.secondsBetween(queryTime, system.date.now()) > 60 ):
+        
+        searchCandidates = []
+        searchCandidates = getSearchCandidates("%", searchCandidates)
+        log.tracef("Fetched %d **FRESH** search candidates...", len(searchCandidates))
+        searchResults = {"queryTime": system.date.now(), "searchCandidates": searchCandidates}
+        system.util.getGlobals()['searchResults'] = searchResults
+    else:
+        searchCandidates = searchResults.get("searchCandidates", None)
+        log.tracef("... using %d cached searchCandidates...", len(searchCandidates))
+        
+    searchCandidatesForThisChart = []
+    for searchCandidate in searchCandidates:
+        if chartPath == searchCandidate.get("PATH", ""):
+            searchCandidatesForThisChart.append(searchCandidate)
+    
+    log.tracef("Returning: %s", str(searchCandidatesForThisChart))
+    return searchCandidatesForThisChart
+
+
+def getSearchCandidates(chartPath, searchCandidates = [], db=""):
+    
+    ''' Simple Values '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Units, ValueType, FolderKey "\
+        " from SfcRecipeDataSimpleValueView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath,  searchCandidates, db)
+    
+    ''' Timers '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Units, TimerState, CumulativeMinutes "\
+        " from SfcRecipeDataTimerView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath,  searchCandidates, db)
+    
+    ''' Outputs '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Tag, Units, ValueType, OutputType, Download,  "\
+        " DownloadStatus, ErrorCode, ErrorText, Timing, MaxTiming, ActualTiming, PVMonitorActive, WriteConfirm, FolderKey "\
+        " from SfcRecipeDataOutputView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath, searchCandidates, db)
+    
+    ''' Output Ramps '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Tag, Units, ValueType, OutputType, Download,  "\
+        " DownloadStatus, ErrorCode, ErrorText, Timing, MaxTiming, ActualTiming, PVMonitorActive, WriteConfirm, RampTimeMinutes, UpdateFrequencySeconds, FolderKey "\
+        " from SfcRecipeDataOutputRampView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath, searchCandidates, db)
+    
+    '''  Inputs '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Tag, Units, ValueType, PVMonitorActive, FolderKey "\
+        " from SfcRecipeDataInputView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath, searchCandidates, db)
+    
+    '''  Arrays '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Units, ValueType, KeyName, FolderKey "\
+        " from SfcRecipeDataArrayView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath, searchCandidates, db)
+    
+    '''  Matrix '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Units, ValueType, RowIndexKeyName, ColumnIndexKeyName, FolderKey "\
+        " from SfcRecipeDataMatrixView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath, searchCandidates, db)
+    
+    '''  Recipe '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Units, PresentationOrder, StoreTag, CompareTag, "\
+        " ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit, FolderKey "\
+        " from SfcRecipeDataRecipeView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath, searchCandidates, db)
+    
+    '''  SQC '''
+    SQL = "select ChartPath, StepName, RecipeDataKey, RecipeDataId, RecipeDataType, Label, Description, Units, LowLimit, "\
+        " TargetValue, HighLimit, FolderKey "\
+        " from SfcRecipeDataSQCView where ChartPath like '%s' " % (chartPath)
+    searchCandidates = sqlRunner(SQL, chartPath, searchCandidates, db)
+
+    return searchCandidates
+    
+
+def sqlRunner(SQL, chartPath, searchCandidates, db):
+    def dsToTextWithColumnName(ds, row, delimiter):
+        txt = ""
+        columns = ds.getColumnNames()
+        for col in range(ds.getColumnCount()):
+            if col > 0:
+                txt = txt + delimiter
+            txt = str(txt) + columns[col] + "=" + str(ds.getValueAt(row, col))
+        return txt
+    
+    pds = system.db.runQuery(SQL, database=db)
+    ds = system.dataset.toDataSet(pds)
+    for row in range(ds.getRowCount()):
+        txt = dsToTextWithColumnName(ds, row, ",")
+        searchCandidate = {"PATH": ds.getValueAt(row,"ChartPath"), "STEP": ds.getValueAt(row,"StepName"), "KEY": ds.getValueAt(row,"RecipeDataKey"), "TEXT": txt}
+        searchCandidates.append(searchCandidate)
+    
+    return searchCandidates

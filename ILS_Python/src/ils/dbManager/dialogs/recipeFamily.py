@@ -9,7 +9,6 @@ Scripts in support of the "RecipeFamily" dialog
 import system
 from ils.common.util import getRootContainer
 from ils.dbManager.sql import idForPost
-from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
 log = system.util.getLogger("com.ils.recipe.ui")
 
@@ -31,7 +30,7 @@ def requery(component):
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
     
-    SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, P.Post, F.RecipeUnitPrefix, F.RecipeNameAlias, F.Comment "\
+    SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, P.Post, F.RecipeUnitPrefix, F.RecipeNameAlias, F.HasGains, F.HasSQC, F.Comment "\
         " FROM RtRecipeFamily F, TkPost P "\
         " WHERE F.PostId = P.PostId ORDER by RecipeFamilyName"
     try:
@@ -70,12 +69,32 @@ def showWindow():
 def update(table,row,colname,value):
     log.info("recipeFamily.update (%d:%s)=%s ..." %(row,colname,str(value)))
     ds = table.data
-    id = ds.getValueAt(row,0)
+    familyId = ds.getValueAt(row,0)
     
     if colname == "Post":
         postId = idForPost(str(value))
-        SQL = "UPDATE RtRecipeFamily SET PostId = %s WHERE RecipeFamilyId =  %s" % (str(postId), str(id))
+        SQL = "UPDATE RtRecipeFamily SET PostId = %s WHERE RecipeFamilyId =  %s" % (str(postId), str(familyId))
+    elif colname in ["HasGains", "HasSQC"]:
+        if value:   
+            val = 1
+        else:
+            val = 0
+        SQL = "UPDATE RtRecipeFamily SET " + colname + " = " + str(val) + " WHERE RecipeFamilyId =  " + str(familyId)
     else:
-        SQL = "UPDATE RtRecipeFamily SET "+colname+" = '"+value+"' WHERE RecipeFamilyId="+str(id)
-        
+        SQL = "UPDATE RtRecipeFamily SET "+colname+" = '"+value+"' WHERE RecipeFamilyId="+str(familyId)
+    
+    log.info(SQL)
     system.db.runUpdateQuery(SQL)
+    
+def exportCallback(event):
+        
+    SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, P.Post, F.RecipeUnitPrefix, F.RecipeNameAlias, F.HasGains, F.HasSQC, F.Comment "\
+        " FROM RtRecipeFamily F, TkPost P "\
+        " WHERE F.PostId = P.PostId ORDER by RecipeFamilyName"
+
+    pds = system.db.runQuery(SQL)
+    csv = system.dataset.toCSV(pds)
+    filePath = system.file.saveFile("RecipeFamily.csv", "csv", "Comma Separated Values")
+    if filePath:
+        system.file.writeFile(filePath, csv)
+    
