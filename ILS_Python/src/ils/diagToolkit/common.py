@@ -231,6 +231,21 @@ def fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, database=""
     pds = system.db.runQuery(SQL, database)
     return pds
 
+def fetchAnyFinalDiagnosisForAnOutput(application, quantOutputId, database=""):
+    SQL = "select FD.FinalDiagnosisName, FD.FinalDiagnosisId, F.FamilyName "\
+        " from DtFinalDiagnosis FD, DtFamily F, DtApplication A, DtQuantOutput QO, DtRecommendationDefinition RD "\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and FD.FamilyId = F.FamilyId "\
+        " and A.ApplicationName = '%s' "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and QO.ApplicationId = A.ApplicationId "\
+        " and RD.quantOutputId = QO.QuantOutputId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and QO.QuantOutputId = %s " % (application, str(quantOutputId))
+    log.tracef("%s.fetchActiveFinalDiagnosisForAnOutput(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
 def fetchActiveOutputsForPost(post, database=""):
     SQL = "select distinct A.ApplicationName, "\
         " QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\

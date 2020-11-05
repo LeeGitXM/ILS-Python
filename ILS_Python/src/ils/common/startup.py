@@ -355,6 +355,8 @@ def installDbUpdate(versionId, version, filename, releaseDate, strategy, db):
             txt = "Error running database update on %s - %s" % (db, cmd)
             txt = catchError(__name__, txt)
             log.errorf(txt)
+        else:
+            log.infof("The command was successfully processed!")
 
 
     ''' Read the sql commands from the SQL file '''

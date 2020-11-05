@@ -647,6 +647,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
 
             if string.upper(command) == 'ACTIVE':
                 if application != "":
+                    ''' We fall into here if we have multiple applications in the spreadsheet and we just finished one and are now starting to look at the next one.  So this processes the previous one.'''
                     resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)
                     applications.append(application)
 
@@ -671,6 +672,12 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
                     
                     from ils.diagToolkit.common import fetchActiveFinalDiagnosisForAnOutput
                     pds=fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, db)
+                    
+                    if len(pds) ==0:
+                        log.tracef("...no ACTIVE final diagnosis were found for quantOutputId %s, looking for ANY final diagnosis...", str(quantOutputId))
+                        from ils.diagToolkit.common import fetchAnyFinalDiagnosisForAnOutput
+                        pds=fetchAnyFinalDiagnosisForAnOutput(application, quantOutputId, db)
+                        
                     for rec in pds:
                         if rec["FinalDiagnosisId"] not in finalDiagnosisIds:
                             finalDiagnosisIds.append(rec["FinalDiagnosisId"])
@@ -704,6 +711,7 @@ def postCallbackProcessing(rootContainer, ds, db, tagProvider, actionMessage, re
 def resetter(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider):
     from ils.diagToolkit.common import fetchQuantOutputsForFinalDiagnosisIds
     log.infof("In %s.resetter(), the action is %s", __name__, actionMessage)
+    log.tracef("...the original quantOutputIds are: %s", str(quantOutputIds))
         
     if len(finalDiagnosisIds) == 0:
         log.infof("...did not find any finalDiagnosis in the spreadsheet, fetching for all active ones...")
@@ -718,7 +726,7 @@ def resetter(post, application, families, finalDiagnosisIds, quantOutputIds, act
     log.infof("   Families: %s", str(families))
     log.infof("   FDs:%s", str(finalDiagnosisIds))
     
-    ''' I'm not sure why I am fetching these since they are passed in '''
+    ''' The list of quant outputs that are passed in are only the ones with significant recommendations, we want ALL of the quant outputs, even if they made insignificant recommendations '''
     quantOutputIds=fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds)
 
     resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, db, tagProvider)

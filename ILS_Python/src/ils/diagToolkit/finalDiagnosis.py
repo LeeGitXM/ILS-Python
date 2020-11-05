@@ -346,6 +346,7 @@ def _scanner(database, tagProvider, projectName=""):
         " and A.Managed = 1"
 
     pds = system.db.runQuery(SQL, database)
+    log.tracef("Fetched %d records...", len(pds))
     
     ageInterval = system.tag.read("[%s]Configuration/DiagnosticToolkit/diagnosticAgeInterval" % (tagProvider)).value
 
