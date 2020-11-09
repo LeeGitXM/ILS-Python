@@ -7,7 +7,7 @@ Created on 7/29/2020
 
 '''
 import system, datetime
-import xom.logging as logging
+import ils.logging as logging
 log = logging.xomGetLogger('xom.halobutyl.ignition_tags')
 
 class IgnitionTagClass(object):

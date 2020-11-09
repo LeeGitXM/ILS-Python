@@ -4,7 +4,7 @@ Created on Aug 29, 2020
 @author: aedmw
 '''
 import system, datetime
-from xom.halobutyl.util import xom1DDataSet
+from ils.logging.util2 import xom1DDataSet
 from ils.logging.ignition_tags import IgnitionTagsClass, IgnitionTagClass
 import ils.logging as logging
 log = logging.xomGetLogger('xom.logging.viewer')
