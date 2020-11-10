@@ -1399,15 +1399,15 @@ def xomGetLogger(name=None, level_combo_cfg=DEFAULT_LEVEL_COMBO_CFG):
     log.setLevelComboConfig(level_combo_cfg)
 
     # Ignition Handler setup
-    import xom.logging.handlers
-    ih = xom.logging.handlers.IgnitionHandler(name)
+    import ils.logging.handlers
+    ih = ils.logging.handlers.IgnitionHandler(name)
     log.addHandler(ih)
     log.has_ignition_handler = True
 
     root = getLogger()
     if not hasattr(root, 'has_db_handler'):    
         # DB Handler setup
-        dbh = xom.logging.handlers.DBHandler(db_name='Logs')
+        dbh = ils.logging.handlers.DBHandler(db_name='Logs')
         #olef = OneLineExceptionFormatter('%(asctime)s|%(levelname)s|%(message)s|', '%d/%m/%Y %H:%M:%S')
         #dbh.setFormatter(olef)
         root.addHandler(dbh)
@@ -1415,7 +1415,7 @@ def xomGetLogger(name=None, level_combo_cfg=DEFAULT_LEVEL_COMBO_CFG):
         
     if not hasattr(root, 'has_crash_handler'):    
         # Crash Handler setup
-        ch = xom.logging.handlers.CrashHandler(capacity=10000, target=dbh)
+        ch = ils.logging.handlers.CrashHandler(capacity=10000, target=dbh)
         root.addHandler(ch)
         root.has_crash_handler = True
         
