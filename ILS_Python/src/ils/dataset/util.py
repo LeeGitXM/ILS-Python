@@ -21,3 +21,28 @@ def listOfDictionariesToDataset(theList):
         
     ds = system.dataset.toDataSet(header, records)
     return ds
+
+def tagToList(tagPath):
+    ds = system.tag.read(tagPath).value
+    theList = toList(ds)
+    return theList
+
+def toList(ds):
+    theList = []
+    for row in range(ds.rowCount):
+        val = ds.getValueAt(row, 0)
+        theList.append(val)
+    return theList
+
+def listToTag(tagPath, list):
+    ds = fromList(list)
+    system.tag.write(tagPath, ds)
+    
+def fromList(aList):
+    header = ["vals"]
+    data = []
+    for val in aList:
+        data.append([val])
+        
+    ds = system.dataset.toDataSet(header, data)
+    return ds
