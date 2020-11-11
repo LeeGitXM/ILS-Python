@@ -27,7 +27,7 @@ Copyright (C) 2001-2007 Vinay Sajip. All Rights Reserved.
 To use, simply 'import logging' and log away!
 """
 
-import sys, socket, types, os, string, cPickle, struct, time, glob, datetime
+import sys, socket, types, os, string, cPickle, struct, time, glob, datetime, system
 import ils.logging as logging
 from ils.logging import FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, IGNITION_HANDLER, DATABASE_HANDLER, CRASH_HANDLER, LOGCFG_LEVEL, LOGCFG_PRIORITY, LOGCFG_RETENTION
 try:
@@ -1109,6 +1109,7 @@ class DBHandler(logging.Handler):
             me_level = (record.levelno >= record.effective_combo_levels[DATABASE_HANDLER][LOGCFG_LEVEL])
             if not me_level:
                 return
+        
         msg = self.format(record)
         retention = record.effective_combo_levels[DATABASE_HANDLER][LOGCFG_RETENTION]
         retain_until = getRetainUntil(record.levelno, retention)
@@ -1125,8 +1126,12 @@ class DBHandler(logging.Handler):
         '''
         # Make the SQL insert
         r = record
-        sql = 'INSERT INTO log (timestamp, retain_until, log_level, log_levelname, log_message, logger_name, function_name, filename, line_number, module, process_id, thread, thread_name) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
-        values = [r.timestamp, retain_until, r.levelno, r.levelname, msg, r.name, r.funcName, r.filename, r.lineno, r.module, r.process, int(r.thread), r.threadName]
+        sql = "INSERT INTO log (timestamp, retain_until, log_level, log_levelname, log_message, logger_name, function_name, filename, line_number, "\
+            "module, process_id, thread, thread_name, project, scope, client_id) "\
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            
+        values = [r.timestamp, retain_until, r.levelno, r.levelname, msg, r.name, r.funcName, r.filename, r.lineno, r.module, r.process, int(r.thread), r.threadName, r.projectName, r.scope, r.clientId]
+        
         self.sqlExecute(sql, values)
         
     def sqlExecute(self, sql, values):

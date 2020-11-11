@@ -26,7 +26,7 @@ Copyright (C) 2001-2007 Vinay Sajip. All Rights Reserved.
 To use, simply 'import logging' and log away!
 """
 
-import sys, os, types, datetime, time, string, cStringIO, traceback
+import sys, os, types, datetime, time, string, cStringIO, traceback, system
 
 try:
     import codecs
@@ -153,7 +153,7 @@ LOGCFG_RETENTION = 3
 
 DEFAULT_RETENTION = {FATAL:24*365, ERROR:24*180, WARNING:24*30, INFO:24*10, DEBUG:24*5, TRACE:24}  # Retentions are in hours
 DEFAULT_LEVEL_COMBO_CFG = {IGNITION_HANDLER: {LOGCFG_LEVEL:INFO,  LOGCFG_PRIORITY:10}, \
-                           DATABASE_HANDLER: {LOGCFG_LEVEL:DEBUG, LOGCFG_PRIORITY:10, LOGCFG_RETENTION:DEFAULT_RETENTION}, \
+                           DATABASE_HANDLER: {LOGCFG_LEVEL:INFO, LOGCFG_PRIORITY:10, LOGCFG_RETENTION:DEFAULT_RETENTION}, \
                            CRASH_HANDLER:    {LOGCFG_LEVEL:TRACE, LOGCFG_PRIORITY:10}}
 
 def getLevelName(level):
@@ -285,6 +285,23 @@ class LogRecord:
             self.process = os.getpid()
         else:
             self.process = None
+            
+        '''
+        A couple of things aded by Pete - project name. scope, and client id
+        '''
+        projectName = system.util.getProjectName()
+        if projectName == "":
+            projectName = "Global"
+        self.projectName = projectName
+        
+        if projectName == "Global":
+            scope = "Global"
+            clientId = ""
+        else:
+            scope = "Client"
+            clientId = system.util.getClientId()
+        self.scope = scope
+        self.clientId = clientId
 
     def __str__(self):
         return '<LogRecord: %s, %s, %s, %s, "%s">'%(self.name, self.levelno,
@@ -978,6 +995,7 @@ class Logger(Filterer):
         """
         Initialize the logger with a name and an optional level.
         """
+        print "Creating a new Logger named ", name
         Filterer.__init__(self)
         self.name = name
         self.parent = None

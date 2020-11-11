@@ -4,13 +4,25 @@ Created on Aug 29, 2020
 @author: aedmw
 '''
 import system, datetime
+from ils.dataset.util import tagToList, listToTag
 from ils.logging.util2 import xom1DDataSet
 from ils.logging.ignition_tags import IgnitionTagsClass, IgnitionTagClass
 import ils.logging as logging
-log = logging.xomGetLogger('xom.logging.viewer')
+log = system.util.getLogger('ils.logging.viewer')
+
+def internalFrameOpened(rootContainer):
+    from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
+    log.infof("In IntenalFrameOpened")
+    
+    ''' Find all of the column filter templates on the window '''
+    for comp in rootContainer.components:
+        print comp.name, comp
+        if isinstance(comp, TemplateHolder):
+            print "Found a template - column: ", comp.columnName
 
 class ColumnFilterClass(object):
     def __init__(self, parent, tagpath, column_name):
+        print "Creating a ColumnFilterClass"
         self.parent = parent
         self.tagpath = tagpath
         self.column_name = column_name
@@ -61,7 +73,10 @@ class ColumnFilterClass(object):
         return return_str
 
     def updateColumnFilter(self, filter_type, add_remove):
-        filter_selection = xom1DDataSet(self.parent.tags.filter_selection.value)
+        print "Filter: ", self.parent.tags.filter_selection.value
+        #filter_selection = xom1DDataSet(self.parent.tags.filter_selection.value)
+        filter_selection = tagToList(self.parent.tags.filter_selection)
+        print "Filter list: ", filter_selection
         filter_mode_tag = self.tags.filter_mode
         filter_mode = self.tags.filter_mode.value
         if filter_type.upper() == 'INCLUDES':
@@ -107,6 +122,7 @@ class ColumnFilterClass(object):
             
 class ColumnFiltersClass(object):
     def __init__(self, tagpath, db_name, column_names=['module','function_name','log_levelname','process_id','log_message']):
+        print "Creating a ColumnFiltersClass"
         self.tagpath = tagpath
         self.column_names = column_names
         self.db_name = db_name
@@ -137,13 +153,15 @@ class ColumnFiltersClass(object):
     def writeSQL(self):
         '''
         Write the SQL query to show the data out the sql_query tag.
+        This is a pretty clever SQL statement (thanks Daniel) that uses a subquery to get the rows that math the where clause and then the outer query that
+        gets the top rows.  Unfortunately, SQL*Server can't figure out the the where clause with the top clause in the same statement.
         '''
         where_clauses = self.getWhereClauses()
         if self.tags.start_time_on.value:
             start_time = "'%s'" % self.tags.start_time.value.strftime("%Y-%m-%d %H:%M:%S")
         else:
             start_time = "'2000-01-01 00:00:00'"       
-        main_sql = 'SELECT id, timestamp, logger_name, module, function_name, line_number, log_levelname, log_level, ' + \
+        main_sql = 'SELECT id, timestamp, logger_name, project, scope, client_id, module, function_name, line_number, log_levelname, log_level, ' + \
                     'log_message,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC;'
         subquery = "SELECT TOP 100 * FROM log WHERE timestamp > %s %s ORDER BY timestamp DESC" % (start_time, where_clauses)
         sql = main_sql % subquery
@@ -192,12 +210,16 @@ def filterButtonAction(event):
     Called by the Mouse Click event handler on the filter "I" and "E" buttons.
     '''   
     root_path = event.source.parent.parent.loggingPath
+    print "root_path: ", root_path
     column_filters = ColumnFiltersClass(root_path, 'Logs')
+    print "column_filters: ", column_filters
     column_name = event.source.parent.columnName
+    print "column_name: ", column_name
     filter_type = event.source.filterType
+    
     if event.button == event.BUTTON1:
         # Left-click adds the contents of the Filter Selection Tag to the current Column Filter (Includes/Excludes).
-        column_filters.updateColumnFilter(event, column_name, filter_type, add_remove='add')
+        updateColumnFilter(event, column_name, filter_type, add_remove='add')
     else:
         # Right-click brings up the include/exclude list editor
         window = system.nav.openWindow('%s/Filter Viewer' % root_path, 
@@ -256,5 +278,17 @@ def updateSQL(event):
     column_filters.writeSQL()
     
 
+'''
+====================================
+'''
 
+def updateFilterAction(event, columnName, val, add_remove):
+    '''
+    Called by the Popup menu on one of the filterable columns.
+    '''   
+    log.tracef("In %s.updateFilterAction. %s - %s - %s", __name__, columnName, val, add_remove)
+
+    
+def updateColumnFilter(event, column_name, filter_type, add_remove='add'):
+    log.tracef("In updateColumnFilter with %s, %s, %s", column_name, filter_type, add_remove) 
         
