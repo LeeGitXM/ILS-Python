@@ -7,22 +7,54 @@ import system, datetime, string
 from ils.dataset.util import tagToList, listToTag, toList, fromList
 from ils.common.util import escapeSqlQuotes
 import ils.logging as logging
+from com.jidesoft.grid import Row
 log = system.util.getLogger('com.ils.logging.viewer')    
 
 
 MAIN_SQL = 'SELECT id, timestamp, log_level,  log_levelname, logger_name, module, function_name, log_message, project, scope, client_id, line_number,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
-SUB_SQL = "SELECT TOP 100 * FROM log WHERE timestamp > '%s' AND timestamp < '%s' %s ORDER BY timestamp DESC"
+SUB_SQL = "SELECT TOP %d * FROM log WHERE timestamp > '%s' AND timestamp < '%s' %s ORDER BY timestamp DESC"
 DATE_FORMAT = "YYYY-MM-dd HH:mm:ss"
-FILTER_LIST = ["client_id", "function_name", "log_levelname", "log_message", "module", "process_id", "project", "scope"]
+FILTER_LIST = ["client_id", "function_name", "log_levelname", "log_message", "logger_name","module", "process_id", "project", "scope"]
 TAG_ROOT = "[Client]Logging"
 INCLUDE = "include"
 EXCLUDE = "exclude"
+REALTIME = "Realtime"
+HISTORICAL = "Historical"
+MANUAL = "Manual"
+
+def clientStartup():
+    ''' Set the start and end date of the client tags synchronized with the manual times '''
+    print "In %s.clientStartup()" % (__name__)
+    now = system.date.now()
+    system.tag.write("[Client]Logging/Historical Start Time", system.date.addHours(now, -4))
+    system.tag.write("[Client]Logging/Historical End Time", now)
+    system.tag.write("[Client]Logging/Historical Outer Start Time", system.date.addDays(now, -7))
+    system.tag.write("[Client]Logging/Historical Outer End Time", now)
+    
+    
+    system.tag.write("[Client]Logging/Manual Start Time", system.date.addHours(now, -4))
+    system.tag.write("[Client]Logging/Manual End Time", now)
+    
+    system.tag.write("[Client]Logging/Realtime Value", 10)
+    system.tag.write("[Client]Logging/Realtime Units", "Minutes")
+    system.tag.write("[Client]Logging/Mode", "Realtime")
+
 
 def internalFrameOpened(rootContainer):
     #from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
     log.infof("In IntenalFrameOpened")
 
+
 def resetAllFiltersAction(rootContainer):
+    '''
+    The logging UI uses client tags.  Client tags are a project resource and are created automatically for each client when it connects.
+    This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
+    project was last saved by the designer.
+    '''         
+    resetAllFilters()
+    update(rootContainer)
+    
+def resetAllFilters():
     '''
     The logging UI uses client tags.  Client tags are a project resource and are created automatically for each client when it connects.
     This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
@@ -35,24 +67,22 @@ def resetAllFiltersAction(rootContainer):
         system.tag.write(tagPath + "/Excludes", emptyDataset)
         system.tag.write(tagPath + "/Filter Mode", "No Filter")
         system.tag.write(tagPath + "/Includes", emptyDataset)
-        
-    update(rootContainer)
 
-def updateFilterAction(event, columnName, val, include_exclude):
+def updateFilterAction(table, columnName, val, include_exclude):
     '''
     Called by the Popup menu on one of the filterable columns.
     '''
-    rootContainer = event.source.parent
+    rootContainer = table.parent
     columnName = columnName.rstrip()
     val = val.rstrip()
-    include_exclude = string.lower(include_exclude)
+    include_exclude = string.capitalize(include_exclude)
     log.infof("In %s.updateFilterAction. <%s> - <%s> - <%s>", __name__, columnName, val, include_exclude)
     
     mode, includes, excludes = readFilter(columnName)
     
     mode = include_exclude
     
-    if include_exclude == INCLUDE:
+    if string.lower(include_exclude) == INCLUDE:
         if val not in includes:
             includes.append(val)
     else:
@@ -62,16 +92,29 @@ def updateFilterAction(event, columnName, val, include_exclude):
     writeFilter(columnName, mode, includes, excludes)
     update(rootContainer)
 
-def clearFilterAction(event, columnName):
+def clearFilterAction(table, columnName):
     '''
     Called by the Popup menu on one of the filterable columns.
     Set the mode to 'No Filter' and then clear the include and exclude lists.
     '''
-    rootContainer = event.source.parent
+    rootContainer = table.parent
     columnName = columnName.rstrip()
     log.infof("In %s.clearFilterAction. <%s>", __name__, columnName)
     writeFilter(columnName, "No Filter", [], [])
     update(rootContainer)
+    
+def setFilterMode(table, columnName, mode):
+    '''
+    Called by the Popup menu on one of the filterable columns.
+    Set the mode to 'No Filter' and then clear the include and exclude lists.
+    '''
+    rootContainer = table.parent
+    columnName = columnName.rstrip()
+    log.infof("In %s.setFilterMode. <%s> <%s>", __name__, columnName, mode)
+    tagpath = "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)    
+    system.tag.write(tagpath, mode)
+    update(rootContainer)
+    
     
 def readFilter(columnName):
     tagpaths = [
@@ -108,13 +151,41 @@ def update(rootContainer):
     '''
     log.tracef("In update...")
     table = rootContainer.getComponent("Power Table")
+    
+    container = rootContainer.getComponent("Date Time Control Container")
+    mode = container.getComponent("Mode Dropdown").selectedStringValue
+    if mode == HISTORICAL:
+        startTime = container.getComponent("Historical Container").getComponent("Date Range").startDate
+        endTime = container.getComponent("Historical Container").getComponent("Date Range").endDate
+    elif mode == REALTIME:
+        endTime = system.date.now()
+        units = container.getComponent("Realtime Container").getComponent('Realtime Units Dropdown').selectedStringValue
+        val = container.getComponent("Realtime Container").getComponent('Spinner').intValue
+        
+        if units == "Days":
+            startTime = system.date.addDays(endTime, -1 * val)
+        elif units == "Hours":
+            startTime = system.date.addHours(endTime, -1 * val)
+        else:
+            startTime = system.date.addMinutes(endTime, -1 * val)
+
+    elif mode == MANUAL:
+        startTime = container.getComponent("Manual Container").getComponent("Start Popup Calendar").date
+        endTime = container.getComponent("Manual Container").getComponent("End Popup Calendar").date
+        
+    else:
+        system.gui.messageBox("Unexpected mode")
+        return
+    
     db = rootContainer.databaseConnection
-    dateControl = rootContainer.getComponent("Date Time Control")
-    startTime = system.date.format(dateControl.startTime, DATE_FORMAT)
-    endTime = system.date.format(dateControl.endTime, DATE_FORMAT)    
+    startTime = system.date.format(startTime, DATE_FORMAT)
+    endTime = system.date.format(endTime, DATE_FORMAT)
+        
     whereClause = getWhereClause()
 
-    subquery = SUB_SQL % (startTime, endTime, whereClause)
+    tagpath = "%s/Max Records" % (TAG_ROOT)
+    maxRecords = system.tag.read(tagpath).value
+    subquery = SUB_SQL % (maxRecords, startTime, endTime, whereClause)
     SQL = MAIN_SQL % subquery
     log.tracef(SQL)
     
@@ -138,7 +209,7 @@ def getWhereClause():
         
         excludes = toList(qvs[0].value)
         includes = toList(qvs[1].value)
-        mode = qvs[2].value
+        mode = string.lower(qvs[2].value)
         
         if mode == INCLUDE:
             selections = includes
@@ -148,7 +219,7 @@ def getWhereClause():
             selections = excludes
             operator = " NOT IN "
         
-        if len(selections) > 0:
+        if len(selections) > 0 and mode in [INCLUDE, EXCLUDE]:
             terms = []
             for selection in selections:
                 selection = "'" + str(escapeSqlQuotes(selection)) + "'"
@@ -182,3 +253,76 @@ def updateStartTime(self, update_time_only):
             self.tags.start_time_on.value = True
             self.tags.start_time.value = datetime.datetime.now()
     self.writeSQL()
+
+'''
+Automation for the Filter Configuration Window.
+'''
+
+def refreshFilterWindow(rootContainer):
+
+    ''' ------------------------------------------------------------'''
+    def appender(filterValues, sqlFilter, mode, vals):
+        for val in vals:
+            filterValues.append([sqlFilter, mode, val])
+        return filterValues
+    ''' ------------------------------------------------------------ '''
+    
+    filterModes = []
+    filterValues = []
+    
+    for sqlFilter in FILTER_LIST:        
+        tagpaths = [
+            "%s/Column Filters/%s/Excludes" % (TAG_ROOT, sqlFilter),
+            "%s/Column Filters/%s/Includes" % (TAG_ROOT, sqlFilter),
+            "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, sqlFilter)
+            ]
+    
+        qvs = system.tag.readAll(tagpaths)
+        
+        excludes = toList(qvs[0].value)
+        filterValues = appender(filterValues, sqlFilter, "Exclude", excludes)
+        
+        includes = toList(qvs[1].value)
+        filterValues = appender(filterValues, sqlFilter, "Include", includes)
+    
+        mode = qvs[2].value
+        filterModes.append([sqlFilter, mode])
+        
+    header = ["Filter", "Mode", "Value"]
+    ds = system.dataset.toDataSet(header, filterValues)
+    rootContainer.getComponent("Filters Table").data = ds
+    
+    header = ["Filter", "Mode"]
+    ds = system.dataset.toDataSet(header, filterModes)
+    rootContainer.getComponent("Filter Mode Table").data = ds
+    
+def deleteFilterValueAction(rootContainer):
+    '''
+    Delete the filter by figuring out what was selected from the table, updating the client tag, and then refreshing the table
+    '''
+    loggingPath = rootContainer.loggingPath
+    table = rootContainer.getComponent("Filters Table")
+    if table.selectedRow < 0:
+        system.gui.messageBox("Please select a filter value to delete.")
+        return
+    
+    ''' Get the filter mode and value from the selected row in the table '''
+    selectedRow = table.selectedRow
+    ds = table.data
+    filterName = ds.getValueAt(selectedRow, 0)
+    mode = ds.getValueAt(selectedRow, 1)
+    val = ds.getValueAt(selectedRow, 2)
+    
+    ''' Read the dataset from the client tag and remove the desired row '''
+    tagPath = "%s/%s/%ss" % (loggingPath, filterName, mode)
+    ds = system.tag.read(tagPath).value
+    filterList = toList(ds)
+    ''' Really no way it can't be in the list, but be safe '''
+    if not val in filterList:
+        system.gui.errorBox("Fliter value <%s> is not in the list of values <%s>" % (val, str(filterList)))
+        return
+    filterList.remove(val)
+    
+    ''' Write the updated list out to the client tag '''
+    system.tag.write(tagPath, fromList(filterList))
+    refreshFilterWindow(rootContainer)

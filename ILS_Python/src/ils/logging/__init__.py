@@ -13,6 +13,7 @@
 # ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
 # IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
 # OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+from ils.common.util import isGatewayScope
 
 """
 Logging package for Python. Based on PEP 282 and comments thereto in
@@ -290,12 +291,10 @@ class LogRecord:
         A couple of things aded by Pete - project name. scope, and client id
         '''
         projectName = system.util.getProjectName()
-        if projectName == "":
-            projectName = "Global"
         self.projectName = projectName
         
-        if projectName == "Global":
-            scope = "Global"
+        if isGatewayScope():
+            scope = "Gateway"
             clientId = ""
         else:
             scope = "Client"
