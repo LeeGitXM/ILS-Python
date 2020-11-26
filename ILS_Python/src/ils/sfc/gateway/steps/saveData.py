@@ -11,7 +11,7 @@ from ils.sfc.gateway.api import getStepProperty, createFilepath, postToQueue, re
 from ils.sfc.common.constants import RECIPE_LOCATION, PRINT_FILE, VIEW_FILE, POSITION, SCALE, WINDOW_TITLE, BUTTON_LABEL, NAME, \
     WINDOW_ID, WINDOW_PATH, IS_SFC_WINDOW, EXTENSION
 from ils.sfc.recipeData.api import s88GetRecipeDataDataset
-from ils.sfc.recipeData.constants import SIMPLE_VALUE, OUTPUT
+from ils.sfc.recipeData.constants import SIMPLE_VALUE, OUTPUT, OUTPUT_RAMP, INPUT, ARRAY, MATRIX, RECIPE, SQC, TIMER
     
 def activate(scopeContext, stepProperties, state):
 
@@ -46,14 +46,39 @@ def activate(scopeContext, stepProperties, state):
         logger.tracef("Found %d simple value recipe data items", simpleValueDataset.rowCount)
         outputDataset = s88GetRecipeDataDataset(chartScope, stepScope, OUTPUT, recipeLocation)
         logger.tracef("Found %d output recipe data items", outputDataset.rowCount)
+        outputRampDataset = s88GetRecipeDataDataset(chartScope, stepScope, OUTPUT_RAMP, recipeLocation)
+        logger.tracef("Found %d output ramp recipe data items", outputRampDataset.rowCount)
+        inputDataset = s88GetRecipeDataDataset(chartScope, stepScope, INPUT, recipeLocation)
+        logger.tracef("Found %d input recipe data items", inputDataset.rowCount)
+        arrayDataset = s88GetRecipeDataDataset(chartScope, stepScope, ARRAY, recipeLocation)
+        logger.tracef("Found %d array recipe data items", arrayDataset.rowCount)
+        matrixDataset = s88GetRecipeDataDataset(chartScope, stepScope, MATRIX, recipeLocation)
+        logger.tracef("Found %d matrix recipe data items", matrixDataset.rowCount)
+        recipeDataset = s88GetRecipeDataDataset(chartScope, stepScope, RECIPE, recipeLocation)
+        logger.tracef("Found %d recipe recipe data items", recipeDataset.rowCount)
+        sqcDataset = s88GetRecipeDataDataset(chartScope, stepScope, SQC, recipeLocation)
+        logger.tracef("Found %d SQC recipe data items", sqcDataset.rowCount)
+        timerDataset = s88GetRecipeDataDataset(chartScope, stepScope, TIMER, recipeLocation)
+        logger.tracef("Found %d timer recipe data items", timerDataset.rowCount)
         
         '''
         Always save the report to a file
         '''
         try:
-            reportPath = "Recipe Data"
+            reportPath = "SFC/Recipe Data"
             project = "XOM"
-            parameters = {"SimpleValue": simpleValueDataset, "Output": outputDataset, "Header": windowTitle}
+            parameters = {
+                "Array": arrayDataset,
+                "Input": inputDataset, 
+                "Matrix": matrixDataset,
+                "Output": outputDataset, 
+                "OutputRamp":outputRampDataset, 
+                "Recipe": recipeDataset,
+                "SimpleValue": simpleValueDataset, 
+                "SQC": sqcDataset,
+                "Timer": timerDataset,
+                "Header": windowTitle}
+            
             action = "save"
             
             if string.upper(extension) in ["CSV", ".CSV"]:
@@ -118,10 +143,21 @@ def activate(scopeContext, stepProperties, state):
             
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId # This step completes as soon as the GUI is posted do I doubt I need to save this.
-    
-            print "Inserted a window with id: ", windowId
             
-            payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, "simpleValue": simpleValueDataset, "output": outputDataset, "header": windowTitle, IS_SFC_WINDOW: True}
+            payload = {
+                WINDOW_ID: windowId, 
+                WINDOW_PATH: windowPath, 
+                "array": arrayDataset,
+                "input": inputDataset, 
+                "matrix": matrixDataset,
+                "output": outputDataset,
+                "outputRamp": outputRampDataset, 
+                "recipe": recipeDataset,
+                "simpleValue": simpleValueDataset, 
+                "sqc": sqcDataset,
+                "timer": timerDataset,
+                "header": windowTitle, 
+                IS_SFC_WINDOW: True}
             sendMessageToClient(chartScope, messageHandler, payload)
             
             logger.tracef("   Save Data Payload: %s", str(payload))
@@ -129,7 +165,6 @@ def activate(scopeContext, stepProperties, state):
         logger.trace("...leaving saveData.activate()")      
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error saving recipe data', logger)
-
 
     finally:
         return True

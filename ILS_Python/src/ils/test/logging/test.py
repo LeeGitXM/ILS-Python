@@ -4,7 +4,7 @@ from ils.logging import FATAL, ERROR, WARNING, INFO, DEBUG, TRACE, IGNITION_HAND
 Retention = {FATAL:1, ERROR:1, WARNING:1, INFO:1, DEBUG:1, TRACE:1}  # Retentions are in hours
 
 '''
-This was added by Pete
+This was added by Pete   
 '''
 def setLoggerToTrace(log):
     '''

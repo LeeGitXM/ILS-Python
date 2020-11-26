@@ -92,10 +92,10 @@ class Compiler():
 
 
     def dumpLists(self, title):
-        ''' deletedResources is simply a list of resourceIds that have been deleted '''
+        ''' Dump the resources to help debug '''
         
         log.tracef("--------------------------------")
-        log.tracef("Dumping resources at %s", title)
+        log.tracef("Dumping resources: %s", title)
     
         log.tracef("Deleted Resources:")
         #print "addedResources is a ", deletedResources.__class__
@@ -127,6 +127,7 @@ class Compiler():
         The reason that we want to reserve the record in SfcChart and SfcSteps is so that recipe data is preserved.
         '''
         log.tracef("Handling moved resources:")
+        cntr = 0
         for deletedResourceId in self.deletedResources:
             log.tracef("    Checking deleted resource %s", str(deletedResourceId))
             deletedChartPath, deletedChartName, deletedChartId = self.fetchChartForResourceId(deletedResourceId)
@@ -141,6 +142,8 @@ class Compiler():
                     log.tracef("        looking at added resource Id: %s, path: %s <%s>", addedResourceId, addedChartPath, addedChartName)
                     if addedChartName == deletedChartName:
                         log.tracef("           --- found a match, this must be a moved chart ---")
+                        cntr = cntr + 1
+                        
                         ''' Found a match, update the resourceId and the chartPath '''
                         SQL = "update sfcChart set ChartResourceId = %s, chartPath = '%s' where ChartResourceId = %s"  % (addedResourceId, addedChartPath, deletedResourceId)
                         rows = system.db.runUpdateQuery(SQL, tx=self.txId)
@@ -154,13 +157,7 @@ class Compiler():
                         When a chart is moved, all of the callers to that chart are broken (because IA uses absolute path references). 
                         Presumably. the engineer will go and fix the references, but when they do I will receive and updated dictionary.
                         '''
-                        SQL = "delete from SfcHierarchy where childChartId = %d" % (deletedChartId)
-                        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
-                        log.tracef("      ...deleted %d records from sfcHierarchy which called this chart!", rows)
-                        
-                        SQL = "delete from SfcHierarchyHandler where handlerChartId = %d" % (deletedChartId)
-                        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
-                        log.tracef("      ...deleted %d records from sfcHierarchyHandler which called this chart!", rows)
+                        self.deleteChartFromDatabaseHierarchy(deletedChartId)
                         
                         '''
                         Update the updateList that references the old resourceId with the new resourceId.
@@ -172,6 +169,8 @@ class Compiler():
                             del self.changedResources[deletedResourceId]
                             res["chartPath"]  = addedChartPath
                             self.changedResources[addedResourceId] = res
+        log.tracef("...done with moved resources, moved %d charts", cntr)
+            
                             
     def fetchChartForResourceId(self, resourceId):
         SQL = "select ChartPath, ChartId from SfcChart where ChartResourceId = %s" % (str(resourceId))
@@ -179,11 +178,11 @@ class Compiler():
         
         if len(pds) == 0:
             log.tracef("No charts were found for resource: %s", resourceId)
-            return None,None
+            return None,None,None
         
         if len(pds) > 1:
             log.tracef("Multiple charts were found for resource: %s, which cannot be processed!", resourceId)
-            return None,None
+            return None,None,None
         
         record = pds[0]
         chartPath = record["ChartPath"]
@@ -221,24 +220,29 @@ class Compiler():
                             
     def handleDeletedCharts(self, phase):
         if phase == self.PHASE_1:
-            log.tracef("Removing deleted resources from the update list:")
+            log.tracef("Removing deleted resources from the update list (Phase 1):")
+            i = 0
+            j = 0
             for resourceId in self.deletedResources:
                 ''''
                 It is common that a deleted chart will also appear in the update list.  
                 In the deleted data structure, the chart path will probably be n/a so we will delete using the resource id. 
                 '''
                 log.tracef("    %s", str(resourceId))
+                i = i + 1
                 if self.changedResources.has_key(resourceId):
                     log.tracef("Deleting %s from the list of changed resources...", str(resourceId))
                     del self.changedResources[resourceId]
-                
+                    j = j + 1
                 '''
-                This is now done at the end in order to support a moved step (and the recipe data on it)  
+                Do not delete the chart from the database now.  This is now done at the end in order to support a moved step (and the recipe data on it)  
                 '''
                 #deleteChart(resourceId, db)
+                log.tracef("...dine with deleted resources (Phase 1) - handled %d deleted charts and removed %d from the update list", i, j)
+                
         elif phase == self.PHASE_2:    
             try:
-                log.tracef("Deleting %d charts and %d steps..", len(self.deletedResources), len(self.stepsToDelete))
+                log.tracef("Deleting %d charts and %d steps (Phase 2)..", len(self.deletedResources), len(self.stepsToDelete))
         
                 ''' First delete steps '''
                 
@@ -289,29 +293,6 @@ class Compiler():
         Moved charts should have been handled before this is called.
         '''
         log.tracef("Deleting a chart with resourceId: %s", str(resourceId) )
-        
-        def deleteChartFromDatabase(chartId, txId):
-            SQL = "delete from SfcHierarchy where childChartId = %d" % chartId
-            rows = system.db.runUpdateQuery(SQL, tx=txId)
-            log.tracef( "...deleted %d children from SfcChartHierarchy...", rows)
-                        
-            SQL = "delete from SfcHierarchy where ChartId = %d" % chartId
-            rows = system.db.runUpdateQuery(SQL, tx=txId)
-            log.tracef( "...deleted %d parents from SfcChartHierarchy...", rows)
-    
-            SQL = "delete from SfcChart where chartId = %d" % chartId
-            rows = system.db.runUpdateQuery(SQL, tx=txId)
-            log.tracef("...deleted %d rows from SfcChart...", rows)
-            
-            SQL = "delete from SfcHierarchyHandler where chartId = %d" % chartId
-            rows = system.db.runUpdateQuery(SQL, tx=txId)
-            log.tracef("...deleted %d caller rows from SfcHierarchyHandler...", rows)
-            
-            SQL = "delete from SfcHierarchyHandler where HandlerChartId = %d" % chartId
-            rows = system.db.runUpdateQuery(SQL, tx=txId)
-            log.tracef("...deleted %d handler rows from SfcHierarchyHandler...", rows)
-                    
-        ''' --------------------------------------------------------------------------'''
     
         try:
             SQL = "select chartId, chartPath from SfcChart where chartResourceId = %s" % str(resourceId)
@@ -337,7 +318,7 @@ class Compiler():
                 
                 if len(pds) == 0:
                     log.infof("...deleting chart Id: %d", chartId)
-                    deleteChartFromDatabase(chartId, self.txId)
+                    self.deleteChartFromDatabase(chartId)
                 
                 elif len(pds) == 1:
                     log.infof("...handling a moved / renamed chart...")
@@ -378,7 +359,7 @@ class Compiler():
                 for record in pds:
                     chartId = record["chartId"]
                     log.infof("...deleting chart Id: %d", chartId)
-                    deleteChartFromDatabase(chartId, self.txId)
+                    self.deleteChartFromDatabase(chartId)
     
         except:
             ''' This will catch the error and then go on to the next chart '''
@@ -389,10 +370,37 @@ class Compiler():
         else:
             log.tracef("Deleted charts!")
 
+
+    def deleteChartFromDatabase(self, chartId):
+        
+        self.deleteChartFromDatabaseHierarchy(chartId)
+
+        SQL = "delete from SfcChart where chartId = %d" % chartId
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef("...deleted %d rows from SfcChart...", rows)
+        
+        SQL = "delete from SfcHierarchyHandler where chartId = %d" % chartId
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef("...deleted %d caller rows from SfcHierarchyHandler...", rows)
+        
+        SQL = "delete from SfcHierarchyHandler where HandlerChartId = %d" % chartId
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef("...deleted %d handler rows from SfcHierarchyHandler...", rows)
+        
+    def deleteChartFromDatabaseHierarchy(self, chartId):
+        SQL = "delete from SfcHierarchy where childChartId = %d" % chartId
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef( "...deleted %d children from SfcChartHierarchy...", rows)
+                    
+        SQL = "delete from SfcHierarchy where ChartId = %d" % chartId
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef( "...deleted %d parents from SfcChartHierarchy...", rows)
+    
+
     def setupCharts(self):
         for resourceId in self.changedResources.keys():
             res = self.changedResources[resourceId]
-            chart = Chart(res, resourceId, self.txId)
+            chart = Chart(res, resourceId, self, self.txId)
             chart.parseXml()
             self.charts.append(chart)
 
@@ -423,14 +431,17 @@ class Chart():
     steps = None
     children = None
     root = None
+    compiler = None
 
-    def __init__(self, resource, resourceId, txId):
-        log.tracef("Creating a new chart() with %s...", txId)
+    def __init__(self, resource, resourceId, compiler, txId):
+        log.tracef("Creating a new chart() with txId: %s...", txId)
         self.resource = resource
         self.resourceId = resourceId
         self.txId = txId
         self.chartPath = resource["chartPath"]
         self.chartXml = resource["chartXml"]
+        self.compiler = compiler
+        log.tracef("Processing  a new chart <%s> with txId: %s...", self.chartPath, txId)
         
     def parseXml(self):
         parseLog.infof("In %s.parseXml()", __name__)
@@ -451,7 +462,7 @@ class Chart():
                 steps, children = self.parseStep(step, steps, children)
     
         parseLog.tracef("========================")
-        parseLog.tracef( "Python Found: ")
+        parseLog.tracef( "Python found in XML: ")
         parseLog.tracef( "     steps: %s", str(steps))
         parseLog.tracef( "  children: %s", str(children))
         parseLog.tracef( "========================")
@@ -467,11 +478,11 @@ class Chart():
         
         stepDict = {"id": stepId, "name": stepName, "type": stepType}
         steps.append(stepDict)
-        parseLog.tracef("Found a step: %s", str(stepDict))
+        parseLog.tracef("Found a step in XML: %s", str(stepDict))
     
         childChartPath = step.get("chart-path")
         if (childChartPath != None):
-            parseLog.tracef("Found an encapsulation that calls %s", childChartPath)
+            parseLog.tracef("Found an encapsulation in XML that calls %s", childChartPath)
             childDict = {"childPath": childChartPath, "id": stepId, "name": stepName, "type": stepType}
             children.append(childDict)
         
@@ -491,7 +502,7 @@ class Chart():
         I use two passes because I can't depend on the order of dictionaries in the update list and so I might not be able to update the hierarchy correct
         if a child chart happens to come before the parent in the list..
         '''
-        log.infof("Updating the the chart hierarchy for chart: %s (%s)", self.chartPath, self.resourceId)
+        log.infof("Updating the chart hierarchy for chart: %s (%s)", self.chartPath, self.resourceId)
         warnings = []
     
         try:
@@ -527,11 +538,20 @@ class Chart():
             else:
                 record = pds[0]
                 chartId = record["ChartId"]
-                log.tracef("...the chart already exists - path: %s, chart id: %d", self.chartPath, chartId)
                 chartPath = record["ChartPath"]
+                log.tracef("...the chart already exists (by resourceId) - path: %s, chart id: %d", chartPath, chartId)
+
                 if chartPath <> self.chartPath:
                     log.tracef("Updating the chart path for a renamed chart...")
+                    
+                    ''' 
+                    We found a resource id but it is associated with a different chartPath, before we assign the new chartPath to this resourceId, make sure it isn't already 
+                    associated with another resourceId.
+                    '''
+                    self.compiler.deleteChart(chartId)
+
                     SQL = "update SfcChart set ChartPath = '%s' where ChartId = %s" % (self.chartPath, str(chartId))
+                    print SQL
                     rows = system.db.runUpdateQuery(SQL, tx=self.txId)
                     log.tracef("...updated %d existing sfcChart", rows)
     
@@ -587,6 +607,10 @@ class Chart():
         '''
         SQL = "select * from SfcChart where ChartResourceId = %s" % (self.resourceId)
         pds =  system.db.runQuery(SQL, tx=self.txId)
+        
+        if len(pds) == 0:
+            log.warnf("Unable to update chart steps for resource id: %s", self.resourceId)
+            return stepsToDelete
         
         record = pds[0]
         chartId = record["ChartId"]
@@ -661,7 +685,7 @@ class Chart():
                         ''' Before we insert a step, check for the possibility of a moved step.  Search for a steo with the same UUID and step type anywhere.  '''
                         log.tracef("...checking if step has been moved...")
                         SQL = "select * from SfcStep where StepUUID = '%s' and StepTypeId = %d" % (stepUUID, stepTypeId)
-                        print SQL
+    
                         pds = system.db.runQuery(SQL, tx=self.txId)
                         if len(pds) == 0 or len(pds) > 1: 
                             log.tracef("...%d records were found, step has not been moved!", len(pds))

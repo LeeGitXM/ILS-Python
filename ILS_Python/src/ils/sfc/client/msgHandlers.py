@@ -124,7 +124,19 @@ def sfcOpenWindow(payload):
         
         ''' I really hate this implementation, if there is something extra on the payload ovr the entries that messaging need, then pass them on to the window '''
         if windowPath == "SFC/SaveData":
-            windowPayload =  {WINDOW_ID: windowId, "simpleValue": payload["simpleValue"], "output": payload["output"], "header":  payload["header"]}
+            windowPayload =  {
+                WINDOW_ID: windowId, 
+                "header":  payload["header"],
+                "array": payload["array"],
+                "matrix": payload["matrix"],
+                "input": payload["input"],
+                "output": payload["output"], 
+                "outputRamp":payload["outputRamp"], 
+                "recipe": payload["recipe"], 
+                "simpleValue": payload["simpleValue"],
+                "sqc": payload["sqc"], 
+                "timer": payload["timer"]
+                }
 
         log.tracef("Opening <%s>", windowPath)
         log.tracef("Window Payload: %s", str(windowPayload))

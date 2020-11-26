@@ -1065,7 +1065,6 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
             "order by RecipeDataFolderId " % (stepId) 
     folderPDS = system.db.runQuery(SQL, db)
     logger.tracef("...fetched %d folders", len(folderPDS))
-    print "Fetched %d folders" % (len(folderPDS))
 
     if recipeDataType == SIMPLE_VALUE:
         SQL = "select RecipeDataKey, Units, ValueType, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE, folderId "\
@@ -1074,7 +1073,7 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
             "order by RecipeDataKey " % (stepId) 
             
         pds = system.db.runQuery(SQL, db)
-        logger.tracef("...fetched %d rows", len(pds))
+        logger.tracef("...fetched %d rows pf %s", len(pds), recipeDataType)
         
         ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
         data = []
@@ -1090,6 +1089,7 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
     
             data.append([key, record["Units"], valueType, val])
         ds = system.dataset.toDataSet(header, data)
+    
     elif recipeDataType == OUTPUT:
         SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, folderId "\
             "from SfcRecipeDataOutputView  "\
@@ -1097,7 +1097,7 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
             "order by RecipeDataKey " % (stepId) 
             
         pds = system.db.runQuery(SQL, db)
-        logger.tracef("...fetched %d rows", len(pds))
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
         
         ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
         data = []
@@ -1114,9 +1114,205 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
             data.append([ key, record["Units"], record["Tag"],  record["OutputType"], record["Download"], record["WriteConfirm"], record["Timing"], record["MaxTiming"], valueType, outputValue])
         ds = system.dataset.toDataSet(header, data)
         
+    elif recipeDataType == OUTPUT_RAMP:
+        SQL = "select RecipeDataKey, Units, Tag, OutputType, Download, WriteConfirm, Timing, MaxTiming, RampTimeMinutes, UpdateFrequencySeconds, ValueType, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, folderId "\
+            "from SfcRecipeDataOutputRampView  "\
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
+        
+        ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
+        data = []
+        header = ["KEY", "UNITS", "TAG", "OUTPUTTYPE", "DOWNLOAD", "WRITECONFIRM", "TIMING", "MAXTIMING", "RAMPTIME", "UPDATEFREQUENCY", "DATATYPE", "OUTPUTVALUE"]
+        for record in pds:
+            key = record["RecipeDataKey"]
+            valueType = record["ValueType"]
+            outputValue = str(record["OUTPUT" + string.upper(valueType) + "VALUE"])
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+                
+            data.append([ key, record["Units"], record["Tag"],  record["OutputType"], record["Download"], record["WriteConfirm"], record["Timing"], record["MaxTiming"], record["RampTimeMinutes"], record["UpdateFrequencySeconds"], valueType, outputValue])
+        ds = system.dataset.toDataSet(header, data)
+        
+    elif recipeDataType == INPUT:
+        SQL = "select RecipeDataKey, Units, Tag, ValueType, PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE, TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, folderId "\
+            "from SfcRecipeDataInputView  "\
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
+        
+        ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
+        data = []
+        header = ["KEY", "UNITS", "TAG", "DATATYPE", "PVVALUE", "TARGETVALUE"]
+        for record in pds:
+            key = record["RecipeDataKey"]
+            valueType = record["ValueType"]
+            pvValue = str(record["PV" + string.upper(valueType) + "VALUE"])
+            targetValue = str(record["TARGET" + string.upper(valueType) + "VALUE"])
+            
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+                
+            data.append([ key, record["Units"], record["Tag"], valueType, pvValue, targetValue])
+        ds = system.dataset.toDataSet(header, data)
+        
+        
+    elif recipeDataType == ARRAY:
+        SQL = "select RecipeDataId, RecipeDataKey, Units, ValueType, KeyName, folderId "\
+            "from SfcRecipeDataArrayView  "\
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
+        
+        ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
+        data = []
+        header = ["KEY", "UNITS", "DATATYPE", "VALS" ]
+
+        for record in pds:
+            recipeDataId = record["RecipeDataId"]
+            key = record["RecipeDataKey"]
+            valueType = record["ValueType"]
+            
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+            
+            data = []
+            SQL = "select  ArrayIndex, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+                "from SfcRecipeDataArrayElementView "\
+                "where RecipeDataId = %d "\
+                "order by ArrayIndex" % (recipeDataId)
+            valuePDS = system.db.runQuery(SQL, db)
+
+            vals = []
+            for valueRecord in valuePDS:
+                val = str(valueRecord[string.upper(valueType) + "VALUE"])
+                vals.append(val)
+                
+            valString = "(" + ",".join(vals) + ")"
+            data.append([ key, record["Units"], valueType, valString])
+    
+        ds = system.dataset.toDataSet(header, data)
+        
+    elif recipeDataType == MATRIX:
+        SQL = "select RecipeDataId, RecipeDataKey, Units, ValueType, RowIndexKeyName, ColumnIndexKeyName, folderId "\
+            "from SfcRecipeDataMatrixView  "\
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
+        
+        ''' Need to collapse the 4 value fields (I wish I knew how to do this in SQL) '''
+        data = []
+        header = ["KEY", "UNITS", "DATATYPE", "VALS" ]
+
+        for record in pds:
+            recipeDataId = record["RecipeDataId"]
+            key = record["RecipeDataKey"]
+            valueType = record["ValueType"]
+            
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+            
+            data = []
+            SQL = "select  RowIndex, ColumnIndex, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+                "from SfcRecipeDataMatrixElementView "\
+                "where RecipeDataId = %d "\
+                "order by RowIndex, ColumnIndex" % (recipeDataId)
+            valuePDS = system.db.runQuery(SQL, db)
+
+            vals = []
+            for valueRecord in valuePDS:
+                val = str(valueRecord[string.upper(valueType) + "VALUE"])
+                vals.append(val)
+                
+            valString = "(" + ",".join(vals) + ")"
+            data.append([ key, record["Units"], valueType, valString])
+    
+        ds = system.dataset.toDataSet(header, data)
+        
+    elif recipeDataType == RECIPE:
+        SQL = "select RecipeDataKey, Units, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit, folderId "\
+            "from SfcRecipeDataRecipeView  "\
+            "where stepId = %d "\
+            "order by PresentationOrder " % (stepId) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
+        
+        data = []
+        header = ["Key", "Units", "PresentationOrder", "StoreTag", "CompareTag", "ModeAttribute", "ModeValue", "ChangeLevel", "RecommendedValue", "LowLimit", "HighLimit"]
+        for record in pds:
+            key = record["RecipeDataKey"]
+            
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+                
+            data.append([ key, record["Units"], record["PresentationOrder"], record["StoreTag"], record["CompareTag"], record["ModeAttribute"], record["ModeValue"], record["ChangeLevel"], record["RecommendedValue"], record["LowLimit"], record["HighLimit"] ])
+        ds = system.dataset.toDataSet(header, data)
+        
+    elif recipeDataType == SQC:
+        SQL = "select RecipeDataKey, Units, LowLimit, TargetValue, HighLimit, folderId "\
+            "from SfcRecipeDataSQCView  "\
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
+        
+        data = []
+        header = ["Key", "Units", "LowLimit", "TargetValue", "HighLimit"]
+        for record in pds:
+            key = record["RecipeDataKey"]
+            
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+                
+            data.append([ key, record["Units"], record["LowLimit"], record["TargetValue"], record["HighLimit"] ])
+        ds = system.dataset.toDataSet(header, data)
+        
+    elif recipeDataType == TIMER:
+        SQL = "select RecipeDataKey, StartTime, StopTime, TimerState, CumulativeMinutes, folderId "\
+            "from SfcRecipeDataTimerView  "\
+            "where stepId = %d "\
+            "order by RecipeDataKey " % (stepId) 
+            
+        pds = system.db.runQuery(SQL, db)
+        logger.tracef("...fetched %d rows of %s", len(pds), recipeDataType)
+        
+        data = []
+        header = ["Key", "StartTime", "StopTime", "TimerState", "CumulativeMinutes"]
+        for record in pds:
+            key = record["RecipeDataKey"]
+            
+            folderId = record["folderId"]
+            if folderId != None:
+                folderPath = getFolderPath(folderId,folderPDS)
+                key = folderPath + "/" + key
+                
+            data.append([ key, record["StartTime"], record["StopTime"], record["TimerState"], record["CumulativeMinutes"] ])
+        ds = system.dataset.toDataSet(header, data)
+    
     else:
-        print "UNSUPPORTED RECIPE DATA TYPE"
-        ds = "foobar"
+        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
     
     return ds
 
