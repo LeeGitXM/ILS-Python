@@ -40,6 +40,18 @@ def scanner():
 
     if system.tag.read("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
         main(isolationDatabase, tagProviderIsolation)
+        
+    ''' Tickle the watchdos '''
+    tagPath = "[%s]Site/Watchdogs/Lab Data Watchdog/currentValue" % (tagProvider)
+    if system.tag.exists(tagPath):
+        currentValue = system.tag.read(tagPath).value
+        
+        if currentValue > 100:
+            currentValue = 0
+        else:
+            currentValue = currentValue + 1
+            
+        system.tag.write(tagPath, currentValue)
 
 
 def main(database, tagProvider):

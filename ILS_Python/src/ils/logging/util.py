@@ -4,8 +4,8 @@ Created on Sep 4, 2020
 @author: aedmw
 '''
 import system, datetime
-import xom.logging
-log = xom.logging.xomGetLogger('xom.logging.util')
+import ils.logging
+log = ils.logging.xomGetLogger('xom.logging.util')
 
 def logCleanup(db_name='Logs'):
     '''

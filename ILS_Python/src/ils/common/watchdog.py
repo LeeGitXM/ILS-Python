@@ -7,6 +7,70 @@ Created on Apr 11, 2017
 import system
 log=system.util.getLogger("com.ils.watchdog")
 
+'''
+This is called from a gateway timer script. It doesn't make sense to call this for isolation.
+(The UDTS do not exist in isolation as they get converted to folders. )
+'''
+def scanLabDataWatchdogs(tagProvider):
+    projectName = system.util.getProjectName()
+    if projectName == "[global]":
+        print "Skipping the Lab Data Watchdog scanner for the global project"
+        return
+    
+    log.info("Scanning Lab Data watchdogs...")
+    
+    udtParentType = "Lab Data Watchdog"
+    parentPath = "[%s]Site/Watchdogs" % (tagProvider)
+        
+    udts = system.tag.browseTags(
+        parentPath=parentPath, 
+        tagType="UDT_INST", 
+        udtParentType="Watchdogs/" + udtParentType,
+        recursive=True)
+    
+    log.tracef("...discovered %d Lab Data watchdog UDTs...", len(udts))
+    
+    for udt in udts:
+        udtPath = udt.path
+        log.tracef("Found a %s at %s", udtParentType, udtPath)
+        labDataWatchdog(tagProvider, udtPath)
+
+
+def labDataWatchdog(tagProvider, udtPath):
+    udtPath = "[%s]%s" % (tagProvider, udtPath)
+    log.tracef("Evaluating a Lab Data Watchdog with <%s>", udtPath)
+    
+    vals = system.tag.readAll([
+                udtPath+"/currentValue", 
+                udtPath+"/lastValue",
+                udtPath+"/maxStalls",
+                udtPath+"/stallCount"
+                ])
+    
+    currentValue=vals[0].value
+    lastValue=vals[1].value
+    maxStalls=vals[2].value
+    stallCount=vals[3].value
+    
+    if stallCount == None:
+        stallCount = 0
+
+    changeTestFailed = False
+ 
+    log.tracef("Current Value: %d, Last Value: %d, maxStalls: %d, Stall Count: %d", currentValue, lastValue, maxStalls, stallCount )
+
+    if currentValue == lastValue:
+        log.errorf("FAILED the change test because the current value: %s and the last value %s, are the same", str(currentValue), str(lastValue))
+        changeTestFailed = True
+    else:
+        log.tracef("Passed the value changed test")
+        
+    system.tag.write(udtPath+"/lastValue", currentValue)
+
+    if changeTestFailed:
+        system.tag.write(udtPath+"/stallCount", stallCount + 1)
+    else:
+        system.tag.write(udtPath+"/stallCount", 0)
 
 '''
 This is called from a gateway timer script. It doesn't make sense to call this for isolation.

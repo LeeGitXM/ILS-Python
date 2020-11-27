@@ -3,292 +3,326 @@ Created on Aug 29, 2020
 
 @author: aedmw
 '''
-import system, datetime
-from ils.dataset.util import tagToList, listToTag
-from ils.logging.util2 import xom1DDataSet
-from ils.logging.ignition_tags import IgnitionTagsClass, IgnitionTagClass
+import system, datetime, string
+from ils.dataset.util import tagToList, listToTag, toList, fromList
+from ils.common.util import escapeSqlQuotes
 import ils.logging as logging
-log = system.util.getLogger('ils.logging.viewer')
+from com.jidesoft.grid import Row
+log = system.util.getLogger('com.ils.logging.viewer')    
+
+
+MAIN_SQL = 'SELECT id, timestamp, log_level,  log_levelname, logger_name, module, function_name, log_message, project, scope, client_id, line_number,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
+SUB_SQL = "SELECT TOP %d * FROM log WHERE timestamp > '%s' AND timestamp < '%s' %s ORDER BY timestamp DESC"
+DATE_FORMAT = "YYYY-MM-dd HH:mm:ss"
+FILTER_LIST = ["client_id", "function_name", "log_levelname", "log_message", "logger_name","module", "process_id", "project", "scope"]
+TAG_ROOT = "[Client]Logging"
+INCLUDE = "include"
+EXCLUDE = "exclude"
+REALTIME = "Realtime"
+HISTORICAL = "Historical"
+MANUAL = "Manual"
+
+def clientStartup():
+    ''' Set the start and end date of the client tags synchronized with the manual times '''
+    print "In %s.clientStartup()" % (__name__)
+    now = system.date.now()
+    system.tag.write("[Client]Logging/Historical Start Time", system.date.addHours(now, -4))
+    system.tag.write("[Client]Logging/Historical End Time", now)
+    system.tag.write("[Client]Logging/Historical Outer Start Time", system.date.addDays(now, -7))
+    system.tag.write("[Client]Logging/Historical Outer End Time", now)
+    
+    
+    system.tag.write("[Client]Logging/Manual Start Time", system.date.addHours(now, -4))
+    system.tag.write("[Client]Logging/Manual End Time", now)
+    
+    system.tag.write("[Client]Logging/Realtime Value", 10)
+    system.tag.write("[Client]Logging/Realtime Units", "Minutes")
+    system.tag.write("[Client]Logging/Mode", "Realtime")
+
 
 def internalFrameOpened(rootContainer):
-    from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
+    #from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
     log.infof("In IntenalFrameOpened")
-    
-    ''' Find all of the column filter templates on the window '''
-    for comp in rootContainer.components:
-        print comp.name, comp
-        if isinstance(comp, TemplateHolder):
-            print "Found a template - column: ", comp.columnName
 
-class ColumnFilterClass(object):
-    def __init__(self, parent, tagpath, column_name):
-        print "Creating a ColumnFilterClass"
-        self.parent = parent
-        self.tagpath = tagpath
-        self.column_name = column_name
-        log.tracef("Creating FilterClass(%s, %s)", tagpath, column_name)
-        prefix = '[Client]%s/Column Filters' % tagpath
-        tag_list = [
-                    {'python_name':'filter_mode',    'tagpath':'%s/%s/Filter Mode' % (prefix, column_name), 'type':'string', 'direction':'READ/WRITE'},
-                    {'python_name':'includes',       'tagpath':'%s/%s/Includes' % (prefix, column_name), 'type':'dataset', 'direction':'READ/WRITE'},
-                    {'python_name':'excludes',       'tagpath':'%s/%s/Excludes' % (prefix, column_name), 'type':'dataset', 'direction':'READ/WRITE'},
-                    ]   
-        self.tags = IgnitionTagsClass(tag_list)
 
-    def viewFilterList(self):
-        '''
-        - Set value of Filter Viewer Custom Property 'ViewingDataset'
-        - Pop up Filter Viewer popup window
-        '''
-        pass
+def resetAllFiltersAction(rootContainer):
+    '''
+    The logging UI uses client tags.  Client tags are a project resource and are created automatically for each client when it connects.
+    This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
+    project was last saved by the designer.
+    '''         
+    resetAllFilters()
+    update(rootContainer)
     
-    def getWhereClause(self, column_filter, operator):
-        filters = xom1DDataSet(column_filter)
-        filters_str = " AND %s %s (" % (self.column_name, operator)
-        first_exp = True
-        if len(filters) > 0:
-            for i in filters:
-                if not first_exp:
-                    comma = ','
-                else:
-                    comma = ''
-                if isinstance(i, str):
-                    i = i.strip()
-                filters_str += "%s'%s'" % (comma, i)
-                first_exp = False
-            filters_str += ') '
-        else:
-            filters_str = ''
-        return filters_str
+def resetAllFilters():
+    '''
+    The logging UI uses client tags.  Client tags are a project resource and are created automatically for each client when it connects.
+    This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
+    project was last saved by the designer.
+    ''' 
+    emptyDataset = system.dataset.toDataSet([], [])
         
-    def getWhereClauses(self):
-        return_str = ''
-        if self.tags.filter_mode.value.upper() == 'INCLUDES':
-            if self.column_name == 'log_message':
-                return_str = self.getWhereClause(self.tags.includes.value, 'LIKE')
-            else:
-                return_str = self.getWhereClause(self.tags.includes.value, 'IN')
-        elif self.tags.filter_mode.value.upper() == 'EXCLUDES':
-            return_str = self.getWhereClause(self.tags.excludes.value, 'NOT IN')
-        return return_str
+    for columnFilter in FILTER_LIST:
+        tagPath = "[Client]Logging/Column Filters/" + columnFilter 
+        system.tag.write(tagPath + "/Excludes", emptyDataset)
+        system.tag.write(tagPath + "/Filter Mode", "No Filter")
+        system.tag.write(tagPath + "/Includes", emptyDataset)
 
-    def updateColumnFilter(self, filter_type, add_remove):
-        print "Filter: ", self.parent.tags.filter_selection.value
-        #filter_selection = xom1DDataSet(self.parent.tags.filter_selection.value)
-        filter_selection = tagToList(self.parent.tags.filter_selection)
-        print "Filter list: ", filter_selection
-        filter_mode_tag = self.tags.filter_mode
-        filter_mode = self.tags.filter_mode.value
-        if filter_type.upper() == 'INCLUDES':
-            column_filter_tag = self.tags.includes
-        elif filter_type.upper() == 'EXCLUDES':
-            column_filter_tag = self.tags.excludes
-        else:
-            raise Exception('Unexpected filter_type=%s' % filter_type)
-        column_filter = xom1DDataSet(column_filter_tag.value)
-        
-        if add_remove == 'add':
-            if len(filter_selection) > 0:
-                # Add the names in the Filter Selection dataset to the include/exclude list for this column
-                for fs_row in filter_selection:
-                    fs_row = fs_row.strip()
-                    if fs_row == '':
-                        continue
-                    if fs_row not in column_filter:
-                        column_filter.append(fs_row)
-                column_filter_tag.value = column_filter.updateDataSet()
-                column_filter_tag.write(force=True)
-            else: # left button and empty Filter Selection, toggle Column Filter Mode
-                if filter_type == filter_mode:
-                    filter_mode = 'No Filter'
-                else:
-                    filter_mode = filter_type
-                filter_mode_tag.value = filter_mode
-                filter_mode_tag.write(force=True)
-        else: # add_remove == 'remove'
-            if len(filter_selection) == 0:
-                column_filter.data = []
-            else:                
-                # Remove the names in the Filter Selection dataset from the include/exclude list for this column
-                for fs_row in filter_selection:
-                    fs_row = fs_row.strip()
-                    if fs_row == '':
-                        continue
-                    if fs_row in column_filter:
-                        column_filter.remove(fs_row)
-            column_filter_tag.value = column_filter.updateDataSet()
-            column_filter_tag.write(force=True)
-        self.parent.clearFilterSelection()
-            
-class ColumnFiltersClass(object):
-    def __init__(self, tagpath, db_name, column_names=['module','function_name','log_levelname','process_id','log_message']):
-        print "Creating a ColumnFiltersClass"
-        self.tagpath = tagpath
-        self.column_names = column_names
-        self.db_name = db_name
-        self.column_filters = {}
-        log.tracef("Creating FiltersClass(%s, %s, %s)", tagpath, str(column_names), db_name)
-        prefix = '[Client]%s' % tagpath
-        tag_list = [
-                    {'python_name':'sql_query',           'tagpath':'%s/SQL Query' % (prefix), 'type':'string', 'direction':'READ/WRITE'},
-                    {'python_name':'start_time',          'tagpath':'%s/Start Time' % (prefix), 'type':'datetime', 'direction':'READ/WRITE'},
-                    {'python_name':'start_time_on',       'tagpath':'%s/Start Time On' % (prefix), 'type':'boolean', 'direction':'READ/WRITE'},
-                    {'python_name':'filter_selection',    'tagpath':'%s/Column Filters/Filter Viewer/Filter Selection' % (prefix), 'type':'string', 'direction':'READ/WRITE'},
-                    ]
-        self.tags = IgnitionTagsClass(tag_list)
-        
-        # Load Filter for each filtered column
-        for column in column_names:
-            self.column_filters[column] = ColumnFilterClass(self, tagpath, column)
-
-    def getWhereClauses(self):
-        '''
-        Return the WHERE clauses for the Column Filters corresponding to their current Filter Modes.
-        '''
-        wc = ''
-        for cf in self.column_filters.itervalues():
-            wc += cf.getWhereClauses()
-        return wc
-    
-    def writeSQL(self):
-        '''
-        Write the SQL query to show the data out the sql_query tag.
-        This is a pretty clever SQL statement (thanks Daniel) that uses a subquery to get the rows that math the where clause and then the outer query that
-        gets the top rows.  Unfortunately, SQL*Server can't figure out the the where clause with the top clause in the same statement.
-        '''
-        where_clauses = self.getWhereClauses()
-        if self.tags.start_time_on.value:
-            start_time = "'%s'" % self.tags.start_time.value.strftime("%Y-%m-%d %H:%M:%S")
-        else:
-            start_time = "'2000-01-01 00:00:00'"       
-        main_sql = 'SELECT id, timestamp, logger_name, project, scope, client_id, module, function_name, line_number, log_levelname, log_level, ' + \
-                    'log_message,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC;'
-        subquery = "SELECT TOP 100 * FROM log WHERE timestamp > %s %s ORDER BY timestamp DESC" % (start_time, where_clauses)
-        sql = main_sql % subquery
-        #print 'sql = %s' % sql
-        self.tags.sql_query.value = sql
-        self.tags.sql_query.write()
-      
-    def updateColumnFilter(self, event, column_name, filter_type, add_remove):
-        '''
-        Update the Column Filter corresponding to this event (when the "E" or "I" buttons are pressed).
-        If add_remove == 'add', add the contents of Filter Selection tag to the Column Filter.
-        If add_remove == 'remove', remove the contents of Filter Selection tag from the Column Filter.
-        '''
-        cf = self.column_filters[column_name]
-        cf.updateColumnFilter(filter_type, add_remove)
-        self.writeSQL()
-
-    def clearFilterSelection(self):
-        '''
-        Clear the contents of the Filter Selection tag.
-        '''
-        for row in range(self.tags.filter_selection.value.getRowCount()):
-            self.tags.filter_selection.value = system.dataset.deleteRow(self.tags.filter_selection.value, 0)
-        self.tags.filter_selection.write(force=True)
-
-    def updateStartTime(self, update_time_only):
-        '''
-        Called when the Start Time button is pressed.
-        If left-clicked, the button is toggled:  
-            When toggled on, set the Start Time tag to the current time and the Start Time On tag to True.
-            When toggled off, set the Start Time On tag to False.
-        If right-clicked, the time is updated but the state is not toggled.
-        '''
-        if update_time_only:
-            self.tags.start_time.value = datetime.datetime.now()
-        else:
-            if self.tags.start_time_on.value:
-                self.tags.start_time_on.value = False
-            else:
-                self.tags.start_time_on.value = True
-                self.tags.start_time.value = datetime.datetime.now()
-        self.writeSQL()
-          
-def filterButtonAction(event):
-    '''
-    Called by the Mouse Click event handler on the filter "I" and "E" buttons.
-    '''   
-    root_path = event.source.parent.parent.loggingPath
-    print "root_path: ", root_path
-    column_filters = ColumnFiltersClass(root_path, 'Logs')
-    print "column_filters: ", column_filters
-    column_name = event.source.parent.columnName
-    print "column_name: ", column_name
-    filter_type = event.source.filterType
-    
-    if event.button == event.BUTTON1:
-        # Left-click adds the contents of the Filter Selection Tag to the current Column Filter (Includes/Excludes).
-        updateColumnFilter(event, column_name, filter_type, add_remove='add')
-    else:
-        # Right-click brings up the include/exclude list editor
-        window = system.nav.openWindow('%s/Filter Viewer' % root_path, 
-                                       {'dataPath' : '%s/%s' % (column_name, filter_type),
-                                        'currentColumn' : '%s' % column_name,
-                                        'currentFilterType' : '%s' % filter_type})
-        system.nav.centerWindow(window)
-    column_filters.writeSQL()
-
-def filterViewerClearButtonAction(event):
-    '''
-    Called by the Mouse Click event handler on the Filter Viewer window Clear button.
-    If the Filter Selection tag is not empty, clear entries matching those in this Column Filter.
-    Otherwise, clear all entries in this Column Filter.
-    '''   
-    root_path = event.source.parent.loggingPath
-    column_name = event.source.parent.currentColumn
-    filter_type = event.source.parent.currentFilterType
-    column_filters = ColumnFiltersClass(root_path, 'Logs')
-    column_filters.updateColumnFilter(event, column_name, filter_type, add_remove='remove')
-    
-def addToFilterSelection(logging_path, event, value):
-    '''
-    Called by a Mouse Click event handler on the Power Table for the Log Viewer or Filter Viewer windows.
-    '''
-    tagname = '[Client]%s/Column Filters/Filter Viewer/Filter Selection' % logging_path
-    ds = system.tag.read(tagname).value
-    new_ds = system.dataset.addRow(ds, [value])
-    system.tag.write(tagname, new_ds)
-    
-def addColumnFilterItem(event):
-    '''
-    Called by pressing the Enter key while in the "add item" text entry box of the Filter Viewer window.
-    '''
-    root_path = event.source.parent.loggingPath
-    addToFilterSelection(root_path, event, event.source.text)
-    column_filters = ColumnFiltersClass(root_path, 'Logs')
-    column_name = event.source.parent.currentColumn
-    filter_type = event.source.parent.currentFilterType
-    column_filters.updateColumnFilter(event, column_name, filter_type, add_remove='add')
-    # Clear entry box for next addition
-    event.source.text = ''
-
-def startTimeButton(event, update_time_only=False):
-    '''
-    Called by pressing the Start Time button.
-    '''
-    logging_path = event.source.parent.loggingPath
-    column_filters = ColumnFiltersClass(logging_path, 'Logs')
-    column_filters.updateStartTime(update_time_only)
-    column_filters.tags.write()
-    
-def updateSQL(event):
-    logging_path = event.source.parent.loggingPath
-    column_filters = ColumnFiltersClass(logging_path, 'Logs')
-    column_filters.writeSQL()
-    
-
-'''
-====================================
-'''
-
-def updateFilterAction(event, columnName, val, add_remove):
+def updateFilterAction(table, columnName, val, include_exclude):
     '''
     Called by the Popup menu on one of the filterable columns.
-    '''   
-    log.tracef("In %s.updateFilterAction. %s - %s - %s", __name__, columnName, val, add_remove)
-
+    '''
+    rootContainer = table.parent
+    columnName = columnName.rstrip()
+    val = val.rstrip()
+    include_exclude = string.capitalize(include_exclude)
+    log.infof("In %s.updateFilterAction. <%s> - <%s> - <%s>", __name__, columnName, val, include_exclude)
     
-def updateColumnFilter(event, column_name, filter_type, add_remove='add'):
-    log.tracef("In updateColumnFilter with %s, %s, %s", column_name, filter_type, add_remove) 
+    mode, includes, excludes = readFilter(columnName)
+    
+    mode = include_exclude
+    
+    if string.lower(include_exclude) == INCLUDE:
+        if val not in includes:
+            includes.append(val)
+    else:
+        if val not in excludes:
+            excludes.append(val)
+
+    writeFilter(columnName, mode, includes, excludes)
+    update(rootContainer)
+
+def clearFilterAction(table, columnName):
+    '''
+    Called by the Popup menu on one of the filterable columns.
+    Set the mode to 'No Filter' and then clear the include and exclude lists.
+    '''
+    rootContainer = table.parent
+    columnName = columnName.rstrip()
+    log.infof("In %s.clearFilterAction. <%s>", __name__, columnName)
+    writeFilter(columnName, "No Filter", [], [])
+    update(rootContainer)
+    
+def setFilterMode(table, columnName, mode):
+    '''
+    Called by the Popup menu on one of the filterable columns.
+    Set the mode to 'No Filter' and then clear the include and exclude lists.
+    '''
+    rootContainer = table.parent
+    columnName = columnName.rstrip()
+    log.infof("In %s.setFilterMode. <%s> <%s>", __name__, columnName, mode)
+    tagpath = "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)    
+    system.tag.write(tagpath, mode)
+    update(rootContainer)
+    
+    
+def readFilter(columnName):
+    tagpaths = [
+        "%s/Column Filters/%s/Excludes" % (TAG_ROOT, columnName),
+        "%s/Column Filters/%s/Includes" % (TAG_ROOT, columnName),
+        "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)
+        ]
+    
+    qvs = system.tag.readAll(tagpaths)
+    
+    excludes = toList(qvs[0].value)
+    includes = toList(qvs[1].value)
+    mode = qvs[2].value
+    
+    return mode, includes, excludes
+
+def writeFilter(columnName, mode, includes, excludes):
+    tagpaths = [
+        "%s/Column Filters/%s/Excludes" % (TAG_ROOT, columnName),
+        "%s/Column Filters/%s/Includes" % (TAG_ROOT, columnName),
+        "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)
+        ]
+    
+    excludes = fromList(excludes)
+    includes = fromList(includes)
+    
+    system.tag.writeAll(tagpaths, [excludes, includes, mode])
+
+def update(rootContainer):
+    '''
+    Write the SQL query to show the data out the sql_query tag.
+    This is a pretty clever SQL statement (thanks Daniel) that uses a subquery to get the rows that math the where clause and then the outer query that
+    gets the top rows.  Unfortunately, SQL*Server can't figure out the the where clause with the top clause in the same statement.
+    '''
+    log.tracef("In update...")
+    table = rootContainer.getComponent("Power Table")
+    
+    container = rootContainer.getComponent("Date Time Control Container")
+    mode = container.getComponent("Mode Dropdown").selectedStringValue
+    if mode == HISTORICAL:
+        startTime = container.getComponent("Historical Container").getComponent("Date Range").startDate
+        endTime = container.getComponent("Historical Container").getComponent("Date Range").endDate
+    elif mode == REALTIME:
+        endTime = system.date.now()
+        units = container.getComponent("Realtime Container").getComponent('Realtime Units Dropdown').selectedStringValue
+        val = container.getComponent("Realtime Container").getComponent('Spinner').intValue
         
+        if units == "Days":
+            startTime = system.date.addDays(endTime, -1 * val)
+        elif units == "Hours":
+            startTime = system.date.addHours(endTime, -1 * val)
+        else:
+            startTime = system.date.addMinutes(endTime, -1 * val)
+
+    elif mode == MANUAL:
+        startTime = container.getComponent("Manual Container").getComponent("Start Popup Calendar").date
+        endTime = container.getComponent("Manual Container").getComponent("End Popup Calendar").date
+        
+    else:
+        system.gui.messageBox("Unexpected mode")
+        return
+    
+    db = rootContainer.databaseConnection
+    startTime = system.date.format(startTime, DATE_FORMAT)
+    endTime = system.date.format(endTime, DATE_FORMAT)
+        
+    whereClause = getWhereClause()
+
+    tagpath = "%s/Max Records" % (TAG_ROOT)
+    maxRecords = system.tag.read(tagpath).value
+    subquery = SUB_SQL % (maxRecords, startTime, endTime, whereClause)
+    SQL = MAIN_SQL % subquery
+    log.tracef(SQL)
+    
+    pds = system.db.runQuery(SQL, db)
+    table.data = pds
+        
+def getWhereClause():
+    log.tracef("In getWhereClause")
+    clauses = []
+    for sqlFilter in FILTER_LIST:
+        selections = []
+        operator = ""
+        
+        tagpaths = [
+            "%s/Column Filters/%s/Excludes" % (TAG_ROOT, sqlFilter),
+            "%s/Column Filters/%s/Includes" % (TAG_ROOT, sqlFilter),
+            "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, sqlFilter)
+            ]
+    
+        qvs = system.tag.readAll(tagpaths)
+        
+        excludes = toList(qvs[0].value)
+        includes = toList(qvs[1].value)
+        mode = string.lower(qvs[2].value)
+        
+        if mode == INCLUDE:
+            selections = includes
+            operator = " IN "
+                
+        elif mode == EXCLUDE:
+            selections = excludes
+            operator = " NOT IN "
+        
+        if len(selections) > 0 and mode in [INCLUDE, EXCLUDE]:
+            terms = []
+            for selection in selections:
+                selection = "'" + str(escapeSqlQuotes(selection)) + "'"
+                terms.append('%s' % (selection))
+            txt = ", ".join(terms)
+            clauses.append("%s %s (%s)" % (sqlFilter, operator, txt))
+    
+    #print "Clauses: ", clauses
+    if len(clauses) > 0: 
+        andWhere = "and " + " and ".join(clauses)
+    else:
+        andWhere = ""
+    
+    #print "andWhere: ", andWhere
+    return andWhere
+
+def updateStartTime(self, update_time_only):
+    '''
+    Called when the Start Time button is pressed.
+    If left-clicked, the button is toggled:  
+        When toggled on, set the Start Time tag to the current time and the Start Time On tag to True.
+        When toggled off, set the Start Time On tag to False.
+    If right-clicked, the time is updated but the state is not toggled.
+    '''
+    if update_time_only:
+        self.tags.start_time.value = datetime.datetime.now()
+    else:
+        if self.tags.start_time_on.value:
+            self.tags.start_time_on.value = False
+        else:
+            self.tags.start_time_on.value = True
+            self.tags.start_time.value = datetime.datetime.now()
+    self.writeSQL()
+
+'''
+Automation for the Filter Configuration Window.
+'''
+
+def refreshFilterWindow(rootContainer):
+
+    ''' ------------------------------------------------------------'''
+    def appender(filterValues, sqlFilter, mode, vals):
+        for val in vals:
+            filterValues.append([sqlFilter, mode, val])
+        return filterValues
+    ''' ------------------------------------------------------------ '''
+    
+    filterModes = []
+    filterValues = []
+    
+    for sqlFilter in FILTER_LIST:        
+        tagpaths = [
+            "%s/Column Filters/%s/Excludes" % (TAG_ROOT, sqlFilter),
+            "%s/Column Filters/%s/Includes" % (TAG_ROOT, sqlFilter),
+            "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, sqlFilter)
+            ]
+    
+        qvs = system.tag.readAll(tagpaths)
+        
+        excludes = toList(qvs[0].value)
+        filterValues = appender(filterValues, sqlFilter, "Exclude", excludes)
+        
+        includes = toList(qvs[1].value)
+        filterValues = appender(filterValues, sqlFilter, "Include", includes)
+    
+        mode = qvs[2].value
+        filterModes.append([sqlFilter, mode])
+        
+    header = ["Filter", "Mode", "Value"]
+    ds = system.dataset.toDataSet(header, filterValues)
+    rootContainer.getComponent("Filters Table").data = ds
+    
+    header = ["Filter", "Mode"]
+    ds = system.dataset.toDataSet(header, filterModes)
+    rootContainer.getComponent("Filter Mode Table").data = ds
+    
+def deleteFilterValueAction(rootContainer):
+    '''
+    Delete the filter by figuring out what was selected from the table, updating the client tag, and then refreshing the table
+    '''
+    loggingPath = rootContainer.loggingPath
+    table = rootContainer.getComponent("Filters Table")
+    if table.selectedRow < 0:
+        system.gui.messageBox("Please select a filter value to delete.")
+        return
+    
+    ''' Get the filter mode and value from the selected row in the table '''
+    selectedRow = table.selectedRow
+    ds = table.data
+    filterName = ds.getValueAt(selectedRow, 0)
+    mode = ds.getValueAt(selectedRow, 1)
+    val = ds.getValueAt(selectedRow, 2)
+    
+    ''' Read the dataset from the client tag and remove the desired row '''
+    tagPath = "%s/%s/%ss" % (loggingPath, filterName, mode)
+    ds = system.tag.read(tagPath).value
+    filterList = toList(ds)
+    ''' Really no way it can't be in the list, but be safe '''
+    if not val in filterList:
+        system.gui.errorBox("Fliter value <%s> is not in the list of values <%s>" % (val, str(filterList)))
+        return
+    filterList.remove(val)
+    
+    ''' Write the updated list out to the client tag '''
+    system.tag.write(tagPath, fromList(filterList))
+    refreshFilterWindow(rootContainer)
