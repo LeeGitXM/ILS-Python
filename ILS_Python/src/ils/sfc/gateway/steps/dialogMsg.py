@@ -11,7 +11,7 @@ from ils.sfc.gateway.api import sendMessageToClient, getControlPanelId, register
 from ils.sfc.recipeData.api import substituteScopeReferences
 from ils.sfc.common.util import isEmpty
 from ils.common.util import escapeSqlQuotes
-from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW_ID, WINDOW_PATH, MESSAGE, IS_SFC_WINDOW, MAX_NOTIFICATION_MESSAGE_LENGTH, \
+from ils.sfc.common.constants import WAITING_FOR_REPLY, WINDOW, WINDOW_ID, WINDOW_PATH, MESSAGE, IS_SFC_WINDOW, MAX_NOTIFICATION_MESSAGE_LENGTH, \
     KEY, TARGET_STEP_UUID, DEACTIVATED, POSITION, SCALE, WINDOW_TITLE, STATIC, RECIPE_LOCATION, STRATEGY, ACK_REQUIRED, BUTTON_LABEL
 
 def activate(scopeContext, stepProperties, state):
@@ -42,6 +42,13 @@ def activate(scopeContext, stepProperties, state):
             # common window properties:
             controlPanelId = getControlPanelId(chartScope)
             chartRunId = getTopChartRunId(chartScope)
+            
+            customWindowPath = getStepProperty(stepProperties, WINDOW) 
+            print "The custom window path is: ", customWindowPath
+            
+            if customWindowPath not in ["", None, "None"]:
+                logger.tracef("Using custom window <%s>", customWindowPath)
+                windowPath = customWindowPath
             
             buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL) 
             if isEmpty(buttonLabel):
