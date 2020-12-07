@@ -54,5 +54,12 @@
 			</fileset>
 		</copy>
 		
+		<echo message="Deploying python scripts to ${bltdev.py.lib}" />
+		<copy todir="${bltdev.py.lib}">
+			<fileset dir="${basedir}/src">
+				<include name="ils/**/*.py" />
+			</fileset>
+		</copy>
+		
 	</target>
 </project>

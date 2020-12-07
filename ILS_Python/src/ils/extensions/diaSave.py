@@ -14,14 +14,34 @@ controllerRequestHandler = ControllerRequestHandler.getInstance()
 pythonHandler = diagram.getHandler()
 
 def delete(diagramUUID):
-    log.infof("In %s.delete()", __name__)
+    log.tracef("In %s.delete() - %s", __name__, diagramUUID)
+    
+    database = controllerRequestHandler.getDatabaseForUUID(diagramUUID)
+    
+    log.tracef("...deleting Final Diagnosis on diagram %s...", diagramUUID)
+    SQL = "delete from DtFinalDiagnosis where DiagramUUID = '%s' " % (str(diagramUUID))
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.tracef("   ...deleted %d rows!", rows)
+    
+    log.tracef("...deleting SQC Diagnosis on diagram %s...", diagramUUID)
+    SQL = "delete from DtSQCDiagnosis where DiagramUUID = '%s' " % (str(diagramUUID))
+    rows=system.db.runUpdateQuery(SQL, database)
+    log.tracef("   ...deleted %d rows!", rows)
+    
+    log.tracef("...leaving %s.delete()", __name__)
     
 
 def save(diagramUUID, aux):
-    log.infof("In %s.save()", __name__)
+    log.tracef("In %s.save() - %s", __name__, diagramUUID)
     diagram = controllerRequestHandler.getDiagram(diagramUUID)
+    applicationName  = controllerRequestHandler.getApplicationName(diagramUUID)
+    familyName = controllerRequestHandler.getFamilyName(diagramUUID)
+    log.tracef("  Application Name: %s", applicationName)
+    log.tracef("  Family Name: %s", familyName)
+    
     if not(diagram == None):
         diagramName=diagram.getName()
+
         log.tracef("...saving diagram  <%s> <%s>", diagramName, diagramUUID)
         database = controllerRequestHandler.getDatabaseForUUID(diagramUUID)
         
@@ -34,7 +54,7 @@ def save(diagramUUID, aux):
                     blockId = block.getIdString()
                     blockName = block.getName()
 
-                    log.info("  ...updating SQC Diagnosis named %s" % (blockName))
+                    log.tracef("  ...updating SQC Diagnosis named %s", blockName)
                     SQL = "update DtSQCDiagnosis set SQCDiagnosisUUID = '%s', DiagramUUID = '%s' where SQCDiagnosisName = '%s'" % (str(blockId), str(diagramUUID), blockName)
                     rows=system.db.runUpdateQuery(SQL, database)
                     if rows > 0:

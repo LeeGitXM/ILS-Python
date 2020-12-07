@@ -21,7 +21,7 @@ class SQCDiagnosis(basicblock.BasicBlock):
 #        self.properties['Label'] = {'value':'SQCDiagnosis','editable':'True'}
         self.properties['TagPath'] = { 'value':'','binding':'','bindingType':'TAG_WRITE','editable':'True'}
     
-        self.inports = [{'name':'in','type':'truthvalue'}]
+        self.inports = [{'name':'in','type':'truthvalue','allowMultiple':False}]
         self.outports= [{'name':'out','type':'truthvalue'}]
 
         
@@ -149,4 +149,3 @@ class SQCDiagnosis(basicblock.BasicBlock):
             from ils.common.error import catchError
             txt=catchError(__name__, "Error resetting a SQC Diagnosis")
             log.error(txt)
-       

@@ -22,8 +22,8 @@ class Action(basicblock.BasicBlock):
     # Set attributes custom to this class.
     # Default the trigger to TRUE
     def initialize(self):
-        self.className = 'xom.block.action.Action'
-        self.properties['Script'] = {'value':'xom.actions.demo.act','editable':'True'}
+        self.className = 'ils.block.action.Action'
+        self.properties['Script'] = {'value':'ils.actions.demo.act','editable':'True'}
         self.properties['Trigger'] = {'value':'TRUE','editable':'True','type':'TRUTHVALUE'}
         self.inports = [{'name':'in','type':'truthvalue'}]
         self.outports= [{'name':'out','type':'truthvalue'}]
@@ -80,11 +80,11 @@ class Action(basicblock.BasicBlock):
                     packName = self.packageFromFunctionPath(function)
                     funcName = self.functionFromFunctionPath(function)
                     log.tracef("   ...using External Python, the package is: <%s>.<%s>", packName, funcName)
-                    
                     exec("import %s" % (packName))
                     exec("from %s import %s" % (packName,funcName))
             
-                eval(function)(blockName, self.uuid, self.parentuuid, provider, database)
+                eval(function)(block, provider, database)
+#                eval(function)(block)
 
         else:
             self.state = "FALSE"

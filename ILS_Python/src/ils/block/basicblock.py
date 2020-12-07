@@ -45,7 +45,7 @@ class BasicBlock():
     # For the super class there are none.
     
     def initialize(self):    
-        self.className = 'xom.block.basicblock.BasicBlock'
+        self.className = 'ils.block.basicblock.BasicBlock'
         
         
     # Called when a value has arrived on one of our input ports

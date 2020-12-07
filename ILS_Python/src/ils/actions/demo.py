@@ -1,6 +1,14 @@
 '''
 Demonstration of a custom action module
 '''
+def act(block, provider, database):
+    print "demo.act block class = ",block.getClassName()
+    print "Block ID = ",block.blockId
+    print "Block Parent Id = ",block.parentId
+    print "Block database = ",database
+    print "Block Tag Provider =",provider
+       
+
 def actOld(block):
     print "demo.act block class = ",block.getClassName()
     #print block.uuid
@@ -11,11 +19,3 @@ def actOld(block):
     #print block.handler.getDefaultDatabase(block.parentuuid)
     #print block.handler.getDefaultTagProvider(block.parentuuid)
     
-def act(block, provider, database):
-    print "demo.act block class = ",block.getClassName()
-    print "Block ID = ",block.blockId
-    print "Block Parent Id = ",block.parentId
-    # The handler is a com.ils.blt.gateway.PythonRequestHandler
-    print "Block database = ",database
-    print "Block Tag Provider =",provider
-       

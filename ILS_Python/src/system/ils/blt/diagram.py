@@ -104,11 +104,11 @@ def listDiagramBlocksOfClass(diagramId,className):
 def listBlocksInDiagram(diagramId):
     '''Return a list of serializable block state descriptors that reference blocks the specified diagram'''
   
-def listSinksForSource(diagramId,blockName):
-    '''Return a list of serializable block state descriptors corresponding to sinks associated with the named source'''
+def listSinksForSource(diagramId,blockId):
+    '''Return a list of serializable block state descriptors corresponding to sinks associated with the specified source'''
     
-def listSourcesForSink(diagramId,blockName):
-    '''Return a list of serializable block state descriptors corresponding to source associated with the named sink'''
+def listSourcesForSink(diagramId,blockId):
+    '''Return a list of serializable block state descriptors corresponding to source associated with the specified sink'''
 
 def pathForBlock(diagid,bname):
      '''Return a nav-tree path for the named block '''

@@ -8,9 +8,12 @@ from ils.block import basicblock
 # NOTE: We need these two imports in order to get the classes generically.
 # We require the "wild" import so that we can iterate over classes
 # NOTE: __init__.py defines the modules
-import xom.block
-from xom.block import *
+
+import ils.block
+from ils.block import *
+from ils.user.block import *
 log = system.util.getLogger("com.ils.block")
+
 
 
 def acceptValue(block,port,value,quality,time):
@@ -77,7 +80,7 @@ def getBlockAnchors(block,anchors):
 
 def getBlockProperties(block,properties):
     '''
-    Given an instance of an executable block, write its properties to the supplied list (properties) as specified in the Gateway startup script.
+    Given an instance of an executable block, write its properties to the supplied list (properties).
     '''
     if block!=None:
         dictionary = block.getProperties()
@@ -108,16 +111,47 @@ def getNewBlockInstances():
     the class has the same name as its file.
     '''
     log.debugf('%s.getNewBlockInstances...', __name__)
+
     instances = []
     # dir only lists modules that have actually been imported
-    print dir(xom.block)
+    print dir(ils.block)
     print "======= Names ========="
-    for name in dir(xom.block):
+    for name in dir(ils.block):
         if not name.startswith('__') and not name == 'basicblock':
-            className = eval("xom.block."+name+".getClassName()")
-            constructor = "xom.block."+name.lower() +"."+className+"()"
+            className = eval("ils.block."+name+".getClassName()")
+            constructor = "ils.block."+name.lower() +"."+className+"()"
             obj = eval(constructor)
             log.infof("%s.getNewBlockInstances: %s = %s", __name__, name, obj.__class__)
+            instances.append(obj) 
+    print "====================="
+    return instances
+
+
+# Return a new instance of each class of block created by users
+#
+#  The idea is to create a safe location for user created blocks that won't get overwritten by updates
+#
+# This works as long as all the block definitions are 
+# in the "ils.user.block" package. Our convention is that only
+# executable blocks appear in this package -- and that
+# the class has the same name as its file.
+#
+# ***Make sure the class/file is also listed in __init.py__ or the import fails
+#
+# ** file and class names MUST be LOWER CASE
+#
+def getNewUserBlockInstances():
+    log.info('getNewUserBlockInstances ...' )
+    instances = []
+    # dir only lists modules that have actually been imported
+    print dir(ils.user.block)
+    print "======= Names ========="
+    for name in dir(ils.user.block):
+        if not name.startswith('__') and not name == 'basicblock':
+            className = eval("ils.user.block."+name+".getClassName()")
+            constructor = "ils.user.block."+name.lower() +"."+className+"()"
+            obj = eval(constructor)
+            print "ils.blt.util.getNewUserBlockInstances:",name,'=',obj.__class__
             instances.append(obj) 
     print "====================="
     return instances

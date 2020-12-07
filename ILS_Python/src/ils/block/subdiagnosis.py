@@ -19,7 +19,7 @@ class SubDiagnosis(basicblock.BasicBlock):
         self.className = 'ils.block.subdiagnosis.SubDiagnosis'
         self.properties['Label'] = {'value':'SubDiagnosis','editable':'True'}
         self.properties['TagPath'] = { 'value':'','binding':'','bindingType':'TAG_WRITE','editable':'True'}
-        self.inports = [{'name':'in','type':'truthvalue'}]
+        self.inports = [{'name':'in','type':'truthvalue','allowMultiple':False}]
         self.outports= [{'name':'out','type':'truthvalue'}]
         
     # Return a dictionary describing how to draw an icon
