@@ -249,6 +249,7 @@ def internalFrameOpened(rootContainer):
             raise ValueError, "Unexpected recipe data type <%s>" % (str(recipeDataType))
 
         rootContainer.description = record["Description"]
+        rootContainer.advice = record["Advice"]
         rootContainer.label = record["Label"]
         
         if recipeDataType <> GROUP:
@@ -265,6 +266,7 @@ def internalFrameOpened(rootContainer):
             ds = rootContainer.groupDataset
             ds = system.dataset.setValue(ds, 0, "RecipeDataKey", "")
             ds = system.dataset.setValue(ds, 0, "Description", "")
+            ds = system.dataset.setValue(ds, 0, "Advice", "")
             ds = system.dataset.setValue(ds, 0, "Label", "")
             rootContainer.groupDataset = ds
             
@@ -273,6 +275,7 @@ def internalFrameOpened(rootContainer):
             ds = rootContainer.simpleValueDataset
             ds = system.dataset.setValue(ds, 0, "RecipeDataKey", "")
             ds = system.dataset.setValue(ds, 0, "Description", "")
+            ds = system.dataset.setValue(ds, 0, "Advice", "")
             ds = system.dataset.setValue(ds, 0, "Label", "")
             ds = system.dataset.setValue(ds, 0, "FloatValue", 0.0)
             ds = system.dataset.setValue(ds, 0, "IntegerValue", 0)
@@ -440,13 +443,13 @@ def setArrayTableColumnVisibility(rootContainer, valueType):
     table.columnAttributesData = columnAttributes
     
     if valueType == "String":
-        system.gui.transform(table, newX=50, newY=48, newWidth=377, newHeight=330)
+        system.gui.transform(table, newX=50, newY=48, newWidth=377, newHeight=300)
         
         # This attempt at settin column width doesn't seem to work...
         table.setColumnWidth(0,20)
         table.setColumnWidth(1,20)
     else:
-        system.gui.transform(table, newX=265, newY=48, newWidth=162, newHeight=330)
+        system.gui.transform(table, newX=265, newY=48, newWidth=162, newHeight=300)
     
 '''
 The user has just selected a new array Key (or maybe this is called on startup)
@@ -943,6 +946,8 @@ def saveGroup(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     
@@ -952,18 +957,18 @@ def saveGroup(event):
         if recipeDataId < 0:
             print "Inserting a new group..."
             if recipeDataFolderId < 0:
-                SQL = "insert into SfcRecipeDataFolder (StepId, RecipeDataKey, Description, Label) "\
-                    "values (%s, '%s', '%s', '%s')" % (stepId, key, description, label)
+                SQL = "insert into SfcRecipeDataFolder (StepId, RecipeDataKey, Description, Advice, Label) "\
+                    "values (%s, '%s', '%s', '%s', '%s')" % (stepId, key, description, advice, label)
             else:
-                SQL = "insert into SfcRecipeDataFolder (StepId, RecipeDataKey, Description, Label, ParentRecipeDataFolderId) "\
-                    "values (%s, '%s', '%s', '%s', %s)" % (stepId, key, description, label, recipeDataFolderId)
+                SQL = "insert into SfcRecipeDataFolder (StepId, RecipeDataKey, Description, Advice, Label, ParentRecipeDataFolderId) "\
+                    "values (%s, '%s', '%s', '%s', '%s', %s)" % (stepId, key, description, advice, label, recipeDataFolderId)
             print SQL
             recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
             rootContainer.recipeDataId = recipeDataId
         else:
             print "Updating a group..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeDataFolder set RecipeDataKey='%s', Description='%s', Label = '%s' where RecipeDataFolderId = %d " % (key, description, label, recipeDataId)
+            SQL = "update SfcRecipeDataFolder set RecipeDataKey='%s', Description='%s', Advice = '%s', Label = '%s' where RecipeDataFolderId = %d " % (key, description, advice, label, recipeDataId)
             print SQL
             system.db.runUpdateQuery(SQL, tx=tx)
             
@@ -993,6 +998,8 @@ def saveSimpleValue(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1009,7 +1016,7 @@ def saveSimpleValue(event):
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
             
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             if valueType == "Float":
@@ -1039,9 +1046,7 @@ def saveSimpleValue(event):
             ds = rootContainer.simpleValueDataset
             valueId = ds.getValueAt(0,"ValueId")
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
             
             SQL = "Update SfcRecipeDataSimpleValue set ValueTypeId=%d where RecipeDataId = %d" % (valueTypeId, recipeDataId)
             print SQL
@@ -1066,7 +1071,7 @@ def saveSimpleValue(event):
         errorTxt = catchError("ils.sfc.recipeData.visionEditor.saveSimpleValue", "Caught an error, rolling back transactions")
         system.db.rollbackTransaction(tx)
         system.db.closeTransaction(tx)
-        raise Exception("Save Recipe Data Exception: %s", errorTxt)
+        raise Exception("Save Recipe Data Exception: %s" % (errorTxt))
     
     closeAndOpenBrowser(event)
 
@@ -1085,6 +1090,8 @@ def saveInput(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1104,7 +1111,7 @@ def saveInput(event):
             
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             # The values are meaningless until someone uses this data in a PV Monitoring block
@@ -1121,9 +1128,7 @@ def saveInput(event):
         else:
             print "Updating an Input..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label='%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
 
             SQL = "Update SfcRecipeDataInput set ValueTypeId=%d, Tag='%s' where RecipeDataId = %d" % (valueTypeId, tag, recipeDataId)
             print SQL
@@ -1155,6 +1160,8 @@ def saveOutput(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1182,7 +1189,7 @@ def saveOutput(event):
             
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             valueIds=[]
@@ -1216,9 +1223,7 @@ def saveOutput(event):
         else:
             print "Updating an Output..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label='%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
 
             SQL = "Update SfcRecipeDataOutput set ValueTypeId=%d, OutputTypeId=%d, Tag='%s', Download=%d, Timing=%f, MaxTiming=%f, WriteConfirm=%d "\
                 "where RecipeDataId = %d" % (valueTypeId, outputTypeId, tag, download, timing, maxTiming, writeConfirm, recipeDataId)
@@ -1264,6 +1269,8 @@ def saveOutputRamp(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1293,7 +1300,7 @@ def saveOutputRamp(event):
             print "Inserting a new Output Ramp..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             valueIds=[]
@@ -1333,9 +1340,7 @@ def saveOutputRamp(event):
         else:
             print "Updating an existing Output Ramp..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label='%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
 
             SQL = "Update SfcRecipeDataOutput set ValueTypeId=%d, OutputTypeId=%d, Tag='%s', Download=%d, Timing=%f, MaxTiming=%f, WriteConfirm=%d "\
                 "where RecipeDataId = %d" % (valueTypeId, outputTypeId, tag, download, timing, maxTiming, writeConfirm, recipeDataId)
@@ -1385,6 +1390,8 @@ def saveTimerValue(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1397,7 +1404,7 @@ def saveTimerValue(event):
             print "Inserting a timer..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             val = timerContainer.getComponent("Popup Calendar").text
@@ -1407,9 +1414,7 @@ def saveTimerValue(event):
         else:
             print "Updating a timer..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
             
             val = timerContainer.getComponent("Popup Calendar").text
             SQL = "Update SfcRecipeDataTimer set StartTime='%s' where RecipeDataId = %d" % (val, recipeDataId)
@@ -1442,6 +1447,8 @@ def saveSqcValue(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1458,7 +1465,7 @@ def saveSqcValue(event):
             print "Inserting a SQC..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             SQL = "Insert into SfcRecipeDataSQC (RecipeDataId, HighLimit, TargetValue, LowLimit) values (%d, %f, %f, %f)" % (recipeDataId, highLimit, targetValue, lowLimit)
@@ -1467,9 +1474,7 @@ def saveSqcValue(event):
         else:
             print "Updating a SQC..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
             
             SQL = "Update SfcRecipeDataSQC set HighLimit=%f, TargetValue=%f, LowLimit=%f where RecipeDataId = %d" % (highLimit, targetValue, lowLimit, recipeDataId)
             print SQL
@@ -1501,6 +1506,8 @@ def saveRecipe(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1523,7 +1530,7 @@ def saveRecipe(event):
             print "Inserting a recipe..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             SQL = "Insert into SfcRecipeDataRecipe (RecipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
@@ -1534,9 +1541,7 @@ def saveRecipe(event):
         else:
             print "Updating a recipe..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
 
             SQL = "Update SfcRecipeDataRecipe set PresentationOrder=%d, StoreTag='%s', CompareTag='%s', ModeAttribute='%s', ModeValue='%s', ChangeLevel='%s', "\
                 "RecommendedValue='%s', LowLimit='%s', HighLimit='%s' where RecipeDataId = %d" % \
@@ -1573,6 +1578,8 @@ def saveArray(event):
     key = rootContainer.getComponent("Key").text
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1596,7 +1603,7 @@ def saveArray(event):
             print "Inserting a new array..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             if indexKeyId <= 0:
@@ -1609,9 +1616,7 @@ def saveArray(event):
         else:
             print "Updating an array..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
 
             if indexKeyId <= 0:
                 indexKeyId = None
@@ -1683,6 +1688,8 @@ def saveMatrix(event):
     key = rootContainer.getComponent("Key").text    
     description = rootContainer.getComponent("Description").text
     description = escapeSqlQuotes(description)
+    advice = rootContainer.getComponent("Advice").text
+    advice = escapeSqlQuotes(advice)
     label = rootContainer.getComponent("Label").text
     label = escapeSqlQuotes(label)
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
@@ -1708,7 +1715,7 @@ def saveMatrix(event):
             print "Inserting a new matrix..."
             recipeDataType = rootContainer.recipeDataType
             recipeDataTypeId = fetchRecipeDataTypeId(recipeDataType, db)
-            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx)
+            recipeDataId = insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx)
             rootContainer.recipeDataId = recipeDataId
             
             SQL = "Insert into SfcRecipeDataMatrix (RecipeDataId, ValueTypeId, Rows, Columns, RowIndexKeyId, ColumnIndexKeyId) values (?, ?, ?, ?, ?, ?)"
@@ -1728,9 +1735,7 @@ def saveMatrix(event):
         else:
             print "Updating an matrix..."
             recipeDataId = rootContainer.recipeDataId
-            SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, label, units, recipeDataId)
-            print SQL
-            system.db.runUpdateQuery(SQL, tx=tx)
+            updateRecipeData(key, description, advice, label, units, recipeDataId, tx)
 
             rowIndexKeyId = matrixContainer.getComponent("Row Index Key Dropdown").selectedValue
             if rowIndexKeyId <= 0:
@@ -1800,16 +1805,22 @@ def updateRecipeDataValue(valueId, valueType, val, tx):
     print SQL
     system.db.runUpdateQuery(SQL, tx=tx)
     
-def insertRecipeData(stepId, key, recipeDataTypeId, description, label, units, folderId, tx):
+def insertRecipeData(stepId, key, recipeDataTypeId, description, advice, label, units, folderId, tx):
     if folderId < 0:
-        SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units) "\
-            "values (%s, '%s', %d, '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, label, units)
+        SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Advice, Label, Units) "\
+            "values (%s, '%s', %d, '%s', '%s', '%s', '%s')" % (stepId, key, recipeDataTypeId, description, advice, label, units)
     else:
-        SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Label, Units, RecipeDataFolderId) "\
-            "values (%s, '%s', %d, '%s', '%s', '%s', %s)" % (stepId, key, recipeDataTypeId, description, label, units, folderId)
+        SQL = "insert into SfcRecipeData (StepId, RecipeDataKey, RecipeDataTypeId, Description, Advice, Label, Units, RecipeDataFolderId) "\
+            "values (%s, '%s', %d, '%s', '%s', '%s', '%s', %s)" % (stepId, key, recipeDataTypeId, description, advice, label, units, str(folderId))
+
     print SQL
     recipeDataId = system.db.runUpdateQuery(SQL, getKey=True, tx=tx)
     return recipeDataId
+
+def updateRecipeData(key, description, advice, label, units, recipeDataId, tx):
+    SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Advice='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, advice, label, units, recipeDataId)
+    print SQL
+    system.db.runUpdateQuery(SQL, tx=tx)
 
 def closeAndOpenBrowser(event):
     '''

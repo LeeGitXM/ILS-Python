@@ -19,6 +19,10 @@ def deleteRow(dataset, row):
 def deleteRows(dataset, rows):
     return dataset
 
+def exportCSV(filename, showHeaders, dataset):
+    filename="foo"
+    return filename
+
 def filterColumns(ds, columns):
     return ds
 

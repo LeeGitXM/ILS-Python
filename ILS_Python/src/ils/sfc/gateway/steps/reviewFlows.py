@@ -88,9 +88,8 @@ def activate(scopeContext, stepProperties, state):
             logger.trace("Starting to transfer the configuration to the database...")
             
             configJson = getStepProperty(stepProperties, REVIEW_FLOWS)
-            print "JSON: ", configJson
             configDict = jsonToDict(configJson)
-            print "Dictionary: ", configDict
+
             rows = configDict.get("rows", [])
             rowNum = 0
             for row in rows:
@@ -163,14 +162,39 @@ def addData(chartScope, stepScope, windowId, row, rowNum, database, logger):
     scope = row.get("destination", "")
     prompt = substituteScopeReferences(chartScope, stepScope, row.get("prompt", "Prompt:"))
     
-    if advice == "null":
+    advice = substituteScopeReferences(chartScope, stepScope,  row.get("advice", None) )
+    
+    ''' If the advice field is blank, then use the advice of the destination recipe data '''
+    if advice in ["null", "", None] and scope not in ["", None, "value"]:
+        adviceKey = key1
+        if key2 != "":
+            adviceKey = key2
+        if key3 not in ["", "sum"]:
+            adviceKey = key3
+        
+        ''' Handle a blank line '''
+        if adviceKey in ["null", None]:
+            advice = ""
+        else:
+            if adviceKey.find(".") >= 0:
+                adviceKey=adviceKey[:adviceKey.find(".")] + ".advice"
+            else:
+                adviceKey = adviceKey + ".advice"
+                
+            logger.tracef("Getting advice from recipe using %s - %s", scope, adviceKey)
+            advice = s88Get(chartScope, stepScope, adviceKey, scope)
+            logger.tracef("The advice from recipe is: <%s>", advice)
+            if advice in ["null", None]:
+                advice = ""
+        
+    if advice in ["null", None]:
         advice = ""
     if prompt == "null":
         prompt = ""
     if units == "null":
         units = ""
 
-    logger.tracef("Adding <%s>-<%s>-<%s>-<%s>-<%s>-<%s>", prompt, scope, units, key1, key2, key3)
+    logger.tracef("Adding <%s>-<%s>-<%s>-<%s>-<%s>-<%s>-<%s>", prompt, advice, scope, units, key1, key2, key3)
 
     if scope == "value":
         val1 = key1

@@ -159,16 +159,30 @@ def activate(scopeContext, stepProperties, state):
 def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice, database, logger):
     logger.tracef("Adding row: %s", str(row))
     
+    configKey = row.get("configKey", None)
+    key = row.get("valueKey", None)
+    scope = row.get("recipeScope", "")
+    
     if showAdvice:
         advice = substituteScopeReferences(chartScope, stepScope,  row.get("advice", None) )
+        
+        ''' If the advice field is blank, then use the advice of the destination recipe data '''
+        if advice in ["", None]:
+            if key.find(".") >= 0:
+                adviceKey=key[:key.find(".")] + ".advice"
+            else:
+                adviceKey = key + ".advice"
+    
+            advice = s88Get(chartScope, stepScope, adviceKey, scope)
+            logger.tracef("The advice from recipe is: <%s>", advice)
+            if advice in ["null", None]:
+                advice = ""
     else:
         advice = ''
         
     units = row.get("units", None)
     
-    configKey = row.get("configKey", None)
-    key = row.get("valueKey", None)
-    scope = row.get("recipeScope", "")
+    
     prompt = substituteScopeReferences(chartScope, stepScope, row.get("prompt", "Prompt:") )
     
     if advice == "null":

@@ -120,6 +120,7 @@ INFO = 20
 DEBUG = 10
 TRACE = 5
 NOTSET = 0
+OFF = 0
 
 _levelNames = {
     CRITICAL : 'CRITICAL',
@@ -129,6 +130,7 @@ _levelNames = {
     DEBUG : 'DEBUG',
     TRACE : 'TRACE',
     NOTSET : 'NOTSET',
+    OFF: 'OFF',
     'CRITICAL' : CRITICAL,
     'ERROR' : ERROR,
     'WARN' : WARNING,
@@ -136,6 +138,7 @@ _levelNames = {
     'INFO' : INFO,
     'DEBUG' : DEBUG,
     'NOTSET' : NOTSET,
+    'OFF': OFF
 }
 
 #
@@ -1478,3 +1481,14 @@ except ImportError: # for Python versions < 2.0
             old_exit(status)
 
     sys.exit = exithook
+
+'''
+Added by Pete to investigate how this works...
+'''
+def getManager():
+    """
+    Return a logger with the specified name, creating it if necessary.
+
+    If no name is specified, return the root logger.
+    """
+    return Logger.manager

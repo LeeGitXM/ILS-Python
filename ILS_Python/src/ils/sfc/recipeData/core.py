@@ -232,7 +232,7 @@ def fetchRecipeData(stepId, folder, key, attribute, db):
         val = units
     elif attribute == "RECIPEDATATYPE":
         val = recipeDataType
-    elif attribute in ["DESCRIPTION","LABEL"]:
+    elif attribute in ["DESCRIPTION","LABEL","ADVICE"]:
         SQL = "select %s from SfcRecipeData where RecipeDataId = %d" % (attribute, recipeDataId)
         val = system.db.runScalarQuery(SQL, db)
     else:
@@ -519,10 +519,10 @@ def fetchRecipeDataRecord(stepId, folderId, key, db):
     logger.tracef("Fetching %s from %s", key, stepId)
     
     if folderId == None:
-        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, ADVICE, UNITS "\
             " from SfcRecipeDataView where stepId = %d and RecipeDataKey = '%s' and RecipeDataFolderId is NULL" % (stepId, key)
     else:
-        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, ADVICE, UNITS "\
             " from SfcRecipeDataView where stepId = %d and RecipeDataKey = '%s' and RecipeDataFolderId = %s" % (stepId, key, str(folderId))
 
     pds = system.db.runQuery(SQL, db)
@@ -546,10 +546,10 @@ def fetchRecipeDataRecordsInFolder(stepId, folderId, db):
     
     
     if folderId:     
-        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, ADVICE, UNITS "\
             " from SfcRecipeDataView where stepId = %s and RecipeDataFolderId = %s" % (stepId, folderId)
     else:
-        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, UNITS "\
+        SQL = "select RECIPEDATAID, STEPUUID, RECIPEDATAKEY, RECIPEDATATYPE, LABEL, DESCRIPTION, ADVICE, UNITS "\
             " from SfcRecipeDataView where stepId = %s and RecipeDataFolderId is NULL" % stepId
     pds = system.db.runQuery(SQL, db)
     
@@ -559,21 +559,21 @@ def fetchRecipeDataRecordsInFolder(stepId, folderId, db):
 def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     # These attributes are common to all recipe data classes
     if recipeDataType == SIMPLE_VALUE:
-        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, VALUETYPEID, VALUETYPE, RECIPEDATATYPE, VALUEID, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
+        SQL = "select RECIPEDATAID, DESCRIPTION, ADVICE, LABEL, UNITS, VALUETYPEID, VALUETYPE, RECIPEDATATYPE, VALUEID, FLOATVALUE, INTEGERVALUE, STRINGVALUE, BOOLEANVALUE "\
             "from SfcRecipeDataSimpleValueView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == TIMER:
-        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, RECIPEDATATYPE, STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES "\
+        SQL = "select RECIPEDATAID, DESCRIPTION, ADVICE, LABEL, UNITS, RECIPEDATATYPE, STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES "\
             "from SfcRecipeDataTimerView where RecipeDataId = %s" % (recipeDataId)
         
     elif recipeDataType == INPUT:
-        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, PVMONITORACTIVE, PVMONITORSTATUS, "\
+        SQL = "select RECIPEDATAID, DESCRIPTION, ADVICE, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, PVMONITORACTIVE, PVMONITORSTATUS, "\
             "TARGETVALUEID, TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
             "PVVALUEID, PVFLOATVALUE, PVINTEGERVALUE, PVSTRINGVALUE, PVBOOLEANVALUE "\
             "from SfcRecipeDataInputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == OUTPUT:
-        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, OUTPUTTYPE, OUTPUTTYPEID, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
+        SQL = "select RECIPEDATAID, DESCRIPTION, ADVICE, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, OUTPUTTYPE, OUTPUTTYPEID, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
             "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, PVMONITORACTIVE, PVMONITORSTATUS, SETPOINTSTATUS,  WRITECONFIRM, WRITECONFIRMED, "\
             "OUTPUTVALUEID, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
             "TARGETVALUEID, TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
@@ -581,7 +581,7 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
             "from SfcRecipeDataOutputView where RecipeDataId = %s" % (recipeDataId)
     
     elif recipeDataType == OUTPUT_RAMP:
-        SQL = "select RECIPEDATAID, DESCRIPTION, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, OUTPUTTYPE, OUTPUTTYPEID, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
+        SQL = "select RECIPEDATAID, DESCRIPTION, ADVICE, LABEL, UNITS, TAG, VALUETYPE, VALUETYPEID, OUTPUTTYPE, OUTPUTTYPEID, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
             "MAXTIMING, ACTUALTIMING, ACTUALDATETIME, PVMONITORACTIVE, PVMONITORSTATUS, SETPOINTSTATUS,  WRITECONFIRM, WRITECONFIRMED, "\
             "OUTPUTVALUEID, OUTPUTFLOATVALUE, OUTPUTINTEGERVALUE, OUTPUTSTRINGVALUE, OUTPUTBOOLEANVALUE, "\
             "TARGETVALUEID, TARGETFLOATVALUE, TARGETINTEGERVALUE, TARGETSTRINGVALUE, TARGETBOOLEANVALUE, "\
@@ -646,7 +646,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
     
     logger.tracef("...the recipe data type is: %s for id: %d", recipeDataType, recipeDataId)
     
-    if attribute in ['DESCRIPTION', 'UNITS', 'LABEL']:
+    if attribute in ['DESCRIPTION', 'UNITS', 'LABEL', 'ADVICE']:
         SQL = "update SfcRecipeData set %s = '%s' where recipeDataId = %s" % (attribute, val, recipeDataId)
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d records in SfcRecipeData', rows)
@@ -740,7 +740,13 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
             SQL = "update SfcRecipeDataOutput set %s = %s where recipeDataId = %s" % (attribute, val, recipeDataId)
         elif attribute in ['OUTPUTVALUE','PVVALUE','TARGETVALUE']:
             attrName="%sID" % (attribute)
-            SQL = "select ValueType, %s from SfcRecipeDataOutputView where RecipeDataId = %s" % (attrName, recipeDataId)
+            
+            if recipeDataType == OUTPUT_RAMP:
+                tableName = "SfcRecipeDataOutputRampView"
+            else:
+                tableName = "SfcRecipeDataOutputView"
+                
+            SQL = "select ValueType, %s from %s where RecipeDataId = %s" % (attrName, tableName, recipeDataId)
             logger.tracef(SQL)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
@@ -1496,9 +1502,9 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
     '''
     
     ''' --------------------------------------------- Private Methods ------------------------------------------------- '''
-    def updateSfcRecipeData(recipeDataId, label, description, units, db):
-        SQL = "update SfcRecipeData set Label = ?, Description = ?, Units = ? where RecipeDataId = ?"
-        rows = system.db.runPrepUpdate(SQL, [label, description, units,recipeDataId], database=db)
+    def updateSfcRecipeData(recipeDataId, label, description, advice, units, db):
+        SQL = "update SfcRecipeData set Label = ?, Description = ?, Advice = ?, Units = ? where RecipeDataId = ?"
+        rows = system.db.runPrepUpdate(SQL, [label, description, advice, units,recipeDataId], database=db)
         logger.tracef("Updated %d rows in SfcRecipeData", rows)
     
     def updateSfcRecipeDataValue(valueId, floatValue, integerValue, stringValue, booleanValue, db):
@@ -1533,20 +1539,20 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
     
     if recipeDataType == SIMPLE_VALUE:
         logger.tracef('Copying simple recipe data...')
-        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["ADVICE"], sourceRecord["UNITS"], db)
         updateSfcRecipeDataSimpleValue(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], db)
         updateSfcRecipeDataValue(targetRecord["VALUEID"], sourceRecord["FLOATVALUE"], sourceRecord["INTEGERVALUE"], sourceRecord["STRINGVALUE"], sourceRecord["BOOLEANVALUE"], db)
         
     elif recipeDataType == INPUT:
         logger.tracef('Copying input recipe data...')
-        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["ADVICE"], sourceRecord["UNITS"], db)
         updateSfcRecipeDataInput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["TAG"], db)
         updateSfcRecipeDataValue(targetRecord["TARGETVALUEID"], sourceRecord["TARGETFLOATVALUE"], sourceRecord["TARGETINTEGERVALUE"], sourceRecord["TARGETSTRINGVALUE"], sourceRecord["TARGETBOOLEANVALUE"], db)
         updateSfcRecipeDataValue(targetRecord["PVVALUEID"], sourceRecord["PVFLOATVALUE"], sourceRecord["PVINTEGERVALUE"], sourceRecord["PVSTRINGVALUE"], sourceRecord["PVBOOLEANVALUE"], db)
     
     elif recipeDataType == OUTPUT:
         logger.tracef('Copying output recipe data...')
-        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["UNITS"], db)
+        updateSfcRecipeData(targetRecord["RECIPEDATAID"], sourceRecord["LABEL"], sourceRecord["DESCRIPTION"], sourceRecord["ADVICE"], sourceRecord["UNITS"], db)
         updateSfcRecipeDataOutput(targetRecord["RECIPEDATAID"], sourceRecord["VALUETYPEID"], sourceRecord["OUTPUTTYPEID"], sourceRecord["TAG"], 
                                   sourceRecord["DOWNLOAD"], sourceRecord["TIMING"], sourceRecord["MAXTIMING"], sourceRecord["WRITECONFIRM"], db)
         updateSfcRecipeDataValue(targetRecord["OUTPUTVALUEID"], sourceRecord["OUTPUTFLOATVALUE"], sourceRecord["OUTPUTINTEGERVALUE"], sourceRecord["OUTPUTSTRINGVALUE"], sourceRecord["OUTPUTBOOLEANVALUE"], db)
