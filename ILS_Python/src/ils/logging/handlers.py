@@ -1126,7 +1126,7 @@ class DBHandler(logging.Handler):
         '''
         # Make the SQL insert
         r = record
-        sql = "INSERT INTO log (timestamp, retain_until, log_level, log_levelname, log_message, logger_name, function_name, filename, line_number, "\
+        sql = "INSERT INTO log (timestamp, retain_until, log_level, log_level_name, log_message, logger_name, function_name, filename, line_number, "\
             "module, process_id, thread, thread_name, project, scope, client_id) "\
             " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             

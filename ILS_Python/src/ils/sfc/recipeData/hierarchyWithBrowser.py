@@ -17,7 +17,8 @@ log=system.util.getLogger("com.ils.sfc.recipeBrowser")
 #treeMode = "chartName"
 treeMode = "fullPath"
 
-LIBRARY_ICON = "Builtin/icons/16/copy.png"
+LIBRARY_ICON = "Custom/sfcLibrary.png"
+CHART_ICON = "Custom/sfc.png"
 TREE_MODE = 0
 LIST_MODE = 1
 
@@ -120,12 +121,12 @@ def updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db
 
     
 def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
-    log.debugf("In %s.updateSfcTree(), Updating the SFC Tree Widget...", __name__)
+    log.debugf("In %s.updateSfcTree(), updating the SFC Tree Widget...", __name__)
 
     hierarchyPDS = fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db)
     hierarchyHandlerPDS = fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db)
     chartPDS = fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db)
-    trees = fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS)
+    trees = makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS)
     
     ''' 
     Create a dictionary of charts where the chartId is the key. Replace the path delimiter (a forward slash) 
@@ -144,11 +145,11 @@ def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
     Now take the SFC tree model and format it for the tree widget.
     I think the way that we need to prepare data for the tree is widget is that we need a record for each leaf node.
     '''
-    log.tracef("The chart dictionary is %s", str(chartDict))    
+    log.tracef("The chart dictionary is %s", str(chartDict))
     rows=[]
     for tree in trees:
-        row = expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS)
-        rows.append(row)
+        log.tracef("%s", str(tree))
+        rows = expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS)
 
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
@@ -156,39 +157,54 @@ def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
     treeWidget.data = ds
 
     
-def expandRow(tree, chartDict, hierarchyPDS, hierarchyHandlerPDS): 
+def expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS):
+    
+    def isNew(rows, parent, chartPath):
+        for row in rows:
+            if row[0] == parent and row[1] == chartPath:
+                return False
+        return True
+
     log.tracef("Expanding: %s", str(tree))
     tokens = tree.split(",")
-    path=""
+    logicalPath=""
+    '''
     for index in range(len(tokens)-1):
         token = tokens[index]
-        chartName = chartDict.get(int(token),"Unknown")
+    '''
+    for token in tokens:
+        log.tracef("  Token: ", token)
+        chartPath = chartDict.get(int(token),"Unknown")
 
-        if path == "":
-            path = chartName
+        if logicalPath == "":
+            parent = ""
+            logicalPath = chartPath
         else:
-            path = "%s/%s" % (path, chartName)
-
-    token = tokens[-1]
-    fullPath = chartDict.get(int(token),"Unknown")
-    
-    refs = countChartReferences(int(token), hierarchyPDS, hierarchyHandlerPDS)
-    log.tracef(" **** %s has %d references ****", fullPath, refs)
-    if refs > 1:
-        icon = LIBRARY_ICON
-    else:
-        icon = "default"
-    
-    chartName = fullPath[fullPath.rfind("\\")+1:]
-    log.tracef("%s  --  %s  --  %s", path, fullPath, chartName)
-
-    if treeMode == "fullPath":
-        row = [path,fullPath,icon,"color(255,255,255,255)","color(0,0,0,255)",fullPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
-    else:
-        row = [path,chartName,icon,"color(255,255,255,255)","color(0,0,0,255)",fullPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
+            parent = logicalPath
+            logicalPath = "%s/%s" % (logicalPath, chartPath)
+        log.tracef("   Logical Path: %s", logicalPath)
         
-    log.tracef("The expanded row is: %s", str(row))
-    return row
+        refs = countChartReferences(int(token), hierarchyPDS, hierarchyHandlerPDS)
+        log.tracef(" **** %s has %d references ****", chartPath, refs)
+        if refs > 1:
+            icon = LIBRARY_ICON
+        else:
+            icon = CHART_ICON
+        
+        chartName = chartPath[chartPath.rfind("\\")+1:]
+        log.tracef("   %s  --  %s  --  %s", logicalPath, chartPath, chartName)
+        
+        if isNew(rows, parent, chartPath):
+            if treeMode == "fullPath":
+                row = [parent, chartPath, icon,"color(255,255,255,255)","color(0,0,0,255)",chartPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
+            else:
+                row = [parent,chartName,icon,"color(255,255,255,255)","color(0,0,0,255)",chartPath,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
+            
+            log.tracef("The expanded row is: %s", str(row))
+            rows.append(row)
+        else:
+            log.tracef("  Parent: %s, chartPath %s are already in the dataset", parent, chartPath)    
+    return rows
 
 
 def countChartReferences(token, hierarchyPDS, hierarchyHandlerPDS):
@@ -209,7 +225,7 @@ def fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db):
         SQL = "select ChartId, ChartPath, ChartResourceId from SfcChart where chartPath like '%s' order by ChartPath" % (chartPath)
         
     pds = system.db.runPrepQuery(SQL, [], db)
-    log.debugf("Fetched %d chart records...", len(pds))
+    log.debugf("Fetched %d charts from SfcChart...", len(pds))
     return pds
 
 
@@ -221,6 +237,7 @@ def fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db=""):
 
     log.tracef("%s", SQL)
     pds = system.db.runQuery(SQL, db)
+    log.tracef("...fetched %d charts from SfcHierarchyView", len(pds))
     return pds
 
 
@@ -231,6 +248,7 @@ def fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db=""):
         SQL = "select * from SfcHierarchyHandlerView where chartPath like '%s' order by ChartPath"  % (chartPath)
 
     pds = system.db.runQuery(SQL, db)
+    log.tracef("...fetched %d charts from SfcHierarchyHandlerView", len(pds))
     return pds
 
     
@@ -250,7 +268,7 @@ def getChildren(chartId, hierarchyPDS, hierarchyHandlerPDS):
     return children
 
 # This version traverses and creates a list of strings
-def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
+def makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     
     def depthSearch(trees, depth, hierarchyPDS, hierarchyHandlerPDS):
         log.tracef("------------")
@@ -293,7 +311,7 @@ def fetchSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     # --------------------------
     
     # Get the roots
-    log.tracef("In %s.fetchSfcTree() - Getting the root nodes...", __name__)
+    log.tracef("In %s.makeSfcTree() - Getting the root nodes...", __name__)
     trees = []
     for chartRecord in chartPDS:
         chartId = chartRecord["ChartId"]

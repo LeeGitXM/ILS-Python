@@ -11,10 +11,10 @@ from com.jidesoft.grid import Row
 log = system.util.getLogger('com.ils.logging.viewer')    
 
 
-MAIN_SQL = 'SELECT id, timestamp, log_level,  log_levelname, logger_name, module, function_name, log_message, project, scope, client_id, line_number,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
+MAIN_SQL = 'SELECT id, timestamp, log_level,  log_level_name, logger_name, module, function_name, log_message, project, scope, client_id, line_number,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
 SUB_SQL = "SELECT TOP %d * FROM log WHERE timestamp > '%s' AND timestamp < '%s' %s ORDER BY timestamp DESC"
 DATE_FORMAT = "YYYY-MM-dd HH:mm:ss"
-FILTER_LIST = ["client_id", "function_name", "log_levelname", "log_message", "logger_name","module", "process_id", "project", "scope"]
+FILTER_LIST = ["client_id", "function_name", "log_level_name", "log_message", "logger_name","module", "process_id", "project", "scope"]
 TAG_ROOT = "[Client]Logging"
 INCLUDE = "include"
 EXCLUDE = "exclude"
