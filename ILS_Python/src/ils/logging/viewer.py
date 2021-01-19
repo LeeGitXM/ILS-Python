@@ -44,7 +44,7 @@ def clientStartup():
 
 def internalFrameOpened(rootContainer):
     #from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
-    log.infof("In IntenalFrameOpened")
+    log.tracef("In IntenalFrameOpened")
     realTimeContainer = rootContainer.getComponent("Date Time Control Container").getComponent("Realtime Container")
 
 def resetAllFiltersAction(rootContainer):
@@ -80,7 +80,7 @@ def updateFilterAction(table, columnName, val, include_exclude):
     columnName = columnName.rstrip()
     val = val.rstrip()
     include_exclude = string.capitalize(include_exclude)
-    log.infof("In %s.updateFilterAction. <%s> - <%s> - <%s>", __name__, columnName, val, include_exclude)
+    log.tracef("In %s.updateFilterAction. <%s> - <%s> - <%s>", __name__, columnName, val, include_exclude)
     
     mode, includes, excludes = readFilter(columnName)
     
@@ -103,7 +103,7 @@ def clearFilterAction(table, columnName):
     '''
     rootContainer = table.parent
     columnName = columnName.rstrip()
-    log.infof("In %s.clearFilterAction. <%s>", __name__, columnName)
+    log.tracef("In %s.clearFilterAction. <%s>", __name__, columnName)
     writeFilter(columnName, "No Filter", [], [])
     update(rootContainer)
     
@@ -114,7 +114,7 @@ def setFilterMode(table, columnName, mode):
     '''
     rootContainer = table.parent
     columnName = columnName.rstrip()
-    log.infof("In %s.setFilterMode. <%s> <%s>", __name__, columnName, mode)
+    log.tracef("In %s.setFilterMode. <%s> <%s>", __name__, columnName, mode)
     tagpath = "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)    
     system.tag.write(tagpath, mode)
     update(rootContainer)

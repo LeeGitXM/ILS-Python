@@ -27,7 +27,7 @@ def setOff():
     setLoggerToOff(log)
 
 def work():
-    print "In %s.work0()" % (__name__)
+    print "In %s.work()" % (__name__)
     
     log.trace("A trace message")
     time.sleep(0.1)
@@ -38,9 +38,28 @@ def work():
     log.info("An info message")
     time.sleep(0.1)
 
-    log.warning("A warning")
+    log.warn("A warning")
     time.sleep(0.1)
     
     log.error("An error")
+    time.sleep(0.1)
+    print "Done!"
+    
+def workf():
+    print "In %s.workf()" % (__name__)
+    
+    log.tracef("A trace message")
+    time.sleep(0.1)
+
+    log.debugf("A debug message")
+    time.sleep(0.1)
+    
+    log.infof("An info message")
+    time.sleep(0.1)
+
+    log.warnf("A warning")
+    time.sleep(0.1)
+    
+    log.errorf("An error")
     time.sleep(0.1)
     print "Done!"
