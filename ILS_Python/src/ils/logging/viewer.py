@@ -21,6 +21,9 @@ EXCLUDE = "exclude"
 REALTIME = "Realtime"
 HISTORICAL = "Historical"
 MANUAL = "Manual"
+DESCENDING = "Descending"
+
+ORDER_TAGPATH = "[Client]Logging/Order"
 
 def clientStartup():
     ''' Set the start and end date of the client tags synchronized with the manual times '''
@@ -30,20 +33,19 @@ def clientStartup():
     system.tag.write("[Client]Logging/Historical End Time", now)
     system.tag.write("[Client]Logging/Historical Outer Start Time", system.date.addDays(now, -7))
     system.tag.write("[Client]Logging/Historical Outer End Time", now)
-    
-    
     system.tag.write("[Client]Logging/Manual Start Time", system.date.addHours(now, -4))
     system.tag.write("[Client]Logging/Manual End Time", now)
-    
-    system.tag.write("[Client]Logging/Realtime Value", 10)
+    system.tag.write(ORDER_TAGPATH, DESCENDING)
+    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
     system.tag.write("[Client]Logging/Realtime Units", "Minutes")
+    system.tag.write("[Client]Logging/Realtime Value", 10)
     system.tag.write("[Client]Logging/Mode", "Realtime")
 
 
 def internalFrameOpened(rootContainer):
     #from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
     log.infof("In IntenalFrameOpened")
-
+    realTimeContainer = rootContainer.getComponent("Date Time Control Container").getComponent("Realtime Container")
 
 def resetAllFiltersAction(rootContainer):
     '''
@@ -51,10 +53,10 @@ def resetAllFiltersAction(rootContainer):
     This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
     project was last saved by the designer.
     '''         
-    resetAllFilters()
+    resetAllFilters(rootContainer)
     update(rootContainer)
     
-def resetAllFilters():
+def resetAllFilters(rootContainer):
     '''
     The logging UI uses client tags.  Client tags are a project resource and are created automatically for each client when it connects.
     This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
@@ -67,6 +69,8 @@ def resetAllFilters():
         system.tag.write(tagPath + "/Excludes", emptyDataset)
         system.tag.write(tagPath + "/Filter Mode", "No Filter")
         system.tag.write(tagPath + "/Includes", emptyDataset)
+        
+    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
 
 def updateFilterAction(table, columnName, val, include_exclude):
     '''
@@ -161,6 +165,8 @@ def update(rootContainer):
         endTime = system.date.now()
         units = container.getComponent("Realtime Container").getComponent('Realtime Units Dropdown').selectedStringValue
         val = container.getComponent("Realtime Container").getComponent('Spinner').intValue
+        clearTime = system.tag.read("[Client]Logging/Realtime Clear Time").value
+        log.tracef("The clear time is %s", str(clearTime))
         
         if units == "Days":
             startTime = system.date.addDays(endTime, -1 * val)
@@ -168,6 +174,11 @@ def update(rootContainer):
             startTime = system.date.addHours(endTime, -1 * val)
         else:
             startTime = system.date.addMinutes(endTime, -1 * val)
+            
+        ''' Use the latest of the startTime and the startTime '''
+        if system.date.isAfter(clearTime, startTime):
+            log.tracef("...using the clear time...")
+            startTime = clearTime
 
     elif mode == MANUAL:
         startTime = container.getComponent("Manual Container").getComponent("Start Popup Calendar").date
@@ -190,7 +201,14 @@ def update(rootContainer):
     log.tracef(SQL)
     
     pds = system.db.runQuery(SQL, db)
-    table.data = pds
+    ds = system.dataset.toDataSet(pds)
+    
+    order = system.tag.read(ORDER_TAGPATH).value
+    log.tracef("The order is: %s", order)
+    if order == DESCENDING:
+        ds = system.dataset.sort(ds, "timestamp", False)
+    
+    table.data = ds
         
 def getWhereClause():
     log.tracef("In getWhereClause")

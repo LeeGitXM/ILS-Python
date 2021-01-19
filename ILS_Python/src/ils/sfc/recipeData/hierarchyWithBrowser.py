@@ -1196,10 +1196,33 @@ def mousePressedCallbackForTree(event):
         if chartId == None:
             return
 
-        window = system.nav.openWindow("SFC/Chart Callers",{"chartId": chartId})
+        window = system.nav.openWindowInstance("SFC/Chart Callers",{"chartId": chartId})
         system.nav.centerWindow(window)
+        
+    def expandCallback(event):
+        '''
+        This is the callback from the popup menu
+        '''
+        log.infof("In %s.expandCallback()...", __name__)
+        treeComponent = event.source
+        from javax.swing.tree import TreePath
+        tree = treeComponent.viewport.view
+        model = tree.model
+        
+        def expand(path):
+            tree.expandPath(path)
+            node = path.lastPathComponent;
+            for i in range(model.getChildCount(node)):
+                child = model.getChild(node, i)
+                childPath = TreePath(model.getPathToRoot(child))
+                expand(childPath)
+        
+        selectedPath = tree.getSelectionPath()
+        if selectedPath != None:
+            expand(selectedPath)
+
     
-    menu = system.gui.createPopupMenu(["Show Chart Callers"], [showChartCallerCallback])
+    menu = system.gui.createPopupMenu(["Show Chart Callers","Expand"], [showChartCallerCallback, expandCallback])
     menu.show(event)
     
      

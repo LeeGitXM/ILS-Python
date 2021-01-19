@@ -254,30 +254,53 @@ class TDCController(controller.Controller):
 
         startValue = startValue.value
 
-        log.infof("Ramping the %s of TDC controller <%s> from %s to %s over %s minutes", valType, self.path, str(startValue), str(val), str(rampTime))
-        system.tag.write(self.path + "/writeStatus", "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime)))
+        baseTxt = "Ramping the %s of TDC controller <%s> from %s to %s over %s minutes" % (valType, self.path, str(startValue), str(val), str(rampTime))
+        log.infof(baseTxt)
+        system.tag.write(self.path + "/writeStatus", baseTxt)
 
-        rampTimeSeconds = rampTime * 60.0
+        rampTimeSeconds = float(rampTime) * 60.0
 
         from ils.common.util import equationOfLine
         m, b = equationOfLine(0.0, startValue, rampTimeSeconds, val)
         startTime = system.date.now()
         deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
+        print "rampTimeSeconds: ", rampTimeSeconds
+        print "deltaSeconds: ", deltaSeconds
         
         while (deltaSeconds < rampTimeSeconds):
             from ils.common.util import calculateYFromEquationOfLine
             aVal = calculateYFromEquationOfLine(deltaSeconds, m, b)
             
             log.tracef("TDC Controller <%s> ramping to %s (elapsed time: %s)", self.path, str(aVal), str(deltaSeconds))
+            
+            #CRC Edit 1/6/2021 to only write if you are still in PROGRAM
+            qvs = system.tag.readAll([self.path + "/permissive", self.path + "/permissiveValue"])
+            permissiveCheck = (qvs[0].value == qvs[1].value)
+            if not(permissiveCheck):
+                print "Exiting because it failed the permissive check"
+                self.permissiveAsFound = qvs[0].value
+                break
+            #End CRC Edit 1/6/2021
+            
             targetTag.writeWithNoCheck(aVal)
+            
+            txt = "%s (%.2f at %s)" % (baseTxt, aVal, str(deltaSeconds))
+            system.tag.write(self.path + "/writeStatus", txt)
  
             ''' Time in seconds '''
             time.sleep(updateFrequency)
             deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
         
         ''' Write the final point and confirm this one '''
-        targetTag.writeDatum(val, valType)
+        #CRC Edit 1/6/2021 to only write if you are still in PROGRAM
+        qvs = system.tag.readAll([self.path + "/permissive", self.path + "/permissiveValue"])
+        permissiveCheck = (qvs[0].value == qvs[1].value)
+        if permissiveCheck:
+            targetTag.writeDatum(val, valType)
+        #End CRC Edit 1/6/2021
 
+        ''' For a PKS controller, we restore the permissive here, not sure why we don't do that for TDC '''
+            
         log.infof("%s - <%s> done ramping!", __name__, self.path)
         return success, errorMessage
     

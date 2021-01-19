@@ -347,8 +347,8 @@ class PKSController(controller.Controller):
 
         startValue = startValue.value
 
-        log.infof("Ramping the %s of EPKS controller <%s> from %s to %s over %s minutes", valType, self.path, str(startValue), str(val), str(rampTime))
-        baseTxt = "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime))
+        baseTxt = "Ramping the %s of EPKS controller <%s> from %s to %s over %s minutes" % (valType, self.path, str(startValue), str(val), str(rampTime))
+        log.infof(baseTxt)
         system.tag.write(self.path + "/writeStatus", baseTxt)
 
         rampTimeSeconds = float(rampTime) * 60.0
@@ -363,7 +363,17 @@ class PKSController(controller.Controller):
             aVal = calculateYFromEquationOfLine(deltaSeconds, m, b)
             
             log.tracef("EPKS Controller <%s> ramping to %s (elapsed time: %s)", self.path, str(aVal), str(deltaSeconds))
+            
+            #CRC Edit 1/6/2021 to only write if you are still in PROGRAM
+            qvs = system.tag.readAll([self.path + "/permissive", self.path + "/permissiveValue"])
+            permissiveCheck = (qvs[0].value == qvs[1].value)
+            if not(permissiveCheck):
+                self.permissiveAsFound = qvs[0].value
+                break
+            #End CRC Edit 1/6/2021
+            
             targetTag.writeWithNoCheck(aVal)
+            
             txt = "%s (%.2f at %s)" % (baseTxt, aVal, str(deltaSeconds))
             system.tag.write(self.path + "/writeStatus", txt)
  
@@ -371,8 +381,13 @@ class PKSController(controller.Controller):
             time.sleep(updateFrequency)
             deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
         
-        # Write the final point and confirm this one
-        targetTag.writeDatum(val, valType)
+        ''' Write the final point and confirm this one '''
+        #CRC Edit 1/6/2021 to only write if you are still in PROGRAM
+        qvs = system.tag.readAll([self.path + "/permissive", self.path + "/permissiveValue"])
+        permissiveCheck = (qvs[0].value == qvs[1].value)
+        if permissiveCheck:
+            targetTag.writeDatum(val, valType)
+        #End CRC Edit 1/6/2021
         
         ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''
         self.restorePermissive()
