@@ -103,3 +103,17 @@ def openWindow(window, payload={}, position="center", scale=1.0, post="", consol
     messageHandler="openWindow"
     messagePayload = {"console":console, "post":post, "window":window, "windowPayload":payload, "position": position, "scale":scale}
     system.util.sendMessage(project, messageHandler, messagePayload, scope="C")
+    
+def getTagProvidersHandler(payload):
+    '''
+    This runs in the gateway in response to a message sent from a client.
+    '''
+    from com.inductiveautomation.ignition.gateway import SRContext
+    context = SRContext.get()
+    tagProviderNames = []
+    for provider in context.getTagManager().getTagProviders():
+        tagProviderNames.append(provider.getInformation().getName())
+    print "Tag providers: ", tagProviderNames
+    return tagProviderNames
+    
+        

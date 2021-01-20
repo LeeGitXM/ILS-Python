@@ -11,16 +11,19 @@ from com.jidesoft.grid import Row
 log = system.util.getLogger('com.ils.logging.viewer')    
 
 
-MAIN_SQL = 'SELECT id, timestamp, log_level,  log_levelname, logger_name, module, function_name, log_message, project, scope, client_id, line_number,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
+MAIN_SQL = 'SELECT id, timestamp, log_level,  log_level_name, logger_name, module, function_name, log_message, project, scope, client_id, line_number,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
 SUB_SQL = "SELECT TOP %d * FROM log WHERE timestamp > '%s' AND timestamp < '%s' %s ORDER BY timestamp DESC"
 DATE_FORMAT = "YYYY-MM-dd HH:mm:ss"
-FILTER_LIST = ["client_id", "function_name", "log_levelname", "log_message", "logger_name","module", "process_id", "project", "scope"]
+FILTER_LIST = ["client_id", "function_name", "log_level_name", "log_message", "logger_name","module", "process_id", "project", "scope"]
 TAG_ROOT = "[Client]Logging"
 INCLUDE = "include"
 EXCLUDE = "exclude"
 REALTIME = "Realtime"
 HISTORICAL = "Historical"
 MANUAL = "Manual"
+DESCENDING = "Descending"
+
+ORDER_TAGPATH = "[Client]Logging/Order"
 
 def clientStartup():
     ''' Set the start and end date of the client tags synchronized with the manual times '''
@@ -30,20 +33,19 @@ def clientStartup():
     system.tag.write("[Client]Logging/Historical End Time", now)
     system.tag.write("[Client]Logging/Historical Outer Start Time", system.date.addDays(now, -7))
     system.tag.write("[Client]Logging/Historical Outer End Time", now)
-    
-    
     system.tag.write("[Client]Logging/Manual Start Time", system.date.addHours(now, -4))
     system.tag.write("[Client]Logging/Manual End Time", now)
-    
-    system.tag.write("[Client]Logging/Realtime Value", 10)
+    system.tag.write(ORDER_TAGPATH, DESCENDING)
+    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
     system.tag.write("[Client]Logging/Realtime Units", "Minutes")
+    system.tag.write("[Client]Logging/Realtime Value", 10)
     system.tag.write("[Client]Logging/Mode", "Realtime")
 
 
 def internalFrameOpened(rootContainer):
     #from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
-    log.infof("In IntenalFrameOpened")
-
+    log.tracef("In IntenalFrameOpened")
+    realTimeContainer = rootContainer.getComponent("Date Time Control Container").getComponent("Realtime Container")
 
 def resetAllFiltersAction(rootContainer):
     '''
@@ -51,10 +53,10 @@ def resetAllFiltersAction(rootContainer):
     This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
     project was last saved by the designer.
     '''         
-    resetAllFilters()
+    resetAllFilters(rootContainer)
     update(rootContainer)
     
-def resetAllFilters():
+def resetAllFilters(rootContainer):
     '''
     The logging UI uses client tags.  Client tags are a project resource and are created automatically for each client when it connects.
     This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
@@ -67,6 +69,8 @@ def resetAllFilters():
         system.tag.write(tagPath + "/Excludes", emptyDataset)
         system.tag.write(tagPath + "/Filter Mode", "No Filter")
         system.tag.write(tagPath + "/Includes", emptyDataset)
+        
+    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
 
 def updateFilterAction(table, columnName, val, include_exclude):
     '''
@@ -76,7 +80,7 @@ def updateFilterAction(table, columnName, val, include_exclude):
     columnName = columnName.rstrip()
     val = val.rstrip()
     include_exclude = string.capitalize(include_exclude)
-    log.infof("In %s.updateFilterAction. <%s> - <%s> - <%s>", __name__, columnName, val, include_exclude)
+    log.tracef("In %s.updateFilterAction. <%s> - <%s> - <%s>", __name__, columnName, val, include_exclude)
     
     mode, includes, excludes = readFilter(columnName)
     
@@ -99,7 +103,7 @@ def clearFilterAction(table, columnName):
     '''
     rootContainer = table.parent
     columnName = columnName.rstrip()
-    log.infof("In %s.clearFilterAction. <%s>", __name__, columnName)
+    log.tracef("In %s.clearFilterAction. <%s>", __name__, columnName)
     writeFilter(columnName, "No Filter", [], [])
     update(rootContainer)
     
@@ -110,7 +114,7 @@ def setFilterMode(table, columnName, mode):
     '''
     rootContainer = table.parent
     columnName = columnName.rstrip()
-    log.infof("In %s.setFilterMode. <%s> <%s>", __name__, columnName, mode)
+    log.tracef("In %s.setFilterMode. <%s> <%s>", __name__, columnName, mode)
     tagpath = "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)    
     system.tag.write(tagpath, mode)
     update(rootContainer)
@@ -161,6 +165,8 @@ def update(rootContainer):
         endTime = system.date.now()
         units = container.getComponent("Realtime Container").getComponent('Realtime Units Dropdown').selectedStringValue
         val = container.getComponent("Realtime Container").getComponent('Spinner').intValue
+        clearTime = system.tag.read("[Client]Logging/Realtime Clear Time").value
+        log.tracef("The clear time is %s", str(clearTime))
         
         if units == "Days":
             startTime = system.date.addDays(endTime, -1 * val)
@@ -168,6 +174,11 @@ def update(rootContainer):
             startTime = system.date.addHours(endTime, -1 * val)
         else:
             startTime = system.date.addMinutes(endTime, -1 * val)
+            
+        ''' Use the latest of the startTime and the startTime '''
+        if system.date.isAfter(clearTime, startTime):
+            log.tracef("...using the clear time...")
+            startTime = clearTime
 
     elif mode == MANUAL:
         startTime = container.getComponent("Manual Container").getComponent("Start Popup Calendar").date
@@ -190,7 +201,14 @@ def update(rootContainer):
     log.tracef(SQL)
     
     pds = system.db.runQuery(SQL, db)
-    table.data = pds
+    ds = system.dataset.toDataSet(pds)
+    
+    order = system.tag.read(ORDER_TAGPATH).value
+    log.tracef("The order is: %s", order)
+    if order == DESCENDING:
+        ds = system.dataset.sort(ds, "timestamp", False)
+    
+    table.data = ds
         
 def getWhereClause():
     log.tracef("In getWhereClause")
