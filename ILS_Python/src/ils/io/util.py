@@ -174,6 +174,26 @@ def isFolder(fullTagPath):
     
     return isFolder
 
+def getTagExpression(fullTagPath):
+    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
+    for tagConfig in tagConfigurations:
+        props = tagConfig.getProperties()
+        for prop in props:
+            if str(prop) == "expression":
+                return tagConfig.get(prop)
+            
+    return None
+
+def getTagSQL(fullTagPath):
+    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
+    for tagConfig in tagConfigurations:
+        props = tagConfig.getProperties()
+        for prop in props:
+            if str(prop) == "expression":
+                return tagConfig.get(prop)
+            
+    return None
+
 '''
 A controller is a complicated UDT with embedded UDTs.  Often we are given one of the inner UDTs, for the setpoint or mode for example and we want to 
 find the controller.  So we start at the root of the path and walk the tag path until we get a UDT.

@@ -5,6 +5,7 @@ Created on Jan 8, 2021
 '''
 import system, sys, traceback, time
 from ils.tag.client import typeForTagPath, dataTypeForTagPath
+from ils.io.util import getTagExpression, getTagSQL
 from ils.io.util import getUDTType
 
 COMMAND_TAG_PATH = "[Client]Replicate/Command"
@@ -14,6 +15,8 @@ SELECTED_TAG_PATH_TAG_PATH = "[Client]Replicate/Selected Tag Path"
 STATUS_TAG_PATH = "[Client]Replicate/Status"
 TAG_COUNTER_TAG_PATH = "[Client]Replicate/Tag Counter"
 TOTAL_TAG_COUNT_TAG_PATH = "[Client]Replicate/Total Tag Count"
+REPLACE_EXPRESSION_TAGS_TAG_PATH = "[Client]Replicate/Replace Expression Tags"
+REPLACE_QUERY_TAGS_TAG_PATH = "[Client]Replicate/Replace Query Tags"
 
 ABORT_COMMAND = "Abort"
 
@@ -28,6 +31,7 @@ def internalFrameOpened(rootContainer):
     ds = system.dataset.toDataSet(["TagProvider"], data)
     ds = system.dataset.sort(ds, 0)
     rootContainer.TagProviders = ds
+    rootContainer.ShowPreferences = False
     reset()
     
 def abortCallback(event):
@@ -67,6 +71,21 @@ def copyDataCallback(event):
     system.tag.write(SELECTED_TAG_PATH_TAG_PATH, selectedTagPath)
     system.tag.write(DESTINATION_TAG_PROVIDER_TAG_PATH, destinationTagProvider)
     system.tag.write(COMMAND_TAG_PATH, "CopyValues")
+    
+def convertUdtCallback(event):
+    container = event.source.parent
+    filename = container.getComponent("Filename Field").text
+    if not(system.file.fileExists(filename)):
+        system.gui.warningBox("File (%s) does not exist - please select another file." % (filename))
+        return
+    print "Converting ..."
+    
+    txt = system.file.readFileAsString(filename)
+    txt = txt.replace('type="OPC"', 'type="DB"')
+    newFilename = filename[:len(filename)-4] + "_isolation.xml"
+    system.file.writeFile(newFilename, txt)
+    
+    system.gui.messageBox("<HTML>The modified UDT has been written to <b>%s</b><br>Using Designer, import it into the Data Types folder for the Isolation tag provider." % (newFilename))
 
 def checkSelections(rootContainer):
     sourceTagProvider = rootContainer.getComponent("Source Container").getComponent("Tag Provider Dropdown").selectedStringValue
@@ -131,12 +150,16 @@ def updateStatus(txt):
 class Replicater():
     selectedTagPath = None
     destinationTagProvider = None
+    replaceExpressionTags = None
+    replaceQueryTags = None
     myTags = None
     log = None
     
     def __init__(self):
         self.selectedTagPath = system.tag.read(SELECTED_TAG_PATH_TAG_PATH).value
         self.destinationTagProvider = system.tag.read(DESTINATION_TAG_PROVIDER_TAG_PATH).value
+        self.replaceExpressionTags = system.tag.read(REPLACE_EXPRESSION_TAGS_TAG_PATH).value
+        self.replaceQueryTags = system.tag.read(REPLACE_QUERY_TAGS_TAG_PATH).value
         self.log = system.util.getLogger(__name__)
         self.log.infof("Initializing a Replicator")
         
@@ -214,6 +237,7 @@ class Replicater():
         
         Create the tags, we don't need to explicitly create folders, they will be created automatically as we go 
         '''
+        
         command = system.tag.read(COMMAND_TAG_PATH).value
         if command == ABORT_COMMAND:
             return
@@ -244,7 +268,23 @@ class Replicater():
                 self.log.tracef("Checking if <%s/%s> already exists", tagpath, browseTag.name)
                 if not(system.tag.exists(tagpath + "/" + browseTag.name)):
                         
-                    if str(browseTag.type) in ["OPC", "DB"]:
+                    if browseTag.isExpression():
+                        if self.replaceExpressionTags:
+                            system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="MEMORY", dataType=browseTag.dataType)
+                        else:
+                            expression = getTagExpression(browseTag.fullPath)
+                            system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="EXPRESSION", dataType=browseTag.dataType,
+                                              attributes={"Expression": expression})
+
+                    elif browseTag.isQuery():
+                        if self.replaceQueryTags:
+                            system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="MEMORY", dataType=browseTag.dataType)
+                        else:
+                            SQL = getTagSQL(browseTag.fullPath)
+                            system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="QUERY", dataType=browseTag.dataType,
+                                              attributes={"Expression": SQL})
+
+                    elif str(browseTag.type) in ["OPC", "DB"]:
                         self.log.tracef("...creating memory tag %s in %s", browseTag.name, browseTag.path)
                         system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="MEMORY", dataType=browseTag.dataType)
                     elif str(browseTag.type) == "UDT_INST":
@@ -308,9 +348,14 @@ class Replicater():
             system.tag.editTag(targetTagPath, attributes={"DataType": dataType})    
         
         ''' Now copy the values '''
-        qv = system.tag.read(browseTag.fullPath)
-        if qv.quality.isGood():
-            system.tag.write("[%s]%s" % (self.destinationTagProvider, browseTag.path), qv.value)
+        if browseTag.isExpression() and not(self.replaceExpressionTags):
+            print "--- Skipping an expression tag ---"
+        elif browseTag.isQuery() and not(self.replaceQueryTags):
+            print "--- Skipping a query tag ---"
+        else:
+            qv = system.tag.read(browseTag.fullPath)
+            if qv.quality.isGood():
+                system.tag.write("[%s]%s" % (self.destinationTagProvider, browseTag.path), qv.value)
                     
     def copyUdtValues(self, tagpath):
         '''
@@ -322,9 +367,17 @@ class Replicater():
         tagSet = system.tag.browseTags(parentPath=tagpath, recursive=False)
     
         for browseTag in tagSet:
+            print "Path: ", browseTag.path
+            print "Type: ", str(browseTag.type)
+            print "Tag Type: ", str(browseTag.tagType)
+            print "----------"
             if str(browseTag.type) in ["UDT_INST"]:
                 self.copyUdtValues(browseTag.fullPath)
+#            elif str(browseTag.isExpression()):
+#                print "--- Skipping an expression tag ---
             else:
+                self.copyTagValues(browseTag)
+                '''
                 val = system.tag.read(browseTag.fullPath).value
                 dataType = dataTypeForTagPath(browseTag.fullPath)
                 targetTagPath = "[%s]%s" % (self.destinationTagProvider, browseTag.path)
@@ -337,6 +390,7 @@ class Replicater():
                     system.tag.editTag(parentTagPath, overrides={udtMemberName:{"DataType": dataType}})
                 self.log.tracef("Writing %s to %s", str(val), targetTagPath)
                 system.tag.write(targetTagPath, val)
+                '''
         
         self.log.tracef("...done with the UDT copy!")
 
