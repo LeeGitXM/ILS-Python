@@ -174,14 +174,59 @@ def isFolder(fullTagPath):
     
     return isFolder
 
+def getTagScript(fullTagPath):
+    log.tracef("Looking for a tag change script for: %s", fullTagPath)
+    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
+    for tagConfig in tagConfigurations:
+        tagType = tagConfig.getTagType()
+        log.tracef("Tag type: <%s>", str(tagType))
+        if str(tagType) in ["DB", "OPC"]:
+            log.tracef("Checking properties...")
+            props = tagConfig.getProperties()
+            for prop in props:
+                log.tracef("%s %s", str(prop),  tagConfig.get(prop)) 
+                if str(prop) == "eventScripts":
+                    log.tracef("  --- found a tag change script ---")
+                    return tagConfig.get(prop)
+    log.tracef("    Did not find a tag script!")
+    return None
+
+def isExpressionTag(fullTagPath):
+    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
+    for tagConfig in tagConfigurations:
+        tagType = tagConfig.getTagType()
+        if str(tagType) == "DB":
+            props = tagConfig.getProperties()
+            for prop in props: 
+                if str(prop) == "expressionType":   
+                    if str(tagConfig.get(prop)) == "Expression":
+                        return True
+                    else:
+                        return False
+    return False
+
+def isQueryTag(fullTagPath):
+    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
+    for tagConfig in tagConfigurations:
+        tagType = tagConfig.getTagType()
+        if str(tagType) == "DB":
+            props = tagConfig.getProperties()
+            for prop in props:
+                if str(prop) == "expressionType": 
+                    if str(tagConfig.get(prop)) == "SQL_Query":
+                        return True
+                    else:
+                        return False
+    return False
+
 def getTagExpression(fullTagPath):
     tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
     for tagConfig in tagConfigurations:
         props = tagConfig.getProperties()
         for prop in props:
+            print str(prop), ": ", tagConfig.get(prop)
             if str(prop) == "expression":
                 return tagConfig.get(prop)
-            
     return None
 
 def getTagSQL(fullTagPath):
@@ -191,7 +236,6 @@ def getTagSQL(fullTagPath):
         for prop in props:
             if str(prop) == "expression":
                 return tagConfig.get(prop)
-            
     return None
 
 '''
