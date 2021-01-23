@@ -278,11 +278,24 @@ class Replicater():
                 if not(system.tag.exists(tagpath + "/" + browseTag.name)):
                     
                     tagType = typeForTagPath(browseTag.fullPath)
-                    self.log.tracef("%s is a %s", browseTag.fullPath, tagType)
+                    self.log.tracef("%s is a %s!", browseTag.fullPath, tagType)
                     
                     tagScript = getTagScript(browseTag.fullPath)
                         
-                    if isExpressionTag(browseTag.fullPath):
+                    if str(browseTag.type) == "UDT_INST":
+                        '''
+                        Ignition is smart enough too use the Isolation UDT for the Isolation tag provider.  This will work as long as we have a parallel 
+                        set of UDTs.  Note that the tag provider is not part of the UDT name anyway, so we don't need to replace the tag provider with 
+                        the isolation tag provider in the UDT name. 
+                        '''
+                        udtType = getUDTType(browseTag.fullPath)
+                        self.log.tracef("...creating a %s UDT for %s", udtType, browseTag.fullPath)
+                        try:
+                            system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="UDT_INST", attributes={"UDTParentType":udtType})
+                        except:
+                            print "Error: the <%s> UDT does not exist in the Destination tag provider."
+                            
+                    elif isExpressionTag(browseTag.fullPath):
                         if self.replaceExpressionTags:
                             self.log.tracef("...creating a memory tag %s in %s to replace an expression tag", browseTag.name, browseTag.path)
                             system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="MEMORY", dataType=browseTag.dataType,
@@ -323,18 +336,7 @@ class Replicater():
                         system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="MEMORY", dataType=browseTag.dataType,
                                           attributes={"EventScripts":tagScript})
         
-                    elif str(browseTag.type) == "UDT_INST":
-                        '''
-                        Ignition is smart enough too use the Isolation UDT for the Isolation tag provider.  This will work as long as we have a parallel 
-                        set of UDTs.  Note that the tag provider is not part of the UDT name anyway, so we don't need to replace the tag provider with 
-                        the isolation tag provider in the UDT name. 
-                        '''
-                        udtType = getUDTType(browseTag.fullPath)
-                        self.log.tracef("...creating a %s UDT for %s", udtType, browseTag.fullPath)
-                        try:
-                            system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="UDT_INST", attributes={"UDTParentType":udtType})
-                        except:
-                            print "Error: the <%s> UDT does not exist in the Destination tag provider."
+
         
                     else:
                         self.log.warnf("Unexpected tag type: %s for %s", browseTag.type, browseTag.fullPath)

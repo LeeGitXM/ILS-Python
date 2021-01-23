@@ -224,7 +224,7 @@ def getTagExpression(fullTagPath):
     for tagConfig in tagConfigurations:
         props = tagConfig.getProperties()
         for prop in props:
-            print str(prop), ": ", tagConfig.get(prop)
+            log.tracef("%s: %s", str(prop), tagConfig.get(prop))
             if str(prop) == "expression":
                 return tagConfig.get(prop)
     return None
