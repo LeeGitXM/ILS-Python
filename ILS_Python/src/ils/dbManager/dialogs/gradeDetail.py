@@ -55,8 +55,8 @@ def requery(rootContainer):
     if active:
         andWhere = andWhere+ " AND GM.Active = 1"    
     
-    SQL = "SELECT F.RecipeFamilyId,F.RecipeFamilyName,GD.Grade,VD.ValueId,VD.PresentationOrder, "\
-        " GD.Version,GM.Active,VD.Description,GD.RecommendedValue,GD.LowLimit,GD.HighLimit, VT.ValueType "\
+    SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, GD.Grade, VD.ValueId, VD.PresentationOrder, "\
+        " GD.Version, GM.Active, VD.Description, GD.RecommendedValue, GD.LowLimit, GD.HighLimit, GD.RowActive, VT.ValueType "\
         " FROM RtRecipeFamily F, RtGradeMaster GM, RtGradeDetail GD, RtValueDefinition VD, RtValueType VT "\
         " WHERE GD.RecipeFamilyId = F.RecipeFamilyId "\
         " AND GM.RecipeFamilyId = F.RecipeFamilyId "\
@@ -99,17 +99,28 @@ def update(table,row,colname,value):
                 " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %d and ValueId = %d" \
                 % (colname, familyid, str(gradeid), version, vid)
         else:
-            if valueType == "Float":
-                msg = "Value must be a floating point number."
-                value = float(value)
-            elif valueType == "Integer":
-                msg = "Value must be a floating point number."
-                value = int(value)
-    
-            msg = "Database Error."
-            SQL = "UPDATE RtGradeDetail SET %s = '%s' " \
-                " WHERE RecipeFamilyId=%d and Grade='%s' and Version = %d and ValueId = %d" \
-                % (colname, str(value), familyid, str(gradeid), version, vid)
+            if colname == "RowActive":
+                if value:
+                    val = 1
+                else:
+                    val = 0
+                
+                SQL = "UPDATE RtGradeDetail SET RowActive = %d " \
+                    " WHERE RecipeFamilyId=%d and Grade='%s' and Version = %d and ValueId = %d" \
+                    % (val, familyid, str(gradeid), version, vid)
+                print ""
+            else:
+                if valueType == "Float":
+                    msg = "Value must be a floating point number."
+                    value = float(value)
+                elif valueType == "Integer":
+                    msg = "Value must be a floating point number."
+                    value = int(value)
+        
+                msg = "Database Error."
+                SQL = "UPDATE RtGradeDetail SET %s = '%s' " \
+                    " WHERE RecipeFamilyId=%d and Grade='%s' and Version = %d and ValueId = %d" \
+                    % (colname, str(value), familyid, str(gradeid), version, vid)
         print "SQL: ", SQL
         rows = system.db.runUpdateQuery(SQL)
         print "Updated %d rows" % (rows)

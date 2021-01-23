@@ -80,6 +80,7 @@ def details(familyName, grade, version, database = ""):
         " where GD.RecipeFamilyId = %s "\
         " and GD.Grade = '%s'" \
         " and GD.Version = %s" \
+        " and GD.RowActive = 1" \
         " order by PresentationOrder" % (str(familyId), grade, str(version))
     
     log.trace(SQL)
