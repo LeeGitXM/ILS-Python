@@ -16,10 +16,11 @@ def importRecipeDataCallback(event):
     folder = rootContainer.importExportFolder
     filename = system.file.openFile(".xml", folder)
     if filename != None:
-        importRecipeData(filename, db)
-        folder = os.path.basename(filename)
-        print "The folder is: ", folder
-        rootContainer.importExportFolder = folder
+        importer = Importer(db)
+        importer.importFromFile(filename)
+#        folder = os.path.basename(filename)
+#        print "The folder is: ", folder
+#        rootContainer.importExportFolder = folder
         
 def buildFolderPath(recipeDataKey, oldParentFolderId, folderPaths):
     print "Building a folder path from: ", recipeDataKey, oldParentFolderId, folderPaths
