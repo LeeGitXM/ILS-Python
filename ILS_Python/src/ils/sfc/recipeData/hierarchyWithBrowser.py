@@ -12,7 +12,7 @@ from ils.common.config import getTagProviderClient
 from sys import path
 from __builtin__ import True
 from ils.sfc.common.constants import SQL
-log=system.util.getLogger("com.ils.sfc.recipeBrowser")
+log=system.util.getLogger(__name__)
 
 #treeMode = "chartName"
 treeMode = "fullPath"
@@ -30,6 +30,7 @@ def internalFrameOpened(rootContainer, db):
     log.infof("In %s.internalFrameOpened()", __name__)
     
     rootContainer.initializationComplete = False
+    rootContainer.synchronize = False
     tree = rootContainer.getComponent("Tree Container").getComponent("Tree View")
     table = rootContainer.getComponent("Tree Container").getComponent("Power Table")
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")

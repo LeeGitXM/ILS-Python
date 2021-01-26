@@ -3,8 +3,35 @@ Created on Jan 23, 2021
 
 @author: phass
 '''
+import system
+
 from ils.sfc.recipeData.export import Exporter
-from ils.sfc.recipeData.import import Importer
+from ils.sfc.recipeData.importer import Importer
+from ils.common.config import getDatabaseClient
+from ils.common.error import catchError, notifyError
+log=system.util.getLogger(__name__)
+
+def synchronizeCallback(chartPath, deep, sourceDb, destinationDb):
+    '''
+    This is called by the button on the SFC recipe data browser. 
+    '''
+    try:
+        log.infof("The selected chart path is <%s>, deep: %s, from %s to %s", chartPath, str(deep), sourceDb, destinationDb)
+        if chartPath == "" or chartPath == None:
+            return
+        
+        synchronizer = Synchronizer(sourceDb, destinationDb)
+        status = synchronizer.synchronize(chartPath, deep)
+        
+        if status:
+            system.gui.messageBox("Recipe data was successfully synchronized!")
+        else:
+            system.gui.errorBox("An error was encountered while synchronizing recipe data!")
+    except:
+        notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
+        
+    return status
+        
 
 class Synchronizer():
     sourceDb = None
@@ -22,7 +49,8 @@ class Synchronizer():
         chartPaths.append(chartPath)
         
         for chartPath in chartPaths:
+            chartXML=exporter.export(chartPath, deep)
             
-            chartXML=exporter.export(chartPath)
-            print chartXML
-            importer.
+        status = importer.importFromString(chartXML)
+        
+        return status

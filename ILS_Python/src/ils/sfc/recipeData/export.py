@@ -4,11 +4,11 @@ Created on May 31, 2017
 @author: phass
 '''
 
-import system, os
+import system, os, string
 from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy, getChildren
 from ils.common.config import getDatabaseClient
 from ils.common.error import catchError, notifyError
-log=system.util.getLogger("com.ils.sfc.recipeBrowser.export")
+log=system.util.getLogger(__name__)
 
 def exportCallback(event):
     '''
@@ -41,8 +41,9 @@ def exportCallback(event):
         folder = os.path.dirname(filename)
         rootContainer.importExportFolder = folder
         
+        deep = True
         exporter = Exporter(db)
-        txt = exporter.export(chartPath)
+        txt = exporter.export(chartPath, deep)
         
         system.file.writeFile(filename, txt, False)
         system.gui.messageBox("Chart and recipe were successfully exported!")
@@ -54,11 +55,12 @@ class Exporter():
     db = None
     hierarchyPDS = None
     chartPDS = None
+    deep = None
 
     def __init__(self, db):
         self.db = db
         
-        self.hierarchyPDS = fetchHierarchy(self.sfcRecipeDataShowProductionOnly, self.db)
+        self.hierarchyPDS = fetchHierarchy("%", self.sfcRecipeDataShowProductionOnly, self.db)
         log.tracef("Selected all %d chart hierarchy records...", len(self.hierarchyPDS))
         
         self.chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", self.db)
@@ -67,8 +69,9 @@ class Exporter():
         SQL = "Select * from SfcRecipeDataFolder"
         self.folderPDS = system.db.runQuery(SQL, self.db)
 
-    def export(self, chartPath):
+    def export(self, chartPath, deep):
         self.chartPath = chartPath
+        self.deep = deep
         log.infof("In %s.export()", __name__)
         
         SQL = "select chartId from SfcChart where chartPath = '%s'" % (self.chartPath)
@@ -85,16 +88,17 @@ class Exporter():
 
         txt = "<data>\n" + keyTxt + txt + structureTxt + "</data>"
         return txt
+    
 
     def exportKeysForTree(self):
         log.tracef("=====================================")
-        log.tracef("Exporting keys for chart Id: %d", self.chartId)
+        log.tracef("Exporting recipe data keys...")
         log.tracef("=====================================")
         
         chartIds = [self.chartId]
         newKids = True
-        
-        while newKids:
+    
+        while self.deep and newKids:
             newKids = False
             for chartId in chartIds:
                 newChildren, aList = self.fetchChildren(chartId, chartIds, [])
@@ -165,7 +169,7 @@ class Exporter():
         parentChildList = []
         newKids = True
         
-        while newKids:
+        while self.deep and newKids:
             newKids = False
             for chartId in chartIds:
                 newChildren, parents = self.fetchChildren(chartId, chartIds, parentChildList)
@@ -272,7 +276,7 @@ class Exporter():
             record = pds[0]
             return record
         
-        SQL = "select chartPath, stepName, recipeDataId, recipeDataKey, recipeDataType, label, description, units, recipeDataFolderId from SfcRecipeDataView where stepId = %d" % (stepId)
+        SQL = "select chartPath, stepName, recipeDataId, recipeDataKey, recipeDataType, label, description, advice, units, recipeDataFolderId from SfcRecipeDataView where stepId = %d" % (stepId)
         pds = system.db.runQuery(SQL, self.db)
         
         recipeDataTxt = ""
@@ -285,11 +289,23 @@ class Exporter():
             recipeDataKey = record["recipeDataKey"]
             folderId = record["recipeDataFolderId"]
             
+            label = record["label"]
+            if label == None or string.upper(str(label)) == 'NONE':
+                label = ''
+                
+            description = record["description"]
+            if description == None and string.upper(str(description)) == 'NONE':
+                description = ''
+            
+            advice = record['advice']
+            if advice == None or string.upper(str(advice)) == 'NONE':
+                advice = ''
+            
             parentFolder = self.findParent(folderId)
             log.tracef("      ...processing recipe data %s - %s - %d (%s - %s)", recipeDataKey, recipeDataType, recipeDataId, chartPath, stepName)
             
-            baseTxt = "<recipe recipeDataKey='%s' recipeDataType='%s' label='%s' description='%s' units='%s' parent='%s'" % \
-                (recipeDataKey, recipeDataType, record["label"], record["description"], record["units"], parentFolder)
+            baseTxt = "<recipe recipeDataKey='%s' recipeDataType='%s' label='%s' description='%s' advice='%s' units='%s' parent='%s'" % \
+                (recipeDataKey, recipeDataType, label, description, advice, record["units"], parentFolder)
             
             if recipeDataType == "Simple Value":
                 SQL = "select valueType, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataSimpleValueView where RecipeDataId = %d" % (recipeDataId)
@@ -309,7 +325,7 @@ class Exporter():
             elif recipeDataType == "Recipe":
                 SQL = "select presentationOrder, storeTag, compareTag, ModeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit from SfcRecipeDataRecipeView where RecipeDataId = %d" % (recipeDataId)
                 record = fetchFirstRecord(SQL)
-                recipeDataTxt = recipeDataTxt + baseTxt + " presentationOrder='%s' storeTag='%s' compareTag='%s' ModeAttribute='%s' modeValue='%s' changeLevel='%s' recommendedValue='%s' lowLimit='%s' highLimit='%s' />" %\
+                recipeDataTxt = recipeDataTxt + baseTxt + " presentationOrder='%s' storeTag='%s' compareTag='%s' modeAttribute='%s' modeValue='%s' changeLevel='%s' recommendedValue='%s' lowLimit='%s' highLimit='%s' />" %\
                     (str(record['presentationOrder']), str(record['storeTag']), str(record['compareTag']), str(record['ModeAttribute']), str(record['modeValue']),\
                      str(record['changeLevel']), str(record['recommendedValue']), str(record['lowLimit']), str(record['highLimit']))
                     
@@ -450,7 +466,10 @@ class Exporter():
             for record in self.folderPDS:
                 if record["RecipeDataFolderId"] == folderId:
                     log.tracef("...found the parent")
-                    path = "%s/%s" % (record["RecipeDataKey"], path)
+                    if path == "":
+                        path = record["RecipeDataKey"]
+                    else:
+                        path = "%s/%s" % (record["RecipeDataKey"], path)
                     folderId = record["ParentRecipeDataFolderId"]
                     log.tracef("...the new parent id is: %s", str(folderId))
     

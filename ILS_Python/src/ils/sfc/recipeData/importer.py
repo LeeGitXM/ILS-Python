@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 import system, os
 from ils.common.config import getDatabaseClient
 from ils.common.error import catchError, notifyError
-log=system.util.getLogger("com.ils.sfc.import")
+log=system.util.getLogger(__name__)
 
 def importRecipeDataCallback(event):
     db = getDatabaseClient()
@@ -35,6 +35,7 @@ class Importer():
     recipeDataTypes = None
     valueTypes = None
     outputTypes = None
+    trees = None
     
     def __init__(self, db):
         self.db = db
@@ -44,17 +45,19 @@ class Importer():
         log.infof("In %s,importFromFile() with %s", __name__, filename)
         tree = ET.parse(filename)
         root = tree.getroot()
-        self.importTree(root)
+        success = self.importTree(root)
+        return success
 
     def importFromString(self, txt):
         log.infof("In %s.importString()", __name__)
-        print "txt: ", txt
+        log.tracef("XML to import: %s", txt)
+        log.tracef("...parsing XML...")
         root = ET.fromstring(txt)
-        print "Parsed tree!"
-        self.importTree(root)
+        log.tracef("...importing the parsed tree...")
+        success = self.importTree(root)
+        return success
         
     def importTree(self, root):
-        print "...importing..."
         self.root = root
         
         self.sql.loadRecipeDataArrayKeys()
@@ -65,12 +68,18 @@ class Importer():
         
         '''
         The import file is a list of charts, it does not contain the hierarchy.  The import is flat, i.e, not nested.
-        Before we import, we need to delete.  Hopefully there are enough cascade deletes that all we have to do is delete the chart
-        and the steps and recipe data will follow.
-        **************************************************************************************************************
-        *** This is deleting the recipe data, NOT The charts - I'm not sure if this is intentional or an oversight ***
-        **************************************************************************************************************
+        Before we import, we need to delete recipe data, steps, charts, and the chart hierarchy. 
+        Before we delete, record parents of charts that are outside the scope of the import.  For example, if we are importing
+        a single chart, we need to record the parents of the chart, if it already exists, so that the newly imported chart will be related to the same parent. 
         '''
+        parents = {}
+        for chart in self.root.findall("chart"):
+                chartPath = chart.get("chartPath")
+                chartParents = self.sql.fetchParentInfo(chartPath)
+                parents["chartPath"] = chartParents
+        print "The parents are: ", parents
+        
+        ''' Now delete '''
         try:
             chartPath = ""
             chartCount = 0
@@ -80,15 +89,36 @@ class Importer():
                 log.tracef("Deleting recipe data for Chart: %s", chartPath)
                 rows = self.sql.deleteRecipeDataForChart(chartPath) 
                 chartCount = chartCount + 1
-                recipeDataCount = recipeDataCount + rows
-            
+                recipeDataCount = recipeDataCount + rows     
+                self.sql.deleteChartFromHierarchy(chartPath)
             self.sql.commit()
             log.infof("Deleted %d rows of recipe data for %d charts!", recipeDataCount, chartCount) 
         except:
             print "Caught an error deleting recipe data - rolling back and closing the transaction"
             self.sql.rollbackAndClose()
             notifyError(__name__ + ".importRecipeData.py", "Deleting recipe data for chart: %s" % (str(chartPath)))
-            return
+            return False
+        
+        '''
+        Now make another pass and delete the charts
+        '''
+        try:
+            chartPath = ""
+            chartCount = 0
+            recipeDataCount = 0
+            for chart in self.root.findall("chart"):
+                chartPath = chart.get("chartPath")
+                log.tracef("Deleting chart: %s", chartPath)
+                rows = self.sql.deleteChart(chartPath) 
+                chartCount = chartCount + rows
+            
+            self.sql.commit()
+            log.infof("Deleted %d charts!", chartCount) 
+        except:
+            print "Caught an error deleting charts - rolling back and closing the transaction"
+            self.sql.rollbackAndClose()
+            notifyError(__name__ + ".importRecipeData.py", "Deleting chart: %s" % (str(chartPath)))
+            return False
     
         '''
         Load the matrix and array keys if there are any new ones.
@@ -101,12 +131,13 @@ class Importer():
             print "Caught an error inserting recipe data - rolling back and closing the transaction"
             self.sql.rollbackAndClose()
             notifyError(__name__ + ".importRecipeData.py", "Importing array and matrix keys")
-            return
+            return False
     
         '''
         Now insert charts, steps, and recipe data
         '''    
         try:
+            log.infof("Inserting charts, steps, and recipe data...")
             self.sql.loadRecipeDataArrayKeys()      # Reload to capture the newly added ones
             chartCounter = 0
             stepCounter = 0
@@ -128,43 +159,15 @@ class Importer():
                         log.errorf("Unable to import step type: %s", stepType)
                         self.sql.rollbackAndClose()
                         system.gui.errorBox("Error: Unable to import step %s, of unknown type: %s for chart %s" % (stepName, stepType, chartPath))
-                        return
+                        return False
         
                     stepId = self.sql.insertStep(chartId, stepUUID, stepName, stepTypeId)
                     stepCounter = stepCounter + 1
                     
                     ''' Insert Folders '''
-                    folderIds = {}
-                    folderKeys = {}
-                    folderPaths = {}
-                    print "  Checking for recipe folders..."
-                    for folder in step.findall("recipeFolder"):
-                        print "  --------------"
-    
-                        recipeDataKey = folder.get("recipeDataKey")
-                        oldFolderId = folder.get("folderId")
-                        oldParentFolderId = folder.get("parentFolderId")
-                        label = folder.get("label", "")
-                        description = folder.get("description", "")
-                        folderPaths[recipeDataKey] = {'id': oldFolderId, 'parentId': oldParentFolderId}
-                        print "  Looking at ", recipeDataKey, oldFolderId, oldParentFolderId, label, description
-                        print "    Folder Ids: ", folderIds
-                        
-                        if oldParentFolderId != "None":
-                            parentFolderId = folderIds[oldParentFolderId]
-                            print "  Mapped old folder id %s to new folder id %s" % (oldParentFolderId, parentFolderId)
-                        else:
-                            parentFolderId = None
-    
-                        folderId = self.sql.insertRecipeDataFolder(stepId, recipeDataKey, description, label, parentFolderId)
-                        print "  Inserted %s with new id: %s" % (recipeDataKey, str(folderId))
-                        folderIds[oldFolderId] = folderId
-                        folderKeys[recipeDataKey] = folderId
-                        folderPath = buildFolderPath(recipeDataKey, oldParentFolderId, folderPaths)
+                    log.tracef("  Checking for recipe folders...")
+                    trees = self.parseFolders(step, stepId)
                     
-                        print "  The folder id dictionary is: ", folderIds
-                        print "  The folder keys dictionary is: ", folderKeys
-                
                     ''' Insert Recipe Data '''
                     log.debugf("**********************")
                     log.debugf("  Checking for recipe data...")
@@ -176,30 +179,19 @@ class Importer():
                         recipeDataKey = recipe.get("recipeDataKey")
                         label = recipe.get("label")
                         description = recipe.get("description")
+                        advice = recipe.get("advice")
                         parent = recipe.get("parent")
-                        print "%s - <%s>" % (recipeDataKey, parent) 
+                        log.tracef( "%s - <%s>", recipeDataKey, parent) 
                         
                         if parent not in ["", None]:
-                            if parent[len(parent)-1] == '/':
-                                print "  -- stripping trailing / --"
-                                parent = parent[:len(parent)-1]
-                            print "  Parent <%s>" % (parent)
-                            tokens = parent.split("/")
-                            print "  The tokens are: ", tokens
-                            folder = tokens[len(tokens)-1]
-                            print "  The terminal folder is: ", folder
-                           
-                            print "The id for ", folder
-                            folderId = folderKeys[folder]
-                            print "   is ", folderId
-                            
+                            folderId = self.findFolder(parent)
                         
                         if recipeDataType == "Simple Value":
                             valueType = recipe.get("valueType")
                             valueTypeId = self.valueTypes.get(valueType, -99)
                             val = recipe.get("value")
                             units = recipe.get("units", "")
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId)
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
                             self.sql.insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val)
                             recipeDataCounter = recipeDataCounter + 1
                         
@@ -216,7 +208,7 @@ class Importer():
                             maxTiming = recipe.get("maxTiming", "0.0")
                             writeConfirm = recipe.get("writeConfirm", "True")
                             
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId)
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
                             self.sql.insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm)
                             recipeDataCounter = recipeDataCounter + 1
                             
@@ -231,7 +223,7 @@ class Importer():
                             units = recipe.get("units", "")
                             tag = recipe.get("tag", "")
         
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId)
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
                             self.sql.insertInputRecipeData(recipeDataId, valueType, valueTypeId, tag)
                             recipeDataCounter = recipeDataCounter + 1
         
@@ -240,8 +232,8 @@ class Importer():
                             valueTypeId = self.valueTypes.get(valueType, -99)
                             units = recipe.get("units", "")
                             indexKey = recipe.get("indexKey", None)
-                            print "The array index key is: ", indexKey
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId)
+                            log.tracef( "The array index key is: %s", indexKey)
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
                             self.sql.insertArray(recipeDataId, valueType, valueTypeId, indexKey)
                             recipeDataCounter = recipeDataCounter + 1
                             
@@ -260,7 +252,7 @@ class Importer():
                             rowIndexKey = recipe.get("rowIndexKey", None)
                             columnIndexKey = recipe.get("columnIndexKey", None)
                                 
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId)
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
                             self.sql.insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey)
                             recipeDataCounter = recipeDataCounter + 1
                             
@@ -272,7 +264,7 @@ class Importer():
                         
                         elif recipeDataType == "Timer":
                             units = recipe.get("units", "")
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId)
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
                             self.sql.insertTimerRecipeData(recipeDataId)
                             recipeDataCounter = recipeDataCounter + 1
                         
@@ -282,18 +274,28 @@ class Importer():
                             storeTag = recipe.get("storeTag", "")
                             compareTag = recipe.get("compareTag", "")
                             modeAttribute = recipe.get("modeAttribute", "")
+                            modeValue = recipe.get("modeValue", "")
                             changeLevel = recipe.get("changeLevel", "")
                             recommendedValue = recipe.get("recommendedValue", "")
                             lowLimit = recipe.get("lowLimit", "")
                             highLimit = recipe.get("highLimit", "")
                             
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, units, folderId)
-                            self.sql.insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit)
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                            self.sql.insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit)
                             recipeDataCounter = recipeDataCounter + 1
+                            
+                        elif recipeDataType == "SQC":
+                            lowLimit = recipe.get("lowLimit", "")
+                            highLimit = recipe.get("highLimit", "")
+                            targetValue = recipe.get("targetValue", "")
+                            
+                            log.tracef( "Inserting SQC recipe data with HL: %s, Target: %s, LL: %s ", str(lowLimit), str(targetValue), str(highLimit))
+                            
+                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                            self.sql.insertSqcRecipeData(recipeDataId, lowLimit, targetValue, highLimit)
                             
                         else:
                             txt = "Error: Unable to import recipe data type: %s with key %s for step %s on chart %s" % (recipeDataType, recipeDataKey, stepName, chartPath)
-                            print txt
                             log.errorf(txt)
                             self.sql.rollbackAndClose()
                             system.gui.errorBox(txt)
@@ -319,11 +321,93 @@ class Importer():
             log.tracef("Done!")
             self.sql.commitAndClose()
             system.gui.messageBox("Successfully imported %d charts, %d steps, and %d recipe datums!" % (chartCounter, stepCounter, recipeDataCounter))
+            return True
+        
         except:
-            print "Caught an error inserting recipe data - rolling back and closing the transaction"
+            log.errorf( "Caught an error inserting recipe data - rolling back and closing the transaction")
             self.sql.rollbackAndClose()
             notifyError(__name__ + ".importRecipeData.py", "Importing recipe data for chart %s step %s" % (str(chartPath), str(stepName)))
+            return False
+        
+    def parseFolders(self, step, stepId):
+        folders = []
+        log.tracef("In parseFolders()")
+        for folder in step.findall("recipeFolder"):
+            log.tracef("  --------------")
 
+            recipeDataKey = folder.get("recipeDataKey")
+            folderId = folder.get("folderId")
+            parentFolderId = folder.get("parentFolderId")
+            label = folder.get("label", "")
+            description = folder.get("description", "")
+            
+            folders.append( {"key": recipeDataKey, "folderId": folderId, "parentFolderId": parentFolderId, "label": label, "description": description} )
+        
+        log.tracef("The folders are: %s", str(folders))
+        
+        ''' Build the tree '''
+        i = 0
+        trees = []
+        max_i = len(folders)
+        while len(folders) > 0 and i < max_i:
+            for folder in folders:
+                if i == 0:
+                    if folder.get("parentFolderId", 'None') == 'None':
+                        folder["path"] = folder.get('key')
+                        trees.append(folder)
+                        folders.remove(folder)
+                else:
+                    folderId = folder.get('parentFolderId')
+                    for tree in trees:
+                        if tree.get('folderId') == folderId:
+                            folder["path"] = tree.get('path') + "/" + folder.get('key')
+                            trees.append(folder)
+                            folders.remove(folder)
+    
+            i = i + 1
+        
+        log.tracef("Trees: %s", str(trees))
+        '''
+        Now insert the folders and get new Ids
+        '''
+        log.tracef("  -- Inserting Folders --")
+        newTrees = []
+        for tree in trees:
+            recipeDataKey = tree.get("key", "")
+            path = tree.get("path","")
+            parentFolderId = tree.get("parentFolderId")
+            log.tracef("Processing %s with old parent Id %s", recipeDataKey, str(parentFolderId))
+            if parentFolderId == 'None':
+                log.tracef("...a root folder!")
+                newParentFolderId = None
+            else:
+                for tempTree in newTrees:
+                    log.tracef("...checking: %s", str(tempTree))
+                    if tempTree.get("folderId", None) == parentFolderId:
+                        newParentFolderId = tempTree.get("newFolderId")
+                        log.tracef("---found the new parent: %d", newParentFolderId)
+                        break
+                
+            newFolderId = self.sql.insertRecipeDataFolder(stepId, recipeDataKey, description, label, newParentFolderId)
+            log.tracef("Inserted %s (%s) with new id: %s", recipeDataKey, path, str(newFolderId))
+            
+            log.tracef("  Inserted %s with new id: %s", recipeDataKey, str(folderId))
+            tree["newFolderId"] = newFolderId
+            newTrees.append(tree)
+
+        log.tracef("Final Trees: %s", str(trees))
+        self.trees = newTrees
+    
+    def findFolder(self, parent):
+        log.tracef("Looking for parent: %s", parent)
+        for tree in self.trees:
+            log.tracef("...checking: %s", tree.get("path", ""))
+            if tree.get("path", "") == parent:
+                log.tracef("Found the parent id: %d", tree.get("newFolderId"))
+                return tree.get("newFolderId")
+        log.errorf("Error looking for path: <%s> in %s", parent, str(self.trees))
+        return None
+        
 
 class Sql():
     txId = None
@@ -347,6 +431,29 @@ class Sql():
         system.db.rollbackTransaction(self.txId)
         system.db.closeTransaction(self.txId)
         
+    def deleteChart(self, chartPath):
+        SQL = "delete from SfcChart where ChartPath = '%s' " % chartPath
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef("...deleted %d rows from SfcChart...", rows)
+        return rows
+        
+    def deleteChartFromHierarchy(self, chartPath):
+        log.tracef("Deleting %s from the chart hierarchy", chartPath)
+        SQL = "select chartId from sfcChart where chartPath = '%s' " % (chartPath)
+        chartId = system.db.runScalarQuery(SQL, tx=self.txId)
+        
+        if chartId == None:
+            log.tracef("...chart does not exist...")
+            return
+        
+        SQL = "delete from sfcHierarchy where chartId = %d or childChartId = %d" % (chartId, chartId)
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef("Deleted %d rows from the sfcHierarchy for %s", rows, chartPath)
+        
+        SQL = "delete from sfcHierarchyHandler where chartId = %d or HandlerChartId = %d" % (chartId, chartId)
+        rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+        log.tracef("Deleted %d rows from the sfcHierarchyHandler for %s", rows, chartPath)
+        
     def deleteRecipeDataForChart(self, chartPath):
         log.infof("      Deleting recipe data for chart:  %s...", chartPath)
         SQL = "select RecipeDataId "\
@@ -365,6 +472,15 @@ class Sql():
         
         log.infof("      ...deleted %d rows", totalRows)
         return totalRows
+    
+    def fetchParentInfo(self, childChartPath):
+        parents = []
+        SQL = "select chartPath, chartId from SfcHierarchyView where childChartPath = '%s' " % (childChartPath)
+        pds = system.db.runQuery(SQL, tx=self.txId)
+        for record in pds:
+            parent = {"parentPath": record["chartPath"], "parentId": record["parentId"]}
+            parents.append(parent)
+        return parents
     
     def loadCharts(self):
         log.tracef("Loading charts...")
@@ -450,7 +566,7 @@ class Sql():
             
         return cnt
 
-    def insertHierarchy(self, parentChartPath, stepName, childChartPath, chartPDS):
+    def insertHierarchy(self, parentChartPath, stepName, childChartPath):
         
         def getChartIdFromPath(chartPath, chartPDS):
             for chart in chartPDS:
@@ -459,8 +575,8 @@ class Sql():
             return -1
     
         log.tracef("Inserting parent: <%s> and child <%s> into chart hierarchy...", parentChartPath, childChartPath)
-        parentChartId = getChartIdFromPath(parentChartPath, chartPDS)
-        childChartId = getChartIdFromPath(childChartPath, chartPDS)
+        parentChartId = getChartIdFromPath(parentChartPath, self.chartPDS)
+        childChartId = getChartIdFromPath(childChartPath, self.chartPDS)
         SQL = "Select stepId from SfcStep where ChartId = %s and StepName = '%s'" % (str(parentChartId), stepName)
         stepId = system.db.runScalarQuery(SQL, tx=self.txId)
         
@@ -485,35 +601,32 @@ class Sql():
     def insertStep(self, chartId, stepUUID, stepName, stepTypeId):
         log.infof("   Inserting step: %s - type: %d...", stepName, stepTypeId)
         
-        SQL = "select stepId from SfcStep where StepUUID = '%s'" % (stepUUID)
-        stepId = system.db.runScalarQuery(SQL, tx=self.txId)
-        
-        if stepId == None:
-            SQL = "insert into SfcStep (StepUUID, StepName, StepTypeId, ChartId) values ('%s', '%s', %s, %s)" % (stepUUID, stepName, str(stepTypeId), str(chartId))
-            stepId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
-            log.infof("      ...inserted step with id: %d", stepId)
-        else:
-            log.infof("      ...step already exists with id: %d", stepId)
+        SQL = "insert into SfcStep (StepUUID, StepName, StepTypeId, ChartId) values ('%s', '%s', %s, %s)" % (stepUUID, stepName, str(stepTypeId), str(chartId))
+        stepId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
+        log.infof("      ...inserted step with id: %d", stepId)
             
         return stepId
     
     def insertRecipeDataFolder(self, stepId, recipeDataKey, description, label, parentFolderId):
+        log.infof("      Inserting recipe data folder:  %s with parent %d...", recipeDataKey, parentFolderId)
         if parentFolderId == None:
             SQL = "insert into SfcRecipeDataFolder (RecipeDataKey, StepId, Description, Label) values ('%s', %d, '%s', '%s')" % (recipeDataKey, stepId, description, label)
         else:
             SQL = "insert into SfcRecipeDataFolder (RecipeDataKey, StepId, Description, Label, ParentRecipeDataFolderId) "\
                 " values ('%s', %d, '%s', '%s', %d)" % (recipeDataKey, stepId, description, label, parentFolderId)
+
         folderId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
+        log.infof("      ...inserted folder with id: %d", folderId)
         return folderId
     
-    def insertRecipeData(self, stepId, key, recipeDataType, recipeDataTypeId, label, description, units, folderId):
+    def insertRecipeData(self, stepId, key, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId):
         log.infof("      Inserting recipe data key:  %s, a %s...", key, recipeDataType)
         if folderId == None:
-            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Units) values (%d, '%s', %d, '%s', '%s', '%s')" % \
-                (stepId, key, recipeDataTypeId, label, description, units)
+            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, Units) values (%d, '%s', %d, '%s', '%s', '%s', '%s')" % \
+                (stepId, key, recipeDataTypeId, label, description, advice, units)
         else:
-            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, RecipeDataFolderId, Units) values (%d, '%s', %d, '%s', '%s', %d, '%s')" % \
-                (stepId, key, recipeDataTypeId, label, description, folderId, units)
+            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, RecipeDataFolderId, Units) values (%d, '%s', %d, '%s', '%s', '%s', %d, '%s')" % \
+                (stepId, key, recipeDataTypeId, label, description, advice, folderId, units)
         recipeDataId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
         return recipeDataId
     
@@ -564,21 +677,20 @@ class Sql():
         SQL = "insert into SfcRecipeDataArrayElement (recipeDataId, arrayIndex, ValueId) values (%d, %d, %d)" % (recipeDataId, int(arrayIndex), valueId)
         system.db.runUpdateQuery(SQL, tx=self.txId)
 
-    def insertMatrix(self, recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey, arrayIndexKeys):
+    def insertMatrix(self, recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey):
         log.tracef("          Inserting a matrix...")
         
         if rowIndexKey == None:
             rowIndexKeyId = 'NULL'
         else:
-            rowIndexKeyId = arrayIndexKeys.get(rowIndexKey, 'NULL')
+            rowIndexKeyId = self.recipeDataArrayKeys.get(rowIndexKey, 'NULL')
     
         if columnIndexKey == None:
             columnIndexKeyId = 'NULL'
         else:
-            columnIndexKeyId = arrayIndexKeys.get(columnIndexKey, 'NULL')
+            columnIndexKeyId = self.recipeDataArrayKeys.get(columnIndexKey, 'NULL')
         
         SQL = "insert into SfcRecipeDataMatrix (recipeDataId, valueTypeId, rows, columns, rowIndexKeyId, columnIndexKeyId) values (%d, %d, %d, %d, %s, %s)" % (recipeDataId, valueTypeId, int(rows), int(columns), rowIndexKeyId, columnIndexKeyId)
-        print SQL
         system.db.runUpdateQuery(SQL, tx=self.txId)
     
     def insertMatrixElement(self, recipeDataId, valueType, valueTypeId, rowIndex, columnIndex, val):
@@ -586,17 +698,22 @@ class Sql():
         valueId = self.insertRecipeDataValue(recipeDataId, valueType, val)
         SQL = "insert into SfcRecipeDataMatrixElement (recipeDataId, rowIndex, columnIndex, ValueId) values (%d, %d, %d, %d)" % (recipeDataId, int(rowIndex), int(columnIndex), valueId)
         system.db.runUpdateQuery(SQL, tx=self.txId)
+        
+    def insertSqcRecipeData(self, recipeDataId, lowLimit, targetValue, highLimit):
+        log.tracef("          Inserting a SQC...")
+        SQL = "insert into SfcRecipeDataSqc (recipeDataId, LowLimit, TargetValue, HighLimit) values (%d, %f, %f, %f)" % (recipeDataId, float(lowLimit), float(targetValue), float(highLimit))
+        system.db.runUpdateQuery(SQL, tx=self.txId)
     
     def insertTimerRecipeData(self, recipeDataId):
         log.tracef("          Inserting a Timer...")
         SQL = "insert into SfcRecipeDataTimer (recipeDataId) values (%d)" % (recipeDataId)
         system.db.runUpdateQuery(SQL, tx=self.txId)
     
-    def insertRecipeRecipeData(self, recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit):
+    def insertRecipeRecipeData(self, recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit):
         log.tracef("          Inserting a RECIPE recipe data...")
-        SQL = "insert into SfcRecipeDataRecipe (recipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
-            " values (%d, %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % \
-            (recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, changeLevel, recommendedValue, lowLimit, highLimit)
+        SQL = "insert into SfcRecipeDataRecipe (recipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
+            " values (%d, %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % \
+            (recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit)
         system.db.runUpdateQuery(SQL, tx=self.txId)
     
     def insertRecipeDataValue(self, recipeDataId, valueType, val):
