@@ -76,8 +76,8 @@ class Importer():
         for chart in self.root.findall("chart"):
                 chartPath = chart.get("chartPath")
                 chartParents = self.sql.fetchParentInfo(chartPath)
-                parents["chartPath"] = chartParents
-        print "The parents are: ", parents
+                parents[chartPath] = chartParents
+        log.tracef("The parents are: %s", str(parents))
         
         ''' Now delete '''
         try:
@@ -304,17 +304,22 @@ class Importer():
             self.sql.commit()
             
             '''
-            Now insert the chart hierarchy
+            Now insert the chart hierarchy - update the chartPDS data structure with the new charts that were added
             '''
             self.sql.loadCharts()
             
-            log.tracef("Looking for parent/child relationships...")
+            log.tracef("Loading parent/child relationships from the XML data...")
             for parentChild in self.root.findall("parentChild"):
                 parentChartPath = parentChild.get("parent")
                 childChartPath = parentChild.get("child")
                 stepName = parentChild.get("stepName")
                 self.sql.insertHierarchy(parentChartPath, stepName, childChartPath)
 
+            '''
+            Now restore the parent child relations that were destroyed in the beginning when we deleted the existing charts
+            '''
+            self.restoreParents(parents)
+                
             '''
             We are done, commit and close the transaction!
             '''
@@ -328,6 +333,23 @@ class Importer():
             self.sql.rollbackAndClose()
             notifyError(__name__ + ".importRecipeData.py", "Importing recipe data for chart %s step %s" % (str(chartPath), str(stepName)))
             return False
+        
+    def restoreParents(self, parents):
+        '''
+        The import will build parent child relationships for all of the charts within the scope of the import, but can't rebuild parent chart relationships
+        for parents that were not imported.  Luckily, we fetched that information at the start of the import and will now restore it.
+        '''
+        log.infof("Restoring parents...")
+        for chart in self.root.findall("chart"):
+            childChartPath = chart.get("chartPath")
+            log.tracef("Restoring the parents of: %s", str(childChartPath))
+            chartParents = parents.get(childChartPath)
+            log.tracef("The parents are: %s", str(chartParents))
+            for parent in chartParents:
+                parentChartPath = parent.get("chartPath", "")
+                stepName = parent.get("stepName")
+                self.sql.insertHierarchy(parentChartPath, stepName, childChartPath)
+        return
         
     def parseFolders(self, step, stepId):
         folders = []
@@ -473,13 +495,17 @@ class Sql():
         log.infof("      ...deleted %d rows", totalRows)
         return totalRows
     
+    def getChartId(self, chartPath):
+        SQL = "select chartId from sfcChart where chartpath = '%s' " % chartPath
+        chartId = system.db.runScalarQuery(SQL, tx=self.txId) 
+        return chartId
+    
     def fetchParentInfo(self, childChartPath):
         parents = []
-        SQL = "select chartPath, chartId from SfcHierarchyView where childChartPath = '%s' " % (childChartPath)
+        SQL = "select chartPath, stepName from SfcHierarchyView where childChartPath = '%s' " % (childChartPath)
         pds = system.db.runQuery(SQL, tx=self.txId)
         for record in pds:
-            parent = {"parentPath": record["chartPath"], "parentId": record["parentId"]}
-            parents.append(parent)
+            parents.append( {"chartPath": record["chartPath"], "stepName": record["stepName"]} )
         return parents
     
     def loadCharts(self):
@@ -526,7 +552,7 @@ class Sql():
         for record in pds:
             stepTypes[record["StepType"]] = record["StepTypeId"]
         
-        log.infof("The step types are: %s", str(stepTypes))
+        log.tracef("The step types are: %s", str(stepTypes))
         return stepTypes
     
     def loadOutputTypes(self):
@@ -580,8 +606,14 @@ class Sql():
         SQL = "Select stepId from SfcStep where ChartId = %s and StepName = '%s'" % (str(parentChartId), stepName)
         stepId = system.db.runScalarQuery(SQL, tx=self.txId)
         
-        SQL = "insert into SfcHierarchy (StepId, ChartId, ChildChartId) values (%s, %s, %s)" % (str(stepId), str(parentChartId), str(childChartId))
-        system.db.runUpdateQuery(SQL, tx=self.txId)
+        SQL = "select count(*) from SfcHierarchy where StepId = %s and ChartId = %s and ChildChartId = %s" % (str(stepId), str(parentChartId), str(childChartId))
+        cnt = system.db.runScalarQuery(SQL, tx=self.txId)
+        if cnt == 0:
+            log.tracef("---inserting---")
+            SQL = "insert into SfcHierarchy (StepId, ChartId, ChildChartId) values (%s, %s, %s)" % (str(stepId), str(parentChartId), str(childChartId))
+            system.db.runUpdateQuery(SQL, tx=self.txId)
+        else:
+            log.tracef("--- skipped because this already exists ---")
     
     def insertChart(self, chartPath):
         log.infof("Inserting chart: %s...", chartPath)
