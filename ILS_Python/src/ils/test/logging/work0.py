@@ -5,14 +5,12 @@ Created on Nov 30, 2020
 '''
 
 import time
-import system.ils.log.properties as LogProps 
-from ils.logging import DEFAULT_LEVEL_COMBO_CFG
 
+from ils.logging import DEFAULT_LEVEL_COMBO_CFG
 from ils.test.logging.test import setLoggerToInfo, setLoggerToDebug, setLoggerToTrace, setLoggerToOff
 
-# Use the default configuration
-from ils.log.LogRecorder import LogRecorder
-log = LogProps.getLogger('ils.test.logging.work1a')
+import system.ils.log.properties as LogProps 
+log = LogProps.getLogger('ils.test.logging.work')
 
 def setInfo():
     setLoggerToInfo(log)
@@ -43,23 +41,29 @@ def work():
     
     log.error("An error")
     time.sleep(0.1)
+    
+    log.info("This is a formatted info message #%d"%(42)) 
+    log.info("This is also a formatted info message #{}",43) 
+    
     print "Done!"
     
 def workf():
     print "In %s.workf()" % (__name__)
     
-    log.tracef("A trace message")
+    pi = 3.14159
+    
+    log.tracef("A trace message, pi = %.3f", pi)
     time.sleep(0.1)
 
-    log.debugf("A debug message")
+    log.debugf("A debug message, pi = %.3f", pi)
     time.sleep(0.1)
     
-    log.infof("An info message")
+    log.infof("An info message, pi = %.3f", pi)
     time.sleep(0.1)
 
-    log.warnf("A warning")
+    log.warnf("A warning, pi = %.3f", pi)
     time.sleep(0.1)
     
-    log.errorf("An error")
+    log.errorf("An error, pi = %.3f", pi)
     time.sleep(0.1)
     print "Done!"
