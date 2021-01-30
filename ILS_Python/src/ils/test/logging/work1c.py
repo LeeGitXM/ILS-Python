@@ -5,11 +5,13 @@ Created on Nov 30, 2020
 '''
 
 from ils.logging import xomGetLogger, DEFAULT_LEVEL_COMBO_CFG
-
 from ils.test.logging.test import setLoggerToInfo, setLoggerToTrace
 
 # Use the default configuration
-log = xomGetLogger('ils.test.logging.work1c', DEFAULT_LEVEL_COMBO_CFG)
+#log = xomGetLogger('ils.test.logging.work1c', DEFAULT_LEVEL_COMBO_CFG)
+
+import system.ils.log.properties as LogProps 
+log = LogProps.getLogger('ils.test.logging.work1c')
 
 def setInfo():
     setLoggerToInfo(log)
@@ -23,6 +25,6 @@ def work():
     log.tracef("...All done in %s.work()", __name__)
     
 def myWorker():
-    log.tracef("In %s.myWorker()", __name__)
+    log.infof("In %s.myWorker()", __name__)
     print "Here I am!"
     log.tracef("...All done in %s.myWorker()", __name__)
