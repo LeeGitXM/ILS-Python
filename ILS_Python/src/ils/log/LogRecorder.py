@@ -2,11 +2,11 @@
 imports require the ils-common jar file and the ILS Logger module
 '''
 #
+import os,sys
 import system
+import system.ils.log.properties as LogProps
+import org.slf4j.MDC as MDC
 import com.ils.common.log.LogMaker as LogMaker
-import ch.qos.logback.classic.spi.LoggingEvent as LoggingEvent
-import java.util.Date as Date
-import ch.qos.logback.classic.Level as Level
 
 #---------------------------------------------------------------------------
 #   The logging record
@@ -24,89 +24,90 @@ class LogRecorder:
         else:
             self.scope = "client"
             self.clientId = system.util.getClientId()
-        self.logger = LogMaker.getLogger(self.name,self.projectName) 
+        
+        self.logger = LogProps.getLogger(self.name)
         
     def trace(self, msg):
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.TRACE)
-        self.apply(event)
+        self.setAttributes()
+        self.logger.trace(msg)
         
     def tracef(self, msg, *args):
-        msg = msg % tuple(args)   
-        event = LoggingEvent() 
-        event.setMessage(msg)
-        event.setLevel(Level.TRACE)
-        self.apply(event)
+        self.setAttributes()
+        msg = msg % tuple(args)
+        self.logger.trace(msg)
 
     def debug(self, msg):
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.DEBUG)
-        self.apply(event)
+        self.setAttributes()
+        self.logger.debug(msg)
 
     def debugf(self, msg, *args):
+        self.setAttributes()
         msg = msg % tuple(args) 
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.DEBUG)     
-        self.apply(event)
+        self.logger.debug(msg)
 
     def info(self, msg):
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.INFO)
-        self.apply(event)
+        self.setAttributes()
+        self.logger.info(msg)
         
     def infof(self, msg, *args):
+        self.setAttributes()
         msg = msg % tuple(args)
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.INFO)
-        self.apply(event)
+        self.logger.info(msg)
 
-    def warning(self, msg):
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.WARN)
-        self.apply(event)
+    def warn(self, msg):
+        self.setAttributes()
+        self.logger.warn(msg)
 
-    def warningf(self, msg, *args):
+    def warnf(self, msg, *args):
+        self.setAttributes()
         msg = msg % tuple(args) 
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.WARN)
-        self.apply(event)
+        self.logger.warn(msg)
     
-    def error(self, msg, *args):
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.ERROR)
-        self.apply(event)
+    def error(self, msg):
+        self.setAttributes()
+        self.logger.error(msg)
 
     def errorf(self, msg, *args):
+        self.setAttributes()
         msg = msg % tuple(args) 
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.ERROR)
-        self.apply(event)
+        self.logger.error(msg)
 
-    def critical(self, msg):
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.FATAL)
-        self.apply(event)
+    # Place attributes into the MDC specific to this message
+    # MDC = Mapped Diagnostic Contexts
+    def setAttributes(self):
+        # Get a stack track and fill in line number, function and module
+        self.findCaller()
+        MDC.put(LogMaker.CLIENT_KEY,self.clientId)
+        MDC.put(LogMaker.PROJECT_KEY,self.projectName)
 
-    def criticalf(self, msg, *args):
-        msg = msg % tuple(args) 
-        event = LoggingEvent()
-        event.setMessage(msg)
-        event.setLevel(Level.FATAL)
-        self.apply(event)
 
-    def apply(self, event):
-        event.setTimeStamp(Date().getTime())
-        event.getMDCPropertyMap().put(LogMaker.CLIENT_KEY,self.clientId)
-        event.getMDCPropertyMap().put(LogMaker.PROJECT_KEY,self.projectName)
-        self.logger.callAppenders(event)
+
+    # next bit filched from 1.5.2's inspect.py
+    def currentframe(self):
+        """Return the frame object for the caller's stack frame."""
+        try:
+            raise Exception
+        except:
+            return sys.exc_traceback.tb_frame.f_back
+
+    # Iterate over the stack trace to find the caller.
+    # When we've found it, store results in the MDC
+    def findCaller(self):
+        """
+        Find the stack frame of the caller so that we can note the source
+        file name, line number and function name.
+        """
+        f = self.currentframe().f_back
+        while hasattr(f, "f_code"):
+            co = f.f_code
+            filename = os.path.normcase(co.co_filename)
+            #print filename, f.f_lineno, co.co_name
+            if filename == __file__:
+                f = f.f_back
+                continue
+            MDC.put(LogMaker.FILE_KEY,filename)
+            MDC.put(LogMaker.FUNCTION_KEY,co.co_name)
+            MDC.put(LogMaker.LINE_KEY,str(f.f_lineno))
+            MDC.put(LogMaker.MODULE_KEY,os.path.splitext(filename)[0])
+            break
 
