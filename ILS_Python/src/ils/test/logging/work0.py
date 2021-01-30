@@ -6,23 +6,23 @@ Created on Nov 30, 2020
 
 import time
 
-from ils.logging import DEFAULT_LEVEL_COMBO_CFG
-from ils.test.logging.test import setLoggerToInfo, setLoggerToDebug, setLoggerToTrace, setLoggerToOff
+#from ils.logging import DEFAULT_LEVEL_COMBO_CFG
+#from ils.test.logging.test import setLoggerToInfo, setLoggerToDebug, setLoggerToTrace, setLoggerToOff
 
 import system.ils.log.properties as LogProps 
 log = LogProps.getLogger('ils.test.logging.work')
 
-def setInfo():
-    setLoggerToInfo(log)
+#def setInfo():
+#    setLoggerToInfo(log)
     
-def setTrace():
-    setLoggerToTrace(log)
+#def setTrace():
+#    setLoggerToTrace(log)
     
-def setDebug():
-    setLoggerToDebug(log)
+#def setDebug():
+#    setLoggerToDebug(log)
     
-def setOff():
-    setLoggerToOff(log)
+#def setOff():
+#    setLoggerToOff(log)
 
 def work():
     print "In %s.work()" % (__name__)
