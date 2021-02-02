@@ -99,13 +99,13 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
         screenedRecommendationList=[]
         for recommendation in rawRecommendationList:
             if abs(recommendation.get("Value",0.0)) < zeroChangeThreshold:
-                log.tracef("...removing a no change recommendation: %s", str(recommendation))
+                log.tracef("...removing a no change recommendation (using threshold %.6f): %s", zeroChangeThreshold, str(recommendation))
             else:
                 screenedRecommendationList.append(recommendation)
 
         # If the FD is a text recommendation then the FD will be cleared when the loud workspace is acknowledged!
         if not(postTextRecommendation) and len(screenedRecommendationList) == 0:
-            log.infof("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s...", str(finalDiagnosisId), finalDiagnosisName)
+            log.infof("Performing an automatic NO-DOWNLOAD because there are no recommendations for final diagnosis %s - %s after screening for no change recommendations...", str(finalDiagnosisId), finalDiagnosisName)
             from ils.diagToolkit.common import fetchPostForApplication
             post=fetchPostForApplication(application, database)
                 

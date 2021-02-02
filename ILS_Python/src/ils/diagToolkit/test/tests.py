@@ -284,7 +284,19 @@ def test11a(db):
     T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, minimumIncrement=20.0, db=db)
     T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, db=db)
     T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, db=db)
-    insertApp1Families(appId,T1Id,T2Id,T3Id, db=db)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, db=db, trapInsignificantRecommendations=1)
+    # Insert a diagnosis Entry - This simulates the FD becoming True
+    postDiagnosisEntry(project, applicationName, 'FT_Family1_1', 'FT_FD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM", database=db)
+    return applicationName
+
+def test11a2(db):
+    system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    applicationName='FINAL_TEST_1'
+    appId=insertApp1(db)
+    T1Id=insertQuantOutput(appId, 'TESTQ1', T1TagName, 9.6, minimumIncrement=20.0, db=db)
+    T2Id=insertQuantOutput(appId, 'TESTQ2', T2TagName, 23.5, db=db)
+    T3Id=insertQuantOutput(appId, 'TESTQ3', T3TagName, 46.3, db=db)
+    insertApp1Families(appId,T1Id,T2Id,T3Id, db=db, trapInsignificantRecommendations=0)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family1_1', 'FT_FD1_1_1', 'FD_UUID','DIAGRAM_UUID', provider="XOM", database=db)
     return applicationName

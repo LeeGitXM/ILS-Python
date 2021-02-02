@@ -84,7 +84,7 @@ def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
         
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": move})
-    recommendations.append({"QuantOutput": "TEST_TC102", "Value": 45.9})
+    #recommendations.append({"QuantOutput": "TEST_TC102", "Value": 45.9})
     return True, explanation, recommendations
 
 def fd1_1_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):

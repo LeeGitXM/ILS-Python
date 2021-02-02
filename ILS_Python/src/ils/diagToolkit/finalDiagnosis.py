@@ -31,15 +31,18 @@ def manageFinalDiagnosisGlobally(projectName, applicationName, familyName, final
     _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
 
 
-def manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
+def manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider="", projectName=""):
     '''
     This is called from a client (and runs in a client) to directly manage a final diagnosis.
-    Because this runs ina client we can get the project automatically
+    Because this runs in a client we can get the project automatically.
+    This may also be called from an SFC in which case the project MUST be supplied or it won't notify the client, but the FD will be managed and make recommendations.
     '''
     log.infof("In %s.manageFinalDiagnosis()", __name__)
 
-    projectName = system.util.getProjectName()
-    log.tracef("...fetched project: %s", projectName)
+    if projectName == "":
+        projectName = system.util.getProjectName()        
+        log.tracef("...fetched project: %s", projectName)
+
     _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
 
 

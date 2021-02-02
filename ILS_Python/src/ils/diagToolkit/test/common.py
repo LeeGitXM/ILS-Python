@@ -500,7 +500,8 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     FD125Priority=10.2,
     FD126Priority=1.2,
     insertExtraRecDef=False,
-    db="CRAP"
+    db="CRAP",
+    trapInsignificantRecommendations=0
     ):
     
     family = 'FT_Family1_1'
@@ -510,7 +511,8 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     finalDiagnosis = 'FT_FD1_1_1'
     finalDiagnosisPriority=FD111Priority
     textRecommendation = "Final Diagnosis 1.1.1"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD111calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD111calculationMethod, textRecommendation, 
+                        postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
 
     family = 'FT_Family1_2'
@@ -520,7 +522,8 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     finalDiagnosis = 'FT_FD1_2_1'
     finalDiagnosisPriority = FD121Priority
     textRecommendation = "Final Diagnosis 1.2.1"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD121calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD121calculationMethod, textRecommendation, 
+                                          postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
     insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
     if insertExtraRecDef:
@@ -529,14 +532,16 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     finalDiagnosis = 'FT_FD1_2_2'
     finalDiagnosisPriority=FD122Priority
     textRecommendation = "Final Diagnosis 1.2.2"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD122calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD122calculationMethod, textRecommendation, 
+                                          postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
     insertRecommendationDefinition(finalDiagnosisId, T3Id, db)
     
     finalDiagnosis = 'FT_FD1_2_3'
     finalDiagnosisPriority=FD123Priority
     textRecommendation = "Final Diagnosis 1.2.3"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD123calculationMethod, textRecommendation, postProcessingCallback=postProcessingCallback, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD123calculationMethod, textRecommendation, 
+                                          postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
     insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
     insertRecommendationDefinition(finalDiagnosisId, T3Id, db)
@@ -544,17 +549,20 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     finalDiagnosis = 'FT_FD1_2_4'
     finalDiagnosisPriority=FD124Priority
     textRecommendation = "Final Diagnosis 1.2.4 is CONstant"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD124calculationMethod, textRecommendation, constant=1, postProcessingCallback=postProcessingCallback, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD124calculationMethod, textRecommendation, 
+                                          constant=1, postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     
     finalDiagnosis = 'FT_FD1_2_5'
     finalDiagnosisPriority=FD125Priority
     textRecommendation = "Final Diagnosis 1.2.5 is a low priority text recommendation.  "
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD125calculationMethod, textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD125calculationMethod, textRecommendation, 
+                                          postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
 
     finalDiagnosis = 'FT_FD1_2_6'
     finalDiagnosisPriority=FD126Priority
     textRecommendation = "Final Diagnosis 1.2.6 is a high priority text recommendation which is correct 95% of the time.  "
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD126calculationMethod, textRecommendation, postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD126calculationMethod, textRecommendation, 
+                                          postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
 
 # Create everything required for the APP2 test
 def insertApp2(db):
@@ -697,7 +705,7 @@ def insertFamily(familyName, applicationId, familyPriority, db):
 # Create a final diagnosis
 def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod='', 
     textRecommendation='', constant=0, postTextRecommendation=0, postProcessingCallback=None, 
-    refreshRate=300, db="CRAP"):
+    refreshRate=300, db="CRAP", trapInsignificantRecommendations=0):
 
 #    SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, FamilyId, FinalDiagnosisPriority, CalculationMethod, "\
 #        " TextRecommendation, Constant, PostTextRecommendation, " \
@@ -709,10 +717,10 @@ def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calcu
     
     SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, FamilyId, FinalDiagnosisPriority, CalculationMethod, "\
             " TextRecommendation, Constant, PostTextRecommendation, " \
-            " PostProcessingCallback, RefreshRate, Active, State) "\
-            " values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0)"
+            " PostProcessingCallback, RefreshRate, Active, State, TrapInsignificantRecommendations) "\
+            " values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)"
     args = [finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod, 
-        textRecommendation, constant, postTextRecommendation, postProcessingCallback, refreshRate]
+        textRecommendation, constant, postTextRecommendation, postProcessingCallback, refreshRate, trapInsignificantRecommendations]
     
     logger.tracef(SQL)
     logger.tracef("%s", str(args))
