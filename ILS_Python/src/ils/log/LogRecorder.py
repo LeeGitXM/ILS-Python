@@ -5,6 +5,7 @@ imports require the ils-common jar file and the ILS Logger module
 import os,sys
 import system
 import system.ils.log.properties as LogProps
+import ch.qos.logback.classic.Level as Level
 import org.slf4j.MDC as MDC
 import com.ils.common.log.LogMaker as LogMaker
 
@@ -25,7 +26,9 @@ class LogRecorder:
             self.scope = "client"
             self.clientId = system.util.getClientId()
         
-        self.logger = LogProps.getLogger(self.name)
+        #self.logger = LogProps.getLogger(self.name)
+        # Standard call returns a LoggerEx which is itself a wrapper
+        self.logger = system.util.getLogger(self.name)
         
     def trace(self, msg):
         self.setAttributes()
@@ -111,3 +114,11 @@ class LogRecorder:
             MDC.put(LogMaker.MODULE_KEY,os.path.splitext(filename)[0])
             break
 
+    def getLevel(self):
+        level = str(self.logger.getLoggerSLF4J().getLevel())
+        #print "LogRecorder: get level ",level
+        return level
+        
+    def setLevel(self,level):
+        #print "LogRecorder: set level ",level
+        self.logger.getLoggerSLF4J().setLevel(Level.valueOf(level))
