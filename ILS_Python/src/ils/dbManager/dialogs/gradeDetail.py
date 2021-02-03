@@ -53,7 +53,11 @@ def requery(rootContainer):
         
     active = getUserDefaults("ACTIVE")
     if active:
-        andWhere = andWhere+ " AND GM.Active = 1"    
+        andWhere = andWhere+ " AND GM.Active = 1"
+        
+    previewActiveOnly = system.tag.read('[Client]Preview Active Details Only').value
+    if previewActiveOnly:
+        andWhere = andWhere+ " AND GD.RowActive = 1"
     
     SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, GD.Grade, VD.ValueId, VD.PresentationOrder, "\
         " GD.Version, GM.Active, VD.Description, GD.RecommendedValue, GD.LowLimit, GD.HighLimit, GD.RowActive, VT.ValueType "\
