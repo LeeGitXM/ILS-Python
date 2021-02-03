@@ -101,11 +101,11 @@ class LogRecorder:
         while hasattr(f, "f_code"):
             co = f.f_code
             filename = os.path.normcase(co.co_filename)
-            #print filename, f.f_lineno, co.co_name
+            print filename, f.f_lineno, co.co_name
             if filename == __file__:
                 f = f.f_back
                 continue
-            MDC.put(LogMaker.FILE_KEY,filename)
+
             MDC.put(LogMaker.FUNCTION_KEY,co.co_name)
             MDC.put(LogMaker.LINE_KEY,str(f.f_lineno))
             MDC.put(LogMaker.MODULE_KEY,os.path.splitext(filename)[0])
