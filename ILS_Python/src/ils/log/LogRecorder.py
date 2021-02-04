@@ -105,18 +105,24 @@ class LogRecorder:
         Find the stack frame of the caller so that we can note the source
         file name, line number and function name.
         """
+        __normFile__ = os.path.normcase(__file__)
         f = self.currentframe().f_back
         while hasattr(f, "f_code"):
             co = f.f_code
             filename = os.path.normcase(co.co_filename)
-            #print filename, f.f_lineno, co.co_name
-            if filename == __file__:
+            if filename == __normFile__:
                 f = f.f_back
                 continue
 
+            '''
+            If the call was from external Python the filename can be obnoxiously long, trim up to pylib
+            '''
+            if filename.find('pylib') > 0:
+                filename = filename[filename.find('pylib')+6:]
+                
             MDC.put(LogMaker.FUNCTION_KEY,co.co_name)
             MDC.put(LogMaker.LINE_KEY,str(f.f_lineno))
-            MDC.put(LogMaker.MODULE_KEY,os.path.splitext(filename)[0])
+            MDC.put(LogMaker.MODULE_KEY, filename)
             break
 
     def getLevel(self):
