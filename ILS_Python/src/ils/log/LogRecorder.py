@@ -23,8 +23,13 @@ class LogRecorder:
             self.scope = "Global"
             self.clientId = ""
         else:
-            self.scope = "client"
-            self.clientId = system.util.getClientId()
+            # Need to consider gateway activity such as a gateway timer script, belongs to a project but runs in the gateway
+            try:
+                self.scope = "client"
+                self.clientId = system.util.getClientId()
+            except:
+                self.scope = "gateway"
+                self.clientId = ""
         
         #self.logger = LogProps.getLogger(self.name)
         # Standard call returns a LoggerEx which is itself a wrapper
@@ -104,7 +109,7 @@ class LogRecorder:
         while hasattr(f, "f_code"):
             co = f.f_code
             filename = os.path.normcase(co.co_filename)
-            print filename, f.f_lineno, co.co_name
+            #print filename, f.f_lineno, co.co_name
             if filename == __file__:
                 f = f.f_back
                 continue
