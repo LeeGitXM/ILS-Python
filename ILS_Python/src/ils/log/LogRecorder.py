@@ -1,5 +1,7 @@
 '''
-imports require the ils-common jar file and the ILS Logger module
+imports require the ils-common jar file and the ILS Logger module.
+We believe that the use of MDC is appropriate here because in client
+scope, there should only be one project per JVM.
 '''
 #
 import os,sys
