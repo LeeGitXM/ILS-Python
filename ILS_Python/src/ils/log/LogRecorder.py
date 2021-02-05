@@ -9,6 +9,17 @@ import ch.qos.logback.classic.Level as Level
 import org.slf4j.MDC as MDC
 import com.ils.common.log.LogMaker as LogMaker
 
+# next bit filched from 1.5.2's inspect.py
+def currentframe():
+    """Return the frame object for the caller's stack frame."""
+    try:
+        raise Exception
+    except:
+        return sys.exc_traceback.tb_frame.f_back
+
+if hasattr(sys, '_getframe'): currentframe = lambda: sys._getframe(3)
+# done filching
+
 #---------------------------------------------------------------------------
 #   The logging record
 #---------------------------------------------------------------------------
@@ -54,7 +65,9 @@ class LogRecorder:
         self.logger.debug(msg)
 
     def info(self, msg):
+        print "In info() with %s" % (msg)
         self.setAttributes()
+        print "...now passing to logger..."
         self.logger.info(msg)
         
     def infof(self, msg, *args):
@@ -84,11 +97,14 @@ class LogRecorder:
     # MDC = Mapped Diagnostic Contexts
     def setAttributes(self):
         # Get a stack track and fill in line number, function and module
-        self.findCaller()
+        fn, lno, func = self.findCaller()
+        
+        MDC.put(LogMaker.MODULE_KEY, fn)
+        MDC.put(LogMaker.FUNCTION_KEY, func)
+        MDC.put(LogMaker.LINE_KEY,str(lno))
+        
         MDC.put(LogMaker.CLIENT_KEY,self.clientId)
         MDC.put(LogMaker.PROJECT_KEY,self.projectName)
-
-
 
     # next bit filched from 1.5.2's inspect.py
     def currentframe(self):
@@ -106,24 +122,26 @@ class LogRecorder:
         file name, line number and function name.
         """
         __normFile__ = os.path.normcase(__file__)
-        f = self.currentframe().f_back
+        print "In findCaller() - %s" % (__normFile__)
+        #f = self.currentframe().f_back
+        f = currentframe().f_back
+        rv = "(unknown file)", 0, "(unknown function)"
         while hasattr(f, "f_code"):
             co = f.f_code
             filename = os.path.normcase(co.co_filename)
+            print "  current frame: ", filename
             if filename == __normFile__:
+                print "   *** found this frame, now go back one ***"
                 f = f.f_back
                 continue
-
-            '''
-            If the call was from external Python the filename can be obnoxiously long, trim up to pylib
-            '''
+        
+            '''  If the call was from external Python the filename can be obnoxiously long, trim up to pylib '''
             if filename.find('pylib') > 0:
                 filename = filename[filename.find('pylib')+6:]
-                
-            MDC.put(LogMaker.FUNCTION_KEY,co.co_name)
-            MDC.put(LogMaker.LINE_KEY,str(f.f_lineno))
-            MDC.put(LogMaker.MODULE_KEY, filename)
+            
+            rv = (filename, f.f_lineno, co.co_name)
             break
+        return rv
 
     def getLevel(self):
         level = str(self.logger.getLoggerSLF4J().getLevel())
