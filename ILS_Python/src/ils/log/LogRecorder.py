@@ -67,9 +67,7 @@ class LogRecorder:
         self.logger.debug(msg)
 
     def info(self, msg):
-        print "In info() with %s" % (msg)
         self.setAttributes()
-        print "...now passing to logger..."
         self.logger.info(msg)
         
     def infof(self, msg, *args):
@@ -124,16 +122,14 @@ class LogRecorder:
         file name, line number and function name.
         """
         __normFile__ = os.path.normcase(__file__)
-        print "In findCaller() - %s" % (__normFile__)
-        #f = self.currentframe().f_back
+
         f = currentframe().f_back
         rv = "(unknown file)", 0, "(unknown function)"
         while hasattr(f, "f_code"):
             co = f.f_code
             filename = os.path.normcase(co.co_filename)
-            print "  current frame: ", filename
+
             if filename == __normFile__:
-                print "   *** found this frame, now go back one ***"
                 f = f.f_back
                 continue
         
