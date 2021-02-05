@@ -4,14 +4,13 @@ Created on Aug 29, 2020
 @author: aedmw
 '''
 import system, datetime, string
-from ils.dataset.util import tagToList, listToTag, toList, fromList
+from ils.dataset.util import toList, fromList
 from ils.common.util import escapeSqlQuotes
-import ils.logging as logging
-from com.jidesoft.grid import Row
-log = system.util.getLogger('com.ils.logging.viewer')    
 
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
-MAIN_SQL = 'SELECT id, timestamp, log_level,  log_level_name, logger_name, module, function_name, log_message, project, scope, client_id, line_number,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
+MAIN_SQL = 'SELECT id, timestamp, log_level, log_level_name, logger_name, log_message, module, function_name, line_number, project, scope, client_id,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
 SUB_SQL = "SELECT TOP %d * FROM log WHERE timestamp > '%s' AND timestamp < '%s' %s ORDER BY timestamp DESC"
 DATE_FORMAT = "YYYY-MM-dd HH:mm:ss"
 FILTER_LIST = ["client_id", "function_name", "log_level_name", "log_message", "logger_name","module", "process_id", "project", "scope"]
@@ -41,11 +40,8 @@ def clientStartup():
     system.tag.write("[Client]Logging/Realtime Value", 10)
     system.tag.write("[Client]Logging/Mode", "Realtime")
 
-
 def internalFrameOpened(rootContainer):
-    #from com.inductiveautomation.factorypmi.application.components.template import TemplateHolder 
-    log.tracef("In IntenalFrameOpened")
-    realTimeContainer = rootContainer.getComponent("Date Time Control Container").getComponent("Realtime Container")
+    log.infof("In %s.IntenalFrameOpened()", __name__)
 
 def resetAllFiltersAction(rootContainer):
     '''
@@ -53,10 +49,10 @@ def resetAllFiltersAction(rootContainer):
     This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
     project was last saved by the designer.
     '''         
-    resetAllFilters(rootContainer)
+    resetAllFilters()
     update(rootContainer)
     
-def resetAllFilters(rootContainer):
+def resetAllFilters():
     '''
     The logging UI uses client tags.  Client tags are a project resource and are created automatically for each client when it connects.
     This should be added to the client startup script to initialize the client tags, otherwise they will have whatever was in them when the 
@@ -118,7 +114,6 @@ def setFilterMode(table, columnName, mode):
     tagpath = "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)    
     system.tag.write(tagpath, mode)
     update(rootContainer)
-    
     
 def readFilter(columnName):
     tagpaths = [
@@ -200,7 +195,11 @@ def update(rootContainer):
     SQL = MAIN_SQL % subquery
     log.tracef(SQL)
     
+    startTime = system.date.now()
     pds = system.db.runQuery(SQL, db)
+    endTime = system.date.now()
+    queryTime = system.date.millisBetween(startTime, endTime)
+    log.tracef("The query took %.3f ms", queryTime / 1000.0)
     ds = system.dataset.toDataSet(pds)
     
     order = system.tag.read(ORDER_TAGPATH).value
