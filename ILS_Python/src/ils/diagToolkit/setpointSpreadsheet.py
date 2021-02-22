@@ -50,7 +50,7 @@ def refresh(rootContainer):
 
 
 def getSetpointSpreadsheetDataset(post, db):
-    log.infof("In %s.getSetpointSpreadsheetDataset()...", __name__)
+    log.infof("In %s.getSetpointSpreadsheetDataset() using %s...", __name__, db)
     from ils.diagToolkit.common import fetchActiveOutputsForPost
     pds = fetchActiveOutputsForPost(post, db)
     log.infof("...fetched %d active outputs", len(pds))
@@ -85,6 +85,7 @@ def getSetpointSpreadsheetDataset(post, db):
             else:
                 actionValue = 1
             applicationRow = ['app',i,0,0,downloadAction,actionValue,application,'','',0,False,0,0,'','','',""]
+            log.tracef("Appending application row: %s", str(applicationRow))
             rows.append(applicationRow)
             i = i + 1
 
@@ -247,10 +248,11 @@ def updateApplicationAction(rootContainer, ds, row, action):
     SQL = "update DtApplication set DownloadAction = '%s' where ApplicationName = '%s'" % (string.upper(action), applicationName)
     system.db.runUpdateQuery(SQL, database)
 
-def fetchApplicationDownloadAction(applicationName, database):
-    log.tracef("In %s.fetchApplicationDownloadAction()", __name__)
+def fetchApplicationDownloadAction(applicationName, db):
+    log.tracef("In %s.fetchApplicationDownloadAction() using %s", __name__, db)
     SQL = "select DownloadAction from DtApplication where applicationName = '%s'" % (applicationName)
-    downloadAction = system.db.runScalarQuery(SQL, db=database)
+    log.tracef(SQL)
+    downloadAction = system.db.runScalarQuery(SQL, db)
     log.tracef("Fetched %s for %s", downloadAction, applicationName)
     return downloadAction
 
@@ -398,6 +400,7 @@ def statusCallback(event):
 
 # This is called from the recalc button on the setpoint spreadsheet
 def recalcCallback(event):
+    log.infof("In %s.recalcCallback()", __name__)
     rootContainer=event.source.parent
     rootContainer.recalculateFlag=True
     post=rootContainer.post
@@ -406,6 +409,7 @@ def recalcCallback(event):
     
     # Don't do a recalc if there is a download in progress
     if rootContainer.downloadActive:
+        log.infof("...exiting because a download is active!")
         return
     
     repeater=rootContainer.getComponent("Template Repeater")
@@ -413,6 +417,7 @@ def recalcCallback(event):
     
     activeApplication = isThereAnActiveApplication(repeater)
     if not(activeApplication):
+        log.infof("...exiting because the application is not active!")
         return
     
     ds=repeater.templateParams
@@ -614,11 +619,14 @@ def isThereAnActiveApplication(repeater):
     
     active = False
     for row in range(ds.rowCount):
+        #print "Row: ", row
         rowType=ds.getValueAt(row, "type")
 
+        #print "   type: ", rowType
         if string.upper(rowType) == "APP":
+            
             command=ds.getValueAt(row, "command")
-
+            #print "             Command: ", command
             if string.upper(command) == 'ACTIVE':
                 active = True
 

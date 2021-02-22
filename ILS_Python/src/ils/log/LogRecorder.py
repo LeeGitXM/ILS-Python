@@ -6,7 +6,6 @@ scope, there should only be one project per JVM.
 #
 import os,sys
 import system
-import system.ils.log.properties as LogProps
 import ch.qos.logback.classic.Level as Level
 import org.slf4j.MDC as MDC
 import com.ils.common.log.LogMaker as LogMaker
@@ -44,7 +43,6 @@ class LogRecorder:
                 self.scope = "gateway"
                 self.clientId = ""
         
-        #self.logger = LogProps.getLogger(self.name)
         # Standard call returns a LoggerEx which is itself a wrapper
         self.logger = system.util.getLogger(self.name)
         

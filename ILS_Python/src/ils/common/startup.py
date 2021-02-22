@@ -66,6 +66,12 @@ def client():
     '''
     clientCommon()
     
+    '''
+    Set the default values of the client tags that drive the log viewer
+    '''
+    from ils.logging.viewer import clientStartup
+    clientStartup()
+    
     project = system.util.getProjectName()
     print "The project is: %s (ils.common.startup.client)" % (project)
     

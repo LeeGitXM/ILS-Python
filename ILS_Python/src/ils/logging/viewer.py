@@ -5,7 +5,6 @@ Created on Aug 29, 2020
 '''
 import system, datetime, string
 from ils.dataset.util import toList, fromList
-from ils.common.util import escapeSqlQuotes
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -343,3 +342,7 @@ def deleteFilterValueAction(rootContainer):
     ''' Write the updated list out to the client tag '''
     system.tag.write(tagPath, fromList(filterList))
     refreshFilterWindow(rootContainer)
+    
+def escapeSqlQuotes(txt):
+    txt = string.replace(txt, "'", "''")
+    return txt

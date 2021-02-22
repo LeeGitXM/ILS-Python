@@ -15,6 +15,59 @@ def append(t1, t2):
         return t2
     return t1 + CR + t2
 
+def importCsv(filename=""):
+    if filename == "":
+        filename = system.file.openFile("csv")
+    
+    if filename in ["", None]:
+        return
+    
+    contents = system.file.readFileAsString(filename)
+    ds = parseCsv(contents)
+    return ds
+
+def parseCsv(contents):
+    records = contents.split('\n')
+    ds=parseRecords(records)
+    return ds
+
+def parseRecords(records):
+    i = 0
+    numTokens=100
+    data = []    
+    for line in records:
+        line=line[:len(line)-1] #Strip off the last character which is some sort of CRLF
+        tokens = line.split(',')
+        
+        if (i == 0):
+            line=line.rstrip(',')
+            header = line.split(',')
+            
+            numTokens=len(header)
+            print "Header: ", header
+        else:
+            tokens = line.split(',')
+            print "Data: ", tokens
+            if len(tokens) == numTokens:
+                data.append(tokens[:numTokens])
+            else:
+                print "Ignoring record due to incorrect number of tokens"
+        
+        i = i + 1
+
+    print "Data: ", data
+    
+    ds = system.dataset.toDataSet(header, data)
+    print "   ...parsed %i records!" % (len(data))
+    return ds
+
+
+
+
+
+
+
+
 def parseFilename(filename):
     if filename.find(":") > -1:
         drive = filename[:filename.find(":")]

@@ -461,7 +461,7 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
 # Unpack the payload into arguments and call the method that posts a diagnosis entry.  
 # This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def recalcMessageHandler(payload):
-    log.infof("In recalcMessageHandler, the payload is: %s", str(payload))
+    log.infof("In %s.recalcMessageHandler, the payload is: %s", __name__, str(payload))
     post=payload["post"]
     applications=payload["applications"]
     project=system.util.getProjectName()
