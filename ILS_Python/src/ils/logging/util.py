@@ -4,8 +4,8 @@ Created on Sep 4, 2020
 @author: aedmw
 '''
 import system, datetime
-import ils.logging
-log = ils.logging.xomGetLogger('ils.logging.util')
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder('ils.logging.util')
 
 def logCleanup(db_name='Logs'):
     '''
@@ -14,4 +14,4 @@ def logCleanup(db_name='Logs'):
     sql = 'DELETE FROM log WHERE retain_until < ?'
     values = [datetime.datetime.now()]
     return_val = system.db.runPrepUpdate(sql, values, db_name)
-    log.debugf('Deleted %d rows from log', return_val)
+    log.infof('Deleted %d rows from log', return_val)
