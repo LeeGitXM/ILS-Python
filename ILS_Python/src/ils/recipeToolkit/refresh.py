@@ -87,12 +87,12 @@ def refresher(familyName, ds, downloadType, provider, database=""):
     log.trace("  ...extracting tag names from the table...")
     for record in pds:
         step = record['Step']
-        changeLevel = record["Change Level"]
+        changeLevel = string.upper(record["Change Level"])
         writeLocation = record['Write Location']
         log.trace("Step: %s <%s> <%s>" % ( str(step), writeLocation, record['Store Tag']))
 
         storTag = record['Store Tag']
-        if writeLocation != "" and writeLocation != None and storTag not in ["", None, "NULL", "null"]:
+        if writeLocation != "" and writeLocation != None and storTag not in ["", None, "NULL", "null"] and changeLevel <> "CC":
             if string.upper(writeLocation) == localWriteAlias:
                 if storTag not in localTagNames:
                     localTagNames.append(storTag)
@@ -101,7 +101,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
                     tagNames.append(storTag)
 
         compTag = record['Comp Tag']
-        if writeLocation != "" and writeLocation != None and compTag not in ["", None, "NULL", "null"]:
+        if writeLocation != "" and writeLocation != None and compTag not in ["", None, "NULL", "null"] and changeLevel <> "CC":
             if string.upper(writeLocation) == localWriteAlias:
                 if compTag not in localTagNames:
                     localTagNames.append(compTag)
@@ -136,6 +136,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
     for record in pds:
         step = record['Step']
         writeLocation = record['Write Location']
+        changeLevel = string.upper(record["Change Level"])
         pendVal = record['Pend']
         storVal = ""
         storQuality = ""
@@ -147,7 +148,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
         planStatus = "readOnly"
 
         storTag = record['Store Tag']
-        if writeLocation != "" and writeLocation != None and storTag not in ["", None, "NULL", "null"]:
+        if writeLocation != "" and writeLocation != None and storTag not in ["", None, "NULL", "null"] and changeLevel <> "CC":
             if string.upper(writeLocation) == localWriteAlias:
                 idx = localTagNames.index(storTag)
                 storVal = localValues[idx].value
@@ -160,7 +161,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
             ds = system.dataset.setValue(ds, i, 'Stor', storVal)
     
         compTag = record['Comp Tag']
-        if writeLocation != "" and writeLocation != None and compTag not in ["", None, "NULL", "null"]:
+        if writeLocation != "" and writeLocation != None and compTag not in ["", None, "NULL", "null"] and changeLevel <> "CC":
             if string.upper(writeLocation) == localWriteAlias:
                 idx = localTagNames.index(compTag)
                 compVal = localValues[idx].value
@@ -182,7 +183,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
         if downloadType == 'MidRun':
             reason = ""
         else:
-            if writeLocation == "" or writeLocation == None:
+            if writeLocation == "" or writeLocation == None or changeLevel == "CC":
                 reason = ""
                 planStatus = "noChange"
                 download = False

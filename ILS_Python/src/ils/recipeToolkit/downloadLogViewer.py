@@ -6,15 +6,17 @@ Created on Nov 9, 2014
 
 import system
 from ils.common.config import getDatabaseClient
+from ils.log.LogRecorder import LogRecorder
+logger = LogRecorder(__name__)
 
 def display():
-    print "Displaying the download log window"
+    logger.infof("In %s.display() - Displaying the download log window", __name__)
     window="Recipe/DownloadLogViewer"
     system.nav.openWindow(window)
     system.nav.centerWindow(window)
 
 def internalFrameOpened(rootContainer):
-    print "internalFrameOpened"
+    logger.infof("In %s.internalFrameOpened", __name__)
 
     refreshMaster(rootContainer)
     refreshDetail(rootContainer)
@@ -23,13 +25,13 @@ def internalFrameOpened(rootContainer):
 
 
 def internalFrameActivated(rootContainer):
-    print "internalFrameActivated"
+    logger.infof("In %s.internalFrameActivated", __name__)
 
 # There is no good reason why I need to do this other than it was the only way I could get it to work.
 # I call the same code when they press the Refresh button as when the window opens and it worked there, but 
 # for some reason selecting the first row doesn't work when I open the window unless I do this wait. 
 def deferredRowSelection(rootContainer):
-    print "Selecting"
+    logger.infof("In %s.deferredRowSelection()", __name__)
     
     def select(rootContainer=rootContainer):
         masterTable = rootContainer.getComponent('MasterTable')
@@ -39,7 +41,7 @@ def deferredRowSelection(rootContainer):
         
 # Query the master table and update the table with the dataset.
 def refreshMaster(rootContainer):
-    print "Refreshing the master table..."
+    logger.infof("In %s.refreshMaster()", __name__)
 
     db = getDatabaseClient()
     masterTable = rootContainer.getComponent('MasterTable')
@@ -59,7 +61,7 @@ def refreshMaster(rootContainer):
             
 # Update the detail table for the row selected in the master table
 def refreshDetail(rootContainer):
-    print "Refreshing the detail table..."
+    logger.infof("In %s.refreshDetail()", __name__)
 
     db = getDatabaseClient()
     masterTable = rootContainer.getComponent('MasterTable')

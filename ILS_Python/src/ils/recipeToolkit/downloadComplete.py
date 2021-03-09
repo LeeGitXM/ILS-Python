@@ -56,6 +56,7 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
     failures = 0
     for record in pds:
         download = record["Download"]
+        changeLevel = string.upper(record["Change Level"])
         downloadType = record["Download Type"]
         downloadStatus = string.upper(record["Download Status"])
         reason = record["Reason"]
@@ -70,7 +71,7 @@ def downloadCompleteRunner(ds, logId, recipeKey, grade, version, automatedOrManu
             failures = failures + 1
             logDetail(logId, record["Store Tag"], record["Pend"], "Failure", record["Stor"], record["Comp"], record["Recc"], "", reason, database)
 
-        elif download:
+        elif download and changeLevel <> 'CC':
             downloads = downloads + 1
 
             if downloadStatus == 'SUCCESS':
