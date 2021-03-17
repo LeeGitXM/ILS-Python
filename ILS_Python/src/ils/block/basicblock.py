@@ -10,6 +10,7 @@
 import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
 import java.lang.Double as Double
 import java.lang.String as String
+import com.ils.common.GeneralPurposeDataContainer as GeneralPurposeDataContainer
 import time
 
 
@@ -21,6 +22,7 @@ class BasicBlock():
         self.state = "UNSET"
         self.quality = "good"
         self.time = 0
+        self.auxData = GeneralPurposeDataContainer()
         # Properties are a dictionary of attributes keyed by name
         # Properties attributes: name, value, editable, type(STRING,DOUBLE,INTEGER,BOOLEAN,OBJECT)
         #            The name attribute is set automatically to the key
@@ -54,7 +56,9 @@ class BasicBlock():
         self.value   = value
         self.quality = quality
         self.time    = time 
-      
+    # Return an empty extension data
+    def getAuxiliaryData(self):
+        return self.auxData
     # Return the class name. This is a fully qualified
     # path, including the module path 
     def getClassName(self):
@@ -81,36 +85,20 @@ class BasicBlock():
     # Return a list of all output ports
     def getOutputPorts(self):
         return self.outports
-    # Set the block's UUID (a string)
-    def setUUID(self,uid):
-        self.uuid = uid
-    # Set the block's parent's UUID (a string)
-    def setParentUUID(self,uid):
-        self.parentuuid = uid
-        
-    # Report to the engine that a new value has appeared at an output port
-    def postValue(self,port,value,quality,time):
-        self.handler.postValue(self.parentuuid,self.uuid,port,value,quality,long(time))
-    # Replace or add a property
-    # We expect the dictionary to have all the proper attributes
-    def setProperty(self,name,dictionary):
-        #print "BasicBlock.setProperty:",name,"=",dictionary
-        self.properties[name] = dictionary
-        self.handler.sendPropertyNotification(self.uuid,name,dictionary.get("value",""))
-        
-    # Programmatically set the state. The default implementation has no side effects.
-    def setState(self,newState):
-        #print "BasicBlock.setProperty:",name,"=",dictionary
-        self.state = newState
-        
+        # Trigger property and connection notifications on the block
+    def notifyOfStatus(self):
+        pass
+    def onDelete(self):
+        pass
+    def onSave(self):
+        pass
     # Propagate the current state of the block. This default implementation
     # does nothing.
     def propagate(self):
         pass
-    # Trigger property and connection notifications on the block
-    def notifyOfStatus(self):
-        pass
-    
+    # Report to the engine that a new value has appeared at an output port
+    def postValue(self,port,value,quality,time):
+        self.handler.postValue(self.parentuuid,self.uuid,port,value,quality,long(time))
     # Reset the block. This default implementation
     # sends notifications on all output connections.
     def reset(self):
@@ -123,6 +111,32 @@ class BasicBlock():
                 self.handler.sendConnectionNotification(self.uuid,anchor["name"],String.valueOf(Double.NaN),"Good",now)
             else:
                 self.handler.sendConnectionNotification(self.uuid,anchor["name"],"","Good",now)
+    #
+    def setAuxiliaryData(self,data):
+        self.auxData = data
+    # The proxy block contains the name.
+    # This method is intended as a hook for an extension function to do, essentially, a rename
+    def setName(self,name):
+        pass
+    # Replace or add a property
+    # We expect the dictionary to have all the proper attributes
+    def setProperty(self,name,dictionary):
+        #print "BasicBlock.setProperty:",name,"=",dictionary
+        self.properties[name] = dictionary
+        self.handler.sendPropertyNotification(self.uuid,name,dictionary.get("value",""))
+        
+    # Programmatically set the state. The default implementation has no side effects.
+    def setState(self,newState):
+        #print "BasicBlock.setProperty:",name,"=",dictionary
+        self.state = newState
+       
+    # Set the block's UUID (a string)
+    def setUUID(self,uid):
+        self.uuid = uid
+    # Set the block's parent's UUID (a string)
+    def setParentUUID(self,uid):
+        self.parentuuid = uid  
+           
     
     # Convenience method to extract the package name from a function
     # Use this for the import

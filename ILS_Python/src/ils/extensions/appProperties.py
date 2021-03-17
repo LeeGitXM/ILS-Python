@@ -3,6 +3,7 @@
 '''
 import system
 import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
+import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
 from ils.common.cast import toBit
 
 log = system.util.getLogger("com.ils.diagToolkit.extensions")
@@ -18,7 +19,7 @@ def delete(applicationUUID):
     '''
     log.infof("In %s.delete()", __name__)
     
-    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+
     handler = PythonRequestHandler()
     db = handler.getProductionDatabase()
     
@@ -56,8 +57,6 @@ def save(applicationUUID, aux):
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
     log.infof("In %s.save()", __name__)
-    
-    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
     handler = PythonRequestHandler()
     db = handler.getProductionDatabase()
     

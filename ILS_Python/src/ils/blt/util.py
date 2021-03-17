@@ -1,12 +1,13 @@
-#  Copyright 2014 ILS Automation
+#  Copyright 2014-2021 ILS Automation
 #
 # Utility functions for dealing with Python classes for
-# the block language toolkit. 
+# the block language toolkit. This module adds any arguments needed
+# for the block interface methods  to execute in a pure Python environment.
 # 
 import system
 from ils.block import basicblock
-# NOTE: We need these two imports in order to get the classes generically.
-# We require the "wild" import so that we can iterate over classes
+# NOTE: We need the next two imports in order to get the classes generically.
+# We require the "wild" imports so that we can iterate over classes
 # NOTE: __init__.py defines the modules
 
 import ils.block
@@ -18,7 +19,7 @@ log = system.util.getLogger("com.ils.block")
 
 def acceptValue(block,port,value,quality,time):
     '''
-    We've received a value on our input (there is only one).  We expect a truth value.
+    We've received a value on  the named port. The expected data type is known by the block.
         block - the python block object
         port  - the input port name
         value - the new value, a truth-value
@@ -31,7 +32,7 @@ def acceptValue(block,port,value,quality,time):
 
 
 def createBlockInstance(className, parent, uid, result):
-    ''' EXTERNALLY CALLABLE  Create an instance of a particular class.
+    ''' Create an instance of a particular class.
     The arglist contains:
          class - incoming class name
          parent - UUID string of enclosing diagram
@@ -186,7 +187,18 @@ def notifyOfStatus(block):
     if block!=None:
         block.notifyOfStatus()
 
-
+def onDelete(block):
+    '''
+    Perform any custom processing on a block removal
+    '''
+    block.onSave()
+    
+def onSave(block):
+    '''
+    Perform any custom processing on a block save or creation/
+    '''
+    block.onSave()
+    
 def reset(block):
     '''
     Given an instance of an executable block call its reset() method. 
@@ -194,7 +206,13 @@ def reset(block):
     if block!=None:
         block.reset()
         
-
+def setAuxiliaryData(block,aux):
+    '''
+    Set the auxiliary data of a block. The aux data are contained in a 
+    GeneralPurposeDataContainer structure. 
+    '''
+    block.setAuxiliaryData(aux)
+    
 def setBlockProperty(block,prop):
     '''
     Given an instance of an executable block, set one of its properties. The property
