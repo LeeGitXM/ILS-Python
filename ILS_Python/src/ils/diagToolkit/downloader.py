@@ -7,7 +7,9 @@ import system, string, threading, time
 from ils.io.util import getOuterUDT
 from ils.io.api import write, writeRamp
 from ils.queue.message import insertPostMessage
-log = system.util.getLogger("com.ils.diagToolkit.downloader")
+
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 class DownloadThread(threading.Thread):
     '''

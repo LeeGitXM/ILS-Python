@@ -17,7 +17,8 @@ from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClas
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 from ils.diagToolkit.api import resetManualMove
 
-log = system.util.getLogger("com.ils.diagToolkit.setpointSpreadsheet")
+from ils.log.LogRecorder import LogRecorder
+log=LogRecorder(__name__)
 
 def initialize(rootContainer):
     log.infof("In %s.initialize()...", __name__)
@@ -65,7 +66,7 @@ def getSetpointSpreadsheetDataset(post, db):
     application = ""
     i = 1
     for record in pds:
-        log.infof("%s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s", \
+        log.infof("%s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s - %s", \
                   record['ApplicationName'], record["QuantOutputName"], record["TagPath"], record["OutputLimitedStatus"], record["OutputLimited"], \
                   str(record["FeedbackOutput"]), str(record["FeedbackOutputManual"]), str(record["FeedbackOutputConditioned"]), str(record["ManualOverride"]), \
                   str(record["IncrementalOutput"]), str(record["CurrentSetpoint"]), str(record["FinalSetpoint"]), str(record["DisplayedRecommendation"]), str(record["QuantOutputId"]), \

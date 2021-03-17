@@ -7,7 +7,8 @@ Created on Sep 19, 2014
 import system, time
 import system.ils.blt.diagram as scriptingInterface
 
-log = system.util.getLogger("com.ils.diagToolkit.common")
+from ils.log.LogRecorder import LogRecorder
+log=LogRecorder(__name__)
 
 # -------------------------- Helper methods ----------------------
 # Return the ProcessDiagram at the specified path
@@ -401,7 +402,8 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
 def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
     SQL = "select upper(QO.QuantOutputName) QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
         " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
-        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
+        " FD.TrapInsignificantRecommendations "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
@@ -427,7 +429,8 @@ def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisNam
 def fetchActiveOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
     SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
         " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
-        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
+        " FD.TrapInsignificantRecommendations "\
         " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
@@ -467,7 +470,8 @@ def convertOutputRecordToDictionary(record):
     output['FeedbackOutputManual'] = record['FeedbackOutputManual']
     output['FeedbackOutputConditioned'] = record['FeedbackOutputConditioned']
     output['ManualOverride'] = record['ManualOverride']
-    output['IgnoreMinimumIncrement'] = record['IgnoreMinimumIncrement']    
+    output['IgnoreMinimumIncrement'] = record['IgnoreMinimumIncrement']
+    output['TrapInsignificantRecommendations'] = record['TrapInsignificantRecommendations']
     return output
 
 # Fetch the SQC blocks that led to a Final Diagnosis becoming true.

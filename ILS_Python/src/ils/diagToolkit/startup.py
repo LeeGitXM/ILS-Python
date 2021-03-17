@@ -7,7 +7,9 @@ Created on Feb 2, 2015
 import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from time import sleep
-log = LogUtil.getLogger("com.ils.diagToolkit")
+
+from ils.log.LogRecorder import LogRecorder
+log=LogRecorder(__name__)
 
 def gateway(tagProvider, isolationTagProvider, database):
     

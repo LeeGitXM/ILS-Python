@@ -281,7 +281,7 @@ def updateQuantOutputDownloadStatus(quantOutputId, downloadStatus, db):
     log.trace(SQL)
     system.db.runUpdateQuery(SQL, db)
 
-def constructDownloadLogbookMessageCRAP(post, applicationName, db):
+def constructDownloadLogbookMessage(post, applicationName, db):
     print "In %s.constructDownloadLogbookMessage()" % (__name__)
     from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
     from ils.diagToolkit.common import fetchHighestActiveDiagnosis

@@ -8,7 +8,7 @@ def diff(resultFilename, goldenFilename, logger, dateColumn=False, verbose=False
     import system
 
     def readFile(filename):
-        logger.trace("   ...reading the file %s..." % (filename))
+        logger.tracef("   ...reading the file %s...", filename)
         i = 0
         data = []
 

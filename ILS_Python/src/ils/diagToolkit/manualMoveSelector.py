@@ -4,7 +4,7 @@ Created on Jan 11, 2019
 @author: phass
 '''
 
-import system
+import system, string
 from ils.common.config import getDatabaseClient
 from com.jidesoft.grid import Row
 
@@ -23,7 +23,7 @@ def launcher(event):
     authorized = False
     for row in range(ds.getRowCount()):
         user = ds.getValueAt(row,0)
-        if user == username:
+        if string.lower(user) == string.lower(username):
             authorized = True
     
     if not(authorized):
@@ -32,8 +32,8 @@ def launcher(event):
     
     post = event.source.parent.post
     checkPost = event.source.parent.checkPost
-    dict = {"post":post, "checkPost":checkPost}
-    window = system.nav.openWindow("DiagToolkit/Manual Move Selector", dict)
+    args = {"post":post, "checkPost":checkPost}
+    window = system.nav.openWindow("DiagToolkit/Manual Move Selector", args)
     system.nav.centerWindow(window)
 
 def unauthorizedUserWarning(username):

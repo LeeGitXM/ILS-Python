@@ -52,7 +52,11 @@ class LogRecorder:
         
     def tracef(self, msg, *args):
         self.setAttributes()
-        msg = msg % tuple(args)
+        try:
+            msg = msg % tuple(args)
+        except:
+            msg = "Error in tracef() - not enough arguments in %s" % msg
+
         self.logger.trace(msg)
 
     def debug(self, msg):
@@ -61,7 +65,10 @@ class LogRecorder:
 
     def debugf(self, msg, *args):
         self.setAttributes()
-        msg = msg % tuple(args) 
+        try:
+            msg = msg % tuple(args) 
+        except:
+            msg = "Error in tracef() - not enough arguments in %s" % msg
         self.logger.debug(msg)
 
     def info(self, msg):
@@ -70,7 +77,10 @@ class LogRecorder:
         
     def infof(self, msg, *args):
         self.setAttributes()
-        msg = msg % tuple(args)
+        try:
+            msg = msg % tuple(args)
+        except:
+            msg = "Error in infof() - not enough arguments in %s" % msg
         self.logger.info(msg)
 
     def warn(self, msg):
@@ -79,7 +89,10 @@ class LogRecorder:
 
     def warnf(self, msg, *args):
         self.setAttributes()
-        msg = msg % tuple(args) 
+        try:
+            msg = msg % tuple(args) 
+        except:
+            msg = "Error in warnf() - not enough arguments in %s" % msg
         self.logger.warn(msg)
     
     def error(self, msg):
@@ -88,7 +101,10 @@ class LogRecorder:
 
     def errorf(self, msg, *args):
         self.setAttributes()
-        msg = msg % tuple(args) 
+        try:
+            msg = msg % tuple(args) 
+        except:
+            msg = "Error in errorf() - not enough arguments in %s" % msg
         self.logger.error(msg)
 
     # Place attributes into the MDC specific to this message

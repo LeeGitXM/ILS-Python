@@ -7,7 +7,9 @@ Created on Sep 18, 2016
 import system, string
 import system.ils.blt.diagram as diagram
 from ils.common.error import catchError
-log = system.util.getLogger("com.ils.diagToolkit.reset")
+
+from ils.log.LogRecorder import LogRecorder
+log=LogRecorder(__name__)
 
 '''
 Reset all of the applications for a unit - this is called for a grade change.  There is

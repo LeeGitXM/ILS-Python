@@ -13,7 +13,8 @@ from ils.queue.commons import getQueueForDiagnosticApplication
 from ils.queue.constants import QUEUE_INFO
 from ils.common.util import escapeSqlQuotes
 
-log = system.util.getLogger("com.ils.diagToolkit.common")
+from ils.log.LogRecorder import LogRecorder
+log=LogRecorder(__name__)
 
 def setTextOfRecommendation(applicationName, familyName, finalDiagnosisName, textRecommendation, db):
     ''' Return the ProcessDiagram at the specified path '''
