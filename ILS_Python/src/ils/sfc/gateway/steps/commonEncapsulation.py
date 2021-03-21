@@ -33,7 +33,19 @@ def monitorCalledChart(runId, chartPath, db):
         unit procedures or operations, the data for the running chart that we just started will be the last one in the dataset.  
         Read it now, get the UUID of the running chart and then use it for the rest of the monitor.
         '''
-        ds = system.sfc.getRunningCharts(chartPath)
+        
+        i = 0
+        while True:
+            print "Looking for a chart run id..."
+            ds = system.sfc.getRunningCharts(chartPath)
+            if ds.getRowCount() > 0:
+                print "--- FOUND IT ---"
+                break
+            
+            if i > 30:
+                return
+            i = i + 1
+            time.sleep(1)
         instanceId = ds.getValueAt(ds.getRowCount() - 1, "instanceId")
 
         chartState = RUNNING
