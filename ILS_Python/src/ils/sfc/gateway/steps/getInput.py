@@ -4,15 +4,15 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 
-import system, time
+import system
 from ils.sfc.common.util import isEmpty
 from ils.sfc.gateway.steps.commonInput import cleanup, initializeResponse
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, \
         logStepDeactivated, getTopChartRunId, getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
+from ils.sfc.recipeData.api import s88GetStep, substituteScopeReferences
 from ils.sfc.common.constants import BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
     WINDOW_ID, POSITION, SCALE, WINDOW_TITLE, PROMPT, DEFAULT_VALUE, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY, \
-    ID, STEP_ID, INSTANCE_ID, CHART_ID, WORK_DONE, CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
+    ID, INSTANCE_ID, CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
 
 def activate(scopeContext, stepProperties, state):
     buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
