@@ -46,14 +46,12 @@ def createBlockInstance(className, parent, uid, result):
     log.infof("...created!")
     result['instance'] = obj
 
-
-def propagate(block):
+def getAuxData(block,aux):
     '''
-     Given an instance of an executable block # Call its propagate() method. There is no shared dictionary.
+    Return the auxiliary data of a block. The aux data are contained in a 
+    GeneralPurposeDataContainer structure that must be supplied. 
     '''
-    if block!=None:
-        block.propagate()
-
+    
 
 def getBlockAnchors(block,anchors):
     '''
@@ -199,6 +197,14 @@ def onSave(block):
     '''
     block.onSave()
     
+
+def propagate(block):
+    '''
+     Given an instance of an executable block # Call its propagate() method. There is no shared dictionary.
+    '''
+    if block!=None:
+        block.propagate()
+
 def reset(block):
     '''
     Given an instance of an executable block call its reset() method. 
@@ -206,12 +212,12 @@ def reset(block):
     if block!=None:
         block.reset()
         
-def setAuxiliaryData(block,aux):
+def setAuxData(block,aux):
     '''
-    Set the auxiliary data of a block. The aux data are contained in a 
-    GeneralPurposeDataContainer structure. 
+    Set the auxiliary data of a block from a database.
+    This base method does nothing. 
     '''
-    block.setAuxiliaryData(aux)
+    pass
     
 def setBlockProperty(block,prop):
     '''

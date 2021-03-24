@@ -39,7 +39,7 @@ def rename(uuid,oldName,newName):
 
 
 
-def save(uuid,aux):
+def save(uuid):
     '''
     This method IS called when they do a save from the Designer.  
     It should really insert a new record into the DB for a new application, but I don't have enough info here to

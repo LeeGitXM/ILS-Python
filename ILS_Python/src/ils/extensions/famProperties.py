@@ -1,12 +1,12 @@
 '''
-  Designer/client scope extension functions dealing with Family instances.
+  Gateway scope extension functions dealing with Family instances.
 '''
 import system
-import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
+import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 from ils.diagToolkit.common import fetchApplicationId
 
-applicationRequestHandler = ApplicationRequestHandler()
 log = system.util.getLogger("com.ils.diagToolkit.extensions")
+handler = ControllerRequestHandler.getInstance()
 
 '''
 These run in Gateway scope
@@ -20,9 +20,6 @@ def delete(familyUUID):
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
     log.infof("In %s.delete() with family uuid: %s", __name__, familyUUID)
-    
-    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
-    handler = PythonRequestHandler()
     db = handler.getProductionDatabase()
     
     SQL = "delete from DtFamily where FamilyUUID = '%s'" % (familyUUID)
@@ -44,14 +41,14 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL,db)
     
     log.infof("In %s.rename()", __name__)
-    db = applicationRequestHandler.getProductionDatabase()
+    db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
-    db = applicationRequestHandler.getIsolationDatabase()
+    db = handler.getIsolationDatabase()
     renameInDatabase(uuid,oldName,newName,db)
     
 
    
-def save(familyUUID, aux):
+def save(familyUUID):
     '''
     This method IS called when they do a save from the Designer. 
     Although this is initiated from Designer - this runs in Gateway scope!
@@ -62,8 +59,6 @@ def save(familyUUID, aux):
     '''
     log.tracef("In %s.save()", __name__)
     
-    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
-    handler = PythonRequestHandler()
     db = handler.getProductionDatabase()
 
     from system.ils.blt.diagram import getFamilyName, getApplicationName
@@ -116,8 +111,8 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid,aux,db):
-    app  = applicationRequestHandler.getApplicationName(uuid)
-    name = applicationRequestHandler.getFamilyName(uuid)
+    app  = handler.getApplicationName(uuid)
+    name = handler.getFamilyName(uuid)
     
     properties = aux[0]
     
@@ -135,8 +130,8 @@ def getAux(uuid,aux,db):
 
 
 def setAux(uuid,aux,db):
-    app  = applicationRequestHandler.getApplicationName(uuid)
-    name = applicationRequestHandler.getFamilyName(uuid)
+    app  = handler.getApplicationName(uuid)
+    name = handler.getFamilyName(uuid)
     properties = aux[0]
     print "famProperties.setAux()  ...the application/family name is: ",app,"/",name,", properties:", properties
     

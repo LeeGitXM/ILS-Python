@@ -1,13 +1,12 @@
 '''
-  Designer/client scope extension functions dealing with Application instances.
+  Gateway scope extension functions dealing with Application instances.
 '''
 import system
-import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
-import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 from ils.common.cast import toBit
 
 log = system.util.getLogger("com.ils.diagToolkit.extensions")
-handler = ApplicationRequestHandler()
+handler = ControllerRequestHandler.getInstance()
 
 def delete(applicationUUID):
     '''
@@ -19,8 +18,6 @@ def delete(applicationUUID):
     '''
     log.infof("In %s.delete()", __name__)
     
-
-    handler = PythonRequestHandler()
     db = handler.getProductionDatabase()
     
     SQL = "delete from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
@@ -49,7 +46,7 @@ def rename(uuid,oldName,newName):
 
 
     
-def save(applicationUUID, aux):
+def save(applicationUUID):
     '''
     This method IS called when they do a save from the Designer.  
     It should really insert a new record into the DB for a new application, but I don't have enough info here to
@@ -57,7 +54,6 @@ def save(applicationUUID, aux):
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
     log.infof("In %s.save()", __name__)
-    handler = PythonRequestHandler()
     db = handler.getProductionDatabase()
     
     from system.ils.blt.diagram import getApplicationName
@@ -93,9 +89,7 @@ def save(applicationUUID, aux):
 
 
 '''
-These methods are usually called in Designer scope. However, we may be using either the
-production or isolation databases. The Gateway makes this call when converting into
-isolation mode. 
+These methods are called in Gateway scope on startup, or a project save. 
 
 The aux data structure is a Python list of three dictionaries. These are:
 properties, lists and maplists.

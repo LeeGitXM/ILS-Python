@@ -1,14 +1,14 @@
 '''
-  Designer/client scope extension functions dealing with FinalDiagnosis instances.
+  Gateway scope extension functions dealing with FinalDiagnosis instances.
 '''
 import system
-import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
+import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 from ils.common.cast import toBit
 from ils.common.database import toDateString
 from ils.sfc.common.util import logExceptionCause
 
-handler = ApplicationRequestHandler()
 log = system.util.getLogger("com.ils.diagToolkit.extensions")
+handler = ControllerRequestHandler.getInstance()
 
 '''
 Gateway Scope Functions
@@ -17,9 +17,6 @@ Gateway Scope Functions
 def delete(finalDiagnosisUUID):
     '''    Even though a delete is initiated from Designer scope, this runs in gateway scope!  '''
     log.infof("In %s.delete()", __name__)
-    
-    import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
-    handler = PythonRequestHandler()
     db = handler.getProductionDatabase()
     
     SQL = "delete from DtFinalDiagnosis where FinalDiagnosisUUID = '%s'" % (finalDiagnosisUUID)
@@ -30,7 +27,7 @@ def delete(finalDiagnosisUUID):
         log.infof("Error deleting Final diagnosis with UUID <%s> - %d rows were deleted!", finalDiagnosisUUID, rows)
     
 
-def save(uuid, aux):
+def save(uuid):
     '''
     This method IS called when they do a save from the Designer.  
     It should really insert a new record into the DB for a new application, but I don't have enough info here to

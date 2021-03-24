@@ -31,7 +31,11 @@ def delete(diagramUUID):
     log.tracef("...leaving %s.delete()", __name__)
     
 
-def save(diagramUUID, aux):
+def getAux(uuid,aux,db):
+    pass
+
+# UUID is a string representation of the diagram's iD
+def save(diagramUUID):
     log.tracef("In %s.save() - %s", __name__, diagramUUID)
     diagram = controllerRequestHandler.getDiagram(diagramUUID)
     applicationName  = controllerRequestHandler.getApplicationName(diagramUUID)
@@ -100,3 +104,6 @@ def save(diagramUUID, aux):
     else:
         log.warnf("Diagram not found for diagram UUID: <%s>!", str(diagramUUID) ) 
     
+# Not used
+def setAux(uuid,aux,db):
+    pass
