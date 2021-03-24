@@ -5,10 +5,10 @@ Created on Dec 9, 2015
 '''
 
 import system
-from ils.common.config import getDatabaseClient, getTagProviderClient, getIsolationModeClient
-from ils.sfc.client.util import getDatabase, getStartInIsolationMode
+from ils.common.config import getDatabaseClient
+from ils.sfc.client.util import getStartInIsolationMode
 from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
-from ils.sfc.common.constants import CANCELED, HANDLER, WINDOW
+from ils.sfc.common.constants import HANDLER, WINDOW
 from ils.common.windowUtil import positionWindow
 from ils.sfc.client.windowUtil import getWindowPath
 from ils.sfc.common.notify import sfcNotify

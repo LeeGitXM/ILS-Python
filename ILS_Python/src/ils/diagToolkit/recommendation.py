@@ -9,9 +9,10 @@ import sys, system, string, traceback
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR
 from ils.diagToolkit.constants import RECOMMENDATION_REC_MADE, RECOMMENDATION_NONE_MADE, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
-log = LogUtil.getLogger("com.ils.diagToolkit.recommendation")
-logSQL = LogUtil.getLogger("com.ils.diagToolkit.SQL")
 
+from ils.log.LogRecorder import LogRecorder
+log=LogRecorder(__name__)
+logSQL=LogRecorder(__name__ + ".SQL")
 
 def notifyConsole():
     print "Waking up the console"

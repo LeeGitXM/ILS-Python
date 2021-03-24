@@ -135,10 +135,13 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
     for record in pds:
         step = record["Step"]
         download = record["Download"]
+        changeLevel = string.upper(record["Change Level"])
         downloadType = string.upper(record["Download Type"])
         downloadStatus = string.upper(record["Download Status"])
+        
+        log.tracef("%d - %s - %s - %s", i, step, str(download), changeLevel)
 
-        if download:
+        if download and changeLevel <> 'CC':
             downloads = downloads + 1
 
             if downloadStatus == 'PENDING':

@@ -7,7 +7,9 @@ Created on Sep 13, 2016
 import system, time, string
 from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 from ils.common.util import escapeSqlQuotes
-logger=system.util.getLogger("com.ils.test")
+
+from ils.log.LogRecorder import LogRecorder
+logger=LogRecorder("com.ils.test")
 
 T1TagName='Sandbox/Diagnostic/T1'
 T2TagName='Sandbox/Diagnostic/T2'
@@ -203,7 +205,7 @@ def run():
             
     #----------------------------------------------------
     # Fetch Quant Outputs
-    def logQuantOutputs(post, filename, db):
+    def logQuantOutputs(post, applicationName, filename, db):
     
         SQL = "select QuantOutputName, TagPath, MostNegativeIncrement, MostPositiveIncrement, "\
             " MinimumIncrement, SetpointHighLimit, SetpointLowLimit, L.LookupName FeedbackMethod, "\
@@ -218,7 +220,8 @@ def run():
             " and A.UnitId = U.UnitId "\
             " and P.PostId = U.PostId "\
             " and P.Post = '%s' "\
-            " order by QuantOutputName" % (post)
+            " and A.ApplicationName = '%s' "\
+            " order by QuantOutputName" % (post, applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
         logger.trace("   fetched %i  QuantOutputs..." % (len(pds)))
@@ -248,12 +251,15 @@ def run():
 
     #----------------------------------------------------
     # Fetch Diagnosis
-    def logDiagnosis(post, filename, db):
+    def logDiagnosis(post, applicationName,  filename, db):
         SQL = "select FD.FinalDiagnosisName, DE.Status, DE.TextRecommendation, DE.RecommendationStatus, "\
             " DE.Multiplier, FD.Constant "\
-            " from DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
-            " where FD.FinalDiagnosisId = DE.FinalDiagnosisId"\
-            " order by FD.FinalDiagnosisName"
+            " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
+            " where A.ApplicationId = F.ApplicationId"\
+            " and F.FamilyId = FD.FamilyId"\
+            " and FD.FinalDiagnosisId = DE.FinalDiagnosisId"\
+            " and A.applicationName = '%s' "\
+            " order by FD.FinalDiagnosisName" % (applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
         logger.trace("   fetched %i Diagnosis..." % (len(pds)))
@@ -275,7 +281,7 @@ def run():
 
     #-------------------------------------------
     def compareResults(outputFilename, goldFilename, ds, row):
-        logger.trace("...analyzing the results...")
+        logger.info("...analyzing the results...")
     
         # Check if the Gold file exists
         if not(system.file.fileExists(goldFilename)):
@@ -312,7 +318,7 @@ def run():
         return ds
     #-------------------------------------------
     
-    logger.trace("Running...")
+    logger.infof("In %s.run() Starting to run tests...", __name__)
     system.tag.write("Sandbox/Diagnostic/Final Test/State","Running")
     package="ils.diagToolkit.test.tests"
     tableTagPath="Sandbox/Diagnostic/Final Test/Table"
@@ -333,7 +339,7 @@ def run():
             system.tag.write(tableTagPath, ds) 
                 
             functionName = ds.getValueAt(row, 'function')
-            logger.tracef("Starting to prepare to run: %s", functionName)
+            logger.infof("Starting to prepare to run: %s", functionName)
 
             # Start with a clean slate            
             initializeDatabase(db)
@@ -362,12 +368,12 @@ def run():
             
             if resultsMode == "Basic":
                 logRecommendations(post, outputFilename, db)
-                logQuantOutputs(post, outputFilename, db)
-                logDiagnosis(post, outputFilename, db)
+                logQuantOutputs(post, applicationName, outputFilename, db)
+                logDiagnosis(post, applicationName, outputFilename, db)
             elif resultsMode == "Extended":
                 logRecommendationsExtended(post, outputFilename, db)
-                logQuantOutputs(post, outputFilename, db)
-                logDiagnosis(post, outputFilename, db)
+                logQuantOutputs(post, applicationName, outputFilename, db)
+                logDiagnosis(post, applicationName, outputFilename, db)
                 
             logger.trace("...done fetching results!")
             time.sleep(1)
@@ -501,7 +507,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     FD126Priority=1.2,
     insertExtraRecDef=False,
     db="CRAP",
-    trapInsignificantRecommendations=0
+    trapInsignificantRecommendations=1
     ):
     
     family = 'FT_Family1_1'
@@ -722,7 +728,7 @@ def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calcu
     args = [finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod, 
         textRecommendation, constant, postTextRecommendation, postProcessingCallback, refreshRate, trapInsignificantRecommendations]
     
-    logger.tracef(SQL)
+    logger.tracef("%s", SQL)
     logger.tracef("%s", str(args))
             
     finalDiagnosisId = system.db.runPrepUpdate(SQL, args, getKey=True, database=db)
@@ -739,6 +745,6 @@ def insertRecommendationDefinition(finalDiagnosisId, quantOutputId, db):
 def updateFinalDiagnosisTextRecommendation(finalDiagnosisName, textRecommendation, db):
     textRecommendation = escapeSqlQuotes(textRecommendation)
     SQL = "update DtFinalDiagnosis set TextRecommendation = '%s' where FinalDiagnosisName = '%s' " % (textRecommendation, finalDiagnosisName)
-    logger.tracef(SQL)   
+    logger.tracef("%s", SQL)   
     rows = system.db.runUpdateQuery(SQL, database=db)
     logger.tracef("Updated %d rows", rows)

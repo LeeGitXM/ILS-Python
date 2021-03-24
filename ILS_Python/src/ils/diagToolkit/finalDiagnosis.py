@@ -18,8 +18,9 @@ from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML, escapeSqlQuotes
 from ils.common.database import lookup
 
-log = system.util.getLogger("com.ils.diagToolkit")
-logSQL = system.util.getLogger("com.ils.diagToolkit.SQL")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+logSQL = LogRecorder(__name__ + ".SQL")
 
 
 def manageFinalDiagnosisGlobally(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):
@@ -506,8 +507,10 @@ def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, dia
         autoOrManual=recommendation.get('AutoOrManual', None)
         outputName = recommendation.get('QuantOutput','')
         
-        SQL = "Select MinimumIncrement, IgnoreMinimumIncrement from DtQuantOutput QO, DtRecommendationDefinition RD "\
+        SQL = "Select MinimumIncrement, IgnoreMinimumIncrement, FD.TrapInsignificantRecommendations "\
+            " from DtQuantOutput QO, DtRecommendationDefinition RD, DtFinalDiagnosis FD "\
             " where QO.QuantOutputId = RD.QuantOutputId "\
+            " and RD.FinalDiagnosisId = FD.FinalDiagnosisId "\
             " and QO.QuantOutputName = '%s' "\
             " and RD.FinalDiagnosisId = %s" % (outputName, str(finalDiagnosisId))
         pds=system.db.runQuery(SQL, database)
@@ -516,19 +519,25 @@ def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, dia
         record = pds[0]
         minimumIncrement=record["MinimumIncrement"]
         ignoreMinimumIncrement=record["IgnoreMinimumIncrement"]
-
+        trapInsignificantRecommendationsQuantOutput = not(ignoreMinimumIncrement)
+        trapInsignificantRecommendations = record["TrapInsignificantRecommendations"]
+        
         if autoOrManual == 'Auto':
             val = recommendation.get('AutoRecommendation', None)
-            if ignoreMinimumIncrement:
+            if trapInsignificantRecommendationsQuantOutput:
                 textRecommendation = "%s\n%s = %s" % (textRecommendation, outputName, str(val))
-            else:
+            elif trapInsignificantRecommendations:
                 textRecommendation = "%s\n%s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
+            else:
+                textRecommendation = "%s\n%s = %s" % (textRecommendation, outputName, str(val))
 
         elif autoOrManual == 'Manual':
-            if ignoreMinimumIncrement:
+            if trapInsignificantRecommendationsQuantOutput:
                 textRecommendation = "%s\nManual move for %s = %s" % (textRecommendation, outputName, str(val))
-            else:
+            elif trapInsignificantRecommendations:
                 textRecommendation = "%s\nManual move for %s = %s (min output = %s)" % (textRecommendation, outputName, str(val), str(minimumIncrement))
+            else:
+                textRecommendation = "%s\nManual move for %s = %s" % (textRecommendation, outputName, str(val))
 
     from ils.queue.message import insert
     insert("RECOMMENDATIONS", "Info", textRecommendation, database)
@@ -605,14 +614,26 @@ def manage(application, recalcRequested=False, database="", provider=""):
     #---------------------------------------------------------------------
     # Merge the list of output dictionaries for a final diagnosis into the list of all outputs
     def mergeOutputs(quantOutputs, fdQuantOutputs):
-#        log.trace("Merging outputs %s into %s" % (str(fdQuantOutputs), str(quantOutputs)))
+        log.tracef("Merging outputs %s into %s" % (str(fdQuantOutputs), str(quantOutputs)))
         for fdQuantOutput in fdQuantOutputs:
             fdId = fdQuantOutput.get('QuantOutputId', -1)
             found = False
             for quantOutput in quantOutputs:
                 qoId = quantOutput.get('QuantOutputId', -1)
                 if fdId == qoId:
-                    # It already exists so don't overwrite it
+                    '''
+                    The quant output already exists in the list so don't overwrite it
+                    Some explanation is needed here.  TrapInsignificantRecommendations is defined on a Final Diagnosis, but at this point
+                    we have combining quant outputs from multiple FDs.  So what do we do if one is set to trap and the other isn't.
+                    I'm not sure there is a right answer, plenty of opinions...
+                    This is only a problem if multiple FDs are active at the dsame time AND have the same priorities - so I think this is a small
+                    subset of all of the use of the toolkit - so even if I get the answer wrong here, it's impact should be small.
+                    '''
+                    trapInsignificantRecommendations1 = fdQuantOutput.get('TrapInsignificantRecommendations', False)
+                    trapInsignificantRecommendations2 = quantOutput.get('TrapInsignificantRecommendations', False)
+                    trapInsignificantRecommendations = trapInsignificantRecommendations1  or trapInsignificantRecommendations2
+                    fdQuantOutput['TrapInsignificantRecommendations'] = trapInsignificantRecommendations
+                    
                     found = True
             if not(found):
                 quantOutputs.append(fdQuantOutput)
@@ -622,7 +643,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # There are two lists.  The first is a list of all quant outputs and the second is the list of all recommendations.
     # Merge the lists into one so the recommendations are with the appropriate output
     def mergeRecommendations(quantOutputs, recommendations):
-        log.tracef("Merging Outputs: %s with %s ", str(quantOutputs), str(recommendations))
+        log.tracef("Merging recommendation: %s into outputs %s ", str(recommendations), str(quantOutputs))
         for recommendation in recommendations:
             output1 = recommendation.get('QuantOutput', None)
             if output1 != None:
@@ -995,6 +1016,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
             log.tracef( "Recommendations: %s", str(recommendations))
             log.tracef( "    Explanation: %s", explanation)
             log.tracef( "         Status: %s", recommendationStatus)
+            log.tracef( "      Outputs: %s", str(fdQuantOutputs))
             log.tracef( "-----------------")
 
             # If there were numeric recommendations then make a concise message and post it to the application queue.
@@ -1021,7 +1043,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     
             quantOutputs = mergeRecommendations(quantOutputs, recommendations)
             log.tracef( "-----------------")
-            log.tracef( "Quant Outputs: %s", str(quantOutputs))
+            log.tracef( "Quant Outputs (after merge): %s", str(quantOutputs))
             log.tracef( "-----------------")
             
             if postTextRecommendation and explanation != "":
@@ -1121,6 +1143,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
 def checkBounds(applicationName, quantOutput, quantOutputName, database, provider):
 
     log.trace("   ...checking Bounds...")
+    log.tracef("    Quant Output: %s", str(quantOutput))
     madeSignificantRecommendation=True
     # The feedbackOutput can be incremental or absolute
     feedbackOutput = quantOutput.get('FeedbackOutput', 0.0)
@@ -1129,7 +1152,8 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     incrementalOutput=quantOutput.get('IncrementalOutput')
     mostNegativeIncrement = quantOutput.get('MostNegativeIncrement', -1000.0)
     mostPositiveIncrement = quantOutput.get('MostPositiveIncrement', 1000.0)
-    
+    trapInsignificantRecommendations = quantOutput.get('TrapInsignificantRecommendations', True)
+        
     # Read the current setpoint - the tagpath in the QuantOutput does not have the provider
     tagpath = '[' + provider + ']' + quantOutput.get('TagPath','unknown')
     outputTagPath = getOutputForTagPath(provider, tagpath, "sp")
@@ -1212,8 +1236,11 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     minimumIncrement = quantOutput.get('MinimumIncrement', 1000.0)
     ignoreMinimumIncrement = quantOutput.get('IgnoreMinimumIncrement', False)
     log.trace("Ignore Minimum Increment: %s" % (str(ignoreMinimumIncrement)))
-    if not(ignoreMinimumIncrement) and abs(feedbackOutputConditioned) < minimumIncrement:
-        log.trace("      ...the output IS Minimum change bound because the change (%f) is less then the minimum change amount (%f)..." % (feedbackOutputConditioned, minimumIncrement))
+    trapInsignificantRecommendations = quantOutput.get('TrapInsignificantRecommendations', False)
+    log.trace("trapInsignificantRecommendations: %s" % (str(trapInsignificantRecommendations)))
+
+    if (trapInsignificantRecommendations and not(ignoreMinimumIncrement)) and abs(feedbackOutputConditioned) < minimumIncrement:
+        log.tracef("      ...the output IS Minimum change bound because the change (%f) is less then the minimum change amount (%f)...", feedbackOutputConditioned, minimumIncrement)
         quantOutput['OutputLimited'] = True
         quantOutput['OutputLimitedStatus'] = 'Minimum Change Bound'
         feedbackOutputConditioned=0.0

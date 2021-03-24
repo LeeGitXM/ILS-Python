@@ -7,11 +7,12 @@ Created on Mar 31, 2015
 import system, string, sys, traceback
 from ils.common.notification import notifyError
 from ils.common.config import getIsolationModeClient, getTagProvider
+from ils.sfc.common.constants import CLIENT_DONE
 logger=system.util.getLogger("com.ils.ocAlert")
 
 # This is generally called from the gateway, but will also work when called from test (like from the test window)
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
-              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db="", isolationMode=False):
+              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db="", isolationMode=False, windowName=""):
     logger.trace("In %s.sendAlert() to post: %s (Isolation: %s)" % (__name__, post, isolationMode))
     
     if callbackPayloadDictionary == None:
@@ -24,6 +25,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     # Now make the payload for the OC alert window
     payload = {
         "post": post,
+        "windowName": windowName,
         "topMessage": "<HTML>" + topMessage, 
         "bottomMessage": "<HTML>" + bottomMessage, 
         "mainMessage": "<HTML>" + mainMessage,
@@ -112,12 +114,18 @@ def handleMessage(payload):
         
         del payload['isolationMode']
 
+    windowName = payload["windowName"]
+    del payload['windowName']
+    if windowName in ["", None]:
+        windowName = "Common/OC Alert"
+    
     system.nav.openWindowInstance("Common/OC Alert", payload)
     
 
-# This is called from the button smack in the middle of the screen 
-# This runs in the client, so don't bother with loggers, just print debug messages...
 def buttonHandler(event):
+    '''
+    This is called from the button smack in the middle of the screen.
+    '''
     logger.trace("In %s..." % (__name__))
     rootContainer = event.source.parent
     callback=rootContainer.callback
@@ -158,6 +166,16 @@ def buttonHandler(event):
         logger.trace("Caught an exception calling callback... \n%s" % (errorTxt))
 
 
+def sfcHandshake(event, payload):
+    '''
+    When the OC Alert is called from the SFC built in step this is automatically called.  
+    '''
+    chartId = str(payload.get("chartId", "-1"))
+    stepId = str(payload.get("stepId", "-1"))
+
+    system.sfc.setVariable(chartId, stepId, str(CLIENT_DONE), True)
+    system.nav.closeParentWindow(event)
+    
 # This is a callback from the Acknowledge button in the middle of the loud workspace.
 def testCallback(event, payload):
     system.nav.closeParentWindow(event)    

@@ -32,6 +32,21 @@ def runChecks():
                 isUDT = isUDTorFolder(fullTagPath, strategy)
                 print "Check 1: ", isUDT
 
+def getUDTProperty(fullTagPath, prop):
+    '''
+    IA has made it annoyingly difficult to get the value of a custom property out of an instance of a UDT.  
+    This is a utility to get the value of a property.
+    '''
+    log.tracef("Getting %s from %s...", prop, fullTagPath)
+    
+    path = "%s.ExtendedProperties" % fullTagPath
+    props = system.tag.read(path)
+    if props.value is not None:
+            for p in props.value:
+                if p.getProperty().name.lower() == prop.lower():
+                    return p.value
+
+    return None
 
 '''
 Try and figure out if the thing is a UDT or a folder (the folder support is for I/O in isolation where

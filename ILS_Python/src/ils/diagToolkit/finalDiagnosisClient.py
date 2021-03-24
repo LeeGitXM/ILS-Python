@@ -8,7 +8,9 @@ from ils.diagToolkit.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_N
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.diagToolkit.common import fetchApplicationsForPost, fetchActiveTextRecommendationsForPost
 from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
-log=system.util.getLogger("com.ils.diagToolkit")
+
+from ils.log.LogRecorder import LogRecorder
+log=LogRecorder(__name__)
 
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
@@ -229,7 +231,7 @@ def handleNotification(payload):
     # The above checks must first determine that the alert is meant for this client
 
     if numOutputs == 0:
-        log.infof( "Skipping the load workspace posting because the spreadsheet would be empty...")
+        log.infof( "Skipping the loud workspace posting because the spreadsheet would be empty...")
         return
     
     # We didn't find an open setpoint spreadsheet, so post the Loud workspace

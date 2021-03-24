@@ -5,22 +5,26 @@ Created on Sep 10, 2014
 '''
 
 import system
-import system.ils.blt.diagram as scriptingInterface
+#import system.ils.blt.diagram as scriptingInterface
 
 def getHistoryProvider():
     return 'XOMhistory'
 
 def getTagProvider():
-    return scriptingInterface.getProductionTagProvider()
+    return 'XOM'
+    #return scriptingInterface.getProductionTagProvider()
 
 def getDatabase():
-    return scriptingInterface.getProductionDatabase()
+    return 'XOM'
+    #return scriptingInterface.getProductionDatabase()
 
 def getIsolationTagProvider():
-    return scriptingInterface.getIsolationTagProvider()
+    return 'XOM_ISOLATION'
+    #return scriptingInterface.getIsolationTagProvider()
 
 def getIsolationDatabase():
-    return scriptingInterface.getIsolationDatabase()
+    return 'XOM_ISOLATION'
+    #return scriptingInterface.getIsolationDatabase()
 
 # These should be used only by a client.  They totally respect the isolation mode settings that are in force for the client.
 def getHistoryTagProviderClient():

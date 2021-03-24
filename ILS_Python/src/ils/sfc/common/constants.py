@@ -225,6 +225,13 @@ WORK_DONE = "workDone"
 WRITE_CONFIRMED = "writeConfirmed"
 WRITE_OUTPUT_CONFIG = "writeOutputConfig"
 
+# OC Alert constants
+TOP_MESSAGE = "topMessage"
+MAIN_MESSAGE = "mainMessage"
+BOTTOM_MESSAGE = "bottomMessage"
+OC_ALERT_WINDOW = "ocAlertWindow"
+POST = "post"
+
 # Shared error counter for multiple Write Output blocks
 SHARED_ERROR_COUNT_KEY = "globalErrorCountKey"
 SHARED_ERROR_COUNT_LOCATION = "globalErrorCountLocation"
