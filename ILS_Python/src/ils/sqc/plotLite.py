@@ -7,7 +7,8 @@ Created on Jan 4, 2019
 import system
 from ils.common.config import getDatabaseClient
 from ils.sqc.plot import configureChartSQCLimit
-log = system.util.getLogger("com.ils.sqc")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)

@@ -6,8 +6,8 @@ Created on Dec 27, 2018
 import system
 from ils.common.database import getConsoleWindowNameForPost
 from ils.common.config import getDatabaseClient
-
-log = system.util.getLogger("ils.uir")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def uirNotify(project, post, windowName, windowPayload):
     ''' Generally, creating a UIR is launched from a client, however, the diagnostic toolkit has the capability of launching a UIR.

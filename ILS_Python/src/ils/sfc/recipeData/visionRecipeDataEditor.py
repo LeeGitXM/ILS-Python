@@ -7,17 +7,18 @@ Created on Feb 1, 2017
 import system, string
 from ils.common.cast import toBit
 from ils.common.error import catchError, notifyError
-from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId, recipeDataExists, recipeDataExistsForStepId
+from ils.sfc.recipeData.core import fetchRecipeDataTypeId, recipeDataExistsForStepId
 from ils.common.config import getDatabaseClient
 from ils.common.util import escapeSqlQuotes
-log=system.util.getLogger("com.ils.sfc.visionEditor")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, SQC, TIMER
 
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
 def internalFrameOpened(rootContainer):
     db = getDatabaseClient()
-    print "In %s.internalFrameOpened(), db: %s" % (__name__, db)
+    log.infof("In %s.internalFrameOpened(), db: %s", __name__, db)
     rootContainer.initialized = False
     
     recipeDataId = rootContainer.getPropertyValue("recipeDataId")

@@ -11,7 +11,8 @@ import system, string
 from ils.common.error import catchError
 from ils.sfc.recipeData.core import recipeDataExists, recipeGroupExists
 from ils.common.cast import isFloat
-log=system.util.getLogger("com.ils.sfc.import")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def loadSteps(rootContainer):
     print "In loadSteps()"

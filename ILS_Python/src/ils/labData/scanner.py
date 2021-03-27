@@ -11,12 +11,14 @@ from ils.common.config import getTagProvider, getIsolationTagProvider, getDataba
 from ils.labData.common import postMessage
 from java.util import Calendar
 from ils.common.database import toDateString
-log = system.util.getLogger("com.ils.labData.reader")
-dcsLog = system.util.getLogger("com.ils.labData.reader.dcs")
-phdLog = system.util.getLogger("com.ils.labData.reader.phd")
-derivedLog = system.util.getLogger("com.ils.labData.derivedValues")
-customValidationLog = system.util.getLogger("com.ils.labData.customValidation")
-selectorLog = system.util.getLogger("com.ils.labData.selector")
+
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+dcsLog =LogRecorder(__name__ + ".dcs")
+phdLog = LogRecorder(__name__ + ".phd")
+derivedLog = LogRecorder(__name__ + ".derivedValues")
+customValidationLog = LogRecorder(__name__ + ".customValidation")
+selectorLog = LogRecorder(__name__ + ".selector")
 import ils.common.util as util
 
 # This should persist from one run to the next 

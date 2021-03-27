@@ -5,8 +5,9 @@ Created on Mar 31, 2015
 '''
 import system
 
-log = system.util.getLogger("com.ils.labData.limits")
-sqlLog = system.util.getLogger("com.ils.SQL.labData.limits")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+sqlLog = LogRecorder(__name__ + ".sql")
 
 # This is a memory resident dictionary of limit dictionaries that survives from scan to scan.  
 # The key is the valueId. It gets updated each cycle.  The main purpose of this cache is so that we can determine

@@ -37,7 +37,6 @@ Check if the timestamps of two tags are consistent.
 This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
 '''
 def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeout=10):
-    log = system.util.getLogger("com.ils.diagToolkit")
     startTime = system.date.now()
     isConsistent = False
     log.trace("Checking if %s and %s are consistent..." % (tagPath1, tagPath2))
@@ -62,8 +61,6 @@ def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeo
 # Check if the timestamp of the tag is less than a certain tolerance older then theTime, or the current time if theTime 
 # is omitted.  This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
 def checkFreshness(tagPath, theTime="now", provider="XOM", tolerance=-1, recheckInterval=1.0, timeout=-1.0):
-    log = system.util.getLogger("com.ils.diagToolkit")
-    
     if tolerance < 0.0:
         tolerance = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessToleranceSeconds" % (provider)).value
         print "Using the default freshness tolerance: ", tolerance
@@ -106,7 +103,6 @@ Check that tag1 is fresher than tag2.
 The timeout here is in seconds, the default time to wait is 1 minute.
 '''
 def checkFresher(tagPath1, tagPath2, recheckInterval=1.0, timeout=60):
-    log = system.util.getLogger("com.ils.diagToolkit")
     startTime = system.date.now()
     isFresher = False
     log.trace("Checking if %s is fresher than %s..." % (tagPath1, tagPath2))

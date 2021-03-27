@@ -9,7 +9,8 @@ from ils.diagToolkit.setpointSpreadsheet import resetDiagnosisEntry
 from ils.diagToolkit.setpointSpreadsheet import resetDiagram
 from ils.diagToolkit.setpointSpreadsheet import partialResetDiagram
 
-log = system.util.getLogger("project.vistalon.tf")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 #### need to add call to def partialResetDiagram(finalDiagnosisIds, database): to perform a Wait for More Data action
 

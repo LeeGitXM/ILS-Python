@@ -5,11 +5,11 @@ Created on Jan 16, 2015
 
 This handles both the GetInput step and the GetInputWithLimits step.
 '''
-import system, time
+import system
 from ils.common.config import getDatabaseClient
-from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.sfc.client.util import setClientDone, setClientResponse
-log =system.util.getLogger("com.ils.sfc.client.getInput")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__)

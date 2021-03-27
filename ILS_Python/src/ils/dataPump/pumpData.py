@@ -6,7 +6,8 @@ Created on Jun 20, 2017
 
 import system, time, string
 from ils.common.cast import toDateTime
-log = system.util.getLogger("com.ils.dataPump")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 
 def pumpData(rootContainer):

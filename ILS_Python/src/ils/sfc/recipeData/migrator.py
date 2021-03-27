@@ -12,7 +12,8 @@ from ils.common.error import catchError
 from ils.common.cast import toBit, isFloat
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
 from ils.common.config import getTagProvider, getDatabase
-log = system.util.getLogger("com.ils.sfc.python.recipeDataMigrator")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def migrateChart(chartPath, resourceId, chartResourceAsXML):
     db = getDatabase()

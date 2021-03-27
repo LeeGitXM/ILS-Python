@@ -8,7 +8,8 @@ import system, string, sys, traceback
 from ils.common.notification import notifyError
 from ils.common.config import getIsolationModeClient, getTagProvider
 from ils.sfc.common.constants import CLIENT_DONE
-logger=system.util.getLogger("com.ils.ocAlert")
+from ils.log.LogRecorder import LogRecorder
+logger = LogRecorder(__name__)
 
 # This is generally called from the gateway, but will also work when called from test (like from the test window)
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 

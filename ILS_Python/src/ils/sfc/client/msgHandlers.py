@@ -5,11 +5,12 @@ These message handlers all run in the client (the client receives the message fr
 
 import system, string
 from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, \
-    IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_WINDOW_PATH, CHART_ID, STEP_ID
+    IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_WINDOW_PATH
 from ils.sfc.client.windowUtil import shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
 from ils.common.config import getDatabaseClient
-log = system.util.getLogger("com.ils.sfc.client.msgHandlers")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 This is the worst name in the history of bad names.  This is the handler in the client that catches the message, not the sender!

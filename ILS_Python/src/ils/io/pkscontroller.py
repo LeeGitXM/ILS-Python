@@ -8,7 +8,8 @@ import system, string, time
 import ils.io.controller as controller
 import ils.io.opcoutput as opcoutput
 from ils.io.util import confirmWrite
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 class PKSController(controller.Controller):
     opTag = None

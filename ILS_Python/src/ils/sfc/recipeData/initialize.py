@@ -4,9 +4,8 @@ Created on Feb 17, 2020
 @author: phass
 '''
 
-import system
-from ils.sfc.recipeData.internalize import splitChartXML
-log=system.util.getLogger("com.ils.sfc.recipeData.initialize")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 This is called from the Tools menu and the designer hook

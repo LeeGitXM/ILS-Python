@@ -5,7 +5,8 @@ Created on Apr 11, 2017
 '''
 
 import system
-log=system.util.getLogger("com.ils.watchdog")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 This is called from a gateway timer script. It doesn't make sense to call this for isolation.

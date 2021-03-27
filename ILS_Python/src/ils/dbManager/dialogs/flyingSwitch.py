@@ -9,7 +9,8 @@ Scripts in support of the "Flying Switch" dialog
 import system
 from ils.common.util import getRootContainer
 from ils.common.error import notifyError
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 
 # Called from the client startup script: View menu

@@ -11,7 +11,9 @@ from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus,\
     removeUnwantedMenus, ConsoleMenus
 from ils.common.error import catchError
-log = system.util.getLogger("com.ils.common.startup")
+
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 IMPLEMENT = "IMPLEMENT"
 PLAN = "PLAN"
 
@@ -149,10 +151,7 @@ def clientCommon():
             removeNonOperatorMenus(menubar)
 
 
-def gatewayCommon(tagPprovider, isolationTagProvider):
-    # Create gateway loggers
-    log = system.util.getLogger("com.ils.common")
-    
+def gatewayCommon(tagPprovider, isolationTagProvider):  
     from ils.common.version import version
     version, revisionDate = version()
     log.info("Starting common modules version %s - %s" % (version, revisionDate))

@@ -7,17 +7,15 @@ This module deals with storing recipe data that is stored internally in the SFCs
 the database.  
 '''
 
-import system, os, string
+import system, string
 import xml.etree.ElementTree as ET
-from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy, getChildren
-from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName,\
-        fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId
+from ils.sfc.recipeData.core import fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName, fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId
 from ils.common.config import getDatabaseClient
 from ils.common.cast import toBit, isFloat
-from ils.common.error import catchError, notifyError
+from ils.common.error import catchError
 
-log=system.util.getLogger("com.ils.sfc.recipeData.save")
-
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def storeToDatabase(chartPath, chartXML):
     '''

@@ -5,7 +5,8 @@ Created on Mar 21, 2017
 '''
 
 import system, string
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 from ils.common.error import notifyError
 
 

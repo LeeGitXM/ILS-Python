@@ -9,7 +9,8 @@ import ils.io.pkscontroller as pkscontroller
 import ils.io.pksacecontroller as pksacecontroller
 import ils.io.pksrampcontroller as pksrampcontroller
 import ils.io.opcoutput as opcoutput
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 class PKSACERampController(pksrampcontroller.PKSRampController):
     

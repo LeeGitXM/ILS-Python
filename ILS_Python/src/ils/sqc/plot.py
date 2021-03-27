@@ -5,7 +5,8 @@ Created on Dec 10, 2015
 '''
 import system, string, math
 from ils.common.config import getTagProviderClient, getDatabaseClient
-log = system.util.getLogger("com.ils.sqc.plot")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)

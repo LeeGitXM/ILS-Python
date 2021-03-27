@@ -4,7 +4,8 @@ Created on Aug 23, 2019
 @author: phass
 '''
 import system, math
-log = system.util.getLogger("com.ils.matrix.util")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 import org.apache.commons.math3.linear.Array2DRowRealMatrix as Matrix
 
 def fmin (x, fx, func):

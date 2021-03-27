@@ -11,7 +11,8 @@ called from a tag change script or a SFC; thus the need to pass in the project.
 '''
 
 import system
-log = system.util.getLogger("com.ils.client")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 
 def writeWithNoCheck(tagPath, tagValue, project, valueType="value"):

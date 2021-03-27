@@ -5,7 +5,8 @@ Created on Sep 10, 2014
 '''
 
 import system, string, re
-log = system.util.getLogger("com.ils.common.util")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 from ils.common.config import getTagProvider
 from ils.common.constants import CR, TAG
 from system.date import secondsBetween
@@ -705,7 +706,6 @@ This is a test of querying history to determine if we should use the tag provide
 I used to have the provider and history provider names hard coded here, which might be OK since this is a test, but it showed up in searches, so now pass it in!
 '''
 def test(provider, historyProvider):
-    log = system.util.getLogger("Test")
     tagPaths=[]
 #    tagPaths.append("SFC IO/Rate Change/VRF9101Z/value")  #POLY-RATE
     tagPaths.append("SFC IO/Rate Change/VRF402Z-1/value") #MAIN-C2-RATE

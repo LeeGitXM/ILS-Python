@@ -4,7 +4,8 @@ Created on Sep 5, 2016
 @author: ils
 '''
 import system, time
-log=system.util.getLogger("com.ils.common.message")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # Send a request to all clients to return a list of the windows that are showing
 # This will run until a response is received from every connected window

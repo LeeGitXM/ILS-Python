@@ -2,11 +2,12 @@
   Gateway scope extension functions dealing with Family instances.
 '''
 import system
-import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
-from ils.diagToolkit.common import fetchApplicationId
+#import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+#handler = ControllerRequestHandler.getInstance()
 
-log = system.util.getLogger("com.ils.diagToolkit.extensions")
-handler = ControllerRequestHandler.getInstance()
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+
 
 '''
 These run in Gateway scope
@@ -20,7 +21,8 @@ def delete(familyUUID):
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
     log.infof("In %s.delete() with family uuid: %s", __name__, familyUUID)
-    db = handler.getProductionDatabase()
+    #db = handler.getProductionDatabase()
+    db = "XOM"
     
     SQL = "delete from DtFamily where FamilyUUID = '%s'" % (familyUUID)
     rows = system.db.runUpdateQuery(SQL, db)
@@ -41,9 +43,12 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL,db)
     
     log.infof("In %s.rename()", __name__)
-    db = handler.getProductionDatabase()
+    #db = handler.getProductionDatabase()
+    db = "XOM"
     renameInDatabase(uuid,oldName,newName,db)
-    db = handler.getIsolationDatabase()
+    
+    #db = handler.getIsolationDatabase()
+    db = "XOM_ISOLATION"
     renameInDatabase(uuid,oldName,newName,db)
     
 
@@ -59,8 +64,9 @@ def save(familyUUID):
     '''
     log.tracef("In %s.save()", __name__)
     
-    db = handler.getProductionDatabase()
-
+    #db = handler.getProductionDatabase()
+    db = "XOM"
+    
     from system.ils.blt.diagram import getFamilyName, getApplicationName
     familyName = getFamilyName(familyUUID)
     log.tracef("...familyName: %s", familyName)
@@ -111,18 +117,20 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid,aux,db):
-    app  = handler.getApplicationName(uuid)
-    name = handler.getFamilyName(uuid)
+    #appName  = handler.getApplicationName(uuid)
+    appName = "TESTAPP1"
+    #familyName = handler.getFamilyName(uuid)
+    familyName = "TestFamily1_2"
     
     properties = aux[0]
     
-    print "famProperties,getAux():  ...the family name is ", name
+    print "famProperties,getAux():  ...the family name is ", familyName
     
     SQL = "SELECT FAM.Description,FAM.FamilyPriority "\
           " FROM DtFamily FAM,DtApplication APP "\
           " WHERE FAM.applicationId = APP.applicationId "\
           "   AND FAM.familyName = '%s'"\
-          "   AND APP.ApplicationName = '%s' " % (name,app)
+          "   AND APP.ApplicationName = '%s' " % (familyName,appName)
     ds = system.db.runQuery(SQL,db)
     for rec in ds:
         properties["Description"] = rec["Description"]
@@ -130,35 +138,34 @@ def getAux(uuid,aux,db):
 
 
 def setAux(uuid,aux,db):
-    app  = handler.getApplicationName(uuid)
-    name = handler.getFamilyName(uuid)
+    #appName  = handler.getApplicationName(uuid)
+    appName = "TESTAPP1"
+    #familyName = handler.getFamilyName(uuid)
+    familyName = "TestFamily1_2"
     properties = aux[0]
-    print "famProperties.setAux()  ...the application/family name is: ",app,"/",name,", properties:", properties
+    print "famProperties.setAux()  ...the application/family name is: ",appName,"/",familyName,", properties:", properties
     
-    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (app)
+    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (appName)
     applicationId = system.db.runScalarQuery(SQL,db)
-    print "EREIAM JH - 1: ", SQL
+
     if applicationId == None:
         SQL = "insert into DtApplication (ApplicationName) values (?)"
-        applicationId = system.db.runPrepUpdate(SQL, [app], db, getKey=1)
-        print "EREIAM JH - 2: ", SQL
-
+        applicationId = system.db.runPrepUpdate(SQL, [appName], db, getKey=1)
     
     SQL = "SELECT familyId FROM DtFamily "\
           " WHERE ApplicationId = %s"\
-          "  AND familyName = '%s'" % (applicationId,name)
+          "  AND familyName = '%s'" % (applicationId,familyName)
     familyId = system.db.runScalarQuery(SQL,db)
-    print "EREIAM JH - 3: ", SQL
     if familyId == None:
         SQL = "INSERT INTO DtFamily(applicationId,familyName,description,familyPriority)"\
                " VALUES(?,?,?,?)"
-        familyId = system.db.runPrepUpdate(SQL, [applicationId, name, properties.get("Description",""),  
+        familyId = system.db.runPrepUpdate(SQL, [applicationId, familyName, properties.get("Description",""),  
                                                  properties.get("Priority","0.0")], db, getKey=1)
-        print "EREIAM JH - 4: ", SQL
+
         print "famProperties.setAux(): Inserted a new family with id: ", familyId
     else:
         SQL = "UPDATE DtFamily SET familyName = ?, description = ?, familyPriority = ?" \
             " where familyId = ? "
-        system.db.runPrepUpdate(SQL, [name, properties.get("Description",""), properties.get("Priority","0.0"),familyId],db)
-        print "EREIAM JH - 5: ", SQL
+        system.db.runPrepUpdate(SQL, [familyName, properties.get("Description",""), properties.get("Priority","0.0"),familyId],db)
+
         print "famProperties.setAux(): Updated an existing family with id: ", familyId

@@ -7,7 +7,8 @@ Created on Jul 17, 2015
 import system, string
 from ils.common.config import getTagProviderClient
 from ils.common.util import append
-log = system.util.getLogger("com.ils.labData.ui.configuration")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def createLabValue(unitName, valueName):
     tagProvider = getTagProviderClient()

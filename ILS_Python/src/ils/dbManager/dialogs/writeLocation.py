@@ -10,7 +10,8 @@ import system
 from ils.common.util import getRootContainer
 from ils.dbManager.sql import idForPost
 from ils.common.error import notifyError
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # Called only when the screen is first displayed
 def internalFrameOpened(component):

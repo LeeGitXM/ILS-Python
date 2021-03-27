@@ -9,7 +9,8 @@ import org.apache.commons.math3.linear.LUDecomposition as LUDecomposition
 import org.apache.commons.math3.linear.ArrayRealVector as Vector
 from ils.matrix.util import fmin, fdjac, maxOfFirstColumn, lnsrch
 from ils.sfc.common.util import logExceptionCause
-log = system.util.getLogger("com.ils.matrix.newton")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def solverGlobal(x, func, maxIterations):
     '''

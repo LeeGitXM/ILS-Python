@@ -7,7 +7,8 @@ Created on Jan 13, 2019
 import system
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.diagToolkit.finalDiagnosis import manageFinalDiagnosis
-log = system.util.getLogger("xom.ils.diagToolkit.manualMove")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)

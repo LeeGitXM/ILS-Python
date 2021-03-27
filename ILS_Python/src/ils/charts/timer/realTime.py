@@ -4,7 +4,8 @@ Created on Nov 28, 2016
 @author: phassler
 '''
 import string, system
-log = system.util.getLogger("com.ils.charts")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def update(rootContainer):
     n = rootContainer.n

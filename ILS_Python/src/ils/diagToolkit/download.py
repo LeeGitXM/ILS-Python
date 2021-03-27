@@ -7,11 +7,12 @@ Created on Feb 4, 2015
 import system, string, time
 from __builtin__ import False
 from ils.io.util import getOuterUDT
-log = system.util.getLogger("com.ils.diagToolkit.download")
 from ils.queue.message import insertPostMessage
 from ils.io.api import confirmControllerMode
 from ils.io.api import write
 from ils.diagToolkit.setpointSpreadsheet import hideDetailMap
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def downloadLogbookTestCallback(event, rootContainer):
     from ils.common.config import getTagProviderClient, getDatabaseClient

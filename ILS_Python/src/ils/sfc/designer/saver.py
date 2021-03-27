@@ -5,14 +5,13 @@ Created on Oct 12, 2020
 '''
 
 import system, string
-from ils.common.config import getTagProvider, getDatabase
-from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName
+from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName
 from ils.common.util import formatDateTimeForDatabase
 from ils.common.error import catchError
 
-log = system.util.getLogger("com.ils.sfc.saver")
-parseLog = system.util.getLogger("com.ils.sfc.saver.xmlParser")
-
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+parseLog = LogRecorder(__name__ + ".xmlParser")
 
 def compileCharts(deletedResources, addedResources, changedResources, db):
     '''

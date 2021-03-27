@@ -4,14 +4,12 @@ Created on Dec 29, 2016
 @author: phass
 '''
 
-import system, string
-from ils.common.config import getTagProvider, getDatabase
-from ils.common.util import formatDateTimeForDatabase
-log = system.util.getLogger("com.ils.sfc.structureManager.python")
-parseLog = system.util.getLogger("com.ils.sfc.structureManager.xmlParser")
+import system
 from ils.common.error import catchError
-from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchStepIdFromUUID, fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName
-from ils.common.database import toList
+
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+parseLog = LogRecorder(__name__ + ".xmlParser")
 
 def getTxId(db):
     txId = system.db.beginTransaction(database=db, timeout=86400000)    # timeout is one day

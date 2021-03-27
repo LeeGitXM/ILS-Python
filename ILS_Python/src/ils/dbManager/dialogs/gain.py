@@ -12,7 +12,8 @@ from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.dbManager.sql import idForFamily
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 TODO - DELETE THIS MODULE, THE WINDOW THAT CALLED IT IS OBSOLETE!

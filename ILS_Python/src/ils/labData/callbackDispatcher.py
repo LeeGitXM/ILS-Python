@@ -10,9 +10,10 @@ Created on Jul 10, 2015
 
 # This import will show an error, but it is required to handle calculation methods that are in project scope.
 import system, sys, string, traceback
-log = system.util.getLogger("com.ils.labData")
-derivedLog = system.util.getLogger("com.ils.labData.derivedValues")
-customValidationLog = system.util.getLogger("com.ils.labData.customValidation")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+derivedLog = LogRecorder(__name__ + ".derivedValues")
+customValidationLog = LogRecorder(__name__ + ".customValidation")
 
 def customValidate(validationProcedure, valueId, valueName, rawValue, sampleTime, unitName, tagProvider, database):
     customValidationLog.trace("There is a custom validation procedure <%s> for %s" % (valueName, validationProcedure))

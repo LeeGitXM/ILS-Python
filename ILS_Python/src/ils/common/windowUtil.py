@@ -4,7 +4,8 @@ Created on Jan 12, 2016
 @author: ils
 '''
 import system, math, string
-log = system.util.getLogger("com.ils.windowUtil")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def bringWindowToFront(windowName):
     windows = system.gui.findWindow(windowName)

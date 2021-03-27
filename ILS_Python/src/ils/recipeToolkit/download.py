@@ -18,7 +18,8 @@ from ils.io.util import getTagSuffix
 from ils.common.config import getTagProvider, getTagProviderClient, getDatabaseClient, getIsolationModeClient
 from ils.common.ocAlert import sendAlert
 from ils.io.util import getProviderFromTagPath
-log = system.util.getLogger("com.ils.recipeToolkit.download")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def automatedDownloadHandler(tagPath, grade):
     

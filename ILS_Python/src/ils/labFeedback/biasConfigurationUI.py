@@ -7,11 +7,11 @@ EXPONENTIAL = "Exponential"
 PID = "PID"
 EDIT_MODE = "edit"
 
-import system, string
+import system
 from ils.common.config import getTagProviderClient
 from ils.common.cast import extendedPropertiesToDictionary
-
-log = system.util.getLogger("com.ils.labData.ui.configuration")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened", __name__)

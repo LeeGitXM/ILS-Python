@@ -7,8 +7,8 @@ import system
 import time
 from java.util import Calendar
 import ils.common.util as util
-log = system.util.getLogger("com.ils.labData")
-
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # History should be restored on startup, but generally the site needs to perform a site specific selector
 # configuration BEFORE the history is performed.

@@ -8,7 +8,8 @@ Created on Mar 29, 2018
 import system, string, time
 import ils.io.pkscontroller as pkscontroller
 import ils.io.opcoutput as opcoutput
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 class PKSRampController(pkscontroller.PKSController):
     

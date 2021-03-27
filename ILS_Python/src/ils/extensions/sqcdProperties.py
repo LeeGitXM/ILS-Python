@@ -13,7 +13,8 @@ import system
 import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
 
 handler = ApplicationRequestHandler()
-log = system.util.getLogger("com.ils.diagToolkit.extensions")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def delete(uuid):
     log.infof("In %s.delete()", __name__)

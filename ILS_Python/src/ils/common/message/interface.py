@@ -8,7 +8,8 @@ import system
 from ils.common.message.gateway import sendAndReceive
 from ils.common.cast import toBool
 
-log=system.util.getLogger("com.ils.common.message")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # Get the client ids of all clients logged in with a user name that matches a post name.
 # This returns a list of client ids.

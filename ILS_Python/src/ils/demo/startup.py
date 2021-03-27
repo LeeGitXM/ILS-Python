@@ -11,7 +11,8 @@ Created on Jun 18, 2018
 
 import system, time
 from ils.common.config import getTagProvider, getIsolationTagProvider, getHistoryProvider, getDatabase, getIsolationDatabase
-log = system.util.getLogger("com.ils.demo")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def client():
     print "***********************************************"
@@ -49,7 +50,6 @@ def gateway():
     #------------------------------------------------------------------------------------------------
     # Putting this in its own function allows the other startups to proceed while this sleeps.
     def doit(tagProvider=tagProvider, isolationTagProvider=isolationTagProvider, historyProvider=historyProvider, database=database, isolationDatabase=isolationDatabase, log=log):
-        log = system.util.getLogger("com.ils.site.startup")
         log.info("Starting the deferred startup...")
 
         # Start all of the packages used at the site

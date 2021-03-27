@@ -7,7 +7,8 @@ Created on Nov 30, 2014
 import ils.io.opctag as opctag
 import ils.io.opcoutput as opcoutput
 import system
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 class Controller(opctag.OPCTag):
     

@@ -8,8 +8,8 @@ import system, string
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.hierarchyWithBrowser import deleteRecipeData, deleteRecipeDataGroup
 from ils.common.util import clearDataset
-
-log = system.util.getLogger("ils.client.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     '''

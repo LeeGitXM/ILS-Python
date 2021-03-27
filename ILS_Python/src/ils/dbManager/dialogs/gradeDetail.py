@@ -9,7 +9,8 @@ import system
 from ils.dbManager.ui import populateRecipeFamilyDropdown, populateGradeForFamilyDropdown, populateVersionForGradeDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
 
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     print "In %s.InternalFrameOpened()" % (__name__)

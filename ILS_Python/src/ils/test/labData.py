@@ -5,7 +5,8 @@ Created on Sep 19, 2019
 '''
 
 import system
-log = system.util.getLogger("com.ils.labData.derivedValues")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 This derived data calculation method depends on the order of the related data.  

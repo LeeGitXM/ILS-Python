@@ -18,7 +18,8 @@ from ils.sfc.recipeData.api import substituteScopeReferences
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
 
-logger=system.util.getLogger("com.ils.sfc.gateway.api")
+from ils.log.LogRecorder import LogRecorder
+logger = LogRecorder(__name__)
 
 def abortHandler(chartScope, msg):
     '''
@@ -411,7 +412,7 @@ def dumpProperties(properties):
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
     pypath = getChartPath(chartScope).replace("/",".")
-    return system.util.getLogger(pypath)
+    return LogRecorder(pypath)
 
 def getChartPath(chartProperties):
     return chartProperties.chartPath 

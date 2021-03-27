@@ -4,8 +4,8 @@ Created on Sep 9, 2014
 @author: ILS
 '''
 import system, string
-from uuid import UUID
-log = system.util.getLogger("com.ils.diagToolkit.recommendation,recommendationMap")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def build(rootContainer):
     applicationName=rootContainer.getPropertyValue("applicationName")

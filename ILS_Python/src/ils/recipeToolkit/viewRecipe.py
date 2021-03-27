@@ -6,7 +6,8 @@ Created on Sep 10, 2014
 import system, string
 from ils.recipeToolkit.tagFactory import createUDT
 from sys import path
-log = system.util.getLogger("com.ils.recipeToolkit.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 This runs in the client when the operator presses the "View Recipe" button on the OC Alert.

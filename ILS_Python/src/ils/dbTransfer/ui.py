@@ -12,7 +12,8 @@ from ils.dbTransfer.common import updateFolderPath, getSelectedTableStructure, c
 from ils.common.util import clearDataset, escapeSqlQuotes
 from ils.sfc.recipeData.core import getFolderPath
 
-log = system.util.getLogger("com.ils.dbTransfer")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)

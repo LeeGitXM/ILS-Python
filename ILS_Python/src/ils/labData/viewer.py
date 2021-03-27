@@ -5,7 +5,8 @@ Created on Mar 29, 2015
 '''
 import system, string
 import ils.common.util as util
-log = system.util.getLogger("com.ils.labData.client")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
 # but not multiple screens showing the same table.

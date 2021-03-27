@@ -5,7 +5,8 @@ Created on Jun 10, 2019
 '''
 
 import system
-log = system.util.getLogger("com.ils.labData")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def updateLabDataVisibility(displayTableTitle, visible, db):
     SQL = "update LtDisplayTable set DisplayFlag = %d where DisplayTableTitle = '%s' " % (visible, displayTableTitle)

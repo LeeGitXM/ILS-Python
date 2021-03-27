@@ -7,7 +7,8 @@ The only thing we do to start LabFeedback is to make sure the write enabled tag 
 '''
 
 import system
-log = system.util.getLogger("com.ils.labFeedback")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 EXPONENTIAL_FILTER_BIAS_UDT = "Lab Bias/Lab Bias Exponential Filter"
 PID_BIAS_UDT = "Lab Bias/Lab Bias PID"
 

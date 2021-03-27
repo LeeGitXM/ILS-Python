@@ -4,7 +4,8 @@ Created on Mar 25, 2015
 @author: Pete
 '''
 import system
-log = system.util.getLogger("com.ils.labData")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 This runs in client scope and is called from a client message handler...

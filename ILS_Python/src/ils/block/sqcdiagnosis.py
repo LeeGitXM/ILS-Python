@@ -2,7 +2,8 @@
 
 import system
 from ils.block import basicblock
-log = system.util.getLogger("com.ils.diagToolkit.SQCDiagnosis")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def getClassName():
     return "SQCDiagnosis"

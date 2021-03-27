@@ -4,13 +4,13 @@ Created on Mar 10, 2019
 @author: phass
 '''
 
-import system, string
+import system
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from ils.common.cast import determineType, toBit
-from ils.common.error import catchError, notifyError
-from ils.sfc.recipeData.constants import SIMPLE_VALUE, RECIPE
+from ils.common.error import catchError
 
-log=system.util.getLogger("com.ils.sfc.recipeData.createApi")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def createDynamicRecipe(stepId, recipeDataType, key, db, val=None):
     log.infof("Creating dynamic recipe data for step: %d, type: %s, key: %s", stepId, recipeDataType, key)
@@ -19,7 +19,7 @@ def createDynamicRecipe(stepId, recipeDataType, key, db, val=None):
     
     '''
     There is an annoying disconnect between the constants in Java and the constants in Python.  I have two seperate constants files and the
-    class names for recipe data are not in stnc!  So I will avoind using constants in this code which gets the value from Java and processes in Python.
+    class names for recipe data are not in sync!  So I will avoind using constants in this code which gets the value from Java and processes in Python.
     
     public static final String ARRAY = "array";
     public static final String INPUT = "input";

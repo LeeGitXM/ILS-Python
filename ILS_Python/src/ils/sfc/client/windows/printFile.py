@@ -5,11 +5,10 @@ Created on Jun 17, 2020
 '''
 
 import system, string
-from ils.sfc.recipeData.api import s88GetFromStep
 from ils.common.config import getDatabaseClient
 from ils.common.util import parseFilename
-from ils.sfc.client.util import setClientDone, setClientResponse
-log =system.util.getLogger("com.ils.sfc.client.printFile")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__)

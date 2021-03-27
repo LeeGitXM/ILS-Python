@@ -6,7 +6,8 @@ Created on Dec 3, 2015
 import system
 import ils.io.pkscontroller as pkscontroller
 from ils.io.util import confirmWrite
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 class PKSACEController(pkscontroller.PKSController):
     def __init__(self, path):

@@ -5,10 +5,11 @@ Created on Feb 17, 2018
 '''
 
 import xml.etree.ElementTree as ET
-import system, os
+import system
 from ils.common.config import getDatabaseClient
-from ils.common.error import catchError, notifyError
-log=system.util.getLogger(__name__)
+from ils.common.error import notifyError
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def importRecipeDataCallback(event):
     db = getDatabaseClient()

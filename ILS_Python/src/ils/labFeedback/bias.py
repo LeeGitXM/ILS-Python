@@ -10,13 +10,13 @@ allowed.
 import system
 from ils.common.cast import toBit
 from ils.common.util import substituteProvider
-log = system.util.getLogger("com.ils.labData.labFeedback")
 MESSAGE_QUEUE_KEY = "LABFEEDBACK"
 from ils.queue.message import insert as insertMessage
 from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.common.config import getHistoryProvider
 from ils.common.error import catchError
-
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def manualOverride(tagPath, previousValue, biasValue, initialchange): 
     try:

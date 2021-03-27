@@ -8,7 +8,8 @@ import system, string, time
 from java.util import Date
 from ils.common.util import isText
 from ils.common.config import getTagProvider, getIsolationTagProvider,  getDatabase, getIsolationDatabase
-log = system.util.getLogger("com.ils.io.util")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def runChecks():
     for tagPath in [

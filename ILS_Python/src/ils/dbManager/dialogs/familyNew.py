@@ -6,7 +6,8 @@ Created on Sep 20, 2017
 
 import system
 from ils.common.error import notifyError
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.trace("InternalFrameOpened")

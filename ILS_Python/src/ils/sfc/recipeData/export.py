@@ -5,10 +5,11 @@ Created on May 31, 2017
 '''
 
 import system, os, string
-from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy, getChildren
+from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy
 from ils.common.config import getDatabaseClient
-from ils.common.error import catchError, notifyError
-log=system.util.getLogger(__name__)
+from ils.common.error import notifyError
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def exportCallback(event):
     '''

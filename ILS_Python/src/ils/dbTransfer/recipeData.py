@@ -16,7 +16,8 @@ class RecipeData():
 
     def __init__(self, tableStructure):
         ''' Set any default properties.  For this abstract class there aren't many (yet). '''
-        self.log = system.util.getLogger("com.ils.dbTransfer")
+        from ils.log.LogRecorder import LogRecorder
+        self.log = LogRecorder(__name__)
         
         self.columnsToUpdate = tableStructure.get("columnsToCompareAndUpdate", None)
         if self.columnsToUpdate == None:

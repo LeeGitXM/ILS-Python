@@ -7,7 +7,8 @@ Created on Apr 19, 2019
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForParameter
-log = system.util.getLogger("com.ils.recipe.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 POWER_TABLE_NAME = "SQC Table"
 
 # Called from the client startup script: View menu

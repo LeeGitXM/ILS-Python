@@ -5,8 +5,8 @@ Created on Sep 10, 2014
 '''
 
 import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = system.util.getLogger("com.ils.recipeToolkit.ui")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def refresh(rootContainer):
     log.infof("In %s.refresh()", __name__)

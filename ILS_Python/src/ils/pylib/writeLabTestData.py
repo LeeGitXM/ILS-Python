@@ -5,7 +5,8 @@ import system.ils.blt.diagram as blt
 from java.util import Calendar
 from java.util import Date
 
-log = system.util.getLogger("project.vistalon.tf")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def writeLabHistValues(common,db,labTagName,labTagVal,labTagTimeOffset):
     log.info("In writeLabHistoryTestValues ...")

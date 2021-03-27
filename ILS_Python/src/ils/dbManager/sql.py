@@ -10,7 +10,8 @@ Created on Mar 21, 2017
 # for querying and updating the Recipe database
 
 import system
-log = system.util.getLogger("com.ils.recipe.sql")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # This method is SQL*Server-specific
 def getColumnNames(database,table):        

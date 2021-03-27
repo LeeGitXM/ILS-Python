@@ -13,7 +13,8 @@ from ils.block import basicblock
 import ils.block
 from ils.block import *
 from ils.user.block import *
-log = system.util.getLogger("com.ils.block")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 
 

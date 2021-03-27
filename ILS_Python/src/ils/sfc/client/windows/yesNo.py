@@ -7,7 +7,8 @@ import system
 from ils.sfc.common.constants import YES_RESPONSE, NO_RESPONSE
 from ils.common.config import getDatabaseClient
 from ils.sfc.client.util import setClientDone, setClientResponse
-log =system.util.getLogger("com.ils.sfc.client.yesNo    ")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__) 

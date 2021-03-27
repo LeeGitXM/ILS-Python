@@ -8,14 +8,12 @@ I didn't want to modify that code and possibly break it.  Also that module will 
 didn't want any dependencies on it.
 '''
 
-import system, os, string
-import xml.etree.ElementTree as ET
-from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy, getChildren
+import system
 from ils.common.config import getDatabaseClient
-from ils.common.error import catchError, notifyError
 from ils.common.util import escapeJSON
 
-log=system.util.getLogger("com.ils.sfc.recipeData.internalize.Python")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # Use this to limit the scope during testing
 WHERE = "where chartId >= 769 and chartId <= 773 or chartId = 801 or chartId = 805"

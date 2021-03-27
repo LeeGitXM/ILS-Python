@@ -11,7 +11,8 @@ import ils.io
 import ils.io.opctag as opctag
 import system, string
 
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 
 class OPCOutput(opctag.OPCTag):

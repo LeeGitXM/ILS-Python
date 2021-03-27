@@ -2,7 +2,6 @@
 Created on Nov 30, 2016
 
 @author: phassler
-
 '''
 
 import system, string
@@ -10,14 +9,13 @@ from ils.common.units import convert
 from ils.common.cast import toBit, isFloat
 from ils.common.util import formatDateTime, isText
 from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, \
-    TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED, \
-    LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, \
-    PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP, ID
+    TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED
 
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, SQC, RECIPE, \
-    SIMPLE_VALUE, TIMER, ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_UUID, STEP_NAME
+    SIMPLE_VALUE, TIMER, ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_NAME
 
-logger=system.util.getLogger("com.ils.sfc.recipeData.core")
+from ils.log.LogRecorder import LogRecorder
+logger = LogRecorder(__name__)
 
 def walkUpHieracrchy(chartProperties, stepType):
     logger.tracef("Walking up the hierarchy looking for %s", stepType)

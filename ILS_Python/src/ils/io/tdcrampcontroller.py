@@ -8,7 +8,8 @@ Created on Mar 29, 2018
 import system, string, time
 import ils.io.tdccontroller as tdccontroller
 import ils.io.opcoutput as opcoutput
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 Constants used to sett he state of the ramp controller in the TDC

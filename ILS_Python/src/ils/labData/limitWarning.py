@@ -6,7 +6,8 @@ Created on Aug 1, 2015
 import system
 from ils.labData.common import postMessage
 from ils.common.ocAlert import sendAlert
-log = system.util.getLogger("com.ils.labData.limits")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 #------------------------------
 # Custom Validation Failure

@@ -7,16 +7,16 @@ Created on Nov 30, 2016
 
 import system, string
 from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
-    getStepUUID, getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
+    getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
     fetchRecipeDataRecordFromRecipeDataId, getFolderForStep, copyFolderValues, getStepId
 from ils.sfc.recipeData.core import getDatabaseName, readTag, getProviderName
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, REFERENCE_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
-from ils.queue.constants import QUEUE_WARNING, QUEUE_ERROR
 from ils.common.util import parseBracketedScopeReference, findBracketedScopeReference
 
-logger=system.util.getLogger("com.ils.sfc.recipeData.api")
+from ils.log.LogRecorder import LogRecorder
+logger = LogRecorder(__name__)
 
 def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
     ''' Check that the desired setpoint (from recipe), the actual setpoint, and the actual PV are within tolerance.  '''

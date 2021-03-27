@@ -2,11 +2,11 @@
 # ready for automated testing.
 
 import system
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def resetActiveProblems(common,db):
-# turn off competing votes for most important problm to be worked
-    
-    log = system.util.getLogger("project.vistalon.tf")
+    ''' Turn off competing votes for most important problm to be worked. '''
     log.info("In resetActiveProblems ...")
    
     sqlDE = "update DtDiagnosisEntry set Status = 'Inactive' where Status = 'Active'"
@@ -22,9 +22,7 @@ def resetActiveProblems(common,db):
     log.info("...cleared %i final diagnosis" % (rowsFD))
 
 def initializeQuantOutputs(common,db):
-# set quant output fields to zero
-
-    log = system.util.getLogger("project.vistalon.tf")
+    ''' Set quant output fields to zero '''
     log.info("In intiializeQuantOutputs ...")
 
     sql = "update DtQuantOutput set FeedbackOutput = 0.0, FeedbackOutputConditioned = 0.0"
@@ -33,9 +31,8 @@ def initializeQuantOutputs(common,db):
     log.info("... cleared %i output values" % (rows))
 
 def resetQuantOutputsForFD(common,db,appName,qoName):
-# set selected quantoutput to zero 
+    ''' Set selected quantoutput to zero ''' 
 
-    log = system.util.getLogger("project.vistalon.tf")
     log.info("In resetQuantOutputsForFD ...")
 
     sql = "update DtQuantOutput set FeedbackOutput = 0.0, FeedbackOutputConditioned = 0.0" \

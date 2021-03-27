@@ -7,7 +7,8 @@ from ils.common.cast import toBit
 from ils.common.database import toDateString
 from ils.sfc.common.util import logExceptionCause
 
-log = system.util.getLogger("com.ils.diagToolkit.extensions")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 handler = ControllerRequestHandler.getInstance()
 
 '''

@@ -10,7 +10,8 @@ from ils.io.util import getDatabaseFromTagPath
 from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO 
 
 MAX_TRIES = 3
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 '''
 This is called from the source tag of the "Data Transfer" UDT.

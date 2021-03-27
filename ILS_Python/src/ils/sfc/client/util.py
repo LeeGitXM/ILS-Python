@@ -7,7 +7,8 @@ import system.util, time
 from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.common.config import getDatabaseClient
-log =system.util.getLogger("com.ils.sfc.client.util")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # This is called from a timer
 def checkTimeout(rootContainer):

@@ -6,13 +6,13 @@ Created on Feb 10, 2017
 import system
 from ils.common.config import getDatabaseClient
 from ils.common.windowUtil import clearTable, clearTree
-from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE, TIMER
-from ils.common.error import catchError
+from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE
 from ils.common.config import getTagProviderClient
 from sys import path
 from __builtin__ import True
 from ils.sfc.common.constants import SQL
-log=system.util.getLogger(__name__)
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 #treeMode = "chartName"
 treeMode = "fullPath"

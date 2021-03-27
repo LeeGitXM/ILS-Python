@@ -61,12 +61,13 @@ def activate(scopeContext, stepProperties, state):
             
             if ackRequired:
                 sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback="ils.common.ocAlert.sfcHandshake", 
-                    callbackPayloadDictionary={"chartId": chartId, "stepId": stepId}, timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False)
+                    callbackPayloadDictionary={"chartId": chartId, "stepId": stepId}, timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False,
+                    windowName=windowPath)
                 logger.trace("Setting ACK flag")
                 stepScope[WAITING_FOR_REPLY] = True
             else:
                 sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel,  
-                    timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False)
+                    timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath)
                 workDone = True
         
         else: 

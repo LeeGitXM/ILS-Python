@@ -14,7 +14,8 @@
 '''
 
 import system, string
-log = system.util.getLogger("com.ils.io")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 class OPCTag():
     path = None     # Path is the root tag path of the UDT which this object encapsulates

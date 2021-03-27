@@ -2,11 +2,13 @@
   Gateway scope extension functions dealing with Application instances.
 '''
 import system
-import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
-from ils.common.cast import toBit
 
-log = system.util.getLogger("com.ils.diagToolkit.extensions")
-handler = ControllerRequestHandler.getInstance()
+#import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+#handler = ControllerRequestHandler.getInstance()
+
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+
 
 def delete(applicationUUID):
     '''
@@ -18,7 +20,8 @@ def delete(applicationUUID):
     '''
     log.infof("In %s.delete()", __name__)
     
-    db = handler.getProductionDatabase()
+    #db = handler.getProductionDatabase()
+    db = "XOM"
     
     SQL = "delete from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
     rows = system.db.runUpdateQuery(SQL, db)
@@ -41,7 +44,8 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL, db)
     
     log.tracef("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
-    db = handler.getProductionDatabase()
+    #db = handler.getProductionDatabase()
+    db = "XOM"
     renameInDatabase(uuid,oldName,newName,db)
 
 
@@ -54,7 +58,8 @@ def save(applicationUUID):
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
     log.infof("In %s.save()", __name__)
-    db = handler.getProductionDatabase()
+    #db = handler.getProductionDatabase()
+    db = "XOM"
     
     from system.ils.blt.diagram import getApplicationName
     applicationName = getApplicationName(applicationUUID)
@@ -100,7 +105,9 @@ The caller must supply either the production or isolation database name
 def getAux(uuid,aux,db):
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
-    appName = handler.getApplicationName(uuid)
+    #appName = handler.getApplicationName(uuid)
+    appName = "TESTAPP1"
+    print "In appProperties.getAux()..."
     
     properties = aux[0]
     lists      = aux[1]
@@ -135,6 +142,7 @@ def getAux(uuid,aux,db):
         properties["Managed"]=str(record["Managed"])
 
     log.tracef("Properties: %s", str(properties))
+    print "Fetched: ", str(properties)
     
     # Fetch the list of posts
     SQL = "SELECT Post "\
@@ -146,6 +154,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         posts.append(str(record["Post"]))
     lists["Posts"] = posts
+    print "Fetched posts: ", str(posts)
     
     # Fetch the list of units
     SQL = "SELECT UnitName "\
@@ -156,6 +165,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         units.append(str(record["UnitName"]))
     lists["Units"] = units
+    print "Fetched units: ", str(units)
     
     # Fetch the list of Ramp Methods
     SQL = "SELECT LookupName "\
@@ -167,6 +177,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         methods.append(str(record["LookupName"]))
     lists["GroupRampMethods"] = methods
+    print "Fetched ramp methods: ", str(methods)
     
     # Fetch the list of Feedback Methods
     SQL = "SELECT LookupName "\
@@ -178,6 +189,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         methods.append(str(record["LookupName"]))
     lists["FeedbackMethods"] = methods
+    print "Fetched Feedback Methods: ", str(methods)
     
     # Fetch the list of queues
     SQL = "SELECT QueueKey "\
@@ -188,6 +200,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         queues.append(str(record["QueueKey"]))
     lists["MessageQueues"] = queues
+    print "Fetched queues: ", str(queues)
     
     # Fetch the list of Quant outputs
     SQL = "SELECT QuantOutputId, QuantOutputName QuantOutput, TagPath, MostNegativeIncrement, MostPositiveIncrement, MinimumIncrement, SetpointHighLimit,"\
@@ -211,6 +224,7 @@ def getAux(uuid,aux,db):
         rec["SetpointLowLimit"]=str(record["SetpointLowLimit"])
         rec["FeedbackMethod"]=str(record["FeedbackMethod"])
         rec["IncrementalOutput"]=str(record["IncrementalOutput"])
+        print "Fetched output: ", str(rec)
         maplist.append(rec)
         
     maplists["QuantOutputs"]=maplist
@@ -225,7 +239,9 @@ def getAux(uuid,aux,db):
 # The caller must supply either the production or isolation database name
 def setAux(uuid, aux, db):
     log.infof("In %s.setAux()", __name__)
-    applicationName = handler.getApplicationName(uuid)
+    #applicationName = handler.getApplicationName(uuid)
+    applicationName = "TESTAPP1"
+    
     log.tracef("  ...the application name is: %s,  database: %s",applicationName, db)
     
     from locale import setlocale, LC_NUMERIC, atof

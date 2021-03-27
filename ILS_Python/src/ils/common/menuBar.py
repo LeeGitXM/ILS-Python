@@ -5,7 +5,8 @@ Created on Mar 7, 2016
 '''
 import system
 from javax.swing import JMenuItem
-log=system.util.getLogger("com.ils.common.menuBar")
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 # Collection of useful methods for menu configuration
 class ConsoleMenus():
