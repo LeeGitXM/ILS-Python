@@ -3,23 +3,19 @@ Created on Mar 18, 2021
 
 @author: phass
 '''
-import system
 from ils.common.ocAlert import sendAlert
 from ils.sfc.common.util import isEmpty
-from ils.sfc.gateway.steps.commonInput import cleanup, initializeResponse
-from ils.sfc.gateway.api import getStepProperty, getControlPanelId, registerWindowWithControlPanel, getProject, \
-        logStepDeactivated, getTopChartRunId, getDatabaseName, getChartLogger, sendMessageToClient, handleUnexpectedGatewayError
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, substituteScopeReferences
-from ils.sfc.common.constants import ACK_REQUIRED, BUTTON_LABEL, WAITING_FOR_REPLY, IS_SFC_WINDOW, \
-    WINDOW_ID, PROJECT, WINDOW_PATH, DEACTIVATED, CANCELLED, RECIPE_LOCATION, KEY, \
-    ID, STEP_ID, INSTANCE_ID, CHART_ID, WORK_DONE, CLIENT_DONE, CHART_SCOPE, STEP_SCOPE, TOP_MESSAGE, MAIN_MESSAGE, BOTTOM_MESSAGE, \
-    OC_ALERT_WINDOW, POST
+from ils.sfc.gateway.steps.commonInput import cleanup
+from ils.sfc.gateway.api import getStepProperty, getControlPanelId, getProject, \
+        logStepDeactivated, getTopChartRunId, getDatabaseName, getChartLogger, handleUnexpectedGatewayError
+from ils.sfc.common.constants import ACK_REQUIRED, BUTTON_CALLBACK, BUTTON_LABEL, WAITING_FOR_REPLY, DEACTIVATED, CANCELLED, \
+    ID, INSTANCE_ID, CLIENT_DONE, TOP_MESSAGE, MAIN_MESSAGE, BOTTOM_MESSAGE, OC_ALERT_WINDOW, POST
 
 def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
-    logger = getChartLogger(chartScope)
-    logger.tracef("In %s.activate()", __name__)
+    log = getChartLogger(chartScope)
+    log.tracef("In %s.activate()", __name__)
 
     if state in [DEACTIVATED, CANCELLED]:
         logStepDeactivated(chartScope, stepProperties)
@@ -33,7 +29,7 @@ def activate(scopeContext, stepProperties, state):
         
         if not waitingForReply:
             # first call; do initialization and cache info in step scope for subsequent calls:
-            logger.trace("Initializing a getInput step")
+            log.tracef("Initializing a OC Alert step")
 
             chartId = chartScope.get(INSTANCE_ID, -1)
             stepId = getStepProperty(stepProperties, ID)
@@ -41,10 +37,6 @@ def activate(scopeContext, stepProperties, state):
             database = getDatabaseName(chartScope)
             chartRunId = getTopChartRunId(chartScope)
             project = getProject(chartScope)
-            
-            logger.infof("Chart id: %s", chartId)
-            logger.infof("Step id: %s", stepId)
-            logger.infof("Project: %s", project)
             
             stepScope[WAITING_FOR_REPLY] = True
             stepScope[CLIENT_DONE] = False
@@ -57,31 +49,34 @@ def activate(scopeContext, stepProperties, state):
             buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
             if isEmpty(buttonLabel):
                 buttonLabel = 'OC Alert'
+            buttonCallback = getStepProperty(stepProperties, BUTTON_CALLBACK)
             ackRequired = getStepProperty(stepProperties, ACK_REQUIRED)
             
             if ackRequired:
-                sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback="ils.common.ocAlert.sfcHandshake", 
-                    callbackPayloadDictionary={"chartId": chartId, "stepId": stepId}, timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False,
-                    windowName=windowPath)
-                logger.trace("Setting ACK flag")
+                log.tracef("Calling sendAlert() ** Requiring an ACK **")
+                sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, 
+                    callbackPayloadDictionary={"chartId": chartId, "stepId": stepId, "buttonCallback": buttonCallback}, callback="ils.common.ocAlert.sfcHandshake", 
+                    timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath)
+                log.trace("   setting ACK flag...")
                 stepScope[WAITING_FOR_REPLY] = True
             else:
-                sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel,  
-                    timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath)
+                sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, 
+                          callbackPayloadDictionary={}, callback=buttonCallback,
+                          timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath)
                 workDone = True
-        
+    
         else: 
             ''' waiting for reply '''
             clientDone = stepScope.get(CLIENT_DONE, False);
-            logger.tracef("...checking clientDone: %s", str(clientDone))
+            log.tracef("...waiting for the client to ACK (checking clientDone: %s)", str(clientDone))
             if clientDone:
                 workDone =True
 
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in commonInput.py', log)
         workDone = True
     finally:
         if workDone:
-            logger.trace("All of the work is done, cleaning up...")
+            log.trace("All of the work is done, cleaning up...")
             cleanup(chartScope, stepProperties, stepScope)
         return workDone

@@ -9,19 +9,17 @@ from ils.common.notification import notifyError
 from ils.common.config import getIsolationModeClient, getTagProvider
 from ils.sfc.common.constants import CLIENT_DONE
 from ils.log.LogRecorder import LogRecorder
-logger = LogRecorder(__name__)
+log = LogRecorder(__name__)
 
 # This is generally called from the gateway, but will also work when called from test (like from the test window)
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
               callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db="", isolationMode=False, windowName=""):
-    logger.trace("In %s.sendAlert() to post: %s (Isolation: %s)" % (__name__, post, isolationMode))
+    log.trace("In %s.sendAlert() to post: %s (Isolation: %s, payload: %s)" % (__name__, post, isolationMode, str(callbackPayloadDictionary)))
     
     if callbackPayloadDictionary == None:
         callbackPayloadDataset = None
     else:
         callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
-        
-    print "Main Message: ", mainMessage
 
     # Now make the payload for the OC alert window
     payload = {
@@ -38,7 +36,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         "isolationMode": isolationMode
         }
 
-    logger.tracef("Payload: %s", str(payload))
+    log.tracef("Payload: %s", str(payload))
     message = "ocAlert"
     notifyError(project, message, payload, post, db, isolationMode)
     
@@ -48,13 +46,13 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     provider = getTagProvider()
     callback = system.tag.read("[%s]Configuration/Common/ocAlertCallback" % (provider)).value
     if callback not in ["", None, "None"]:
-        logger.tracef("Calling a callback...")
+        log.tracef("Calling a callback...")
         ocAlertCallback(callback, payload)
         
         
 def ocAlertCallback(callback, payload):
     # If they specify shared or project scope, then we don't need to do this
-    logger.tracef("In ocAlertCallback")
+    log.tracef("In ocAlertCallback")
     if callback not in ["", None] and (not(string.find(callback, "project") == 0 or string.find(callback, "shared") == 0)):
         # The method contains a full python path, including the method name
         try:
@@ -63,24 +61,24 @@ def ocAlertCallback(callback, payload):
             separator=string.rfind(packagemodule, ".")
             package = packagemodule[0:separator]
             module  = packagemodule[separator+1:]
-            logger.tracef("   ...using External Python, the package is: <%s>.<%s>", package,module)
+            log.tracef("   ...using External Python, the package is: <%s>.<%s>", package,module)
             exec("import %s" % (package))
             exec("from %s import %s" % (package,module))
         except:
             errorType,value,trace = sys.exc_info()
             errorTxt = str(traceback.format_exception(errorType, value, trace, 500))
-            logger.errorf("Caught an exception importing an external reference method named %s %s", str(callback), errorTxt)
+            log.errorf("Caught an exception importing an external reference method named %s %s", str(callback), errorTxt)
             return [], errorTxt, "ERROR"
         else:
-            logger.tracef("...import of external reference was successful...")
+            log.tracef("...import of external reference was successful...")
             
     try:
         if callback not in ["", None]:
-            logger.tracef("...making the call...")
+            log.tracef("...making the call...")
             eval(callback)(payload)
-            logger.tracef("...back from the OC alert callback!")
+            log.tracef("...back from the OC alert callback!")
     except:
-        logger.error("Error calling the OC alert callback")
+        log.errorf("Error calling the OC alert callback")
     
 
 # This runs in a client and is called when the OC alert message is sent to every client.  The first
@@ -92,7 +90,7 @@ def ocAlertCallback(callback, payload):
 # he will receive the OC alerts for the XO1RLA3 post.
 # Alas, if they did not provide a post in the payload then display the alert everywhere.  
 def handleMessage(payload):
-    logger.trace("In %s.handleMessage() - payload: %s" % (__name__, str(payload)))
+    log.infof("In %s.handleMessage() - payload: %s", __name__, str(payload))
     
     '''
     This is a hack.  We have a common notifyError API that implements so good logic to figure out if a window should be shown on a client.
@@ -105,12 +103,8 @@ def handleMessage(payload):
     if payload.has_key('isolationMode'):
         messageIsolationMode = payload["isolationMode"]
         clientIsolationMode = getIsolationModeClient()
-        print "**************************************************"
-        print "Client Isolation Mode:  ", clientIsolationMode
-        print "Message Isolation Mode: ", messageIsolationMode
-        print "**************************************************"
         if messageIsolationMode <> clientIsolationMode:
-            print "Ignoring the message because the isolation mode of the message does not match the isolation mode of the client"
+            log.infof("Ignoring the message because the isolation mode of the message does not match the isolation mode of the client")
             return
         
         del payload['isolationMode']
@@ -127,7 +121,7 @@ def buttonHandler(event):
     '''
     This is called from the button smack in the middle of the screen.
     '''
-    logger.trace("In %s..." % (__name__))
+    log.tracef("In %s...", __name__)
     rootContainer = event.source.parent
     callback=rootContainer.callback
     
@@ -138,7 +132,7 @@ def buttonHandler(event):
     else:
         payload=ds.getValueAt(0,0)
     
-    logger.trace("Dictionary: %s" % (str(payload)))
+    log.tracef("Dictionary: %s", str(payload))
 
     if callback == "" or callback == None or callback == "None":
         system.nav.closeParentWindow(event)
@@ -152,32 +146,59 @@ def buttonHandler(event):
         separator=string.rfind(packagemodule, ".")
         package = packagemodule[0:separator]
         module  = packagemodule[separator+1:]
-        logger.trace("Using External Python, the package is: <%s>.<%s>" % (package,module))
+        log.tracef("Using External Python, the package is: <%s>.<%s>", package,module)
         exec("import %s" % (package))
         exec("from %s import %s" % (package,module))
         
     try:
-        logger.trace("Calling custom callback procedure %s..." % (callback))
+        log.tracef("Calling custom callback procedure %s...", callback)
         eval(callback)(event, payload)
-        logger.trace("   ...back from the callback!")
+        log.tracef("   ...back from the callback!")
                 
     except:
         errorType,value,trace = sys.exc_info()
         errorTxt = traceback.format_exception(errorType, value, trace, 1000)
-        logger.trace("Caught an exception calling callback... \n%s" % (errorTxt))
+        log.tracef("Caught an exception calling callback... \n%s", errorTxt)
 
 
 def sfcHandshake(event, payload):
     '''
     When the OC Alert is called from the SFC built in step this is automatically called.  
     '''
+    log.infof("In %s.sfcHandshake, the payload is %s", __name__, str(payload))
     chartId = str(payload.get("chartId", "-1"))
     stepId = str(payload.get("stepId", "-1"))
-
+    
     system.sfc.setVariable(chartId, stepId, str(CLIENT_DONE), True)
     system.nav.closeParentWindow(event)
     
-# This is a callback from the Acknowledge button in the middle of the loud workspace.
+    buttonCallback = str(payload.get("buttonCallback", None))
+    if buttonCallback <> None:
+        # If they specify shared or project scope, then we don't need to do this
+        if not(string.find(buttonCallback, "project") == 0 or string.find(buttonCallback, "shared") == 0):
+            # The method contains a full python path, including the package, module, and function name
+            separator=string.rfind(buttonCallback, ".")
+            packagemodule=buttonCallback[0:separator]
+            separator=string.rfind(packagemodule, ".")
+            package = packagemodule[0:separator]
+            module  = packagemodule[separator+1:]
+            log.tracef("Using External Python, the package is: <%s>.<%s>", package,module)
+            exec("import %s" % (package))
+            exec("from %s import %s" % (package,module))
+            
+        try:
+            log.tracef("Calling custom callback procedure %s...", buttonCallback)
+            eval(buttonCallback)(event, payload)
+        except:
+            errorType,value,trace = sys.exc_info()
+            errorTxt = traceback.format_exception(errorType, value, trace, 1000)
+            log.tracef("Caught an exception calling callback... \n%s", errorTxt)
+
+
 def testCallback(event, payload):
+    '''
+    This is a callback from the Acknowledge button in the middle of the loud workspace. 
+    '''
+    print "In %s.testCallback, the payload is %s" % (__name__, str(payload))
     system.nav.closeParentWindow(event)    
     system.gui.messageBox("Hello - this is from the custom callback!")

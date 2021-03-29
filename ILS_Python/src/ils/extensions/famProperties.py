@@ -2,8 +2,8 @@
   Gateway scope extension functions dealing with Family instances.
 '''
 import system
-#import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
-#handler = ControllerRequestHandler.getInstance()
+import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+handler = ControllerRequestHandler.getInstance()
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -21,9 +21,8 @@ def delete(familyUUID):
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
     log.infof("In %s.delete() with family uuid: %s", __name__, familyUUID)
-    #db = handler.getProductionDatabase()
-    db = "XOM"
-    
+    db = handler.getProductionDatabase()
+        
     SQL = "delete from DtFamily where FamilyUUID = '%s'" % (familyUUID)
     rows = system.db.runUpdateQuery(SQL, db)
     if rows == 1:
@@ -43,12 +42,11 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL,db)
     
     log.infof("In %s.rename()", __name__)
-    #db = handler.getProductionDatabase()
-    db = "XOM"
+    db = handler.getProductionDatabase()
+    
     renameInDatabase(uuid,oldName,newName,db)
     
-    #db = handler.getIsolationDatabase()
-    db = "XOM_ISOLATION"
+    db = handler.getIsolationDatabase()
     renameInDatabase(uuid,oldName,newName,db)
     
 
@@ -64,8 +62,7 @@ def save(familyUUID):
     '''
     log.tracef("In %s.save()", __name__)
     
-    #db = handler.getProductionDatabase()
-    db = "XOM"
+    db = handler.getProductionDatabase()
     
     from system.ils.blt.diagram import getFamilyName, getApplicationName
     familyName = getFamilyName(familyUUID)
@@ -117,10 +114,8 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid,aux,db):
-    #appName  = handler.getApplicationName(uuid)
-    appName = "TESTAPP1"
-    #familyName = handler.getFamilyName(uuid)
-    familyName = "TestFamily1_2"
+    appName  = handler.getApplicationName(uuid)
+    familyName = handler.getFamilyName(uuid)
     
     properties = aux[0]
     
@@ -138,10 +133,9 @@ def getAux(uuid,aux,db):
 
 
 def setAux(uuid,aux,db):
-    #appName  = handler.getApplicationName(uuid)
-    appName = "TESTAPP1"
-    #familyName = handler.getFamilyName(uuid)
-    familyName = "TestFamily1_2"
+    appName  = handler.getApplicationName(uuid)
+    familyName = handler.getFamilyName(uuid)
+
     properties = aux[0]
     print "famProperties.setAux()  ...the application/family name is: ",appName,"/",familyName,", properties:", properties
     

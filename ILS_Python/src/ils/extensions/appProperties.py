@@ -3,8 +3,8 @@
 '''
 import system
 
-#import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
-#handler = ControllerRequestHandler.getInstance()
+import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+handler = ControllerRequestHandler.getInstance()
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -20,8 +20,7 @@ def delete(applicationUUID):
     '''
     log.infof("In %s.delete()", __name__)
     
-    #db = handler.getProductionDatabase()
-    db = "XOM"
+    db = handler.getProductionDatabase()
     
     SQL = "delete from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
     rows = system.db.runUpdateQuery(SQL, db)
@@ -44,8 +43,7 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL, db)
     
     log.tracef("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
-    #db = handler.getProductionDatabase()
-    db = "XOM"
+    db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
 
 
@@ -58,8 +56,7 @@ def save(applicationUUID):
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
     log.infof("In %s.save()", __name__)
-    #db = handler.getProductionDatabase()
-    db = "XOM"
+    db = handler.getProductionDatabase()
     
     from system.ils.blt.diagram import getApplicationName
     applicationName = getApplicationName(applicationUUID)
@@ -105,8 +102,8 @@ The caller must supply either the production or isolation database name
 def getAux(uuid,aux,db):
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
-    #appName = handler.getApplicationName(uuid)
-    appName = "TESTAPP1"
+    appName = handler.getApplicationName(uuid)
+
     print "In appProperties.getAux()..."
     
     properties = aux[0]
@@ -239,8 +236,7 @@ def getAux(uuid,aux,db):
 # The caller must supply either the production or isolation database name
 def setAux(uuid, aux, db):
     log.infof("In %s.setAux()", __name__)
-    #applicationName = handler.getApplicationName(uuid)
-    applicationName = "TESTAPP1"
+    applicationName = handler.getApplicationName(uuid)
     
     log.tracef("  ...the application name is: %s,  database: %s",applicationName, db)
     

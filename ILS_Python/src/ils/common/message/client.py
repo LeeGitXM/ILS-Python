@@ -39,6 +39,8 @@ def handle(payload):
     
     else:
         print "Unexpected request type: <%s>" % (requestType)
+        
+    print "...done handling the message request..."
 
 def openWindow(payload):
     print "Opening:", payload
