@@ -205,7 +205,6 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 4, "version": "1.4r0", "filename": "update_1.4r0.sql", "releaseData": "2020-10-25"})
         
         projectName = system.util.getProjectName()
-        system.util.setLoggingLevel("com.ils.common.startup", "trace")
         log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
         
         tagPath = "[%s]/Configuration/common/dbUpdateStrategy" % (tagProvider)

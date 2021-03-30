@@ -7,6 +7,7 @@ import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.api import s88GetFromId, s88GetRecordFromId, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
+from ils.sfc.common.constants import SECONDARY_SORT_BY_ALPHABETICAL, SECONDARY_SORT_BY_ORDER
 from ils.common.util import escapeSqlQuotes
 from ils.sfc.common.util import getChartStatus
 from ils.log.LogRecorder import LogRecorder
@@ -37,11 +38,13 @@ def internalFrameOpened(event):
         maxAdjustment = 1.7
         log.warnf("Using default max adjustment of %f because configuration tag %s does not exist!", maxAdjustment, guiAdjustmentTagPath)
     
-    SQL = "select State, TimerRecipeDataId from SfcDownloadGUI where windowId = '%s'" % (windowId)
+    SQL = "select State, TimerRecipeDataId, SecondarySortKey from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
     timerRecipeDataId = pds[0]["TimerRecipeDataId"]
     rootContainer.timerRecipeDataId = timerRecipeDataId
+    secondarySortKey = pds[0]["SecondarySortKey"]
+    rootContainer.secondarySortKey = secondarySortKey
 
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -94,6 +97,7 @@ def update(rootContainer):
 
     windowId = rootContainer.windowId
     timerRecipeDataId = rootContainer.timerRecipeDataId
+    secondarySortKey = rootContainer.secondarySortKey
 
     database = getDatabaseClient()
     tagProvider = getTagProviderClient()
@@ -133,7 +137,16 @@ def update(rootContainer):
             updateWindowState(windowId, database) 
     
     # Now update the Vision table from the data in the database table 
-    SQL = "select * from SfcDownloadGUITable where windowId = '%s' order by rawTiming, DCSTagId " % (windowId)
+    if secondarySortKey == SECONDARY_SORT_BY_ALPHABETICAL:
+        SQL = "select * from SfcDownloadGUITable where windowId = '%s' order by rawTiming, DCSTagId " % (windowId)
+    else:
+        '''
+        Sort by order in the config table (SECONDARY_SORT_BY_ORDER).  The reason this works, without adding a term to the order by is that the rows
+        are inserted into the database in the order that they are in the config table and if you don't specify the order, they will come out in the order that
+        they go in.
+        '''
+        SQL = "select * from SfcDownloadGUITable where windowId = '%s' order by rawTiming " % (windowId)
+
     pds = system.db.runQuery(SQL, database)
     
     # Need to add a row at the top to specify the time that the download started.
@@ -198,7 +211,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
     The difference between rawTiming and timing is the final rows whose raw timing is > 1000.  When the tag 
     is actually written then timing and stepTimestamp are updated but raw Timing remains the same.     
     '''
-    log.tracef("***Initializing*** the database table...")
+    log.infof("***Initializing*** the database table...")
     SQL = "select * from SfcDownloadGUITable where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
@@ -304,7 +317,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 # happens then we may need to read all tags and update all fields in database.  It doesn't seem like that 
 # would be much additional overhead anyway.
 def updateDatabaseTable(windowId, database):
-    log.tracef("...updating the database table...")
+    log.infof("...updating the database table...")
     SQL = "select * from SfcDownloadGUITable where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 

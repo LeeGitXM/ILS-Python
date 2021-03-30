@@ -103,14 +103,12 @@ def getAux(uuid,aux,db):
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
     appName = handler.getApplicationName(uuid)
-
-    print "In appProperties.getAux()..."
     
     properties = aux[0]
     lists      = aux[1]
     maplists   = aux[2]
     
-    log.tracef("...the application name is: %s, database is: %s", appName, db)
+    log.infof("...the application name is: %s, database is: %s", appName, db)
     
     SQL = "SELECT A.ApplicationId, A.Description, A.Managed, P.Post, U.UnitName, Q.QueueKey MessageQueue, A.IncludeInMainMenu, L.LookupName GroupRampMethod "\
           " FROM DtApplication A, TkPost P, TkUnit U, QueueMaster Q, Lookup L "\
@@ -138,8 +136,7 @@ def getAux(uuid,aux,db):
         properties["GroupRampMethod"]=record["GroupRampMethod"]
         properties["Managed"]=str(record["Managed"])
 
-    log.tracef("Properties: %s", str(properties))
-    print "Fetched: ", str(properties)
+    log.infof("Properties: %s", str(properties))
     
     # Fetch the list of posts
     SQL = "SELECT Post "\
@@ -151,7 +148,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         posts.append(str(record["Post"]))
     lists["Posts"] = posts
-    print "Fetched posts: ", str(posts)
+    log.infof("Fetched posts: %s", str(posts))
     
     # Fetch the list of units
     SQL = "SELECT UnitName "\
@@ -162,7 +159,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         units.append(str(record["UnitName"]))
     lists["Units"] = units
-    print "Fetched units: ", str(units)
+    log.infof("Fetched units: %s", str(units))
     
     # Fetch the list of Ramp Methods
     SQL = "SELECT LookupName "\
@@ -174,7 +171,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         methods.append(str(record["LookupName"]))
     lists["GroupRampMethods"] = methods
-    print "Fetched ramp methods: ", str(methods)
+    log.infof("Fetched ramp methods: %s", str(methods))
     
     # Fetch the list of Feedback Methods
     SQL = "SELECT LookupName "\
@@ -186,7 +183,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         methods.append(str(record["LookupName"]))
     lists["FeedbackMethods"] = methods
-    print "Fetched Feedback Methods: ", str(methods)
+    log.infof("Fetched Feedback Methods: %s", str(methods))
     
     # Fetch the list of queues
     SQL = "SELECT QueueKey "\
@@ -197,7 +194,7 @@ def getAux(uuid,aux,db):
     for record in ds:
         queues.append(str(record["QueueKey"]))
     lists["MessageQueues"] = queues
-    print "Fetched queues: ", str(queues)
+    log.infof("Fetched queues: %s", str(queues))
     
     # Fetch the list of Quant outputs
     SQL = "SELECT QuantOutputId, QuantOutputName QuantOutput, TagPath, MostNegativeIncrement, MostPositiveIncrement, MinimumIncrement, SetpointHighLimit,"\
@@ -221,7 +218,7 @@ def getAux(uuid,aux,db):
         rec["SetpointLowLimit"]=str(record["SetpointLowLimit"])
         rec["FeedbackMethod"]=str(record["FeedbackMethod"])
         rec["IncrementalOutput"]=str(record["IncrementalOutput"])
-        print "Fetched output: ", str(rec)
+        log.infof("Fetched output: %s", str(rec))
         maplist.append(rec)
         
     maplists["QuantOutputs"]=maplist
@@ -229,7 +226,7 @@ def getAux(uuid,aux,db):
     log.tracef("appProperties.getAux: properties: %s", str(properties))
     log.tracef("appProperties.getAux: lists: %s: ", str(lists))
     log.tracef("appProperties.getAux: maplists: %s", str(maplists))
-    log.tracef("  ...leaving getAux()!")
+    log.infof("  ...leaving getAux()!")
 
 
 # Set values in the database from contents of the aux container

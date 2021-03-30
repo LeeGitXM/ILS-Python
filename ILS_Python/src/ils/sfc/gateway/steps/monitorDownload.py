@@ -11,7 +11,8 @@ from ils.sfc.recipeData.api import s88Set, s88Get, s88GetRecipeDataId, s88GetRec
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, DOWNLOAD, \
     POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
-    TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, TIMER_SET, CLEAR_TIMER, START_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME
+    TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, TIMER_SET, CLEAR_TIMER, START_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME, \
+    SECONDARY_SORT_KEY, SECONDARY_SORT_BY_ALPHABETICAL, SECONDARY_SORT_BY_ORDER
 from system.ils.sfc import getMonitorDownloadsConfig
 from ils.sfc.gateway.downloads import handleTimer
 from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpectedGatewayError, sendMessageToClient, getStepProperty, getControlPanelId, \
@@ -36,9 +37,14 @@ def activate(scopeContext, stepProperties, state):
     
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
+        secondarySortKey = getStepProperty(stepProperties, SECONDARY_SORT_KEY)
         log.tracef("...using timer %s.%s...", timerLocation, timerKey)
         timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
-        
+         
+        secondarySortKey = getStepProperty(stepProperties, SECONDARY_SORT_KEY)
+        if secondarySortKey == None:
+            secondarySortKey = SECONDARY_SORT_BY_ALPHABETICAL
+
         clearTimer = getStepProperty(stepProperties, TIMER_CLEAR)
         if clearTimer:
             handleTimer(timerRecipeDataId, CLEAR_TIMER, log, database)
@@ -69,8 +75,11 @@ def activate(scopeContext, stepProperties, state):
 
         log.tracef("Inserted a window with id: %s", str(windowId))
         
-        SQL = "insert into SfcDownloadGUI (windowId, state, LastUpdated, TimerRecipeDataId) values ('%s', 'created', CURRENT_TIMESTAMP, %s)" % (windowId, str(timerRecipeDataId) )
+        SQL = "insert into SfcDownloadGUI (windowId, state, LastUpdated, TimerRecipeDataId, SecondarySortKey) values ('%s', 'created', CURRENT_TIMESTAMP, %s, '%s')" \
+            % (windowId, str(timerRecipeDataId), secondarySortKey)
         system.db.runUpdateQuery(SQL, database)
+        
+        log.infof("The step properties are: %s", str(stepProperties))
         
         # Reset the recipe data download and PV monitoring attributes
         for row in monitorDownloadsConfig.rows:
