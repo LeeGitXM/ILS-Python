@@ -9,6 +9,7 @@ This step caused some problems because of the brilliant decision to have an impl
 import system, string
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
+from ils.sfc.recipeData.api import s88GetStepInfoFromUUID
 from ils.sfc.client.windows.reviewData import setAdviceVisibiity
 
 def internalFrameOpened(rootContainer):
@@ -96,5 +97,6 @@ def actionPerformed(event, response):
         responseKey = responseKey + ".value"
 
     folder,key,attribute = splitKey(responseKey)
-    setRecipeData(targetStepUUID, folder, key, attribute, response, db)
+    chartPath, stepName = s88GetStepInfoFromUUID(targetStepUUID, db)
+    setRecipeData(stepName, targetStepUUID, folder, key, attribute, response, db)
     system.nav.closeParentWindow(event)

@@ -38,13 +38,16 @@ def internalFrameOpened(event):
         maxAdjustment = 1.7
         log.warnf("Using default max adjustment of %f because configuration tag %s does not exist!", maxAdjustment, guiAdjustmentTagPath)
     
-    SQL = "select State, TimerRecipeDataId, SecondarySortKey from SfcDownloadGUI where windowId = '%s'" % (windowId)
+    SQL = "select StepState, GuiState, TimerRecipeDataId, SecondarySortKey, StepName, StepId "\
+        "from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
     timerRecipeDataId = pds[0]["TimerRecipeDataId"]
     rootContainer.timerRecipeDataId = timerRecipeDataId
     secondarySortKey = pds[0]["SecondarySortKey"]
     rootContainer.secondarySortKey = secondarySortKey
+    rootContainer.stepName = pds[0]["StepName"]
+    rootContainer.stepId = pds[0]["StepId"]
 
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -98,13 +101,14 @@ def update(rootContainer):
     windowId = rootContainer.windowId
     timerRecipeDataId = rootContainer.timerRecipeDataId
     secondarySortKey = rootContainer.secondarySortKey
-
     database = getDatabaseClient()
     tagProvider = getTagProviderClient()
     
-    state, secondsSinceLastUpdate = fetchWindowState(windowId, database)
+    guiState, stepState, secondsSinceLastUpdate = fetchWindowState(windowId, database)
     
-    if state == "Error":
+    rootContainer.stepState = stepState
+    
+    if guiState == "Error":
         return
     
     # If this window hasn't discovered a starttime, then check if someone started the timer.
@@ -122,7 +126,7 @@ def update(rootContainer):
     else:
         startTimeFormatted = system.db.dateFormat(startTime, "dd-MMM-yy h:mm:ss a")
     
-    if string.upper(state)  == "CREATED":
+    if string.upper(guiState)  == "CREATED":
         initializeDatabaseTable(windowId, database, tagProvider)
         updateWindowState(windowId, database)    
     
@@ -179,21 +183,23 @@ def updateButtonState(rootContainer):
 
 def fetchWindowState(windowId, database):
     log.tracef( "...fetching the window state...")
-    SQL = "select State, DATEDIFF(second,LastUpdated,CURRENT_TIMESTAMP) SecondsSinceLastUpdate "\
+    SQL = "select StepState, GuiState, DATEDIFF(second,LastUpdated,CURRENT_TIMESTAMP) SecondsSinceLastUpdate "\
         "from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
     
     if len(pds) == 0:
         return "Error", 0
     
-    state = pds[0]["State"]
+    guiState = pds[0]["GuiState"]
+    stepState = pds[0]["StepState"]
+    
     secondsSinceLastUpdate = pds[0]["SecondsSinceLastUpdate"]
-    log.tracef("...fetched State: %s...", state)
-    return state, secondsSinceLastUpdate
+    log.tracef("...fetched GUI State: %s, step State: %s...", guiState, stepState)
+    return guiState, stepState, secondsSinceLastUpdate
 
 def updateWindowState(windowId, database):
     log.tracef("...updating the window state...")
-    SQL = "update SfcDownloadGUI set state = 'updated', LastUpdated = CURRENT_TIMESTAMP where windowId = '%s'" % (windowId)
+    SQL = "update SfcDownloadGUI set GuiState = 'updated', LastUpdated = CURRENT_TIMESTAMP where windowId = '%s'" % (windowId)
     system.db.runUpdateQuery(SQL, database)
     
 def updateStartTime(windowId, startTime, database):

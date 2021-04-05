@@ -7,19 +7,25 @@ Created on Mar 31, 2015
 import system, string, sys, traceback
 from ils.common.notification import notifyError
 from ils.common.config import getIsolationModeClient, getTagProvider
-from ils.sfc.common.constants import CLIENT_DONE
+from ils.sfc.common.constants import CLIENT_DONE, NORMAL, LARGE_TEXT
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
 # This is generally called from the gateway, but will also work when called from test (like from the test window)
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
-              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db="", isolationMode=False, windowName=""):
-    log.trace("In %s.sendAlert() to post: %s (Isolation: %s, payload: %s)" % (__name__, post, isolationMode, str(callbackPayloadDictionary)))
+              callbackPayloadDictionary=None, timeoutEnabled=False, timeoutSeconds=0, db="", isolationMode=False, windowType=NORMAL, windowName=""):
+    log.tracef("In %s.sendAlert() to post: %s (Isolation: %s, payload: %s)", __name__, post, isolationMode, str(callbackPayloadDictionary))
     
     if callbackPayloadDictionary == None:
         callbackPayloadDataset = None
     else:
         callbackPayloadDataset=system.dataset.toDataSet(["payload"], [[callbackPayloadDictionary]])
+        
+    if windowName == "":
+        if windowType == LARGE_TEXT:
+            windowName = "Common/OC Alert Large"
+        else:
+            windowName = "Common/OC Alert"
 
     # Now make the payload for the OC alert window
     payload = {
@@ -114,7 +120,7 @@ def handleMessage(payload):
     if windowName in ["", None]:
         windowName = "Common/OC Alert"
     
-    system.nav.openWindowInstance("Common/OC Alert", payload)
+    system.nav.openWindowInstance(windowName, payload)
     
 
 def buttonHandler(event):

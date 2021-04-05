@@ -6,6 +6,7 @@ Created on Oct 31, 2014
 import system.util, time
 from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
 from ils.sfc.recipeData.core import splitKey, setRecipeData
+from ils.sfc.recipeData.api import s88GetStepInfoFromId
 from ils.common.config import getDatabaseClient
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -49,7 +50,8 @@ def setClientResponse(rootContainer, response):
         db = getDatabaseClient()
         
         folder,key,attribute = splitKey(keyAndAttribute)
-        setRecipeData(targetStepId, folder, key, attribute, response, db)
+        chartPath, stepName = s88GetStepInfoFromId(targetStepId, db)
+        setRecipeData(stepName, targetStepId, folder, key, attribute, response, db)
 
 
 def setClientDone(rootContainer):

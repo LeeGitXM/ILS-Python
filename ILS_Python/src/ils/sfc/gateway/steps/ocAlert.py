@@ -9,7 +9,7 @@ from ils.sfc.gateway.steps.commonInput import cleanup
 from ils.sfc.gateway.api import getStepProperty, getControlPanelId, getProject, \
         logStepDeactivated, getTopChartRunId, getDatabaseName, getChartLogger, handleUnexpectedGatewayError
 from ils.sfc.common.constants import ACK_REQUIRED, BUTTON_CALLBACK, BUTTON_LABEL, WAITING_FOR_REPLY, DEACTIVATED, CANCELLED, \
-    ID, INSTANCE_ID, CLIENT_DONE, TOP_MESSAGE, MAIN_MESSAGE, BOTTOM_MESSAGE, OC_ALERT_WINDOW, POST
+    ID, INSTANCE_ID, CLIENT_DONE, TOP_MESSAGE, MAIN_MESSAGE, BOTTOM_MESSAGE, OC_ALERT_WINDOW, POST, OC_ALERT_WINDOW_TYPE
 
 def activate(scopeContext, stepProperties, state):
     chartScope = scopeContext.getChartScope()
@@ -45,6 +45,7 @@ def activate(scopeContext, stepProperties, state):
             mainMessage = getStepProperty(stepProperties, MAIN_MESSAGE) 
             bottomMessage = getStepProperty(stepProperties, BOTTOM_MESSAGE) 
             windowPath = getStepProperty(stepProperties, OC_ALERT_WINDOW) 
+            windowType = getStepProperty(stepProperties, OC_ALERT_WINDOW_TYPE) 
             post = getStepProperty(stepProperties, POST)
             buttonLabel = getStepProperty(stepProperties, BUTTON_LABEL)
             if isEmpty(buttonLabel):
@@ -56,13 +57,13 @@ def activate(scopeContext, stepProperties, state):
                 log.tracef("Calling sendAlert() ** Requiring an ACK **")
                 sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, 
                     callbackPayloadDictionary={"chartId": chartId, "stepId": stepId, "buttonCallback": buttonCallback}, callback="ils.common.ocAlert.sfcHandshake", 
-                    timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath)
+                    timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath, windowType=windowType)
                 log.trace("   setting ACK flag...")
                 stepScope[WAITING_FOR_REPLY] = True
             else:
                 sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, 
                           callbackPayloadDictionary={}, callback=buttonCallback,
-                          timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath)
+                          timeoutEnabled=False, timeoutSeconds=0, db=database, isolationMode=False, windowName=windowPath, windowType=windowType)
                 workDone = True
     
         else: 

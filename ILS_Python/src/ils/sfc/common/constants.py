@@ -110,6 +110,7 @@ ISOLATION_MODE = "isolationMode"
 KEY = "key"
 KEY_AND_ATTRIBUTE = "keyAndAttribute"
 KEY_MODE = "keyMode"
+LARGE_TEXT = "largeText"
 LOCATION = "location"
 MESSAGE = "message"
 MESSAGE_QUEUE = "msgQueue"
@@ -125,6 +126,7 @@ MSG_QUEUE_WINDOW = "Queue/Message Queue"
 MULTIPLE = "multiple"
 NAME = "name"
 NO_LIMIT = "No Limit"   # Duration strategy
+NORMAL = "normal"  # Created for the OC Alert, but could have other uses.
 NUMBER_OF_TIMEOUTS = "numberOfTimeouts"
 NUMBER_OF_ERRORS = "numberOfErrors"
 NUMBER_OF_RECORDS = "numberOfRecords"
@@ -234,6 +236,7 @@ TOP_MESSAGE = "topMessage"
 MAIN_MESSAGE = "mainMessage"
 BOTTOM_MESSAGE = "bottomMessage"
 OC_ALERT_WINDOW = "ocAlertWindow"
+OC_ALERT_WINDOW_TYPE = "ocAlertWindowType"
 POST = "post"
 
 # Shared error counter for multiple Write Output blocks

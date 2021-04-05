@@ -10,7 +10,7 @@ import system, string
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88SetFromId
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, DOWNLOAD, \
-    POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, \
+    POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, NAME, ID, \
     TIMER_KEY, TIMER_LOCATION, TIMER_CLEAR, TIMER_SET, CLEAR_TIMER, START_TIMER, ACTUAL_TIMING, ACTUAL_DATETIME, \
     SECONDARY_SORT_KEY, SECONDARY_SORT_BY_ALPHABETICAL, SECONDARY_SORT_BY_ORDER
 from system.ils.sfc import getMonitorDownloadsConfig
@@ -31,9 +31,16 @@ def activate(scopeContext, stepProperties, state):
     try:
         chartScope = scopeContext.getChartScope()
         stepScope = scopeContext.getStepScope()
+        stepName=stepScope.get(NAME, "Unknown")
+        stepUUID=stepScope.get(ID, "Unknown")
         database = getDatabaseName(chartScope)
         log = getChartLogger(chartScope)
         log.tracef("In monitorDownload.activate()...")
+        
+        print "***********************************"
+        print stepScope
+        print "Step UUID: ", stepUUID
+        print "***********************************"
     
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
@@ -75,8 +82,9 @@ def activate(scopeContext, stepProperties, state):
 
         log.tracef("Inserted a window with id: %s", str(windowId))
         
-        SQL = "insert into SfcDownloadGUI (windowId, state, LastUpdated, TimerRecipeDataId, SecondarySortKey) values ('%s', 'created', CURRENT_TIMESTAMP, %s, '%s')" \
-            % (windowId, str(timerRecipeDataId), secondarySortKey)
+        SQL = "insert into SfcDownloadGUI (windowId, stepName, stepUUID, stepState, guiState, LastUpdated, TimerRecipeDataId, SecondarySortKey) "\
+            " values ('%s', '%s', '%s', 'created', 'created', CURRENT_TIMESTAMP, %s, '%s')" \
+            % (windowId, stepName, stepUUID, str(timerRecipeDataId), secondarySortKey)
         system.db.runUpdateQuery(SQL, database)
         
         log.infof("The step properties are: %s", str(stepProperties))

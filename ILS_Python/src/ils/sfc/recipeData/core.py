@@ -93,6 +93,36 @@ def getEnclosingStepScope(chartScope):
     return enclosingScope   
 
 
+def getStepInfoFromId(stepId, db):
+    '''  Return the chartPath and stepName from the stepId. '''
+    SQL = "select ChartPath, StepName from SfcStepView where StepId = %d" % (stepId)
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) == 0:
+        logger.errorf("Unable to find a step with step id: %d", stepId)
+        return None, None
+    
+    if len(pds) > 1:
+        logger.errorf("Multiple steps found for step id: %d", stepId)
+        return None, None
+    
+    record = pds[0]
+    return record["ChartPath"], record["StepName"]
+
+def getStepInfoFromUUID(stepUUID, db):
+    '''  Return the chartPath and stepName from the stepUUID. '''
+    SQL = "select ChartPath, StepName from SfcStepView where StepUUID = %d" % (stepUUID)
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) == 0:
+        logger.errorf("Unable to find a step with step UUID: %s", stepUUID)
+        return None, None
+    
+    if len(pds) > 1:
+        logger.errorf("Multiple steps found for step UUID: %s", stepUUID)
+        return None, None
+    
+    record = pds[0]
+    return record["ChartPath"], record["StepName"]
+
 def getSubScope(scope, key):
     print "Getting %s out of %s" % (scope, str(key))
     subScope = scope.get(key, None)
@@ -101,10 +131,11 @@ def getSubScope(scope, key):
 
 def fetchRecipeDataType(stepId, folder, key, attribute, db):
     logger.tracef("Fetching %s.%s.%s from %d", folder, key, attribute, stepId)
+    chartPath, stepName = getStepInfoFromId(stepId, db)
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folder + "." + key, db)
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepName, stepId, folder + "." + key, db)
     return recipeDataType
 
 def recipeGroupExists(stepId, key, parentKey, db):
@@ -180,7 +211,7 @@ def recipeDataExistsForStepId(stepId, folderID, key, db):
     logger.tracef("...it does not exist!")
     return False
 
-def getRecipeDataId(stepId, keyOriginal, db):
+def getRecipeDataId(stepName, stepId, keyOriginal, db):
     logger.tracef("Fetching recipe data id for %s - %s", stepId, keyOriginal)
     
     ''' This utility requires a key and an attribute, so add a fake attribute and then ignore it  '''
@@ -199,15 +230,15 @@ def getRecipeDataId(stepId, keyOriginal, db):
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         if folder == "":
-            logger.errorf("Error the key <%s> was not found", key)
-            raise ValueError, "Key <%s> was not found for step Id %d" % (key, stepId)
+            logger.errorf("Error the key <%s> was not found for step <%s>", key, stepName)
+            raise ValueError, "Missing recipe data - Key <%s> was not found for step <%s> (id %d)" % (key, stepName, stepId)
         else:
-            logger.errorf("Error the key <%s.%s> was not found", folder, key)
-            raise ValueError, "Key <%s.%s> was not found for step Id %d" % (folder, key, stepId)
+            logger.errorf("Error the key <%s.%s> was not found for step <%s>", folder, key, stepName)
+            raise ValueError, "Missing recipe data - Key <%s.%s> was not found for step <%s> (id %d)" % (folder, key, stepName, stepId)
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> for step Id %d" % (keyOriginal, stepId)
+        raise ValueError, "Multiple records were found for key <%s> for step %s (id %d))" % (keyOriginal, stepName, stepId)
     
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
@@ -217,12 +248,12 @@ def getRecipeDataId(stepId, keyOriginal, db):
     
     return recipeDataId, recipeDataType, units
 
-def fetchRecipeData(stepId, folder, key, attribute, db):
+def fetchRecipeData(stepName, stepId, folder, key, attribute, db):
     logger.tracef("Fetching %s.%s.%s from step id: %d", folder, key, attribute, stepId)
  
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    recipeDataId, recipeDataType, units = getRecipeDataId(stepId, folder + "." + key, db)
+    recipeDataId, recipeDataType, units = getRecipeDataId(stepName, stepId, folder + "." + key, db)
     
     # These attributes are common to all recipe data classes
     attribute = string.upper(attribute)
@@ -513,7 +544,7 @@ def getKeyedIndex(keyName, keyValue, db):
     return keyIndex 
 
 
-def fetchRecipeDataRecord(stepId, folderId, key, db):
+def fetchRecipeDataRecord(stepName, stepId, folderId, key, db):
     logger.tracef("Fetching %s from %s", key, stepId)
     
     if folderId == None:
@@ -525,12 +556,12 @@ def fetchRecipeDataRecord(stepId, folderId, key, db):
 
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
-        logger.errorf("Error the key <%s> was not found", key)
-        raise ValueError, "Key <%s> was not found for step %d" % (key, stepId)
+        logger.errorf("Error: the key <%s> was not found for step <%s>", key, stepName)
+        raise ValueError, "Missing recipe data - Key <%s> was not found for step <%s>" % (key, stepName)
     
     if len(pds) > 1:
-        logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> was not found for step %d" % (key, stepId)
+        logger.errorf("Error: multiple records were found for key <%s> for step <%s>", key, stepName)
+        raise ValueError, "Multiple records were found for key <%s> for step <%s>" % (key, stepName)
     
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
@@ -622,12 +653,12 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
     record = pds[0]
     return record
 
-def setRecipeData(stepId, folder, key, attribute, val, db, units=""):
+def setRecipeData(stepName, stepId, folder, key, attribute, val, db, units=""):
     logger.tracef("Setting recipe data value for step with stepId: %d, folder: %s, key: %s, attribute: %s, value: %s", stepId, folder, key, attribute, str(val))
     
     # Separate the key from the array index if there is an array index
     attribute, arrayIndex, rowIndex, columnIndex = checkForArrayOrMatrixReference(attribute)
-    recipeDataId, recipeDataType, targetUnits = getRecipeDataId(stepId, folder + "." + key, db)
+    recipeDataId, recipeDataType, targetUnits = getRecipeDataId(stepName, stepId, folder + "." + key, db)
     
     setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, targetUnits, arrayIndex, rowIndex, columnIndex, db)
 
@@ -1413,8 +1444,11 @@ def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
     else:
         targetFolderId = None
 
-    sourceRecord = fetchRecipeDataRecord(sourceUUID, sourceFolderId, sourceKey, db)
-    targetRecord = fetchRecipeDataRecord(targetUUID, targetFolderId, targetKey, db)
+    chartPath, stepName = getStepInfoFromUUID(sourceUUID, db)
+    sourceRecord = fetchRecipeDataRecord(stepName, sourceUUID, sourceFolderId, sourceKey, db)
+    
+    chartPath, stepName = getStepInfoFromUUID(targetUUID, db)
+    targetRecord = fetchRecipeDataRecord(stepName, targetUUID, targetFolderId, targetKey, db)
     
     copySourceToTarget(sourceRecord, targetRecord, db)
     
