@@ -8,9 +8,6 @@ from ils.common.database import getUnitName, getPostForUnitId, lookupKeyFromId
 from ils.queue.commons import getQueueForDiagnosticApplication
 handler = ControllerRequestHandler.getInstance()
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-
 
 def delete(applicationUUID):
     '''
@@ -20,6 +17,9 @@ def delete(applicationUUID):
     I'd like to use the application name, which is guarenteed to be unique by the database, but I think that the gateway has already deleted the application so the getApplicationName()
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".delete")
+    
     log.infof("In %s.delete()", __name__)
     
     db = handler.getProductionDatabase()
@@ -39,6 +39,9 @@ def rename(uuid,oldName,newName):
     TODO: It appears that this is NOT called when I rename an application.  
     I think I can handle this case in the save method, especially if I can figure out how to get the name.
     '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".rename")
+    
     log.infof("In %s.rename()", __name__)
     def renameInDatabase(uuid, oldName, newName, db):
         SQL = "UPDATE DtApplication SET ApplicationName= '%s' WHERE ApplicationName = '%s'" % (newName,oldName)
@@ -49,7 +52,6 @@ def rename(uuid,oldName,newName):
     renameInDatabase(uuid,oldName,newName,db)
 
 
-    
 def save(applicationUUID):
     '''
     This method IS called when they do a save from the Designer.  
@@ -57,6 +59,9 @@ def save(applicationUUID):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".save")
+
     log.infof("In %s.save()", __name__)
     db = handler.getProductionDatabase()
     
@@ -103,6 +108,9 @@ Fill the aux structure with values from the database
 The caller must supply either the production or isolation database name
 '''
 def getAux(uuid,aux,db):
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".getAux")
+
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
     appName = handler.getApplicationName(uuid)
@@ -111,20 +119,12 @@ def getAux(uuid,aux,db):
     lists      = aux[1]
     maplists   = aux[2]
     
-    log.infof("...the application name is: %s, database is: %s", appName, db)
-    
-    SQL = "SELECT A.ApplicationId, A.Description, A.Managed, UnitId, Q.QueueKey MessageQueue, A.IncludeInMainMenu, L.LookupName GroupRampMethod "\
-          " FROM DtApplication A, TkPost P, TkUnit U, QueueMaster Q, Lookup L "\
-          " WHERE A.ApplicationName = '%s' " \
-          " and A.UnitId = U.UnitId "\
-          " and U.PostId = P.PostId "\
-          " and A.GroupRampMethodId = L.LookupId "\
-          " and A.MessageQueueId = Q.QueueId" % (appName)
+    log.tracef("...the application name is: %s, database is: %s", appName, db)
           
     SQL = "SELECT ApplicationId, Description, Managed, UnitId, IncludeInMainMenu, GroupRampMethodId "\
           " FROM DtApplication "\
           " WHERE ApplicationName = '%s' " % (appName)
-    log.infof("SQL: %s", SQL)
+    log.tracef("SQL: %s", SQL)
 
     pds = system.db.runQuery(SQL,db)
     
@@ -135,54 +135,39 @@ def getAux(uuid,aux,db):
         log.errorf("Error: more than one application record was found for %s - the last one will be used!", appName)
 
     else:
-        log.infof('Found a single record as expected...')
+        log.tracef('Found a single record as expected...')
         record = pds[0]
         applicationId = record["ApplicationId"]
         unitId = record["UnitId"]
         groupRampMethodId = record["GroupRampMethodId"]
-        log.infof('Found applicationId: %s, unitId: %s, groupRampMethodId: %s', str(applicationId), str(unitId), str(groupRampMethodId))
+        log.tracef('Found applicationId: %s, unitId: %s, groupRampMethodId: %s', str(applicationId), str(unitId), str(groupRampMethodId))
         
         properties["ApplicationName"]=appName
         properties["Description"]=str(record["Description"])
         properties["IncludeInMainMenu"]=str(record["IncludeInMainMenu"])
         properties["Managed"]=str(record["Managed"])
-        log.infof("...the properties so far are: %s", str(properties))
+        log.tracef("...the properties so far are: %s", str(properties))
     
         ''' Get the unit name of the application '''
         if unitId != None:
-            log.infof("Fetching unit name...")
+            log.tracef("Fetching unit name for unitId: %s...", str(unitId))
             unitName = getUnitName(unitId, db)
+            print "Unit Name: ", unitName
             if unitName != None:
-                properties["Unit"]=str(record["UnitName"])
+                properties["Unit"]=str(unitName)
         
-                ''' Get the post for a unit (I'm not sure that the post belongs here) '''
-                log.infof("Fetching posts...")
-                postId, post = getPostForUnitId(unitId, db)
-                properties["Post"]=post
-        
-        log.infof("...fetching message queue...")
+        log.tracef("...fetching message queue...")
         messageQueue = getQueueForDiagnosticApplication(appName, db)
         properties["MessageQueue"]=messageQueue
         
-        log.infof("...fetching group ramp method....")
+        log.tracef("...fetching group ramp method....")
         groupRampMethod = lookupKeyFromId("GroupRampMethod", groupRampMethodId, db)
         properties["GroupRampMethod"]=groupRampMethod
     
-    log.infof("Fetched Properties: %s", str(properties))
-    
-    # Fetch the list of posts (Do I need posts??)
-    SQL = "SELECT Post "\
-          " FROM TkPost "\
-          " ORDER BY Post"
-    pds = system.db.runQuery(SQL, db)
-    
-    posts = []
-    for record in pds:
-        posts.append(str(record["Post"]))
-    lists["Posts"] = posts
-    log.infof("Fetched posts: %s", str(posts))
+    log.tracef("Fetched Properties: %s", str(properties))
     
     # Fetch the list of units
+    log.tracef("Fetching list of units...")
     SQL = "SELECT UnitName "\
           " FROM TkUnit "\
           " ORDER BY UnitName"
@@ -191,9 +176,10 @@ def getAux(uuid,aux,db):
     for record in ds:
         units.append(str(record["UnitName"]))
     lists["Units"] = units
-    log.infof("Fetched units: %s", str(units))
+    log.tracef("Fetched units: %s", str(units))
     
     # Fetch the list of Ramp Methods
+    log.tracef("Fetching list of Group Ramp Methods...")
     SQL = "SELECT LookupName "\
           " FROM Lookup "\
           " where LookupTypeCode = 'GroupRampMethod' "\
@@ -203,9 +189,10 @@ def getAux(uuid,aux,db):
     for record in ds:
         methods.append(str(record["LookupName"]))
     lists["GroupRampMethods"] = methods
-    log.infof("Fetched ramp methods: %s", str(methods))
+    log.tracef("Fetched ramp methods: %s", str(methods))
     
     # Fetch the list of Feedback Methods
+    log.tracef("Fetching list of feedback methods...")
     SQL = "SELECT LookupName "\
           " FROM Lookup "\
           " where LookupTypeCode = 'FeedbackMethod' "\
@@ -215,9 +202,10 @@ def getAux(uuid,aux,db):
     for record in ds:
         methods.append(str(record["LookupName"]))
     lists["FeedbackMethods"] = methods
-    log.infof("Fetched Feedback Methods: %s", str(methods))
+    log.tracef("Fetched Feedback Methods: %s", str(methods))
     
     # Fetch the list of queues
+    log.tracef("Fetching list of queues...")
     SQL = "SELECT QueueKey "\
           " FROM QueueMaster "\
           " ORDER BY QueueKey"
@@ -226,9 +214,10 @@ def getAux(uuid,aux,db):
     for record in ds:
         queues.append(str(record["QueueKey"]))
     lists["MessageQueues"] = queues
-    log.infof("Fetched queues: %s", str(queues))
+    log.tracef("Fetched queues: %s", str(queues))
     
     # Fetch the list of Quant outputs
+    log.tracef("Fetching list of quant outputs...")
     SQL = "SELECT QuantOutputId, QuantOutputName QuantOutput, TagPath, MostNegativeIncrement, MostPositiveIncrement, MinimumIncrement, SetpointHighLimit,"\
           "SetpointLowLimit, L.LookupName FeedbackMethod, IncrementalOutput "\
           " FROM DtQuantOutput QO, Lookup L  "\
@@ -261,16 +250,18 @@ def getAux(uuid,aux,db):
     log.infof("  ...leaving getAux()!")
 
 
-# Set values in the database from contents of the aux container
-# The caller must supply either the production or isolation database name
 def setAux(uuid, aux, db):
+    '''
+    Set values in the database from contents of the aux container
+    The caller must supply either the production or isolation database name
+    '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".setAux")
+    
     log.infof("In %s.setAux()", __name__)
     applicationName = handler.getApplicationName(uuid)
     
     log.tracef("  ...the application name is: %s,  database: %s",applicationName, db)
-    
-    from locale import setlocale, LC_NUMERIC, atof
-    setlocale(LC_NUMERIC, '')
     
     properties = aux[0]
     lists      = aux[1]
@@ -284,21 +275,27 @@ def setAux(uuid, aux, db):
     managed = properties.get("Managed", 1)
     
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
-    applicationId = system.db.runScalarQuery(SQL,db)
+    applicationId = system.db.runScalarQuery(SQL, db)
     
     log.tracef("The application Id is: %d", applicationId)
     
-    SQL = "select PostId from TkPost where Post = '%s'" % (properties.get("Post",""))
-    postId = system.db.runScalarQuery(SQL,db)
+    #SQL = "select PostId from TkPost where Post = '%s'" % (properties.get("Post",""))
+    #postId = system.db.runScalarQuery(SQL,db)
     
-    SQL = "select UnitId from TkUnit where UnitName = '%s'" % (properties.get("Unit",""))
-    unitId = system.db.runScalarQuery(SQL,db)
+    unitName = properties.get("Unit","")
+    SQL = "select UnitId from TkUnit where UnitName = '%s'" % (unitName)
+    unitId = system.db.runScalarQuery(SQL, db)
+    log.tracef("Fetched unit id <%d> for unit: <%s>", unitId, unitName)
     
-    SQL = "select QueueId from QueueMaster where QueueKey = '%s'" % (properties.get("MessageQueue",""))
+    queueKey = properties.get("MessageQueue","")
+    SQL = "select QueueId from QueueMaster where QueueKey = '%s'" % (queueKey)
     messageQueueId = system.db.runScalarQuery(SQL,db)
+    log.tracef("Fetched queue id <%d> for queue: <%s>", messageQueueId, queueKey)
     
-    SQL = "select LookupId from Lookup where LookupTypeCode = 'GroupRampMethod' and LookupName = '%s'" % (properties.get("GroupRampMethod",""))
+    groupRampMethod = properties.get("GroupRampMethod","")
+    SQL = "select LookupId from Lookup where LookupTypeCode = 'GroupRampMethod' and LookupName = '%s'" % (groupRampMethod)
     groupRampMethodId = system.db.runScalarQuery(SQL,db)
+    log.tracef("Fetched id <%d> for Group Ramp Method: <%s>", groupRampMethodId, groupRampMethod)
     
     if applicationId == None:
         SQL = "insert into DtApplication (ApplicationName, Description, MessageQueueId, GroupRampMethodId, UnitId, Managed) "\
@@ -307,10 +304,12 @@ def setAux(uuid, aux, db):
                 messageQueueId, groupRampMethodId, unitId, managed], db, getKey=1)
         log.tracef("Inserted a new application with id: %d", applicationId)
     else:
+        log.tracef("Updating an existing application record...")
         SQL = "Update DtApplication set ApplicationName = ?, Description = ?, UnitId = ?, MessageQueueId = ?, GroupRampMethodId = ?, managed = ?" \
             " where ApplicationId = ? "
-        system.db.runPrepUpdate(SQL, [applicationName, description, unitId, 
-                messageQueueId, groupRampMethodId, managed, applicationId],db)
+        args = [applicationName, description, unitId, messageQueueId, groupRampMethodId, managed, applicationId]
+        log.tracef("%s - %s", SQL, str(args))
+        system.db.runPrepUpdate(SQL, args, db)
         log.tracef("Updated an existing application with id: %d", applicationId)
     
     # Before we add any new quant outputs, fetch the ones that are already there so we can see if the user deleted any
@@ -384,3 +383,5 @@ def setAux(uuid, aux, db):
     for quantOutputId in quantOutputIds:
         log.tracef("...delete: %d", quantOutputId)
         system.db.runUpdateQuery("delete from DtQuantOutput where QuantOutputId = %s" % (str(quantOutputId)),db)
+        
+    log.infof("...leaving %s.setAux()!", __name__)

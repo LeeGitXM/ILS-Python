@@ -100,8 +100,9 @@ def getUnitId(unitName, database=""):
 # Lookup the unit name given the id
 def getUnitName(unitId, database=""):
     SQL = "select UnitName from TkUnit where UnitId = %s" % ( str(unitId) )
-    log.trace(SQL)
+    log.tracef(SQL)
     unitName = system.db.runScalarQuery(SQL, database)
+    log.tracef("Fetched unit name <%s> for id <%s>", unitName, str(unitId))
     return unitName
 
 
