@@ -4,6 +4,8 @@
 import system
 
 import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+from ils.common.database import getUnitName, getPostForUnitId, lookupKeyFromId
+from ils.queue.commons import getQueueForDiagnosticApplication
 handler = ControllerRequestHandler.getInstance()
 
 from ils.log.LogRecorder import LogRecorder
@@ -73,6 +75,7 @@ def save(applicationUUID):
         SQL = "select applicationId from DtApplication where applicationName = '%s'" % (applicationName)
         applicationId = system.db.runScalarQuery(SQL, db)
         if applicationId == None:
+            log.infof("Inserting a new application named <%s>", applicationName)
             SQL = "insert into DtApplication (ApplicationUUID, ApplicationName, NotificationStrategy, Managed) "\
                 "values ('%s', '%s', 'ocAlert', 0)" % (applicationUUID, applicationName)
             log.tracef("...SQL: %s,", SQL)
@@ -110,42 +113,71 @@ def getAux(uuid,aux,db):
     
     log.infof("...the application name is: %s, database is: %s", appName, db)
     
-    SQL = "SELECT A.ApplicationId, A.Description, A.Managed, P.Post, U.UnitName, Q.QueueKey MessageQueue, A.IncludeInMainMenu, L.LookupName GroupRampMethod "\
+    SQL = "SELECT A.ApplicationId, A.Description, A.Managed, UnitId, Q.QueueKey MessageQueue, A.IncludeInMainMenu, L.LookupName GroupRampMethod "\
           " FROM DtApplication A, TkPost P, TkUnit U, QueueMaster Q, Lookup L "\
           " WHERE A.ApplicationName = '%s' " \
           " and A.UnitId = U.UnitId "\
           " and U.PostId = P.PostId "\
           " and A.GroupRampMethodId = L.LookupId "\
           " and A.MessageQueueId = Q.QueueId" % (appName)
+          
+    SQL = "SELECT ApplicationId, Description, Managed, UnitId, IncludeInMainMenu, GroupRampMethodId "\
+          " FROM DtApplication "\
+          " WHERE ApplicationName = '%s' " % (appName)
+    log.infof("SQL: %s", SQL)
 
     pds = system.db.runQuery(SQL,db)
     
     if len(pds) == 0:
         log.errorf("Warning: %s was not found in the application table", appName)
     
-    if len(pds) > 1:
+    elif len(pds) > 1:
         log.errorf("Error: more than one application record was found for %s - the last one will be used!", appName)
 
-    for record in pds:
+    else:
+        log.infof('Found a single record as expected...')
+        record = pds[0]
         applicationId = record["ApplicationId"]
+        unitId = record["UnitId"]
+        groupRampMethodId = record["GroupRampMethodId"]
+        log.infof('Found applicationId: %s, unitId: %s, groupRampMethodId: %s', str(applicationId), str(unitId), str(groupRampMethodId))
+        
+        properties["ApplicationName"]=appName
         properties["Description"]=str(record["Description"])
-        properties["Post"]=str(record["Post"])
-        properties["Unit"]=str(record["UnitName"])
-        properties["MessageQueue"]=str(record["MessageQueue"])
         properties["IncludeInMainMenu"]=str(record["IncludeInMainMenu"])
-        properties["GroupRampMethod"]=record["GroupRampMethod"]
         properties["Managed"]=str(record["Managed"])
-
-    log.infof("Properties: %s", str(properties))
+        log.infof("...the properties so far are: %s", str(properties))
     
-    # Fetch the list of posts
+        ''' Get the unit name of the application '''
+        if unitId != None:
+            log.infof("Fetching unit name...")
+            unitName = getUnitName(unitId, db)
+            if unitName != None:
+                properties["Unit"]=str(record["UnitName"])
+        
+                ''' Get the post for a unit (I'm not sure that the post belongs here) '''
+                log.infof("Fetching posts...")
+                postId, post = getPostForUnitId(unitId, db)
+                properties["Post"]=post
+        
+        log.infof("...fetching message queue...")
+        messageQueue = getQueueForDiagnosticApplication(appName, db)
+        properties["MessageQueue"]=messageQueue
+        
+        log.infof("...fetching group ramp method....")
+        groupRampMethod = lookupKeyFromId("GroupRampMethod", groupRampMethodId, db)
+        properties["GroupRampMethod"]=groupRampMethod
+    
+    log.infof("Fetched Properties: %s", str(properties))
+    
+    # Fetch the list of posts (Do I need posts??)
     SQL = "SELECT Post "\
           " FROM TkPost "\
           " ORDER BY Post"
-    ds = system.db.runQuery(SQL,db)
+    pds = system.db.runQuery(SQL, db)
     
     posts = []
-    for record in ds:
+    for record in pds:
         posts.append(str(record["Post"]))
     lists["Posts"] = posts
     log.infof("Fetched posts: %s", str(posts))
@@ -250,7 +282,7 @@ def setAux(uuid, aux, db):
     
     description = properties.get("Description","")
     managed = properties.get("Managed", 1)
-     
+    
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
     applicationId = system.db.runScalarQuery(SQL,db)
     

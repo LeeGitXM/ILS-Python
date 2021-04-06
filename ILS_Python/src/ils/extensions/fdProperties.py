@@ -74,6 +74,7 @@ def getAux(uuid, aux, db):
      
     Fill the aux structure with values from the database.
     '''
+    log.infof("In %s.getAux...", __name__)
     appName = handler.getApplicationName(uuid)
     familyName = handler.getFamilyName(uuid)
  
@@ -159,7 +160,7 @@ def getAux(uuid, aux, db):
     
 
 def setAux(uuid,aux,db):
-    log.infof("In %s.setAux with %s", __name__, db)
+    log.infof("In %s.setAux using db: %s", __name__, db)
     app  = handler.getApplicationName(uuid)
     family = handler.getFamilyName(uuid)
     

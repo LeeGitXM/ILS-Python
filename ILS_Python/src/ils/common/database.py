@@ -4,8 +4,9 @@ Created on Jan 5, 2015
 @author: Pete
 '''
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.SQL")
+
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def version():
     SQL = "select VersionId, Version, ReleaseDate from Version where VersionId = (select MAX(VersionId) from Version)"
@@ -74,6 +75,21 @@ def getPostId(post, database=""):
     postId = system.db.runScalarQuery(SQL, database)
     return postId
 
+def getPostForUnitId(unitId, database=""):
+    '''
+    Lookup the post id and name for a given unit id
+    '''
+    SQL = "select PostId, Post from TkPost P, TkUnit U "\
+        "where U.PostId = P.PostId "\
+        " and U.UnitId = %d" % (unitId)
+    log.trace(SQL)
+    pds = system.db.runQuery(SQL, database)
+    
+    if len(pds) == 0 or len(pds) > 1:
+        return None, None
+    record = pds[0]
+    return record["PostId"], record["Post"]
+
 # Lookup the unit id given the name
 def getUnitId(unitName, database=""):
     SQL = "select UnitId from TkUnit where UnitName = '%s'" % (unitName)
@@ -89,10 +105,24 @@ def getUnitName(unitId, database=""):
     return unitName
 
 
-def lookup(lookupType, key):
-    SQL = "select LookupId from Lookup where LookupTypeCode = '%s' and LookupName = '%s'" % (lookupType, key)
-    lookupId=system.db.runScalarQuery(SQL)
+def lookup(lookupType, key, database=""):
+    ''' ---Depricated--- '''
+    lookupId=lookupIdFromKey(lookupType, key, database)
+    return lookupId
+
+def lookupIdFromKey(lookupType, key, database=""):
+    SQL = "select LookupId from Lookup where LookupTypeCode = '%s' and LookupName = '%s' " % (lookupType, key)
+    lookupId=system.db.runScalarQuery(SQL, database)
     return lookupId 
+
+def lookupKeyFromId(lookupType, lookupId, database=""):
+    if lookupType == None or lookupId == None:
+        return None
+    SQL = "select LookupName from Lookup where LookupTypeCode = '%s' and LookupId = %s " % (lookupType, str(lookupId))
+    log.infof("SQL: %s", SQL)
+    key = system.db.runScalarQuery(SQL, database)
+    log.infof("Fetched: %s", str(key))
+    return key 
 
 # This is useful when using the " IN " clause in a select statement
 # This is meant for ids (or any integer because string would need to be surrounded by single quotes. 
