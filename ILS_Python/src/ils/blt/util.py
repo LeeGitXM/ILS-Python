@@ -14,6 +14,7 @@ import ils.block
 from ils.block import *
 from ils.user.block import *
 from ils.log.LogRecorder import LogRecorder
+from __builtin__ import None
 log = LogRecorder(__name__)
 
 
@@ -49,11 +50,12 @@ def createBlockInstance(className, parent, uid, result):
 
 def getAuxData(block,aux):
     '''
-    Return the auxiliary data of a block. The aux data are contained in a 
+    Fetch the auxiliary data of a block from a database, presumably. The aux data are returned in a 
     GeneralPurposeDataContainer structure that must be supplied. 
     '''
+    if block!=None:
+        block.getAuxData(aux)
     
-
 def getBlockAnchors(block,anchors):
     '''
     Given an instance of an executable block,write its properties to the supplied list (properties) as specified in the Gateway startup script.
@@ -215,10 +217,10 @@ def reset(block):
         
 def setAuxData(block,aux):
     '''
-    Set the auxiliary data of a block from a database.
-    This base method does nothing. 
+    Set the auxiliary data of a block into a database. 
     '''
-    pass
+    if block!=None:
+        block.setAuxData(aux)
     
 def setBlockProperty(block,prop):
     '''

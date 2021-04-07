@@ -114,6 +114,11 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         print "FinalDiagnosis.acceptValue: COMPLETE"
     
+        # The base method leaves the aux data unchanged.
+    def getAuxData(self,aux):
+        print "finaldiagnosis: getAuxData"
+        pass
+    
     # Trigger property and connection notifications on the block
     def notifyOfStatus(self):
         self.handler.sendConnectionNotification(self.uuid, 'out', self.state,'good',0)
@@ -122,3 +127,8 @@ class FinalDiagnosis(basicblock.BasicBlock):
     def propagate(self):
         if self.state <> "UNSET":
             self.postValue('out',str(self.state),self.quality,self.time)
+            
+        # Set aux data in an external database. This base method does nothing
+    def setAuxData(self,data):
+        print "finaldiagnosis: setAuxData"
+        pass

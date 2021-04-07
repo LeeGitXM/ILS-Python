@@ -58,6 +58,7 @@ class BasicBlock():
         self.time    = time 
     # The base method leaves the aux data unchanged.
     def getAuxData(self,aux):
+        print "basicblock: getAuxData"
         pass
     # Return the class name. This is a fully qualified
     # path, including the module path 
@@ -114,6 +115,7 @@ class BasicBlock():
     
     # Set aux data in an external database. This base method does nothing
     def setAuxData(self,data):
+        print "basicblock: setAuxData"
         pass
     # The proxy block contains the name.
     # This method is intended as a hook for an extension function to do, essentially, a rename
