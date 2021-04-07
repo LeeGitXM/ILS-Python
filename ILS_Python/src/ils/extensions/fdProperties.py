@@ -7,16 +7,15 @@ from ils.common.cast import toBit
 from ils.common.database import toDateString
 from ils.sfc.common.util import logExceptionCause
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
 handler = ControllerRequestHandler.getInstance()
 
 '''
 Gateway Scope Functions
 '''
-
 def delete(finalDiagnosisUUID):
     '''    Even though a delete is initiated from Designer scope, this runs in gateway scope!  '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".delete")
     log.infof("In %s.delete()", __name__)
     db = handler.getProductionDatabase()
     
@@ -35,6 +34,9 @@ def save(uuid):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".save")
+    
     log.infof("In %s.save(), doing nothing", __name__)
 
 
@@ -57,6 +59,9 @@ def rename(uuid,oldName,newName):
         SQL = "UPDATE DtFinalDiagnosis SET FinalDiagnosisName= '%s' WHERE FinalDiagnosisName = '%s'" % (newName,oldName)
         system.db.runUpdateQuery(SQL,db)
     
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".rename")
+    
     log.infof("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
     db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
@@ -74,6 +79,8 @@ def getAux(uuid, aux, db):
      
     Fill the aux structure with values from the database.
     '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".getAux")
     log.infof("In %s.getAux...", __name__)
     appName = handler.getApplicationName(uuid)
     familyName = handler.getFamilyName(uuid)
@@ -81,7 +88,7 @@ def getAux(uuid, aux, db):
     properties = aux[0]
     lists = aux[1]
     fdName = properties.get("Name","")
-    log.infof("In %s.getAux with %s / %s / %s and %s", __name__, appName, familyName, fdName, db)
+    log.tracef("     %s / %s / %s and %s", appName, familyName, fdName, db)
 
     SQL = "SELECT FD.FinalDiagnosisPriority,FD.CalculationMethod,FD.PostTextRecommendation,"\
           " FD.PostProcessingCallback,FD.RefreshRate,FD.TextRecommendation,FD.Comment, "\
@@ -155,11 +162,13 @@ def getAux(uuid, aux, db):
             
     lists["OutputsInUse"] = outputs
     
-    log.infof("properties: %s", str(properties))
-    log.infof("lists: %s", str(lists))
+    log.tracef("properties: %s", str(properties))
+    log.tracef("lists: %s", str(lists))
     
 
 def setAux(uuid,aux,db):
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".setAux")
     log.infof("In %s.setAux using db: %s", __name__, db)
     app  = handler.getApplicationName(uuid)
     family = handler.getFamilyName(uuid)
@@ -167,9 +176,9 @@ def setAux(uuid,aux,db):
     properties = aux[0]
     lists = aux[1]
     name = properties.get("Name","")
-    log.infof("Application/family/diagnosis: %s / %s / %s", app, family, name)
-    log.infof("Properties: %s", str(properties))
-    log.infof("Lists: %s", str(lists))
+    log.tracef("Application/family/diagnosis: %s / %s / %s", app, family, name)
+    log.tracef("Properties: %s", str(properties))
+    log.tracef("Lists: %s", str(lists))
     
     log.infof("Show Explanation with Recommendation: %s", str(properties.get("ShowExplanationWithRecommendation","0")))
     

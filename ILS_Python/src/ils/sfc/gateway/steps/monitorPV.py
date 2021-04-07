@@ -75,7 +75,7 @@ def activate(scopeContext, stepProperties, state):
             handleTimer(timerRecipeDataId, RESUME_TIMER, logger, database)
         else:
             if not initialized:
-                logger.info("...***initializing*** PV Monitor step %s ..." % (stepName))
+                logger.info("...initializing PV Monitor step %s ..." % (stepName))
                 stepScope[INITIALIZED] = True
                 stepScope["workDone"] = False
                 
@@ -83,7 +83,7 @@ def activate(scopeContext, stepProperties, state):
                 timerKey = getStepProperty(stepProperties, TIMER_KEY)
                 timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
                 stepScope["timerRecipeDataId"] = timerRecipeDataId
-                logger.infof("The timer recipe data id is: %d using %s - %s", timerRecipeDataId, timerLocation, timerKey)
+                logger.tracef("The timer recipe data id is: %d using %s - %s", timerRecipeDataId, timerLocation, timerKey)
     
                 configJson =  getStepProperty(stepProperties, PV_MONITOR_CONFIG)
                 config = getPVMonitorConfig(configJson)
@@ -194,7 +194,7 @@ def activate(scopeContext, stepProperties, state):
                             logger.tracef("...Tagpath: %s, Output Type: %s", tagPath, outputType)
                             
                             # I'm not sure why I need to put this into the configrow PAH 2/19/17
-                            logger.infof("get from id target id: %s target type: %s", targetRecipeDataId, targetRecipeDataType)
+                            logger.tracef("get from id target id: %s target type: %s", targetRecipeDataId, targetRecipeDataType)
                             configRow.targetValue = s88GetFromId(targetRecipeDataId, targetRecipeDataType, 'OutputValue', database)
                             
                         elif targetType == VALUE:
@@ -206,8 +206,8 @@ def activate(scopeContext, stepProperties, state):
                             configRow.targetValue = qv.value
                         elif targetType == RECIPE:
                             # This means that the target value will be in some property of the recipe data
-                            print "Getting the target value from Recipe key:", recipeDataLocation, configRow.targetNameIdOrValue
-                            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeDataLocation)           
+                            logger.tracef("Getting the target value from Recipe key: %s-%s", recipeDataLocation, configRow.targetNameIdOrValue)
+                            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeDataLocation) 
     
                         logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
 
@@ -568,6 +568,6 @@ def activate(scopeContext, stepProperties, state):
         pass
     
     if complete:
-        logger.info("** (%s) PV Monitoring is done! **" % (stepName))
+        logger.info(" (%s) PV Monitoring is done!" % (stepName))
         
     return complete

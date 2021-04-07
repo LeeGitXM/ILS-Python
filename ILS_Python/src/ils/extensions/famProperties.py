@@ -5,10 +5,6 @@ import system
 import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 handler = ControllerRequestHandler.getInstance()
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-
-
 '''
 These run in Gateway scope
 '''
@@ -20,6 +16,9 @@ def delete(familyUUID):
     I'd like to use the application name, which is guarenteed to be unique by the database, but I think that the gateway has already deleted the application so the getApplicationName()
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".delete")
+
     log.infof("In %s.delete() with family uuid: %s", __name__, familyUUID)
     db = handler.getProductionDatabase()
         
@@ -41,6 +40,9 @@ def rename(uuid,oldName,newName):
         SQL = "UPDATE DtFamily SET FamilyName= '%s' WHERE FamilyName = '%s'" % (newName,oldName)
         system.db.runUpdateQuery(SQL,db)
     
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".rename")
+    
     log.infof("In %s.rename()", __name__)
     db = handler.getProductionDatabase()
     
@@ -48,7 +50,6 @@ def rename(uuid,oldName,newName):
     
     db = handler.getIsolationDatabase()
     renameInDatabase(uuid,oldName,newName,db)
-    
 
    
 def save(familyUUID):
@@ -60,7 +61,9 @@ def save(familyUUID):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    log.tracef("In %s.save()", __name__)
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".save")
+    log.infof("In %s.save()", __name__)
     
     db = handler.getProductionDatabase()
     
@@ -114,6 +117,10 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid,aux,db):
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".getAux")
+    log.infof("In %s.getAux()", __name__)
+    
     appName  = handler.getApplicationName(uuid)
     familyName = handler.getFamilyName(uuid)
     
@@ -133,6 +140,10 @@ def getAux(uuid,aux,db):
 
 
 def setAux(uuid,aux,db):
+    from ils.log.LogRecorder import LogRecorder
+    log = LogRecorder(__name__ + ".setAux")
+    log.infof("In %s.setAux()", __name__)
+    
     appName  = handler.getApplicationName(uuid)
     familyName = handler.getFamilyName(uuid)
 
@@ -163,3 +174,4 @@ def setAux(uuid,aux,db):
         system.db.runPrepUpdate(SQL, [familyName, properties.get("Description",""), properties.get("Priority","0.0"),familyId],db)
 
         print "famProperties.setAux(): Updated an existing family with id: ", familyId
+    log.tracef("...leaving %s.setAux()", __name__)

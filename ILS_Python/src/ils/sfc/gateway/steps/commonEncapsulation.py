@@ -9,6 +9,10 @@ This updates the run log for collecting SFC KPI statistics.
 
 import system, time
 from ils.common.util import formatDateTimeForDatabase
+
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
+    
 RUNNING = "Running"
 STARTING = "Starting"
 PAUSING = "Pausing" 
@@ -22,7 +26,7 @@ ABORTED = "Aborted"
 
 def monitorCalledChart(runId, chartPath, db):
     '''
-    This uses the system.sfc.getRunningCharts to detrermine when a chart completes.  Luckily the chart record sticks around for a minute or two after the chart completes.
+    This uses the system.sfc.getRunningCharts to determine when a chart completes.  Luckily the chart record sticks around for a minute or two after the chart completes.
     '''
     def worker(runId=runId, chartPath=chartPath, db=db):
         ''' Give the running chart structure time to get set up '''
@@ -36,10 +40,10 @@ def monitorCalledChart(runId, chartPath, db):
         
         i = 0
         while True:
-            print "Looking for a chart run id..."
+            log.tracef("Looking for a chart run id...")
             ds = system.sfc.getRunningCharts(chartPath)
             if ds.getRowCount() > 0:
-                print "--- FOUND IT ---"
+                log.tracef("--- FOUND IT ---")
                 break
             
             if i > 30:

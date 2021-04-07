@@ -38,7 +38,7 @@ def internalFrameOpened(event):
         maxAdjustment = 1.7
         log.warnf("Using default max adjustment of %f because configuration tag %s does not exist!", maxAdjustment, guiAdjustmentTagPath)
     
-    SQL = "select StepState, GuiState, TimerRecipeDataId, SecondarySortKey, StepName, StepId "\
+    SQL = "select StepState, GuiState, TimerRecipeDataId, SecondarySortKey, StepName, StepUUID "\
         "from SfcDownloadGUI where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 
@@ -47,7 +47,7 @@ def internalFrameOpened(event):
     secondarySortKey = pds[0]["SecondarySortKey"]
     rootContainer.secondarySortKey = secondarySortKey
     rootContainer.stepName = pds[0]["StepName"]
-    rootContainer.stepId = pds[0]["StepId"]
+    rootContainer.stepUUID = pds[0]["StepUUID"]
 
     SQL = "select * from SfcWindow where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -323,7 +323,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
 # happens then we may need to read all tags and update all fields in database.  It doesn't seem like that 
 # would be much additional overhead anyway.
 def updateDatabaseTable(windowId, database):
-    log.infof("...updating the database table...")
+    log.tracef("...updating the database table...")
     SQL = "select * from SfcDownloadGUITable where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database)
 

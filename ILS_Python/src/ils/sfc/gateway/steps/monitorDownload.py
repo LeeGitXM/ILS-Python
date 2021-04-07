@@ -36,11 +36,6 @@ def activate(scopeContext, stepProperties, state):
         database = getDatabaseName(chartScope)
         log = getChartLogger(chartScope)
         log.tracef("In monitorDownload.activate()...")
-        
-        print "***********************************"
-        print stepScope
-        print "Step UUID: ", stepUUID
-        print "***********************************"
     
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
@@ -87,7 +82,7 @@ def activate(scopeContext, stepProperties, state):
             % (windowId, stepName, stepUUID, str(timerRecipeDataId), secondarySortKey)
         system.db.runUpdateQuery(SQL, database)
         
-        log.infof("The step properties are: %s", str(stepProperties))
+        log.tracef("The step properties are: %s", str(stepProperties))
         
         # Reset the recipe data download and PV monitoring attributes
         for row in monitorDownloadsConfig.rows:
