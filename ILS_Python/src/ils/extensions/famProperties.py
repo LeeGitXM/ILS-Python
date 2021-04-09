@@ -116,27 +116,30 @@ production or isolation databases. The Gateway makes this call when converting i
 # properties, lists and maplists. Of these, the family only uses properties.
 # 
 # Fill the aux structure with values from the database
-def getAux(uuid,aux,db):
+def getAux(uuid, aux, db):
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".getAux")
     log.infof("In %s.getAux()", __name__)
     
-    appName  = handler.getApplicationName(uuid)
+    applicationName  = handler.getApplicationName(uuid)
     familyName = handler.getFamilyName(uuid)
     
     properties = aux[0]
     
-    print "famProperties,getAux():  ...the family name is ", familyName
+    log.tracef("     Application name: %s", applicationName)
+    log.tracef("     Family name: %s", familyName)
     
     SQL = "SELECT FAM.Description,FAM.FamilyPriority "\
           " FROM DtFamily FAM,DtApplication APP "\
           " WHERE FAM.applicationId = APP.applicationId "\
           "   AND FAM.familyName = '%s'"\
-          "   AND APP.ApplicationName = '%s' " % (familyName,appName)
+          "   AND APP.ApplicationName = '%s' " % (familyName, applicationName)
     ds = system.db.runQuery(SQL,db)
     for rec in ds:
         properties["Description"] = rec["Description"]
         properties["Priority"]    = rec["FamilyPriority"]
+    
+    log.tracef("...leaving %s.getAux()", __name__)
 
 
 def setAux(uuid,aux,db):
@@ -148,7 +151,9 @@ def setAux(uuid,aux,db):
     familyName = handler.getFamilyName(uuid)
 
     properties = aux[0]
-    print "famProperties.setAux()  ...the application/family name is: ",appName,"/",familyName,", properties:", properties
+    log.tracef("   Application: ", appName)
+    log.tracef("   Family: ", familyName)
+    log.tracef("   Properties: %s", str(properties))
     
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (appName)
     applicationId = system.db.runScalarQuery(SQL,db)
@@ -161,17 +166,20 @@ def setAux(uuid,aux,db):
           " WHERE ApplicationId = %s"\
           "  AND familyName = '%s'" % (applicationId,familyName)
     familyId = system.db.runScalarQuery(SQL,db)
+    
     if familyId == None:
-        SQL = "INSERT INTO DtFamily(applicationId,familyName,description,familyPriority)"\
-               " VALUES(?,?,?,?)"
-        familyId = system.db.runPrepUpdate(SQL, [applicationId, familyName, properties.get("Description",""),  
-                                                 properties.get("Priority","0.0")], db, getKey=1)
-
-        print "famProperties.setAux(): Inserted a new family with id: ", familyId
+        SQL = "INSERT INTO DtFamily(applicationId,familyName,description,familyPriority) VALUES (?,?,?,?)"
+        args = [applicationId, familyName, properties.get("Description",""), properties.get("Priority","0.0")]
+        log.tracef("     SQL: %s", SQL)
+        log.tracef("     ARGS: %s", args)
+        familyId = system.db.runPrepUpdate(SQL, args, db, getKey=1)
+        log.tracef("     Inserted a new family with id: %d", familyId)
     else:
-        SQL = "UPDATE DtFamily SET familyName = ?, description = ?, familyPriority = ?" \
-            " where familyId = ? "
-        system.db.runPrepUpdate(SQL, [familyName, properties.get("Description",""), properties.get("Priority","0.0"),familyId],db)
-
-        print "famProperties.setAux(): Updated an existing family with id: ", familyId
+        SQL = "UPDATE DtFamily SET familyName = ?, description = ?, familyPriority = ? where familyId = ? "
+        args = [familyName, properties.get("Description",""), properties.get("Priority","0.0"),familyId]
+        log.tracef("     SQL: %s", SQL)
+        log.tracef("     ARGS: %s", args)
+        system.db.runPrepUpdate(SQL, args, db)
+        log.tracef("     Updated an existing family with id: %d", familyId)
+    
     log.tracef("...leaving %s.setAux()", __name__)

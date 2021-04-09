@@ -1,6 +1,8 @@
 #  Copyright 2014 ILS Automation
 #
-import system, time
+import system
+from ils.common.cast import toBit
+from ils.common.database import toDateString
 
 def getClassName():
     return "FinalDiagnosis"
@@ -9,6 +11,7 @@ def getClassName():
 # or other block upstream and deduces the reason for the issue.
 #
 from ils.block import basicblock
+from ils.log.LogRecorder import LogRecorder
 #import ils.diagToolkit.finalDiagnosis as fd
 
 callback = "fd.evaluate"
@@ -19,6 +22,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.initialize()
         self.state = "UNKNOWN"
         self.handler.setAlerterClass(self.getClassName())
+        self.log = LogRecorder(__name__)
     
     # Set attributes custom to this class
     def initialize(self):
@@ -47,10 +51,6 @@ class FinalDiagnosis(basicblock.BasicBlock):
         proto['inports']        = self.getInputPorts()
         proto['outports']       = self.getOutputPorts()
         proto['viewWidth']      = 100
-
-# Editor is now embedded into the property editor.  PH 9/29/20
-#        proto['editorClass']   = "com.ils.blt.designer.config.FinalDiagnosisConfiguration"
-
         proto['transmitEnabled']= True
         return proto
             
@@ -65,7 +65,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         # I'm not really using this, but I'm printing it up front just to make sure this works
         projectName = system.util.getProjectName()
-        print "FinalDiagnosis.acceptValue: %s (project: %s)" % (self.state, projectName)
+        self.log.tracef("FinalDiagnosis.acceptValue: %s (project: %s)", self.state, projectName)
 
         if self.state != "UNKNOWN":
             print "Clearing the watermark"
@@ -115,9 +115,6 @@ class FinalDiagnosis(basicblock.BasicBlock):
         print "FinalDiagnosis.acceptValue: COMPLETE"
     
         # The base method leaves the aux data unchanged.
-    def getAuxData(self,aux):
-        print "finaldiagnosis: getAuxData"
-        pass
     
     # Trigger property and connection notifications on the block
     def notifyOfStatus(self):
@@ -127,8 +124,234 @@ class FinalDiagnosis(basicblock.BasicBlock):
     def propagate(self):
         if self.state <> "UNSET":
             self.postValue('out',str(self.state),self.quality,self.time)
+    
+    def getAuxData(self, aux):
+        self.log.infof("In finalDiagnosis.getAuxData() with %s", str(aux))
+    
+        '''
+        NOTE: The UUID supplied is from the parent, a diagram. The database interactions
+               are all based on a the block name which is  the data structure.
+        
+        The aux data structure is a Python list of three dictionaries. These are:
+        properties, lists and maplists.
+         
+        Fill the aux structure with values from the database.
+        '''
+        db = self.handler.getDefaultDatabase(self.parentuuid)
+        provider = self.handler.getDefaultTagProvider(self.parentuuid)
+        
+        print "Using database: %s and tag provider: %s " % (db, provider)
+        
+        applicationName = self.handler.getApplication(self.parentuuid).getName()
+        familyName = self.handler.getFamily(self.parentuuid).getName()         
+     
+        properties = aux[0]
+        lists = aux[1]
+        finalDiagnosisName = properties.get("Name","")
+        self.log.tracef("     %s / %s / %s and %s", applicationName, familyName, finalDiagnosisName, db)
+    
+        SQL = "SELECT FD.FinalDiagnosisPriority,FD.CalculationMethod,FD.PostTextRecommendation,"\
+              " FD.PostProcessingCallback,FD.RefreshRate,FD.TextRecommendation,FD.Comment, "\
+              " FD.Active,FD.Explanation,FD.TrapInsignificantRecommendations, FD.FinalDiagnosisLabel, "\
+              " FD.FinalDiagnosisId, FD.Constant, FD.ManualMoveAllowed, FD.ShowExplanationWithRecommendation "\
+              " FROM DtFinalDiagnosis FD,DtFamily FAM,DtApplication APP "\
+              " WHERE APP.applicationId = FAM.applicationId"\
+              " AND APP.applicationName = '%s' "\
+              " AND FAM.familyId = FD.familyId "\
+              " AND FAM.familyName = '%s'"\
+              " AND FAM.familyId = FD.familyId " \
+              " AND FD.finalDiagnosisName = '%s'"\
+               % (applicationName, familyName, finalDiagnosisName)
+        ds = system.db.runQuery(SQL,db)
+        
+        if len(ds) == 0:
+            self.log.warnf("Warning: No records found!")
+            self.log.warnf(SQL)
+    
+        finalDiagnosisId = "NONE"
+        for rec in ds:
+            postTextRecommendation = toBit(rec["PostTextRecommendation"])
+            active = toBit(rec["Active"])
+            trapInsignificatRecommendations = toBit(rec["TrapInsignificantRecommendations"])
+            constant = toBit(rec["Constant"])
+            manualMoveAllowed = toBit(rec["ManualMoveAllowed"])
+            showExplanationWithRecommendation = toBit(rec["ShowExplanationWithRecommendation"])
             
-        # Set aux data in an external database. This base method does nothing
-    def setAuxData(self,data):
-        print "finaldiagnosis: setAuxData"
-        pass
+            finalDiagnosisId = rec["FinalDiagnosisId"]
+            
+            properties["FinalDiagnosisLabel"]  = rec["FinalDiagnosisLabel"]
+            properties["Priority"]  = rec["FinalDiagnosisPriority"]
+            properties["CalculationMethod"] = rec["CalculationMethod"]
+            properties["Comment"] = rec["Comment"]
+            properties["TextRecommendation"] = rec["TextRecommendation"]
+            properties["PostTextRecommendation"] = postTextRecommendation
+            properties["PostProcessingCallback"] = rec["PostProcessingCallback"]
+            properties["RefreshRate"] = rec["RefreshRate"]
+            properties["Active"] = active
+            properties["Explanation"] = rec["Explanation"]
+            properties["TrapInsignificantRecommendations"] = trapInsignificatRecommendations
+            properties["Constant"] = constant
+            properties["ManualMoveAllowed"] = manualMoveAllowed
+            properties["ShowExplanationWithRecommendation"] = showExplanationWithRecommendation
+    
+        SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
+        applicationId = system.db.runScalarQuery(SQL,db)
+        
+        # Create lists of QuantOutputs
+        # First is the list of all names for the Application
+        SQL = "SELECT QuantOutputName "\
+              " FROM DtQuantOutput "\
+              " WHERE applicationId=%s" % (str(applicationId))
+        ds = system.db.runQuery(SQL,db)
+        outputs = []
+        for record in ds:
+            outputs.append(str(record["QuantOutputName"]))
+        lists["QuantOutputs"] = outputs
+        
+        # Next get the list that is used by the diagnosis, if it exists
+        outputs = []
+        if finalDiagnosisId != "NONE":
+            SQL = "SELECT QO.QuantOutputName "\
+                " FROM DtQuantOutput QO,DtRecommendationDefinition REC "\
+                " WHERE QO.quantOutputId = REC.quantOutputId "\
+                "  AND REC.finalDiagnosisId = %s" %(finalDiagnosisId)
+            ds = system.db.runQuery(SQL,db)
+        
+            for record in ds:
+                outputs.append(str(record["QuantOutputName"]))
+                
+        lists["OutputsInUse"] = outputs
+        
+        self.log.tracef("properties: %s", str(properties))
+        self.log.tracef("lists: %s", str(lists))
+    
+            
+    # Set aux data in an external database. This base method does nothing
+    def setAuxData(self, data):
+        self.log.infof("In finalDiagnosis.setAuxData() with %s", str(data))
+        
+        db = self.handler.getDefaultDatabase(self.parentuuid)
+        provider = self.handler.getDefaultTagProvider(self.parentuuid)
+        
+        print "Using database: %s and tag provider: %s " % (db, provider)
+        
+        applicationName = self.handler.getApplication(self.parentuuid).getName()
+        familyName = self.handler.getFamily(self.parentuuid).getName()    
+        
+        properties = data[0]
+        lists = data[1]
+        name = properties.get("Name","")
+        self.log.tracef("Application / family / diagnosis / db: %s / %s / %s / %s", applicationName, familyName, name, db)
+        self.log.tracef("Properties: %s", str(properties))
+        self.log.tracef("Lists: %s", str(lists))
+        
+        self.log.infof("Show Explanation with Recommendation: %s", str(properties.get("ShowExplanationWithRecommendation","0")))
+        
+        SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
+        applicationId = system.db.runScalarQuery(SQL,db)
+        self.log.infof("The application Id is: %s", str(applicationId))
+        if applicationId == None:
+            SQL = "insert into DtApplication (ApplicationName) values (?)"
+            applicationId = system.db.runPrepUpdate(SQL, [applicationName], db, getKey=1)
+        
+        SQL = "SELECT familyId FROM DtFamily "\
+              " WHERE ApplicationId = %s"\
+              "  AND familyName = '%s'" % (applicationId,familyName)
+        familyId = system.db.runScalarQuery(SQL,db)
+        self.log.infof("The family Id is: %s", str(familyId))
+        if familyId == None:
+            SQL = "INSERT INTO DtFamily (applicationId,familyName,familyPriority) "\
+                   " VALUES (?, ?, 0.0)"
+            self.log.infof(SQL)
+            familyId = system.db.runPrepUpdate(SQL, [applicationId, familyName], db, getKey=1)
+            
+        SQL = "SELECT finalDiagnosisId FROM DtFinalDiagnosis "\
+              " WHERE FamilyId = %s"\
+              "  AND finalDiagnosisName = '%s'" % (familyId,name)
+        self.log.infof(SQL)
+        fdId = system.db.runScalarQuery(SQL,db)
+        self.log.infof("The final diagnosis Id is: %s", str(fdId))
+        if fdId == None:
+            self.log.infof("Inserting a new final diagnosis...")
+            recTime = system.date.now()
+            recTime = system.date.addMonths(recTime, -12)
+            recTime = toDateString(recTime)
+            # When we insert a new final diagnosis it has to be false until it runs...
+            SQL = "INSERT INTO DtFinalDiagnosis (familyId, finalDiagnosisName, finalDiagnosisLabel, finalDiagnosisPriority, calculationMethod, "\
+                   "postTextRecommendation, PostProcessingCallback, refreshRate, textRecommendation, active, explanation, "\
+                   "trapInsignificantRecommendations, constant, manualMoveAllowed, comment, showExplanationWithRecommendation, timeOfMostRecentRecommendationImplementation)"\
+                   " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+            self.log.infof("SQL: %s", SQL)
+            try:
+                args =  [familyId, name, properties.get("FinalDiagnosisLabel",""), properties.get("Priority","0.0"), properties.get("CalculationMethod",""),\
+                            properties.get("PostTextRecommendation","0"), properties.get("PostProcessingCallback",""),\
+                            properties.get("RefreshRate","1"), properties.get("TextRecommendation",""), properties.get("Active","0"), properties.get("Explanation","0"),\
+                            properties.get("TrapInsignificantRecommendations","1"), properties.get("Constant","0"),\
+                            properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), properties.get("ShowExplanationWithRecommendation","0"), recTime]
+                self.log.infof("Arguments (%d): %s", len(args), str(args))
+                fdId = system.db.runPrepUpdate(SQL, args, db, getKey=1)
+                self.log.infof("Inserted a new final diagnosis with id: %d", fdId)
+            except:
+                self.logExceptionCause("Inserting a new Final Diagnosis", self.log)
+                return
+        else:
+            self.log.infof("Updating an existing final diagnosis...")
+            SQL = "UPDATE DtFinalDiagnosis SET familyId=?, finalDiagnosisPriority=?, calculationMethod=?, finalDiagnosisLabel=?, " \
+                "postTextRecommendation=?, postProcessingCallback=?, refreshRate=?, textRecommendation=?, explanation=?, "\
+                "trapInsignificantRecommendations=?, constant=?, manualMoveAllowed=?, comment=?, showExplanationWithRecommendation=? "\
+                " WHERE finalDiagnosisId = ?"
+            args = [familyId, properties.get("Priority","0.0"), properties.get("CalculationMethod",""), properties.get("FinalDiagnosisLabel",""),\
+                        properties.get("PostTextRecommendation","0"), properties.get("PostProcessingCallback",""),\
+                        properties.get("RefreshRate","1.0"), properties.get("TextRecommendation",""),\
+                        properties.get("Explanation","0"), properties.get("TrapInsignificantRecommendations","1"),\
+                        properties.get("Constant","0"), properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), \
+                        properties.get("ShowExplanationWithRecommendation","0"), fdId]
+            
+            self.log.infof("SQL: %s", SQL)
+            self.log.infof("Args: %s", str(args))
+            rows = system.db.runPrepUpdate(SQL, args, db)
+            self.log.infof("Updated %d rows", rows)
+            
+        ''' 
+        Delete any recommendations that may exist for this final diagnosis to avoid foreign key constraints when we delete and recreate the DtRecommendationDefinitions.
+        (I'm not sure this is the correct thing to do - this will affect a live system.  Not sure we want to do this just because they press OK to update the comment, explanation, etc.
+        '''
+        self.log.infof("Deleting existing recommendations...")
+        SQL = "select RecommendationDefinitionId from DtRecommendationDefinition where FinalDiagnosisId = %s" % (fdId)
+        self.log.infof(SQL)
+        pds = system.db.runQuery(SQL, db)
+        totalRows = 0
+        for record in pds:
+            SQL = "delete from DtRecommendation where RecommendationDefinitionId = %s" % (record["RecommendationDefinitionId"])
+            self.log.infof(SQL)
+            rows = system.db.runUpdateQuery(SQL, db)
+            totalRows = totalRows + rows
+        self.log.infof("Deleted %d recommendations prior to updating the Recommendation Definitions...", totalRows)
+        
+        # Update the list of outputs used
+        self.log.infof("Deleting Recommendation Definitions...")
+        SQL = "DELETE FROM DtRecommendationDefinition WHERE finalDiagnosisId = %s" % (str(fdId))
+        self.log.infof(SQL)
+        system.db.runUpdateQuery(SQL,db)
+        
+        olist = lists.get("OutputsInUse")
+        instr = None
+        for output in olist:
+            if instr == None:
+                instr = ""
+            else:
+                instr = instr+","
+            instr = instr+"'"+output+"'"
+        
+        rows = 0
+        if instr != None:
+            self.log.infof("Inserting a recommendation definition for %s...", instr)
+            SQL = "INSERT INTO DtRecommendationDefinition(finalDiagnosisId,quantOutputId) "\
+              "SELECT %s,quantOutputId FROM DtQuantOutput QO"\
+              " WHERE QO.applicationID = %s "\
+              "  AND QO.quantOutputName IN (%s)" \
+              % (fdId,applicationId,instr)
+            self.log.infof(SQL)
+            rows=system.db.runUpdateQuery(SQL,db)
+    
+        self.log.infof("Inserted %d recommendation definitions", rows)

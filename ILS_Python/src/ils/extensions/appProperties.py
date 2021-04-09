@@ -152,7 +152,7 @@ def getAux(uuid,aux,db):
         if unitId != None:
             log.tracef("Fetching unit name for unitId: %s...", str(unitId))
             unitName = getUnitName(unitId, db)
-            print "Unit Name: ", unitName
+            log.tracef("...Unit Name: %s", unitName)
             if unitName != None:
                 properties["Unit"]=str(unitName)
         
