@@ -5,7 +5,7 @@ Created on Nov 30, 2014
 '''
 
 import ils.io.opctag as opctag
-import ils.io.opcoutput as opcoutput
+import ils.io.opcmodeoutput as opcmodeoutput
 import system
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -16,7 +16,7 @@ class Controller(opctag.OPCTag):
     
     def __init__(self,path):
         opctag.OPCTag.__init__(self,path)
-        self.modeTag = opcoutput.OPCOutput(path + '/mode')
+        self.modeTag = opcmodeoutput.OPCModeOutput(path + '/mode')
         
         
     # Reset the UDT in preparation for a write 
@@ -27,4 +27,3 @@ class Controller(opctag.OPCTag):
         system.tag.write(self.path + '/writeConfirmed', False)
         system.tag.write(self.path + '/writeErrorMessage', '')
         system.tag.write(self.path + '/writeStatus', '')
-

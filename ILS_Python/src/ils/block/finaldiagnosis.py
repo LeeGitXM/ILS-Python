@@ -71,25 +71,23 @@ class FinalDiagnosis(basicblock.BasicBlock):
             print "Clearing the watermark"
             system.ils.blt.diagram.clearWatermark(self.parentuuid)
         
-        handler = self.handler
-        
         # On startup, it is possible for a block to get a value before
         # all resources (like the parent application) have been loaded. 
-        if handler.getApplication(self.parentuuid)==None or handler.getFamily(self.parentuuid)==None:
+        if self.handler.getApplication(self.parentuuid)==None or self.handler.getFamily(self.parentuuid)==None:
             print "FinalDiagnosis.acceptValue: Parent application or family not loaded yet, ignoring state change"
             self.state = "UNKNOWN"
             return
 
-        database = handler.getDefaultDatabase(self.parentuuid)
-        provider = handler.getDefaultTagProvider(self.parentuuid)
+        database = self.handler.getDefaultDatabase(self.parentuuid)
+        provider = self.handler.getDefaultTagProvider(self.parentuuid)
         
         print "Using database: %s and tag provider: %s " % (database, provider)
         
-        applicationName = handler.getApplication(self.parentuuid).getName()
-        familyName = handler.getFamily(self.parentuuid).getName()
+        applicationName = self.handler.getApplication(self.parentuuid).getName()
+        familyName = self.handler.getFamily(self.parentuuid).getName()
         print "Application: %s\nFamily: %s" % (applicationName, familyName)
         
-        finalDiagnosis = handler.getBlock(self.parentuuid, self.uuid)
+        finalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
         finalDiagnosisName = finalDiagnosis.getName()
         print "Final Diagnosis: %s" % (finalDiagnosisName)        
 
@@ -126,8 +124,6 @@ class FinalDiagnosis(basicblock.BasicBlock):
             self.postValue('out',str(self.state),self.quality,self.time)
     
     def getAuxData(self, aux):
-        self.log.infof("In finalDiagnosis.getAuxData() with %s", str(aux))
-    
         '''
         NOTE: The UUID supplied is from the parent, a diagram. The database interactions
                are all based on a the block name which is  the data structure.
@@ -137,19 +133,25 @@ class FinalDiagnosis(basicblock.BasicBlock):
          
         Fill the aux structure with values from the database.
         '''
+        self.log.infof("In finalDiagnosis.getAuxData() with %s", str(aux))
+        
         db = self.handler.getDefaultDatabase(self.parentuuid)
         provider = self.handler.getDefaultTagProvider(self.parentuuid)
         
-        print "Using database: %s and tag provider: %s " % (db, provider)
+        self.log.tracef("Using database: %s and tag provider: %s ", db, provider)
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
-        familyName = self.handler.getFamily(self.parentuuid).getName()         
-     
+        familyName = self.handler.getFamily(self.parentuuid).getName()
+        finalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
+        finalDiagnosisName = finalDiagnosis.getName()
+
+        self.log.tracef("Application: %s", applicationName)
+        self.log.tracef("Family: %s", familyName)
+        self.log.tracef("Final Diagnosis: %s", finalDiagnosisName)
+
         properties = aux[0]
         lists = aux[1]
-        finalDiagnosisName = properties.get("Name","")
-        self.log.tracef("     %s / %s / %s and %s", applicationName, familyName, finalDiagnosisName, db)
-    
+
         SQL = "SELECT FD.FinalDiagnosisPriority,FD.CalculationMethod,FD.PostTextRecommendation,"\
               " FD.PostProcessingCallback,FD.RefreshRate,FD.TextRecommendation,FD.Comment, "\
               " FD.Active,FD.Explanation,FD.TrapInsignificantRecommendations, FD.FinalDiagnosisLabel, "\
@@ -225,23 +227,30 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.log.tracef("properties: %s", str(properties))
         self.log.tracef("lists: %s", str(lists))
     
-            
-    # Set aux data in an external database. This base method does nothing
+    
     def setAuxData(self, data):
+        '''
+        Set aux data in an external database. This base method does nothing
+        '''
         self.log.infof("In finalDiagnosis.setAuxData() with %s", str(data))
         
         db = self.handler.getDefaultDatabase(self.parentuuid)
         provider = self.handler.getDefaultTagProvider(self.parentuuid)
         
-        print "Using database: %s and tag provider: %s " % (db, provider)
+        self.log.tracef("Using database: %s and tag provider: %s ", db, provider)
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
-        familyName = self.handler.getFamily(self.parentuuid).getName()    
-        
+        familyName = self.handler.getFamily(self.parentuuid).getName()
+        finalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
+        finalDiagnosisName = finalDiagnosis.getName()
+
+        self.log.tracef("Application: %s", applicationName)
+        self.log.tracef("Family: %s", familyName)
+        self.log.tracef("Final Diagnosis: %s", finalDiagnosisName)
+                
         properties = data[0]
         lists = data[1]
-        name = properties.get("Name","")
-        self.log.tracef("Application / family / diagnosis / db: %s / %s / %s / %s", applicationName, familyName, name, db)
+        
         self.log.tracef("Properties: %s", str(properties))
         self.log.tracef("Lists: %s", str(lists))
         
@@ -267,7 +276,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
             
         SQL = "SELECT finalDiagnosisId FROM DtFinalDiagnosis "\
               " WHERE FamilyId = %s"\
-              "  AND finalDiagnosisName = '%s'" % (familyId,name)
+              "  AND finalDiagnosisName = '%s'" % (familyId, finalDiagnosisName)
         self.log.infof(SQL)
         fdId = system.db.runScalarQuery(SQL,db)
         self.log.infof("The final diagnosis Id is: %s", str(fdId))
@@ -283,7 +292,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
             self.log.infof("SQL: %s", SQL)
             try:
-                args =  [familyId, name, properties.get("FinalDiagnosisLabel",""), properties.get("Priority","0.0"), properties.get("CalculationMethod",""),\
+                args =  [familyId, finalDiagnosisName, properties.get("FinalDiagnosisLabel",""), properties.get("Priority","0.0"), properties.get("CalculationMethod",""),\
                             properties.get("PostTextRecommendation","0"), properties.get("PostProcessingCallback",""),\
                             properties.get("RefreshRate","1"), properties.get("TextRecommendation",""), properties.get("Active","0"), properties.get("Explanation","0"),\
                             properties.get("TrapInsignificantRecommendations","1"), properties.get("Constant","0"),\

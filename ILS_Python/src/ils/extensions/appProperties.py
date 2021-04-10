@@ -285,28 +285,27 @@ def setAux(uuid, aux, db):
     unitName = properties.get("Unit","")
     SQL = "select UnitId from TkUnit where UnitName = '%s'" % (unitName)
     unitId = system.db.runScalarQuery(SQL, db)
-    log.tracef("Fetched unit id <%d> for unit: <%s>", unitId, unitName)
+    log.tracef("Fetched unit id <%s> for unit: <%s>", str(unitId), unitName)
     
     queueKey = properties.get("MessageQueue","")
     SQL = "select QueueId from QueueMaster where QueueKey = '%s'" % (queueKey)
     messageQueueId = system.db.runScalarQuery(SQL,db)
-    log.tracef("Fetched queue id <%d> for queue: <%s>", messageQueueId, queueKey)
+    log.tracef("Fetched queue id <%s> for queue: <%s>", str(messageQueueId), queueKey)
     
     groupRampMethod = properties.get("GroupRampMethod","")
     SQL = "select LookupId from Lookup where LookupTypeCode = 'GroupRampMethod' and LookupName = '%s'" % (groupRampMethod)
     groupRampMethodId = system.db.runScalarQuery(SQL,db)
-    log.tracef("Fetched id <%d> for Group Ramp Method: <%s>", groupRampMethodId, groupRampMethod)
+    log.tracef("Fetched id <%s> for Group Ramp Method: <%s>", str(groupRampMethodId), groupRampMethod)
     
     if applicationId == None:
-        SQL = "insert into DtApplication (ApplicationName, Description, MessageQueueId, GroupRampMethodId, UnitId, Managed) "\
-            "values (?, ?, ?, ?, ?, ?)"
-        applicationId = system.db.runPrepUpdate(SQL, [applicationName, description,  
-                messageQueueId, groupRampMethodId, unitId, managed], db, getKey=1)
+        SQL = "insert into DtApplication (ApplicationName, Description, MessageQueueId, GroupRampMethodId, UnitId, Managed) values (?, ?, ?, ?, ?, ?)"
+        args = [applicationName, description, messageQueueId, groupRampMethodId, unitId, managed]
+        log.tracef("%s - %s", SQL, str(args))
+        applicationId = system.db.runPrepUpdate(SQL, args, db, getKey=1)
         log.tracef("Inserted a new application with id: %d", applicationId)
     else:
         log.tracef("Updating an existing application record...")
-        SQL = "Update DtApplication set ApplicationName = ?, Description = ?, UnitId = ?, MessageQueueId = ?, GroupRampMethodId = ?, managed = ?" \
-            " where ApplicationId = ? "
+        SQL = "Update DtApplication set ApplicationName = ?, Description = ?, UnitId = ?, MessageQueueId = ?, GroupRampMethodId = ?, managed = ? where ApplicationId = ? "
         args = [applicationName, description, unitId, messageQueueId, groupRampMethodId, managed, applicationId]
         log.tracef("%s - %s", SQL, str(args))
         system.db.runPrepUpdate(SQL, args, db)
