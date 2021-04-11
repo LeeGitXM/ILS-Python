@@ -59,7 +59,7 @@ class BasicBlock():
     # The base method leaves the aux data unchanged.
     def getAuxData(self,aux):
         print "basicblock: getAuxData"
-        pass
+        return self.auxData
     # Return the class name. This is a fully qualified
     # path, including the module path 
     def getClassName(self):
