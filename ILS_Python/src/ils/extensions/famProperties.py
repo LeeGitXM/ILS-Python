@@ -151,8 +151,8 @@ def setAux(uuid,aux,db):
     familyName = handler.getFamilyName(uuid)
 
     properties = aux[0]
-    log.tracef("   Application: ", appName)
-    log.tracef("   Family: ", familyName)
+    log.tracef("   Application: %s", appName)
+    log.tracef("   Family: %s", familyName)
     log.tracef("   Properties: %s", str(properties))
     
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (appName)

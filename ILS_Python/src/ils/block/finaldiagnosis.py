@@ -87,8 +87,8 @@ class FinalDiagnosis(basicblock.BasicBlock):
         familyName = self.handler.getFamily(self.parentuuid).getName()
         print "Application: %s\nFamily: %s" % (applicationName, familyName)
         
-        finalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
-        finalDiagnosisName = finalDiagnosis.getName()
+        theFinalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
+        finalDiagnosisName = theFinalDiagnosis.getName()
         print "Final Diagnosis: %s" % (finalDiagnosisName)        
 
         if self.state == "TRUE":
@@ -142,12 +142,24 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
         familyName = self.handler.getFamily(self.parentuuid).getName()
-        finalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
-        finalDiagnosisName = finalDiagnosis.getName()
-
+        theFinalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
+        finalDiagnosisName = theFinalDiagnosis.getName()
+        self.log.infof("The final diagnosis: %s", str(theFinalDiagnosis))
+        
+#        finalDiagnosisName = self.name
+#        self.log.infof("The final diagnosis (self.name): %s", str(theFinalDiagnosis))
+        
+#        finalDiagnosisName = theFinalDiagnosis.name
+#        self.log.infof("The final diagnosis (self.name #2): %s", str(theFinalDiagnosis))
+        
         self.log.tracef("Application: %s", applicationName)
         self.log.tracef("Family: %s", familyName)
         self.log.tracef("Final Diagnosis: %s", finalDiagnosisName)
+        
+        finalDiagnosisName = "TESTFD1_2_2"
+        self.log.infof("***********************************************")
+        self.log.infof("Hard-CODED Final Diagnosis: %s", finalDiagnosisName)
+        self.log.infof("***********************************************")
 
         properties = aux[0]
         lists = aux[1]
@@ -241,12 +253,18 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
         familyName = self.handler.getFamily(self.parentuuid).getName()
-        finalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
-        finalDiagnosisName = finalDiagnosis.getName()
+        theFinalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
+        self.log.infof("The final diagnosis: %s", str(theFinalDiagnosis))
+        finalDiagnosisName = theFinalDiagnosis.getName()
 
         self.log.tracef("Application: %s", applicationName)
         self.log.tracef("Family: %s", familyName)
         self.log.tracef("Final Diagnosis: %s", finalDiagnosisName)
+        
+        finalDiagnosisName = "TESTFD1_2_2"
+        self.log.infof("***********************************************")
+        self.log.infof("Hard-CODED Final Diagnosis: %s", finalDiagnosisName)
+        self.log.infof("***********************************************")
                 
         properties = data[0]
         lists = data[1]
