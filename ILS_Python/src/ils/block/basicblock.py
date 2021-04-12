@@ -18,6 +18,7 @@ class BasicBlock():
     
     
     def __init__(self):
+        self.name = ""
         # Each block has a state, whether it is meaningful or not
         self.state = "UNSET"
         self.quality = "good"
@@ -118,9 +119,9 @@ class BasicBlock():
         print "basicblock: setAuxData"
         pass
     # The proxy block contains the name.
-    # This method is intended as a hook for an extension function to do, essentially, a rename
-    def setName(self,name):
-        pass
+    def setName(self,text):
+        self.name = text
+        
     # Replace or add a property
     # We expect the dictionary to have all the proper attributes
     def setProperty(self,name,dictionary):
