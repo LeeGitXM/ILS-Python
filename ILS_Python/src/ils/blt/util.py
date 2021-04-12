@@ -33,7 +33,7 @@ def acceptValue(block,port,value,quality,time):
         block.acceptValue(port,value,quality,time)
 
 
-def createBlockInstance(className, parent, uid, result):
+def createBlockInstance(className, parent, uid, name, result):
     ''' Create an instance of a particular class.
     The arglist contains:
          class - incoming class name
@@ -41,10 +41,11 @@ def createBlockInstance(className, parent, uid, result):
          uid    - UUID string of the block itself
          result - shared dictionary.
     '''
-    log.infof('Creating a %s, parent: %s, uid: %s', className, parent, uid)
+    log.infof('Creating a %s, parent: %s, uid: %s %s', className, parent, uid, name)
     obj = getNewBlockInstance(className)
     obj.setUUID(uid)
     obj.setParentUUID(parent)
+    obj.setName(name)
     log.infof("...created!")
     result['instance'] = obj
 
