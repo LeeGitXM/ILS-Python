@@ -134,6 +134,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         Fill the aux structure with values from the database.
         '''
         self.log.infof("In finalDiagnosis.getAuxData() with %s", str(aux))
+
         
         db = self.handler.getDefaultDatabase(self.parentuuid)
         provider = self.handler.getDefaultTagProvider(self.parentuuid)
@@ -142,24 +143,11 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
         familyName = self.handler.getFamily(self.parentuuid).getName()
-        theFinalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
-        finalDiagnosisName = theFinalDiagnosis.getName()
-        self.log.infof("The final diagnosis: %s", str(theFinalDiagnosis))
-        
-#        finalDiagnosisName = self.name
-#        self.log.infof("The final diagnosis (self.name): %s", str(theFinalDiagnosis))
-        
-#        finalDiagnosisName = theFinalDiagnosis.name
-#        self.log.infof("The final diagnosis (self.name #2): %s", str(theFinalDiagnosis))
-        
+        finalDiagnosisName = self.name
+            
         self.log.tracef("Application: %s", applicationName)
         self.log.tracef("Family: %s", familyName)
         self.log.tracef("Final Diagnosis: %s", finalDiagnosisName)
-        
-        finalDiagnosisName = "TESTFD1_2_2"
-        self.log.infof("***********************************************")
-        self.log.infof("Hard-CODED Final Diagnosis: %s", finalDiagnosisName)
-        self.log.infof("***********************************************")
 
         properties = aux[0]
         lists = aux[1]
@@ -253,19 +241,12 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
         familyName = self.handler.getFamily(self.parentuuid).getName()
-        theFinalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
-        self.log.infof("The final diagnosis: %s", str(theFinalDiagnosis))
-        finalDiagnosisName = theFinalDiagnosis.getName()
+        finalDiagnosisName = self.name
 
         self.log.tracef("Application: %s", applicationName)
         self.log.tracef("Family: %s", familyName)
         self.log.tracef("Final Diagnosis: %s", finalDiagnosisName)
         
-        finalDiagnosisName = "TESTFD1_2_2"
-        self.log.infof("***********************************************")
-        self.log.infof("Hard-CODED Final Diagnosis: %s", finalDiagnosisName)
-        self.log.infof("***********************************************")
-                
         properties = data[0]
         lists = data[1]
         

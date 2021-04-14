@@ -119,7 +119,7 @@ def update(table,row,colname,value):
                     msg = "Value must be a floating point number."
                     value = float(value)
                 elif valueType == "Integer":
-                    msg = "Value must be a floating point number."
+                    msg = "Value must be an integer."
                     value = int(value)
         
                 msg = "Database Error."

@@ -5,7 +5,7 @@ Created on Nov 18, 2014
 '''
 
 import system, string, time
-from system.ils.sfc import getUserLibPath
+from system.ils.log.properties import getUserLibDir
 from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
 from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus,\
@@ -26,6 +26,8 @@ def gateway():
     
     project = system.util.getProjectName()
     log.infof("The project is: %s (ils.common.startup.gateway)", project)
+    
+    setLogLevels()
     
     ''' Call a special function that will wait until BLT is ready and running - this goes into a wait loop until it succeeds. '''
     tagProvider = getTagProviderFromBltModule()
@@ -58,6 +60,14 @@ def gateway():
     eval(gatewayStartupScript)()
     
     print "...completed %s.gateway()" % (__name__)
+    
+def setLogLevels():
+    print "--------------------------------------------"
+    print "Setting log levels"
+#    address = system.util.getGatewayAddress()
+#    print "Address: ", address
+    system.util.setLoggingLevel("ils.common.watchdog", "off")
+    print "--------------------------------------------"
 
 
 def client():
@@ -216,7 +226,7 @@ def updateDatabaseSchema(tagProvider, db):
             return
         
         ''' Use the magic function in the SFC module that tells us where Ignition is installered and therefore where the SQL scripts are. '''
-        homeDir = getUserLibPathFromSfcModule()
+        homeDir = getUserLibPathFromCommonModule()
         homeDir = homeDir + "/database/"
         
         currentId = readCurrentDbVersionId(strategy, db)
@@ -239,13 +249,13 @@ def updateDatabaseSchema(tagProvider, db):
         log.errorf("%s", str(txt))
         
     
-def getUserLibPathFromSfcModule():
+def getUserLibPathFromCommonModule():
     def getter():
-        log.infof("...getting homeDir from SFC...")
+        log.infof("...getting homeDir from Common...")
         try:
-            homeDir = getUserLibPath()
+            homeDir = getUserLibDir()
         except:
-            log.tracef("...SFC module isn't quite ready, sleeping...")
+            log.infof("...COMMON module isn't quite ready, sleeping...")
             time.sleep(5)
             homeDir = None
             
@@ -330,7 +340,7 @@ def readCurrentDbVersionId(strategy, db):
 
 
 def createVersionTable(strategy, db):
-    homeDir = getUserLibPathFromSfcModule()
+    homeDir = getUserLibPathFromCommonModule()
     filename = homeDir + "/database/createVersion.sql"
 
     log.infof("Creating Version table")

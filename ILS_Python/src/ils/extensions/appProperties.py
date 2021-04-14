@@ -62,7 +62,7 @@ def save(applicationUUID):
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".save")
 
-    log.infof("In %s.save()", __name__)
+    log.infof("In %s.save() with %s", __name__, applicationUUID)
     db = handler.getProductionDatabase()
     
     from system.ils.blt.diagram import getApplicationName
