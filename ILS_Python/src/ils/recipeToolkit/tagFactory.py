@@ -9,15 +9,20 @@ from system.ils.blt.diagram import getProductionTagProvider
 log = LogUtil.getLogger("com.ils.recipeToolkit")
 
 
-# Create a recipe data tag
-def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass, itemId, conditionalDataType):
-
+def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass, itemId, modeAttribute, modeAttributeValue, conditionalDataType):
+    '''
+    Create a recipe data tag
+    '''
     #----------------------------------------------------
-    # The permissive may actually need a suffix of .MODEATTR /enum
-    def morphItemIdPermissive(itemId):
-        # I have hard coded MODEATTR here even though it is a field in the recipe database, we may need to
-        # get this out of the recipe rather than hard coding it.
-        permissiveItemId = itemId[:itemId.rfind('.')] + '.MODEATTR /enum'
+    def morphItemIdPermissive(itemId, modeAttribute, modeAttributeValue):
+        print "Determining the permissive item id where the attribute is <%s> and the mode value is <%s> and the base item id is: <%s>" % (modeAttribute, modeAttributeValue, itemId)
+        permissiveItemId = itemId[:itemId.rfind('.')] + '.' + modeAttribute
+        
+        if type(modeAttributeValue) in [str, unicode] and string.upper(modeAttribute).find("ENUM") < 0:
+            print "Adding /enum because we detected a string permissive value!"
+            permissiveItemId = permissiveItemId + " /enum"
+    
+        print "Returning permissive item id: ", permissiveItemId
         return permissiveItemId
     #-----------------------------------------------------
     UDTType = 'Basic IO/' + UDTType
@@ -44,7 +49,7 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
                 log.info("Overriding the value datatype...")
                 system.tag.editTag(tagPath=tagPath, overrides={"value":{"DataType":"String"}})
         else:
-            permissiveItemId = morphItemIdPermissive(itemId)
+            permissiveItemId = morphItemIdPermissive(itemId, modeAttribute, modeAttributeValue)
             system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
                 attributes={"UDTParentType":UDTType}, 
                 parameters={"itemId":itemId, "serverName":serverName, "scanClassName":scanClass, "permissiveItemId":permissiveItemId})

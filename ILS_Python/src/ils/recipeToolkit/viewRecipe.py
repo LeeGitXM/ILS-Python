@@ -116,6 +116,7 @@ def showMidRunRecipeCallback(recipeFamilyName):
 
 def initialize(rootContainer):
     log.infof("In %s.initialize()...", __name__)
+    print "Yo = Over here!"
 
     #=============================================================================================
     # This function is definitely a workaround.  When I try to bind my custom color properties directly to a tag, they 
@@ -365,7 +366,9 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
 
         return modeAttribute, modeAttributeValue
     #------------------------------------------------------------
-    # Determine if the recommended is a float or a text - everything is stored in the table as text.
+    # If the mode attribute is specified, then we need to write to the permissive, which means that we need an OPC Conditional Output, 
+    # otherwise we just write to an OPC Output.  The data type of the output is explicitly specified in the recipe definition, so we do not 
+    # analyze the recommended value to determine its datatype.
     def determineTagClass(recc, valueType, modeAttribute, modeAttributeValue, specialValueNAN):
 
         if valueType == 'String':
@@ -518,7 +521,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                     path = "/Recipe/" + recipeKey
     
                     # The tag factory will check if the tag already exists
-                    createUDT(UDTType, provider, path, valueType, tagName, opcServer, scanClass, itemId, conditionalDataType)
+                    createUDT(UDTType, provider, path, valueType, tagName, opcServer, scanClass, itemId, modeAttribute, modeAttributeValue, conditionalDataType)
     
                     # The tags list list all of the tags that are required for this recipe.  It will be used
                     # later to determine which tags are no longer required. 

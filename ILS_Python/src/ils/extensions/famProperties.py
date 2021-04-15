@@ -2,6 +2,7 @@
   Gateway scope extension functions dealing with Family instances.
 '''
 import system
+from ils.diagToolkit.common import fetchApplicationId
 import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 handler = ControllerRequestHandler.getInstance()
 
