@@ -130,7 +130,7 @@ def activate(scopeContext, stepProperties, state):
                 row.tagPath = s88Get(chartScope, stepScope, row.key + "." + TAG, row.recipeLocation)
                 
                 outputType = s88Get(chartScope, stepScope, row.key + "." + OUTPUT_TYPE, row.recipeLocation)
-                rampTime = -99
+                rampTime = -99.0
                 if string.upper(outputType) in ["OUTPUT RAMP", "SETPOINT RAMP"]:
                     rampTime = s88Get(chartScope, stepScope, row.key + "." + RAMP_TIME, row.recipeLocation)
                 tooltips.append(["Writing", row.key, row.tagPath, str(row.value), row.timingMinutes, outputType, rampTime])
@@ -379,7 +379,7 @@ def activate(scopeContext, stepProperties, state):
             ''' Set up the step for the next time it is called if this is in a loop '''
             stepScope[INITIALIZED]=False
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorPV.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in writeOutput.py', logger)
     finally:
         # do cleanup here
         pass

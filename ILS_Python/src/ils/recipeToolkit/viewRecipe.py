@@ -116,7 +116,6 @@ def showMidRunRecipeCallback(recipeFamilyName):
 
 def initialize(rootContainer):
     log.infof("In %s.initialize()...", __name__)
-    print "Yo = Over here!"
 
     #=============================================================================================
     # This function is definitely a workaround.  When I try to bind my custom color properties directly to a tag, they 

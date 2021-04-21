@@ -164,7 +164,7 @@ def fetchLastResetTime(sqcDiagnosisUUID, db):
 
 # Return the number of hours that are required to obtain the required # of points
 def determineTimeScale(unitName, labValueName, maxSampleSize, db):
-    log.tracef("...determining how much time is required to display %i points for %s...", maxSampleSize, labValueName) 
+    log.tracef("...determining how much time is required to display %d points for %s...", maxSampleSize, labValueName) 
     # It is important to not bring back the entire database, so limit the query by sample time
     from java.util import Calendar
     from java.util import Date

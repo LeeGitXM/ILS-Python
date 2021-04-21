@@ -10,6 +10,7 @@ from ils.common.error import catchError
 # These imports may have warnings in eclipse, but they ARE needed!
 import ils.io
 import ils.io.opcoutput
+import ils.io.opcmodeoutput
 import ils.io.opcconditionaloutput
 import ils.io.recipedetail
 import ils.io.controller
