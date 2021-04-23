@@ -204,7 +204,7 @@ def closeAllPopups():
 def resetControlPanel(controlPanelName):
     print "Resetting the database for control panel: ", controlPanelName
     database = getDatabaseClient()
-    controlPanelId = getControlPanelIdForName(controlPanelName)
+    controlPanelId = getControlPanelIdForName(controlPanelName, database)
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
     system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % controlPanelId, database)
     system.db.runUpdateQuery("delete from SfcWindow where chartRunId = chartRunId ", database)
@@ -215,22 +215,19 @@ def getControlPanelIdForChartRunId(chartRunId, db):
     controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where chartRunId = '%s'" % (chartRunId), db)
     return controlPanelId
     
-def getControlPanelIdForName(controlPanelName):
+def getControlPanelIdForName(controlPanelName, db=""):
     '''Get the control panel id given the name, or None'''
-    print "Fetching the id for controlPanel named: ", controlPanelName
-    database = getDatabaseClient()
-    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database)
+    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), db)
     if len(results) == 1:
         return results[0][0]
     else:
-        print "A control panel was not found!"
         return None
 
-def createControlPanel(controlPanelName):    
+def createControlPanel(controlPanelName, db=""):    
     '''create a new control panel with the given name, returning the id.
        This name must be unique'''
-    database = getDatabaseClient()
-    system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName, chartPath) values ('%s', '')" % (controlPanelName), database)
+    system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName, chartPath, enableCancel, enablePause, enableReset, enableResume, enableStart) "\
+                             "values ('%s', '', 1, 1, 1, 1, 1)" % (controlPanelName), db)
     return getControlPanelIdForName(controlPanelName)
 
 def getControlPanelChartPath(controlPanelName):
@@ -291,24 +288,23 @@ def findOpenControlPanel(controlPanelName):
 
 def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, position="CENTER"):
     '''
-    Open a control panel to run the given chart, starting the chart
-    if startImmediately is true. If no control panel is associated 
-    with the given chart, use the one with the given name (creating that
-    if it doesnt exist).
-    This method is useful for development where a "scratch"
-    control panel is used to run many different ad-hoc charts
+    Open a control panel to run the given chart, starting the chart if startImmediately is true. If no control panel is associated 
+    with the given chart, use the one with the given name (creating that if it doesn't exist).
+    This method is useful for development where a "scratch" control panel is used to run many different ad-hoc charts.
+    This should only be called from a client. 
     '''
     # First, check for an existing panel associated with this chart:
+    db = getDatabaseClient()
     controlPanelId = getControlPanelIdForChartPath(chartPath)
     log.infof("In %s.openDynamicControlPanel() - The id for chart %s is %s", __name__, chartPath, str(controlPanelId)) 
 
     if controlPanelId == None:
         # next, check for an existing panel with the given name, creating if not found:
-        controlPanelId = getControlPanelIdForName(controlPanelName)
+        controlPanelId = getControlPanelIdForName(controlPanelName, db)
         print "The control panel id for chart %s is %s" % (controlPanelName, str(controlPanelId))
         if controlPanelId == None:
             print "Creating a control panel..."
-            controlPanelId = createControlPanel(controlPanelName)
+            controlPanelId = createControlPanel(controlPanelName, db)
         # re-set the panel's chart to the desired one:
         setControlPanelChartPath(controlPanelId, chartPath)
     

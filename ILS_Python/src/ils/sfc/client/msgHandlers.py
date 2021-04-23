@@ -168,12 +168,19 @@ def sfcOpenControlPanel(payload):
     clientDatabase = getDatabaseClient()
     
     log.tracef("...checking if the control panel should be shown on this client...")
+    '''
+    I'm not sure why we had distinct logic for the control panel, but we did.  Pete 4/22/21
+    
     if database <> clientDatabase:
         log.tracef("...the window should NOT be shown because the client database (%s) does not match the message database (%s)", clientDatabase, database)
         return
      
     if string.upper(originator) <> string.upper(system.security.getUsername()):
         log.tracef("...the window should NOT be shown because the user does not match!")
+        return
+    '''
+    
+    if not(shouldShowWindow(payload)):
         return
     
     log.tracef("...the control panel should be shown on this client...")

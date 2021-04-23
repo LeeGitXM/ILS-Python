@@ -49,6 +49,13 @@ def setClientResponse(rootContainer, response):
         targetStepId = rootContainer.targetStepId
         db = getDatabaseClient()
         
+        '''
+        An optimization is to not require them to enter ".value" for everything in the step properties.
+        Check if the keyAndAttribute has ".value", if it doesn't then add it.
+        '''
+        if keyAndAttribute.find(".value") < 0:
+            keyAndAttribute = keyAndAttribute + ".value"
+            
         folder,key,attribute = splitKey(keyAndAttribute)
         chartPath, stepName = s88GetStepInfoFromId(targetStepId, db)
         setRecipeData(stepName, targetStepId, folder, key, attribute, response, db)

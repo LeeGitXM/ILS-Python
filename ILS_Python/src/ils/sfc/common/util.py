@@ -5,10 +5,9 @@ Created on Nov 3, 2014
 '''
 import system, string
 from ils.sfc.common.notify import sfcNotify
-from ils.common.config import getDatabaseClient, getDatabase,\
-    getIsolationDatabase
+from ils.common.config import getDatabaseClient, getDatabase, getIsolationDatabase
 from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTROL_PANEL_WINDOW_PATH, DATABASE, DEFAULT_MESSAGE_QUEUE, ISOLATION_MODE, \
-    HANDLER, MESSAGE_QUEUE, ORIGINATOR, POSITION, PROJECT, SCALE
+    HANDLER, MESSAGE_QUEUE, ORIGINATOR, POSITION, PROJECT, SCALE, POST
 
 '''
 This is designed to be called from a tag change script that will trigger the execution of a SFC.   
@@ -16,7 +15,7 @@ An SFC will run just fine without the control panel, even if control panel messa
 is designed assuming that there is a control panel then this will send a message to clients to open a control panel.
 '''
 def startChartAndOpenControlPanel(chartPath, controlPanelName, project, post, isolationMode, showControlPanel, db, 
-                                  controlPanelWindowPath="SFC/ControlPanel", position = "LOWER-LEFT", scale = 1.0):
+                                  controlPanelWindowPath="SFC/ControlPanel", position="LOWER-LEFT", scale=1.0, chartParams={}):
     
     print "In %s.startChartAndOpenControlPanel" % (__name__)
     
@@ -28,16 +27,24 @@ def startChartAndOpenControlPanel(chartPath, controlPanelName, project, post, is
         print "Sending message to all clients to open a control panel..."
         
         messageHandler = "sfcOpenControlPanel"
-        from ils.sfc.client.windows.controlPanel import getControlPanelIdForName
-        controlPanelId = getControlPanelIdForName(controlPanelName)
         
-        payload = {HANDLER: messageHandler, CONTROL_PANEL_NAME: controlPanelName, CONTROL_PANEL_ID: controlPanelId, ORIGINATOR: post, POSITION: position, 
+        from ils.sfc.client.windows.controlPanel import createControlPanel, getControlPanelIdForName
+        controlPanelId = getControlPanelIdForName(controlPanelName, db)
+        if controlPanelId == None:
+            controlPanelId = createControlPanel(controlPanelName, db)
+        
+        try:
+            originator = system.security.getUsername()
+        except:
+            originator = "unknown"
+        
+        payload = {HANDLER: messageHandler, CONTROL_PANEL_NAME: controlPanelName, CONTROL_PANEL_ID: controlPanelId, ORIGINATOR: originator, POST: post, POSITION: position, 
                    SCALE: scale, DATABASE: db, CONTROL_PANEL_WINDOW_PATH: controlPanelWindowPath}
 
         print payload
         sfcNotify(project, 'sfcMessage', payload, post, controlPanelName, controlPanelId, db)
         
-    startChart(chartPath, controlPanelName, project, post, isolationMode)
+    startChart(chartPath, controlPanelName, project, post, isolationMode, chartParams)
 
 ''' 
 We need to get the queue name out of the unit procedure and use that as the default message queue, but
@@ -46,7 +53,7 @@ better have a unit procedure on the top chart.  However all this method has is a
 way of knowing about the unit procedure block.  So when the unit procedure block runs we will update the 
 record in the SfcControlParameter table. 
 '''
-def startChart(chartPath, controlPanelName, project, originator, isolationMode):
+def startChart(chartPath, controlPanelName, project, originator, isolationMode, chartParams={}):
     print "Starting a chart: <%s>, control panel: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, controlPanelName, project, originator, str(isolationMode))
     if chartIsRunning(chartPath):
         print "Exiting because the chart is already running!"
@@ -57,9 +64,10 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
     else:
         db = getDatabase()
 
-    print "Fetching control panel id for: ", controlPanelName, " using db: ", db
-    controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), db)
-    print "...found id %s for control panel %s" % (str(controlPanelId), controlPanelName)
+    from ils.sfc.client.windows.controlPanel import createControlPanel, getControlPanelIdForName
+    controlPanelId = getControlPanelIdForName(controlPanelName, db)
+    if controlPanelId == None:
+        controlPanelId = createControlPanel(controlPanelName, db)
     
     initialChartParams = dict()
     initialChartParams[PROJECT] = project
@@ -68,7 +76,9 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
     initialChartParams[CONTROL_PANEL_ID] = controlPanelId
     initialChartParams[ORIGINATOR] = originator
     initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
-    
+
+    initialChartParams.update(chartParams)
+
     print "Starting a chart with: ", initialChartParams
     runId = system.sfc.startChart(chartPath, initialChartParams)
     
@@ -85,7 +95,7 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode):
     print "...done..."
     return runId
 
-def startChartWithoutControlPanel(chartPath, project, originator, isolationMode):
+def startChartWithoutControlPanel(chartPath, project, originator, isolationMode, chartParams={}):
     print "Starting a chart: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, project, originator, str(isolationMode))
     if chartIsRunning(chartPath):
         print "Exiting because the chart is already running!"
@@ -96,6 +106,8 @@ def startChartWithoutControlPanel(chartPath, project, originator, isolationMode)
     initialChartParams[ISOLATION_MODE] = isolationMode
     initialChartParams[ORIGINATOR] = originator
     initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
+    
+    initialChartParams.update(chartParams)
     
     print "Starting a chart with: ", initialChartParams
     runId = system.sfc.startChart(chartPath, initialChartParams)

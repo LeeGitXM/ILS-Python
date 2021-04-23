@@ -42,11 +42,12 @@ def getOpenWindow(windowId):
 
 def shouldShowWindow(payload):
     '''return True if a window from the chart with given control panel and originator should show in this client'''    
-    from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_NAME, ORIGINATOR, SECURITY, PRIVATE
+    from ils.sfc.common.constants import WINDOW, CONTROL_PANEL_NAME, ORIGINATOR, SECURITY, PRIVATE, POST
 
     originator = payload.get(ORIGINATOR, "")
     controlPanelName = payload.get(CONTROL_PANEL_NAME, "")
     security = payload.get(SECURITY, PRIVATE)
+    post = payload.get(POST, "")
     showOverride = payload.get("showOverride", False)
     database = payload.get(DATABASE, "")
     clientDatabase = getDatabaseClient()
@@ -69,6 +70,10 @@ def shouldShowWindow(payload):
      
     if originator == system.security.getUsername():
         print "...the window should be shown because the user matches!"
+        return True
+    
+    if post == system.security.getUsername():
+        print "...the window should be shown because the post matches the username!"
         return True
     
     print "   The window should NOT be shown because it is private, the control panel is not open and the originator is not this user!"

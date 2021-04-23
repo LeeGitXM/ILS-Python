@@ -234,6 +234,9 @@ class FinalDiagnosis(basicblock.BasicBlock):
         '''
         self.log.infof("In finalDiagnosis.setAuxData() with %s", str(data))
         
+        diagramUUID = self.parentuuid
+        finalDiagnosisUUID = self.uuid
+        
         db = self.handler.getDefaultDatabase(self.parentuuid)
         provider = self.handler.getDefaultTagProvider(self.parentuuid)
         
@@ -285,17 +288,19 @@ class FinalDiagnosis(basicblock.BasicBlock):
             recTime = system.date.addMonths(recTime, -12)
             recTime = toDateString(recTime)
             # When we insert a new final diagnosis it has to be false until it runs...
-            SQL = "INSERT INTO DtFinalDiagnosis (familyId, finalDiagnosisName, finalDiagnosisLabel, finalDiagnosisPriority, calculationMethod, "\
-                   "postTextRecommendation, PostProcessingCallback, refreshRate, textRecommendation, active, explanation, "\
-                   "trapInsignificantRecommendations, constant, manualMoveAllowed, comment, showExplanationWithRecommendation, timeOfMostRecentRecommendationImplementation)"\
-                   " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-            self.log.infof("SQL: %s", SQL)
             try:
+                SQL = "INSERT INTO DtFinalDiagnosis (familyId, finalDiagnosisName, finalDiagnosisLabel, finalDiagnosisPriority, calculationMethod, "\
+                       "postTextRecommendation, PostProcessingCallback, refreshRate, textRecommendation, active, explanation, "\
+                       "trapInsignificantRecommendations, constant, manualMoveAllowed, comment, showExplanationWithRecommendation, timeOfMostRecentRecommendationImplementation,"\
+                       "DiagramUUID, FinalDiagnosisUUID)"\
+                       " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+                self.log.infof("SQL: %s", SQL)
                 args =  [familyId, finalDiagnosisName, properties.get("FinalDiagnosisLabel",""), properties.get("Priority","0.0"), properties.get("CalculationMethod",""),\
                             properties.get("PostTextRecommendation","0"), properties.get("PostProcessingCallback",""),\
                             properties.get("RefreshRate","1"), properties.get("TextRecommendation",""), properties.get("Active","0"), properties.get("Explanation","0"),\
                             properties.get("TrapInsignificantRecommendations","1"), properties.get("Constant","0"),\
-                            properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), properties.get("ShowExplanationWithRecommendation","0"), recTime]
+                            properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), properties.get("ShowExplanationWithRecommendation","0"),\
+                            recTime, diagramUUID, finalDiagnosisUUID]
                 self.log.infof("Arguments (%d): %s", len(args), str(args))
                 fdId = system.db.runPrepUpdate(SQL, args, db, getKey=1)
                 self.log.infof("Inserted a new final diagnosis with id: %d", fdId)
@@ -306,14 +311,15 @@ class FinalDiagnosis(basicblock.BasicBlock):
             self.log.infof("Updating an existing final diagnosis...")
             SQL = "UPDATE DtFinalDiagnosis SET familyId=?, finalDiagnosisPriority=?, calculationMethod=?, finalDiagnosisLabel=?, " \
                 "postTextRecommendation=?, postProcessingCallback=?, refreshRate=?, textRecommendation=?, explanation=?, "\
-                "trapInsignificantRecommendations=?, constant=?, manualMoveAllowed=?, comment=?, showExplanationWithRecommendation=? "\
+                "trapInsignificantRecommendations=?, constant=?, manualMoveAllowed=?, comment=?, showExplanationWithRecommendation=?, "\
+                "DiagramUUID=?, FinalDiagnosisUUID=?"\
                 " WHERE finalDiagnosisId = ?"
             args = [familyId, properties.get("Priority","0.0"), properties.get("CalculationMethod",""), properties.get("FinalDiagnosisLabel",""),\
                         properties.get("PostTextRecommendation","0"), properties.get("PostProcessingCallback",""),\
                         properties.get("RefreshRate","1.0"), properties.get("TextRecommendation",""),\
                         properties.get("Explanation","0"), properties.get("TrapInsignificantRecommendations","1"),\
                         properties.get("Constant","0"), properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), \
-                        properties.get("ShowExplanationWithRecommendation","0"), fdId]
+                        properties.get("ShowExplanationWithRecommendation","0"), diagramUUID, finalDiagnosisUUID, fdId]
             
             self.log.infof("SQL: %s", SQL)
             self.log.infof("Args: %s", str(args))
