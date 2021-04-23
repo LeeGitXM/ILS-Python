@@ -29,6 +29,20 @@ def controlPanelOpen(controlPanelName):
             return True
     return False
 
+def consoleWindowOpen(post, db):
+    SQL = "select windowName from TKConsole C, TkPost P "\
+        "where C.PostId = P.PostId "\
+        " and P.Post = '%s' " % (post)
+    consoleWindow = system.db.runScalarQuery(SQL, db)
+    #print "The console window for post <%s> is : %s" % (post, consoleWindow)
+      
+    consoleWindows = system.gui.findWindow(consoleWindow)
+    if len(consoleWindows) > 0:
+        #print "Found the console window"
+        return True
+    
+    #print "Did not find the console window"
+    return False
 
 def getOpenWindow(windowId):
     '''Get the open window with the given id, or None if there isnt one'''
@@ -66,6 +80,10 @@ def shouldShowWindow(payload):
 
     if controlPanelOpen(controlPanelName):
         print "...the window should be shown because the control panel (%s) is open!" % (controlPanelName)
+        return True
+    
+    if consoleWindowOpen(post, database):
+        print "...the window should be shown because the console window for post (%s) is open!" % (post)
         return True
      
     if originator == system.security.getUsername():

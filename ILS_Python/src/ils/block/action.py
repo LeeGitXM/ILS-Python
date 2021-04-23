@@ -84,7 +84,7 @@ class Action(basicblock.BasicBlock):
                     exec("import %s" % (packName))
                     exec("from %s import %s" % (packName,funcName))
             
-                eval(function)(block, provider, database)
+                eval(function)(blockName, self.uuid, self.parentuuid, provider, database)
 #                eval(function)(block)
 
         else:

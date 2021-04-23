@@ -200,5 +200,22 @@ def lowViscosityHighFeed(applicationName, finalDiagnosisName, finalDiagnosisId, 
 
     return True, explanation,recommendations
 
+def action1_1_2(blockName, blockUUID, parentUUID, provider, db):
+    print "In %s.action1_1_2()" % (__name__)
+    
+    from ils.sfc.common.util import startChartAndOpenControlPanel
+
+    chartPath = "Samples/Adhoc/NotifyOperator"
+    controlPanelName = "Adhoc"
+    project = system.util.getProjectName()
+    post = "XO1TEST"
+    isolationMode = False
+    showControlPanel = True
+
+    chartParams = {"reactor": "R2", "setpoint": 212.0}
+    
+    startChartAndOpenControlPanel(chartPath, controlPanelName, project, post, isolationMode, showControlPanel, db, chartParams=chartParams)
+
+
 def version():
     return "1.2"
