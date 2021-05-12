@@ -303,8 +303,9 @@ class Replicater():
                                               attributes={"EventScripts":tagScript})
                         else:
                             expression = getTagExpression(browseTag.fullPath)
-                            expression = expression.replace(self.sourceTagProvider, self.destinationTagProvider)
-                            print "The updated expression is: ", expression
+                            if expression != None:
+                                expression = expression.replace(self.sourceTagProvider, self.destinationTagProvider)
+
                             self.log.tracef("...creating an expression tag %s in %s with expression: %s", browseTag.name, browseTag.path, expression)
                             system.tag.addTag(parentPath=tagpath, name=browseTag.name, tagType="EXPRESSION", dataType=browseTag.dataType,
                                               attributes={"Expression": expression, "EventScripts":tagScript})

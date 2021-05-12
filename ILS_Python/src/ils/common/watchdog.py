@@ -368,12 +368,14 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
         if stallCount > maxStalls:
             system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), False)
             system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
+    
     elif serverIsAvailable and sampleTimeChanged and stallCount > 0:
         tags.append(udtPath+"/stallCount")
         vals.append(0)
         system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
         if not(manualEntryOverride):
             system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), False)
+    
     elif stallCount == 0:
         system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
         if not(manualEntryOverride):

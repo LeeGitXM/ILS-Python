@@ -8,7 +8,7 @@ import ils.io.pkscontroller as pkscontroller
 import system, string, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
-log = LogUtil.getLogger("com.ils.io")
+log = LogUtil.getLogger(__name__)
 
 class PKSDigitalController(pkscontroller.PKSController):
     
@@ -32,44 +32,35 @@ class PKSDigitalController(pkscontroller.PKSController):
             raise Exception("Unexpected value Type: <%s> for a PKS Digital controller %s" % (outputType, self.path))
 
         ''' Read the current values of all of the tags we need to consider to determine if the configuration is valid. '''
-        tagpaths = [tagRoot + '/value', self.path + '/mode/value',  self.path + '/mode/value.OPCItemPath', self.path + '/windup']
+        tagpaths = [tagRoot + '/value', self.path + '/mode/value',  self.path + '/mode/value.OPCItemPath']
         qvs = system.tag.readAll(tagpaths)
         
         currentValue = qvs[0]
         mode = qvs[1]
         modeItemId = qvs[2].value
-        windup = qvs[3]
 
         ''' Check the quality of the tags to make sure we can trust their values '''
         if str(currentValue.quality) != 'Good': 
-            errorMessage = "the %s quality is %s" % (outputType, str(currentValue.quality)) 
+            errorMessage = "the %s quality is: %s" % (outputType, str(currentValue.quality)) 
             log.warnf("checkConfig failed for %s because %s. (tag: %s)", modeItemId, errorMessage, self.path)
             return False, errorMessage, modeItemId
 
         ''' The quality is good so not get the values in a convenient form '''
-        currentValue = float(currentValue.value)
+        currentValue = currentValue.value
 
         ''' Check the Mode '''
         if str(mode.quality) != 'Good':
-            errorMessage = "The mode quality is %s" % (str(mode.quality))
+            errorMessage = "the mode quality is: %s" % (str(mode.quality))
             log.warnf("checkConfig failed for %s because %s. (tag: %s)", modeItemId, errorMessage, self.path)
             return False, errorMessage, modeItemId
         
-        mode = string.strip(mode.value)
-        
-        ''' Check the Output Disposability - Check the quality of the tags to make sure we can trust their values '''
-        if str(windup.quality) != 'Good':
-            errorMessage = "The windup quality is %s" % (str(windup.quality))
-            log.warnf("checkConfig failed for %s because %s. (tag: %s)", modeItemId, errorMessage, self.path)
-            return False, errorMessage, modeItemId
+        mode = string.strip(mode.value)  
 
-        windup = string.strip(windup.value)        
-
-        log.trace("%s: %s=%s, windup=%s, mode:%s" % (self.path, outputType, str(currentValue), windup, mode))
+        log.trace("%s: %s=%s, mode:%s" % (self.path, outputType, str(currentValue), mode))
 
         ''' For outputs check that the mode is MANUAL - no other test is required '''
         if string.upper(outputType) in ["OP", "OUTPUT"]:
-            if string.upper(mode) != 'MAN':
+            if string.upper(mode) not in [ 'MAN', 'MANUAL' ]:
                 success = False
                 errorMessage = "the controller is not in manual (mode is actually %s)" % (mode)
         else:
