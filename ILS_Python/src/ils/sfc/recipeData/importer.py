@@ -356,9 +356,9 @@ class Importer():
         folders = []
         log.tracef("In parseFolders()")
         for folder in step.findall("recipeFolder"):
-            log.tracef("  --------------")
-
+            log.tracef("--------------")
             recipeDataKey = folder.get("recipeDataKey")
+            log.tracef("Found folder key: %s", recipeDataKey)
             folderId = folder.get("folderId")
             parentFolderId = folder.get("parentFolderId")
             label = folder.get("label", "")
@@ -373,14 +373,17 @@ class Importer():
         trees = []
         max_i = len(folders)
         while len(folders) > 0 and i < max_i:
+            log.tracef("Tree building pass #%d", i)
             for folder in folders:
-                if i == 0:
-                    if folder.get("parentFolderId", 'None') == 'None':
-                        folder["path"] = folder.get('key')
-                        trees.append(folder)
-                        folders.remove(folder)
+                #if i == 0:
+                if folder.get("parentFolderId", 'None') == 'None':
+                    log.tracef("Inserting parentless folder named: %s", folder.get('key'))
+                    folder["path"] = folder.get('key')
+                    trees.append(folder)
+                    folders.remove(folder)
                 else:
                     folderId = folder.get('parentFolderId')
+                    log.tracef("Looking for a parent id: %s", str(folderId))
                     for tree in trees:
                         if tree.get('folderId') == folderId:
                             folder["path"] = tree.get('path') + "/" + folder.get('key')
