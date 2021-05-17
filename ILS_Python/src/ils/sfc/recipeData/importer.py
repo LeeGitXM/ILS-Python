@@ -5,7 +5,7 @@ Created on Feb 17, 2018
 '''
 
 import xml.etree.ElementTree as ET
-import system
+import system, os
 from ils.common.config import getDatabaseClient
 from ils.common.error import notifyError
 from ils.log.LogRecorder import LogRecorder
@@ -22,7 +22,54 @@ def importRecipeDataCallback(event):
 #        folder = os.path.basename(filename)
 #        print "The folder is: ", folder
 #        rootContainer.importExportFolder = folder
+
+def importStepRecipeDataCallback(event):
+    
+    try:
+        db = getDatabaseClient()
+        log.infof("In %s.importStepRecipeDataCallback()...", __name__)
+        treeWidget = event.source.parent.parent.getComponent("Tree Container").getComponent("Tree View")
         
+        # First get the last node in the path
+        chartPath = treeWidget.selectedPath
+        log.tracef("The raw selected path is: <%s>", chartPath)
+        chartPath = chartPath[chartPath.rfind("/")+1:]
+        log.tracef("The selected chart path is <%s>", chartPath)
+        
+        # Now replace " / " with "/"
+        chartPath = chartPath.replace(' \ ', '/')
+        log.infof("The selected chart path is <%s>", chartPath)
+        if chartPath == "" or chartPath == None:
+            return
+        
+        # Now get the selected step
+        stepList = event.source.parent.getComponent("Steps")
+        selectedRow = stepList.selectedRow
+        if selectedRow < 0:
+            return
+        
+        ds = stepList.data
+        stepName = ds.getValueAt(selectedRow, 0)
+        stepId = ds.getValueAt(selectedRow, 2)
+        log.infof("The selected step is <%s> (%d)", stepName, stepId)
+        
+        rootContainer = event.source.parent.parent
+        folder = rootContainer.importExportFolder
+        filename = system.file.openFile("xml", folder)
+        if filename == None:
+            return
+        
+        folder = os.path.dirname(filename)
+        rootContainer.importExportFolder = folder
+        
+        importer = Importer(db)
+        importer.importStepFromFile(filename, chartPath, stepName, stepId)
+        
+    except:
+        notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
+
+
+
 def buildFolderPath(recipeDataKey, oldParentFolderId, folderPaths):
     print "Building a folder path from: ", recipeDataKey, oldParentFolderId, folderPaths
     folderPath = recipeDataKey
@@ -57,6 +104,33 @@ class Importer():
         log.tracef("...importing the parsed tree...")
         success = self.importTree(root)
         return success
+    
+    def importStepFromFile(self, filename, chartPath, stepName, stepId):
+        log.infof("In %s,importFromFile() with %s", __name__, filename)
+        
+        try:
+            tree = ET.parse(filename)
+            
+            self.sql.loadRecipeDataArrayKeys()
+            self.stepTypes = self.sql.loadStepTypes()
+            self.recipeDataTypes = self.sql.loadRecipeDataTypes()
+            self.valueTypes = self.sql.loadValueTypes()
+            self.outputTypes = self.sql.loadOutputTypes()
+            
+            step = tree.getroot()
+            cntr = self.importStepRecipe(step, chartPath, stepName, stepId)
+            
+            ''' We are done, commit and close the transaction! '''
+            log.tracef("Done!")
+            self.sql.commitAndClose()
+            system.gui.messageBox("Successfully imported %d recipe datums!" % (cntr))
+            
+        except:
+            log.errorf( "Caught an error inserting recipe data - rolling back and closing the transaction")
+            self.sql.rollbackAndClose()
+            notifyError("%s.importStepFromFile()" % (__name__), "Check the console log for details.")
+        
+        return
         
     def importTree(self, root):
         self.root = root
@@ -165,143 +239,10 @@ class Importer():
                     stepId = self.sql.insertStep(chartId, stepUUID, stepName, stepTypeId)
                     stepCounter = stepCounter + 1
                     
-                    ''' Insert Folders '''
-                    log.tracef("  Checking for recipe folders...")
-                    trees = self.parseFolders(step, stepId)
-                    
-                    ''' Insert Recipe Data '''
-                    log.debugf("**********************")
-                    log.debugf("  Checking for recipe data...")
-                    log.debugf("**********************")
-                    for recipe in step.findall("recipe"):
-                        folderId = None
-                        recipeDataType = recipe.get("recipeDataType")
-                        recipeDataTypeId = self.recipeDataTypes.get(recipeDataType, -99)
-                        recipeDataKey = recipe.get("recipeDataKey")
-                        label = recipe.get("label")
-                        description = recipe.get("description")
-                        advice = recipe.get("advice")
-                        parent = recipe.get("parent")
-                        log.tracef( "%s - <%s>", recipeDataKey, parent) 
-                        
-                        if parent not in ["", None]:
-                            folderId = self.findFolder(parent)
-                        
-                        if recipeDataType == "Simple Value":
-                            valueType = recipe.get("valueType")
-                            valueTypeId = self.valueTypes.get(valueType, -99)
-                            val = recipe.get("value")
-                            units = recipe.get("units", "")
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val)
-                            recipeDataCounter = recipeDataCounter + 1
-                        
-                        elif recipeDataType in ["Output", "Output Ramp"]:
-                            valueType = recipe.get("valueType")
-                            valueTypeId = self.valueTypes.get(valueType, -99)
-                            val = recipe.get("value")
-                            units = recipe.get("units", "")
-                            outputType = recipe.get("outputType", "")
-                            outputTypeId = self.outputTypes.get(outputType, -99)
-                            tag = recipe.get("tag", "")
-                            download = recipe.get("download", "True")
-                            timing = recipe.get("timing", "0.0")
-                            maxTiming = recipe.get("maxTiming", "0.0")
-                            writeConfirm = recipe.get("writeConfirm", "True")
-                            
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm)
-                            recipeDataCounter = recipeDataCounter + 1
-                            
-                            if recipeDataType == "Output Ramp":
-                                rampTimeMinutes = recipe.get("rampTimeMinutes", "0.0")
-                                updateFrequencySeconds = recipe.get("updateFrequencySeconds", "0.0")
-                                self.sql.insertOutputRampRecipeData(recipeDataId, rampTimeMinutes, updateFrequencySeconds)
-        
-                        elif recipeDataType in ["Input"]:
-                            valueType = recipe.get("valueType")
-                            valueTypeId = self.valueTypes.get(valueType, -99)
-                            units = recipe.get("units", "")
-                            tag = recipe.get("tag", "")
-        
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertInputRecipeData(recipeDataId, valueType, valueTypeId, tag)
-                            recipeDataCounter = recipeDataCounter + 1
-        
-                        elif recipeDataType == "Array":
-                            valueType = recipe.get("valueType")
-                            valueTypeId = self.valueTypes.get(valueType, -99)
-                            units = recipe.get("units", "")
-                            indexKey = recipe.get("indexKey", None)
-                            log.tracef( "The array index key is: %s", indexKey)
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertArray(recipeDataId, valueType, valueTypeId, indexKey)
-                            recipeDataCounter = recipeDataCounter + 1
-                            
-                            for element in recipe.findall("element"):
-                                arrayIndex = element.get("arrayIndex")
-                                val = element.get("value")
-                                self.sql.insertArrayElement(recipeDataId, valueType, valueTypeId, arrayIndex, val)
-              
-                        elif recipeDataType == "Matrix":
-                            valueType = recipe.get("valueType")
-                            valueTypeId = self.valueTypes.get(valueType, -99)
-                            units = recipe.get("units", "")
-                            rows = recipe.get("rows", "")
-                            columns = recipe.get("columns", "")
-                            
-                            rowIndexKey = recipe.get("rowIndexKey", None)
-                            columnIndexKey = recipe.get("columnIndexKey", None)
-                                
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey)
-                            recipeDataCounter = recipeDataCounter + 1
-                            
-                            for element in recipe.findall("element"):
-                                rowIndex = element.get("rowIndex")
-                                columnIndex = element.get("columnIndex")
-                                val = element.get("value")
-                                self.sql.insertMatrixElement(recipeDataId, valueType, valueTypeId, rowIndex, columnIndex, val)
-                        
-                        elif recipeDataType == "Timer":
-                            units = recipe.get("units", "")
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertTimerRecipeData(recipeDataId)
-                            recipeDataCounter = recipeDataCounter + 1
-                        
-                        elif recipeDataType == "Recipe":
-                            units = recipe.get("units", "")
-                            presentationOrder = recipe.get("presentationOrder", "0")
-                            storeTag = recipe.get("storeTag", "")
-                            compareTag = recipe.get("compareTag", "")
-                            modeAttribute = recipe.get("modeAttribute", "")
-                            modeValue = recipe.get("modeValue", "")
-                            changeLevel = recipe.get("changeLevel", "")
-                            recommendedValue = recipe.get("recommendedValue", "")
-                            lowLimit = recipe.get("lowLimit", "")
-                            highLimit = recipe.get("highLimit", "")
-                            
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit)
-                            recipeDataCounter = recipeDataCounter + 1
-                            
-                        elif recipeDataType == "SQC":
-                            lowLimit = recipe.get("lowLimit", "")
-                            highLimit = recipe.get("highLimit", "")
-                            targetValue = recipe.get("targetValue", "")
-                            
-                            log.tracef( "Inserting SQC recipe data with HL: %s, Target: %s, LL: %s ", str(lowLimit), str(targetValue), str(highLimit))
-                            
-                            recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
-                            self.sql.insertSqcRecipeData(recipeDataId, lowLimit, targetValue, highLimit)
-                            
-                        else:
-                            txt = "Error: Unable to import recipe data type: %s with key %s for step %s on chart %s" % (recipeDataType, recipeDataKey, stepName, chartPath)
-                            log.errorf(txt)
-                            self.sql.rollbackAndClose()
-                            system.gui.errorBox(txt)
-                            return
-                            
+                    ''' Refactored here - Pete 5/13/21 ''' 
+                    cntr = self.importStepRecipe(step, chartPath, stepName, stepId)
+                    recipeDataCounter += cntr
+      
             self.sql.commit()
             
             '''
@@ -334,6 +275,152 @@ class Importer():
             self.sql.rollbackAndClose()
             notifyError(__name__ + ".importRecipeData.py", "Importing recipe data for chart %s step %s" % (str(chartPath), str(stepName)))
             return False
+    
+    def importStepRecipe(self, step, chartPath, stepName, stepId):
+        cntr = 0
+        
+        ''' Insert Folders '''
+        log.tracef("  Checking for recipe folders...")
+        self.parseFolders(step, stepId)
+        
+        ''' Insert Recipe Data '''
+        log.debugf("**********************")
+        log.debugf("  Checking for recipe data...")
+        log.debugf("**********************")
+        for recipe in step.findall("recipe"):
+            print "Recipe: ", recipe
+            folderId = None
+            recipeDataType = recipe.find("recipeDataType").text
+            recipeDataTypeId = self.recipeDataTypes.get(recipeDataType, -99)
+            recipeDataKey = recipe.find("recipeDataKey").text
+            label = recipe.find("label").text
+            description = recipe.find("description").text
+            advice = recipe.find("advice").text
+            parent = recipe.find("parent").text
+            log.tracef( "%s - <%s>, a %s - %s - %s", recipeDataKey, parent, recipeDataType, label, description) 
+            
+            if parent not in ["", None]:
+                folderId = self.findFolder(parent)
+            
+            if recipeDataType == "Simple Value":
+                valueType = recipe.find("valueType").text
+                valueTypeId = self.valueTypes.get(valueType, -99)
+                val = recipe.find("value").text
+                units = recipe.find("units").text
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertSimpleRecipeData(recipeDataId, valueType, valueTypeId, val)
+                cntr += 1
+            
+            elif recipeDataType in ["Output", "Output Ramp"]:
+                valueType = recipe.find("valueType").text
+                valueTypeId = self.valueTypes.get(valueType, -99)
+                val = recipe.find("value").text
+                units = recipe.find("units").text
+                outputType = recipe.find("outputType").text
+                outputTypeId = self.outputTypes.get(outputType, -99)
+                tag = recipe.find("tag").text
+                download = recipe.find("download").text
+                timing = recipe.find("timing").text
+                maxTiming = recipe.find("maxTiming").text
+                writeConfirm = recipe.find("writeConfirm").text
+                
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertOutputRecipeData(recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm)
+                cntr += 1
+                
+                if recipeDataType == "Output Ramp":
+                    rampTimeMinutes = recipe.find("rampTimeMinutes").text
+                    updateFrequencySeconds = recipe.find("updateFrequencySeconds").text
+                    self.sql.insertOutputRampRecipeData(recipeDataId, rampTimeMinutes, updateFrequencySeconds)
+
+            elif recipeDataType in ["Input"]:
+                valueType = recipe.find("valueType").text
+                valueTypeId = self.valueTypes.get(valueType, -99)
+                units = recipe.find("units").text
+                tag = recipe.find("tag").text
+
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertInputRecipeData(recipeDataId, valueType, valueTypeId, tag)
+                cntr += 1
+
+            elif recipeDataType == "Array":
+                valueType = recipe.find("valueType").text
+                valueTypeId = self.valueTypes.get(valueType, -99)
+                units = recipe.find("units").text
+                indexKey = recipe.find("indexKey").text
+                log.tracef( "The array index key is: %s", indexKey)
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertArray(recipeDataId, valueType, valueTypeId, indexKey)
+                cntr += 1
+                
+                for element in recipe.findall("element"):
+                    arrayIndex = element.find("arrayIndex").text
+                    val = element.find("value").text
+                    self.sql.insertArrayElement(recipeDataId, valueType, valueTypeId, arrayIndex, val)
+  
+            elif recipeDataType == "Matrix":
+                valueType = recipe.find("valueType").text
+                valueTypeId = self.valueTypes.get(valueType, -99)
+                units = recipe.find("units").text
+                rows = recipe.find("rows").text
+                columns = recipe.find("columns").text
+                
+                rowIndexKey = recipe.find("rowIndexKey").text
+                columnIndexKey = recipe.find("columnIndexKey").text
+                    
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertMatrix(recipeDataId, valueType, valueTypeId, rows, columns, rowIndexKey, columnIndexKey)
+                cntr += 1
+                
+                for element in recipe.findall("element"):
+                    rowIndex = element.find("rowIndex").text
+                    columnIndex = element.find("columnIndex").text
+                    val = element.find("value").text
+                    self.sql.insertMatrixElement(recipeDataId, valueType, valueTypeId, rowIndex, columnIndex, val)
+            
+            elif recipeDataType == "Timer":
+                units = recipe.get("units", "")
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertTimerRecipeData(recipeDataId)
+                cntr += 1
+            
+            elif recipeDataType == "Recipe":
+                units = recipe.find("units").text
+                presentationOrder = recipe.find("presentationOrder").text
+                storeTag = recipe.find("storeTag").text
+                compareTag = recipe.find("compareTag").text
+                modeAttribute = recipe.find("modeAttribute").text
+                modeValue = recipe.find("modeValue").text
+                changeLevel = recipe.find("changeLevel").text
+                recommendedValue = recipe.find("recommendedValue").text
+                lowLimit = recipe.find("lowLimit").text
+                highLimit = recipe.find("highLimit").text
+                
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertRecipeRecipeData(recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit)
+                cntr += 1
+                
+            elif recipeDataType == "SQC":
+                units = recipe.find("units").text
+                lowLimit = recipe.find("lowLimit").text
+                highLimit = recipe.find("highLimit").text
+                targetValue = recipe.find("targetValue").text
+                
+                log.tracef( "Inserting SQC recipe data with HL: %s, Target: %s, LL: %s ", str(lowLimit), str(targetValue), str(highLimit))
+                
+                recipeDataId = self.sql.insertRecipeData(stepId, recipeDataKey, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId)
+                self.sql.insertSqcRecipeData(recipeDataId, lowLimit, targetValue, highLimit)
+                cntr += 1
+                
+            else:
+                txt = "Error: Unable to import recipe data type: %s with key %s for step %s on chart %s" % (recipeDataType, recipeDataKey, stepName, chartPath)
+                raise Exception, txt
+#                log.errorf(txt)
+#                self.sql.rollbackAndClose()
+#                system.gui.errorBox(txt)
+#                return 0
+            
+        return cntr
         
     def restoreParents(self, parents):
         '''
@@ -658,19 +745,23 @@ class Sql():
     def insertRecipeData(self, stepId, key, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId):
         log.infof("      Inserting recipe data key:  %s, a %s...", key, recipeDataType)
         if folderId == None:
-            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, Units) values (%d, '%s', %d, '%s', '%s', '%s', '%s')" % \
-                (stepId, key, recipeDataTypeId, label, description, advice, units)
+            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, Units) values (%d, '%s', %d, '%s', '%s', '%s', '%s')"
+            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, Units) values (?, ?, ?, ?, ?, ?, ?)"
+            args = [stepId, key, recipeDataTypeId, label, description, advice, units]
         else:
             SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, RecipeDataFolderId, Units) values (%d, '%s', %d, '%s', '%s', '%s', %d, '%s')" % \
                 (stepId, key, recipeDataTypeId, label, description, advice, folderId, units)
-        recipeDataId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
+        
+        #recipeDataId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
+        recipeDataId = system.db.runPrepUpdate(SQL, args, tx=self.txId, getKey=True)
         return recipeDataId
     
     def insertSimpleRecipeData(self, recipeDataId, valueType, valueTypeId, val):
         log.tracef("          Inserting a Simple Value: %s, a %s...", str(val), str(valueType))
         valueId = self.insertRecipeDataValue(recipeDataId, valueType, val)
-        SQL = "insert into SfcRecipeDataSimpleValue (recipeDataId, valueTypeId, ValueId) values (%d, %d, %d)" % (recipeDataId, valueTypeId, valueId)
-        system.db.runUpdateQuery(SQL, tx=self.txId)
+        SQL = "insert into SfcRecipeDataSimpleValue (recipeDataId, valueTypeId, ValueId) values (?, ?, ?)"
+        args = [recipeDataId, valueTypeId, valueId]
+        system.db.runPrepUpdate(SQL, args, tx=self.txId)
     
     def insertOutputRecipeData(self, recipeDataId, valueType, valueTypeId, outputType, outputTypeId, tag, download, timing, maxTiming, val, writeConfirm):
             log.tracef("          Inserting an Output recipe data...")
@@ -742,29 +833,36 @@ class Sql():
     
     def insertTimerRecipeData(self, recipeDataId):
         log.tracef("          Inserting a Timer...")
-        SQL = "insert into SfcRecipeDataTimer (recipeDataId) values (%d)" % (recipeDataId)
-        system.db.runUpdateQuery(SQL, tx=self.txId)
+        SQL = "insert into SfcRecipeDataTimer (recipeDataId) values (?)"
+        args = [recipeDataId]
+        system.db.runPrepUpdate(SQL, args, tx=self.txId)
     
     def insertRecipeRecipeData(self, recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit):
         log.tracef("          Inserting a RECIPE recipe data...")
         SQL = "insert into SfcRecipeDataRecipe (recipeDataId, PresentationOrder, StoreTag, CompareTag, ModeAttribute, ModeValue, ChangeLevel, RecommendedValue, LowLimit, HighLimit) "\
-            " values (%d, %s, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % \
-            (recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit)
-        system.db.runUpdateQuery(SQL, tx=self.txId)
+            " values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        args = [recipeDataId, presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit]
+        system.db.runPrepUpdate(SQL, args, tx=self.txId)
     
     def insertRecipeDataValue(self, recipeDataId, valueType, val):
         log.tracef("        Inserting a recipe data value (type: %s, value: %s)...", valueType, val)
         
         if val in [None, 'None']:
-            SQL = "insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (%d, NULL)" % (recipeDataId)   
+            SQL = "insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (?, NULL)"
+            args = [recipeDataId]
         elif valueType == "String":
-            SQL = "insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (%d, '%s')" % (recipeDataId, val)
+            SQL = "insert into SfcRecipeDataValue (RecipeDataId, StringValue) values (?, ?)"
+            args = [recipeDataId, val]
         elif valueType == "Integer":
-            SQL = "insert into SfcRecipeDataValue (RecipeDataId, IntegerValue) values (%d, %d)" % (recipeDataId, int(val))
+            SQL = "insert into SfcRecipeDataValue (RecipeDataId, IntegerValue) values (?, ?)"
+            args = [recipeDataId, int(val)]
         elif valueType == "Float":
-            SQL = "insert into SfcRecipeDataValue (RecipeDataId, FloatValue) values (%d, %f)" % (recipeDataId, float(val))
+            SQL = "insert into SfcRecipeDataValue (RecipeDataId, FloatValue) values (?, ?)"
+            args = [recipeDataId, float(val)]
         elif valueType == "Boolean":
-            SQL = "insert into SfcRecipeDataValue (RecipeDataId, BooleanValue) values (%d, '%s')" % (recipeDataId, val)
+            SQL = "insert into SfcRecipeDataValue (RecipeDataId, BooleanValue) values (?, ?)"
+            args = [recipeDataId, val]
         
-        valueId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
+        #valueId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
+        valueId = system.db.runPrepUpdate(SQL, args, tx=self.txId, getKey=True)
         return valueId

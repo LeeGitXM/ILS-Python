@@ -43,7 +43,7 @@ def scanner():
     if system.tag.read("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
         main(isolationDatabase, tagProviderIsolation)
         
-    ''' Tickle the watchdos '''
+    ''' Tickle the watchdogs '''
     tagPath = "[%s]Site/Watchdogs/Lab Data Watchdog/currentValue" % (tagProvider)
     if system.tag.exists(tagPath):
         currentValue = system.tag.read(tagPath).value
@@ -670,20 +670,20 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
     if limit != None:
         log.trace("Evaluating limits for this value: %s" % (str(limit)))
         from ils.labData.limits import checkValidityLimit
-        validValidity,upperLimit,lowerLimit=checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+        validValidity, upperValidityLimit, lowerValidityLimit=checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
         from ils.labData.limits import checkSQCLimit
         validSQC=checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
         from ils.labData.limits import checkReleaseLimit
-        validRelease,upperLimit,lowerLimit=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+        validRelease, upperReleaseLimit, lowerReleaseLimit=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
         
     # If the value is valid then store it to the database and write the value and sample time to the tag (UDT)
     if not(validValidity):
         log.trace("%s *failed* validity checks" % (valueName) )
         
         from ils.labData.limitWarning import notifyValidityLimitViolation
-        foundConsole=notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
+        foundConsole=notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperValidityLimit, lowerValidityLimit)
         # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
         # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
         # different values - not sure if that causes a problem)
@@ -692,7 +692,7 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         log.trace("%s *failed* release limit checks" % (valueName) )
         
         from ils.labData.limitWarning import notifyReleaseLimitViolation
-        foundConsole=notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit)
+        foundConsole=notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperReleaseLimit, lowerReleaseLimit)
         # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
         # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
         # different values - not sure if that causes a problem)
@@ -734,7 +734,11 @@ def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database
     success = True  # If the row already exists then consider it a success
     insertedRows = 0
     
-    sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
+    print "Sample Time: ", sampleTime
+    if sampleTime.find(".") > 0:
+        sampleTime = sampleTime[:sampleTime.find(".")]
+    print "Adjusted Sample Time: ", sampleTime
+    #sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
     SQL = "select count(*) from LtHistory where valueId = %i and RawValue = %s and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
     rows = system.db.runScalarQuery(SQL, database)
     if rows == 0:

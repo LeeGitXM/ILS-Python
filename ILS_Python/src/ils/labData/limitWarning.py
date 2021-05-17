@@ -115,7 +115,6 @@ def notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, s
     return foundConsole
 
 
-
 # This is a callback from the Acknowledge button in the middle of the loud workspace.
 def validityLimitActionLauncher(event, payload):
     system.nav.closeParentWindow(event)    

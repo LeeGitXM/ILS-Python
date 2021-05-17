@@ -7,7 +7,6 @@ Scripts in support of the "SQC Parameter" dialog
 '''
 
 import string, system
-from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.dbManager.sql import idForFamily
 from ils.common.error import notifyError
 from ils.log.LogRecorder import LogRecorder
@@ -21,17 +20,13 @@ def internalFrameActivated(rootContainer):
     # Clear the name field
     field = rootContainer.getComponent("ParameterNameField")
     field.text = ""
-    
-    dropdown = rootContainer.getComponent("FamilyDropdown")
-    populateRecipeFamilyDropdown(dropdown)
-
 
 # Add a new row to the limits table for a new parameter.
 # By adding a new parameter, we are adding a new parameter for every grade for the family
 # Will get an error if the row exists.
 def insertRow(rootContainer):
     # Family
-    family = rootContainer.getComponent("FamilyDropdown").selectedStringValue
+    family = rootContainer.family
     if family == "" or string.upper(family) == "ALL":
         system.gui.messageBox("Please select a specific family!")
         return False

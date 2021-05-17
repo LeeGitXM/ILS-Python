@@ -22,45 +22,19 @@ def showWindow():
 def internalFrameOpened(rootContainer):
     log.infof("In %s.InternalFrameOpened", __name__)
     dropdown = rootContainer.getComponent("FamilyDropdown")
-    dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
+    family = getUserDefaults("FAMILY")
+    if family == "<Family>":
+        family = ""
+    rootContainer.family = family
     
-# When the screen is first displayed, set widgets for user defaults
-# The "active" dropdown is always initialized to "TRUE"
 def internalFrameActivated(rootContainer):
-    log.infof("In %s.InternalFrameActivated", __name__)
+    log.infof("In %s.internalFrameActivated", __name__)
     requery(rootContainer)
-    dropdown = rootContainer.getComponent("FamilyDropdown")
-    
-    SQL = "Select RecipeFamilyName from RtRecipeFamily where HasSQC = 1 order by RecipeFamilyName"
-    pds = system.db.runQuery(SQL)
-    
-    # Create a new dataset using only the Name column
-    header = ["Family"]
-    names = []
-    
-    for row in pds:
-        name = row['RecipeFamilyName']
-        nl = []
-        nl.append(name)
-        names.append(nl)
-    dropdown.data = system.dataset.toDataSet(header,names)
-    
-    # Select the current value. 
-    current = getUserDefaults('FAMILY')
-    if len(current)>0:
-        oldSelection = str(dropdown.selectedStringValue)
-        dropdown.setSelectedStringValue(current)
-        # Loose old edits if we select a different database
-        if oldSelection!=current:
-            print "...new family selection %s ..." % (current)    
-    
 
 def requery(rootContainer):
     log.infof("In %s.requery", __name__)
     table = rootContainer.getComponent(POWER_TABLE_NAME)
-    
-    dropdown = rootContainer.getComponent("FamilyDropdown")
-    recipeFamilyName = dropdown.selectedStringValue
+    recipeFamilyName = rootContainer.family
     
     columns = fetchColumns(recipeFamilyName)
     grades = fetchRows(recipeFamilyName)

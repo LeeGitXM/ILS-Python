@@ -66,6 +66,8 @@ def fetchLimits(tagProvider, database):
     # stored in the database so no further calculations are necessary.
     def getSQCLimits(record, oldLimit, tagProvider):
         limitSource=record["LimitSource"]
+        
+        log.tracef("Getting SQC limits from %s", limitSource)
         if limitSource=="DCS":
             upperSQCLimit, lowerSQCLimit=readSQCLimitsFromDCS(record)
             
@@ -89,6 +91,8 @@ def fetchLimits(tagProvider, database):
     #----
     def getValidityLimits(record):
         limitSource=record["LimitSource"]
+        
+        log.tracef("Getting Validity limits from %s", limitSource)
         if limitSource=="DCS":
             upperValidityLimit, lowerValidityLimit=readSQCLimitsFromDCS(record)
         else:
@@ -98,6 +102,8 @@ def fetchLimits(tagProvider, database):
     #----
     def getReleaseLimits(record):
         limitSource=record["LimitSource"]
+        
+        log.tracef("Getting Release limits from %s", limitSource)
         if limitSource=="DCS":
             upperReleaseLimit, lowerReleaseLimit=readSQCLimitsFromDCS(record)
         else:
@@ -227,6 +233,10 @@ def fetchLimits(tagProvider, database):
                     limits[valueId]=oldLimit
                 else:
                     log.trace("No change to an existing SQC limit")
+            elif limitType == "RELEASE":
+                getReleaseLimits(record)
+            
+            
         else:
             log.trace("Adding a new limit to the limit data structure")
             d=packLimit(record, tagProvider)
@@ -278,6 +288,7 @@ def updateLabLimitsFromRecipe(recipeFamily, grade, tagProvider, database):
     sqlLog.trace(SQL)
 
     pds = system.db.runQuery(SQL, database)
+    log.infof("...fetched %d SQC parameters for this grade...", len(pds))
     for record in pds:
         parameterName=record["Parameter"]
         upperLimit=record["UpperLimit"]

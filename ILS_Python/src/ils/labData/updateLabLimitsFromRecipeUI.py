@@ -20,12 +20,21 @@ def internalFrameOpened(rootContainer):
         recursive=True
         )
 
+    print "...found %d grade tags..." % (len(browseTags))
     header = ["name"]
     data = []
     for browseTag in browseTags:
+        print "<%s>" % (browseTag.path)
         unitName = browseTag.path[5:]
-        unitName = unitName[:unitName.find('/')]
+        print "<%s>" % (unitName)
+        
+        # I'm not exactly sure what I am doing here.  Maybe it has to do with how EM names these things.
+        if unitName.find('/') > 0:
+            unitName = unitName[:unitName.find('/')]
+        
+        print "<%s>" % (unitName)
         data.append([unitName])
+        print "   ", unitName
     ds = system.dataset.toDataSet(header, data)
     
     familyDropdown = rootContainer.getComponent("Recipe Family Dropdown")

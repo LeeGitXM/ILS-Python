@@ -1696,6 +1696,10 @@ def saveMatrix(event):
     units = rootContainer.getComponent("Units Dropdown").selectedStringValue
     
     recipeDataType = rootContainer.recipeDataType
+    if recipeDataId > 0:
+        if not(checkRecipeDataId(recipeDataId, recipeDataType, db)):
+            recipeDataId = -1
+        
     matrixContainer=rootContainer.getComponent("Matrix Container")
 
     valueType = matrixContainer.getComponent("Value Type Dropdown").selectedStringValue
@@ -1822,6 +1826,22 @@ def updateRecipeData(key, description, advice, label, units, recipeDataId, tx):
     SQL = "update SfcRecipeData set RecipeDataKey='%s', Description='%s', Advice='%s', Label = '%s', Units='%s' where RecipeDataId = %d " % (key, description, advice, label, units, recipeDataId)
     print SQL
     system.db.runUpdateQuery(SQL, tx=tx)
+    
+def checkRecipeDataId(recipeDataId, recipeDataType, db):
+    '''
+    If there is some invalid data in the form when creating a new recipe data entity then the database transactions will be rolled back but that is AFTER the new recipe data id has been
+    returned and put in the form so that if they correct the error and press OK then we think we are updating an existing recipe entity rather than creating a new one.  This will verify that 
+    the recipe entity really does exist. 
+    '''
+    SQL = "select count(*) from SFCRecipeData RD, SFCRecipeDataType RDT " \
+        "where RD.RecipeDataTypeId = RDT.RecipeDataTypeId " \
+        "and RDT.RecipeDataType = '%s' " \
+        "and RD.recipeDataId = %s " % (recipeDataType, str(recipeDataId))
+    rows = system.db.runScalarQuery(SQL, database=db)
+    if rows == 1:
+        return True
+    
+    return False 
 
 def closeAndOpenBrowser(event):
     '''

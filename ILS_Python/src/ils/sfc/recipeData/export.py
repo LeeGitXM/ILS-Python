@@ -51,6 +51,58 @@ def exportCallback(event):
     except:
         notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
         
+def exportStepCallback(event):
+    
+    try:
+        db = getDatabaseClient()
+        log.infof("In %s.exportCallback()...", __name__)
+        treeWidget = event.source.parent.parent.getComponent("Tree Container").getComponent("Tree View")
+        
+        # First get the last node in the path
+        chartPath = treeWidget.selectedPath
+        log.tracef("The raw selected path is: <%s>", chartPath)
+        chartPath = chartPath[chartPath.rfind("/")+1:]
+        log.tracef("The selected chart path is <%s>", chartPath)
+        
+        # Now replace " / " with "/"
+        chartPath = chartPath.replace(' \ ', '/')
+        log.infof("The selected chart path is <%s>", chartPath)
+        if chartPath == "" or chartPath == None:
+            return
+        
+        # Now get the selected step
+        stepList = event.source.parent.getComponent("Steps")
+        selectedRow = stepList.selectedRow
+        if selectedRow < 0:
+            return
+        ds = stepList.data
+        stepName = ds.getValueAt(selectedRow, 0)
+        stepId = ds.getValueAt(selectedRow, 2)
+        
+        rootContainer = event.source.parent.parent
+        folder = rootContainer.importExportFolder
+        filename = folder + "/recipeExport.xml"
+        filename = system.file.saveFile(filename, "xml", "name of xml export file")
+        if filename == None:
+            return
+        
+        folder = os.path.dirname(filename)
+        rootContainer.importExportFolder = folder
+        
+        exporter = Exporter(db)
+        keyTxt = ""
+        #keyTxt = exportKeysForChart(chartId, db)
+        recipeFolderTxt = exporter.exportRecipeDataFoldersForStep(stepId, stepName)
+        recipeDataTxt = exporter.exportRecipeDataForStep(stepId, stepName)
+        
+        txt = "<data>\n" + keyTxt + recipeFolderTxt + recipeDataTxt + "</data>"
+    
+        system.file.writeFile(filename, txt, False)
+        system.gui.messageBox("Chart and recipe were successfully exported!")
+        
+    except:
+        notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
+        
 class Exporter():
     sfcRecipeDataShowProductionOnly = False
     db = None
@@ -303,44 +355,51 @@ class Exporter():
                 advice = ''
             
             parentFolder = self.findParent(folderId)
-            log.tracef("      ...processing recipe data %s - %s - %d (%s - %s)", recipeDataKey, recipeDataType, recipeDataId, chartPath, stepName)
+            log.tracef("      ...processing recipe data %s - %s - %d - %s (%s - %s)", recipeDataKey, recipeDataType, recipeDataId, parentFolder, chartPath, stepName)
             
-            baseTxt = "<recipe recipeDataKey='%s' recipeDataType='%s' label='%s' description='%s' advice='%s' units='%s' parent='%s'" % \
-                (recipeDataKey, recipeDataType, label, description, advice, record["units"], parentFolder)
+            baseTxt = "<recipe> %s %s %s %s %s %s %s" % \
+                (mkEL("recipeDataKey", recipeDataKey), mkEL("recipeDataType", recipeDataType), mkEL("label", label), mkEL("description", description), mkEL("advice", advice), mkEL("units", record["units"]), mkEL("parent", parentFolder))
             
             if recipeDataType == "Simple Value":
                 SQL = "select valueType, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataSimpleValueView where RecipeDataId = %d" % (recipeDataId)
                 record = fetchFirstRecord(SQL)
                 valueType = record["valueType"]
                 if valueType == "Float":
-                    recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' value='%s' />" % (valueType, str(record['floatValue']))
+                    recipeDataTxt = recipeDataTxt + baseTxt + " %s %s" % (mkEL("valueType", valueType), mkEL("value", str(record['floatValue'])))
                 elif valueType == "Integer":
-                    recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' value='%s' />" % (valueType, str(record['integerValue']))
+                    recipeDataTxt = recipeDataTxt + baseTxt + " %s %s" % (mkEL("valueType", valueType), mkEL("value", str(record['integerValue'])))
                 elif valueType == "String":
-                    recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' value='%s' />" % (valueType, str(record['stringValue']))
+                    recipeDataTxt = recipeDataTxt + baseTxt + " %s %s" % (mkEL("valueType", valueType), mkEL("value", str(record['stringValue'])))
                 elif valueType == "Boolean":
-                    recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' value='%s' />" % (valueType, str(record['booleanValue']))
+                    recipeDataTxt = recipeDataTxt + baseTxt + " %s %s" % (mkEL("valueType", valueType), mkEL("value", str(record['booleanValue'])))
                 else:
                     log.errorf("****** Unknown simple value data type: %s", valueType)
     
             elif recipeDataType == "Recipe":
-                SQL = "select presentationOrder, storeTag, compareTag, ModeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit from SfcRecipeDataRecipeView where RecipeDataId = %d" % (recipeDataId)
+                SQL = "select presentationOrder, storeTag, compareTag, modeAttribute, modeValue, changeLevel, recommendedValue, lowLimit, highLimit from SfcRecipeDataRecipeView where RecipeDataId = %d" % (recipeDataId)
                 record = fetchFirstRecord(SQL)
-                recipeDataTxt = recipeDataTxt + baseTxt + " presentationOrder='%s' storeTag='%s' compareTag='%s' modeAttribute='%s' modeValue='%s' changeLevel='%s' recommendedValue='%s' lowLimit='%s' highLimit='%s' />" %\
-                    (str(record['presentationOrder']), str(record['storeTag']), str(record['compareTag']), str(record['ModeAttribute']), str(record['modeValue']),\
-                     str(record['changeLevel']), str(record['recommendedValue']), str(record['lowLimit']), str(record['highLimit']))
+                recipeDataTxt = recipeDataTxt + baseTxt + " %s %s %s %s %s %s %s %s %s" % \
+                    (mkEL("presentationOrder", str(record['presentationOrder'])), 
+                     mkEL("storeTag", str(record['storeTag'])), 
+                     mkEL("compareTag", str(record['compareTag'])), 
+                     mkEL("modeAttribute", str(record['modeAttribute'])), 
+                     mkEL("modeValue", str(record['modeValue'])),
+                     mkEL("changeLevel", str(record['changeLevel'])), 
+                     mkEL("recommendedValue", str(record['recommendedValue'])), 
+                     mkEL("lowLimit", str(record['lowLimit'])), 
+                     mkEL("highLimit", str(record['highLimit'])))
                     
             elif recipeDataType == "SQC":
                 SQL = "select lowLimit, targetValue, highLimit from SfcRecipeDataSQCView where RecipeDataId = %d" % (recipeDataId)
                 record = fetchFirstRecord(SQL)
-                recipeDataTxt = recipeDataTxt + baseTxt + " lowLimit='%s' targetValue='%s' highLimit='%s'  />" %\
-                    (str(record['lowLimit']), str(record['targetValue']), str(record['highLimit']) )
+                recipeDataTxt = recipeDataTxt + baseTxt + " %s %s %s" % \
+                    (mkEL("lowLimit", str(record['lowLimit'])), mkEL("targetValue", str(record['targetValue'])), mkEL("highLimit", str(record['highLimit'])) )
     
             elif recipeDataType == "Timer":
                 '''
                 All of the other properties for a Timer are transient and get set at runtime.
                 '''
-                recipeDataTxt = recipeDataTxt + baseTxt + " />"
+                recipeDataTxt = recipeDataTxt + baseTxt
     
             elif recipeDataType == "Output":
                 SQL = "select tag, valueType, outputType, download, timing, maxTiming, writeConfirm, outputFloatValue, outputIntegerValue, outputStringValue, outputBooleanValue "\
@@ -359,9 +418,15 @@ class Exporter():
                 else:
                     log.errorf("****** Unknown output value data type: %s", valueType)
                     
-                recipeDataTxt = recipeDataTxt + baseTxt + " tag='%s' valueType='%s' outputType='%s' download='%s' timing='%s' maxTiming='%s' writeConfirm='%s' value='%s' />" %\
-                    (str(record['tag']), str(record['valueType']), str(record['outputType']), str(record['download']), str(record['timing']), str(record['maxTiming']), \
-                     str(record['writeConfirm']), val )
+                recipeDataTxt = recipeDataTxt + baseTxt + " %s %s %s %s %s %s %s %s" %\
+                        (mkEL("tag", str(record['tag'])), 
+                         mkEL("valueType", str(record['valueType'])), 
+                         mkEL("outputType", str(record['outputType'])), 
+                         mkEL("download", str(record['download'])), 
+                         mkEL("timing", str(record['timing'])), 
+                         mkEL("maxTiming", str(record['maxTiming'])),
+                         mkEL("writeConfirm", str(record['writeConfirm'])), 
+                         mkEL("value", val) )
     
             elif recipeDataType == "Output Ramp":
                 SQL = "select tag, valueType, outputType, download, timing, maxTiming, writeConfirm, outputFloatValue, outputIntegerValue, outputStringValue, outputBooleanValue, "\
@@ -381,23 +446,31 @@ class Exporter():
                 else:
                     log.errorf("****** Unknown output value data type: %s", valueType)
                     
-                recipeDataTxt = recipeDataTxt + baseTxt + " tag='%s' valueType='%s' outputType='%s' download='%s' timing='%s' maxTiming='%s' writeConfirm='%s' value='%s' "\
-                    " rampTimeMinutes='%s' updateFrequencySeconds='%s' />" %\
-                    (str(record['tag']), str(record['valueType']), str(record['outputType']), str(record['download']), str(record['timing']), str(record['maxTiming']), \
-                    str(record['writeConfirm']), val, str(record['rampTimeMinutes']), str(record['updateFrequencySeconds']) )
+                recipeDataTxt = recipeDataTxt + baseTxt + " %s %s %s %s %s %s %s %s %s %s" % \
+                        (mkEL("tag", str(record['tag'])), 
+                         mkEL("valueType", str(record['valueType'])), 
+                         mkEL("outputType", str(record['outputType'])), 
+                         mkEL("download", str(record['download'])), 
+                         mkEL("timing", str(record['timing'])), 
+                         mkEL("maxTiming", str(record['maxTiming'])),
+                         mkEL("writeConfirm", str(record['writeConfirm'])), 
+                         mkEL("value", val), 
+                         mkEL("rampTimeMinutes", str(record['rampTimeMinutes'])), 
+                         mkEL("updateFrequencySeconds", str(record['updateFrequencySeconds'])) )
     
             elif recipeDataType == "Input":
                 SQL = "select tag, valueType from SfcRecipeDataInputView where RecipeDataId = %d" % (recipeDataId)
                 record = fetchFirstRecord(SQL)
-                recipeDataTxt = recipeDataTxt + baseTxt + " tag='%s' valueType='%s' />" %\
-                    (str(record['tag']), str(record['valueType']))
+                recipeDataTxt = recipeDataTxt + baseTxt + " %s %s" % \
+                    (mkEL("tag", str(record['tag'])), 
+                     mkEL("valueType", str(record['valueType'])))
             
             elif recipeDataType == "Array":
                 SQL = "select valueType, keyName from SfcRecipeDataArrayView where RecipeDataId = %d" % (recipeDataId)
                 record = fetchFirstRecord(SQL)
                 valueType = record["valueType"]
                 indexKey = record["keyName"]
-                recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' indexKey='%s' >" % (valueType, indexKey)
+                recipeDataTxt = recipeDataTxt + baseTxt + " %s %s" % (mkEL("valueType", valueType), mkEL("indexKey", indexKey))
                 
                 '''
                 The indexKey is just another array - hopefully it is in the same scope as this.  The order of export/import doesn't matter because the array data is still stored the same, 
@@ -407,24 +480,26 @@ class Exporter():
                 pds = system.db.runQuery(SQL, self.db)
                 for record in pds:
                     if valueType == "Float":
-                        recipeDataTxt = recipeDataTxt + "<element arrayIndex='%d' value='%s'/>\n" % (record["arrayIndex"], str(record['floatValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s </element>\n" % (mkEL("arrayIndex", str(record["arrayIndex"])), mkEL("value", str(record['floatValue'])))
                     elif valueType == "Integer":
-                        recipeDataTxt = recipeDataTxt + "<element arrayIndex='%d' value='%s'/>\n" % (record["arrayIndex"], str(record['integerValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s </element>\n" % (mkEL("arrayIndex", str(record["arrayIndex"])), mkEL("value", str(record['integerValue'])))
                     elif valueType == "String":
-                        recipeDataTxt = recipeDataTxt + "<element arrayIndex='%d' value='%s'/>\n" % (record["arrayIndex"], str(record['stringValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s </element>\n" % (mkEL("arrayIndex", str(record["arrayIndex"])), mkEL("value", str(record['stringValue'])))
                     elif valueType == "Boolean":
-                        recipeDataTxt = recipeDataTxt + "<element arrayIndex='%d' value='%s'/>\n" % (record["arrayIndex"], str(record['booleanValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s </element>\n" % (mkEL("arrayIndex", str(record["arrayIndex"])), mkEL("value", str(record['booleanValue'])))
                     else:
                         log.errorf("****** Unknown array value data type: %s", valueType)
-    
-                recipeDataTxt = recipeDataTxt + "</recipe>\n"
     
             elif recipeDataType == "Matrix":
                 SQL = "select valueType, rows, columns, rowIndexKeyName, columnIndexKeyName from SfcRecipeDataMatrixView where RecipeDataId = %d" % (recipeDataId)
                 record = fetchFirstRecord(SQL)
                 valueType = record["valueType"]
-                recipeDataTxt = recipeDataTxt + baseTxt + " valueType='%s' rows='%d' columns='%d' rowIndexKey='%s' columnIndexKey='%s' >" % \
-                    (valueType, record["rows"], record["columns"], record["rowIndexKeyName"], record["columnIndexKeyName"])
+                recipeDataTxt = recipeDataTxt + baseTxt + " %s %s %s %s %s" % \
+                    (mkEL("valueType",valueType), 
+                     mkEL("rows",str(record["rows"])), 
+                     mkEL("columns", str(record["columns"])), 
+                     mkEL("rowIndexKey", record["rowIndexKeyName"]), 
+                     mkEL("columnIndexKey", record["columnIndexKeyName"]))
                 
                 '''
                 The index is just another array.  The order of export/import doesn't matter because the array data is still stored the same, 
@@ -434,20 +509,20 @@ class Exporter():
                 pds = system.db.runQuery(SQL, self.db)
                 for record in pds:
                     if valueType == "Float":
-                        recipeDataTxt = recipeDataTxt + "<element rowIndex='%d' columnIndex='%d' value='%s'/>\n" % (record["rowIndex"], record["columnIndex"], str(record['floatValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s %s </element>\n" % (mkEL("rowIndex", str(record["rowIndex"])), mkEL("columnIndex", str(record["columnIndex"])), mkEL("value", str(record['floatValue'])))
                     elif valueType == "Integer":
-                        recipeDataTxt = recipeDataTxt + "<element rowIndex='%d' columnIndex='%d' value='%s'/>\n" % (record["rowIndex"], record["columnIndex"], str(record['integerValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s %s </element>\n" % (mkEL("rowIndex", str(record["rowIndex"])), mkEL("columnIndex", str(record["columnIndex"])), mkEL("value", str(record['integerValue'])))
                     elif valueType == "String":
-                        recipeDataTxt = recipeDataTxt + "<element rowIndex='%d' columnIndex='%d' value='%s'/>\n" % (record["rowIndex"], record["columnIndex"], str(record['stringValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s %s </element>\n" % (mkEL("rowIndex", str(record["rowIndex"])), mkEL("columnIndex", str(record["columnIndex"])), mkEL("value", str(record['stringValue'])))
                     elif valueType == "Boolean":
-                        recipeDataTxt = recipeDataTxt + "<element rowIndex='%d' columnIndex='%d' value='%s'/>\n" % (record["rowIndex"], record["columnIndex"], str(record['booleanValue']))
+                        recipeDataTxt = recipeDataTxt + "<element> %s %s %s </element>\n" % (mkEL("rowIndex", str(record["rowIndex"])), mkEL("columnIndex", str(record["columnIndex"])), mkEL("value", str(record['booleanValue'])))
                     else:
                         log.errorf("****** Unknown array value data type: %s", valueType)
-    
-                recipeDataTxt = recipeDataTxt + "</recipe>\n"
                             
             else:
                 log.errorf("***** Unsupported recipe data type: %s", recipeDataType)
+        
+            recipeDataTxt = recipeDataTxt + "</recipe>\n"
         
         return recipeDataTxt
 
@@ -455,12 +530,12 @@ class Exporter():
         '''
         Given a specific folder, and a dataset of the entire folder hierarchy, find the full path for a given folder.
         '''
-        if folderId == "":
+        if folderId in ["", None]:
             return ""
         
         log.tracef("------------------")
         path = ""
-        log.tracef("Finding the path for folder %d", folderId)
+        log.tracef("Finding the path for folder %s", str(folderId))
         
         while folderId != None:
             
@@ -487,3 +562,12 @@ class Exporter():
     
         log.errorf("Error in findChartPathFromId(), Unable to find chart id: %d in the chart dataset", chartId)
         return "NOT FOUND"
+    
+def mkEL(tag, val):
+    if val == None:
+        val = ""
+    val = val.replace("&", "&amp;")
+    val = val.replace("<", "&lt;")
+    val = val.replace(">", "&gt;")
+    return "<%s>%s</%s>" % (tag, val, tag)
+    

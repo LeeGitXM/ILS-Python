@@ -5,7 +5,7 @@ Created on Sep 5, 2016
 
 '''
 import system, string
-from ils.common.config import getDatabaseClient
+from ils.common.config import getDatabaseClient, getIsolationModeClient
 from ils.common.windowUtil import positionWindow
 from ils.common.database import getConsoleWindowNameForConsole
 
@@ -67,16 +67,46 @@ def openWindow(payload):
         print "Ignoring the request to show the window!"
 
 
-def closeWindow(payload):
+def sendCloseWindowMessage(projectName, windowName, isolationMode, payload):
+    print "Sending to %s... " % (projectName)
+    payload["window"] = windowName
+    payload["isolationMode"] = isolationMode
+    print "Payload: ", payload
+    system.util.sendMessage(project=projectName, messageHandler="closeWindow", payload=payload, scope="C")
+
+def closeWindowHandler(payload):
     '''
-    Unlike the openWindow causing of this message, I don't think I need to check the console.  This message goes to every client
-    and if the window is open then close it.  
+    This message goes to every client.
+    If the window is open and the isolation mode matches and any addition rootcontainer properties match, then close it.  
     '''
     print "Closing:", payload
+    isolationMode = payload["isolationMode"]
+    if isolationMode != getIsolationModeClient():
+        print "--- exiting because the isolation mode does not match ---"
+        return
+    
     window = payload["window"]
         
     print "Hiding window: ", window
     system.nav.closeWindow(window)
+    
+def sfcCloseWindow(payload):
+    log.infof("In %s.sfcCloseWindow() with %s", __name__, str(payload))
+    windowId = payload[WINDOW_ID]
+    database = payload[DATABASE]
+    clientDatabase = getDatabaseClient()
+    if database <> clientDatabase:
+        log.tracef("Ignoring closeWindow message because database does not match (%s vs %s)", database, clientDatabase)
+        
+    log.tracef("Attempting to close window with id: %d", windowId)
+    if windowId <> None:
+        openWindows = system.gui.getOpenedWindows()
+        for window in openWindows:
+            # Not all windows have a windowId, so be careful
+            rootContainer = window.getRootContainer()
+            openWindowId = rootContainer.getPropertyValue("windowId")
+            if str(openWindowId) == str(windowId):
+                system.nav.closeWindow(window)
     
 
 def consoleMatch(consoleName):

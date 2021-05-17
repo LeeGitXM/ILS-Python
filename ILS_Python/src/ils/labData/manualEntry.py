@@ -106,6 +106,7 @@ def entryFormInitialization(rootContainer):
     record=pds[0]
     unitName = record["UnitName"]
     rootContainer.unitName = unitName
+    print "   using unit %s" % (str(unitName))
     
     # Fetch the limits for this value
     SQL = "select * from LtLimit where ValueId = %s" % (str(valueId))
@@ -155,7 +156,7 @@ def entryFormInitialization(rootContainer):
             rootContainer.lowerReleaseLimit = record["LowerReleaseLimit"]
         
     else:
-        print "Error fetching limits "
+        print "Error fetching limits, fetched %d records" % (len(pds))
         rootContainer.upperValidityLimitEnabled=False
         rootContainer.lowerValidityLimitEnabled=False
         rootContainer.upperSQCLimitEnabled=False
