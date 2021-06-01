@@ -18,7 +18,7 @@ class BasicBlock():
     
     
     def __init__(self):
-        self.name = ""
+        self.name = "UNSET"
         # Each block has a state, whether it is meaningful or not
         self.state = "UNSET"
         self.quality = "good"
@@ -61,11 +61,11 @@ class BasicBlock():
     def getAuxData(self,aux):
         print "basicblock: getAuxData"
         return self.auxData
+
     # Return the class name. This is a fully qualified
     # path, including the module path 
     def getClassName(self):
-        return self.className
-            
+        return self.className      
     # Return a list of property names. 
     def getPropertyNames(self):
         return self.properties.keys()
@@ -118,10 +118,13 @@ class BasicBlock():
     def setAuxData(self,data):
         print "basicblock: setAuxData"
         pass
-    # The proxy block contains the name.
+   
+    # Set the block name - called during block creation.
+    # Changes to name do not persist when block is saved
     def setName(self,text):
         self.name = text
-        
+        pass
+    
     # Replace or add a property
     # We expect the dictionary to have all the proper attributes
     def setProperty(self,name,dictionary):
