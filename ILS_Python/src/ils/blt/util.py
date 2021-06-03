@@ -13,9 +13,9 @@ from ils.block import basicblock
 import ils.block
 from ils.block import *
 from ils.user.block import *
-from ils.log.LogRecorder import LogRecorder
+from com.ils.common.log import LogMaker
 from __builtin__ import None
-log = LogRecorder(__name__)
+log = LogMaker.getLogger(__name__)
 
 
 

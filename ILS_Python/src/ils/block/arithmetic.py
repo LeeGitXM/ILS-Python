@@ -7,7 +7,6 @@ def getClassName():
 # functions are Python modules.
 #
 from ils.block import basicblock  
-from com.inductiveautomation.ignition.common.util import LogUtil
 
 import org.apache.commons.math3.analysis.function.Abs as Abs
 import org.apache.commons.math3.analysis.function.Ceil as Ceiling
@@ -18,8 +17,8 @@ import org.apache.commons.math3.analysis.function.Tan as Tangent
 import org.apache.commons.math3.util.Precision as Precision
 
 import java.lang.Double as Double   
-
-log = LogUtil.getLogger("com.ils.block")
+from com.ils.common.log import LogMaker
+log = LogMaker.getLogger("com.ils.block")
 
 class Arithmetic(basicblock.BasicBlock):
     def __init__(self):
