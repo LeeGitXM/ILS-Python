@@ -3,11 +3,11 @@
 '''
 import system
 
-import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 from ils.common.database import getUnitName, getPostForUnitId, lookupKeyFromId
 from ils.queue.commons import getQueueForDiagnosticApplication
-handler = ControllerRequestHandler.getInstance()
 
+from com.ils.common.log import LogMaker
+log = LogMaker.getLogger(__name__)
 
 def delete(applicationUUID):
     '''
@@ -17,11 +17,10 @@ def delete(applicationUUID):
     I'd like to use the application name, which is guarenteed to be unique by the database, but I think that the gateway has already deleted the application so the getApplicationName()
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".delete")
-    
     log.infof("In %s.delete()", __name__)
     
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+    handler = ControllerRequestHandler.getInstance()
     db = handler.getProductionDatabase()
     
     SQL = "delete from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
@@ -39,8 +38,6 @@ def rename(uuid,oldName,newName):
     TODO: It appears that this is NOT called when I rename an application.  
     I think I can handle this case in the save method, especially if I can figure out how to get the name.
     '''
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".rename")
     
     log.infof("In %s.rename()", __name__)
     def renameInDatabase(uuid, oldName, newName, db):
@@ -48,6 +45,8 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL, db)
     
     log.tracef("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+    handler = ControllerRequestHandler.getInstance()
     db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
 
@@ -59,10 +58,9 @@ def save(applicationUUID):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".save")
-
     log.infof("In %s.save() with %s", __name__, applicationUUID)
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+    handler = ControllerRequestHandler.getInstance()
     db = handler.getProductionDatabase()
     
     from system.ils.blt.diagram import getApplicationName
@@ -108,11 +106,11 @@ Fill the aux structure with values from the database
 The caller must supply either the production or isolation database name
 '''
 def getAux(uuid,aux,db):
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".getAux")
 
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+    handler = ControllerRequestHandler.getInstance()
     appName = handler.getApplicationName(uuid)
     
     properties = aux[0]
@@ -255,10 +253,9 @@ def setAux(uuid, aux, db):
     Set values in the database from contents of the aux container
     The caller must supply either the production or isolation database name
     '''
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".setAux")
-    
     log.infof("In %s.setAux()", __name__)
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+    handler = ControllerRequestHandler.getInstance()
     applicationName = handler.getApplicationName(uuid)
     
     log.tracef("  ...the application name is: %s,  database: %s",applicationName, db)
@@ -384,3 +381,23 @@ def setAux(uuid, aux, db):
         system.db.runUpdateQuery("delete from DtQuantOutput where QuantOutputId = %s" % (str(quantOutputId)),db)
         
     log.infof("...leaving %s.setAux()!", __name__)
+    
+
+#  Note: This runs in Designer scope. The "handler" used above is not available
+#        We assume the list is empty to start
+def getList(key,lst,db):
+    '''
+    Copy a list of strings associated with the supplied key. The database connection
+    is appropriat for the current application state.
+    '''
+    log.infof("getList ... %s %s ", __name__,' ',key)
+    if key=="GroupRamp":
+        for val in ["A","B","C","D"]:
+            log.infof("getList ... %s %s ", key,' ',val)
+            lst.append(val)
+    elif key=="MessageQueue":
+        for val in ["alpha","beta","delta"]:
+            lst.append(val)
+    elif key=="Unit":
+        for val in ["micron","millimeter","centimeter","meter","kilometer"]:
+            lst.append(val)
