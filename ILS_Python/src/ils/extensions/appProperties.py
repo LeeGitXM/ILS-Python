@@ -164,56 +164,6 @@ def getAux(uuid,aux,db):
     
     log.tracef("Fetched Properties: %s", str(properties))
     
-    # Fetch the list of units
-    log.tracef("Fetching list of units...")
-    SQL = "SELECT UnitName "\
-          " FROM TkUnit "\
-          " ORDER BY UnitName"
-    ds = system.db.runQuery(SQL,db)
-    units = []
-    for record in ds:
-        units.append(str(record["UnitName"]))
-    lists["Units"] = units
-    log.tracef("Fetched units: %s", str(units))
-    
-    # Fetch the list of Ramp Methods
-    log.tracef("Fetching list of Group Ramp Methods...")
-    SQL = "SELECT LookupName "\
-          " FROM Lookup "\
-          " where LookupTypeCode = 'GroupRampMethod' "\
-          " ORDER BY LookupName"
-    ds = system.db.runQuery(SQL,db)
-    methods = []
-    for record in ds:
-        methods.append(str(record["LookupName"]))
-    lists["GroupRampMethods"] = methods
-    log.tracef("Fetched ramp methods: %s", str(methods))
-    
-    # Fetch the list of Feedback Methods
-    log.tracef("Fetching list of feedback methods...")
-    SQL = "SELECT LookupName "\
-          " FROM Lookup "\
-          " where LookupTypeCode = 'FeedbackMethod' "\
-          " ORDER BY LookupName"
-    ds = system.db.runQuery(SQL,db)
-    methods = []
-    for record in ds:
-        methods.append(str(record["LookupName"]))
-    lists["FeedbackMethods"] = methods
-    log.tracef("Fetched Feedback Methods: %s", str(methods))
-    
-    # Fetch the list of queues
-    log.tracef("Fetching list of queues...")
-    SQL = "SELECT QueueKey "\
-          " FROM QueueMaster "\
-          " ORDER BY QueueKey"
-    ds = system.db.runQuery(SQL,db)
-    queues = []
-    for record in ds:
-        queues.append(str(record["QueueKey"]))
-    lists["MessageQueues"] = queues
-    log.tracef("Fetched queues: %s", str(queues))
-    
     # Fetch the list of Quant outputs
     log.tracef("Fetching list of quant outputs...")
     SQL = "SELECT QuantOutputId, QuantOutputName QuantOutput, TagPath, MostNegativeIncrement, MostPositiveIncrement, MinimumIncrement, SetpointHighLimit,"\
@@ -332,6 +282,7 @@ def setAux(uuid, aux, db):
         log.tracef("...saving Quant Output: %s", str(quantOutput))
         tagPath = record.get("TagPath", "")
         feedbackMethod = record.get("FeedbackMethod", 'Simple Sum')
+        log.tracef("   (feedback method: <%s>", feedbackMethod)
         
         '''
         I am having a tough time dealing with the commas that Swing is putting into the string which represent floats.  SQLServer
@@ -353,6 +304,7 @@ def setAux(uuid, aux, db):
 
         SQL = "select LookupId from Lookup where LookupTypeCode = 'FeedbackMethod' and LookupName = '%s'" % (feedbackMethod)
         feedbackMethodId = system.db.runScalarQuery(SQL,db)
+        log.tracef("SQL: %s  =>  %s", SQL, str(feedbackMethodId))
         
         log.tracef("Id: %d", quantOutputId)
         log.tracef("Tagpath: %s", tagPath)
@@ -388,16 +340,38 @@ def setAux(uuid, aux, db):
 def getList(key,lst,db):
     '''
     Copy a list of strings associated with the supplied key. The database connection
-    is appropriat for the current application state.
+    is appropriate for the current application state.
     '''
     log.infof("getList ... %s %s ", __name__,' ',key)
     if key=="GroupRamp":
-        for val in ["A","B","C","D"]:
-            log.infof("getList ... %s %s ", key,' ',val)
-            lst.append(val)
+        log.tracef("Fetching list of Group Ramp Methods...")
+        SQL = "SELECT LookupName FROM Lookup where LookupTypeCode = 'GroupRampMethod' ORDER BY LookupName"
+        pds = system.db.runQuery(SQL, db)
+        for record in pds:
+            lst.append(str(record["LookupName"]))            
+    
     elif key=="MessageQueue":
-        for val in ["alpha","beta","delta"]:
-            lst.append(val)
+        log.tracef("Fetching list of queues...")
+        SQL = "SELECT QueueKey FROM QueueMaster ORDER BY QueueKey"
+        pds = system.db.runQuery(SQL, db)
+        for record in pds:
+            lst.append(str(record["QueueKey"]))
+
     elif key=="Unit":
-        for val in ["micron","millimeter","centimeter","meter","kilometer"]:
-            lst.append(val)
+        log.tracef("Fetching list of units...")
+        SQL = "SELECT UnitName FROM TkUnit ORDER BY UnitName"
+        pds = system.db.runQuery(SQL, db)
+        for record in pds:
+            lst.append(str(record["UnitName"]))
+
+    elif key=="FeedbackMethod":
+        log.tracef("Fetching list of feedback methods...")
+        SQL = "SELECT LookupName FROM Lookup where LookupTypeCode = 'FeedbackMethod' ORDER BY LookupName"
+        pds = system.db.runQuery(SQL, db)
+        for record in pds:
+            lst.append(str(record["LookupName"]))
+    
+    else:
+        log.warnf("In %s.getList() - unexpected key: %s", __name__, key)
+        
+        

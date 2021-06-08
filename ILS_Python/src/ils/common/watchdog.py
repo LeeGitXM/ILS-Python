@@ -370,6 +370,7 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
             system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
     
     elif serverIsAvailable and sampleTimeChanged and stallCount > 0:
+        ''' I'm not exactly sure what the scenario is that this handles  '''
         tags.append(udtPath+"/stallCount")
         vals.append(0)
         system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)

@@ -62,13 +62,6 @@ def parseRecords(records):
     print "   ...parsed %i records!" % (len(data))
     return ds
 
-
-
-
-
-
-
-
 def parseFilename(filename):
     if filename.find(":") > -1:
         drive = filename[:filename.find(":")]
@@ -142,13 +135,14 @@ def isGatewayScope():
 
 def isUserConnected(userName):
     sessions = system.util.getSessionInfo()
+    log.tracef("Checking if %s is connected - there are %d sessions", userName, len(sessions))
     for session in sessions:
+        log.tracef("...checking session: %s", session["username"])
         if string.upper(session["username"]) == string.upper(userName) and session["isDesigner"] == False:
-            print "The user IS connected"
+            log.tracef("The user IS connected")
             return True
-        print session
-
-    print "The user is NOT connected"
+        
+    log.tracef("The user is NOT connected")
     return False
 
 def isWarmboot():

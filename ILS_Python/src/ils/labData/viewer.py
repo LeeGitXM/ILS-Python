@@ -5,6 +5,8 @@ Created on Mar 29, 2015
 '''
 import system, string
 import ils.common.util as util
+from ils.common.config import getTagProviderClient
+from ils.labData.scanner import simulateReadRaw
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -217,8 +219,16 @@ even though it can only work for data that comes from PHD.  It can't work for DC
 def fetchHistory(container):
     valueName=container.LabValueName
     valueId=container.ValueId
+    tagProvider = getTagProviderClient()
     
     log.tracef("In labData.viewer.fetchHistory(), fetching missing data for %s - %d", valueName, valueId)
+    
+    if system.tag.exists("[%s]Configuration/Common/simulateHDA" % (tagProvider)):
+        simulateHDA = system.tag.read("[%s]Configuration/Common/simulateHDA" % (tagProvider)).value
+    else:
+        simulateHDA = False
+    
+    log.tracef("Simulate: %s", str(simulateHDA))
     
     '''
     For now, "Get History" is not supported for derived lab values
@@ -260,8 +270,12 @@ def fetchHistory(container):
     maxValues=0
     boundingValues=0
     
-    # Check that the HDA interface is healthy
-    serverIsAvailable=system.opchda.isServerAvailable(hdaInterface)
+    if simulateHDA:
+        serverIsAvailable = True
+    else:
+        # Check that the HDA interface is healthy
+        serverIsAvailable=system.opchda.isServerAvailable(hdaInterface)
+        
     if not(serverIsAvailable):
         system.gui.warningBox("Unable to fetch history because the HDA interface <%s> is not available!" % (hdaInterface))
         return
@@ -275,22 +289,25 @@ def fetchHistory(container):
     cal.add(Calendar.HOUR, -24 * 14)
     startDate = cal.getTime()
 
-    retVals=system.opchda.readRaw(hdaInterface, [itemId], startDate, endDate, maxValues, boundingValues)
-    log.tracef("...back from HDA read, read %d values!", len(retVals))
-
-    # We are fetching the history for a single lab value.
-    valueList=retVals[0]
-
-    if str(valueList.serviceResult) != 'Good':
-        system.gui.errorBox("The data returned from the PHD historian was %s --" % (valueList.serviceResult))
-        return
-
-    if valueList.size()==0:
-        system.gui.warningBox("No data was found for %s" % (itemId))
-        return
+    if simulateHDA:
+        retVals = simulateReadRaw([itemId], startDate, endDate)
+        valueList=retVals[0]
+    else:
+        retVals=system.opchda.readRaw(hdaInterface, [itemId], startDate, endDate, maxValues, boundingValues)
+        log.tracef("...back from HDA read, read %d values!", len(retVals))
+    
+        # We are fetching the history for a single lab value.
+        valueList=retVals[0]
+    
+        if str(valueList.serviceResult) != 'Good':
+            system.gui.errorBox("The data returned from the PHD historian was %s --" % (valueList.serviceResult))
+            return
+    
+        if valueList.size()==0:
+            system.gui.warningBox("No data was found for %s" % (itemId))
+            return
     
     # Use the current grade for all of the missing values
-    from ils.common.config import getTagProviderClient
     tagProvider = getTagProviderClient()
     from ils.common.grade import getGradeForUnit
     grade=getGradeForUnit(unitName, tagProvider)
@@ -298,12 +315,23 @@ def fetchHistory(container):
     # We found some data so now process it - we found data, but that doesn't mean it is new!
     rows=0
     for qv in valueList:
-        sampleTime = qv.timestamp
-        rawValue = qv.value
-        quality = qv.quality
+        print qv
+        if simulateHDA:
+            sampleTime = qv.get("timestamp", None)
+            rawValue = qv.get("value", None)
+            quality = qv.get("quality", None)
+            if quality == "Good":
+                isGood = True
+            else:
+                isGood = False
+        else:
+            sampleTime = qv.timestamp
+            rawValue = qv.value
+            quality = qv.quality
+            isGood = quality.isGood()
 
         # Only process good values
-        if quality.isGood():
+        if isGood:
             # Before we insert it, see if it already exists
             SQL = "select HistoryId from LtHistory where ValueId = ? and RawValue = ? and SampleTime = ?"
             pds = system.db.runPrepQuery(SQL, [valueId, rawValue, sampleTime]) 
@@ -315,6 +343,8 @@ def fetchHistory(container):
                 success,insertedRows = insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade)    
                 if success:
                     rows = rows + insertedRows
+        else:
+            log.infof("skipping value because the value is bad!")
 
     if rows == 0:
         system.gui.messageBox("No new data was found!")

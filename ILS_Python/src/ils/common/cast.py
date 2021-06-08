@@ -7,20 +7,29 @@ Created on Sep 10, 2014
 import system, string
 from __builtin__ import str
 
-def toDateTime(txt):
-    mm = txt[:txt.find("/")]
-    txt = txt[txt.find("/")+1:]
+def toDateTime(txt, dateDelimiter="/", timeDelimiter=":"):
+    ''' The date time string may contain a decimal portion of seconds, we are not interested in it if it exists '''
+    if txt.find(".") > -1:
+        txt = txt[:txt.find(".")]
+        
+    mm = txt[:txt.find(dateDelimiter)]
+    txt = txt[txt.find(dateDelimiter)+1:]
     
-    dd = txt[:txt.find("/")]
-    txt = txt[txt.find("/")+1:]
+    dd = txt[:txt.find(dateDelimiter)]
+    txt = txt[txt.find(dateDelimiter)+1:]
     yy = txt[:txt.find(" ")]
     txt = txt[txt.find(" ")+1:]
     
-    hh = txt[:txt.find(":")]
-    mi = txt[txt.find(":")+1:]
+    tokens = txt.split(timeDelimiter)
+    hh = tokens[0]
+    mi = tokens[1]
+    if len(tokens) == 3:
+        sec = tokens[2]
+    else:
+        sec = 0
     
     theDate = system.date.getDate(int(yy), int(mm) - 1, int(dd))
-    theDateTime = system.date.setTime(theDate, int(hh), int(mi), 0)
+    theDateTime = system.date.setTime(theDate, int(hh), int(mi), int(sec))
     return theDateTime
 
 def toBool(txt):

@@ -48,7 +48,11 @@ def chooserInitialization(rootContainer):
     pds = system.db.runQuery(SQL, database=db)
     ds = system.dataset.toDataSet(pds)
     
-    ''' If the user is an AE or comms are down or the manualEntry has been enabled, then add in DCS, and HDA lab values. '''
+    ''' 
+    If the user is an AE or comms are down or the manualEntry has been enabled, then add in DCS, and HDA lab values. 
+    The HDA / Lab data watchdog considers the communication state and the overrride tag and then sets manualEntryPermitted.
+    So it shouldn't be necessary to check communicationHealthy here unless the watchdog isn't running.
+    '''
     if not(communicationHealthy) or manualEntryPermitted or isAE:
         
         print "...adding lab data from PHD..."

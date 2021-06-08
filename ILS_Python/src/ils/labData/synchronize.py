@@ -9,11 +9,12 @@ from ils.common.config import getTagProviderClient
 from ils.common.util import append
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
+LAB_DATA_ROOT = "LabData"
 
 def createLabValue(unitName, valueName):
     tagProvider = getTagProviderClient()
     UDTType='Lab Data/Lab Value'
-    path = "LabData/" + unitName
+    path = LAB_DATA_ROOT + "/" + unitName
     parentPath = "[%s]%s" % (tagProvider, path)  
     tagPath = parentPath + "/" + valueName
     tagExists = system.tag.exists(tagPath)
@@ -63,7 +64,7 @@ def createDcsTag(unitName, valueName, interfaceName, itemId):
 def createLabSelector(unitName, valueName):
     tagProvider = getTagProviderClient()
     UDTType='Lab Data/Lab Selector Value'
-    path = "LabData/" + unitName
+    path = LAB_DATA_ROOT + "/" + unitName
     parentPath = "[%s]%s" % (tagProvider, path)  
     tagPath = parentPath + "/" + valueName
     tagExists = system.tag.exists(tagPath)
@@ -76,10 +77,9 @@ def createLabSelector(unitName, valueName):
 
 
 def deleteLabValue(unitName, valueName):
+    log.infof("Deleting lab data UDT for %s - %s", unitName, valueName)
     tagProvider = getTagProviderClient()
-    path = "LabData/" + unitName
-    parentPath = "[%s]%s" % (tagProvider, path)  
-    tagPath = parentPath + "/" + valueName
+    tagPath = "[%s]%s/%s/%s" % (tagProvider, LAB_DATA_ROOT, unitName, valueName) 
     tagExists = system.tag.exists(tagPath)
     if tagExists:
         print "Deleting tag %s, Path: %s" % (valueName, tagPath)
@@ -122,7 +122,7 @@ def deleteLabLimit(unitName, valueName, limitType):
 
 def deleteLabSelector(unitName, valueName):
     tagProvider = getTagProviderClient()
-    path = "LabData/" + unitName
+    path = LAB_DATA_ROOT + "/" +  unitName
     parentPath = "[%s]%s" % (tagProvider, path) 
      
     tagPath = parentPath + "/" + valueName
@@ -150,7 +150,7 @@ def synchronize(provider, unitName, repair):
     '''
     This synchronizes the Lab Data UDTs and the database.  This can be used on startup, after some tags have been edited or on demand.
     
-    ---- THIS IS INCOMPLETE BUT IT IS A GREAT IDEA!!!  aLSO NEED TO VALIDATE THE DB - FINDING STRANDED DATA IN LTVALUE WITH NO CORRESPONDING RECORD IN PHD, DCS, OR LOCAL ---   
+    ---- THIS IS INCOMPLETE BUT IT IS A GREAT IDEA!!!  ALSO NEED TO VALIDATE THE DB - FINDING STRANDED DATA IN LTVALUE WITH NO CORRESPONDING RECORD IN PHD, DCS, OR LOCAL ---   
     '''
 
     def synchronizeLabValues(provider, unitName, repair, txt):
@@ -209,7 +209,7 @@ def synchronize(provider, unitName, repair):
         #TODO somehow I need to figure out how to distinguish between a selector and a regular lab value here
         for valueName in valueNames:            
             UDTType='Lab Data/Lab Value'
-            path = "LabData/" + unitName
+            path = LAB_DATA_ROOT + "/" + unitName
             parentPath = "[" + provider + "]" + path  
             tagPath = parentPath + "/" + valueName
             tagExists = system.tag.exists(tagPath)
@@ -287,3 +287,44 @@ def synchronize(provider, unitName, repair):
 
     log.infof("... leaving synchronize()")
     return txt
+
+def updateLabValueUdt(unitName, dataType, labValueName, colName, newValue):
+    log.infof("Updating lab value UDT for %s - %s, a %s", unitName, labValueName, dataType)
+    tagProvider = getTagProviderClient()
+    
+    if colName == "ValueName":
+        print "Renaming a Lab Data UDT"
+        tagPath = "[%s]%s/%s/%s" % (tagProvider, LAB_DATA_ROOT, unitName, labValueName)
+        if system.tag.exists(tagPath):
+            system.tag.editTag(tagPath=tagPath, attributes={"Name": newValue})
+        else:
+            system.gui.warningBox("Error renaming Lab Data UDT <%s> for %s" % (tagPath, labValueName))
+
+        if dataType == "DCS":
+            tagPath = "[%s]%s/%s/DCS-Lab-Values/%s" % (tagProvider, LAB_DATA_ROOT, unitName, labValueName)
+            if system.tag.exists(tagPath):
+                system.tag.editTag(tagPath=tagPath, attributes={"Name": newValue})
+            else:
+                system.gui.warningBox("Error renaming Lab Data OPC tag for a DCS lab value <%s> for %s" % (tagPath, labValueName))
+    
+    elif colName == "ItemId":
+        ''' Update the item id for the OPC tag for a DCS lab value '''
+        if dataType == "DCS":
+            tagPath = "[%s]%s/%s/DCS-Lab-Values/%s" % (tagProvider, LAB_DATA_ROOT, unitName, labValueName)
+            if system.tag.exists(tagPath):
+                system.tag.editTag(tagPath=tagPath, attributes={"OPCItemPath": newValue})
+            else:
+                system.gui.warningBox("Error updating the itemId for the OPC tag for a DCS lab value <%s> for %s" % (tagPath, labValueName))
+                
+    elif colName == "InterfaceName":
+        ''' Update the OPC interface for the OPC tag for a DCS lab value '''
+        if dataType == "DCS":
+            tagPath = "[%s]%s/%s/DCS-Lab-Values/%s" % (tagProvider, LAB_DATA_ROOT, unitName, labValueName)
+            if system.tag.exists(tagPath):
+                system.tag.editTag(tagPath=tagPath, attributes={"OPCServer": newValue})
+            else:
+                system.gui.warningBox("Error updating the itemId for the OPC tag for a DCS lab value <%s> for %s" % (tagPath, labValueName))
+    
+    else:
+        print "Unsupported column name: ", colName
+            

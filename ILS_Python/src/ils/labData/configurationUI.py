@@ -4,65 +4,71 @@ Created on Jun 15, 2015
 @author: Pete
 '''
 import system, string
-from ils.common.config import getTagProviderClient
+from ils.common.config import getTagProviderClient, getDatabaseClient
 from ils.common.constants import CR
-from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue
+from ils.labData.limits import calcSQCLimits
+from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue, updateLabValueUdt
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened(), reserving a cursor...", __name__)
     
+    db = getDatabaseClient()
     unitDropdown = rootContainer.getComponent("UnitName")
     unitDropdown.selectedValue = -1
     unitDropdown.selectedStringValue = "<Select One>"
+    
+    rootContainer.selectedValueId = 0
+    rootContainer.selectedValueName = ""
     
     # Reset the tab that is selected
     rootContainer.getComponent("Tab Strip").selectedTab = "PHD"
     
     # Configure the static datasets that drive some combo boxes
     SQL = "select InterfaceName from LtHDAInterface order by InterfaceName"
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     rootContainer.hdaInterfaceDataset = pds
     
-    SQL = "select InterfaceName from LtOPCInterface order by InterfaceName"
-    pds = system.db.runQuery(SQL)
+    SQL = "select InterfaceId, InterfaceName from LtOPCInterface order by InterfaceName"
+    pds = system.db.runQuery(SQL, database=db)
     rootContainer.opcInterfaceDataset = pds
+    
+    # Update the datasets used by the combo boxes in the power tables
+    SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitType' order by LookupName"
+    pds = system.db.runQuery(SQL, database=db)
+    log.tracef("Fetched %i SQC Limit Type values...", len(pds))
+    rootContainer.getComponent("Lab Limit Table").limitTypeDataset = pds
+    
+    SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitSource' order by LookupName"
+    pds = system.db.runQuery(SQL, database=db)
+    log.tracef("Fetched %i SQC Limit Source values...", len(pds))
+    rootContainer.getComponent("Lab Limit Table").limitSourceDataset = pds
 
 
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
     log.infof("In %s.internaFrameActived()...", __name__)
-    rootContainer.selectedValueId = 0
+    db = getDatabaseClient()
     
-    # Update the datasets used by the combo boxes in the power tables
-    SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitType' order by LookupName"
-    pds = system.db.runQuery(SQL)
-    print "Fetched %i SQC Limit Type values..." % (len(pds))
-    rootContainer.getComponent("Lab Limit Table").limitTypeDataset = pds
+    log.tracef("Calling update() from internalFrameActivated()")
+    update(rootContainer, db)
     
-    SQL = "Select LookupName LimitType from Lookup where LookupTypeCode = 'RtLimitSource' order by LookupName"
-    pds = system.db.runQuery(SQL)
-    print "Fetched %i SQC Limit Source values..." % (len(pds))
-    rootContainer.getComponent("Lab Limit Table").limitSourceDataset = pds
-    
-    print "Calling update() from internalFrameActivated()"
-    update(rootContainer)
-    
-    print "Calling updateLimit() from internalFrameActivated()"
-    updateLimit(rootContainer)
+    log.tracef("Calling updateLimit() from internalFrameActivated()")
+    updateLimit(rootContainer, db)
 
 
 def internalFrameClosing(rootContainer):
     log.infof("In %s.internalFrameClosing()", __name__)
-            
-#remove the selected row
+
 def removeDataRow(event):
+    ''' Delete the selected row and the associated UDTs '''
     log.infof("In %s.removeDataRow()", __name__)
     table = event.source
     rootContainer = event.source.parent.parent.parent
     tab = rootContainer.getComponent("Tab Strip").selectedTab
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
+    db = getDatabaseClient()
     
     #get valueId of the data to be deleted
     valueId = rootContainer.selectedValueId
@@ -70,10 +76,9 @@ def removeDataRow(event):
         
     #check for derived lab data references
     sql = "SELECT count(*) FROM LtDerivedValue WHERE TriggerValueId = %i" %(valueId)
-    triggerRows = system.db.runScalarQuery(sql)
+    triggerRows = system.db.runScalarQuery(sql, database=db)
     sql = "SELECT count(*) FROM LtRelatedData WHERE RelatedValueId = %i" %(valueId)
-    relatedRows = system.db.runScalarQuery(sql)
-    
+    relatedRows = system.db.runScalarQuery(sql, database=db)
     
     # If there is derived lab data based on this lab data, then inform the operator and make sure they want to delete  the
     # derived data along with this data
@@ -90,24 +95,24 @@ def removeDataRow(event):
                 " where V.ValueId = DV.ValueId "\
                 " and TriggerValueId = %s" % (str(valueId))
             print SQL
-            pds = system.db.runQuery(SQL)
+            pds = system.db.runQuery(SQL, database=db)
 
             for record in pds:
                 derivedValueId=record["ValueId"]
                 SQL = "delete from LtRelatedData where DerivedValueId in "\
                     "(select DerivedValueId from LtDerivedValue where ValueId = %s)" % (str(derivedValueId))
                 print SQL
-                rows = system.db.runUpdateQuery(SQL)
+                rows = system.db.runUpdateQuery(SQL, database=db)
                 print "Deleted %i rows from LtRelatedData" % (rows)
                 
                 SQL = "DELETE FROM LtDerivedValue WHERE ValueId = %s " % (str(derivedValueId))
                 print SQL
-                rows = system.db.runUpdateQuery(SQL)
+                rows = system.db.runUpdateQuery(SQL, database=db)
                 print "Deleted %i rows from LtDerivedValue" % (rows)
                                 
                 SQL = "DELETE FROM LtValue WHERE ValueId = %s " % (str(derivedValueId))
                 print SQL
-                rows = system.db.runUpdateQuery(SQL)
+                rows = system.db.runUpdateQuery(SQL, database=db)
                 print "Deleted %i rows from LtValue" % (rows)
                 
     else:          
@@ -125,22 +130,22 @@ def removeDataRow(event):
             table = rootContainer.getComponent("Local").getComponent("Local_Value")
             sql = "DELETE FROM LtLocalValue WHERE ValueId = '%s' " % (valueId)
 
-        system.db.runUpdateQuery(sql)
+        system.db.runUpdateQuery(sql, database=db)
 
         ''' Delete the UDT, if it exists '''
         deleteLabValue(unitName, valueName)
             
         ''' LtHistory clean up '''
         SQL = "DELETE FROM LtHistory WHERE ValueId = '%s' " % (valueId)
-        system.db.runUpdateQuery(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
         
         ''' LtValueViewed clean up'''
         SQL = "DELETE FROM LtValueViewed WHERE ValueId = '%s' " % (valueId)
-        system.db.runUpdateQuery(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
         
         ''' LtDisplayTableDetails clean up'''
         SQL = "DELETE FROM LtDisplayTableDetails WHERE ValueId = '%s' " % (valueId)
-        system.db.runUpdateQuery(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
         
         ''' Clean up the limits, first from the database, then the UDTs '''
         limitTable = rootContainer.getComponent("Lab Limit Table")
@@ -148,7 +153,7 @@ def removeDataRow(event):
         pds = system.dataset.toPyDataSet(ds)
         
         sql = "DELETE FROM LtLimit WHERE ValueId = '%s' " % (valueId)
-        system.db.runUpdateQuery(sql)
+        system.db.runUpdateQuery(sql, database=db)
         
         '''
         delete the limit UDTs using the info from the table
@@ -161,7 +166,7 @@ def removeDataRow(event):
         sql = "DELETE FROM LtValue "\
                 " WHERE ValueId = '%s' "\
                 %(valueId)
-        system.db.runUpdateQuery(sql)
+        system.db.runUpdateQuery(sql, database=db)
     
         table.selectedRow = -1
     
@@ -169,6 +174,7 @@ def removeDataRow(event):
 def insertDataRow(rootContainer):
     log.infof("In %s.insertDataRow", __name__)
     labDataType = rootContainer.labDataType
+    db = getDatabaseClient()
             
     newName = rootContainer.getComponent("name").text
     if newName == "":
@@ -185,9 +191,7 @@ def insertDataRow(rootContainer):
 
     validationProcedure = rootContainer.getComponent("validationProcedure").text
 
-    '''
-    Do some validation of everything before we insert anything.
-    '''
+    '''  Do some validation of everything before we insert anything. '''
     
     if labDataType == "PHD":
         interfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
@@ -242,17 +246,17 @@ def insertDataRow(rootContainer):
         SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals, ValidationProcedure)"\
             "VALUES ('%s', '%s', %i, %i, '%s')" %(newName, description, unitId, decimals, validationProcedure)
     print SQL
-    valueId = system.db.runUpdateQuery(SQL, getKey=True)
+    valueId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     
     if labDataType == "PHD":
         sql = "INSERT INTO LtPHDValue (ValueId, ItemId, InterfaceId)"\
             "VALUES (%s, '%s', %s)" %(str(valueId), str(itemId), str(interfaceId))
-        system.db.runUpdateQuery(sql)
+        system.db.runUpdateQuery(sql, database=db)
         
     elif labDataType == "DCS":
         sql = "INSERT INTO LtDCSValue (ValueId, InterfaceId, ItemId, MinimumSampleIntervalSeconds)"\
             "VALUES (%s, %s, '%s', %s)" %(str(valueId), str(interfaceId), str(itemId), str(minimumTimeBetweenSamples))
-        system.db.runUpdateQuery(sql)
+        system.db.runUpdateQuery(sql, database=db)
         createDcsTag(unitName, newName, interfaceName, itemId)
         
     elif labDataType == "Local":
@@ -266,7 +270,7 @@ def insertDataRow(rootContainer):
             sql = "INSERT INTO LtLocalValue (ValueId, InterfaceId, ItemId)"\
                 "VALUES (%s, %s, '%s')" %(str(valueId), str(interfaceId), str(itemId))
 
-        system.db.runUpdateQuery(sql)
+        system.db.runUpdateQuery(sql, database=db)
     else:
         print "Unexpected lab data type: ", labDataType
         return False
@@ -276,7 +280,7 @@ def insertDataRow(rootContainer):
     return True
     
 
-def update(rootContainer):
+def update(rootContainer, db):
     '''
     This is called on startup when they open the window.
     It is also called 
@@ -294,7 +298,7 @@ def update(rootContainer):
             "AND V.UnitId = %i "\
             "ORDER BY ValueName" % (unitId)
         log.tracef(SQL)
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         table = rootContainer.getComponent("PHD").getComponent("PHD_Value")
         table.updateInProgress = True
         table.data = pds
@@ -307,7 +311,7 @@ def update(rootContainer):
             " and OPC.InterfaceId = DS.InterfaceId "\
             " ORDER BY ValueName" % (unitId)
         log.tracef(SQL)
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         ds = system.dataset.toDataSet(pds)
         
         ''' At one point I was going to add a status column to indicate if the lab value was OK, but didn't work out '''
@@ -325,7 +329,7 @@ def update(rootContainer):
             " WHERE V.UnitId = %i "\
             " ORDER BY ValueName" %(unitId)
         log.tracef(SQL)
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         table = rootContainer.getComponent("Local").getComponent("Local_Value")
         table.updateInProgress = True
         table.data = pds
@@ -337,7 +341,7 @@ def update(rootContainer):
 def validate(rootContainer):
     '''
     This is called on when the user presses the validate button. 
-    It is sort of open when "vallidate" means.  For starters, I want to validate the table vs the tags
+    It is sort of open when "validate" means.  For starters, I want to validate the table vs the tags
     Since we are coming at this from the databases point of view, validate tags for now.
     '''
     
@@ -374,7 +378,7 @@ def validate(rootContainer):
             txt = "%s%sCreated OPC tag for %s - %s" % (txt, CR, valueName, itemId)
         return txt
             
-    def validateLimits(unitName, valueName, dataType, tagProvider, txt):
+    def validateLimits(unitName, valueName, dataType, db, tagProvider, txt):
         ''' 
         Now check the lab limits - This makes sure that all of the required limit UDTs exist.  
         It doesn't clean up extra UDTs.
@@ -387,7 +391,7 @@ def validate(rootContainer):
         SQL = "select ValueId, ValueName, LimitType "\
             " from LtLimitView "\
             " where UnitName = '%s' and ValueName = '%s' order by ValueName" % (unitName, valueName)
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         
         for record in pds:
             limitType = record["LimitType"]    
@@ -418,6 +422,7 @@ def validate(rootContainer):
     #--------------------------------------------------------------------------------------
         
     log.infof("In %s.validate()", __name__)
+    db = getDatabaseClient()
     tagProvider = getTagProviderClient()
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     dataType = rootContainer.dataType
@@ -430,7 +435,7 @@ def validate(rootContainer):
         for row in range(ds.getRowCount()):
             valueName = ds. getValueAt(row, "ValueName")
             txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
-            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, db, tagProvider, txt)
 
         if txt == "":
             txt = "PHD Lab data configuration validated, no problems were detected!"
@@ -447,7 +452,7 @@ def validate(rootContainer):
             itemId =  ds.getValueAt(row, "ItemId")
             txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
             txt = validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt)
-            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, db, tagProvider, txt)
         
         if txt == "":
             txt = "DCS Lab data configuration validated, no problems were detected!"
@@ -460,7 +465,7 @@ def validate(rootContainer):
         for row in range(ds.getRowCount()):
             valueName = ds. getValueAt(row, "ValueName")
             txt = validateTags(unitName, valueName, dataType, tagProvider, txt)
-            txt = validateLimits(unitName, valueName, dataType, tagProvider, txt)
+            txt = validateLimits(unitName, valueName, dataType, db, tagProvider, txt)
         
         if txt == "":
             txt = "Local Lab data configuration validated, no problems were detected!"
@@ -474,9 +479,10 @@ def validate(rootContainer):
     system.gui.messageBox(txt)
 
 # Refresh the limit table    
-def updateLimit(rootContainer):
+def updateLimit(rootContainer, db):
     log.infof("In %s.updateLimit()...", __name__)
     selectedValueId = rootContainer.selectedValueId
+    log.tracef("...using valueId: %s...", str(selectedValueId))
     sql = "SELECT LimitId, ValueId, LimitType, LimitSource, "\
         " UpperReleaseLimit, LowerReleaseLimit, "\
         " UpperValidityLimit, LowerValidityLimit, "\
@@ -484,24 +490,33 @@ def updateLimit(rootContainer):
         " RecipeParameterName, InterfaceName, OPCUpperItemId, OPCLowerItemId"\
         " FROM LtLimitView "\
         " WHERE ValueId = %i " % (selectedValueId)
-    pds = system.db.runQuery(sql)
+    pds = system.db.runQuery(sql, database=db)
+    log.tracef("...fetched %d rows...", len(pds))
     
     limitTable = rootContainer.getComponent("Lab Limit Table")
     limitTable.data = pds
     
-#update the database when user directly changes table 
-def dataCellEdited(table, rowIndex, colName, newValue):
-    log.infof("In %s.dataCellEdited() - A cell has been edited so update the database...", __name__)
-    print "Row: %s, Column: %s, Value: %s" % (str(rowIndex), colName, str(newValue))
+''' Update the database when user directly changes the limit table ''' 
+def dataCellEdited(table, rowIndex, colName, oldValue, newValue):
+    log.infof("In %s.dataCellEdited() - A cell has been edited so update the database (and the tag)...", __name__)
+    log.tracef("Row: %s, Column: %s, Value: %s (was %s)", str(rowIndex), colName, str(newValue), str(oldValue))
     rootContainer = table.parent.parent
-
+    db = getDatabaseClient()
     ds = table.data
     valueId =  ds.getValueAt(rowIndex, "ValueId")
     dataType = rootContainer.dataType
+    unitName = rootContainer.getComponent("UnitName").selectedStringValue
     SQL = ""
     
     if colName == "ValueName":
         SQL = "UPDATE LtValue SET ValueName = '%s' WHERE ValueId = %i " % (newValue, valueId)
+        
+        ''' Rename the rootContainer property that records the selected valueName when a row is selected '''
+        rootContainer.selectedValueName = newValue
+        
+        ''' Rename the existing Lab data UDT '''
+        labValueName = oldValue
+        updateLabValueUdt(unitName, dataType, labValueName, colName, newValue)
     elif colName == "Description":
         SQL = "UPDATE LtValue SET Description = '%s' WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "DisplayDecimals":
@@ -511,6 +526,8 @@ def dataCellEdited(table, rowIndex, colName, newValue):
             SQL = "UPDATE LtPHDValue SET ItemId = '%s' WHERE ValueId = %i " % (newValue, valueId)
         elif dataType == "DCS":
             SQL = "UPDATE LtDCSValue SET ItemId = '%s' WHERE ValueId = %i " % (newValue, valueId)
+            labValueName = ds.getValueAt(rowIndex, "ValueName")
+            updateLabValueUdt(unitName, dataType, labValueName, colName, newValue)
         elif dataType == "Local":
             SQL = "UPDATE LtLocalValue SET ItemId = '%s' WHERE ValueId = %i " % (newValue, valueId)
     elif colName == "InterfaceName":
@@ -520,6 +537,8 @@ def dataCellEdited(table, rowIndex, colName, newValue):
             print "Error: InterfaceName is not a valid column for a PHD lab value!"
         elif dataType == "DCS":
             SQL = "UPDATE LtDCSValue SET InterfaceId = %i WHERE ValueId = %i " % (interfaceId, valueId)
+            labValueName = ds.getValueAt(rowIndex, "ValueName")
+            updateLabValueUdt(unitName, dataType, labValueName, colName, newValue)
 
     elif colName == "ValidationProcedure":
         if newValue == "":
@@ -542,45 +561,16 @@ def dataCellEdited(table, rowIndex, colName, newValue):
         print "Unsupported column name: ", colName
             
     if SQL != "":
-        print SQL
-        system.db.runUpdateQuery(SQL)
+        log.tracef(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
 
 '''
-Add a row to the limit table - the window here is one of the popups, not the big configuration window
+Delete the selected row in the limit table.
+This is called from a button alongside the bottom limit table when a row is selected.
 '''
-def insertLimitRow(event):
-    log.infof("In %s.insertLimitRow()...", __name__)
-    rootContainer = event.source.parent.parent.parent
-    unitName = rootContainer.getComponent("UnitName").selectedStringValue
-    valueId = rootContainer.selectedValueId
-    valueName = rootContainer.selectedValueName
-
-    from ils.common.database import lookup
-    limitType = "SQC"    
-    limitTypeId = lookup("RtLimitType", limitType)
-    limitSource = "Recipe"
-    limitSourceId = lookup("RtLimitSource", limitSource)
-    
-    # Insert a mostly empty row into the database, the reason to do this is to get a legit limitId into the database so now as they
-    # edit each cell we can just do real simple updates...
-    SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) "\
-        "values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
-    limitId = system.db.runUpdateQuery(SQL, getKey=1)
-    
-    # Create the UDT
-    createLabLimit(unitName, valueName, limitType)
-    
-    #insert blank row into the table
-    limitTable = rootContainer.getComponent("Lab Limit Table")
-    ds = limitTable.data
-    newRow = [limitId, valueId, limitType, limitSource, None, None, None, None, None, None, None, None, None, None, None, None]
-    ds = system.dataset.addRow(ds, 0, newRow)
-    limitTable.data = ds
-
-
-# Delete the selected row in the limit table
 def removeLimitRow(event):
     log.infof("In %s.removeLimitRow()...", __name__)
+    db = getDatabaseClient()
     rootContainer = event.source.parent.parent.parent
     
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
@@ -596,39 +586,20 @@ def removeLimitRow(event):
                         
     # Remove the selected row
     SQL = "DELETE FROM LtLimit WHERE LimitId = %i " % (limitId)
-    rows=system.db.runUpdateQuery(SQL)
+    rows=system.db.runUpdateQuery(SQL, database=db)
     print "   ...deleted %i limits from database" % rows
     
+    # Delete the UDT
     deleteLabLimit(unitName, valueName, limitType)
         
-
 '''
-Called from an onCellEdited handler on the limit table.  By the time this is called, the UDT should already exist.  If they are changing the type of the limit 
-(SQC, Validity, Release) then we have to delete the old and create a new UDT
+Called from an onCellEdited handler on the limit table.  By the time this is called, the UDT should already exist.  They can only change the limits and some 
+of the attributes of the limit - they can't change the type or the source of of the limit becvause that would require a different UDT class. 
 '''
 def saveLimitRow(table, row, colName, oldValue, newValue):
-    log.infof("In %s.saveLimitRow()...", __name__)
-    #--------------------------------------------------
-    def updateRow(table, row, colName, limitId, newValue):
-        from ils.common.database import lookup
-        if colName == "LimitType":
-            colName = "LimitTypeId"
-            print "Translating: ", newValue
-            newValue = lookup("RtLimitType", newValue)
-            print "  ... to ", newValue 
-        elif colName == "LimitSource":
-            colName = "LimitSourceId"
-            print "Translating: ", newValue
-            newValue = lookup("RtLimitSource", newValue) 
-            print " ... to ", newValue
-        
-        SQL = "UPDATE LtLimit set %s = ? where LimitId = ?" % (colName)
-        print SQL, newValue, limitId
-        rows = system.db.runPrepUpdate(SQL, [newValue, limitId])
-        print "Updated %i rows" % (rows)
-    #--------------------------------------------------
-
-    print "Saving the limit row %s - from %s to %s..." % (colName, str(oldValue), str(newValue))
+    log.infof("In %s.saveLimitRow(), updating %s from %s to %s..", __name__, colName, str(oldValue), str(newValue))
+    db = getDatabaseClient()
+    
     rootContainer = table.parent
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     valueName = rootContainer.selectedValueName
@@ -640,7 +611,11 @@ def saveLimitRow(table, row, colName, oldValue, newValue):
     if limitId == -1:
         system.gui.errorBox("Error updating the limit! The limit Id is -1 which indicates that the row was not successfully inserted when you pressed '+'")
     else:
-        updateRow(table, row, colName, limitId, newValue)
+        ''' Update the limit in the database (this updates the value in LtLimit, the permanent value may have come from the DCS or recipe) '''
+        SQL = "UPDATE LtLimit set %s = ? where LimitId = ?" % (colName)
+        print SQL, newValue, limitId
+        rows = system.db.runPrepUpdate(SQL, [newValue, limitId], database=db)
+        print "Updated %i rows" % (rows)
         
         '''
         Now update the UDT
@@ -658,37 +633,249 @@ def saveLimitRow(table, row, colName, oldValue, newValue):
         labDataName=valueName+suffix
         tagPath = parentPath + "/" + labDataName
 
-        if colName == "LimitType":
-            print "Deleting and creating..."
-            deleteLabLimit(unitName, valueName, oldValue)
-            createLabLimit(unitName, valueName, newValue)
-        else:
-            if colName == 'UpperReleaseLimit' and limitType == "RELEASE":
-                tagPath = tagPath + '/upperReleaseLimit'
-                system.tag.write(tagPath, newValue)
-            elif colName == 'LowerReleaseLimit' and limitType == "RELEASE":
-                tagPath = tagPath + '/lowerReleaseLimit'
-                system.tag.write(tagPath, newValue)
-                
-            elif colName == 'UpperValidityLimit' and limitType in ["SQC", "VALIDITY"]:
-                tagPath = tagPath + '/upperValidityLimit'
-                system.tag.write(tagPath, newValue)
-            elif colName == 'LowerValidityLimit' and limitType in ["SQC", "VALIDITY"]:
-                tagPath = tagPath + '/lowerValidityLimit'
-                system.tag.write(tagPath, newValue)
-                
-            elif colName == 'UpperSQCLimit' and limitType == "SQC":
-                tagPath = tagPath + '/upperSQCLimit'
-                system.tag.write(tagPath, newValue)
-            elif colName == 'LowerSQCLimit' and limitType == "SQC":
-                tagPath = tagPath + '/lowerSQCLimit'
-                system.tag.write(tagPath, newValue)
-            elif colName == 'Target' and limitType == "SQC":
-                tagPath = tagPath + '/target'
-                system.tag.write(tagPath, newValue)
-            elif colName == 'StandardDeviation' and limitType == "SQC":
-                tagPath = tagPath + '/standardDeviation'
-                system.tag.write(tagPath, newValue)
+        if colName == 'UpperReleaseLimit' and limitType == "RELEASE":
+            tagPath = tagPath + '/upperReleaseLimit'
+            system.tag.write(tagPath, newValue)
+        elif colName == 'LowerReleaseLimit' and limitType == "RELEASE":
+            tagPath = tagPath + '/lowerReleaseLimit'
+            system.tag.write(tagPath, newValue)
+            
+        elif colName == 'UpperValidityLimit' and limitType in ["SQC", "VALIDITY"]:
+            tagPath = tagPath + '/upperValidityLimit'
+            system.tag.write(tagPath, newValue)
+        elif colName == 'LowerValidityLimit' and limitType in ["SQC", "VALIDITY"]:
+            tagPath = tagPath + '/lowerValidityLimit'
+            system.tag.write(tagPath, newValue)
+            
+        elif colName == 'UpperSQCLimit' and limitType == "SQC":
+            tagPath = tagPath + '/upperSQCLimit'
+            system.tag.write(tagPath, newValue)
+        elif colName == 'LowerSQCLimit' and limitType == "SQC":
+            tagPath = tagPath + '/lowerSQCLimit'
+            system.tag.write(tagPath, newValue)
+        elif colName == 'Target' and limitType == "SQC":
+            tagPath = tagPath + '/target'
+            system.tag.write(tagPath, newValue)
+        elif colName == 'StandardDeviation' and limitType == "SQC":
+            tagPath = tagPath + '/standardDeviation'
+            system.tag.write(tagPath, newValue)
 
-            else:
-                print "Change was to a property (%s) that does not exist in the UDT for a %s limit" % (colName, limitType)
+        else:
+            print "Change was to a property (%s) that does not exist in the UDT for a %s limit" % (colName, limitType)
+
+'''---------------------------------------------------------------------
+Everything below here has to do with the New Limit Popup window
+---------------------------------------------------------------------
+'''
+
+def labLimitPopupInternalFrameOpened(rootContainer):
+    log.infof("In %s.labLimitPopupInternalFrameOpened()...", __name__)
+    rootContainer.getComponent("Limit Type Dropdown").selectedValue = -1
+    rootContainer.getComponent("Limit Source Dropdown").selectedValue = -1
+    
+def validateLimitTypeChoice(event):
+    log.infof("In %s.validateLimitTypeChoice(), validating %s...", __name__, event.newValue)
+    
+
+'''
+Create a new limit - this is called from a button on the Lab Limit Popup window. 
+'''
+def createLimit(event):
+    
+    ''' You can't have two limits of the same type for the same parameter '''
+    def checkIfLimitAlreadyExists(valueId, limitType, db):
+        SQL = "select count(*) from LtLimitView where ValueId = %d and LimitType = '%s' " % (valueId, limitType)
+        cnt = system.db.runScalarQuery(SQL, database=db)
+        if cnt > 0:
+            return True
+        return False
+    
+    log.infof("In %s.createLimit()...", __name__)
+    db = getDatabaseClient()
+    rootContainer = event.source.parent
+    unitId = rootContainer.unitId
+    unitName = rootContainer.unitName
+    valueId = rootContainer.valueId
+    valueName = rootContainer.valueName
+
+    from ils.common.database import lookup
+    limitType = rootContainer.getComponent("Limit Type Dropdown").selectedStringValue    
+    limitTypeId = lookup("RtLimitType", limitType)
+    limitSource = rootContainer.getComponent("Limit Source Dropdown").selectedStringValue    
+    limitSourceId = lookup("RtLimitSource", limitSource)
+    
+    if (checkIfLimitAlreadyExists(valueId, limitType, db)):
+        system.gui.warningBox("A %s limit already exists for %s" % (limitType, valueName))
+        return False
+    
+    # Insert a mostly empty row into the database, the reason to do this is to get a legit limitId into the database so now as they
+    # edit each cell we can just do real simple updates...
+    cols = ["ValueId", "LimitTypeId", "LimitSourceId"]
+    args = [valueId, limitTypeId, limitSourceId]
+    if limitType == "SQC":
+        
+        if limitSource == "Recipe":
+            recipeKey = rootContainer.getComponent("Recipe Key Dropdown").selectedStringValue
+            if recipeKey == "":
+                system.gui.warningBox("Please configure the Recipe Key")
+                return False
+            cols.append("RecipeParameterName")
+            args.append(recipeKey)
+        elif limitSource == "DCS":
+            opcServerId = rootContainer.getComponent("OPC Server Dropdown").selectedValue
+            if opcServerId == -1:
+                system.gui.warningBox("Please select an OPC Server")
+                return False
+            cols.append("OPCInterfaceId")
+            args.append(opcServerId)
+            
+            upperLimitItemId = rootContainer.getComponent("Upper Limit Item Id Field").text
+            if upperLimitItemId == "":
+                system.gui.warningBox("Please configure the Upper Limit Item Id")
+                return False
+            cols.append("OPCUpperItemId")
+            args.append(upperLimitItemId)
+            
+            lowerLimitItemId = rootContainer.getComponent("Lower Limit Item Id Field").text
+            if lowerLimitItemId == "":
+                system.gui.warningBox("Please configure the Lower Limit Item Id")
+                return False
+            cols.append("OPCLowerItemId")
+            args.append(lowerLimitItemId)
+            
+
+        elif limitSource == "Constant":
+            print "Adding a constant"
+        
+    elif limitType == "Validity":
+        SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) "\
+            "values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
+    elif limitType == "Release":
+        SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) "\
+            "values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
+    else:
+        system.gui.errorBox("Illegal limit type: %s" % (limitType))
+        return False
+    
+    ''' Store the limits entered into the GUI into the DB '''
+    upperReleaseLimit = rootContainer.getComponent("Upper Release Limit Field").floatValue
+    upperValidityLimit = rootContainer.getComponent("Upper Validity Limit Field").floatValue
+    upperSQCLimit = rootContainer.getComponent("Upper SQC Limit Field").floatValue
+    target = rootContainer.getComponent("Target Field").floatValue
+    standardDeviation = rootContainer.getComponent("Standard Deviation Field").floatValue
+    lowerSQCLimit = rootContainer.getComponent("Lower SQC Limit Field").floatValue
+    lowerValidityLimit = rootContainer.getComponent("Lower Validity Limit Field").floatValue 
+    lowerReleaseLimit = rootContainer.getComponent("Lower Release Limit Field").floatValue
+    
+    if limitType in ["Validity", "SQC"]:
+        cols.append("UpperValidityLimit")
+        args.append(upperValidityLimit)
+        cols.append("LowerValidityLimit")
+        args.append(lowerValidityLimit)
+    
+    if limitType in ["SQC"]:
+        cols.append("UpperSQCLimit")
+        args.append(upperSQCLimit)
+        cols.append("LowerSQCLimit")
+        args.append(lowerSQCLimit)
+        cols.append("Target")
+        args.append(target)
+        cols.append("StandardDeviation")
+        args.append(standardDeviation)
+        
+    if limitType in ["Release"]:
+        cols.append("UpperReleaseLimit")
+        args.append(upperReleaseLimit)
+        cols.append("LowerReleaseLimit")
+        args.append(lowerReleaseLimit)
+    
+    vals = ["?"] * len(cols)
+    SQL = "Insert into LtLimit (%s) values (%s)" % (",".join(cols), ",".join(vals))
+    print SQL
+    limitId = system.db.runPrepUpdate(SQL, args, getKey=1, database=db)
+    
+    ''' Create the UDT '''
+    createLabLimit(unitName, valueName, limitType)
+    
+    return True
+
+
+def readLimitsFromRecipe(event):
+    ''' This is called from the Create Limit Popup.  It is used for SQC limits when the source is recipe. '''
+    rootContainer = event.source.parent
+    
+    limitType = rootContainer.getComponent("Limit Type Dropdown").selectedStringValue    
+    if limitType != "SQC":
+        system.gui.warningBox("<HTML>SQC Limits are the only type of limits that can be loaded from the database.")
+        return
+    
+    limitSource = rootContainer.getComponent("Limit Source Dropdown").selectedStringValue            
+    if limitSource != "Recipe":
+        system.gui.warningBox("<HTML>Limits can only be loaded from the database is the source is <b>RECIPE</b>")
+        return
+
+    recipeKey = rootContainer.getComponent("Recipe Key Dropdown").selectedStringValue
+    if recipeKey == "":
+        system.gui.warningBox("Please configure the Recipe Key")
+        return
+    
+    unitName = rootContainer.unitName
+    db = rootContainer.db
+    provider = rootContainer.provider
+    grade = system.tag.read("[%s]Site/%s/Grade/grade" % (provider, unitName)).value
+    
+    SQL = "select UpperLimit, LowerLimit from RtSQCLimitView "\
+        "where RecipeFamilyName = '%s' "\
+        "and Parameter = '%s' "\
+        " and Grade = '%s' " % (unitName, recipeKey, grade)
+    print SQL
+    pds = system.db.runQuery(SQL, database=db)
+    if len(pds) == 0:
+        system.gui.warningBox("No SQC limits were found in the %s database for grade %s and key %s" % (unitName, grade, recipeKey))
+        return
+    
+    if len(pds) > 1:
+        system.gui.warningBox("Multiple SQC limits were found in the %s database for grade %s and key %s, only one record was expected" % (unitName, grade, recipeKey))
+        return
+    
+    record = pds[0]
+    upperSQCLimit = record["UpperLimit"]
+    lowerSQCLimit = record["LowerLimit"]
+    standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (provider)).value
+    standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (provider)).value
+    
+    target, standardDeviation, lowerValidityLimit, upperValidityLimit = calcSQCLimits(lowerSQCLimit, upperSQCLimit, standardDeviationsToSQCLimits, standardDeviationsToValidityLimits)
+
+    rootContainer.getComponent("Upper Validity Limit Field").floatValue = upperValidityLimit
+    rootContainer.getComponent("Lower Validity Limit Field").floatValue = lowerValidityLimit
+    rootContainer.getComponent("Upper SQC Limit Field").floatValue = upperSQCLimit
+    rootContainer.getComponent("Lower SQC Limit Field").floatValue = lowerSQCLimit
+    rootContainer.getComponent("Target Field").floatValue = target
+    rootContainer.getComponent("Standard Deviation Field").floatValue = standardDeviation
+    
+def calculateConstantLimits(event):
+    ''' This is called from the Create Limit Popup.  It is used for SQC limits when the source is constant. '''
+    rootContainer = event.source.parent
+    provider = rootContainer.provider
+    
+    limitType = rootContainer.getComponent("Limit Type Dropdown").selectedStringValue    
+    if limitType != "SQC":
+        system.gui.warningBox("<HTML>SQC Limits are the only type of limits that can be loaded from the database.")
+        return
+    
+    limitSource = rootContainer.getComponent("Limit Source Dropdown").selectedStringValue            
+    if limitSource != "Constant":
+        system.gui.warningBox("<HTML>Limits can only be calculated if the source is <b>CONSTANT</b>")
+        return
+
+    upperSQCLimit = rootContainer.getComponent("Upper SQC Limit Field").floatValue
+    lowerSQCLimit = rootContainer.getComponent("Lower SQC Limit Field").floatValue
+    standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (provider)).value
+    standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (provider)).value
+    
+    target, standardDeviation, lowerValidityLimit, upperValidityLimit = calcSQCLimits(lowerSQCLimit, upperSQCLimit, standardDeviationsToSQCLimits, standardDeviationsToValidityLimits)
+
+    rootContainer.getComponent("Upper Validity Limit Field").floatValue = upperValidityLimit
+    rootContainer.getComponent("Lower Validity Limit Field").floatValue = lowerValidityLimit
+    rootContainer.getComponent("Target Field").floatValue = target
+    rootContainer.getComponent("Standard Deviation Field").floatValue = standardDeviation

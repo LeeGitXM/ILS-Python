@@ -7,6 +7,9 @@ import system
 from ils.labData.common import postMessage
 from ils.common.ocAlert import sendAlert
 from ils.log.LogRecorder import LogRecorder
+from ils.common.util import isUserConnected
+from ils.common.message.client import sendCloseWindowMessage
+from ils.common.config import getDatabaseClient, getIsolationModeClient
 log = LogRecorder(__name__)
 
 #------------------------------
@@ -16,14 +19,8 @@ log = LogRecorder(__name__)
 # This is called by the limit checking module.  It sends a message to all of the clients to specify a lab limit
 # validity error.
 def notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database):
-    
     # Look for a connected operator - if one doesn't exist then automatically accept the value
-    foundConsole=False
-    pds=system.util.getSessionInfo()
-    for record in pds:
-        username=record["username"]
-        if username==post:
-            foundConsole=True
+    foundConsole = isUserConnected(post)    
     
     if not(foundConsole):
         txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
@@ -53,7 +50,7 @@ def notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue
     buttonLabel = "Acknowledge"
     callback = "ils.labData.limitWarning.validityLimitActionLauncher"
     timeoutEnabled = True
-    timeoutSeconds = 20
+    timeoutSeconds = readTimeout(tagProvider)
 
     sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
     return foundConsole
@@ -70,15 +67,9 @@ def customValidationActionLauncher(event, payload):
 # This is called by the limit checking module.  It sends a message to all of the clients to specify a lab limit
 # validity error.
 def notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit):
-    
     # Look for a connected operator - if one doesn't exist then automatically accept the value
-    foundConsole=False
-    pds=system.util.getSessionInfo()
-    for record in pds:
-        username=record["username"]
-        if username==post:
-            foundConsole=True
-    
+    foundConsole = isUserConnected(post)
+        
     if not(foundConsole):
         txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
         log.trace(txt)
@@ -109,7 +100,7 @@ def notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, s
     buttonLabel = "Acknowledge"
     callback = "ils.labData.limitWarning.validityLimitActionLauncher"
     timeoutEnabled = True
-    timeoutSeconds = 20
+    timeoutSeconds = readTimeout(tagProvider)
 
     sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
     return foundConsole
@@ -129,12 +120,7 @@ def validityLimitActionLauncher(event, payload):
 def notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperLimit, lowerLimit):
     
     # Look for a connected operator - if one doesn't exist then automatically accept the value
-    foundConsole=False
-    pds=system.util.getSessionInfo()
-    for record in pds:
-        username=record["username"]
-        if username==post:
-            foundConsole=True
+    foundConsole = isUserConnected(post)
     
     if not(foundConsole):
         txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
@@ -166,7 +152,7 @@ def notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sa
     buttonLabel = "Acknowledge"
     callback = "ils.labData.limitWarning.releaseLimitActionLauncher"
     timeoutEnabled = True
-    timeoutSeconds = 20
+    timeoutSeconds = readTimeout(tagProvider)
 
     sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, payload, timeoutEnabled, timeoutSeconds)
     return foundConsole
@@ -180,7 +166,10 @@ def releaseLimitActionLauncher(event, payload):
 #-----------------
 
 # This is called when the operator presses the accept button on the operator review screen or when that dialog times out.
-def acceptValue(rootContainer, timeout=False):
+def acceptValue(event, timeout=False):
+    window = system.gui.getParentWindow(event)
+    windowName = window.getPath()
+    rootContainer = event.source.parent
     log.trace("Accepting the value")
     
     valueId=rootContainer.valueId
@@ -189,7 +178,8 @@ def acceptValue(rootContainer, timeout=False):
     sampleTime=rootContainer.sampleTime
     tagProvider=rootContainer.tagProvider
     unitName=rootContainer.unitName
-    database=""
+    database=getDatabaseClient()
+    isolationMode=getIsolationModeClient()
     
     if timeout:
         postMessage("The value was accepted because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
@@ -197,10 +187,14 @@ def acceptValue(rootContainer, timeout=False):
         postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
 
     accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Operator Accept", tagProvider, database)
+    
+    sendCloseWindowMessage(projectName=system.util.getProjectName(), windowName=windowName, isolationMode=isolationMode, payload={})
 
 #
 # This is called when the operator presses the "Accept With UIR" button on the operator review screen or when that dialog times out.
-def acceptValueWithUIR(rootContainer, timeout=False):
+def acceptValueWithUIR(event, timeout=False):
+    window = system.gui.getParentWindow(event)
+    rootContainer = event.source.parent
     log.trace("Accepting the value and creating a UIR")
     
     valueId=rootContainer.valueId
@@ -246,13 +240,19 @@ def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvid
 
 # There is nothing that needs to be done if the operator determines that the value is not valid, by doing nothing we ignore 
 # the value.
-def rejectValue(rootContainer):
+def rejectValue(event):
+    window = system.gui.getParentWindow(event)
+    windowName = window.getPath()
+    rootContainer = event.source.parent
     log.trace("Rejecting the value")
     valueName=rootContainer.valueName
     rawValue=rootContainer.rawValue
     sampleTime=rootContainer.sampleTime
     tagProvider=rootContainer.tagProvider
     unitName=rootContainer.unitName
+    isolationMode=getIsolationModeClient()
+
+    sendCloseWindowMessage(projectName=system.util.getProjectName(), windowName=windowName, isolationMode=isolationMode, payload={})
 
     postMessage("The operator rejected %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
 
@@ -267,6 +267,10 @@ def rejectValue(rootContainer):
 
 # If the operator does not respond to the notification in a timely manner, then by default accept the value.  The burden is on
 # the operator to reject the value but the presumption is that the measurement is accurate.
-def timeOutValue(rootContainer):
+def timeOutValue(event):
     log.trace("Bad value handling timed out waiting for a decision from the operator")
-    acceptValue(rootContainer, True)
+    acceptValue(event, True)
+    
+def readTimeout(tagProvider):
+    timeoutSeconds = system.tag.read("[%s]configuration/LabData/limitWarningTimeoutSeconds" % (tagProvider)).value
+    return timeoutSeconds

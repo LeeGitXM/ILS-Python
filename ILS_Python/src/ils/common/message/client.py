@@ -8,6 +8,8 @@ import system, string
 from ils.common.config import getDatabaseClient, getIsolationModeClient
 from ils.common.windowUtil import positionWindow
 from ils.common.database import getConsoleWindowNameForConsole
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def handle(payload):
     print "Received a message with payload: ", payload
@@ -88,26 +90,7 @@ def closeWindowHandler(payload):
     window = payload["window"]
         
     print "Hiding window: ", window
-    system.nav.closeWindow(window)
-    
-def sfcCloseWindow(payload):
-    log.infof("In %s.sfcCloseWindow() with %s", __name__, str(payload))
-    windowId = payload[WINDOW_ID]
-    database = payload[DATABASE]
-    clientDatabase = getDatabaseClient()
-    if database <> clientDatabase:
-        log.tracef("Ignoring closeWindow message because database does not match (%s vs %s)", database, clientDatabase)
-        
-    log.tracef("Attempting to close window with id: %d", windowId)
-    if windowId <> None:
-        openWindows = system.gui.getOpenedWindows()
-        for window in openWindows:
-            # Not all windows have a windowId, so be careful
-            rootContainer = window.getRootContainer()
-            openWindowId = rootContainer.getPropertyValue("windowId")
-            if str(openWindowId) == str(windowId):
-                system.nav.closeWindow(window)
-    
+    system.nav.closeWindow(window)    
 
 def consoleMatch(consoleName):
     '''

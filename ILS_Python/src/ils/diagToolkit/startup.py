@@ -88,6 +88,7 @@ def createTags(tagProvider):
     data.append([path, "Rename", "String", "ils.extensions.appProperties.rename"])
     data.append([path, "Save", "String", "ils.extensions.appProperties.save"])
     data.append([path, "SetAux", "String", "ils.extensions.appProperties.setAux"])
+    data.append([path, "GetList", "String", "ils.extensions.appProperties.getList"])
     
     path = tagProvider + "Configuration/DiagnosticToolkit/FamilyExtensions/"
     data.append([path, "Delete", "String", "ils.extensions.famProperties.delete"])

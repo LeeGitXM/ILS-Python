@@ -3,37 +3,68 @@ Created on Mar 31, 2015
 
 @author: Pete
 '''
-import system
+import system, string
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 sqlLog = LogRecorder(__name__ + ".sql")
 
-# This is a memory resident dictionary of limit dictionaries that survives from scan to scan.  
-# The key is the valueId. It gets updated each cycle.  The main purpose of this cache is so that we can determine
-
+'''
+This is a memory resident dictionary of limit dictionaries that survives from scan to scan.  
+The key is the valueId.  It gets validated each cycle with new limits from the LtValueView database table.
+The main purpose of the cache is so optimize writing out to the Lab Limit UDTs, rather than just blast out to 
+the UDTs every cycle, I only write if a new or changed limit is detected.
+5/31/21 - Redesigned to handle multiple limits record.  Previously the last record found won.
+'''
 limits={}
 
 def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
-    log.trace("Checking Validity limits for %s..." % (valueName))
+    log.tracef("Checking Validity limits for %s - %s...", valueName, str(limit))
+    validityLimit = limit.get("VALIDITY", None)
+    log.tracef("...the validity limit is %s...", str(validityLimit))
     
-    upperLimit=limit.get("UpperValidityLimit",None)
-    lowerLimit=limit.get("LowerValidityLimit",None)
-    log.trace("   ...the validity limits are %s < %s < %s" % (str(lowerLimit), str(rawValue), str(upperLimit)))
+    if validityLimit == None:
+        log.tracef(" -- no validity limit found --")
+        return True, None, None
+    
+    upperLimit=validityLimit.get("UpperValidityLimit", None)
+    lowerLimit=validityLimit.get("LowerValidityLimit", None)
+    log.tracef("   ...the validity limits are %s < %s < %s", str(lowerLimit), str(rawValue), str(upperLimit))
     
     if upperLimit != None and rawValue > upperLimit:
-        log.trace("%s **Failed** the validity upper limit check..." % (valueName))        
+        log.tracef("%s **Failed** the validity upper limit check...", valueName)        
         return False, upperLimit, lowerLimit
     elif lowerLimit != None and rawValue < lowerLimit:
-        log.trace("%s **Failed** the validity lower limit check..." % (valueName))
+        log.tracef("%s **Failed** the validity lower limit check...", valueName)
         return False, upperLimit, lowerLimit
     else:
-        log.trace("%s passed the validity limit check..." % (valueName))
+        log.tracef("%s passed the validity limit check...", valueName)
+    
     return True, upperLimit, lowerLimit
 
 def checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
-    log.trace("Checking SQC limits...")
-    return True
+    log.tracef("Checking SQC - Validity limits for %s - %s", valueName, str(limit))
+    sqcLimit = limit.get("SQC", None)
+    log.tracef("...the SQC limit is %s...", str(sqcLimit))
+    
+    if sqcLimit == None:
+        log.tracef(" -- no validity limit found --")
+        return True, None, None
+    
+    upperLimit=sqcLimit.get("UpperValidityLimit", None)
+    lowerLimit=sqcLimit.get("LowerValidityLimit", None)
+    log.tracef("   ...the validity limits are %s < %s < %s", str(lowerLimit), str(rawValue), str(upperLimit))
+    
+    if upperLimit != None and rawValue > upperLimit:
+        log.tracef("%s **Failed** the SQC - validity upper limit check...", valueName)        
+        return False, upperLimit, lowerLimit
+    elif lowerLimit != None and rawValue < lowerLimit:
+        log.tracef("%s **Failed** the SQC - validity lower limit check...", valueName)
+        return False, upperLimit, lowerLimit
+    else:
+        log.tracef("%s passed the SQC - validity limit check...", valueName)
+
+    return True, upperLimit, lowerLimit
 
 # Release limit checking is exactly like validity limit checking, the difference is what happens if they fail.  It appears that
 # the main difference is that the notification screen gives the operator the chance to start a UIR.
@@ -41,20 +72,26 @@ def checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagP
 # they just put the release limits into the validity limits so they could use some common processing logic or what - but I am going 
 # to use the limits in the release limits 
 def checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
-    log.trace("Checking Release limits for %s..." % (valueName))
+    log.tracef("Checking Release limits for %s - %s...", valueName, str(limit))
+    releaseLimit = limit.get("RELEASE", None)
+    log.tracef("...the RELEASE limit is %s...", str(releaseLimit))
+    if releaseLimit == None:
+        log.tracef("%s There aren't any release limits", valueName)
+        return True, None, None
     
-    upperLimit=limit.get("UpperReleaseLimit",None)
-    lowerLimit=limit.get("LowerReleaseLimit",None)
-    log.trace("   ...the release limits are %s < %s < %s" % (str(lowerLimit), str(rawValue), str(upperLimit)))
+    upperLimit=releaseLimit.get("UpperReleaseLimit", None)
+    lowerLimit=releaseLimit.get("LowerReleaseLimit", None)
+    log.tracef("   ...the release limits are %s < %s < %s", str(lowerLimit), str(rawValue), str(upperLimit))
     
     if upperLimit != None and rawValue > upperLimit:
-        log.trace("%s **Failed** the release upper limit check..." % (valueName))        
+        log.tracef("%s **Failed** the release upper limit check...", valueName)
         return False, upperLimit, lowerLimit
     elif lowerLimit != None and rawValue < lowerLimit:
-        log.trace("%s **Failed** the release lower limit check..." % (valueName))
+        log.tracef("%s **Failed** the release lower limit check...", valueName)
         return False, upperLimit, lowerLimit
     else:
-        log.trace("%s passed the release limit check..." % (valueName))
+        log.tracef("%s passed the release limit check...", valueName)
+
     return True, upperLimit, lowerLimit
     
 
@@ -111,17 +148,12 @@ def fetchLimits(tagProvider, database):
             lowerReleaseLimit=record["LowerReleaseLimit"]
         return upperReleaseLimit, lowerReleaseLimit
     #-------------------------------------
-    def packLimit(record, tagProvider):
+    def packLimit(record, tagProvider, new=False):
         valueName=record["ValueName"]
         limitType=record["LimitType"]
+        log.tracef("Packing a %s limit for %s", limitType, valueName)
         
-        d={
-           "ValueName":record["ValueName"],
-           "LimitType":record["LimitType"],
-           "UnitName":record["UnitName"],
-           "Post":record["Post"],
-           "ValidationProcedure":record["ValidationProcedure"]
-           }
+        d={}
 
         if limitType == "SQC":
             upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation = getSQCLimits(record, None, tagProvider)
@@ -139,7 +171,17 @@ def fetchLimits(tagProvider, database):
             d["UpperValidityLimit"]=upperValidityLimit
             d["LowerValidityLimit"]=lowerValidityLimit
         else:
-            log.error("Unexpected limit type: <%s> for %s" % (limitType, valueName))
+            log.error("Unexpected limit type while packing: <%s> for %s" % (limitType, valueName))
+            
+        if new:
+            limitType=string.upper(limitType)
+            d={
+               "ValueName":record["ValueName"],
+               "UnitName":record["UnitName"],
+               "Post":record["Post"],
+               "ValidationProcedure":record["ValidationProcedure"],
+               limitType: d
+               }
 
         log.trace("Packed a dictionary for %s - %s: " % (valueName, str(d)))
         return d
@@ -150,29 +192,30 @@ def fetchLimits(tagProvider, database):
         def writeLimit(tagProvider, unitName, valueName, limitType, limitValue):
             if limitValue != None:
                 tagName="[%s]LabData/%s/%s/%s" % (tagProvider, unitName, valueName, limitType)
-                log.trace("Writing <%s> to %s" % (limitValue, tagName))
+                log.tracef("Writing Limit <%s> to %s", limitValue, tagName)
                 result=system.tag.write(tagName, limitValue)
                 if result == 0:
                     log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
         #-------------
         unitName=limit.get("UnitName","")
         valueName=limit.get("ValueName", None)
-        limitType=limit.get("LimitType", None)
-        if limitType == "SQC":
-            writeLimit(tagProvider, unitName, valueName + '-SQC', "upperValidityLimit", limit.get("UpperValidityLimit", None))
-            writeLimit(tagProvider, unitName, valueName + '-SQC', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
-            writeLimit(tagProvider, unitName, valueName + '-SQC', "upperSQCLimit", limit.get("UpperSQCLimit", None))
-            writeLimit(tagProvider, unitName, valueName + '-SQC', "lowerSQCLimit", limit.get("LowerSQCLimit", None))
-            writeLimit(tagProvider, unitName, valueName + '-SQC', "target", limit.get("Target", None))
-            writeLimit(tagProvider, unitName, valueName + '-SQC', "standardDeviation", limit.get("StandardDeviation", None))
-        elif limitType == "Release":
-            writeLimit(tagProvider, unitName, valueName + '-RELEASE', "upperReleaseLimit", limit.get("UpperReleaseLimit", None))
-            writeLimit(tagProvider, unitName, valueName + '-RELEASE', "lowerReleaseLimit", limit.get("LowerReleaseLimit", None))
-        elif limitType == "Validity":
-            writeLimit(tagProvider, unitName, valueName + '-VALIDITY', "upperValidityLimit", limit.get("UpperValidityLimit", None))
-            writeLimit(tagProvider, unitName, valueName + '-VALIDITY', "lowerValidityLimit", limit.get("LowerValidityLimit", None))
-        else:
-            log.error("Unexpected limit type: <%s> for %s" % (limitType, valueName))
+        log.tracef("Updating limit tags for %s - %s", valueName, str(limit))
+        for limitTypeKey in ["SQC", "VALIDITY", "RELEASE"]:
+            limitType=limit.get(limitTypeKey, None)
+            if limitType <> None and limitTypeKey == "SQC":
+                writeLimit(tagProvider, unitName, valueName + '-SQC', "upperValidityLimit", limitType.get("UpperValidityLimit", None))
+                writeLimit(tagProvider, unitName, valueName + '-SQC', "lowerValidityLimit", limitType.get("LowerValidityLimit", None))
+                writeLimit(tagProvider, unitName, valueName + '-SQC', "upperSQCLimit", limitType.get("UpperSQCLimit", None))
+                writeLimit(tagProvider, unitName, valueName + '-SQC', "lowerSQCLimit", limitType.get("LowerSQCLimit", None))
+                writeLimit(tagProvider, unitName, valueName + '-SQC', "target", limitType.get("Target", None))
+                writeLimit(tagProvider, unitName, valueName + '-SQC', "standardDeviation", limitType.get("StandardDeviation", None))
+            elif limitType <> None and limitTypeKey == "RELEASE":
+                writeLimit(tagProvider, unitName, valueName + '-RELEASE', "upperReleaseLimit", limitType.get("UpperReleaseLimit", None))
+                writeLimit(tagProvider, unitName, valueName + '-RELEASE', "lowerReleaseLimit", limitType.get("LowerReleaseLimit", None))
+            elif limitType <> None and limitTypeKey == "VALIDITY":
+                writeLimit(tagProvider, unitName, valueName + '-VALIDITY', "upperValidityLimit", limitType.get("UpperValidityLimit", None))
+                writeLimit(tagProvider, unitName, valueName + '-VALIDITY', "lowerValidityLimit", limitType.get("LowerValidityLimit", None))
+
     #-----------------------------------------------------------
     def readSQCLimitsFromDCS(record):
         valueName=record["ValueName"]
@@ -197,49 +240,103 @@ def fetchLimits(tagProvider, database):
         
         return upperSQCLimit, lowerSQCLimit
     #------------------------------------------
-        
-    maxStandardDeviations = 3.0
-    standardDeviationsToValidityLimits = system.tag.read("Configuration/LabData/standardDeviationsToValidityLimits").value
-    '''
-    These should be trace, but I'm interested in what happens on the first cycle...
-    '''
-    #log.info("Fetching new Limits...")
+
+    log.trace("Fetching new Limits...")
     log.trace("The old limits are: %s" % (str(limits)))
     SQL = "select * from LtLimitView"
     sqlLog.trace(SQL)
     pds = system.db.runQuery(SQL, database)
     log.trace("  ...fetched %i limits!" % (len(pds)))
+    
     for record in pds:
         valueId=record["ValueId"]
         unitName=record["UnitName"]
         if valueId in limits:
             limitType=record["LimitType"]
+            log.tracef("Processing a %s limit for an existing lab value: %s", limitType, str(valueId))
             
             oldLimit=limits[valueId]
             if limitType == "SQC":
                 upperSQCLimit, lowerSQCLimit, upperValidityLimit, lowerValidityLimit, target, standardDeviation = getSQCLimits(record, oldLimit, tagProvider)
+                if "SQC" in oldLimit:
+                    oldSqcLimit = oldLimit["SQC"]
 
-                if oldLimit.get("UpperSQCLimit", None) != upperSQCLimit or oldLimit.get("LowerSQCLimit", None) != lowerSQCLimit:
-                    log.trace("An existing SQC limit has changed")
-                    log.trace("Old: %s" % (str(oldLimit)))
-
-                    oldLimit["UpperValidityLimit"]=upperValidityLimit
-                    oldLimit["LowerValidityLimit"]=lowerValidityLimit
-                    oldLimit["UpperSQCLimit"]=upperSQCLimit
-                    oldLimit["LowerSQCLimit"]=lowerSQCLimit
-                    oldLimit["Target"]=target
-                    oldLimit["StandardDeviation"]=standardDeviation
-                    updateLimitTags(oldLimit, tagProvider)
-                    limits[valueId]=oldLimit
+                    if oldSqcLimit.get("UpperSQCLimit", None) != upperSQCLimit or \
+                        oldSqcLimit.get("LowerSQCLimit", None) != lowerSQCLimit or \
+                        oldSqcLimit.get("UpperValidityLimit", None) != upperValidityLimit or \
+                        oldSqcLimit.get("LowerValidityLimit", None) != lowerValidityLimit:
+                        
+                        log.trace("An existing SQC limit has changed")
+                        log.trace("Old: %s" % (str(oldSqcLimit)))
+    
+                        oldSqcLimit["UpperValidityLimit"]=upperValidityLimit
+                        oldSqcLimit["LowerValidityLimit"]=lowerValidityLimit
+                        oldSqcLimit["UpperSQCLimit"]=upperSQCLimit
+                        oldSqcLimit["LowerSQCLimit"]=lowerSQCLimit
+                        oldSqcLimit["Target"]=target
+                        oldSqcLimit["StandardDeviation"]=standardDeviation
+                        updateLimitTags(oldLimit, tagProvider)
+                        oldLimit["SQC"] = oldSqcLimit
+                        limits[valueId]=oldLimit
+                    else:
+                        log.trace("No change to an existing SQC limit")
                 else:
-                    log.trace("No change to an existing SQC limit")
-            elif limitType == "RELEASE":
-                getReleaseLimits(record)
+                    ''' Found a new SQC limit '''
+                    d = packLimit(record, tagProvider)
+                    oldLimit["SQC"] = d
+                    updateLimitTags(oldLimit, tagProvider)
+                    
+            elif string.upper(limitType) == "VALIDITY":
+                upperValidityLimit, lowerValidityLimit = getValidityLimits(record)
+                if "VALIDITY" in oldLimit:
+                    oldValidityLimit = oldLimit["VALIDITY"]
+
+                    if oldValidityLimit.get("UpperValidityLimit", None) != upperValidityLimit or \
+                        oldValidityLimit.get("LowerValidityLimit", None) != lowerValidityLimit:
+                        
+                        log.trace("An existing Validity limit has changed")
+                        log.trace("Old: %s" % (str(oldValidityLimit)))
+                        
+                        oldValidityLimit["UpperValidityLimit"]=upperValidityLimit
+                        oldValidityLimit["LowerValidityLimit"]=lowerValidityLimit
+                        
+                        oldLimit["VALIDITY"] = oldValidityLimit
+                        limits[valueId]=oldLimit
+                    else:
+                        log.trace("No change to an existing Validity limit")
+                else:
+                    ''' Found a new Validity limit '''
+                    d = packLimit(record, tagProvider)
+                    oldLimit["VALIDITY"] = d
+                    updateLimitTags(oldLimit, tagProvider)
             
-            
+            elif string.upper(limitType) == "RELEASE":
+                upperReleaseLimit, lowerReleaseLimit = getReleaseLimits(record)
+                if "RELEASE" in oldLimit:
+                    oldReleaseLimit = oldLimit["RELEASE"]
+
+                    if oldReleaseLimit.get("UpperReleaseLimit", None) != upperReleaseLimit or \
+                        oldReleaseLimit.get("LowerReleaseLimit", None) != lowerReleaseLimit:
+                        
+                        log.trace("An existing Release limit has changed")
+                        log.trace("Old: %s" % (str(oldReleaseLimit)))
+                        
+                        oldReleaseLimit["UpperReleaseLimit"]=upperReleaseLimit
+                        oldReleaseLimit["LowerReleaseLimit"]=lowerReleaseLimit
+                        
+                        oldLimit["RELEASE"] = oldReleaseLimit
+                        limits[valueId]=oldLimit
+                    else:
+                        log.trace("No change to an existing Release limit")
+                else:
+                    ''' Found a new Release limit '''
+                    d = packLimit(record, tagProvider)
+                    oldLimit["RELEASE"] = d
+                    updateLimitTags(oldLimit, tagProvider)
+    
         else:
-            log.trace("Adding a new limit to the limit data structure")
-            d=packLimit(record, tagProvider)
+            log.infof("Adding a new limit to the limit data structure for %s", str(valueId))
+            d=packLimit(record, tagProvider,True)
             updateLimitTags(d, tagProvider)
 
             # Now add the dictionary to the big permanent dictionary
@@ -323,12 +420,14 @@ def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
     lowerValidityLimit=float("NaN")
     upperValidityLimit=float("NaN")
             
-    # The default number of standard deviations from the target to the limits is 3
-    # The old system would look at the SQC limit blocks that use this lab data and find the max standard deviation,
-    # I'm not real sure how I am going to do this. 
-    maxStandardDeviations = 3.0
-    standardDeviationsToValidityLimits = system.tag.read("Configuration/LabData/standardDeviationsToValidityLimits").value
-    log.trace("Using %f standard deviations to the SQC limits and %s standard deviations to the validity limits" % (maxStandardDeviations, str(standardDeviationsToValidityLimits)))
+    '''
+    The default number of standard deviations from the target to the limits is 3
+    The old system would look at the SQC limit blocks that use this lab data and find the max standard deviation,
+    I'm not real sure how I am going to do this. 
+    '''
+    standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (tagProvider)).value
+    standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (tagProvider)).value
+    log.trace("Using %f standard deviations to the SQC limits and %s standard deviations to the validity limits" % (standardDeviationsToSQCLimits, str(standardDeviationsToValidityLimits)))
 
     if limitType == "Release":
         if upperSQCLimit == None:
@@ -409,10 +508,7 @@ def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         else: 
             log.infof("Loading new SQC limits for %s: %s to %s", valueName, str(lowerSQCLimit), str(upperSQCLimit))
             try:
-                target = (upperSQCLimit + lowerSQCLimit) / 2.0
-                standardDeviation = (upperSQCLimit - lowerSQCLimit) / (2.0 * maxStandardDeviations)
-                upperValidityLimit = target + (standardDeviationsToValidityLimits * standardDeviation)
-                lowerValidityLimit = target - (standardDeviationsToValidityLimits * standardDeviation)
+                target, standardDeviation, lowerValidityLimit, upperValidityLimit = calcSQCLimits(lowerSQCLimit, upperSQCLimit, standardDeviationsToSQCLimits, standardDeviationsToValidityLimits)
     
                 SQL = "Update LtLimit set " \
                     " UpperSQCLimit = %s, "\
@@ -427,7 +523,7 @@ def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
                 rows=system.db.runUpdateQuery(SQL, database)
                 sqlLog.trace("   ...updated %i rows" % (rows))
             except:
-                log.errorf("Caught error calculating SQC limits for %s: %s to %s (%s - %s)", valueName, str(lowerSQCLimit), str(upperSQCLimit), str(maxStandardDeviations), str(standardDeviationsToValidityLimits))
+                log.errorf("Caught error calculating SQC limits for %s: %s to %s (%s - %s)", valueName, str(lowerSQCLimit), str(upperSQCLimit), str(standardDeviationsToSQCLimits), str(standardDeviationsToValidityLimits))
                 target=float("NaN")
                 standardDeviation=float("NaN")
                 lowerValidityLimit=float("NaN")
@@ -453,5 +549,16 @@ def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
         else:
             log.trace("   write pending %s to %s" % (str(vals[i]), tags[i]))
         i = i + 1
+    
+    return target, standardDeviation, lowerValidityLimit, upperValidityLimit
+
+def calcSQCLimits(lowerSQCLimit, upperSQCLimit, standardDeviationsToSQCLimits, standardDeviationsToValidityLimits):
+    '''
+    This doesn't really calculate SQC limits, it calculates limparameters from the SQC limits.
+    '''
+    target = (upperSQCLimit + lowerSQCLimit) / 2.0
+    standardDeviation = (upperSQCLimit - lowerSQCLimit) / (2.0 * standardDeviationsToSQCLimits)
+    upperValidityLimit = target + (standardDeviationsToValidityLimits * standardDeviation)
+    lowerValidityLimit = target - (standardDeviationsToValidityLimits * standardDeviation)
     
     return target, standardDeviation, lowerValidityLimit, upperValidityLimit

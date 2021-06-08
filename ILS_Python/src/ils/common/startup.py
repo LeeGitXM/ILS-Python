@@ -25,7 +25,7 @@ def gateway():
     log.infof("In %s.gateway()", __name__)
     
     project = system.util.getProjectName()
-    log.infof("The project is: %s (ils.common.startup.gateway)", project)
+    log.infof("Starting project %s...", project)
     
     setLogLevels()
     
@@ -60,14 +60,13 @@ def gateway():
     eval(gatewayStartupScript)()
     
     print "...completed %s.gateway()" % (__name__)
-    
+
+
 def setLogLevels():
-    print "--------------------------------------------"
-    print "Setting log levels"
-#    address = system.util.getGatewayAddress()
-#    print "Address: ", address
-    system.util.setLoggingLevel("ils.common.watchdog", "off")
-    print "--------------------------------------------"
+    print "Setting log levels..."
+
+    ''' This throws an error, maybe it is running too early??  PH 5/19/21 '''
+    #system.util.setLoggingLevel("ils.common.watchdog", "off")
 
 
 def client():

@@ -4,39 +4,38 @@ Created on Jul 1, 2015
 @author: Pete
 '''
 import system
-from ils.sfc.common.constants import SQL
+from ils.common.config import getTagProviderClient, getDatabaseClient
+from ils.labData.configurationUI import updateLimit
 
 #open transaction when window is opened
-def internalFrameOpened(rootContainer):
-    # clear related Table
-    print "Calling updateRelatedTable() from internalFrameOpened()..."
-    updateRelatedTable(rootContainer)
-    
+def internalFrameOpened(rootContainer):    
     # initialize datasets
-    SQL = "SELECT ValueName FROM LtValue ORDER BY ValueName"
-    pds = system.db.runQuery(SQL)
+    db = getDatabaseClient()
+    SQL = "SELECT ValueId, ValueName FROM LtValue ORDER BY ValueName"
+    pds = system.db.runQuery(SQL, database=db)
     rootContainer.triggerValueNameDataset = pds
     
     SQL = "SELECT ServerName FROM TkWriteLocation ORDER BY ServerName"
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     rootContainer.serverNameDataset = pds
     
     SQL = "SELECT ValueName FROM LtValue ORDER BY ValueName"
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     rootContainer.valueNameDataset = pds
     
-    # Configure the static datasets that drive some combo boxes
     SQL = "select InterfaceName from LtHDAInterface order by InterfaceName"
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     rootContainer.hdaInterfaceDataset = pds
     
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
+    db = getDatabaseClient()
     print "Calling update() from internalFrameActivated()..."
-    update(rootContainer)
+    update(rootContainer, db)
     print "Calling updateRelatedTable() from internalFrameActivated()..."
-    updateRelatedTable(rootContainer)
-
+    updateRelatedTable(rootContainer, db)
+    print "Calling updateDerivedLimitsTable() from internalFrameActivated()..."
+    updateDerivedLimitsTable(rootContainer, db)
 
 #close transaction when window is closed
 def internalFrameClosing(rootContainer):
@@ -44,7 +43,7 @@ def internalFrameClosing(rootContainer):
 
 
 #update the window
-def update(rootContainer):
+def update(rootContainer, db):
     print "...updating display table..."
     table = rootContainer.getComponent("Power Table")
     dropDown= rootContainer.getComponent("UnitName")
@@ -62,7 +61,7 @@ def update(rootContainer):
         " WHERE LtValue.UnitId = %i ORDER BY LtValue.ValueName " % (unitId)
         
     print SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     table.updateInProgress = True
     table.data = pds
     table.updateInProgress = False
@@ -71,7 +70,7 @@ def update(rootContainer):
         print "ValueId on next line:"
         print valueId
         
-def updateRelatedTable(rootContainer):
+def updateRelatedTable(rootContainer, db):
     print "...updating related table..."
     table = rootContainer.getComponent("Power Table")
     ds = table.data  
@@ -88,7 +87,7 @@ def updateRelatedTable(rootContainer):
             " WHERE R.DerivedValueId = %i AND R.RelatedValueId = V.ValueId"\
             " ORDER BY V.ValueName" % (derivedValueId) 
         print sql
-        pds = system.db.runQuery(sql)
+        pds = system.db.runQuery(sql, database=db)
         relatedTable.data = pds
     else:
         print "no selected row: clear related table"
@@ -98,11 +97,15 @@ def updateRelatedTable(rootContainer):
             " WHERE R.DerivedValueId = %i AND R.RelatedValueId = V.ValueId"\
             " ORDER BY V.ValueName" % (derivedValueId) 
         print sql
-        pds = system.db.runQuery(sql)
+        pds = system.db.runQuery(sql, database=db)
         relatedTable.data = pds
+        
+def updateDerivedLimitsTable(rootContainer, db):
+    print "...updating derived limits table..."
+    updateLimit(rootContainer, db)
    
 #update the database when user completes the newly added row 
-def updateDatabase(rootContainer):
+def updateDatabaseXXX(rootContainer):
     print "Updating the database..."
     table = rootContainer.getComponent("Power Table")
     ds = table.data
@@ -226,13 +229,63 @@ def removeRow(event):
     update(rootContainer)
     
 #add a row
-def insertRow(event):
+def insertDataRow(event):
     rootContainer = event.source.parent
-    table = rootContainer.getComponent("Power Table")
-    ds = table.data
-    newRow = [-1, "", "", "", 2, -1, -1, "", 10, 30, "", ""]
-    ds = system.dataset.addRow(ds, 0, newRow)
-    table.data = ds
+    db = getDatabaseClient()
+
+    newName = rootContainer.getComponent("name").text
+    if newName == "":
+        system.gui.messageBox("You must specify a name for the lab value!", "Warning")
+        return False
+    
+    description = rootContainer.getComponent("description").text
+    decimals = rootContainer.getComponent("decimals").intValue
+    unitId = rootContainer.unitId
+    unitName = rootContainer.unitName
+    if unitId == -1 or unitName == "":
+        system.gui.messageBox("You must select a unit for the lab value!", "Warning")
+        return False
+    
+    ''' The following are required for the record into LtDerivedValue '''
+    resultInterfaceId = rootContainer.getComponent("opcServerDropdown").selectedValue
+    resultInterfaceName = rootContainer.getComponent("opcServerDropdown").selectedStringValue
+    resultItemId = rootContainer.getComponent("itemId").text
+    if resultItemId <> "" and resultInterfaceName == "":
+        system.gui.messageBox("You must specify an Interface for the item-id!", "Warning")
+        return False
+    
+    triggerValueId = rootContainer.getComponent("triggerDropdown").selectedValue
+    triggerName = rootContainer.getComponent("triggerDropdown").selectedStringValue
+    if triggerName == "":
+        system.gui.messageBox("You must select a trigger value!", "Warning")
+        return False
+    
+    print "Trigger: ", triggerName
+    print "Trigger Id: ", triggerValueId
+    
+    callback = rootContainer.getComponent("callbackProcedure").text
+    if callback == "":
+        system.gui.messageBox("You must specify a callback!", "Warning")
+        return False
+    
+    sampleTimeTolerance = rootContainer.getComponent("sampleTimeToleranceSpinner").intValue
+    newSampleWaitTime = rootContainer.getComponent("newSampleWaitTimeSpinner").intValue
+
+    SQL = "INSERT INTO LtValue (ValueName, Description, UnitId, DisplayDecimals)"\
+        "VALUES ('%s', '%s', %i, %i)" %(newName, description, unitId, decimals)
+    print SQL
+    valueId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
+    
+    if resultItemId == "":
+        SQL = "INSERT INTO LtDerivedValue (ValueId, TriggerValueId, Callback, SampleTimeTolerance, NewSampleWaitTime)"\
+            "VALUES (%s, %s, '%s', %s, %s)" %(str(valueId), str(triggerValueId), callback, sampleTimeTolerance, newSampleWaitTime)
+    else:
+        SQL = "INSERT INTO LtDerivedValue (ValueId, TriggerValueId, Callback, SampleTimeTolerance, NewSampleWaitTime, ResultItemId, ResultInterfaceId)"\
+            "VALUES (%s, %s, '%s', %s, %s, %s, %s)" %(str(valueId), str(triggerValueId), callback, sampleTimeTolerance, newSampleWaitTime, str(resultItemId), str(resultInterfaceId))
+    
+    print SQL
+    system.db.runUpdateQuery(SQL, database=db)
+    return True
     
 #add a row of related lab data
 def insertRelatedDataRow(event):

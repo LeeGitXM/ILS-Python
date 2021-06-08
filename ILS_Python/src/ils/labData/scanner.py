@@ -11,6 +11,7 @@ from ils.common.config import getTagProvider, getIsolationTagProvider, getDataba
 from ils.labData.common import postMessage
 from java.util import Calendar
 from ils.common.database import toDateString
+from ils.common.cast import toDateTime
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -356,7 +357,7 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, s
                     else:
                         log.info("         *** Skipping *** Write of derived value %f for %s to %s" % (newVal, valueName, resultItemId))
                 else:
-                    derivedLog.warning("         The derived value callback was unsuccessful")
+                    derivedLog.warn("         The derived value callback was unsuccessful")
 
                 # Remove this derived variable from the open calculation cache
                 del derivedCalculationCache[valueName]
@@ -506,10 +507,10 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
             validatedList = []
             for qv in valueList:
                 phdLog.tracef("Checking qv: %s", str(qv))
-                if qv["timestamp"] < endDate:
+                if toDateTime(qv["timestamp"], dateDelimiter="-") < endDate:
                     validatedList.append(qv)
                 else:
-                    phdLog.warning("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
+                    phdLog.warn("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
     
             if len(validatedList) == 0:
                 return False, None, None, "NoDataFound"
@@ -543,7 +544,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
                 if qv.timestamp < endDate:
                     validatedList.append(qv)
                 else:
-                    phdLog.warning("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
+                    phdLog.warn("Found a lab sample in the future for %s-%s" % (str(valueName), str(itemId)))
     
             if len(validatedList) == 0:
                 return False, None, None, "NoDataFound"
@@ -631,9 +632,11 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
     return writeTags, writeTagValues
     
     
-# Handle a new value.  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
+'''
+Handle a new value generically, regardless of its source..  The first thing to do is to check the limits.  If there are validity limits and the value is outside the 
 # limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
 # then store the value automatically
+'''
 def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
                       validationProcedure, writeTags, writeTagValues, log):
     
@@ -666,21 +669,38 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
             return writeTags, writeTagValues
         
     validValidity = True
+    validSQCValidity = True
     validRelease = True
     if limit != None:
         log.trace("Evaluating limits for this value: %s" % (str(limit)))
+        
+        ''' Validity limits are a little funny; there can be a pure validity limit and there can be a validity limit that is part of an SQC limit.  '''
         from ils.labData.limits import checkValidityLimit
         validValidity, upperValidityLimit, lowerValidityLimit=checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
         from ils.labData.limits import checkSQCLimit
-        validSQC=checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
+        validSQCValidity, upperValidityLimit, lowerValidityLimit =checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
             
         from ils.labData.limits import checkReleaseLimit
         validRelease, upperReleaseLimit, lowerReleaseLimit=checkReleaseLimit(valueId, valueName, rawValue, sampleTime, database, tagProvider, limit)
-        
+    
+    log.tracef("validValidity: %s", str(validValidity))
+    log.tracef("validSQCValidity: %s", str(validSQCValidity))
+    log.tracef("validRelease: %s", str(validRelease))
+    
     # If the value is valid then store it to the database and write the value and sample time to the tag (UDT)
-    if not(validValidity):
-        log.trace("%s *failed* validity checks" % (valueName) )
+    if not(validRelease):
+        log.tracef("%s *failed* release limit checks", valueName)
+        
+        from ils.labData.limitWarning import notifyReleaseLimitViolation
+        foundConsole=notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperReleaseLimit, lowerReleaseLimit)
+        # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
+        # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
+        # different values - not sure if that causes a problem)
+        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)
+    
+    elif not(validValidity) or not(validSQCValidity):
+        log.tracef("%s *failed* validity checks", valueName)
         
         from ils.labData.limitWarning import notifyValidityLimitViolation
         foundConsole=notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperValidityLimit, lowerValidityLimit)
@@ -688,18 +708,9 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
         # different values - not sure if that causes a problem)
         writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)    
-    elif not(validRelease):
-        log.trace("%s *failed* release limit checks" % (valueName) )
-        
-        from ils.labData.limitWarning import notifyReleaseLimitViolation
-        foundConsole=notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sampleTime, tagProvider, database, upperReleaseLimit, lowerReleaseLimit)
-        # Mark the tags as failed for now, If the notification found a console, then it will be a minute or two before the operator 
-        # will determine whether or not to accept the value. (If we don't find a console then the same tags may be in this list with 
-        # different values - not sure if that causes a problem)
-        writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, False, foundConsole, writeTags, writeTagValues, log)    
       
     else:
-        log.trace("%s passed all limit checks" % (valueName))
+        log.tracef("%s passed all limit checks", valueName)
         storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvider, database)
         writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues, log)
             
@@ -733,12 +744,15 @@ def storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvi
 def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database=""):
     success = True  # If the row already exists then consider it a success
     insertedRows = 0
+
+    sampleTimeType = type(sampleTime).__name__
+    if sampleTimeType == "Date":
+        log.tracef("sampleTime is a date, converting to a string...")
+        sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
     
-    print "Sample Time: ", sampleTime
     if sampleTime.find(".") > 0:
         sampleTime = sampleTime[:sampleTime.find(".")]
-    print "Adjusted Sample Time: ", sampleTime
-    #sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
+
     SQL = "select count(*) from LtHistory where valueId = %i and RawValue = %s and SampleTime = '%s'" % (valueId, str(rawValue), sampleTime)
     rows = system.db.runScalarQuery(SQL, database)
     if rows == 0:
@@ -886,7 +900,8 @@ def simulateReadRaw(itemIds, startDate, endDate):
         phdLog.trace(SQL)
         pds = system.db.runQuery(SQL, "PHD_SIMULATOR")
         for record in pds:
-            valList.append({"value": record["val"], "quality":"Good", "timestamp": record["dateTime"]})
+            dateTime = system.db.dateFormat(record["dateTime"], "yyyy-MM-dd HH:mm:ss.000")
+            valList.append({"value": record["val"], "quality":"Good", "timestamp": dateTime})
         retVals.append(valList)
     
     return retVals

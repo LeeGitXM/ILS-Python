@@ -44,14 +44,14 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
         return success, errorMessage, itemId
     
     def writeWithNoCheck(self, val, valueType=""):
-        print "In %s.writeWithNoCheck()..." % (__name__)      
+        log.tracef("In %s.writeWithNoCheck()...", __name__)      
         status, msg = self.writer(val, False, valueType)
         return status, msg
     
     # Write with confirmation.
     # Assume the UDT structure of an OPC Output
     def writeDatum(self, val, valueType=""):
-        print "In %s.writeDatum()..." % (__name__)
+        log.tracef("In %s.writeDatum()...", __name__)
         status, msg = self.writer(val, True, valueType)
         return status, msg
     
