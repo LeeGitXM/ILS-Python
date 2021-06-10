@@ -230,7 +230,10 @@ class FinalDiagnosis(basicblock.BasicBlock):
     
     def setAuxData(self, data):
         '''
-        Set aux data in an external database. This base method does nothing
+        Update / insert data in the Symbolic Ai database. 
+        The goal is to synchronize the database with the configuration of the Final Diagnosis in Ignition, i.e., the serialized block.
+        For now, this is called whenever the focus in the property editor is lost.  It should be called when the user selects File->Save
+        in the Designer.
         '''
         self.log.infof("In finalDiagnosis.setAuxData() with %s", str(data))
         
@@ -248,7 +251,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
 
         self.log.tracef("Application: %s", applicationName)
         self.log.tracef("Family: %s", familyName)
-        self.log.tracef("Final Diagnosis: %s", finalDiagnosisName)
+        self.log.tracef("Final Diagnosis: %s (%s)", finalDiagnosisName, finalDiagnosisUUID)
         
         properties = data[0]
         lists = data[1]

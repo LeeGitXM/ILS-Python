@@ -106,7 +106,6 @@ Fill the aux structure with values from the database
 The caller must supply either the production or isolation database name
 '''
 def getAux(uuid,aux,db):
-
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
     import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
@@ -211,8 +210,8 @@ def setAux(uuid, aux, db):
     log.tracef("  ...the application name is: %s,  database: %s",applicationName, db)
     
     properties = aux[0]
-    lists      = aux[1]
-    maplists   = aux[2]
+    lists = aux[1]
+    maplists = aux[2]
     
     log.tracef("Saving properties: %s", str(properties))
     log.tracef("Saving lists: %s", str(lists))
@@ -258,28 +257,31 @@ def setAux(uuid, aux, db):
         system.db.runPrepUpdate(SQL, args, db)
         log.tracef("Updated an existing application with id: %d", applicationId)
     
-    # Before we add any new quant outputs, fetch the ones that are already there so we can see if the user deleted any
-    SQL = "select QuantOutputId from DtQuantOutput where ApplicationId = %s" % (str(applicationId))
+    '''
+    Before we add any new quant outputs, fetch the ones that are already there so we can see if the user deleted any.
+    We can't rely on the quantOutputId in the block, it is only in the DB.  So get the names and ids, and look for the names.
+    '''
+    SQL = "select QuantOutputName, QuantOutputId from DtQuantOutput where ApplicationId = %s" % (str(applicationId))
     pds = system.db.runQuery(SQL,db)
-    quantOutputIds = []
+    quantOutputs = {}
     for record in pds:
         quantOutputId = record["QuantOutputId"]
-        quantOutputIds.append(quantOutputId)
-    log.tracef("The list of existing Quant Output Ids is: %s", str(quantOutputIds))
+        quantOutputName = record["QuantOutputName"]
+        quantOutputs[quantOutputName] = quantOutputId
+    log.tracef("The dictionary of existing Quant Outputs is: %s", str(quantOutputs))
     
     # Now process the quant outputs that are in the list.
     # The list is a list of dictionaries
     outputList = maplists.get("QuantOutputs",[])
-    for record in outputList:
-        quantOutputId=record.get("QuantOutputId", -1)
-        quantOutputId = int(quantOutputId)
-        
+    for record in outputList:       
         # Update the list of ids so I know which ones to delete at the end
-        if quantOutputId in quantOutputIds:
-            quantOutputIds.remove(quantOutputId)
-
-        quantOutput=record.get("QuantOutput", "")
-        log.tracef("...saving Quant Output: %s", str(quantOutput))
+        quantOutputName = record.get("QuantOutput", "")
+        quantOutputId = quantOutputs.get(quantOutputName, -1)
+        if quantOutputId > 0:
+            log.tracef("Found %s in the list of existing quantOutputs...", quantOutputName)
+            del quantOutputs[quantOutputName]
+        
+        log.tracef("...saving Quant Output: %s - %d", str(quantOutputName), quantOutputId)
         tagPath = record.get("TagPath", "")
         feedbackMethod = record.get("FeedbackMethod", 'Simple Sum')
         log.tracef("   (feedback method: <%s>", feedbackMethod)
@@ -305,6 +307,11 @@ def setAux(uuid, aux, db):
         SQL = "select LookupId from Lookup where LookupTypeCode = 'FeedbackMethod' and LookupName = '%s'" % (feedbackMethod)
         feedbackMethodId = system.db.runScalarQuery(SQL,db)
         log.tracef("SQL: %s  =>  %s", SQL, str(feedbackMethodId))
+        if feedbackMethodId == None:
+            log.tracef("---unable to find the feedback method, picking the minimum legal value---")
+            SQL = "select min(LookupId) from Lookup where LookupTypeCode = 'FeedbackMethod' "
+            feedbackMethodId = system.db.runScalarQuery(SQL,db)
+            log.tracef("SQL: %s  =>  %s", SQL, str(feedbackMethodId))
         
         log.tracef("Id: %d", quantOutputId)
         log.tracef("Tagpath: %s", tagPath)
@@ -313,22 +320,24 @@ def setAux(uuid, aux, db):
         log.tracef("Most Positive Increment: %s", str(mostPositiveIncrement))
         
         if quantOutputId < 0:
-            log.tracef("...inserting...")
+            log.tracef("...inserting a new quant output...")
             SQL = "insert into DtQuantOutput (QuantOutputName, ApplicationId, TagPath, MostNegativeIncrement, MostPositiveIncrement,"\
                 " MinimumIncrement, SetpointHighLimit, SetpointLowLimit, FeedbackMethodId, IncrementalOutput) values (?,?,?,?,?,?,?,?,?,?)"
-            system.db.runPrepUpdate(SQL,[quantOutput, applicationId, tagPath, mostNegativeIncrement, mostPositiveIncrement, \
+            log.tracef("SQL: %s", SQL)
+            system.db.runPrepUpdate(SQL,[quantOutputName, applicationId, tagPath, mostNegativeIncrement, mostPositiveIncrement, \
                 minimumIncrement, setpointHighLimit, setpointLowLimit, feedbackMethodId, incrementalOutput],db)
         else:
             log.tracef("...updating...")
             SQL = "update DtQuantOutput set QuantOutputName = '%s', TagPath = '%s', MostNegativeIncrement = %s, MostPositiveIncrement = %s,"\
                 " MinimumIncrement = %s, SetpointHighLimit = %s, SetpointLowLimit = %s, FeedbackMethodId = %s, IncrementalOutput = %s "\
-                " where QuantOutputId = %s" % (quantOutput, tagPath, str(mostNegativeIncrement), str(mostPositiveIncrement), \
+                " where QuantOutputId = %s" % (quantOutputName, tagPath, str(mostNegativeIncrement), str(mostPositiveIncrement), \
                 str(minimumIncrement), str(setpointHighLimit), str(setpointLowLimit), str(feedbackMethodId), str(incrementalOutput), str(quantOutputId))
+            log.tracef("SQL: %s", SQL)
             system.db.runUpdateQuery(SQL, db)
     
     # Now see if there are some Quant Outputs in the database that were not in the list
-    log.tracef("--- Quant Outputs to delete: %s", str(quantOutputIds))
-    for quantOutputId in quantOutputIds:
+    log.tracef("--- Quant Outputs to delete: %s", str(quantOutputs))
+    for quantOutputId in quantOutputs.values():
         log.tracef("...delete: %d", quantOutputId)
         system.db.runUpdateQuery("delete from DtQuantOutput where QuantOutputId = %s" % (str(quantOutputId)),db)
         
@@ -373,5 +382,3 @@ def getList(key,lst,db):
     
     else:
         log.warnf("In %s.getList() - unexpected key: %s", __name__, key)
-        
-        

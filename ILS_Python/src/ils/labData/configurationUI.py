@@ -617,8 +617,11 @@ def saveLimitRow(table, row, colName, oldValue, newValue):
         rows = system.db.runPrepUpdate(SQL, [newValue, limitId], database=db)
         print "Updated %i rows" % (rows)
         
+    updateLimitTag(unitName, valueName, limitType, colName, newValue)
+
+def updateLimitTag(unitName, valueName, limitType, colName, newValue):
         '''
-        Now update the UDT
+        Now update the UDT - This should be called when they edit a cell in the table, AND when a new limit is created.
         '''
         tagProvider = getTagProviderClient()
     
@@ -699,7 +702,7 @@ def createLimit(event):
     valueName = rootContainer.valueName
 
     from ils.common.database import lookup
-    limitType = rootContainer.getComponent("Limit Type Dropdown").selectedStringValue    
+    limitType = string.upper(rootContainer.getComponent("Limit Type Dropdown").selectedStringValue)
     limitTypeId = lookup("RtLimitType", limitType)
     limitSource = rootContainer.getComponent("Limit Source Dropdown").selectedStringValue    
     limitSourceId = lookup("RtLimitSource", limitSource)
@@ -743,21 +746,49 @@ def createLimit(event):
             cols.append("OPCLowerItemId")
             args.append(lowerLimitItemId)
             
-
         elif limitSource == "Constant":
-            print "Adding a constant"
+            print "Adding a constant limit"
         
-    elif limitType == "Validity":
-        SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) "\
-            "values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
-    elif limitType == "Release":
-        SQL = "Insert into LtLimit (ValueId, LimitTypeId, LimitSourceId) "\
-            "values (%s, %s, %s)" % (str(valueId), str(limitTypeId), str(limitSourceId))
+    elif limitType == "VALIDITY":
+        if limitSource == "DCS":
+            opcServerId = rootContainer.getComponent("OPC Server Dropdown").selectedValue
+            if opcServerId == -1:
+                system.gui.warningBox("Please select an OPC Server")
+                return False
+            cols.append("OPCInterfaceId")
+            args.append(opcServerId)
+            
+            upperLimitItemId = rootContainer.getComponent("Upper Limit Item Id Field").text
+            if upperLimitItemId == "":
+                system.gui.warningBox("Please configure the Upper Limit Item Id")
+                return False
+            cols.append("OPCUpperItemId")
+            args.append(upperLimitItemId)
+            
+            lowerLimitItemId = rootContainer.getComponent("Lower Limit Item Id Field").text
+            if lowerLimitItemId == "":
+                system.gui.warningBox("Please configure the Lower Limit Item Id")
+                return False
+            cols.append("OPCLowerItemId")
+            args.append(lowerLimitItemId)
+            
+        elif limitSource == "Constant":
+            print "Adding a constant limit"
+        
+        else:
+            system.gui.warningBox("<HTML>Validity limits require a source of <b>DCS</b> or <b>Constant</b>.  Please make a selection from the Source dropdown.")
+            return False
+    
+    elif limitType == "RELEASE":
+        if limitSource != "Constant":
+            system.gui.warningBox("<HTML>The only valid source for release limits is <b>Constant</b>.  Please select <b>Constant</b> from the Source dropdown.")
+            return False
+
     else:
         system.gui.errorBox("Illegal limit type: %s" % (limitType))
         return False
     
-    ''' Store the limits entered into the GUI into the DB '''
+    ''' Get the limits entered into the GUI '''
     upperReleaseLimit = rootContainer.getComponent("Upper Release Limit Field").floatValue
     upperValidityLimit = rootContainer.getComponent("Upper Validity Limit Field").floatValue
     upperSQCLimit = rootContainer.getComponent("Upper SQC Limit Field").floatValue
@@ -767,7 +798,7 @@ def createLimit(event):
     lowerValidityLimit = rootContainer.getComponent("Lower Validity Limit Field").floatValue 
     lowerReleaseLimit = rootContainer.getComponent("Lower Release Limit Field").floatValue
     
-    if limitType in ["Validity", "SQC"]:
+    if limitType in ["VALIDITY", "SQC"]:
         cols.append("UpperValidityLimit")
         args.append(upperValidityLimit)
         cols.append("LowerValidityLimit")
@@ -783,7 +814,7 @@ def createLimit(event):
         cols.append("StandardDeviation")
         args.append(standardDeviation)
         
-    if limitType in ["Release"]:
+    if limitType in ["RELEASE"]:
         cols.append("UpperReleaseLimit")
         args.append(upperReleaseLimit)
         cols.append("LowerReleaseLimit")
@@ -792,10 +823,26 @@ def createLimit(event):
     vals = ["?"] * len(cols)
     SQL = "Insert into LtLimit (%s) values (%s)" % (",".join(cols), ",".join(vals))
     print SQL
-    limitId = system.db.runPrepUpdate(SQL, args, getKey=1, database=db)
+    system.db.runPrepUpdate(SQL, args, getKey=1, database=db)
     
     ''' Create the UDT '''
     createLabLimit(unitName, valueName, limitType)
+    
+    ''' Now that the UDT exists, update the tags '''
+    #TODO - Update the tags for other limit types
+    if limitType in ["RELEASE"]:
+        updateLimitTag(unitName, valueName, limitType, "UpperReleaseLimit", upperReleaseLimit)
+        updateLimitTag(unitName, valueName, limitType, "LowerReleaseLimit", lowerReleaseLimit)
+    elif limitType in ["VALIDITY"]:
+        updateLimitTag(unitName, valueName, limitType, "UpperValidityLimit", upperValidityLimit)
+        updateLimitTag(unitName, valueName, limitType, "LowerValidityLimit", lowerValidityLimit)
+    elif limitType in ["SQC"]:
+        updateLimitTag(unitName, valueName, limitType, "UpperSQCLimit", upperSQCLimit)
+        updateLimitTag(unitName, valueName, limitType, "LowerSQCLimit", lowerSQCLimit)
+        updateLimitTag(unitName, valueName, limitType, "Target", target)
+        updateLimitTag(unitName, valueName, limitType, "StandardDeviation", standardDeviation)
+        updateLimitTag(unitName, valueName, limitType, "UpperValidityLimit", upperValidityLimit)
+        updateLimitTag(unitName, valueName, limitType, "LowerValidityLimit", lowerValidityLimit)
     
     return True
 

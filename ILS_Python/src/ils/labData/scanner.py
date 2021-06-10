@@ -158,6 +158,7 @@ def checkForDerivedValueTriggers(database):
         derivedValueId=record['DerivedValueId']
         triggerValueName=record['TriggerValueName']
         triggerValueId=record['TriggerValueId']
+        callback=record["Callback"]
         triggerRawValue=record['TriggerRawValue']
         triggerSampleTime=record['TriggerSampleTime']
         triggerReportTime=record['TriggerReportTime']
@@ -336,37 +337,39 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, s
         
         if relatedDataIsConsistent:
             from ils.labData.callbackDispatcher import derivedValueCallback
+            
+            derivedLog.trace("      Calling %s and passing %s" % (callback, str(dataDictionary)))
+            
             try:
-                derivedLog.trace("      Calling %s and passing %s" % (callback, str(dataDictionary)))
                 returnDictionary = derivedValueCallback(callback, dataDictionary)
                 derivedLog.trace("         The value returned from the calculation method is: %s" % (str(returnDictionary)))
-                
                 status=returnDictionary.get("status", "Error")
-                if string.upper(status) == "SUCCESS":
-                    newVal=returnDictionary.get("value", None)
-                    # Use the sample time of the triggerValue and store the value in the database and in the UDT tags
-                    storeValue(valueId, valueName, newVal, sampleTime, unitName, derivedLog, tagProvider, database)
-                
-                    # This updates the Lab Data UDT tags - derived values do not get validated, so set valid = true; this makes the console argument irrelevant
-                    valid = True
-                    writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, newVal, sampleTime, valid, True, writeTags, writeTagValues, log)
-                
-                    # Derived lab data also has a target OPC tag that it needs to update - do this immediately
-                    if writeEnabled:
-                        writeToPHD(resultServerName, resultItemId, newVal, sampleTime, simulateHDA)
-                    else:
-                        log.info("         *** Skipping *** Write of derived value %f for %s to %s" % (newVal, valueName, resultItemId))
-                else:
-                    derivedLog.warn("         The derived value callback was unsuccessful")
-
-                # Remove this derived variable from the open calculation cache
-                del derivedCalculationCache[valueName]
-                
             except:
                 errorType,value,trace = sys.exc_info()
                 errorTxt = traceback.format_exception(errorType, value, trace, 500)
                 derivedLog.error("Caught an exception calling calculation method named %s... \n%s" % (callback, errorTxt) )
-                return writeTags, writeTagValues
+                status = "Error"
+
+            if string.upper(status) == "SUCCESS":
+                newVal=returnDictionary.get("value", None)
+                # Use the sample time of the triggerValue and store the value in the database and in the UDT tags
+                storeValue(valueId, valueName, newVal, str(sampleTime), unitName, derivedLog, tagProvider, database)
+            
+                # This updates the Lab Data UDT tags - derived values do not get validated, so set valid = true; this makes the console argument irrelevant
+                valid = True
+                writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, newVal, sampleTime, valid, True, writeTags, writeTagValues, log)
+            
+                # Derived lab data also has a target OPC tag that it needs to update - do this immediately
+                if writeEnabled:
+                    writeToPHD(resultServerName, resultItemId, newVal, sampleTime, simulateHDA)
+                else:
+                    log.info("         *** Skipping *** Write of derived value %f for %s to %s" % (newVal, valueName, resultItemId))
+            else:
+                derivedLog.warn("         The derived value callback was unsuccessful")
+
+            # Remove this derived variable from the open calculation cache
+            del derivedCalculationCache[valueName]
+    
         else:
             derivedLog.trace("         The lab data is not consistent, check if we should give up...")
             from java.util import Date
