@@ -115,9 +115,13 @@ def handleMessage(payload):
         
         del payload['isolationMode']
 
-    windowName = payload["windowName"]
-    del payload['windowName']
-    if windowName in ["", None]:
+    ''' If the window name isn't specified, then use the default window. '''
+    windowName = payload.get("windowName", "NOT_FOUND")
+    
+    if windowName != "NOT_FOUND":
+        del payload['windowName']
+    
+    if windowName in ["NOT_FOUND", "", None]:
         windowName = "Common/OC Alert"
     
     system.nav.openWindowInstance(windowName, payload)

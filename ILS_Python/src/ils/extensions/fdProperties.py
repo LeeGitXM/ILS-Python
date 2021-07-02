@@ -7,13 +7,14 @@ from ils.common.cast import toBit
 from ils.common.database import toDateString
 from ils.sfc.common.util import logExceptionCause
 
-handler = ControllerRequestHandler.getInstance()
+DEBUG = True
 
 '''
 Gateway Scope Functions
 '''
 def delete(finalDiagnosisUUID):
     '''    Even though a delete is initiated from Designer scope, this runs in gateway scope!  '''
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".delete")
     log.infof("In %s.delete()", __name__)
@@ -59,6 +60,7 @@ def rename(uuid,oldName,newName):
         SQL = "UPDATE DtFinalDiagnosis SET FinalDiagnosisName= '%s' WHERE FinalDiagnosisName = '%s'" % (newName,oldName)
         system.db.runUpdateQuery(SQL,db)
     
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".rename")
     
@@ -79,6 +81,7 @@ def getAux(uuid, aux, db):
      
     Fill the aux structure with values from the database.
     '''
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".getAux")
     log.infof("In %s.getAux...", __name__)
@@ -88,7 +91,7 @@ def getAux(uuid, aux, db):
     properties = aux[0]
     lists = aux[1]
     fdName = properties.get("Name","")
-    log.tracef("     %s / %s / %s and %s", appName, familyName, fdName, db)
+    if (DEBUG): log.infof("     %s / %s / %s and %s", appName, familyName, fdName, db)
 
     SQL = "SELECT FD.FinalDiagnosisPriority,FD.CalculationMethod,FD.PostTextRecommendation,"\
           " FD.PostProcessingCallback,FD.RefreshRate,FD.TextRecommendation,FD.Comment, "\
@@ -162,11 +165,12 @@ def getAux(uuid, aux, db):
             
     lists["OutputsInUse"] = outputs
     
-    log.tracef("properties: %s", str(properties))
-    log.tracef("lists: %s", str(lists))
+    if (DEBUG): log.infof("properties: %s", str(properties))
+    if (DEBUG): log.infof("lists: %s", str(lists))
     
 
 def setAux(uuid,aux,db):
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".setAux")
     log.infof("In %s.setAux using db: %s", __name__, db)
@@ -176,15 +180,15 @@ def setAux(uuid,aux,db):
     properties = aux[0]
     lists = aux[1]
     name = properties.get("Name","")
-    log.tracef("Application/family/diagnosis: %s / %s / %s", app, family, name)
-    log.tracef("Properties: %s", str(properties))
-    log.tracef("Lists: %s", str(lists))
+    if (DEBUG): log.infof("Application/family/diagnosis: %s / %s / %s", app, family, name)
+    if (DEBUG): log.infof("Properties: %s", str(properties))
+    if (DEBUG): log.infof("Lists: %s", str(lists))
     
-    log.infof("Show Explanation with Recommendation: %s", str(properties.get("ShowExplanationWithRecommendation","0")))
+    if (DEBUG): log.infof("Show Explanation with Recommendation: %s", str(properties.get("ShowExplanationWithRecommendation","0")))
     
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (app)
     applicationId = system.db.runScalarQuery(SQL,db)
-    log.infof("The application Id is: %s", str(applicationId))
+    if (DEBUG): log.infof("The application Id is: %s", str(applicationId))
     if applicationId == None:
         SQL = "insert into DtApplication (ApplicationName) values (?)"
         applicationId = system.db.runPrepUpdate(SQL, [app], db, getKey=1)
@@ -193,21 +197,21 @@ def setAux(uuid,aux,db):
           " WHERE ApplicationId = %s"\
           "  AND familyName = '%s'" % (applicationId,family)
     familyId = system.db.runScalarQuery(SQL,db)
-    log.infof("The family Id is: %s", str(familyId))
+    if (DEBUG): log.infof("The family Id is: %s", str(familyId))
     if familyId == None:
         SQL = "INSERT INTO DtFamily (applicationId,familyName,familyPriority) "\
                " VALUES (?, ?, 0.0)"
-        log.infof(SQL)
+        if (DEBUG): log.infof(SQL)
         familyId = system.db.runPrepUpdate(SQL, [applicationId, family], db, getKey=1)
         
     SQL = "SELECT finalDiagnosisId FROM DtFinalDiagnosis "\
           " WHERE FamilyId = %s"\
           "  AND finalDiagnosisName = '%s'" % (familyId,name)
-    log.infof(SQL)
+    if (DEBUG): log.infof(SQL)
     fdId = system.db.runScalarQuery(SQL,db)
-    log.infof("The final diagnosis Id is: %s", str(fdId))
+    if (DEBUG): log.infof("The final diagnosis Id is: %s", str(fdId))
     if fdId == None:
-        log.infof("Inserting a new final diagnosis...")
+        if (DEBUG): log.infof("Inserting a new final diagnosis...")
         recTime = system.date.now()
         recTime = system.date.addMonths(recTime, -12)
         recTime = toDateString(recTime)
@@ -216,21 +220,21 @@ def setAux(uuid,aux,db):
                "postTextRecommendation, PostProcessingCallback, refreshRate, textRecommendation, active, explanation, "\
                "trapInsignificantRecommendations, constant, manualMoveAllowed, comment, showExplanationWithRecommendation, timeOfMostRecentRecommendationImplementation)"\
                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-        log.infof("SQL: %s", SQL)
+        if (DEBUG): log.infof("SQL: %s", SQL)
         try:
             args =  [familyId, name, properties.get("FinalDiagnosisLabel",""), properties.get("Priority","0.0"), properties.get("CalculationMethod",""),\
                         properties.get("PostTextRecommendation","0"), properties.get("PostProcessingCallback",""),\
                         properties.get("RefreshRate","1"), properties.get("TextRecommendation",""), properties.get("Active","0"), properties.get("Explanation","0"),\
                         properties.get("TrapInsignificantRecommendations","1"), properties.get("Constant","0"),\
                         properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), properties.get("ShowExplanationWithRecommendation","0"), recTime]
-            log.infof("Arguments (%d): %s", len(args), str(args))
+            if (DEBUG): log.infof("Arguments (%d): %s", len(args), str(args))
             fdId = system.db.runPrepUpdate(SQL, args, db, getKey=1)
-            log.infof("Inserted a new final diagnosis with id: %d", fdId)
+            if (DEBUG): log.infof("Inserted a new final diagnosis with id: %d", fdId)
         except:
             logExceptionCause("Inserting a new Final Diagnosis", log)
             return
     else:
-        log.infof("Updating an existing final diagnosis...")
+        if (DEBUG): log.infof("Updating an existing final diagnosis...")
         SQL = "UPDATE DtFinalDiagnosis SET familyId=?, finalDiagnosisPriority=?, calculationMethod=?, finalDiagnosisLabel=?, " \
             "postTextRecommendation=?, postProcessingCallback=?, refreshRate=?, textRecommendation=?, explanation=?, "\
             "trapInsignificantRecommendations=?, constant=?, manualMoveAllowed=?, comment=?, showExplanationWithRecommendation=? "\
@@ -242,31 +246,31 @@ def setAux(uuid,aux,db):
                     properties.get("Constant","0"), properties.get("ManualMoveAllowed","0"), properties.get("Comment",""), \
                     properties.get("ShowExplanationWithRecommendation","0"), fdId]
         
-        log.infof("SQL: %s", SQL)
-        log.infof("Args: %s", str(args))
+        if (DEBUG): log.infof("SQL: %s", SQL)
+        if (DEBUG): log.infof("Args: %s", str(args))
         rows = system.db.runPrepUpdate(SQL, args, db)
-        log.infof("Updated %d rows", rows)
+        if (DEBUG): log.infof("Updated %d rows", rows)
         
     ''' 
     Delete any recommendations that may exist for this final diagnosis to avoid foreign key constraints when we delete and recreate the DtRecommendationDefinitions.
     (I'm not sure this is the correct thing to do - this will affect a live system.  Not sure we want to do this just because they press OK to update the comment, explanation, etc.
     '''
-    log.infof("Deleting existing recommendations...")
+    if (DEBUG): log.infof("Deleting existing recommendations...")
     SQL = "select RecommendationDefinitionId from DtRecommendationDefinition where FinalDiagnosisId = %s" % (fdId)
-    log.infof(SQL)
+    if (DEBUG): log.infof(SQL)
     pds = system.db.runQuery(SQL, db)
     totalRows = 0
     for record in pds:
         SQL = "delete from DtRecommendation where RecommendationDefinitionId = %s" % (record["RecommendationDefinitionId"])
-        log.infof(SQL)
+        if (DEBUG): log.infof(SQL)
         rows = system.db.runUpdateQuery(SQL, db)
         totalRows = totalRows + rows
-    log.infof("Deleted %d recommendations prior to updating the Recommendation Definitions...", totalRows)
+    if (DEBUG): log.infof("Deleted %d recommendations prior to updating the Recommendation Definitions...", totalRows)
     
     # Update the list of outputs used
-    log.infof("Deleting Recommendation Definitions...")
+    if (DEBUG): log.infof("Deleting Recommendation Definitions...")
     SQL = "DELETE FROM DtRecommendationDefinition WHERE finalDiagnosisId = %s" % (str(fdId))
-    log.infof(SQL)
+    if (DEBUG): log.infof(SQL)
     system.db.runUpdateQuery(SQL,db)
     
     olist = lists.get("OutputsInUse")
@@ -280,13 +284,13 @@ def setAux(uuid,aux,db):
     
     rows = 0
     if instr != None:
-        log.infof("Inserting a recommendation definition for %s...", instr)
+        if (DEBUG): log.infof("Inserting a recommendation definition for %s...", instr)
         SQL = "INSERT INTO DtRecommendationDefinition(finalDiagnosisId,quantOutputId) "\
           "SELECT %s,quantOutputId FROM DtQuantOutput QO"\
           " WHERE QO.applicationID = %s "\
           "  AND QO.quantOutputName IN (%s)" \
           % (fdId,applicationId,instr)
-        log.infof(SQL)
+        if (DEBUG): log.infof(SQL)
         rows=system.db.runUpdateQuery(SQL,db)
 
-    log.infof("Inserted %d recommendation definitions", rows)
+    if (DEBUG): log.infof("Inserted %d recommendation definitions", rows)

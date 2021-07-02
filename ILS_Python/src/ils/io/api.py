@@ -24,6 +24,7 @@ import ils.io.tdcamcontroller
 import ils.io.tdcrampcontroller
 import ils.io.tdcdigitalcontroller
 import ils.io.tdcautomancontroller
+import ils.io.universalcontroller
 from ils.io.client import writeRamp
 
 from ils.log.LogRecorder import LogRecorder

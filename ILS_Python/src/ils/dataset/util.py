@@ -46,3 +46,11 @@ def fromList(aList):
         
     ds = system.dataset.toDataSet(header, data)
     return ds
+
+def swapRows(ds, rowA, rowB):
+    for col in range(ds.getColumnCount()):
+        valA = ds.getValueAt(rowA, col)
+        valB = ds.getValueAt(rowB, col)
+        ds = system.dataset.setValue(ds, rowA, col, valB)
+        ds = system.dataset.setValue(ds, rowB, col, valA)
+    return ds

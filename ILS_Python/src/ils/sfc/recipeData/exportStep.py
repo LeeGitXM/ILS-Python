@@ -29,7 +29,7 @@ def exportCallback(event):
     txt = "<data>\n" + keyTxt + recipeFolderTxt + recipeDataTxt + "</data>"
     
     system.file.writeFile(filename, txt, False)
-    system.gui.messageBox("Chart and recipe were successfully exported!")
+    system.gui.messageBox("Recipe were successfully exported!")
 
     
 def clearCallback(event):

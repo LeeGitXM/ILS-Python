@@ -4,7 +4,8 @@
 import system
 from ils.diagToolkit.common import fetchApplicationId
 import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
-handler = ControllerRequestHandler.getInstance()
+
+DEBUG = True
 
 '''
 These run in Gateway scope
@@ -19,6 +20,7 @@ def delete(familyUUID):
     '''
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".delete")
+    handler = ControllerRequestHandler.getInstance()
 
     log.infof("In %s.delete() with family uuid: %s", __name__, familyUUID)
     db = handler.getProductionDatabase()
@@ -41,6 +43,7 @@ def rename(uuid,oldName,newName):
         SQL = "UPDATE DtFamily SET FamilyName= '%s' WHERE FamilyName = '%s'" % (newName,oldName)
         system.db.runUpdateQuery(SQL,db)
     
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".rename")
     
@@ -61,7 +64,11 @@ def save(familyUUID):
     It should really insert a new record into the DB for a new application, but I don't have enough info here to
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
+    
+    This may also be called on startup - I think this makes sense if we consider that Ignition is the Master, then startup gives us an opportunity
+    to synchronoze Ignition and the database.
     '''
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".save")
     log.infof("In %s.save()", __name__)
@@ -70,13 +77,13 @@ def save(familyUUID):
     
     from system.ils.blt.diagram import getFamilyName, getApplicationName
     familyName = getFamilyName(familyUUID)
-    log.tracef("...familyName: %s", familyName)
+    if DEBUG: log.infof("...familyName: %s", familyName)
     
     applicationName = getApplicationName(familyUUID)
-    log.tracef("...applicationName: %s", applicationName)
+    if DEBUG: log.infof("...applicationName: %s", applicationName)
     
     applicationId = fetchApplicationId(applicationName, db)
-    log.tracef("...the id for <%s> is %s", applicationName, str(applicationId))
+    if DEBUG: log.infof("...the id for <%s> is %s", applicationName, str(applicationId))
     
     SQL = "select FamilyId from DtFamily where familyUUID = '%s'" % (familyUUID)
     familyId = system.db.runScalarQuery(SQL, db)
@@ -91,21 +98,21 @@ def save(familyUUID):
         if familyId == None:
             SQL = "insert into DtFamily (ApplicationId, FamilyName, FamilyUUID, FamilyPriority) "\
                 "values (%s, '%s', '%s', 0)" % (applicationId, familyName, familyUUID)
-            log.tracef("...SQL: %s,", SQL)
+            if DEBUG: log.infof("...SQL: %s,", SQL)
             familyId = system.db.runUpdateQuery(SQL, db, getKey=1)
-            log.tracef("Inserted a new family with id: %d", familyId)
+            if DEBUG: log.infof("Inserted a new family with id: %d", familyId)
         else:
             SQL = "update DtFamily set FamilyUUID = '%s' where ApplicationId = %d and FamilyName = '%s'  "\
                  % (familyUUID, applicationId, familyName)
-            log.tracef("...SQL: %s,", SQL)
+            if DEBUG: log.infof("...SQL: %s,", SQL)
             system.db.runUpdateQuery(SQL, db)
-            log.tracef("...updated the familyUUID for a legacy family!")
+            if DEBUG: log.infof("...updated the familyUUID for a legacy family!")
             
     else:
         SQL = "update DtFamily set FamilyName = '%s', applicationId = %s where familyId = %s" % (familyName, applicationId, familyId)
-        log.tracef("...SQL: %s,", SQL)
+        if DEBUG: log.infof("...SQL: %s,", SQL)
         rows = system.db.runUpdateQuery(SQL, db)
-        log.tracef("...updated %d rows in DtFamily for %s", rows, familyName)
+        if DEBUG: log.infof("...updated %d rows in DtFamily for %s", rows, familyName)
 
 '''
 These methods are  called in Designer scope. However, we may be using either the
@@ -118,6 +125,7 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid, aux, db):
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".getAux")
     log.infof("In %s.getAux()", __name__)
@@ -127,8 +135,8 @@ def getAux(uuid, aux, db):
     
     properties = aux[0]
     
-    log.tracef("     Application name: %s", applicationName)
-    log.tracef("     Family name: %s", familyName)
+    if DEBUG: log.infof("     Application name: %s", applicationName)
+    if DEBUG: log.infof("     Family name: %s", familyName)
     
     SQL = "SELECT FAM.Description,FAM.FamilyPriority "\
           " FROM DtFamily FAM,DtApplication APP "\
@@ -140,10 +148,11 @@ def getAux(uuid, aux, db):
         properties["Description"] = rec["Description"]
         properties["Priority"]    = rec["FamilyPriority"]
     
-    log.tracef("...leaving %s.getAux()", __name__)
+    if DEBUG: log.infof("...leaving %s.getAux()", __name__)
 
 
 def setAux(uuid,aux,db):
+    handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".setAux")
     log.infof("In %s.setAux()", __name__)
@@ -152,9 +161,10 @@ def setAux(uuid,aux,db):
     familyName = handler.getFamilyName(uuid)
 
     properties = aux[0]
-    log.tracef("   Application: %s", appName)
-    log.tracef("   Family: %s", familyName)
-    log.tracef("   Properties: %s", str(properties))
+    if DEBUG: 
+        log.infof("   Application: %s", appName)
+        log.infof("   Family: %s", familyName)
+        log.infof("   Properties: %s", str(properties))
     
     SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (appName)
     applicationId = system.db.runScalarQuery(SQL,db)
@@ -171,16 +181,19 @@ def setAux(uuid,aux,db):
     if familyId == None:
         SQL = "INSERT INTO DtFamily(applicationId,familyName,description,familyPriority) VALUES (?,?,?,?)"
         args = [applicationId, familyName, properties.get("Description",""), properties.get("Priority","0.0")]
-        log.tracef("     SQL: %s", SQL)
-        log.tracef("     ARGS: %s", args)
+        if DEBUG:
+            log.infof("     SQL: %s", SQL)
+            log.infof("     ARGS: %s", args)
         familyId = system.db.runPrepUpdate(SQL, args, db, getKey=1)
-        log.tracef("     Inserted a new family with id: %d", familyId)
+        if DEBUG: log.infof("     Inserted a new family with id: %d", familyId)
     else:
         SQL = "UPDATE DtFamily SET familyName = ?, description = ?, familyPriority = ? where familyId = ? "
         args = [familyName, properties.get("Description",""), properties.get("Priority","0.0"),familyId]
-        log.tracef("     SQL: %s", SQL)
-        log.tracef("     ARGS: %s", args)
+        if DEBUG:
+            log.infof("     SQL: %s", SQL)
+            log.infof("     ARGS: %s", args)
         system.db.runPrepUpdate(SQL, args, db)
-        log.tracef("     Updated an existing family with id: %d", familyId)
+        if DEBUG:
+            log.infof("     Updated an existing family with id: %d", familyId)
     
-    log.tracef("...leaving %s.setAux()", __name__)
+    if DEBUG: log.infof("...leaving %s.setAux()", __name__)

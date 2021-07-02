@@ -128,6 +128,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             log.infof("  The recommendations returned from the calculation method are: ")
             for recommendation in screenedRecommendationList:
                 # Validate that there is a 'QuantOutput' key and a 'Value' Key
+    
                 quantOutput = recommendation.get('QuantOutput', None)
                 if quantOutput == None:
                     log.errorf("ERROR: A recommendation returned from %s did not contain a 'QuantOutput' key", calculationMethod)

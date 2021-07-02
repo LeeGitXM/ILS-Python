@@ -13,7 +13,8 @@ from ils.queue.message import insertPostMessage
 from ils.queue.constants import QUEUE_INFO
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.common.util import dsToText
-from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
+from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix,\
+    fetchRecommendationsForOutput
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 from ils.diagToolkit.api import resetManualMove
 
@@ -620,14 +621,10 @@ def isThereAnActiveApplication(repeater):
     
     active = False
     for row in range(ds.rowCount):
-        #print "Row: ", row
         rowType=ds.getValueAt(row, "type")
 
-        #print "   type: ", rowType
         if string.upper(rowType) == "APP":
-            
             command=ds.getValueAt(row, "command")
-            #print "             Command: ", command
             if string.upper(command) == 'ACTIVE':
                 active = True
 
@@ -1147,6 +1144,20 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     quantOutput, madeSignificantRecommendation = checkBounds(applicationName, quantOutput, quantOutputName, database, tagProvider)
     
     log.tracef("After: %s", str(quantOutput))
+    
+    '''
+    We need to make sure we have enough information here to determine that the recommendation is for a ramp 
+    '''
+    quantOutputId = quantOutput["QuantOutputId"]
+    pds = fetchRecommendationsForOutput(quantOutputId, database)
+    recommendations = []
+    rampTime = None
+    for record in pds:
+        recommendations.append({"RampTime": record["RampTime"]})
+        rampTime = record["RampTime"]
+    
+    quantOutput["Recommendations"] = recommendations
+    quantOutput["Ramp"] = rampTime
     
     from ils.diagToolkit.finalDiagnosis import updateQuantOutput
     updateQuantOutput(quantOutput, database, tagProvider)

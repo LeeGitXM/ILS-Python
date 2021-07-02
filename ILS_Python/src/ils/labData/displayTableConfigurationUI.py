@@ -4,6 +4,7 @@ Created on Jun 15, 2015
 @author: Pete
 '''
 import system
+from ils.dataset.util import swapRows
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened, resetting dropdown..."
@@ -17,62 +18,39 @@ def internalFrameClosing(rootContainer):
     print "In internalFrameClosing, doing nothing..."
 
 '''
-The list of lab data tables is ordered.
+The list of lab data tables is ordered, the sort order value doesn't matter, it is relative
 '''
 def moveUp(event):
     rootContainer = event.source.parent
     table = rootContainer.getComponent("Power Table")
     ds = table.data
-    
     row = table.selectedRow
-    aboveRow = row - 1
-    
-    #get the TableIds and Orders to swap
-    displayTableId = ds.getValueAt(row, "DisplayTableId")
-    displayAboveTableId = ds.getValueAt(aboveRow, "DisplayTableId")
-    displayOrderValue = ds.getValueAt(row, "DisplayOrder")
-    displayAboveOrderValue = ds.getValueAt(aboveRow, "DisplayOrder")
-    
-    #update selected row so that highlighting changes with the move
+    ds = swapRows(ds, row, row - 1)
     table.selectedRow = row - 1
     
-    #update database swapping orders
-    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayAboveOrderValue, displayTableId)
-    system.db.runUpdateQuery(sql)
-    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayOrderValue, displayAboveTableId)
-    system.db.runUpdateQuery(sql)
-    
-    #refresh table
+    for row in range(ds.getRowCount()):
+        displayTableId = ds.getValueAt(row, "DisplayTableId")
+        sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (row, displayTableId)
+        system.db.runUpdateQuery(sql)
+
+    #refresh table - shouldn't really need to update this as the DB should match the table.
     print "Calling update() from moveDown()..."
     update(rootContainer)
     
-'''
-The list of lab data tables is ordered.
-'''
 def moveDown(event):
     rootContainer = event.source.parent
     table = rootContainer.getComponent("Power Table")
     ds = table.data
-
     row = table.selectedRow
-    belowRow = row + 1
-
-    #get the TableIds and Orders to swap
-    displayTableId = ds.getValueAt(row, "DisplayTableId")
-    displayBelowTableId = ds.getValueAt(belowRow, "DisplayTableId")
-    displayOrderValue = ds.getValueAt(row, "DisplayOrder")
-    displayBelowOrderValue = ds.getValueAt(belowRow, "DisplayOrder")
-
-    #update selected row so that highlighting changes with the move
+    ds = swapRows(ds, row, row + 1)
     table.selectedRow = row + 1
     
-    #update database swapping orders
-    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayBelowOrderValue, displayTableId)
-    system.db.runUpdateQuery(sql)
-    sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (displayOrderValue, displayBelowTableId)
-    system.db.runUpdateQuery(sql)
+    for row in range(ds.getRowCount()):
+        displayTableId = ds.getValueAt(row, "DisplayTableId")
+        sql = "update LtDisplayTable set displayOrder = %i where displayTableId = %i" % (row, displayTableId)
+        system.db.runUpdateQuery(sql)
 
-    #refresh table
+    #refresh table - shouldn't really need to update this as the DB should match the table.
     print "Calling update() from moveDown()..."
     update(rootContainer)
 
@@ -84,66 +62,40 @@ def moveLabValueUp(event):
     rootContainer = event.source.parent
     table = rootContainer.getComponent("ValueTable")
     ds = table.data
-
     row = table.selectedRow
-    aboveRow = row - 1
+    ds = swapRows(ds, row, row - 1)
+    table.selectedRow = row - 1
 
     #get the TableIds and Orders to swap
     displayTableId = ds.getValueAt(row, "DisplayTableId")
 
-    valueName = ds.getValueAt(row, "valueName")
-    valueId = system.db.runScalarQuery("select ValueId from LtValue where ValueName = '%s'" % (valueName))
+    for row in range(ds.getRowCount()):
+        valueId = ds.getValueAt(row, "ValueId")
+        sql = "update LtDisplayTableDetails set displayOrder = %i where displayTableId = %i and ValueId = %i" % (row, displayTableId, valueId)
+        system.db.runUpdateQuery(sql)
 
-    valueAboveName = ds.getValueAt(aboveRow, "valueName")
-    valueAboveId = system.db.runScalarQuery("select ValueId from LtValue where ValueName = '%s'" % (valueAboveName))
-
-    #update selected row so that highlighting changes with the move
-    table.selectedRow = row - 1
-
-    #update database swapping orders
-    sql = "update LtDisplayTableDetails set displayOrder = %i where displayTableId = %i and ValueId = %i" % (aboveRow, displayTableId, valueId)
-    system.db.runUpdateQuery(sql)
-
-    sql = "update LtDisplayTableDetails set displayOrder = %i where displayTableId = %i and ValueId = %i" % (row, displayTableId, valueAboveId)
-    system.db.runUpdateQuery(sql)
-
-    #refresh table
+    #refresh table  - shouldn't really need to update this as the DB should match the table.
     print "Calling update() from moveLabValueUp()..."
     updateValues(rootContainer)
 
 
-'''
-The list of lab data tables is ordered.
-'''
 def moveLabValueDown(event):
     rootContainer = event.source.parent
     table = rootContainer.getComponent("ValueTable")
     ds = table.data
-
     row = table.selectedRow
-    belowRow = row + 1
+    ds = swapRows(ds, row, row + 1)
+    table.selectedRow = row + 1
 
-    #get the TableIds and Orders to swap
     displayTableId = ds.getValueAt(row, "DisplayTableId")
     
-    valueName = ds.getValueAt(row, "valueName")
-    valueId = system.db.runScalarQuery("select ValueId from LtValue where ValueName = '%s'" % (valueName))
+    for row in range(ds.getRowCount()):
+        valueId = ds.getValueAt(row, "ValueId")
+        sql = "update LtDisplayTableDetails set displayOrder = %i where displayTableId = %i and ValueId = %i" % (row, displayTableId, valueId)
+        system.db.runUpdateQuery(sql)
 
-    valueBelowName = ds.getValueAt(belowRow, "valueName")
-    valueBelowId = system.db.runScalarQuery("select ValueId from LtValue where ValueName = '%s'" % (valueBelowName))
-
-    #update selected row so that highlighting changes with the move
-    table.selectedRow = row + 1
-    
-    #update database swapping orders
-    sql = "update LtDisplayTableDetails set displayOrder = %i where displayTableId = %i and ValueId = %i" % (belowRow, displayTableId, valueId)
-    system.db.runUpdateQuery(sql)
-
-    sql = "update LtDisplayTableDetails set displayOrder = %i where displayTableId = %i and ValueId = %i" % (row, displayTableId, valueBelowId)
-    system.db.runUpdateQuery(sql)
-
-    #refresh table
-    print "Calling update() from moveLabValueDown()..."
+    #refresh table - shouldn't really need to update this as the DB should match the table.
+    print "Calling update() from moveLabValueUp()..."
     updateValues(rootContainer)
 
 
@@ -157,7 +109,7 @@ def update(rootContainer):
     dropDown= rootContainer.getComponent("Dropdown")
     postId = dropDown.selectedValue
     
-    #update display table
+    #update display table - we are ordering by displayPage first; this may lead to unexpected results when attempting to move a row.
     SQL = "SELECT * FROM LtDisplayTable "\
         " WHERE PostId = %i "\
         " ORDER BY DisplayPage, DisplayOrder " % (postId)
@@ -176,7 +128,7 @@ def updateValues(rootContainer):
     
     #update value table
     displayTableId = rootContainer.displayTableId
-    sql = "SELECT V.ValueName, V.Description, DTD.DisplayTableId "\
+    sql = "SELECT V.ValueId, V.ValueName, V.Description, DTD.DisplayTableId, DTD.DisplayOrder "\
         "FROM LtValue V, LtDisplayTableDetails DTD "\
         "WHERE DTD.DisplayTableId = %i "\
         "and DTD.ValueId = V.ValueId "\

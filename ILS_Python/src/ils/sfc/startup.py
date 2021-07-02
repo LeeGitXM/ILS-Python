@@ -24,11 +24,13 @@ def gateway(tagProvider, isolationTagProvider):
     createTags("[" + isolationTagProvider + "]")
 
 def client():
-    from ils.sfc.version import version
-    version, releaseDate = version()
     log.info("---------------------------------------------------------")
-    log.info("Initializing the SFC client version %s" % (version, releaseDate))
+    log.info("Initializing the SFC client")
     log.info("---------------------------------------------------------")
+    system.tag.write("[Client]SFC Browser/Chart View State", 0)
+    system.tag.write("[Client]SFC Browser/Selected Chart Path", "")
+    system.tag.write("[Client]SFC Browser/Selected Chart Row", -1)
+    system.tag.write("[Client]SFC Browser/Selected Step", -1)
 
 def createTags(tagProvider):
     print "Creating SFC configuration tags..."

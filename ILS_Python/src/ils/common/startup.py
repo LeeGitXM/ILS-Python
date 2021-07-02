@@ -83,6 +83,9 @@ def client():
     from ils.logging.viewer import clientStartup
     clientStartup()
     
+    from ils.sfc.startup import client as sfcClientStartup
+    sfcClientStartup()
+    
     project = system.util.getProjectName()
     print "The project is: %s (ils.common.startup.client)" % (project)
     
@@ -109,7 +112,6 @@ def client():
     eval(clientStartupScript)()
     
     print "...completed %s.gateway()" % (__name__)
-
 
 
 '''
@@ -205,7 +207,6 @@ def createTags(tagProvider, log):
     
     
 def updateDatabaseSchema(tagProvider, db):
-    print "Yo!"
     try:
         dbVersions = []
         dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})

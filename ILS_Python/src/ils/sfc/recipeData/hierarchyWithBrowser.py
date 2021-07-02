@@ -22,14 +22,12 @@ CHART_ICON = "Custom/sfc.png"
 TREE_MODE = 0
 LIST_MODE = 1
 
-
 def internalFrameOpened(rootContainer, db):
     '''
     Populate the left pane which has the logical view of the SFC call tree, clear the other two panes.   
     '''
     log.infof("In %s.internalFrameOpened()", __name__)
-    
-    rootContainer.initializationComplete = False
+
     rootContainer.synchronize = False
     tree = rootContainer.getComponent("Tree Container").getComponent("Tree View")
     table = rootContainer.getComponent("Tree Container").getComponent("Power Table")
@@ -45,31 +43,27 @@ def internalFrameOpened(rootContainer, db):
     log.debugf("The selected step is: %s", selectedStep)
     
     def setTableRow(table=table, tree=tree, stepTable=stepTable, selectedChartRow=selectedChartRow, selectedChartPath=selectedChartPath, selectedStep=selectedStep):
-        ''' Select the node of the tree or the row of the table.  I'm not sure why I have to call this in its own thread but I do. '''
+        ''' 
+        Select the node of the chart tree or the row of the chart table.  I'm not sure why I have to call this in its own thread but I do. 
+        If I don't do it in its own thread then something else competes with it and undos it.
+        '''
+        log.tracef("In %s.setTableRow(), row: %s, chart: %s, step: %s", __name__, str(selectedChartRow), str(selectedChartPath), str(selectedStep))
         table.selectedRow = selectedChartRow
         tree.selectedPath = selectedChartPath
-        ''' This doesn't work because the steps above cause the table to refresh '''
-        #stepTable.selectedRow = selectedStep
     
     rootContainer.chartViewState = viewMode
     updateSfcs(rootContainer, db)    
 
     if selectedChartPath <> "" or selectedChartRow >= 0:
-        log.debugf("...there is a previously selected path (or table row)...")    
-        
-        ''' I'd like to set the selected row of the chart table here, but for some reason it doesn't do anything, or is undone by something else. '''
+        log.infof("...there is a previously selected path (or table row)...")
         system.util.invokeLater(setTableRow, 250)
-
-        ''' Normally this is done from an event handler, but we need the steps in the table before we set the selected step. '''
-        # refreshSteps(rootContainer, db)
     else:
-        log.debugf("...there is NOT a previously selected path...")
+        log.infof("...there is NOT a previously selected path...")
         stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
         clearTable(stepTable)
         recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
         clearTree(recipeDataTree)
-        
-    rootContainer.initializationComplete = True
+    
     log.debugf("DONE in internalFrameOpened!")
 
 
@@ -88,9 +82,11 @@ def viewStateChanged(rootContainer):
     '''
     log.debugf("In %s.viewStateChanged(), detected a change in the view state...", __name__)
     
+    '''
     if not(rootContainer.initializationComplete):
         log.debugf("...exiting because initialization is not complete...")
         return
+    '''
     
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     clearTable(stepTable)

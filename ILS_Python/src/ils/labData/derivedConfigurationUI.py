@@ -90,7 +90,7 @@ def updateRelatedTable(rootContainer, db):
         derivedValueId = ds.getValueAt(row, "DerivedValueId")
         relatedTable.derivedValueId = derivedValueId
         print "derivedValueId = ",derivedValueId
-        sql = "SELECT V.ValueId, V.ValueName, V.Description "\
+        sql = "SELECT R.RelatedDataId, V.ValueId, V.ValueName, V.Description "\
             " FROM LtValue V, LtRelatedData R "\
             " WHERE R.DerivedValueId = %i AND R.RelatedValueId = V.ValueId"\
             " ORDER BY V.ValueName" % (derivedValueId) 
@@ -100,7 +100,7 @@ def updateRelatedTable(rootContainer, db):
     else:
         print "no selected row: clear related table"
         derivedValueId = -1
-        sql = "SELECT V.ValueId, V.ValueName, V.Description "\
+        sql = "SELECT R.RelatedDataId, V.ValueId, V.ValueName, V.Description "\
             " FROM LtValue V, LtRelatedData R "\
             " WHERE R.DerivedValueId = %i AND R.RelatedValueId = V.ValueId"\
             " ORDER BY V.ValueName" % (derivedValueId) 
@@ -111,38 +111,6 @@ def updateRelatedTable(rootContainer, db):
 def updateDerivedLimitsTable(rootContainer, db):
     print "...updating derived limits table..."
     updateLimit(rootContainer, db)
-   
-#update the database when user completes the newly added row 
-def updateDatabaseXXX(rootContainer):
-    print "Updating the database..."
-    table = rootContainer.getComponent("Power Table")
-    ds = table.data
-    row = table.selectedRow
-    
-    name = ds.getValueAt(row, "ValueName")
-    description = ds.getValueAt(row, "Description")
-    decimals = ds.getValueAt(row, "DisplayDecimals")
-    triggerValueName = ds.getValueAt(row, "TriggerValueName")
-    callback = ds.getValueAt(row, "Callback")
-    resultItemId = ds.getValueAt(row, "ResultItemId")
-    sampleTimeTolerance = ds.getValueAt(row, "SampleTimeTolerance")
-    newSampleWaitTime = ds.getValueAt(row, "NewSampleWaitTime")
-    unitId = rootContainer.getComponent("UnitName").selectedValue
-    
-    print "%s - %s - %s - %s" % (name, str(decimals), triggerValueName, callback)
-    if name != "" and decimals >= 0 and triggerValueName != "" and callback != "":
-        triggerValueId = system.db.runScalarQuery("select valueId from LtValue where ValueName = '%s'" % (triggerValueName))
-        SQL = "INSERT INTO LtValue (ValueName, Description, DisplayDecimals, UnitId) "\
-            " VALUES ('%s', '%s', %i, %i)" % (name, description, decimals, unitId)
-        print SQL
-        valueId = system.db.runUpdateQuery(SQL, getKey=1)
-        print "Inserted a new lab value with id: ", valueId
-        sql = "INSERT INTO LtDerivedValue (ValueId, TriggerValueId, Callback, ResultItemId, SampleTimeTolerance, NewSampleWaitTime) "\
-            " VALUES (%i, %i, '%s', '%s', %i, %i)" % (valueId, triggerValueId, callback, resultItemId, sampleTimeTolerance, newSampleWaitTime)
-        print sql
-        system.db.runUpdateQuery(sql)
-    else:
-        print "Insufficient data to update the database..."
                
 #update the database when user directly changes table 
 def cellEdited(table, rowIndex, colName, newValue):
@@ -349,7 +317,7 @@ def insertRelatedDataRow(event):
     rootContainer = event.source.parent
     relatedTable = rootContainer.getComponent("relatedLabDataTable")
     ds = relatedTable.data
-    newRow = [-1, "", ""]
+    newRow = [-1, -1, "", ""]
     ds = system.dataset.addRow(ds, newRow)
     relatedTable.data = ds
     
@@ -360,12 +328,13 @@ def removeRelatedDataRow(event):
     relatedTable = rootContainer.getComponent("relatedLabDataTable")
     row = relatedTable.selectedRow
     ds = relatedTable.data
-    valueId = ds.getValueAt(row, "ValueId")
+    relatedDataId = ds.getValueAt(row, "RelatedDataId")
         
-    #remove the selected row
-    SQL = "DELETE FROM LtRelatedData "\
-        "WHERE RelatedValueId = %i " % (valueId)
-    system.db.runUpdateQuery(SQL, database=db)
+    # remove the selected row
+    SQL = "DELETE FROM LtRelatedData WHERE RelatedDataId = %d " % (relatedDataId)
+    log.tracef("SQL: %s", SQL)
+    rows = system.db.runUpdateQuery(SQL, database=db)
+    log.tracef("...deleted %d rows...", rows)
     
     #refresh table
     print "Calling updateRelatedTable() from removeRelatedDataRow()..." 
@@ -373,44 +342,60 @@ def removeRelatedDataRow(event):
     
 #update the database when user directly changes table 
 def relatedDataCellEdited(table, rowIndex, colName, newValue):
-    print "A related data cell has been edited so update the database..."
+    log.infof("A related data cell has been edited so update the database...")
     db = getDatabaseClient()
     rootContainer = table.parent
     ds = table.data
-    valueId = ds.getValueAt(rowIndex, "ValueId")
+    relatedDataId = ds.getValueAt(rowIndex, "RelatedDataId")
+    relatedValueId = ds.getValueAt(rowIndex, "ValueId")
     derivedValueId =  table.derivedValueId
-    print "derivedValueId = ", derivedValueId
     
-    #existing row is being edited
-    if valueId != -1:
-        print "editing an existing row"
-        #get RelatedDataId (location to insert)
-        SQL = "SELECT RelatedDataId FROM LtRelatedData "\
-            "WHERE DerivedValueId = %i " % (derivedValueId)
-        relatedDataId = system.db.runScalarQuery(SQL, database=db)
-        print "relatedDataId = ", relatedDataId
+    log.tracef("    relatedDataId = %d", relatedDataId)
+    log.tracef("   derivedValueId = %d", derivedValueId)
+    log.tracef("   relatedValueId = %d", relatedValueId)
+    log.tracef("           colName = %s", colName)
+    log.tracef("          newValue = %s", newValue)
     
-        #get RelatedValueId (Value to insert)
-        SQL = "SELECT ValueId FROM LtValue "\
-            " WHERE ValueName = '%s' " % (newValue)
-        relatedValueId = system.db.runScalarQuery(SQL, database=db)
-        print "relatedValueId = ", relatedValueId
-    
-        #update the database
-        SQL = "UPDATE LtRelatedData SET RelatedValueId = %i "\
-            "WHERE RelatedDataId = %i " % (relatedValueId, relatedDataId)
-        print SQL
-        system.db.runUpdateQuery(SQL, database=db)
-    else:
-        print "inserting new row"
-        SQL = "SELECT ValueId FROM LtValue WHERE ValueName = '%s' " % (newValue)
-        relatedValueId = system.db.runScalarQuery(SQL, database=db)
+    if relatedDataId == -1:
+        log.tracef("inserting new row...")
         
-        SQL = "INSERT INTO LtRelatedData (DerivedValueId, RelatedValueId) "\
-            " VALUES (%i, %i) " % (derivedValueId, relatedValueId)
-        print SQL
-        system.db.runUpdateQuery(SQL, getKey=1, database=db)
-        updateRelatedTable(rootContainer, db)
+        SQL = "select count(*) from LtRelatedDataView where DerivedValueId = %d and RelatedValueName = '%s' " % (derivedValueId, newValue)
+        log.tracef("SQL: %s", SQL)
+        cnt = system.db.runScalarQuery(SQL, database=db)
+        if cnt > 0:
+            system.gui.warningBox("This value already exists - related data must be unique.")
+        else:
+            SQL = "select ValueId from LtValue where ValueName = '%s' " % (newValue)
+            log.tracef("SQL: %s", SQL)
+            relatedValueId = system.db.runScalarQuery(SQL, database=db)
+            log.tracef("Fetched %d for %s", relatedValueId, newValue)
+            
+            SQL = "INSERT INTO LtRelatedData (DerivedValueId, RelatedValueId) VALUES (%i, %i) " % (derivedValueId, relatedValueId)
+            print SQL
+            system.db.runUpdateQuery(SQL, getKey=1, database=db)
+    else:
+        ''' 
+        An existing row is being edited - the only column that can be edited is the 'Value Name' column . 
+        For a new row we can't depend on the relatedDataId, it will be -1.
+        Before inserting, ensure that the new lab datum isn't already in the list.
+        '''
+        log.tracef("editing an existing row...")
+        SQL = "select count(*) from LtRelatedDataView where DerivedValueId = %d and RelatedValueName = '%s' " % (derivedValueId, newValue)
+        log.tracef("SQL: %s", SQL)
+        cnt = system.db.runScalarQuery(SQL, database=db)
+        if cnt > 0:
+            system.gui.warningBox("This value already exists - related data must be unique.")
+        else: 
+            SQL = "select ValueId from LtValue where ValueName = '%s' " % (newValue)
+            log.tracef("SQL: %s", SQL)
+            relatedValueId = system.db.runScalarQuery(SQL, database=db)
+            log.tracef("Fetched %d for %s", relatedValueId, newValue)
+            
+            SQL = "UPDATE LtRelatedData SET RelatedValueId = %d WHERE RelatedDataId = %d " % (relatedValueId, relatedDataId)
+            log.tracef("SQL: %s", SQL)
+            system.db.runUpdateQuery(SQL, database=db)
+
+    updateRelatedTable(rootContainer, db)
         
 def validate(rootContainer):
     '''
@@ -442,7 +427,7 @@ def validate(rootContainer):
         It doesn't clean up extra UDTs.
         It also write values to the UDTs, eventually the lab data handling will update them, but maybe we should do that here - IDK?
         '''
-        log.tracef("    ...validating lab limits for: %s", valueName)
+        log.infof("    ...validating lab limits for: %s", valueName)
         
         parentPath=tagProvider+'LabData/'+unitName
         

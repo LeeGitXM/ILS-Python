@@ -66,7 +66,7 @@ def importStepRecipeDataCallback(event):
         importer.importStepFromFile(filename, chartPath, stepName, stepId)
         
     except:
-        notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
+        notifyError("%s.importStepRecipeDataCallback()" % (__name__), "Check the console log for details.")
 
 
 

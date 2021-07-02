@@ -900,6 +900,73 @@ def readLimitsFromRecipe(event):
     rootContainer.getComponent("Target Field").floatValue = target
     rootContainer.getComponent("Standard Deviation Field").floatValue = standardDeviation
     
+def readLimitsFromDCS(event):
+    ''' This is called from the "Read Limits From DCS" button on the Create Limit Popup.  '''
+    log.infof("In %s.readLimitsFromDCS()", __name__)
+    rootContainer = event.source.parent
+    provider = rootContainer.provider
+    
+    opcServer = rootContainer.getComponent("OPC Server Dropdown").selectedStringValue
+    if opcServer == "":
+        system.gui.warningBox("Please select an OPC Server")
+        return
+        
+    limitType = rootContainer.getComponent("Limit Type Dropdown").selectedStringValue    
+    if limitType == "SQC":
+        standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (provider)).value
+        standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (provider)).value
+        
+        upperLimitItemId = rootContainer.getComponent("Upper Limit Item Id Field").text
+        if upperLimitItemId == "":
+            system.gui.warningBox("Please enter an item id for the upper SQC limit")
+            return
+        upperSQCLimit = system.opc.readValue(opcServer, upperLimitItemId)
+        if not(upperSQCLimit.quality.isGood()):
+            system.gui.warningBox("Limits cannot be calculated because the upper limit OPC tag (%s) is bad (%s)" % (upperLimitItemId, str(upperSQCLimit.quality)))
+            
+        lowerLimitItemId = rootContainer.getComponent("Lower Limit Item Id Field").text
+        if lowerLimitItemId == "":
+            system.gui.warningBox("Please enter an item id for the lower SQC limit")
+            return
+        lowerSQCLimit = system.opc.readValue(opcServer, lowerLimitItemId)
+        if not(lowerSQCLimit.quality.isGood()):
+            system.gui.warningBox("Limits cannot be calculated because the lower limit OPC item id (%s) is bad (%s)" % (lowerLimitItemId, str(lowerSQCLimit.quality)))
+        
+        upperSQCLimit = upperSQCLimit.value
+        lowerSQCLimit = lowerSQCLimit.value
+        
+        target, standardDeviation, lowerValidityLimit, upperValidityLimit = calcSQCLimits(lowerSQCLimit, upperSQCLimit, standardDeviationsToSQCLimits, standardDeviationsToValidityLimits)
+    
+        rootContainer.getComponent("Upper Validity Limit Field").floatValue = upperValidityLimit
+        rootContainer.getComponent("Lower Validity Limit Field").floatValue = lowerValidityLimit
+        rootContainer.getComponent("Upper SQC Limit Field").floatValue = upperSQCLimit
+        rootContainer.getComponent("Lower SQC Limit Field").floatValue = lowerSQCLimit
+        rootContainer.getComponent("Target Field").floatValue = target
+        rootContainer.getComponent("Standard Deviation Field").floatValue = standardDeviation
+    
+    elif limitType == "Validity":
+        upperLimitItemId = rootContainer.getComponent("Upper Limit Item Id Field").text
+        if upperLimitItemId == "":
+            system.gui.warningBox("Please enter an item id for the upper limit")
+            return
+        upperValidityLimit = system.opc.readValue(opcServer, upperLimitItemId)
+        if not(upperValidityLimit.quality.isGood()):
+            system.gui.warningBox("The upper limit OPC tag (%s) is bad (%s)" % (upperLimitItemId, str(upperValidityLimit.quality)))
+            
+        lowerLimitItemId = rootContainer.getComponent("Lower Limit Item Id Field").text
+        if lowerLimitItemId == "":
+            system.gui.warningBox("Please enter an item id for the lower limit")
+            return
+        lowerValidityLimit = system.opc.readValue(opcServer, lowerLimitItemId)
+        if not(lowerValidityLimit.quality.isGood()):
+            system.gui.warningBox("The lower limit OPC tag (%s) is bad (%s)" % (lowerLimitItemId, str(lowerValidityLimit.quality)))
+        
+        upperValidityLimit = upperValidityLimit.value
+        lowerValidityLimit = lowerValidityLimit.value
+            
+        rootContainer.getComponent("Upper Validity Limit Field").floatValue = upperValidityLimit
+        rootContainer.getComponent("Lower Validity Limit Field").floatValue = lowerValidityLimit
+    
 def calculateConstantLimits(event):
     ''' This is called from the Create Limit Popup.  It is used for SQC limits when the source is constant. '''
     rootContainer = event.source.parent

@@ -243,23 +243,7 @@ def fetchAnyFinalDiagnosisForAnOutput(application, quantOutputId, database=""):
     pds = system.db.runQuery(SQL, database)
     return pds
 
-def fetchActiveOutputsForPost(post, database=""):
-    SQL = "select distinct A.ApplicationName, "\
-        " QO.QuantOutputName, QO.TagPath, QO.OutputLimitedStatus, QO.OutputLimited, "\
-        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
-        " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId, QO.DownloadAction, QO.DownloadStatus, QOR.RampTime "\
-        " from TkPost P, TkUnit U, DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtQuantOutputRamp QOR "\
-        " where P.PostId = U.PostId "\
-        " and U.UnitId = A.UnitId "\
-        " and A.ApplicationId = F.ApplicationId "\
-        " and F.FamilyId = FD.FamilyId "\
-        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
-        " and RD.QuantOutputId = QO.QuantOutputId "\
-        "and QO.QuantOutputId = QOR.QuantOutputId "\
-        " and P.Post = '%s' "\
-        " and QO.Active = 1"\
-        " order by A.ApplicationName, QO.QuantOutputName"  % (post)
-        
+def fetchActiveOutputsForPost(post, database=""):        
     SQL = "SELECT distinct DtApplication.ApplicationName, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, DtQuantOutput.OutputLimitedStatus, DtQuantOutput.OutputLimited, "\
         "DtQuantOutput.FeedbackOutput, DtQuantOutput.FeedbackOutputManual, DtQuantOutput.FeedbackOutputConditioned, DtQuantOutput.ManualOverride, "\
         "DtQuantOutput.IncrementalOutput, DtQuantOutput.CurrentSetpoint, DtQuantOutput.FinalSetpoint, DtQuantOutput.DisplayedRecommendation, DtQuantOutput.QuantOutputId, "\
@@ -382,7 +366,7 @@ def fetchFinalDiagnosisNameFromId(finalDiagnosisId, database=""):
 # Fetch all of the recommendations that touch a quant output.
 def fetchRecommendationsForOutput(QuantOutputId, database=""):
     SQL = "select R.RecommendationId, R.Recommendation, R.AutoRecommendation, R.AutoRecommendation, R.ManualRecommendation, "\
-        " R.AutoOrManual, QO.QuantOutputName, QO.TagPath "\
+        " R.AutoOrManual, R.RampTime, QO.QuantOutputName, QO.TagPath "\
         " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
         " where RD.QuantOutputId = QO.QuantOutputId "\
         " and QO.QuantOutputId = %i "\
@@ -448,6 +432,7 @@ def fetchActiveOutputsForFinalDiagnosis(applicationName, familyName, finalDiagno
     return pds, outputList
 
 def convertOutputRecordToDictionary(record):
+    print "Record: ", record, " is a ", type(record) 
     output = {}
     output['QuantOutputId'] = record['QuantOutputId']
     output['QuantOutput'] = str(record['QuantOutputName'])
@@ -467,6 +452,7 @@ def convertOutputRecordToDictionary(record):
     output['FeedbackOutputConditioned'] = record['FeedbackOutputConditioned']
     output['ManualOverride'] = record['ManualOverride']
     output['IgnoreMinimumIncrement'] = record['IgnoreMinimumIncrement']
+    
     output['TrapInsignificantRecommendations'] = record['TrapInsignificantRecommendations']
     return output
 
@@ -525,10 +511,21 @@ def fetchQuantOutput(quantOutputId, database=""):
         " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.IncrementalOutput, "\
         " QO.CurrentSetpoint, QO.FinalSetpoint, QO.DisplayedRecommendation, QO.QuantOutputId, QO.MostNegativeIncrement, "\
         " QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, QO.SetpointLowLimit, L.LookupName FeedbackMethod, "\
-        " QO.IgnoreMinimumIncrement "\
+        " QO.IgnoreMinimumIncrement, 0 as TrapInsignificantRecommendations "\
         " from DtQuantOutput QO, Lookup L "\
         " where QO.QuantOutputId = %i "\
         " and QO.FeedbackMethodId = L.LookupId"  % (quantOutputId)
+        
+    SQL = "SELECT DtQuantOutput.QuantOutputId, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, DtQuantOutput.OutputLimitedStatus, DtQuantOutput.OutputLimited, "\
+        "DtQuantOutput.OutputPercent, DtQuantOutput.FeedbackOutput, DtQuantOutput.FeedbackOutputManual, DtQuantOutput.FeedbackOutputConditioned, "\
+        "DtQuantOutput.ManualOverride, DtQuantOutput.IncrementalOutput, DtQuantOutput.CurrentSetpoint, DtQuantOutput.FinalSetpoint, DtQuantOutput.DisplayedRecommendation, "\
+        "DtQuantOutput.MostNegativeIncrement, DtQuantOutput.MostPositiveIncrement, DtQuantOutput.MinimumIncrement, DtQuantOutput.SetpointHighLimit, "\
+        "DtQuantOutput.SetpointLowLimit, Lookup.LookupName AS FeedbackMethod, DtQuantOutput.IgnoreMinimumIncrement, 0 as TrapInsignificantRecommendations "\
+        "FROM DtQuantOutput INNER JOIN "\
+        "Lookup ON DtQuantOutput.FeedbackMethodId = Lookup.LookupId LEFT OUTER JOIN "\
+        "DtQuantOutputRamp ON DtQuantOutput.QuantOutputId = DtQuantOutputRamp.QuantOutputId "\
+        "WHERE (DtQuantOutput.QuantOutputId = %d) " % (quantOutputId)
+
     log.tracef("%s.fetchQuantOutput(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds

@@ -1393,10 +1393,11 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     The IO layer also supports ramping of a plain old controller or even ramping an OPC variable or memory tag.  The key that determines if an output
     is ramped is if the recommendation contains a "rampTime" property.  A QuantOutput may be used one time to write an output directly or a ramp setpoint.
     '''
-
     recommendations = quantOutput.get("Recommendations", [])
+    print "Recommendations: ", recommendations
     rampTime = None
     for recommendation in recommendations:
+        print "  recommendation: ", recommendation
         rampTime = recommendation.get("RampTime", None)
         if rampTime <> None:
             log.tracef("*** Found a ramp time ***")
