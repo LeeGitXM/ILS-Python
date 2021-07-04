@@ -220,7 +220,7 @@ def run():
             " and A.UnitId = U.UnitId "\
             " and P.PostId = U.PostId "\
             " and P.Post = '%s' "\
-            " and A.ApplicationName = '%s' "\
+            " and A.ApplicationName like '%s' "\
             " order by QuantOutputName" % (post, applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
@@ -258,7 +258,7 @@ def run():
             " where A.ApplicationId = F.ApplicationId"\
             " and F.FamilyId = FD.FamilyId"\
             " and FD.FinalDiagnosisId = DE.FinalDiagnosisId"\
-            " and A.applicationName = '%s' "\
+            " and A.applicationName like '%s' "\
             " order by FD.FinalDiagnosisName" % (applicationName)
 
         pds = system.db.runQuery(SQL, database=db)

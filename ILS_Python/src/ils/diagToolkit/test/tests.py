@@ -1054,6 +1054,7 @@ def test17a(db):
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family2_1', 'FT_FD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
     
+    applicationName = "FINAL_TEST_%"
     return applicationName
 
 # Test a single text recommendation
