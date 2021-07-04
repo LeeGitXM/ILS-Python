@@ -214,6 +214,7 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 3, "version": "1.3r0", "filename": "update_1.3r0.sql", "releaseData": "2020-09-14"})
         dbVersions.append({"versionId": 4, "version": "1.4r0", "filename": "update_1.4r0.sql", "releaseData": "2020-10-25"})
         dbVersions.append({"versionId": 5, "version": "1.5r0", "filename": "update_1.5r0.sql", "releaseData": "2021-04-15"})
+        dbVersions.append({"versionId": 6, "version": "1.6r0", "filename": "update_1.6r0.sql", "releaseData": "2021-07-04"})
         
         projectName = system.util.getProjectName()
         log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
