@@ -2,7 +2,6 @@
   Gateway scope extension functions dealing with Application instances.
 '''
 import system
-import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 from ils.log.LogRecorder import LogRecorder
 from ils.common.database import getUnitName, getPostForUnitId, lookupKeyFromId
 from ils.queue.commons import getQueueForDiagnosticApplication
@@ -20,6 +19,7 @@ def delete(applicationUUID):
     log = LogRecorder(__name__ + ".delete")
     log.infof("In %s.delete()", __name__)
     
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
     handler = ControllerRequestHandler.getInstance()
     db = handler.getProductionDatabase()
     
@@ -46,6 +46,7 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL, db)
     
     if (DEBUG): log.infof("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
     handler = ControllerRequestHandler.getInstance()
     db = handler.getProductionDatabase()
     renameInDatabase(uuid,oldName,newName,db)
@@ -60,6 +61,7 @@ def save(applicationUUID):
     '''
     log = LogRecorder(__name__ + ".save")
     log.infof("In %s.save() with %s", __name__, applicationUUID)
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
     handler = ControllerRequestHandler.getInstance()
     db = handler.getProductionDatabase()
     
@@ -109,6 +111,7 @@ def getAux(uuid,aux,db):
     log = LogRecorder(__name__ + ".getAux")
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
     handler = ControllerRequestHandler.getInstance()
     appName = handler.getApplicationName(uuid)
     
@@ -205,6 +208,7 @@ def setAux(uuid, aux, db):
     log = LogRecorder(__name__ + ".setAux")
     log.infof("In %s.setAux()", __name__)
     
+    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
     handler = ControllerRequestHandler.getInstance()
     applicationName = handler.getApplicationName(uuid)
     
