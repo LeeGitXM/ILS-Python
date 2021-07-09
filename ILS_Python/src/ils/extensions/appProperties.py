@@ -369,7 +369,7 @@ def getList(key,lst,db):
     is appropriate for the current application state.
     '''
     log = LogRecorder(__name__ + ".getList")
-    log.infof("getList ... %s %s ", __name__,' ',key)
+    log.infof("In %s.getList() looking for %s...", __name__, key)
     if key=="GroupRamp":
         if (DEBUG): log.infof("Fetching list of Group Ramp Methods...")
         SQL = "SELECT LookupName FROM Lookup where LookupTypeCode = 'GroupRampMethod' ORDER BY LookupName"
