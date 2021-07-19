@@ -61,7 +61,7 @@ def openControlPanel(controlPanelName, controlPanelId, startImmediately, positio
             originator = system.security.getUsername()
             startChart(chartPath, controlPanelName, project, originator, isolationMode)
         else:
-            system.gui.warningBox('This chart is already running')
+            system.gui.messageBox('This chart <%s> is already running' % (chartPath))
         
         system.db.refresh(rootContainer, "windowData")
 
@@ -206,8 +206,9 @@ def resetControlPanel(controlPanelName):
     database = getDatabaseClient()
     controlPanelId = getControlPanelIdForName(controlPanelName, database)
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
-    system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % controlPanelId, database)
-    system.db.runUpdateQuery("delete from SfcWindow where chartRunId = chartRunId ", database)
+    if controlPanelId != None:
+        system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % controlPanelId, database)
+    # system.db.runUpdateQuery("delete from SfcWindow where chartRunId = chartRunId ", database)
 
 
 def getControlPanelIdForChartRunId(chartRunId, db):

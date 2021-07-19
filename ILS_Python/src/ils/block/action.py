@@ -54,15 +54,14 @@ class Action(basicblock.BasicBlock):
     # then evaluate the function. The output retains the 
     # timestamp of the input.
     def acceptValue(self,port,value,quality,time):
-        log.infof("In %s.acceptValue()", __name__)
-        
         handler = self.handler
-        database = handler.getDefaultDatabase(self.parentuuid)
-        provider = handler.getDefaultTagProvider(self.parentuuid)
-        
         block = handler.getBlock(self.parentuuid, self.uuid)
         blockName = block.getName()
-        log.tracef("Action Block Name: %s", blockName)
+        
+        log.infof("In %s.acceptValue() with %s", __name__, blockName)
+        
+        database = handler.getDefaultDatabase(self.parentuuid)
+        provider = handler.getDefaultTagProvider(self.parentuuid)
         
         trigger = self.properties.get('Trigger',{}).get("value","").lower()
         text = str(value).lower()

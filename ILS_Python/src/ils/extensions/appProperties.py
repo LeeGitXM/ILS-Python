@@ -59,6 +59,9 @@ def save(applicationUUID):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
+    print "%s.save() stubbed out" % (__name__)
+    return
+
     log = LogRecorder(__name__ + ".save")
     log.infof("In %s.save() with %s", __name__, applicationUUID)
     import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
@@ -108,6 +111,9 @@ Fill the aux structure with values from the database
 The caller must supply either the production or isolation database name
 '''
 def getAux(uuid,aux,db):
+    print "%s.getAux() stubbed out" % (__name__)
+    return
+
     log = LogRecorder(__name__ + ".getAux")
     log.infof("In %s.getAux()", __name__)
     applicationId = -1
@@ -205,6 +211,9 @@ def setAux(uuid, aux, db):
     Set values in the database from contents of the aux container
     The caller must supply either the production or isolation database name
     '''
+    print "%s.setAux() stubbed out" % (__name__)
+    return
+    
     log = LogRecorder(__name__ + ".setAux")
     log.infof("In %s.setAux()", __name__)
     
@@ -368,6 +377,9 @@ def getList(key,lst,db):
     Copy a list of strings associated with the supplied key. The database connection
     is appropriate for the current application state.
     '''
+    print "%s.getList() stubbed out" % (__name__)
+    return
+
     log = LogRecorder(__name__ + ".getList")
     log.infof("In %s.getList() looking for %s...", __name__, key)
     if key=="GroupRamp":
