@@ -68,9 +68,6 @@ def save(familyUUID):
     This may also be called on startup - I think this makes sense if we consider that Ignition is the Master, then startup gives us an opportunity
     to synchronoze Ignition and the database.
     '''
-    print "%s.save() stubbed out" % (__name__)
-    return
-
     handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".save")
@@ -128,9 +125,6 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid, aux, db):
-    print "%s.getAux() stubbed out" % (__name__)
-    return
-
     handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".getAux")
@@ -158,9 +152,6 @@ def getAux(uuid, aux, db):
 
 
 def setAux(uuid,aux,db):
-    print "%s.setAux() stubbed out" % (__name__)
-    return
-    
     handler = ControllerRequestHandler.getInstance()
     from ils.log.LogRecorder import LogRecorder
     log = LogRecorder(__name__ + ".setAux")
