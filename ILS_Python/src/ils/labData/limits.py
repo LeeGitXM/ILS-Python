@@ -464,7 +464,7 @@ def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
     '''
     standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (tagProvider)).value
     standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (tagProvider)).value
-    log.trace("Using %f standard deviations to the SQC limits and %s standard deviations to the validity limits" % (standardDeviationsToSQCLimits, str(standardDeviationsToValidityLimits)))
+    log.trace("Using %s standard deviations to the SQC limits and %s standard deviations to the validity limits" % (str(standardDeviationsToSQCLimits), str(standardDeviationsToValidityLimits)))
 
     if limitType == "Release":
         if upperSQCLimit == None:

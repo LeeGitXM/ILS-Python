@@ -2,8 +2,7 @@
 
 import system
 from ils.block import basicblock
-from com.ils.common.log import LogMaker
-log = LogMaker.getLogger(__name__)
+from ils.log.LogRecorder import LogRecorder
 
 def getClassName():
     return "SQCDiagnosis"
@@ -14,6 +13,8 @@ def getClassName():
 class SQCDiagnosis(basicblock.BasicBlock):
     def __init__(self):
         basicblock.BasicBlock.__init__(self)
+        self.log = LogRecorder(__name__)
+        self.log.infof("Instantiating a SQC Diagnosis...")
         self.initialize()
     
     # Set attributes custom to this class
@@ -22,8 +23,8 @@ class SQCDiagnosis(basicblock.BasicBlock):
 #        self.properties['Label'] = {'value':'SQCDiagnosis','editable':'True'}
         self.properties['TagPath'] = { 'value':'','binding':'','bindingType':'TAG_WRITE','editable':'True'}
     
-        self.inports = [{'name':'in','type':'truthvalue','allowMultiple':False}]
-        self.outports= [{'name':'out','type':'truthvalue'}]
+        self.inports = [{'name':'in','type':'TRUTHVALUE','allowMultiple':False}]
+        self.outports= [{'name':'out','type':'TRUTHVALUE'}]
 
         
     # Return a dictionary describing how to draw an icon
@@ -51,7 +52,7 @@ class SQCDiagnosis(basicblock.BasicBlock):
     # For now we record it to a tag and pass it through to the output
     def acceptValue(self,port,value,quality,time):
         if not self.state==str(value):
-            log.trace("Accepting a new value <%s> for an SQC diagnosis block..." % (str(value)))
+            self.log.trace("Accepting a new value <%s> for an SQC diagnosis block..." % (str(value)))
             self.state = str(value)
         
             # Write to the tag, if it exists
@@ -77,35 +78,35 @@ class SQCDiagnosis(basicblock.BasicBlock):
         sqcDiagnosisName=tokens[0]
         
         # If we can find the block by UUID then the name and the parent have got to be correct
-        log.trace("Updating a SQC diagnosis by uuid...")
+        self.log.trace("Updating a SQC diagnosis by uuid...")
         SQL = "update DtSQCDiagnosis set SQCDiagnosisName = '%s', Status = '%s', DiagramUUID = '%s' where SQCDiagnosisUUID = '%s'"\
              % (sqcDiagnosisName, str(value), str(self.parentuuid), str(self.uuid))
         try:
             rows=system.db.runUpdateQuery(SQL, database)
             if rows > 0:
-                log.trace("...success")
+                self.log.trace("...success")
                 return
         
             # The block Id could not be found - see if the block name exists.
-            log.trace("...that didn't work, try updating by name...")
+            self.log.trace("...that didn't work, try updating by name...")
             SQL = "update DtSQCDiagnosis set SQCDiagnosisUUID = '%s', DiagramUUID = '%s', Status = '%s' where SQCDiagnosisName = '%s'" \
                 % (str(self.uuid), str(self.parentuuid), str(value), sqcDiagnosisName)
             print SQL
             rows=system.db.runUpdateQuery(SQL, database)
             if rows > 0:
-                log.trace("...success")
+                self.log.trace("...success")
                 return
         
             # The name couldn't be found either so this must be a totally new SQC diagnosis which we have never seen before
-            log.trace("...that didn't work either, try inserting a new record, this must be a new block...")
+            self.log.trace("...that didn't work either, try inserting a new record, this must be a new block...")
 
             applicationName = handler.getApplication(self.parentuuid).getName()
             familyName = handler.getFamily(self.parentuuid).getName()
-            log.trace("From the BLT handler, the family name is: %s" % (familyName))
+            self.log.trace("From the BLT handler, the family name is: %s" % (familyName))
             from ils.diagToolkit.common import fetchFamilyId
             familyId = fetchFamilyId(familyName, database)
             if familyId == None:
-                log.error("Unable to insert the SQC diagnosis into the database because the family <%s> is undefined" % (familyName))
+                self.log.error("Unable to insert the SQC diagnosis into the database because the family <%s> is undefined" % (familyName))
                 return
         
             print "Application: %s\nFamily: %s (%d)" % (applicationName, familyName, familyId)
@@ -117,11 +118,11 @@ class SQCDiagnosis(basicblock.BasicBlock):
                 print "...success"
                 return
         
-            log.error("Unable to update a change in value for an SQC Diagnosis")
+            self.log.error("Unable to update a change in value for an SQC Diagnosis")
         except:
             from ils.common.error import catchError
             txt=catchError(__name__, "Error handling a new value for an SQC Diagnosis")
-            log.error(txt)
+            self.log.error(txt)
 
     # Trigger property and connection notifications on the block
     def notifyOfStatus(self):
@@ -142,11 +143,11 @@ class SQCDiagnosis(basicblock.BasicBlock):
             sqcDiagnosis = handler.getBlock(self.parentuuid, self.uuid)
             sqcDiagnosisName = sqcDiagnosis.getName()
             
-            log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (sqcDiagnosisName))
+            self.log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (sqcDiagnosisName))
             SQL = "update DtSQCDiagnosis set LastResetTime = getdate(), Status = 'UNKNOWN' where SQCDiagnosisUUID = '%s'" % (str(self.uuid))
             rows = system.db.runUpdateQuery(SQL, database)
-            log.info("      ...updated %i rows" % (rows))
+            self.log.info("      ...updated %i rows" % (rows))
         except:
             from ils.common.error import catchError
             txt=catchError(__name__, "Error resetting a SQC Diagnosis")
-            log.error(txt)
+            self.log.error(txt)

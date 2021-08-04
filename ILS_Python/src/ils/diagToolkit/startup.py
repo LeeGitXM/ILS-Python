@@ -69,8 +69,8 @@ def createTags(tagProvider):
     print "Creating Symbolic AI configuration tags..."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
-    path = tagProvider + "Configuration/DiagnosticToolkit/"
-
+    
+    path = tagProvider + "Configuration/DiagnosticToolkit"
     data.append([path, "diagnosticToolkitWriteEnabled", "Boolean", "True"])
     data.append([path, "downloadConfirmationEnabled", "Boolean", "False"])
     data.append([path, "diagnosticAgeInterval", "Int8", "5"])
@@ -82,7 +82,7 @@ def createTags(tagProvider):
     data.append([path, "writeTextRecommendationsToLogbook", "Boolean", "False"])
     data.append([path, "zeroChangeThreshold", "Float8", "0.00005"])
     
-    path = tagProvider + "Configuration/DiagnosticToolkit/ApplicationExtensions/"
+    path = tagProvider + "Configuration/DiagnosticToolkit/ApplicationExtensions"
     data.append([path, "Delete", "String", "ils.extensions.appProperties.delete"])
     data.append([path, "GetAux", "String", "ils.extensions.appProperties.getAux"])
     data.append([path, "Rename", "String", "ils.extensions.appProperties.rename"])
@@ -90,14 +90,14 @@ def createTags(tagProvider):
     data.append([path, "SetAux", "String", "ils.extensions.appProperties.setAux"])
     data.append([path, "GetList", "String", "ils.extensions.appProperties.getList"])
     
-    path = tagProvider + "Configuration/DiagnosticToolkit/FamilyExtensions/"
+    path = tagProvider + "Configuration/DiagnosticToolkit/FamilyExtensions"
     data.append([path, "Delete", "String", "ils.extensions.famProperties.delete"])
     data.append([path, "GetAux", "String", "ils.extensions.famProperties.getAux"])
     data.append([path, "Rename", "String", "ils.extensions.famProperties.rename"])
     data.append([path, "Save", "String", "ils.extensions.famProperties.save"])
     data.append([path, "SetAux", "String", "ils.extensions.famProperties.setAux"])
     
-    path = tagProvider + "Configuration/DiagnosticToolkit/DiagramExtensions/"
+    path = tagProvider + "Configuration/DiagnosticToolkit/DiagramExtensions"
     data.append([path, "Delete", "String", "ils.extensions.diaProperties.delete"])
     data.append([path, "GetAux", "String", "ils.extensions.diaProperties.getAux"])
     data.append([path, "Rename", "String", "ils.extensions.diaProperties.rename"])
@@ -107,4 +107,5 @@ def createTags(tagProvider):
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
     createConfigurationTags(ds, log)
+    print "... done creating Symbolic AI configuration tags!"
     

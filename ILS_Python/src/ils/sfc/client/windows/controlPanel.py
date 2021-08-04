@@ -204,12 +204,16 @@ def closeAllPopups():
 def resetControlPanel(controlPanelName):
     print "Resetting the database for control panel: ", controlPanelName
     database = getDatabaseClient()
-    controlPanelId = getControlPanelIdForName(controlPanelName, database)
+    
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
+    
+    controlPanelId = getControlPanelIdForName(controlPanelName, database)
+    print "Found control panel id <%s> for <%s>" % (str(controlPanelId), controlPanelName)
     if controlPanelId != None:
-        system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % controlPanelId, database)
-    # system.db.runUpdateQuery("delete from SfcWindow where chartRunId = chartRunId ", database)
-
+        system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % (controlPanelId), database)
+        
+        ''' Added this back in with a slightly different where clause, not sure why it was ever removed. -PAH 7/28/21 '''
+        system.db.runUpdateQuery("delete from SfcWindow where controlPanelId = %s" % (controlPanelId), database)
 
 def getControlPanelIdForChartRunId(chartRunId, db):
     '''Get the control panel id given the name, or None'''

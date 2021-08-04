@@ -47,55 +47,54 @@ def gateway():
     
     tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase = getDbAndTagProviderFromBltModule()
 
+    '''
+    This used to be done in an aynchronous thread, the only thing that can be really time consuming is restoring Lab Data, maybe something in 
+    Diag Toolkit IDK.  But all of a sudden I am having trouble creating the configuration tags.  So grab the CPU and get er done PH 7/30/2021
+    '''
     #------------------------------------------------------------------------------------------------
     # Putting this in its own function allows the other startups to proceed while this sleeps.
+    '''
     def doit(tagProvider=tagProvider, isolationTagProvider=isolationTagProvider, historyProvider=historyProvider, database=database, isolationDatabase=isolationDatabase, log=log):
         log.info("Starting the deferred startup...")
+    '''
 
-        # Start all of the packages used at the site
-        
-        import ils.recipeToolkit.startup as recipeToolkitStartup
-        recipeToolkitStartup.gateway(tagProvider, isolationTagProvider)
+    # Start all of the packages used at the site
     
-        import ils.diagToolkit.startup as diagToolkitStartup
-        diagToolkitStartup.gateway(tagProvider, isolationTagProvider, database)
-        
-        import ils.uir.startup as uirStartup
-        uirStartup.gateway(tagProvider, isolationTagProvider)
-        
-        import ils.labData.startup as labDataStartup
-        labDataStartup.gateway(tagProvider, isolationTagProvider)
-        
-        import ils.labFeedback.startup as labFeedbackStartup
-        labFeedbackStartup.gateway(tagProvider, isolationTagProvider)
-        
-        import ils.common.startup as commonStartup
-        commonStartup.gatewayCommon(tagProvider, isolationTagProvider) 
-        
-        import ils.sfc.startup as sfcStartup
-        sfcStartup.gateway(tagProvider, isolationTagProvider)
-        
-        import ils.dataPump.startup as dataPumpStartup
-        dataPumpStartup.gateway(tagProvider, isolationTagProvider)
-        
-        '''
-        Now perform very specific startup for the client
-        '''
-        createTags("[" + tagProvider + "]", log)
-        createTags("[" + isolationTagProvider + "]", log)
+    import ils.recipeToolkit.startup as recipeToolkitStartup
+    recipeToolkitStartup.gateway(tagProvider, isolationTagProvider)
 
-        log.tracef("Done with core startup...")
+    import ils.diagToolkit.startup as diagToolkitStartup
+    diagToolkitStartup.gateway(tagProvider, isolationTagProvider, database)
+    
+    import ils.uir.startup as uirStartup
+    uirStartup.gateway(tagProvider, isolationTagProvider)
+    
+    import ils.labData.startup as labDataStartup
+    labDataStartup.gateway(tagProvider, isolationTagProvider)
+    
+    import ils.labFeedback.startup as labFeedbackStartup
+    labFeedbackStartup.gateway(tagProvider, isolationTagProvider)
+        
+    import ils.common.startup as commonStartup
+    commonStartup.gatewayCommon(tagProvider, isolationTagProvider) 
+    
+    import ils.sfc.startup as sfcStartup
+    sfcStartup.gateway(tagProvider, isolationTagProvider)
+    
+    import ils.dataPump.startup as dataPumpStartup
+    dataPumpStartup.gateway(tagProvider, isolationTagProvider)
+    
+    '''
+    Now perform very specific startup for the client
+    '''
+
+    log.tracef("Done with core startup...")
 
     #---------------------------------------------------------------------------------------------------------
 
-
+'''
     system.util.invokeAsynchronous(doit)
-    
-
-def createTags(tagProvider, log):
-    print "Creating global constant memory tags...."
-    headers = ['Path', 'Name', 'Data Type', 'Value']
-    data = []
+'''  
 
 def getDbAndTagProviderFromBltModule():
     

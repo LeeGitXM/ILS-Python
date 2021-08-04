@@ -19,8 +19,9 @@ def gateway(tagProvider, isolationTagProvider):
     createTags("[" + isolationTagProvider + "]", log)
 
 def createTags(tagProvider, log):
-    print "Creating UIR configuration tags...."
-    path = tagProvider + "Configuration/UIR/"
+    print "Creating UIR configuration tags for %s...." % (tagProvider)
+    
+    path = tagProvider + "Configuration/UIR"
     
     # Make an empty dataset for the email list
     header=['First Name','Last Name','Email','Automatic UIR Email','Manual Email']

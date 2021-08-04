@@ -278,17 +278,18 @@ def setAux(uuid, aux, db):
     # Now process the quant outputs that are in the list.
     # The list is a list of dictionaries
     outputList = maplists.get("QuantOutputs",[])
-    for record in outputList:       
+    for mapRecord in outputList:       
         # Update the list of ids so I know which ones to delete at the end
-        quantOutputName = record.get("QuantOutput", "")
+        if (DEBUG): log.infof("Value map: %s", str(mapRecord))
+        quantOutputName = mapRecord.get("QuantOutput", "")
         quantOutputId = quantOutputs.get(quantOutputName, -1)
         if quantOutputId > 0:
             if (DEBUG): log.infof("Found %s in the list of existing quantOutputs...", quantOutputName)
             del quantOutputs[quantOutputName]
         
         if (DEBUG): log.infof("...saving Quant Output: %s - %d", str(quantOutputName), quantOutputId)
-        tagPath = record.get("TagPath", "")
-        feedbackMethod = record.get("FeedbackMethod", 'Simple Sum')
+        tagPath = mapRecord.get("TagPath", "")
+        feedbackMethod = mapRecord.get("FeedbackMethod", 'Simple Sum')
         if (DEBUG): log.infof("   (feedback method: <%s>", feedbackMethod)
         
         '''
@@ -296,13 +297,13 @@ def setAux(uuid, aux, db):
         chokes on it.  I tried using the locale utilities and atof, but if they don't include a decimal that that chokes.  The database
         field is a float but they can enter an integer.
         '''
-        setpointLowLimit = str(record.get("SetpointLowLimit", 0.0)).replace(',','')
-        setpointHighLimit = str(record.get("SetpointHighLimit", 100.0)).replace(',','')
-        minimumIncrement = str(record.get("MinimumIncrement", 0.01)).replace(',','')
-        mostPositiveIncrement = str(record.get("MostPositiveIncrement", 10.0)).replace(',','')
-        mostNegativeIncrement = str(record.get("MostNegativeIncrement", -10.0)).replace(',','')
+        setpointLowLimit = str(mapRecord.get("SetpointLowLimit", 0.0)).replace(',','')
+        setpointHighLimit = str(mapRecord.get("SetpointHighLimit", 100.0)).replace(',','')
+        minimumIncrement = str(mapRecord.get("MinimumIncrement", 0.01)).replace(',','')
+        mostPositiveIncrement = str(mapRecord.get("MostPositiveIncrement", 10.0)).replace(',','')
+        mostNegativeIncrement = str(mapRecord.get("MostNegativeIncrement", -10.0)).replace(',','')
         
-        incrementalOutput = record.get("IncrementalOutput", 1)
+        incrementalOutput = mapRecord.get("IncrementalOutput", 1)
 
         if incrementalOutput in ['True', '1']:
             incrementalOutput = 1
@@ -318,11 +319,14 @@ def setAux(uuid, aux, db):
             feedbackMethodId = system.db.runScalarQuery(SQL,db)
             if (DEBUG): log.infof("SQL: %s  =>  %s", SQL, str(feedbackMethodId))
         
-        if (DEBUG): log.infof("Id: %d", quantOutputId)
-        if (DEBUG): log.infof("Tagpath: %s", tagPath)
-        if (DEBUG): log.infof("Minimum Increment: %s", str(minimumIncrement))
-        if (DEBUG): log.infof("Most Negative Increment: %s", str(mostNegativeIncrement))
-        if (DEBUG): log.infof("Most Positive Increment: %s", str(mostPositiveIncrement))
+        if (DEBUG): log.infof("   Id: %d", quantOutputId)
+        if (DEBUG): log.infof("   Tagpath: %s", tagPath)
+        if (DEBUG): log.infof("   Setpoint High Limit: %s", str(setpointHighLimit))
+        if (DEBUG): log.infof("   Setpoint Low Limit: %s", str(setpointLowLimit))
+        if (DEBUG): log.infof("   Minimum Increment: %s", str(minimumIncrement))
+        if (DEBUG): log.infof("   Most Negative Increment: %s", str(mostNegativeIncrement))
+        if (DEBUG): log.infof("   Most Positive Increment: %s", str(mostPositiveIncrement))
+        if (DEBUG): log.infof("   Incremental Output: %s", str(incrementalOutput))
         
         if quantOutputId < 0:
             if (DEBUG): log.infof("...inserting a new quant output...")

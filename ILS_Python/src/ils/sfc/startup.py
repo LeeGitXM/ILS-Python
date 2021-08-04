@@ -36,7 +36,7 @@ def createTags(tagProvider):
     print "Creating SFC configuration tags..."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
-    path = tagProvider + "Configuration/SFC/"
+    path = tagProvider + "Configuration/SFC"
 
     data.append([path, "sfcMaxDownloadGuiAdjustment", "Float4", "1.7"])
     data.append([path, "sfcRecipeDataMigrationEnabled", "Boolean", "False"])

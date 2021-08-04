@@ -208,7 +208,7 @@ def stackWindow(window, scale=1.0):
     mainWidth = mainWindow.getWidth()
     mainHeight = mainWindow.getHeight()
     thisWindowPath=window.getPath()
-    stackOffset = 15
+    stackOffset = 30
     
     log.tracef("===========")
     log.tracef("Main window size: %d X %d", mainWidth, mainHeight)

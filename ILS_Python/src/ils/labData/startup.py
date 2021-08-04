@@ -55,7 +55,7 @@ def createTags(tagProvider):
     print "Creating Lab Data configuration tags...."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
-    path = tagProvider + "Configuration/LabData/"
+    path = tagProvider + "Configuration/LabData"
 
     data.append([path, "communicationHealthy", "Boolean", "True"])
     data.append([path, "dataTransferPermitted", "Boolean", "True"])

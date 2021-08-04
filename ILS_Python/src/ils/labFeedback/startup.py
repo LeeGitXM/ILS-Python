@@ -34,8 +34,8 @@ def createTags(tagProvider):
     print "Creating Lab Feedback configuration tags...."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
-    path = tagProvider + "Configuration/LabFeedback/"
-
+    
+    path = tagProvider + "Configuration/LabFeedback"
     data.append([path, "labFeedbackWriteEnabled", "Boolean", "False"])
 
     ds = system.dataset.toDataSet(headers, data)

@@ -34,7 +34,7 @@ def createTags(tagProvider):
     print "Creating global constant memory tags...."
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
-    path = tagProvider + "Configuration/RecipeToolkit/"
+    path = tagProvider + "Configuration/RecipeToolkit"
 
     data.append([path, "localWriteAlias", "String", "LOCAL"])
     data.append([path, "itemIdPrefix", "String", ""])
@@ -66,7 +66,7 @@ def createTags(tagProvider):
     # Now make two additional tags that are used to test how long the system has been RUNNING
     # First, make the tag that records when the gateway was restarted
     name = "startTime"
-    fullName = path + name
+    fullName = path + "/" + name
     if not(system.tag.exists(fullName)):
         print "Creating the start time tag" 
         system.tag.addTag(parentPath = path, name = name, tagType = "MEMORY", dataType = "DateTime")
@@ -79,7 +79,7 @@ def createTags(tagProvider):
     
     # Now make an expression tag that calculates how many seconds the gateway has been running
     name = "runningSeconds"
-    fullName = path + name
+    fullName = path + "/" + name
     if not(system.tag.exists(fullName)):
         print "Creating the running time tag" 
         expr = "dateDiff({[.]startTime}, now(0), 'sec')"

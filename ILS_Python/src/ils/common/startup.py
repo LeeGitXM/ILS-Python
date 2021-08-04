@@ -177,7 +177,6 @@ def createTags(tagProvider, log):
     data = []
     
     path = tagProvider + "Configuration/Common/"
-    
     data.append([path, "dbPruneDays", "Int8", "365"])
     data.append([path, "dbUpdateStrategy", "String", "implement"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
@@ -198,8 +197,7 @@ def createTags(tagProvider, log):
     # Create E-Mail related tags which can be used any toolkit.  These tags are to configure the e-mail
     # server that sends the emails
     data = []
-    path = tagProvider + "Configuration/Email/"
-
+    path = tagProvider + "Configuration/Email"
     data.append([path, "smtpProfile", "String", "mySmtpServer"])
 
     ds = system.dataset.toDataSet(headers, data)

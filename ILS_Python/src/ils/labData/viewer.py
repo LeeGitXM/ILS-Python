@@ -8,6 +8,7 @@ import ils.common.util as util
 from ils.common.config import getTagProviderClient
 from ils.labData.scanner import simulateReadRaw
 from ils.log.LogRecorder import LogRecorder
+from ils.common.windowUtil import stackWindow
 log = LogRecorder(__name__)
 
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
@@ -29,13 +30,15 @@ def launcher(displayTableTitle):
             return
 
     window = system.nav.openWindowInstance(windowName, {'displayTableTitle' : displayTableTitle})
-    system.nav.centerWindow(window)
+    stackWindow(window)
+#    system.nav.centerWindow(window)
     
 
 # Initialize the lab data viewer page with all of the parameters that are defined for 
 # this page.  There is really only one component on this window - the template repeater.
 # Once the repeater is configured, each component in the repeater knows how to configure itself.
-def internalFrameActivated(rootContainer):
+def internalFrameActivated(event):
+    rootContainer = event.source.rootContainer
     log.tracef("In %s.internalFrameActivated()", __name__)
      
     displayTableTitle = rootContainer.displayTableTitle
@@ -49,6 +52,7 @@ def internalFrameActivated(rootContainer):
         " order by DTD.DisplayOrder" % (displayTableTitle)
     log.tracef(SQL)
     pds = system.db.runQuery(SQL)
+    
     ds = system.dataset.toDataSet(pds)
     for row in range(ds.rowCount):
         if ds.getValueAt(row, "Description") in [None, ""]:
@@ -59,6 +63,20 @@ def internalFrameActivated(rootContainer):
     
     repeater=rootContainer.getComponent("Template Repeater")
     repeater.templateParams=ds
+    
+    ''' Set the size of the window to handle the number of rows in the repeater. '''
+    borderWidth = 15
+    templateWidth = 150
+    numTemplates = len(pds)
+    window = system.gui.getParentWindow(event)
+    
+    if numTemplates > 0:
+        newWidth = borderWidth + numTemplates * templateWidth
+        width = window.getWidth()
+        height = window.getHeight()
+        log.infof("The original window size was: %d X %d (Width X Height)", width, height)
+        window.setSize(int(newWidth), int(height))
+        log.infof("The new window size is: %d X %d (Width X Height)", newWidth, height)
 
     log.tracef("...leaving internalFrameActivated()!")
 
