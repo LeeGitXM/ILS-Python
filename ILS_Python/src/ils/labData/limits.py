@@ -294,11 +294,8 @@ def fetchLimits(tagProvider, database):
                 if limitType == "SQC":
                     
                     if limitSource == "DCS":
-                        print "A"
                         upperSQCLimit, lowerSQCLimit=readSQCLimitsFromDCS(record)
-                        print "B"
                         target, standardDeviation, lowerValidityLimit, upperValidityLimit = updateLabLimits(record["ValueName"], record["UnitName"], "SQC", record["LimitId"], upperSQCLimit, lowerSQCLimit, tagProvider, database)
-                        print "C"
                     else:
                         upperSQCLimit = record["UpperSQCLimit"]
                         lowerSQCLimit = record["LowerSQCLimit"]

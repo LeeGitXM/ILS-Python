@@ -760,11 +760,11 @@ def storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvi
 
     from ils.common.grade import getGradeForUnit
     grade=getGradeForUnit(unitName, tagProvider)
-    insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database)
+    insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database)
 
 
 # This should be the only place anywhere that inserts into the LtHistory table.
-def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database=""):
+def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database=""):
     success = True  # If the row already exists then consider it a success
     insertedRows = 0
 

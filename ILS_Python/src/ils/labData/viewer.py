@@ -358,7 +358,7 @@ def fetchHistory(container):
                 
                 # Insert the value into the lab history table.
                 from ils.labData.scanner import insertHistoryValue
-                success,insertedRows = insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade)    
+                success,insertedRows = insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log)    
                 if success:
                     rows = rows + insertedRows
         else:

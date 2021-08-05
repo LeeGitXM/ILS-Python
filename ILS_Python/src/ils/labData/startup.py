@@ -184,7 +184,7 @@ def restoreValueHistory(tagProvider, historyProvider, daysToRestore=7, database=
                     
                     if quality.isGood():
                         from ils.labData.scanner import insertHistoryValue
-                        success,insertedRows=insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database)
+                        success,insertedRows=insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database)
                         if success and insertedRows > 0:
                             log.info("     ...inserted %s : %s (Grade: %s)" % (str(rawValue), str(sampleTime), str(grade)))
                             rows=rows+insertedRows
