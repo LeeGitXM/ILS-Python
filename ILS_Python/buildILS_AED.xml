@@ -12,13 +12,6 @@
 				<include name="ils/**/*.py" />
 			</fileset>
 		</copy>
-		
-		<echo message="Deploying python scripts to ${aed.v2.py.lib}" />
-		<copy todir="${aed.v2.py.lib}">
-			<fileset dir="${basedir}/src">
-				<include name="ils/**/*.py" />
-			</fileset>
-		</copy>
 	</target>
 	
 </project>

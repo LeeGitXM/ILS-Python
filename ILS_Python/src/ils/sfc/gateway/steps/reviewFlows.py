@@ -75,11 +75,11 @@ def activate(scopeContext, stepProperties, state):
             windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
             stepScope[WINDOW_ID] = windowId
 
-            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
+            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
             
-            SQL = "insert into SfcReviewFlows (windowId, heading1, heading2, heading3, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
+            SQL = "insert into SfcReviewFlows (windowId, heading1, heading2, heading3, targetStepID, responseKey, primaryTabLabel, secondaryTabLabel) "\
                 "values (?, ?, ?, ?, ?, ?, ?, ?)"
-            system.db.runPrepUpdate(SQL, [windowId, heading1, heading2, heading3, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel], database)
+            system.db.runPrepUpdate(SQL, [windowId, heading1, heading2, heading3, targetStepId, responseKey, primaryTabLabel, secondaryTabLabel], database)
 
             '''
             Transfer the data from the configuration structures into the database table that will be read by the clients.  If the configuration data

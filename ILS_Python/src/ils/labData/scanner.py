@@ -773,6 +773,9 @@ def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, dat
     if sampleTimeType == "Date":
         log.tracef("sampleTime is a date, converting to a string...")
         sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
+    elif sampleTimeType == "Timestamp":
+        log.tracef("sampleTime is a **Timestamp**, converting to a string...")
+        sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
     
     if sampleTime.find(".") > 0:
         sampleTime = sampleTime[:sampleTime.find(".")]

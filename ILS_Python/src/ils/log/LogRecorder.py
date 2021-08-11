@@ -44,7 +44,8 @@ class LogRecorder:
                 self.clientId = ""
         
         # Standard call returns a LoggerEx which is itself a wrapper
-        self.logger = system.util.getLogger(self.name)
+        #self.logger = system.util.getLogger(self.name)
+        self.logger = LogMaker.getLogger(self.name)
         
     def trace(self, msg):
         self.setAttributes()

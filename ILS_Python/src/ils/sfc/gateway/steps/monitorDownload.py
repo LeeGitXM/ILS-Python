@@ -19,10 +19,11 @@ from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpect
     registerWindowWithControlPanel, getTopChartRunId, getDatabaseName
 
 '''
-I'd like the Download GUI block to work the same as PV Monitoring, but this block doesn't have a watch/monitoring setting!
-The ONLY reason to put an input or output in watch mode in the PV Monitoring block is to display the PV in the download monitor block.
-Since there is no way to reach out to the PV monitoring block from here, I have to assume that everything that is configured for this block 
-should show up in the GUI. 
+I'd like the Download GUI block to work the same as PV Monitoring, but this block doesn't have a watch/monitoring setting for each item
+so I need to infer the users intent!  If the recipe data is an input then always show it, if the recipe data is an output then respect the DOWNLOAD flag.
+If the download flag is dynamically set, then we don't want to show items that are not slated for download.  It the user wants to watch something 
+then they should use an input recipe data pointing at the PV of the controller.
+In summary, just because an item is configured in this block does not gaurantee that it will be shown at run time.
 '''
 IGNORE_DOWNLOAD_FLAG = False
 

@@ -28,10 +28,8 @@ def initializeResponse(scopeContext, stepProperties, windowId):
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
     logger = getChartLogger(chartScope)
-    print "Step Properties: ", stepProperties
     
     factoryId=getStepProperty(stepProperties, FACTORY_ID)
-    print "Factory Id:", factoryId
     
     if factoryId == "com.ils.selectInputStep":
         responseKey = getStepProperty(stepProperties, RESPONSE_KEY_AND_ATTRIBUTE)
@@ -39,7 +37,6 @@ def initializeResponse(scopeContext, stepProperties, windowId):
         responseKey = getStepProperty(stepProperties, KEY)
         if responseKey.find(".value") < 0:
             responseKey = responseKey + ".value"
-        print "Using response key: <%s>" % (responseKey)
         
     responseLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
     logger.tracef("In %s.initializeResponse(), initializing %s.%s", __name__, responseLocation, responseKey)
