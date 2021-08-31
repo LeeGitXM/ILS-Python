@@ -50,45 +50,7 @@ def run():
         system.tag.write("[XOM]DiagnosticToolkit/Inputs/T15", 0.6)
         logger.infof("Initializing the database...")
     
-    #-------------------------------------------
-    def initializeDatabase(db):
-        #TODO Do something smarter about DtRecommendationDefinition
-        rows = -99
-        logger.infof("Initializing the database...")
-        for SQL in [
-            "delete from DtFinalDiagnosisLog",
-            "delete from DtRecommendation", 
-            "delete from QueueDetail", 
-            "delete from DtDiagnosisEntry",
             
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ1')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ1'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ2')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ2'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ3')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ3'",
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q21')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q21'",
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q22')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q22'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q23')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q23'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q24')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q24'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q25')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q25'",
-            
-            "delete from DtFinalDiagnosis where FinalDiagnosisName like 'FT_%'", 
-            "delete from DtFamily where FamilyName like 'FT_FAMILY%'", 
-            "delete from DtApplication where ApplicationName like 'FINAL_TEST%'"
-            ]:
-
-            logger.tracef( "   %s", SQL)
-            rows=system.db.runPrepUpdate(SQL, database=db)
-            logger.tracef("   ...deleted %d rows", rows)
-        
-        logger.tracef("...done initializing the database")
-        
     #----------------
     # Fetch Recommendations
     def logTextRecommendations(post, filename, db):
@@ -389,8 +351,51 @@ def run():
     logger.trace("...totally done!")
     system.tag.write("Sandbox/Diagnostic/Final Test/State","Done")
 
+#-------------------------------------------
+def initializeDatabase(db):
+    rows = -99
+    logger.infof("Initializing the database...")
 
-def scrubDatabase(applicationName):
+    applicationId = system.db.runScalarQuery("select ApplicationId from DtApplication where ApplicationName = 'FINAL_TEST_1' ", db)
+    logger.tracef("The application id is: %s", str(applicationId))
+    
+    SQL_LIST = [
+        "delete from DtFinalDiagnosisLog",
+        "delete from DtRecommendation", 
+        "delete from QueueDetail", 
+        "delete from DtDiagnosisEntry",
+        
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ1')",
+        "delete from DtQuantOutput where QuantOutputName = 'TESTQ1' ", 
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ2')", 
+        "delete from DtQuantOutput where QuantOutputName = 'TESTQ2' ",
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ3')",
+        "delete from DtQuantOutput where QuantOutputName = 'TESTQ3' ",
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q21')", 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q21' ",
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q22')", 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q22' ",
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q23')",
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q23' ",
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q24')",
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q24' ",
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q25')", 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q25' ",
+    
+        "delete from DtFinalDiagnosis where FinalDiagnosisName like 'FT_%'", 
+        "delete from DtFamily where FamilyName like 'FT_FAMILY%'", 
+        "delete from DtApplication where ApplicationName like 'FINAL_TEST%'"
+        ]
+    
+    for SQL in SQL_LIST:
+        logger.tracef( "   %s", SQL)
+        rows=system.db.runPrepUpdate(SQL, database=db)
+        logger.tracef("   ...deleted %d rows", rows)
+    
+    logger.tracef("...done initializing the database")
+
+
+def scrubDatabaseXXX(applicationName):
     print "Scrubbing recommendations for application: %s", applicationName
     
     SQL = "select applicationId from DtApplication where ApplicationName = '%s'" % (applicationName)

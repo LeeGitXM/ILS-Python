@@ -13,11 +13,9 @@ from ils.block import basicblock
 import ils.block
 from ils.block import *
 from ils.user.block import *
-from com.ils.common.log import LogMaker
+from ils.log.LogRecorder import LogRecorder
 from __builtin__ import None
-log = LogMaker.getLogger(__name__)
-
-
+log = LogRecorder(__name__)
 
 def acceptValue(block,port,value,quality,time):
     '''

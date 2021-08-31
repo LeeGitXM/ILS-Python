@@ -14,14 +14,19 @@ class SQCDiagnosis(basicblock.BasicBlock):
     def __init__(self):
         basicblock.BasicBlock.__init__(self)
         self.log = LogRecorder(__name__)
-        self.log.infof("Instantiating a SQC Diagnosis...")
+        self.log.infof("Instantiating a new SQC Diagnosis...")
         self.initialize()
     
     # Set attributes custom to this class
     def initialize(self):
         self.className = 'ils.block.sqcdiagnosis.SQCDiagnosis'
 #        self.properties['Label'] = {'value':'SQCDiagnosis','editable':'True'}
-        self.properties['TagPath'] = { 'value':'','binding':'','bindingType':'TAG_WRITE','editable':'True'}
+
+        '''
+        Removed because if they want the state of the block to go to a tag then they should connect an output block.
+        The real purpose of this block is to provide a collection point for the SQC Plotting system.  PAH - 8/12/2021
+        '''
+#        self.properties['TagPath'] = { 'value':'','binding':'','bindingType':'TAG_WRITE','editable':'True'}
     
         self.inports = [{'name':'in','type':'TRUTHVALUE','allowMultiple':False}]
         self.outports= [{'name':'out','type':'TRUTHVALUE'}]
@@ -55,11 +60,14 @@ class SQCDiagnosis(basicblock.BasicBlock):
             self.log.trace("Accepting a new value <%s> for an SQC diagnosis block..." % (str(value)))
             self.state = str(value)
         
+            '''
+            Commented out when the tagPath property was removed - PH 8/12/2021
             # Write to the tag, if it exists
             prop = self.properties['TagPath']
             path = prop['binding']
             if len(path)>0:
                 self.handler.updateTag(self.parentuuid,path,str(value),quality,time)
+            '''
             
         # Pass the input through to the output
         self.value = value

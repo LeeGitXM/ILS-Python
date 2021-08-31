@@ -60,7 +60,7 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, familyName, finalDiagnosisName))
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found in the database!" % (applicationName, familyName, finalDiagnosisName))
         return
 
     unit=record.get('UnitName',None)

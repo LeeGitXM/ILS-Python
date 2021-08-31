@@ -74,6 +74,7 @@ def save(familyUUID):
     log.infof("In %s.save()", __name__)
     
     db = handler.getProductionDatabase()
+    if DEBUG: log.infof("...db: %s", db)
     
     from system.ils.blt.diagram import getFamilyName, getApplicationName
     familyName = getFamilyName(familyUUID)
@@ -86,32 +87,35 @@ def save(familyUUID):
     if DEBUG: log.infof("...the id for <%s> is %s", applicationName, str(applicationId))
     
     SQL = "select FamilyId from DtFamily where familyUUID = '%s'" % (familyUUID)
-    familyId = system.db.runScalarQuery(SQL, db)
-
+    familyId = system.db.runScalarQuery(SQL, database=db)
+    if DEBUG: log.infof("...familyName from UUID: %s", str(familyId))
+    
     if familyId == None:
         '''
         Take some extra steps here to see if this is an old legacy family that was saved before we added familyUUID to the database.
         If we find a family where the application and family name match then update the Family UUID.
         '''
         SQL = "select familyId from DtFamily where applicationId = %d and FamilyName = '%s'" % (applicationId, familyName)
-        familyId = system.db.runScalarQuery(SQL, db)
+        familyId = system.db.runScalarQuery(SQL, database=db)
+        if DEBUG: log.infof("...familyName from name: %s", str(familyId))
+        
         if familyId == None:
             SQL = "insert into DtFamily (ApplicationId, FamilyName, FamilyUUID, FamilyPriority) "\
                 "values (%s, '%s', '%s', 0)" % (applicationId, familyName, familyUUID)
             if DEBUG: log.infof("...SQL: %s,", SQL)
-            familyId = system.db.runUpdateQuery(SQL, db, getKey=1)
+            familyId = system.db.runUpdateQuery(SQL, database=db, getKey=1)
             if DEBUG: log.infof("Inserted a new family with id: %d", familyId)
         else:
             SQL = "update DtFamily set FamilyUUID = '%s' where ApplicationId = %d and FamilyName = '%s'  "\
                  % (familyUUID, applicationId, familyName)
             if DEBUG: log.infof("...SQL: %s,", SQL)
-            system.db.runUpdateQuery(SQL, db)
+            system.db.runUpdateQuery(SQL, database=db)
             if DEBUG: log.infof("...updated the familyUUID for a legacy family!")
             
     else:
         SQL = "update DtFamily set FamilyName = '%s', applicationId = %s where familyId = %s" % (familyName, applicationId, familyId)
         if DEBUG: log.infof("...SQL: %s,", SQL)
-        rows = system.db.runUpdateQuery(SQL, db)
+        rows = system.db.runUpdateQuery(SQL, database=db)
         if DEBUG: log.infof("...updated %d rows in DtFamily for %s", rows, familyName)
 
 '''

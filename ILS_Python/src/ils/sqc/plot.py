@@ -370,8 +370,9 @@ def getLabValueNameFromDiagram(sqcBlockName, sqcDiagnosisUUID):
     blocks=diagram.listBlocksUpstreamOf(diagramId, sqcBlockName)
 
     for block in blocks:
+        log.tracef("   Found a %s named %s", block.getClassName(), block.getName())
         if block.getClassName() == "com.ils.block.LabData":
-            log.tracef("   ... found the LabData block...")
+            log.tracef("   *** It is a LabData entry block ***")
             blockId=block.getIdString()
             
             # First get block properties

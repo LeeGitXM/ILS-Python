@@ -44,8 +44,8 @@ class LogRecorder:
                 self.clientId = ""
         
         # Standard call returns a LoggerEx which is itself a wrapper
-        #self.logger = system.util.getLogger(self.name)
-        self.logger = LogMaker.getLogger(self.name)
+        self.logger = system.util.getLogger(self.name)
+        #self.logger = LogMaker.getLogger(self.name)
         
     def trace(self, msg):
         self.setAttributes()
@@ -117,9 +117,13 @@ class LogRecorder:
         MDC.put(LogMaker.MODULE_KEY, fn)
         MDC.put(LogMaker.FUNCTION_KEY, func)
         MDC.put(LogMaker.LINE_KEY,str(lno))
-        
         MDC.put(LogMaker.CLIENT_KEY,self.clientId)
         MDC.put(LogMaker.PROJECT_KEY,self.projectName)
+        
+        ''' If we change the way we get the logger we need to swap these
+        self.logger.setClientId(self.clientId)
+        self.logger.setProject(self.projectName)
+        '''
 
     # next bit filched from 1.5.2's inspect.py
     def currentframe(self):

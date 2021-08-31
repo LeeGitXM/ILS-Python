@@ -11,7 +11,7 @@ def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     print "In fd1_1_1"
     explanation = "Close the valve because the flow is too great and needs to be minimized to reduce flooding in the control room."
     recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 12.3})
+    recommendations.append({"QuantOutput": "Q1", "Value": 12.3})
     return True, explanation, recommendations
 
 
@@ -19,70 +19,17 @@ def fd1_2_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     print "In fd1_2_2"
     explanation = "Turn down the flame and open the window."
     recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 5.4})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": -20.4})
+    recommendations.append({"QuantOutput": "Q2", "Value": 5.4})
+    recommendations.append({"QuantOutput": "Q3", "Value": -20.4})
     return True, explanation, recommendations
 
 def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In fd1_2_3 "
     explanation = "Turn down the flame and open the window."
     recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 6.8})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": -12.3})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 15.8})
-    return True, explanation, recommendations
-
-def fd1_2_3a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3a - returning a 0.0 recommendation "
-    explanation = "Turn down the flame and open the window."
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 6.8})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": -12.3})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 0.0})
-    return True, explanation, recommendations
-
-def fd1_2_3b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3b - returning just 1 of the expected 3 recommendations "
-    explanation = "Turn down the flame and open the window."
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 6.8})
-    return True, explanation, recommendations
-
-def fd1_2_3c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3c - returning 3 recommendations which are all 0.0"
-    explanation = "Returning 3 recommendations which are all 0.0"
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 0.0})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 0.0})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 0.0})
-    return True, explanation, recommendations
-
-def fd1_2_3d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3d - returning 3 recommendations which are all 0.00001"
-    explanation = "Returning 3 recommendations which are all 0.0"
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 0.00001})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 0.00001})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 0.00001})
-    return True, explanation, recommendations
-
-def fd1_2_3e(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3e - returning 3 recommendations with lots of decimals"
-    explanation = "Returning 3 recommendations which are all 0.0"
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 7.0})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 5.12348})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 3.123456789})
-    return True, explanation, recommendations
-
-def fd1_2_3f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3f - testing a computation error (divide by 0)"
-    explanation = "Returning 3 recommendations which are all 0.0"
-    myVal = 25.4 / 0.0
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": myVal})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 5.12348})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": 3.123456789})
+    recommendations.append({"QuantOutput": "Q1", "Value": 6.8})
+    recommendations.append({"QuantOutput": "Q2", "Value": -12.3})
+    recommendations.append({"QuantOutput": "Q3", "Value": 15.8})
     return True, explanation, recommendations
 
 # A text recommendations
@@ -155,32 +102,7 @@ def fd2_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     recommendations.append({"QuantOutput": "TEST_Q24", "Value":  36.23})
     return True, explanation, recommendations
 
-def fd1_3_3a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_3_3a"
-    explanation = ""
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 12.3})
-    return True, explanation, recommendations
 
-def fd1_3_3b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_3_3b"
-    explanation = "Close the valve because the flow is too great and needs to be minimized to reduce flooding in the control room."
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 10.3})
-    return True, explanation, recommendations
-
-def fd1_3_3c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_3_3c"
-    explanation = "Open the valve because the the cows need more water!"
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": -5.4})
-    return True, explanation, recommendations
-
-def fd1_3_3d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_3_3d"
-    explanation = "Here is a dynamic text recommendation!"
-    recommendations = []
-    return True, explanation, recommendations
 
 def postDownloadSpecialActions(applicationName, actionMessage, finalDiagnosisId, provider, database):
     print "********************************"
@@ -215,7 +137,3 @@ def action1_1_2(blockName, blockUUID, parentUUID, provider, db):
     chartParams = {"reactor": "R2", "setpoint": 212.0}
     
     startChartAndOpenControlPanel(chartPath, controlPanelName, project, post, isolationMode, showControlPanel, db, chartParams=chartParams)
-
-
-def version():
-    return "1.2"

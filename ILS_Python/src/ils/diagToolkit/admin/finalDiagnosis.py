@@ -13,7 +13,7 @@ def internalFrameOpened(rootContainer):
 
     print "The database is: ", database
     
-    SQL = "select ApplicationName, FamilyName, FinalDiagnosisName, FamilyPriority, FinalDiagnosisPriority, Constant, "\
+    SQL = "select FinalDiagnosisId, ApplicationName, FamilyName, FinalDiagnosisName, FamilyPriority, FinalDiagnosisPriority, Constant, "\
         " Active, LastRecommendationTime, TimeOfMostRecentRecommendationImplementation, DiagramUUID, FinalDiagnosisUUID, "\
         " ' ' State "\
         " from DtFinalDiagnosisView "\
@@ -53,3 +53,23 @@ def runTest(rootContainer):
         row = row + 1
 
     table.data = ds
+
+    
+def deleteRow(event):
+    print "In deleteRow()"
+    
+    rootContainer = event.source.parent
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data
+    row = table.selectedRow
+    finalDiagnosisId = ds.getValueAt(row, "FinalDiagnosisId")
+    finalDiagnosisName = ds.getValueAt(row, "FinalDiagnosisName")
+
+    okToDelete = system.gui.confirm("Are you sure that you want to delete Final Diagnosis named: %s?" % (finalDiagnosisName))
+    if okToDelete:
+        print "Delete it..."
+        database=system.tag.read("[Client]Database").value
+        SQL = "delete from DtFinalDiagnosis where FinalDiagnosisId = %d" % (finalDiagnosisId)
+        rows = system.db.runUpdateQuery(SQL, database)
+        print "Deleted %d rows!" % (rows)
+        internalFrameOpened(rootContainer)

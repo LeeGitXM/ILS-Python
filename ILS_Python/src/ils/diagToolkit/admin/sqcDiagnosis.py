@@ -13,7 +13,7 @@ def internalFrameOpened(rootContainer):
 
     print "The database is: ", database
     
-    SQL = "select ApplicationName, FamilyName, SQCDiagnosisName, Status, LastResetTime, SQCDiagnosisUUID, DiagramUUID, ' ' State "\
+    SQL = "select SQCDiagnosisId, ApplicationName, FamilyName, SQCDiagnosisName, LastResetTime, SQCDiagnosisUUID, DiagramUUID, ' ' State "\
         " from DtSQCDiagnosisView "\
         " order by ApplicationName, FamilyName, SQCDiagnosisName"
     pds = system.db.runQuery(SQL, database)
@@ -64,3 +64,22 @@ def runTest(rootContainer):
         row = row + 1
 
     table.data = ds
+    
+def deleteRow(event):
+    print "In deleteRow()"
+    
+    rootContainer = event.source.parent
+    table = rootContainer.getComponent("Power Table")
+    ds = table.data
+    row = table.selectedRow
+    sqcDiagnosisId = ds.getValueAt(row, "SQCDiagnosisId")
+    sqcDiagnosisName = ds.getValueAt(row, "SQCDiagnosisName")
+
+    okToDelete = system.gui.confirm("Are you sure that you want to delete SQC Diagnosis named: %s?" % (sqcDiagnosisName))
+    if okToDelete:
+        print "Delete it..."
+        database=system.tag.read("[Client]Database").value
+        SQL = "delete from DtSQCDiagnosis where sqcDiagnosisId = %d" % (sqcDiagnosisId)
+        rows = system.db.runUpdateQuery(SQL, database)
+        print "Deleted %d rows!" % (rows)
+        internalFrameOpened(rootContainer)

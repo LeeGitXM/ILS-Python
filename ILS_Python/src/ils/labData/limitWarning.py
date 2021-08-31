@@ -10,6 +10,7 @@ from ils.log.LogRecorder import LogRecorder
 from ils.common.util import isUserConnected
 from ils.common.message.client import sendCloseWindowMessage
 from ils.common.config import getDatabaseClient, getIsolationModeClient
+from ils.labData.scanner import notifyClients
 log = LogRecorder(__name__)
 
 #------------------------------
@@ -23,7 +24,7 @@ def notifyCustomValidationViolation(post, unitName, valueName, valueId, rawValue
     foundConsole = isUserConnected(post)    
     
     if not(foundConsole):
-        txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
+        txt="The %s - %s - %s lab datum, which failed custom validation, was automatically accepted because the <%s> console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
         log.trace(txt)
         postMessage(txt)
         accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Limit Auto Accept", tagProvider, database)
@@ -71,7 +72,7 @@ def notifyValidityLimitViolation(post, unitName, valueName, valueId, rawValue, s
     foundConsole = isUserConnected(post)
         
     if not(foundConsole):
-        txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
+        txt="The %s - %s - %s lab datum, which failed validity limit checks (%s to %s), was automatically accepted because the <%s> console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), str(lowerLimit), str(upperLimit), post)
         log.trace(txt)
         postMessage(txt)
         accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Limit Auto Accept", tagProvider, database)
@@ -123,7 +124,7 @@ def notifyReleaseLimitViolation(post, unitName, valueName, valueId, rawValue, sa
     foundConsole = isUserConnected(post)
     
     if not(foundConsole):
-        txt="The %s - %s - %s lab datum, which failed release limit checks, was automatically accepted because the %s console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), post)
+        txt="The %s - %s - %s lab datum, which failed release limit checks (%s to %s), was automatically accepted because the <%s> console was not connected!" % (str(valueName), str(rawValue), str(sampleTime), str(lowerLimit), str(upperLimit), post)
         log.trace(txt)
         postMessage(txt)
         accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Release Limit Auto Accept", tagProvider, database)
@@ -178,15 +179,18 @@ def acceptValue(event, timeout=False):
     sampleTime=rootContainer.sampleTime
     tagProvider=rootContainer.tagProvider
     unitName=rootContainer.unitName
+    lowerLimit =rootContainer.lowerLimit
+    upperLimit =rootContainer.upperLimit
     database=getDatabaseClient()
     isolationMode=getIsolationModeClient()
     
     if timeout:
-        postMessage("The value was accepted because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+        postMessage("The value was accepted because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s, limits: %s to %s" % (str(valueName), str(rawValue), str(sampleTime), str(lowerLimit), str(upperLimit)))
     else:
-        postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+        postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s, limits: %s to %s" % (str(valueName), str(rawValue), str(sampleTime), str(lowerLimit), str(upperLimit)))
 
     accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Operator Accept", tagProvider, database)
+    notifyClients()
     
     sendCloseWindowMessage(projectName=system.util.getProjectName(), windowName=windowName, isolationMode=isolationMode, payload={})
 
@@ -202,13 +206,15 @@ def acceptValueWithUIR(event, timeout=False):
     rawValue=rootContainer.rawValue
     sampleTime=rootContainer.sampleTime
     tagProvider=rootContainer.tagProvider
+    lowerLimit =rootContainer.lowerLimit
+    upperLimit =rootContainer.upperLimit
     unitName=rootContainer.unitName
     database=""
     
     if timeout:
-        postMessage("The value was accept because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+        postMessage("The value was accept because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s, limits: %s to %s" % (str(valueName), str(rawValue), str(sampleTime), str(lowerLimit), str(upperLimit)))
     else:
-        postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
+        postMessage("The operator accepted %s - %s, which failed validity limit checks, sample time: %s, limits: %s to %s" % (str(valueName), str(rawValue), str(sampleTime), str(lowerLimit), str(upperLimit)))
 
     accept(valueId, unitName, valueName, rawValue, sampleTime, "Failed Validity Operator Accept", tagProvider, database)
     
@@ -217,7 +223,9 @@ def acceptValueWithUIR(event, timeout=False):
     
     import ils.common.grade as grade
     grade = grade.getGradeForUnit(unitName, tagProvider)
-     
+    
+    # TODO - we can't hardcode a UIR window here - they are site specific!
+    # Need a configuration parameter.
     window = system.nav.openWindow('UIR Vistalon/UIR Entry', {'post' : post, 'editable' : 'True', 'grade' : grade})
     system.nav.centerWindow(window)
 
@@ -268,7 +276,7 @@ def rejectValue(event):
 # If the operator does not respond to the notification in a timely manner, then by default accept the value.  The burden is on
 # the operator to reject the value but the presumption is that the measurement is accurate.
 def timeOutValue(event):
-    log.trace("Bad value handling timed out waiting for a decision from the operator")
+    log.info("Bad value handling timed out waiting for a decision from the operator, accepting the value!")
     acceptValue(event, True)
     
 def readTimeout(tagProvider):

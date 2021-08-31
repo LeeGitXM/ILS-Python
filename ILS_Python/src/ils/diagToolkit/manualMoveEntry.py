@@ -44,6 +44,8 @@ def okAction(event):
     provider = getTagProviderClient()
     textRecommendation = "Manual Move - operator supplied error: %s" % (str(manualMove))
     
+    log.infof("Managing a manual move for %s - %s - %s using database: %s", applicationName, familyName, finalDiagnosisName, database)
+    
     manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)
     
     system.nav.closeParentWindow(event)

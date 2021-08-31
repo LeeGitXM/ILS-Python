@@ -3,8 +3,8 @@
 
 from ils.common.error import catchError
 import string, system
-from com.ils.common.log import LogMaker
-log = LogMaker.getLogger(__name__)
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
 def getClassName():
     return "Action"
@@ -69,6 +69,7 @@ class Action(basicblock.BasicBlock):
             log.infof("...processing a trigger...")
             self.state = "TRUE"
             function = self.properties.get('Script',{}).get("value","")
+            log.infof("...calling function: <%s>", function)
 
             if len(function) > 0:
                 log.tracef("...there is a function: <%s>", function)
@@ -84,6 +85,7 @@ class Action(basicblock.BasicBlock):
                     exec("from %s import %s" % (packName,funcName))
             
                 eval(function)(blockName, self.uuid, self.parentuuid, provider, database)
+#                project.test.diagToolkit.act_1(blockName, self.uuid, self.parentuuid, provider, database)
 #                eval(function)(block)
 
         else:

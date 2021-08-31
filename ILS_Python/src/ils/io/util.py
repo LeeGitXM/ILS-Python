@@ -207,6 +207,29 @@ def getTagScript(fullTagPath):
     log.tracef("    Did not find a tag script!")
     return None
 
+def getTagHistoryConfiguration(fullTagPath):
+    log.tracef("Looking for a tag history info for: %s", fullTagPath)
+    historyEnabled = False
+    historyProvider = None
+    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
+    for tagConfig in tagConfigurations:
+        tagType = tagConfig.getTagType()
+        log.tracef("Tag type: <%s>", str(tagType))
+        if str(tagType) in ["DB", "OPC"]:
+            log.tracef("Checking properties...")
+            props = tagConfig.getProperties()
+            for prop in props:
+                log.tracef("%s %s", str(prop),  tagConfig.get(prop)) 
+                if str(prop) == "HistoryEnabled":
+                    log.tracef("  --- found a overridden History Enabled property ---")
+                    historyEnabled = tagConfig.get(prop)
+                elif str(prop) == "PrimaryHistoryProvider":
+                    log.tracef("  --- found a overridden Primary History Provider property ---")
+                    historyProvider = tagConfig.get(prop)
+                
+    log.tracef("    Returning: %s - %s", str(historyEnabled), str(historyProvider))
+    return historyEnabled, historyProvider
+
 def isExpressionTag(fullTagPath):
     tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
     for tagConfig in tagConfigurations:

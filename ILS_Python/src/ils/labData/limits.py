@@ -19,6 +19,11 @@ the UDTs every cycle, I only write if a new or changed limit is detected.
 limits={}
 
 def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
+    inhibitValidity = system.tag.read("[%s]Configuration/LabData/inhibitValidity" % (tagProvider)).value
+    if inhibitValidity:
+        log.tracef("Skipping validity checking for %s - validity checking is inhibited.", valueName)
+        return True, None, None
+
     log.tracef("Checking Validity limits for %s - %s...", valueName, str(limit))
     validityLimit = limit.get("VALIDITY", None)
     log.tracef("...the validity limit is %s...", str(validityLimit))
@@ -43,6 +48,11 @@ def checkValidityLimit(post, valueId, valueName, rawValue, sampleTime, database,
     return True, upperLimit, lowerLimit
 
 def checkSQCLimit(post, valueId, valueName, rawValue, sampleTime, database, tagProvider, limit):
+    inhibitValidity = system.tag.read("[%s]Configuration/LabData/inhibitValidity" % (tagProvider)).value
+    if inhibitValidity:
+        log.tracef("Skipping validity checking for %s - validity checking is inhibited.", valueName)
+        return True, None, None
+    
     log.tracef("Checking SQC - Validity limits for %s - %s", valueName, str(limit))
     sqcLimit = limit.get("SQC", None)
     log.tracef("...the SQC limit is %s...", str(sqcLimit))

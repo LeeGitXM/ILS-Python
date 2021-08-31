@@ -32,7 +32,7 @@ def stub2(arg1):
     print "In stub2 with ", arg1
 
 def test00(db):
-    logger.tracef("Starting %s.test00()", __name__)
+    print "Starting %s.test00()" % (__name__)
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='FINAL_TEST_1'
     appId=insertApp1(db)

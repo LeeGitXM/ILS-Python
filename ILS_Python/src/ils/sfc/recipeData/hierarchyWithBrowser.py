@@ -64,6 +64,8 @@ def internalFrameOpened(rootContainer, db):
         recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
         clearTree(recipeDataTree)
     
+    timer = rootContainer.getComponent("Timer")
+    timer.running = True
     log.debugf("DONE in internalFrameOpened!")
 
 

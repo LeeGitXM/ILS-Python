@@ -373,8 +373,9 @@ class Replicater():
                 
                 elif str(browseTag.type) in ["UDT_INST"]:
                     self.log.tracef("Copying a UDT...")
+                    self.copyUdtProperties(browseTag.path)
                     self.copyUdtValues(browseTag.fullPath)
-                
+                    
                 else:
                     self.log.warnf("Unhandled tag: %s, type: %s", browseTag.fullPath, browseTag.type)
                     
@@ -412,7 +413,7 @@ class Replicater():
         The browse function doesn't dig into UDTs, but when we copy values we need to recursively dig into the UDT.
         The original browse does navigate into folders so we don't need to treat them.
         '''
-        self.log.tracef("Copy values for %s", tagpath)
+        self.log.tracef("Copy UDT values for %s", tagpath)
         
         tagSet = system.tag.browseTags(parentPath=tagpath, recursive=False)
     
@@ -422,11 +423,55 @@ class Replicater():
             self.log.tracef("Tag Type: %s", str(browseTag.tagType))
             self.log.tracef("----------")
             if str(browseTag.type) in ["UDT_INST"]:
+                #self.copyUdtProperties(browseTag.path)
                 self.copyUdtValues(browseTag.fullPath)
             else:
                 self.copyTagValues(browseTag, True)
         
         self.log.tracef("...done with the UDT copy!")
+        
+        
+    def copyUdtProperties(self, tagpath):
+        '''
+        The check has already been done, the tagpath IS a UDT instance.
+        '''
+        self.log.tracef("Copy properties for %s", tagpath)
+        targetTagPath = "[%s]%s" % (self.destinationTagProvider, tagpath)
+        
+        path = "[%s]%s.ExtendedProperties" % (self.sourceTagProvider, tagpath)
+        props = system.tag.read(path)
+        parameterDictionary={}
+        if props.value is not None:
+                for p in props.value:
+                    if p.value != "":
+                        parameterDictionary[str(p.getProperty().name)] = str(p.value)
+                        #self.log.tracef("Setting Property: %s, value: %s for %s", str(p.getProperty().name), str(p.value), targetTagPath)
+                        #parameterDictionary = {str(p.getProperty().name): str(p.value)}
+                        #system.tag.editTag(targetTagPath, parameters=parameterDictionary)
+    
+        if len(parameterDictionary) > 0:
+            self.log.tracef("Setting the properties of %s to %s", targetTagPath, str(parameterDictionary))
+            system.tag.editTag(targetTagPath, parameters=parameterDictionary)
+            #time.sleep(5.0)
+                        
+        self.log.tracef("...done with the UDT property copy!")
+
+    '''
+    IA has made it annoyingly difficult to get the value of a custom property out of an instance of a UDT.  
+    This is a utility to get the value of a property.
+    '''
+    '''
+    log.tracef("Getting %s from %s...", prop, fullTagPath)
+    
+    path = "%s.ExtendedProperties" % fullTagPath
+    props = system.tag.read(path)
+    if props.value is not None:
+            for p in props.value:
+                if p.getProperty().name.lower() == prop.lower():
+                    return p.value
+
+    return None
+    '''
 
     def dumpTags(self):        
         for browseTag in self.myTags:

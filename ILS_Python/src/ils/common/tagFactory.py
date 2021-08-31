@@ -19,7 +19,6 @@ def createConfigurationTags(ds, log):
         if path[len(path)-1] == "/":
             path = path[:len(path) - 1]
         
-        print "Path: <%s>" % (path)
         fullName = path + "/" + name
         if DEBUG: log.infof("Checking if %s already exists...", fullName)
                 

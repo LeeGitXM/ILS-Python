@@ -1221,13 +1221,14 @@ def logAction(action, repeater):
     system.util.sendMessage(project=project, messageHandler="setpointSpreadsheetLogger", payload=payload, scope="G")
     
 def logActionMessageHandler(payload):
-    log.infof( "In %s.logActionMessageHandler with %s ", __name__, str(payload))
+    log.infof("In %s.logActionMessageHandler with %s ", __name__, str(payload))
     
     action = payload.get("action", "")
     ds = payload.get("ds", None)
     timestamp = system.date.format(system.date.now(), "yyyy_MM_dd_HH_mm_ss")
     reportHome = system.tag.read("Configuration/Common/reportHome").value
     filename = "%s/Event_Logs/Diagnostic_Actions/%s_%s.csv" % (reportHome, timestamp, action)
+    log.infof("...logging to %s", filename)
     
     txt = "action,%s%s" % (action, CR)
     txt = "%stimestamp,%s%s" % (txt, system.date.format(system.date.now(), "yyyy_MM_dd_HH_mm_ss"), CR)

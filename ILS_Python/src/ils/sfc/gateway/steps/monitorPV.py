@@ -8,7 +8,6 @@ see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and S88-RECIPE-O
 
 import system, string
 from java.util import Date 
-from ils.sfc.gateway.api import getIsolationMode
 from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
 from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
 from ils.io.api import getMonitoredTagPath
@@ -28,12 +27,13 @@ from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIV
     NAME, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
     PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM, WATCH
 from ils.sfc.recipeData.constants import TIMER, OUTPUT
-from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget
+from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget, compareStringValueToTarget
 from ils.sfc.gateway.api import postToQueue
 from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
 
 NUMERIC_DATA_TYPE = "Numeric"
 STRING_DATA_TYPE = "String"
+BOOLEAN_DATA_TYPE = "Boolean"
 
 def activate(scopeContext, stepProperties, state):
     # some local constants
@@ -135,6 +135,32 @@ def activate(scopeContext, stepProperties, state):
                     if configRow.strategy != MONITOR:
                         logger.tracef('  ...skipping target setup because the strategy is WATCH!')
                         configRow.targetRecipeDataType = pvRecipeDataType
+                        configRow.targetRecipeDataId = pvRecipeDataId
+                        
+                        logger.tracef("   ...initializing recipe data with id %d", pvRecipeDataId)
+                        s88SetFromId(pvRecipeDataId, pvRecipeDataType, PV_VALUE, "Null", database)
+                        s88SetFromId(pvRecipeDataId, pvRecipeDataType, PV_MONITOR_STATUS, PV_MONITORING, database)
+                        s88SetFromId(pvRecipeDataId, pvRecipeDataType, PV_MONITOR_ACTIVE, True, database)
+                        
+                        # I'm not sure if we SHOULD use output in watch mode, but I guess if we can someone will
+                        if pvRecipeDataType == OUTPUT:
+                            s88SetFromId(pvRecipeDataId, pvRecipeDataType, SETPOINT_STATUS, "", database)
+                        
+                        ''' Even though we are watching this item we need to read the pv now so that we can establish the data type '''
+                        tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
+                        qv = system.tag.read(tagPath)
+                        
+                        logger.tracef("Reading initial value to determine the type from <%s> value: %s", tagPath, str(qv))
+                        
+                        valueType, val = determineType(qv.value)
+                        if valueType in ["Float", "Integer"]:
+                            configRow.dataType = NUMERIC_DATA_TYPE
+                        elif valueType in ["Boolean"]:
+                            configRow.dataType = BOOLEAN_DATA_TYPE
+                        else:
+                            configRow.dataType = STRING_DATA_TYPE
+        
+                        logger.tracef("...valueType: %s, dataType: %s", valueType, configRow.dataType)
                         continue
                     
                     '''
@@ -220,7 +246,12 @@ def activate(scopeContext, stepProperties, state):
                             
                         elif targetType == VALUE:
                             # The target value is hard coded in the config data
-                            targetValue = float(configRow.targetNameIdOrValue)
+                            valueType, val = determineType(configRow.targetNameIdOrValue)
+                            logger.tracef("The datatype of the target value is: %s and the value is: %s", valueType, str(val))
+                            if valueType == 'String':
+                                targetValue = configRow.targetNameIdOrValue
+                            else:
+                                targetValue = float(configRow.targetNameIdOrValue)
                         
                         elif targetType == TAG:
                             # Read the value from a tag
@@ -314,7 +345,7 @@ def activate(scopeContext, stepProperties, state):
             
             else:
                 logger.trace("---(%s) monitoring---" % (stepName))
-                
+    
                 timerRecipeDataId = stepScope["timerRecipeDataId"]
                 timerStarted = stepScope["timerStarted"]
                 timeLimitMin = stepScope["timeLimitMinutes"]
@@ -402,7 +433,11 @@ def activate(scopeContext, stepProperties, state):
                         tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
                         qv = system.tag.read(tagPath)
                         
-                        logger.tracef("  (%s) The current PV is: %s-%s (%s)", stepName, str(qv.value), str(qv.quality), tagPath)
+                        if dataType == NUMERIC_DATA_TYPE:
+                            logger.tracef("  (%s) The current PV is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastPV))
+                        elif dataType == STRING_DATA_TYPE:
+                            logger.tracef("  (%s) The current PV (string) is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastStringPV))
+                        
                         if not(qv.quality.isGood()):
                             logger.warnf("  (%s) The monitored value for %s is bad: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                             continue
@@ -410,11 +445,11 @@ def activate(scopeContext, stepProperties, state):
                         pv=qv.value
                         
                         if dataType == NUMERIC_DATA_TYPE and pv != configRow.lastPV:
-                            logger.tracef("  Updating the PV recipe for a changed numeric value...")
+                            logger.tracef("  Updating the PV recipe for a changed numeric value (%s - %s - pvValue)...", str(targetRecipeDataId), targetRecipeDataType)
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, "pvValue", pv, database)
                             configRow.lastPV = pv
                         elif dataType == STRING_DATA_TYPE and pv != configRow.lastStringPV:
-                            logger.tracef("  Updating the PV recipe for a changed string value...")
+                            logger.tracef("  Updating the PV recipe for a changed string value (%s - %s - pvValue)...", str(targetRecipeDataId), targetRecipeDataType)
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, "pvValue", pv, database)
                             configRow.lastStringPV = pv
                         else:
@@ -456,7 +491,10 @@ def activate(scopeContext, stepProperties, state):
                         else:
                             stepScope['tooltip'] = "%s<br>     %s, value: %s, target: %s" % (stepScope["tooltip"], strippedTagpath, str(pv), str(target))
 
-                        valueOk,txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
+                        if dataType == STRING_DATA_TYPE:
+                            valueOk, txt = compareStringValueToTarget(pv,  configRow.targetStringValue , logger)
+                        else:
+                            valueOk, txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
                         
                         # check persistence and consistency
                         if valueOk:

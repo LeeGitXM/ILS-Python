@@ -663,6 +663,7 @@ Handle a new value generically, regardless of its source..  The first thing to d
 def handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
                       validationProcedure, writeTags, writeTagValues, log):
     
+    
     limit=limits.get(valueId,None)
     log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limit)))
     

@@ -59,6 +59,7 @@ def createTags(tagProvider):
 
     data.append([path, "communicationHealthy", "Boolean", "True"])
     data.append([path, "dataTransferPermitted", "Boolean", "True"])
+    data.append([path, "inhibitValidity", "Boolean", "False"])
     data.append([path, "labDataWriteEnabled", "Boolean", "True"])
     data.append([path, "limitWarningTimeoutSeconds", "Int8", "300"])
     data.append([path, "manualEntryOverride", "Boolean", "True"])

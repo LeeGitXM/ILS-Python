@@ -244,7 +244,7 @@ def checkForResponse(chartScope, stepScope, stepProperties):
     return response
 
 def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger):
-    ''' This is is mainly by PV monitoring but is pretty generic '''
+    ''' This is is called mainly by PV monitoring but is pretty generic '''
 
     logger.trace("Comparing value to target - PV: %s, Target %s, Tolerance: %s, Limit-Type: %s, Tolerance: %s" % (str(pv), str(target), str(tolerance), limitType, toleranceType))
 
@@ -282,6 +282,23 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     logger.trace("Returning %s because %s" % (str(valueOk), txt))
     
     return valueOk, txt
+
+def compareStringValueToTarget(pv, target, logger):
+    ''' This is is called mainly by PV monitoring but is pretty generic '''
+
+    logger.trace("Comparing string value to target - PV: %s, Target %s" % (str(pv), str(target)))
+    
+    if pv == target:
+        txt = ""
+        valueOk = True
+    else:
+        valueOk = False
+        txt = "%s is not the same as target value of %s" % (str(pv), str(target))
+
+    logger.trace("Returning %s because %s" % (str(valueOk), txt))
+    
+    return valueOk, txt
+
 
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()

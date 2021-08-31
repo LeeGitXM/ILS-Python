@@ -42,12 +42,12 @@ import os
 import inspect
 
 # This tuple contains known string types
-try:
+#try:
     # Python 2.6
-    StringTypes = (types.StringType, types.UnicodeType)
-except AttributeError:
+StringTypes = (types.StringType, types.UnicodeType)
+#except AttributeError:
     # Python 3.0
-    StringTypes = (str, bytes)
+#    StringTypes = (str, bytes)
 
 # This regular expression is used to match valid token names
 _is_identifier = re.compile(r'^[a-zA-Z0-9_]+$')
@@ -176,34 +176,39 @@ class Lexer:
             raise IOError("Won't overwrite existing lextab module")
         basetabmodule = lextab.split('.')[-1]
         filename = os.path.join(outputdir, basetabmodule) + '.py'
-        with open(filename, 'w') as tf:
-            tf.write('# %s.py. This file automatically created by PLY (version %s). Don\'t edit!\n' % (basetabmodule, __version__))
-            tf.write('_tabversion   = %s\n' % repr(__tabversion__))
-            tf.write('_lextokens    = set(%s)\n' % repr(tuple(sorted(self.lextokens))))
-            tf.write('_lexreflags   = %s\n' % repr(int(self.lexreflags)))
-            tf.write('_lexliterals  = %s\n' % repr(self.lexliterals))
-            tf.write('_lexstateinfo = %s\n' % repr(self.lexstateinfo))
+        
+        ''' Changed with to use a more traditional open & close - PAH 8/27/21 '''
+        tf = open(filename, 'w')
+        tf.write('# %s.py. This file automatically created by PLY (version %s). Don\'t edit!\n' % (basetabmodule, __version__))
+        tf.write('_tabversion   = %s\n' % repr(__tabversion__))
+        tf.write('_lextokens    = set(%s)\n' % repr(tuple(sorted(self.lextokens))))
+        tf.write('_lexreflags   = %s\n' % repr(int(self.lexreflags)))
+        tf.write('_lexliterals  = %s\n' % repr(self.lexliterals))
+        tf.write('_lexstateinfo = %s\n' % repr(self.lexstateinfo))
 
-            # Rewrite the lexstatere table, replacing function objects with function names
-            tabre = {}
-            for statename, lre in self.lexstatere.items():
-                titem = []
-                for (pat, func), retext, renames in zip(lre, self.lexstateretext[statename], self.lexstaterenames[statename]):
-                    titem.append((retext, _funcs_to_names(func, renames)))
-                tabre[statename] = titem
+        # Rewrite the lexstatere table, replacing function objects with function names
+        tabre = {}
+        for statename, lre in self.lexstatere.items():
+            titem = []
+            for (pat, func), retext, renames in zip(lre, self.lexstateretext[statename], self.lexstaterenames[statename]):
+                titem.append((retext, _funcs_to_names(func, renames)))
+            tabre[statename] = titem
 
-            tf.write('_lexstatere   = %s\n' % repr(tabre))
-            tf.write('_lexstateignore = %s\n' % repr(self.lexstateignore))
+        tf.write('_lexstatere   = %s\n' % repr(tabre))
+        tf.write('_lexstateignore = %s\n' % repr(self.lexstateignore))
 
-            taberr = {}
-            for statename, ef in self.lexstateerrorf.items():
-                taberr[statename] = ef.__name__ if ef else None
-            tf.write('_lexstateerrorf = %s\n' % repr(taberr))
+        taberr = {}
+        for statename, ef in self.lexstateerrorf.items():
+            taberr[statename] = ef.__name__ if ef else None
+        tf.write('_lexstateerrorf = %s\n' % repr(taberr))
 
-            tabeof = {}
-            for statename, ef in self.lexstateeoff.items():
-                tabeof[statename] = ef.__name__ if ef else None
-            tf.write('_lexstateeoff = %s\n' % repr(tabeof))
+        tabeof = {}
+        for statename, ef in self.lexstateeoff.items():
+            tabeof[statename] = ef.__name__ if ef else None
+        tf.write('_lexstateeoff = %s\n' % repr(tabeof))
+        
+        ''' Added to compensate for removing the 'with' - PAG 8/27/21 '''
+        tf.close()
 
     # ------------------------------------------------------------
     # readtab() - Read lexer information from a tab file
@@ -761,7 +766,9 @@ class LexerReflect(object):
                     if c.match(''):
                         self.log.error("%s:%d: Regular expression for rule '%s' matches empty string", file, line, f.__name__)
                         self.error = True
-                except re.error as e:
+                except re.error:
+                    ''' Changed the way I get the exception - PAH 8/27/21'''
+                    e = sys.exc_info()[1] 
                     self.log.error("%s:%d: Invalid regular expression for rule '%s'. %s", file, line, f.__name__, e)
                     if '#' in _get_regex(f):
                         self.log.error("%s:%d. Make sure '#' in rule '%s' is escaped with '\\#'", file, line, f.__name__)
@@ -785,7 +792,10 @@ class LexerReflect(object):
                     if (c.match('')):
                         self.log.error("Regular expression for rule '%s' matches empty string", name)
                         self.error = True
-                except re.error as e:
+                except re.error:
+                    ''' Changed the way I get the exception - PAH 8/27/21'''
+                    e = sys.exc_info()[1] 
+                    
                     self.log.error("Invalid regular expression for rule '%s'. %s", name, e)
                     if '#' in r:
                         self.log.error("Make sure '#' in rule '%s' is escaped with '\\#'", name)
@@ -1040,7 +1050,9 @@ def lex(module=None, object=None, debug=False, optimize=False, lextab='lextab',
             lexobj.writetab(lextab, outputdir)
             if lextab in sys.modules:
                 del sys.modules[lextab]
-        except IOError as e:
+        except IOError:
+            ''' Changed the way I get the exception - PAH 8/27/21'''
+            e = sys.exc_info()[1] 
             errorlog.warning("Couldn't write lextab module %r. %s" % (lextab, e))
 
     return lexobj

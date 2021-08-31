@@ -18,7 +18,12 @@ class SubDiagnosis(basicblock.BasicBlock):
     def initialize(self):
         self.className = 'ils.block.subdiagnosis.SubDiagnosis'
         self.properties['Label'] = {'value':'SubDiagnosis','editable':'True'}
-        self.properties['TagPath'] = { 'value':'','binding':'','bindingType':'TAG_WRITE','editable':'True'}
+        
+        '''
+        Removed because if they want the state of the block to go to a tag then they should connect an output block.  PAH - 8/12/2021
+        '''
+        #self.properties['TagPath'] = { 'value':'','binding':'','bindingType':'TAG_WRITE','editable':'True'}
+        
         self.inports = [{'name':'in','type':'truthvalue','allowMultiple':False}]
         self.outports= [{'name':'out','type':'truthvalue'}]
         
@@ -47,12 +52,16 @@ class SubDiagnosis(basicblock.BasicBlock):
         if not self.state == str(value):
             print "Accepting a new value <%s> for an sub-diagnosis block..." % (str(value))
             self.state = str(value)
+            
+            '''
+            Commented out when the tagPath property was removed - PH 8/12/2021
             # Write to the tag, if it exists
             prop = self.properties['TagPath']
             path = prop['binding']
             #print "SubDiagnosis:",property
             if len(path)>0:
                 self.handler.updateTag(self.parentuuid,path,str(value),quality,time)
+            '''
             
         # Pass the input through to the output
         self.value = value

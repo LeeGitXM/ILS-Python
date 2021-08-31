@@ -166,8 +166,8 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     if showAdvice:
         advice = substituteScopeReferences(chartScope, stepScope,  row.get("advice", None) )
         
-        ''' If the advice field is blank, then use the advice of the destination recipe data '''
-        if advice in ["", None]:
+        ''' If the advice field is blank, and this is not intended as a blank row, then use the advice of the destination recipe data '''
+        if advice in ["null", "", None] and scope not in ["", "null", None]:
             if key.find(".") >= 0:
                 adviceKey=key[:key.find(".")] + ".advice"
             else:
