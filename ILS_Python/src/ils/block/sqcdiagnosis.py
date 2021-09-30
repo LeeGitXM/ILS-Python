@@ -2,8 +2,8 @@
 
 import system
 from ils.block import basicblock
-from com.ils.common.log import LogMaker
-log = LogMaker.getLogger(__name__)
+from com.inductiveautomation.ignition.common.util import LogUtil
+log = LogUtil.getLogger(__name__)
 
 def getClassName():
     return "SQCDiagnosis"

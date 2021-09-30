@@ -13,9 +13,9 @@ from ils.block import basicblock
 import ils.block
 from ils.block import *
 from ils.user.block import *
-from com.ils.common.log import LogMaker
+from com.inductiveautomation.ignition.common.util import LogUtil
 from __builtin__ import None
-log = LogMaker.getLogger(__name__)
+log = LogUtil.getLogger(__name__)
 
 
 

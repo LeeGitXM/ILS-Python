@@ -11,7 +11,7 @@ def getClassName():
 # or other block upstream and deduces the reason for the issue.
 #
 from ils.block import basicblock
-from com.ils.common.log import LogMaker
+from com.inductiveautomation.ignition.common.util import LogUtil
 #import ils.diagToolkit.finalDiagnosis as fd
 
 callback = "fd.evaluate"
@@ -22,7 +22,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.initialize()
         self.state = "UNKNOWN"
         self.handler.setAlerterClass(self.getClassName())
-        self.log = LogMaker.getLogger(__name__)
+        self.log = LogUtil.getLogger(__name__)
     
     # Set attributes custom to this class
     def initialize(self):
