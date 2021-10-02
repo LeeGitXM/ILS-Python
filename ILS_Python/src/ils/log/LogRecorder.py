@@ -8,7 +8,13 @@ import os,sys
 import system
 import ch.qos.logback.classic.Level as Level
 import org.slf4j.MDC as MDC
-import com.ils.common.log.LogMaker as LogMaker
+
+# These are the keys available for grouping log statements
+CLIENT_KEY="client"
+FUNCTION_KEY="function"
+LINE_KEY="linenumber"
+MODULE_KEY="module"
+PROJECT_KEY="project"
 
 # next bit filched from 1.5.2's inspect.py
 def currentframe():
@@ -45,7 +51,7 @@ class LogRecorder:
         
         # Standard call returns a LoggerEx which is itself a wrapper
         self.logger = system.util.getLogger(self.name)
-        #self.logger = LogMaker.getLogger(self.name)
+        #self.logger = LogUtil.getLogger(self.name)
         
     def trace(self, msg):
         self.setAttributes()
@@ -114,11 +120,11 @@ class LogRecorder:
         # Get a stack track and fill in line number, function and module
         fn, lno, func = self.findCaller()
         
-        MDC.put(LogMaker.MODULE_KEY, fn)
-        MDC.put(LogMaker.FUNCTION_KEY, func)
-        MDC.put(LogMaker.LINE_KEY,str(lno))
-        MDC.put(LogMaker.CLIENT_KEY,self.clientId)
-        MDC.put(LogMaker.PROJECT_KEY,self.projectName)
+        MDC.put(MODULE_KEY, fn)
+        MDC.put(FUNCTION_KEY, func)
+        MDC.put(LINE_KEY,str(lno))
+        MDC.put(CLIENT_KEY,self.clientId)
+        MDC.put(PROJECT_KEY,self.projectName)
         
         ''' If we change the way we get the logger we need to swap these
         self.logger.setClientId(self.clientId)
