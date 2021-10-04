@@ -290,7 +290,13 @@ def initializeDatabaseTable(windowId, database, tagProvider):
             timing = "NULL"
         else:
             timing = rawTiming
+            
+        if units in [None, "None", "-- None Selected --"]:
+            units = ""
         
+        if description in [None, "None"]:
+            description = ""
+            
         description = escapeSqlQuotes(description)
         formattedPV = formatPV(valueType, pvMonitorActive, pvValue)
         formattedSP = formatPV(valueType, True, setpoint)

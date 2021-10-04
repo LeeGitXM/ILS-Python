@@ -432,17 +432,18 @@ def activate(scopeContext, stepProperties, state):
                         # Display the PVs as soon as the block starts running, even before the SP has been written
                         tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
                         qv = system.tag.read(tagPath)
-                        
-                        if dataType == NUMERIC_DATA_TYPE:
-                            logger.tracef("  (%s) The current PV is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastPV))
-                        elif dataType == STRING_DATA_TYPE:
-                            logger.tracef("  (%s) The current PV (string) is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastStringPV))
-                        
+                                                
                         if not(qv.quality.isGood()):
                             logger.warnf("  (%s) The monitored value for %s is bad: %s-%s", stepName, tagPath, str(qv.value), str(qv.quality))
                             continue
     
                         pv=qv.value
+    
+                        if dataType == NUMERIC_DATA_TYPE:
+                            logger.tracef("  (%s) The current PV is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastPV))
+                        elif dataType == STRING_DATA_TYPE:
+                            pv = pv.rstrip()
+                            logger.tracef("  (%s) The current PV (string) is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastStringPV))
                         
                         if dataType == NUMERIC_DATA_TYPE and pv != configRow.lastPV:
                             logger.tracef("  Updating the PV recipe for a changed numeric value (%s - %s - pvValue)...", str(targetRecipeDataId), targetRecipeDataType)

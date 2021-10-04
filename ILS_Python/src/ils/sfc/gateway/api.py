@@ -29,10 +29,10 @@ def abortHandler(chartScope, msg):
     This should only be called from an SFC because I hope to be able to figure out how to get the stack trace and include it in the
     client notification. 
     
-    This cancels the top chart in an aynchronous thread, with a short wait, to allow the chart on which the error occurred to finish before the cancel command 
+    This cancels the top chart in an asynchronous thread, with a short wait, to allow the chart on which the error occurred to finish before the cancel command 
     propagates down the tree of active charts in order to avoid a race condition with the abort and cancel states.  The addition of this wait may allow the step 
     following the encapsulation that called the chart with the error to begin to run, but the wait is short and hopefully no damage will be done.   If the wait is not 
-    long enough then the charts will ghet stuck in the CANCELLING state forever.
+    long enough then the charts will get stuck in the CANCELLING state forever.
     
     Additionally, we hope to address the shortcoming of the error handling with IA in the 2020 bootcamp.  
     '''
