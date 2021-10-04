@@ -17,20 +17,24 @@ def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened", __name__)
     
     mode = rootContainer.mode
+    log.infof("   mode: %s", mode)
     
     if mode == EDIT_MODE: 
         biasType = rootContainer.biasType
         biasName = rootContainer.biasName
         unit = rootContainer.unit
-        
-        print biasType, biasName, unit
+
+        log.infof("   biasType: %s", biasType)
+        log.infof("   biasName: %s", biasName)
+        log.infof("   unit: %s", unit)
         
         if biasType == EXPONENTIAL:
             udtPath = "LabData/" + unit + "/LabFeedback/" + biasName
+            log.infof("   udtPath: %s", udtPath)
     
             extendedProperties = system.tag.read(udtPath +".ExtendedProperties").value
             properties = extendedPropertiesToDictionary(extendedProperties)
-            log.infof("Property Dictionary: %s", str(properties))
+            log.infof("   Property Dictionary: %s", str(properties))
             
             tagValues = system.tag.readAll([udtPath+"/averageWindowMinutes", udtPath+"/filterConstant", udtPath+"/modelDeadTimeMinutes", udtPath+"/multiplicative", udtPath+"/rateOfChangeLimit" ])
             
@@ -40,11 +44,24 @@ def internalFrameOpened(rootContainer):
             multiplicative = tagValues[3].value
             rateOfChangeLimit = tagValues[4].value
             
+            log.infof("   averageWindowMinutes: %s", str(averageWindowMinutes))
+            log.infof("   filterConstant: %s", str(filterConstant))
+            log.infof("   modelDeadTimeMinutes: %s", str(modelDeadTimeMinutes))
+            log.infof("   multiplicative: %s", str(multiplicative))
+            log.infof("   rateOfChangeLimit: %s", str(rateOfChangeLimit))
+            
             container = rootContainer.getComponent("Exponential Container")
+            print "Container: ", container
             
             ''' UDT Properties '''
-            rootContainer.getComponent("Server Type").selectedStringValue = properties.get("Bias Target Server Type", "")
-            rootContainer.getComponent("Server Name").text = properties.get("Bias Target Server Name", "")
+            biasTargetServerType = properties.get("Bias Target Server Type", "")
+            rootContainer.getComponent("Server Type").selectedStringValue = biasTargetServerType
+            
+            if biasTargetServerType == "OPC":
+                rootContainer.getComponent("Server Name OPC").selectedStringValue = properties.get("Bias Target Server Name", "")
+            else:
+                rootContainer.getComponent("Server Name HDA").selectedStringValue = properties.get("Bias Target Server Name", "")
+                
             rootContainer.getComponent("Item Id").text = properties.get("Bias Target Item Id", "")
             rootContainer.getComponent("Lab Value Name").text = properties.get("Lab Value Name", "")
             rootContainer.getComponent("Model Name").text = properties.get("Model Name", "")
@@ -121,10 +138,16 @@ def okCallback(event):
         system.gui.warningBox("You must select a SERVER TYPE!")
         return
     
-    serverName = str(rootContainer.getComponent("Server Name").text)
-    if serverName == "":
-        system.gui.warningBox("You must specify a SERVER NAME!")
-        return
+    if serverType == "OPC":
+        serverName = str(rootContainer.getComponent("Server Name OPC").selectedStringValue)
+        if serverName == "":
+            system.gui.warningBox("You must specify a SERVER NAME!")
+            return
+    else:
+        serverName = str(rootContainer.getComponent("Server Name HDA").selectedStringValue)
+        if serverName == "":
+            system.gui.warningBox("You must specify a SERVER NAME!")
+            return
     
     itemId = str(rootContainer.getComponent("Item Id").text)
     if itemId == "":

@@ -65,6 +65,9 @@ def manualOverride(tagPath, previousValue, biasValue, initialchange):
 
 
 def exponentialFilter(tagPath, previousValue, newValue, initialchange): 
+    '''
+    This is called from a tag change script on the labValue or manualOverride tag of a Lab Bias Exponential Filter UDT 
+    '''
     try:
         # Find tag provider and the root of the tag by stripping off LabData
         tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
@@ -142,9 +145,12 @@ def initializaExponentialFilter(tagPath, initialValue=1.0):
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_ERROR, txt)
 
 
-def pidFilter(tagPath, previousValue, newValue, initialchange):
+def pidFilter(tagPath, previousLabValue, newLabValue, initialchange):
+    '''
+    This is called from a tag change script on the labValue tag of a Lab Bias PID UDT 
+    '''
     try:
-        newValue = newValue.value
+        newLabValue = newLabValue.value
         
         # Find tag provider and the root of the tag by stripping off LabData
         tagProvider=tagPath[tagPath.find("[") + 1:tagPath.find("]")]
@@ -165,7 +171,7 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
         
         log.tracef("Calculating a PID bias for %s...", biasName)
         
-        valueOk, rawBias = validateConditions(tagRoot, newValue, biasName)
+        valueOk, rawBias = validateConditions(tagRoot, newLabValue, biasName)
         if not(valueOk):
             return
         
@@ -180,11 +186,11 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
             log.errorf("Unable to calculate a bias value for %s because the bias has not been initialized.", tagPath)
             return
         
-        biasValue = proportionalGain * (newValue - previousError) + integralGain * sampleTime * newValue + lastBiasValue
-        log.infof("Calculated the new biased value as: %f from %f and %f", biasValue, newValue, lastBiasValue)
+        biasValue = proportionalGain * (newLabValue - previousError) + integralGain * sampleTime * newLabValue + lastBiasValue
+        log.infof("Calculated the new biased value as: %f from %f and %f", biasValue, newLabValue, lastBiasValue)
         
         system.tag.write(tagRoot + '/biasValue', biasValue)
-        system.tag.write(tagRoot + '/previousError', newValue)
+        system.tag.write(tagRoot + '/previousError', newLabValue)
         
         # Write this nicely calculated value to either the DCS or the PHD historian
         writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)

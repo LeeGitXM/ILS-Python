@@ -11,12 +11,14 @@ log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)
-
     
 def internalFrameActivated(rootContainer):
+    '''
+    Normally I put the refresh in internalFrameOpened, I put it here instead because I open a popup window to create a new row and putting refresh here
+    makes sure that the table is updated with the new version.
+    '''
     log.infof("In %s.internalFrameActivated()", __name__)
     refreshCallback(rootContainer)
-
 
 def refreshCallback(rootContainer):
     log.infof("In %s.refreshCallback()...", __name__)
@@ -31,7 +33,6 @@ def refreshCallback(rootContainer):
         i = 0
         data = []
         for udtParentType in ["Lab Bias/Lab Bias Exponential Filter", "Lab Bias/Lab Bias PID"]:
-            
             log.infof("Browsing for %s", udtParentType)
             
             if udtParentType == "Lab Bias/Lab Bias Exponential Filter":
@@ -52,6 +53,7 @@ def refreshCallback(rootContainer):
                 udtType = udt.type    
                 biasName = udtPath[udtPath.rfind("/") + 1:]
                 rootPath = udtPath[:udtPath.rfind("/")]
+                log.tracef("UDT Path: %s, Type: %s, Bias Name: %s, Path: %s", udtPath, udtType, biasName, rootPath)
                 
                 tagValues = system.tag.readAll([udtPath+"/labValue", udtPath+"/modelValue", udtPath+"/biasValue", udtPath+"/labSampleTime"])
                 labValue = tagValues[0].value
@@ -119,8 +121,9 @@ def configureCallback(event):
     log.infof("Path: %s", path)
     unit = path[8:]
     unit = unit[:unit.find("/")]
+   
+    config = {"mode": "edit", "unit": unit, "biasType": biasType, "biasName": biasName}
+    log.infof("Editing: %s", str(config))
     
-    log.infof("The unit is <%s>", unit)
-    
-    window = system.nav.openWindow('Lab Data/Lab Bias Configuration', {"mode": "edit", "unit": unit, "biasType": biasType, "biasName": biasName})
+    window = system.nav.openWindow('Lab Data/Lab Bias Configuration', config)
     system.nav.centerWindow(window)
