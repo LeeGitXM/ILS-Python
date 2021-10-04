@@ -25,3 +25,13 @@ def internalFrameOpened(rootContainer):
     SQL = "Select distinct ChartPath from SfcHierarchyHandlerView where HandlerChartId = %d" % (chartId)
     pds = system.db.runQuery(SQL, db)
     rootContainer.getComponent("End Handler Caller List").data = pds
+    
+    log.tracef("Looking for charts called by: %s", str(chartId))
+    SQL = "Select distinct ChildChartPath from SfcHierarchyView where ChartId = %d" % (chartId)
+    pds = system.db.runQuery(SQL, db)
+    rootContainer.getComponent("Direct Called List").data = pds
+
+    log.tracef("Looking for abort handler called by: %s", str(chartId))
+    SQL = "Select distinct HandlerChartPath from SfcHierarchyHandlerView where ChartId = %d" % (chartId)
+    pds = system.db.runQuery(SQL, db)
+    rootContainer.getComponent("End Handler Called List").data = pds
