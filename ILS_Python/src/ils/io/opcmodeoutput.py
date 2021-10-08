@@ -4,7 +4,7 @@ Created on Apr 9, 2021
 @author: phass
 
 This class is provided as work around to a problem found on certain DCS systems that have the annoying "feature"
-of automatically setting the "Normal Mode" tag of a controller to the value of the mode tag whnever we set the mode tag.
+of automatically setting the "Normal Mode" tag of a controller to the value of the mode tag whenever we set the mode tag.
 This means that when the operator presses his "Return to Normal Mode" button it doesn't do what it should.  So this class,
 which is used for the mode attribute of every controller.This class adds two attributes to an OPC Output class:  the normal 
 mode opc tag and a returnToNormal boolean memory tag.  The return to normal strategy will only be employed if the 
@@ -18,6 +18,7 @@ import ils
 import ils.io
 import ils.io.opcoutput as opcoutput
 import system, string, time
+from ils.common.config import getTagProvider
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -41,9 +42,10 @@ class OPCModeOutput(opcoutput.OPCOutput):
         returnToNormal = system.tag.read(self.path + '/returnToNormal').value
         
         if returnToNormal and self.normalValueAsFound.quality.isGood():
+            provider = getTagProvider()
+            OPC_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
 
-            def restore(path=self.path + '/normalValue', val=self.normalValueAsFound.value):
-                OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+            def restore(path=self.path + '/normalValue', val=self.normalValueAsFound.value, OPC_LATENCY_TIME=OPC_LATENCY_TIME):
                 log.tracef("sleeping before restoring...")
                 time.sleep(OPC_LATENCY_TIME)
                 log.tracef("Restoring the NORMAL mode value <%s> to <%s>...", val, path)
@@ -67,9 +69,10 @@ class OPCModeOutput(opcoutput.OPCOutput):
         returnToNormal = system.tag.read(self.path + '/returnToNormal').value
         
         if returnToNormal and self.normalValueAsFound.quality.isGood():
+            provider = getTagProvider()
+            OPC_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
 
-            def restore(path=self.path + '/normalValue', val=self.normalValueAsFound.value):
-                OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+            def restore(path=self.path + '/normalValue', val=self.normalValueAsFound.value, OPC_LATENCY_TIME=OPC_LATENCY_TIME):
                 log.tracef("sleeping before restoring...")
                 time.sleep(OPC_LATENCY_TIME)
                 log.tracef("Restoring the NORMAL mode value <%s> to <%s>...", val, path)

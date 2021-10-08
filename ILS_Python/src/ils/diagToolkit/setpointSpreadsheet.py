@@ -889,7 +889,6 @@ def performSpecialActions(applicationName, actionMessage, finalDiagnosisId, log,
             package = packagemodule[0:separator]
             module  = packagemodule[separator+1:]
             log.infof("   ...using External Python, the package is: <%s>.<%s>...", package,module)
-#            exec("from xom.gline.diagToolkit.monitoring.tempControl import showR1Uir")
             
             exec("import %s" % (package))
             exec("from %s import %s" % (package,module))

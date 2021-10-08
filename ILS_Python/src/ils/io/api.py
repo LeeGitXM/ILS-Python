@@ -416,7 +416,7 @@ def validateValueType(valueType):
 def getDisplayName(provider, tagPath, valueType, displayAttribute, outputType):
     ''' Get the string that will typically be displayed in the DCS Tag Id column of the download monitor '''
     fullTagPath='[%s]%s' % (provider, tagPath)
-    log.tracef("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s, valueType: %s", fullTagPath, displayAttribute, valueType)
+    log.tracef("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s, valueType: %s, outputType: %s", fullTagPath, displayAttribute, valueType, outputType)
 
     ''' Check if the tag exists '''
     tagExists = system.tag.exists(fullTagPath)
@@ -432,11 +432,14 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute, outputType):
         # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
         if isUDTorFolder(fullTagPath):
             pythonClass = system.tag.read(fullTagPath + '/pythonClass').value
+            log.tracef("Python Class: %s", pythonClass)
             if string.upper(pythonClass) in ["OPCTAG", "OPCCONDITIONALOUTPUT", "OPCOUTPUT"]:
                 displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
             elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSRAMPCONTROLLER", "PKSACECONTROLLER", "PKSACERAMPCONTROLLER", "PKSDIGITALCONTROLLER", "TDCCONTROLLER", "TDCDIGITALCONTROLLER", "TDCRAMPCONTROLLER"]:
                 if string.upper(outputType) in ["SETPOINT", "SETPOINT RAMP"]:
                     displayName = system.tag.read(fullTagPath + '/sp/value.OPCItemPath').value
+                elif string.upper(outputType) in ["MODE"]:
+                    displayName = system.tag.read(fullTagPath + '/mode/value.OPCItemPath').value
                 else:
                     displayName = system.tag.read(fullTagPath + '/op/value.OPCItemPath').value
             else:
@@ -447,6 +450,7 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute, outputType):
     else:
         displayName = ''
 
+    log.tracef("...using display name: %s", displayName)
     return displayName
 
 

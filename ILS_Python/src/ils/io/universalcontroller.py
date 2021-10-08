@@ -8,9 +8,9 @@ import system, string, time
 import ils.io.controller as controller
 import ils.io.opcoutput as opcoutput
 from ils.io.util import confirmWrite
+from ils.common.config import getTagProvider
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
-
 
 class UniversalController(controller.Controller):
     opTag = None
@@ -29,8 +29,9 @@ class UniversalController(controller.Controller):
         self.spTag = opcoutput.OPCOutput(self.path + '/sp')
         self.opTag = opcoutput.OPCOutput(self.path + '/op')
         log.tracef("OP Tag path: %s", self.opTag.path)
-        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
-        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+        provider = getTagProvider()
+        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcPermissiveLatencySeconds" % (provider)).value
+        self.OPC_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
 
     def reset(self):
         ''' Reset the UDT in preparation for a write '''

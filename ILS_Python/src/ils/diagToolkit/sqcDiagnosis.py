@@ -17,8 +17,10 @@ def getInputBlocks(diagramPath):
     diagid = getDiagram(diagramPath).getSelf().toString()
     # blocks is a list of SerializableBlockStateDescriptor
     inputs = script.listDiagramBlocksOfClass(diagid,"com.ils.block.Input")
-    observations = script.listDiagramBlocksOfClass(diagid,"xom.block.sqcdiagnosis.SQCDiagnosis")
-    return inputs, observations 
+    observations1 = script.listDiagramBlocksOfClass(diagid,"ils.block.sqcdiagnosis.SQCDiagnosis")
+    observations2 = script.listDiagramBlocksOfClass(diagid,"xom.block.sqcdiagnosis.SQCDiagnosis")
+    observations1 = observations1 + observations2
+    return inputs, observations1 
 
 
 def getSqcDiagnosisLabelByName(sqcDiagnosisName, db=""):

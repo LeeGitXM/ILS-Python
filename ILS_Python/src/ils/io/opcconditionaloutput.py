@@ -8,12 +8,11 @@ Created on Jul 9, 2014
 @author: phassler
 '''
 import ils.io.opcoutput as opcoutput
-import ils.io.opctag as basicio
-import string
 import system
 import time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.io.util import confirmWrite
+from ils.common.config import getTagProvider
 
 log = LogUtil.getLogger("com.ils.io")
 
@@ -22,7 +21,8 @@ class OPCConditionalOutput(opcoutput.OPCOutput):
     PERMISSIVE_LATENCY_TIME = 0.0
     
     def __init__(self,path):
-        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
+        provider = getTagProvider()
+        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcPermissiveLatencySeconds" % (provider)).value
         opcoutput.OPCOutput.__init__(self,path)
 
     # Reset the memory tags - this does not write to OPC!

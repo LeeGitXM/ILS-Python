@@ -6,8 +6,10 @@ Created on Dec 1, 2014
 
 import ils.io.controller as controller
 import system, string, time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
+from ils.common.config import getTagProvider
+
+import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.io")
 
 class TDCAutoManController(controller.Controller):
@@ -22,7 +24,8 @@ class TDCAutoManController(controller.Controller):
         self.path = str(path)
         self.modeTag = opcoutput.OPCOutput(path + '/mode')
         self.outputTag = opcoutput.OPCOutput(path + '/output')
-        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+        provider = getTagProvider()
+        self.OPC_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
 
     def reset(self):
         ''' Reset the UDT in preparation for a write '''

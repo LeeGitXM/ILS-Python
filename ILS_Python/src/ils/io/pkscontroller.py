@@ -8,6 +8,7 @@ import system, string, time
 import ils.io.controller as controller
 import ils.io.opcoutput as opcoutput
 from ils.io.util import confirmWrite
+from ils.common.config import getTagProvider
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -28,8 +29,9 @@ class PKSController(controller.Controller):
         self.spTag = opcoutput.OPCOutput(self.path + '/sp')
         self.opTag = opcoutput.OPCOutput(self.path + '/op')
         log.tracef("OP Tag path: %s", self.opTag.path)
-        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
-        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+        provider = getTagProvider()
+        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcPermissiveLatencySeconds" % (provider)).value
+        self.OPC_LATENCY_TIME = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
 
     def reset(self):
         ''' Reset the UDT in preparation for a write '''
@@ -293,8 +295,7 @@ class PKSController(controller.Controller):
         In both cases, the ramp is executed by writing sequentially based on a linear ramp.  
         It assumes that the ramp time is in minutes.. 
         *** This is called by a tag change script and runs in the gateway ***
-        '''   
-        success = True
+        '''
         log.tracef("In %s.writeRamp() Writing %s for controller %s", __name__, valType, self.path)
 
         if val == None or rampTime == None or writeConfirm == None or valType == None or updateFrequency == None:

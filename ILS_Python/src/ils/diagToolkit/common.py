@@ -8,6 +8,7 @@ import system, time
 import system.ils.blt.diagram as scriptingInterface
 
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getTagProvider
 log=LogRecorder(__name__)
 
 # -------------------------- Helper methods ----------------------
@@ -60,7 +61,10 @@ def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeo
     
 # Check if the timestamp of the tag is less than a certain tolerance older then theTime, or the current time if theTime 
 # is omitted.  This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
-def checkFreshness(tagPath, theTime="now", provider="XOM", tolerance=-1, recheckInterval=1.0, timeout=-1.0):
+def checkFreshness(tagPath, theTime="now", provider="", tolerance=-1, recheckInterval=1.0, timeout=-1.0):
+    if provider == "":
+        provider = getTagProvider()
+    
     if tolerance < 0.0:
         tolerance = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessToleranceSeconds" % (provider)).value
         print "Using the default freshness tolerance: ", tolerance

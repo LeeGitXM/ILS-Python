@@ -7,7 +7,8 @@ Created on Dec 20, 2017
 import system, time
 from ils.queue.message import insert
 from ils.io.util import getDatabaseFromTagPath
-from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO 
+from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
+from ils.common.config import getTagProvider
 
 MAX_TRIES = 3
 from ils.log.LogRecorder import LogRecorder
@@ -35,7 +36,8 @@ def dataTransferCore(tagPath, currentValue, initialChange):
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return
     
-    latency = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+    provider = getTagProvider()
+    latency = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = system.tag.read("[.]messageQueue").value
     if messageQueue != "":
         db = getDatabaseFromTagPath(tagPath)
@@ -90,7 +92,8 @@ def dataTransferWithCountCore(tagPath, currentValue, initialChange):
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return
     
-    latency = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+    provider = getTagProvider()
+    latency = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = system.tag.read("[.]messageQueue").value
     if messageQueue != "":
         db = getDatabaseFromTagPath(tagPath)
@@ -147,7 +150,8 @@ def dataTransferWithTimeCore(tagPath, currentValue, initialChange):
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return
     
-    latency = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+    provider = getTagProvider()
+    latency = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = system.tag.read("[.]messageQueue").value
     if messageQueue != "":
         db = getDatabaseFromTagPath(tagPath)
@@ -224,7 +228,8 @@ def writeToHDA(tagPath, previousValue, currentValue, initialChange, missedEvents
         system.tag.write("[.]status", "Skipping write because value is an initial change value")
         return
     
-    latency = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+    provider = getTagProvider()
+    latency = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = system.tag.read("[.]messageQueue").value
     if messageQueue != "":
         db = getDatabaseFromTagPath(tagPath)

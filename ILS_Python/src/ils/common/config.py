@@ -11,19 +11,15 @@ def getHistoryProvider():
     return 'XOMhistory'
 
 def getTagProvider():
-    #return 'XOM'
     return scriptingInterface.getProductionTagProvider()
 
 def getDatabase():
-    #return 'XOM'
     return scriptingInterface.getProductionDatabase()
 
 def getIsolationTagProvider():
-    #return 'XOM_ISOLATION'
     return scriptingInterface.getIsolationTagProvider()
 
 def getIsolationDatabase():
-    #return 'XOM_ISOLATION'
     return scriptingInterface.getIsolationDatabase()
 
 # These should be used only by a client.  They totally respect the isolation mode settings that are in force for the client.

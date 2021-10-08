@@ -15,7 +15,7 @@ def delete(familyUUID):
     This is called when the user deletes an family from the designer.  I hope that it already called the delete method for the diagrams in the family
     from the bottom up so that we don't hit a FK constraint here.
     
-    I'd like to use the application name, which is guarenteed to be unique by the database, but I think that the gateway has already deleted the application so the getApplicationName()
+    I'd like to use the application name, which is guaranteed to be unique by the database, but I think that the gateway has already deleted the application so the getApplicationName()
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
     from ils.log.LogRecorder import LogRecorder

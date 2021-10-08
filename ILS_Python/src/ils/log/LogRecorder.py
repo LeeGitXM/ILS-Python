@@ -4,11 +4,11 @@ We believe that the use of MDC is appropriate here because in client
 scope, there should only be one project per JVM.
 '''
 #
-import os,sys
+import sys, os, traceback
 import system
 import ch.qos.logback.classic.Level as Level
-import org.slf4j.MDC as MDC
-import com.ils.common.log.LogMaker as LogMaker
+#import org.slf4j.MDC as MDC
+#import com.ils.common.log.LogMaker as LogMaker
 
 # next bit filched from 1.5.2's inspect.py
 def currentframe():
@@ -108,22 +108,26 @@ class LogRecorder:
             msg = "Error in errorf() - not enough arguments in %s" % msg
         self.logger.error(msg)
 
+
     # Place attributes into the MDC specific to this message
     # MDC = Mapped Diagnostic Contexts
     def setAttributes(self):
         # Get a stack track and fill in line number, function and module
         fn, lno, func = self.findCaller()
         
+        ''' This worked when we implemented logging in Java '''
+        '''
         MDC.put(LogMaker.MODULE_KEY, fn)
         MDC.put(LogMaker.FUNCTION_KEY, func)
         MDC.put(LogMaker.LINE_KEY,str(lno))
         MDC.put(LogMaker.CLIENT_KEY,self.clientId)
         MDC.put(LogMaker.PROJECT_KEY,self.projectName)
-        
-        ''' If we change the way we get the logger we need to swap these
-        self.logger.setClientId(self.clientId)
-        self.logger.setProject(self.projectName)
         '''
+        
+        ''' If we change the way we get the logger we need to swap these '''
+        ''' These are not working - PH 10/6/2021 '''
+        #self.logger.setClientId(self.clientId)
+        #self.logger.setProject(self.projectName)
 
     # next bit filched from 1.5.2's inspect.py
     def currentframe(self):
@@ -167,4 +171,5 @@ class LogRecorder:
         
     def setLevel(self,level):
         #print "LogRecorder: set level ",level
-        self.logger.getLoggerSLF4J().setLevel(Level.valueOf(level))
+        #self.logger.getLoggerSLF4J().setLevel(Level.valueOf(level))
+        self.logger.getLoggerSLF4J().setLevel(level)
