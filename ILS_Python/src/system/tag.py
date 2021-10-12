@@ -3,61 +3,86 @@ Created on Jul 9, 2014
 
 @author: chuckc
 '''
-def addTag(parentPath, name, tagType, dataType, attributes, parameters, overrides):
+
+
+def browse(path, aFilter):
+    results = []
+    return results
+
+def browseHistoricalTags(path, nameFilters, maxSize, continuationPoint):
+    results = []
+    return results
+
+def configure(basePath, tags, collisionPolicy):
     return []
 
-def browseConfiguration(path, udtParentType):
+def copy(tags, destination, collisionPolicy):
+    return
+
+def deleteAnnotations(paths, storageIds):
     return []
 
-def browseTags(path, udtParentType):
+def deleteTags(tagPaths):
     return []
-
-def browseTagsSimple(path, sort):
-    return []
-
-def editTag(tagPath, attributes, parameters):
-    return True
 
 def exists(tagPath):
     return True
 
-def getAttribute(tagPath, attr):
+def exportTags(filepath, tagPaths, recursive, exportType):
+    return
+
+def getConfiguration(basePath, recursive):
     return ""
 
-def getTagValue(tagPath):
+def importTags(filePath, basePath, collisionPolicy):
+    return
+
+def isOverlaysEnabled():
+    isEnabled = True
+    return isEnabled
+
+def move(tags, destination, collisionPolicy):
     return ""
 
-def queryTagCalculations():
+def queryAnnotations(paths, startTime, endTime, types):
+    return
+
+def queryTagCalculations(paths, calculations, startDate, endDate, rangeHours, rangeMinutes, aliases, includeBoundingValues, validatesSCExec, noInterpolation, ignoreBadQuality):
     ds=1
     return ds
 
-def queryTagHistory():
+def queryTagDensity(paths, startDate, endDate):
     ds=1
     return ds
 
-def read(tagPath):
+def queryTagHistory(paths, startDate, endDate, returnSize, aggregationMode, returnFormat, columnNames, intervalHours, intervalMinutes, rangeHours, rangeMinutes, aggregationModes, includeBoundingValues, validateSCExec, noInterpolation, ignoreBadQuality, timeout, intervalSeconds, rangeSeconds):
+    ds=1
+    return ds
+
+def readAsync(tagPaths, callback):
     return 0.0
 
-def readAll(paths):
+def readBlocking(tagPaths, timeout):
     return []
 
-def removeTag(path):
-    pass
+def rename(tag, newName, collisionPolicy):
+    qualityCode = True
+    return qualityCode
 
-def removeTags(paths):
+def requestGroupExecution(tagPath):
     return []
 
-def write(tagPath,command):
+def setOverlaysEnabled(enabled):
     pass
 
-def writeSynchronous(tagPath, value):
+def storeAnnotations(paths, startTimes, endTimes, types, data, storageIds, deleted):
+    return []
+
+def storeTagHistory(historyprovider, tagprovider, paths, values, qualities, timestamps):
     pass
 
-def writeAllSynchronous(tagPath, value):
+def writeAsync(tagPaths, values, callback):
     pass
 
-def writeAll(tags, vals):
-    return True
-
-def writeToTag(tagpath, vals):
-    return True
+def writeBlocking(tagPaths, values, timeout):
+    return []
