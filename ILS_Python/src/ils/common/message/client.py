@@ -9,6 +9,8 @@ from ils.common.config import getDatabaseClient, getIsolationModeClient
 from ils.common.windowUtil import positionWindow
 from ils.common.database import getConsoleWindowNameForConsole
 from ils.log.LogRecorder import LogRecorder
+from ils.io.util import readTag
+
 log = LogRecorder(__name__)
 
 def handle(payload):
@@ -21,7 +23,7 @@ def handle(payload):
     
     # Get a list of all of the open windows on a client
     if requestType == "listWindows":
-        isolationMode = system.tag.read("[Client]Isolation Mode").value
+        isolationMode = readTag("[Client]Isolation Mode").value
         windows=system.gui.getOpenedWindowNames()
         reply = ",".join(map(str,windows))
         SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
@@ -31,8 +33,8 @@ def handle(payload):
         system.db.runUpdateQuery(SQL, database=requestDatabase)
         
     elif requestType == "listUserAndIsolationMode":
-        isolationMode = system.tag.read("[Client]Isolation Mode").value
-        username = system.tag.read("[System]Client/User/Username").value
+        isolationMode = readTag("[Client]Isolation Mode").value
+        username = readTag("[System]Client/User/Username").value
         SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
             " values (%i, '%s', getdate(), '%s', %d)"\
              % (requestId, username, clientId, isolationMode)
@@ -119,7 +121,7 @@ def postMatch(post):
     if post == "":
         return False
     print "Checking post:", post
-    username = system.tag.read("[System]Client/User/Username").value
+    username = readTag("[System]Client/User/Username").value
     print "Username: ", username
     if string.upper(username) == string.upper(post):
         print "The post matches the username so show the window."

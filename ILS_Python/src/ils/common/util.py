@@ -162,7 +162,7 @@ def getRunHours(tagProvider):
     tagPath = "[%s]Site/Watchdogs/Ignition Uptime Minutes" % (tagProvider)
     exists = system.tag.exists(tagPath)
     if exists:
-        runMinutes = system.tag.read(tagPath).value
+        runMinutes = system.tag.readBlocking([tagPath]).value
         if runMinutes == None:
             runHours = 0.0
         else:
@@ -176,7 +176,7 @@ def checkIfPrintingAllowed(providerName):
     tagPath="[%s]Configuration/Common/printingAllowed" % (providerName)
     tagExists = system.tag.exists(tagPath)
     if tagExists:
-        printingAllowed = system.tag.read(tagPath).value
+        printingAllowed = system.tag.readBlocking([tagPath]).value
     else:
         printingAllowed = True
     
@@ -349,7 +349,7 @@ def substituteScopeReferences(txt, provider):
                 if tagPath.find("[") < 0:
                     tagPath = "[%s]%s" % (provider, tagPath)
                     
-                value = system.tag.read(tagPath).value
+                value = system.tag.readBlocking([tagPath]).value
             else:
                 value = ref
             txt = txt.replace(ref, str(value))

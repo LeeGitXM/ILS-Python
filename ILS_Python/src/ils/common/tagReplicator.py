@@ -5,7 +5,7 @@ Created on Jan 8, 2021
 '''
 import system, sys, traceback, time
 from ils.tag.client import typeForTagPath, dataTypeForTagPath
-from ils.io.util import getTagExpression, getTagSQL, getUDTType, isExpressionTag, isQueryTag, getTagScript
+from ils.io.util import getTagExpression, getTagSQL, getUDTType, isExpressionTag, isQueryTag, getTagScript, readTag, writeTag
 
 COMMAND_TAG_PATH = "[Client]Replicate/Command"
 DESTINATION_TAG_PROVIDER_TAG_PATH = "[Client]Replicate/Destination Tag Provider"
@@ -34,16 +34,16 @@ def internalFrameOpened(rootContainer):
     reset()
     
 def abortCallback(event):
-    system.tag.write(COMMAND_TAG_PATH, ABORT_COMMAND)
+    writeTag(COMMAND_TAG_PATH, ABORT_COMMAND)
 
 def resetCallback(event):
     reset()
     
 def reset():
-    system.tag.write(COMMAND_TAG_PATH, "")
-    system.tag.write(STATUS_TAG_PATH, "")
-    system.tag.write(TOTAL_TAG_COUNT_TAG_PATH, 0)
-    system.tag.write(TAG_COUNTER_TAG_PATH, 0)
+    writeTag(COMMAND_TAG_PATH, "")
+    writeTag(STATUS_TAG_PATH, "")
+    writeTag(TOTAL_TAG_COUNT_TAG_PATH, 0)
+    writeTag(TAG_COUNTER_TAG_PATH, 0)
     
 def replicateCallback(event):
     rootContainer = event.source.parent
@@ -52,9 +52,9 @@ def replicateCallback(event):
     if not(okToProceed):
         return
     
-    system.tag.write(SELECTED_TAG_PATH_TAG_PATH, selectedTagPath)
-    system.tag.write(DESTINATION_TAG_PROVIDER_TAG_PATH, destinationTagProvider)
-    system.tag.write(COMMAND_TAG_PATH, "Replicate")
+    writeTag(SELECTED_TAG_PATH_TAG_PATH, selectedTagPath)
+    writeTag(DESTINATION_TAG_PROVIDER_TAG_PATH, destinationTagProvider)
+    writeTag(COMMAND_TAG_PATH, "Replicate")
         
 def copyDataCallback(event):
     rootContainer = event.source.parent
@@ -63,9 +63,9 @@ def copyDataCallback(event):
     if not(okToProceed):
         return
     
-    system.tag.write(SELECTED_TAG_PATH_TAG_PATH, selectedTagPath)
-    system.tag.write(DESTINATION_TAG_PROVIDER_TAG_PATH, destinationTagProvider)
-    system.tag.write(COMMAND_TAG_PATH, "CopyValues")
+    writeTag(SELECTED_TAG_PATH_TAG_PATH, selectedTagPath)
+    writeTag(DESTINATION_TAG_PROVIDER_TAG_PATH, destinationTagProvider)
+    writeTag(COMMAND_TAG_PATH, "CopyValues")
     
 def convertUdtCallback(event):
     '''
@@ -120,19 +120,19 @@ def commandTagCallback(tagPath, previousValue, currentValue, initialChange, miss
     
     try:
         if currentValue.value == "Replicate":
-            system.tag.write(STATUS_TAG_PATH, "Starting to replicate...")
+            writeTag(STATUS_TAG_PATH, "Starting to replicate...")
             replicator = Replicater()            
             replicator.replicate()
             replicator.copyValues()
             time.sleep(1)
-            system.tag.write(STATUS_TAG_PATH, "Done - Successfully replicated tags and copied tag values!")
+            writeTag(STATUS_TAG_PATH, "Done - Successfully replicated tags and copied tag values!")
             
         if currentValue.value == "CopyValues":
-            system.tag.write(STATUS_TAG_PATH, "Starting to copy values...")
+            writeTag(STATUS_TAG_PATH, "Starting to copy values...")
             replicator = Replicater()
             replicator.copyValues()
             time.sleep(1)
-            system.tag.write(STATUS_TAG_PATH, "Done - Successfully copied tag values!")
+            writeTag(STATUS_TAG_PATH, "Done - Successfully copied tag values!")
             
     except Exception, e:
         print sys.exc_info()[1]
@@ -144,7 +144,7 @@ def commandTagCallback(tagPath, previousValue, currentValue, initialChange, miss
         system.gui.messageBox(str(e))
         
 def updateStatus(txt):
-    system.tag.write(STATUS_TAG_PATH, txt)
+    writeTag(STATUS_TAG_PATH, txt)
 
 class Replicater():
     selectedTagPath = None
@@ -160,10 +160,10 @@ class Replicater():
         self.log = LogRecorder(__name__)
         self.log.infof("Initializing a Replicator")
         
-        self.selectedTagPath = system.tag.read(SELECTED_TAG_PATH_TAG_PATH).value
-        self.destinationTagProvider = system.tag.read(DESTINATION_TAG_PROVIDER_TAG_PATH).value
-        self.replaceExpressionTags = system.tag.read(REPLACE_EXPRESSION_TAGS_TAG_PATH).value
-        self.replaceQueryTags = system.tag.read(REPLACE_QUERY_TAGS_TAG_PATH).value
+        self.selectedTagPath = readTag(SELECTED_TAG_PATH_TAG_PATH).value
+        self.destinationTagProvider = readTag(DESTINATION_TAG_PROVIDER_TAG_PATH).value
+        self.replaceExpressionTags = readTag(REPLACE_EXPRESSION_TAGS_TAG_PATH).value
+        self.replaceQueryTags = readTag(REPLACE_QUERY_TAGS_TAG_PATH).value
 
         ''' Derive the source tag provider from the selectedTagPath '''
         self.sourceTagProvider = self.selectedTagPath[1:self.selectedTagPath.find("]")]
@@ -174,7 +174,7 @@ class Replicater():
         self.log.tracef("Replace Expression Tags: %s", str(self.replaceExpressionTags))
         self.log.tracef("Replace Query Tags: %s", str(self.replaceQueryTags))
         
-        system.tag.write(STATUS_TAG_PATH, "Step #1 - Browsing tags...")
+        writeTag(STATUS_TAG_PATH, "Step #1 - Browsing tags...")
         self.myTags = self.getTags(self.selectedTagPath)
         
         ''' Count the number of tags and UDTs to drive the progress bar. '''
@@ -182,11 +182,11 @@ class Replicater():
         for browseTag in self.myTags:
             if not(browseTag.isFolder()):
                 i = i + 1
-        system.tag.write(TOTAL_TAG_COUNT_TAG_PATH, i)
+        writeTag(TOTAL_TAG_COUNT_TAG_PATH, i)
         self.log.infof("Found %d UDTs & Tags...", i)
         
         ''' There is a client tag that optionally turns on the tag dump. It can swamp the console log if it is turned on. '''
-        dumpTags = system.tag.read(DUMP_TAGS_TAG_PATH).value
+        dumpTags = readTag(DUMP_TAGS_TAG_PATH).value
         if dumpTags:
             self.dumpTags()
             
@@ -232,7 +232,7 @@ class Replicater():
         folderSet = system.tag.browseTags(parentPath=initPath, tagType = 'Folder', recursive=False)
     
         for folder in folderSet:
-            command = system.tag.read(COMMAND_TAG_PATH).value
+            command = readTag(COMMAND_TAG_PATH).value
             if command == ABORT_COMMAND:
                 updateStatus("Aborted tag browse!")
                 return tagSet
@@ -248,24 +248,24 @@ class Replicater():
         
         Create the tags, we don't need to explicitly create folders, they will be created automatically as we go 
         '''
-        command = system.tag.read(COMMAND_TAG_PATH).value
+        command = readTag(COMMAND_TAG_PATH).value
         if command == ABORT_COMMAND:
             return
-        system.tag.write(STATUS_TAG_PATH, "Step #2 - Creating tags...")
+        writeTag(STATUS_TAG_PATH, "Step #2 - Creating tags...")
         self.log.tracef("*******************")
         self.log.infof("Replicating tags...")
         self.log.tracef("*******************")
         i = 0
         
         for browseTag in self.myTags:
-            command = system.tag.read(COMMAND_TAG_PATH).value
+            command = readTag(COMMAND_TAG_PATH).value
             if command == ABORT_COMMAND:
                 updateStatus("Aborted tag replicate!")
                 return
             
             if not(browseTag.isFolder()):
                 i = i + 1
-                system.tag.write(TAG_COUNTER_TAG_PATH, i)
+                writeTag(TAG_COUNTER_TAG_PATH, i)
                 self.log.tracef(browseTag.fullPath)
                 
                 tagpath = browseTag.path
@@ -348,16 +348,16 @@ class Replicater():
                 
     def copyValues(self):
         ''' Copy tag values '''
-        command = system.tag.read(COMMAND_TAG_PATH).value
+        command = readTag(COMMAND_TAG_PATH).value
         if command == ABORT_COMMAND:
             return
-        system.tag.write(STATUS_TAG_PATH, "Step #3 - Copying tag values...")
+        writeTag(STATUS_TAG_PATH, "Step #3 - Copying tag values...")
         self.log.tracef("*******************")
         self.log.infof("Copying tag values")
         self.log.tracef("*******************")
         i = 0
         for browseTag in self.myTags:
-            command = system.tag.read(COMMAND_TAG_PATH).value
+            command = readTag(COMMAND_TAG_PATH).value
             if command == ABORT_COMMAND:
                 updateStatus("Aborted tag value copy!")
                 return
@@ -365,7 +365,7 @@ class Replicater():
             self.log.tracef(browseTag.fullPath)
             if not(browseTag.isFolder()):
                 i = i + 1
-                system.tag.write(TAG_COUNTER_TAG_PATH, i)
+                writeTag(TAG_COUNTER_TAG_PATH, i)
                 
                 if str(browseTag.type) in ["OPC", "DB", "DERIVED"]:
                     self.log.tracef("Copying a tag...")
@@ -403,9 +403,9 @@ class Replicater():
         elif browseTag.isQuery() and not(self.replaceQueryTags):
             self.log.tracef("--- Skipping a query tag ---")
         else:
-            qv = system.tag.read(browseTag.fullPath)
+            qv = readTag(browseTag.fullPath)
             if qv.quality.isGood():
-                system.tag.write("[%s]%s" % (self.destinationTagProvider, browseTag.path), qv.value)
+                writeTag("[%s]%s" % (self.destinationTagProvider, browseTag.path), qv.value)
                     
     def copyUdtValues(self, tagpath):
         '''

@@ -41,7 +41,7 @@ def getUDTProperty(fullTagPath, prop):
     log.tracef("Getting %s from %s...", prop, fullTagPath)
     
     path = "%s.ExtendedProperties" % fullTagPath
-    props = system.tag.read(path)
+    props = readTag(path)
     if props.value is not None:
             for p in props.value:
                 if p.getProperty().name.lower() == prop.lower():
@@ -61,13 +61,13 @@ def isUDTorFolder(fullTagPath, strategy="PYTHONCLASS"):
     log.tracef("Checking if %s is a UDT or a folder...", fullTagPath)
     
     '''
-    This strategy uses system.tag.read(tagPath + ".TagType") this returns an integer enumeration whose return values
+    This strategy uses readTag(tagPath + ".TagType") this returns an integer enumeration whose return values
     are undocumented (I'm sure it is documented somewhere, but I don't know where).  The problem with this strategy is that 
     I get deifferent results in client scope than I do in gateway scope. In client scope, a folder is a 6 and an opc tag is a 0
     In gateway scope, a folder is 0 and an opc tag is a 0
     '''
     if strategy == "TAGTYPE":
-        tagType = system.tag.read(fullTagPath + ".TagType").value
+        tagType = readTag(fullTagPath + ".TagType").value
         log.tracef("...is of type %s", str(tagType))
         if tagType in [6, 10]:
             return True
@@ -114,11 +114,16 @@ def isUDTorFolder(fullTagPath, strategy="PYTHONCLASS"):
    
     return False
 
-# Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
-# There is possibly an easier way to do this and avoid the whole broseTag API issues of 
-# having to put a wild card in front of the tagPath.  I could use system.tag.read(tagPath + ".TagType.
-# but I don't know how to decode the integer enumeration that is returned.   
+ 
 def isUDT(fullTagPath):
+    '''
+    Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
+    There is possibly an easier way to do this and avoid the whole broseTag API issues of 
+    having to put a wild card in front of the tagPath.  I could use system.tag.read(tagPath + ".TagType.
+    but I don't know how to decode the integer enumeration that is returned.  
+    
+    TODO: This should be easier to do in Ignition 8!
+    '''
     log.tracef("Checking if %s is a UDT...", fullTagPath)
     try:
         isUDT = False
@@ -610,3 +615,20 @@ def getTagSuffix(tagName):
     
     suffix = string.upper(tagName[period+1:])
     return suffix
+
+def readTag(tagPath):
+    '''
+    This reads a single tag using a blocking read and returns a single qualified value.
+    This just saves the caller the task of packing and unpacking the results when migrating
+    to Ignition 8. 
+    '''
+    qvs = system.tag.readBlocking([tagPath])
+    qv = qvs[0]
+    return qv
+
+def writeTag(tagPath, val):
+    '''
+    This reads a single value to a single tag using an asynchronous write without confirmation or status return.
+    This just saves the caller the task of packing the arguments when migrating to Ignition 8. 
+    '''
+    system.tag.writeAsync([tagPath], [val])

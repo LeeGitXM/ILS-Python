@@ -11,6 +11,7 @@ from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus,\
     removeUnwantedMenus, ConsoleMenus
 from ils.common.error import catchError
+from ils.io.util import readTag, writeTag
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -123,9 +124,9 @@ def clientCommon():
     username = system.security.getUsername()
     rows = system.db.runScalarQuery("select count(*) from TkPost where post = '%s'" % (username)) 
     if rows > 0:
-        system.tag.write("[Client]Post", username)
+        writeTag("[Client]Post", username)
     else:
-        system.tag.write("[Client]Post", "Test")
+        writeTag ("[Client]Post", "Test")
 
     SQL = "select C.WindowName from TkConsole C, TkPost P where P.PostId = C.PostId and P.Post = '%s' order by C.priority" % (username)
     pds = system.db.runPrepQuery(SQL)
@@ -220,7 +221,7 @@ def updateDatabaseSchema(tagProvider, db):
         tagPath = "[%s]/Configuration/common/dbUpdateStrategy" % (tagProvider)
         exists = system.tag.exists(tagPath)
         if exists:
-            strategy = string.upper(system.tag.read(tagPath).value)
+            strategy = string.upper(readTag(tagPath).value)
         else:
             log.warnf("Exiting updateDatabaseSchema because %s does not exist, (hopefully this is the first startup after an install and the tag will be created later)", tagPath)
             return

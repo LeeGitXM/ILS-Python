@@ -4,6 +4,7 @@ Created on Sep 26, 2020
 @author: phass
 '''
 
+from ils.io.util import readTag, writeTag
 import system
 
 def listOfDictionariesToDataset(theList):
@@ -23,7 +24,7 @@ def listOfDictionariesToDataset(theList):
     return ds
 
 def tagToList(tagPath):
-    ds = system.tag.read(tagPath).value
+    ds = readTag(tagPath).value
     theList = toList(ds)
     return theList
 
@@ -36,7 +37,7 @@ def toList(ds):
 
 def listToTag(tagPath, list):
     ds = fromList(list)
-    system.tag.write(tagPath, ds)
+    writeTag(tagPath, ds)
     
 def fromList(aList):
     header = ["vals"]

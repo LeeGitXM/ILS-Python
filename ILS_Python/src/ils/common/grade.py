@@ -5,6 +5,7 @@ The grade tag must always be in a folder that is the name of the unit.  So we ca
 '''
 
 import system
+from ils.io.util import readTag, writeTag
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -16,7 +17,7 @@ def getGradeForUnit(unitName, tagProvider):
 
     exists=system.tag.exists(tagPath)
     if exists:
-        grade=system.tag.read(tagPath)
+        grade=readTag(tagPath)
         if grade.quality.isGood():
             grade=grade.value
         else:
@@ -65,7 +66,7 @@ def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
     logGradeChange(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db)
     resetCatInHours(tagPath, previousValue, currentValue, initialChange, tagPathRoot, unit, tagProvider, db)
     
-    system.tag.write(tagPathRoot + "lastGradeProcessed", currentValue.value)
+    writeTag(tagPathRoot + "lastGradeProcessed", currentValue.value)
     
     log.infof( "... done with common grade change logic for grade %s (%s)!", str(currentValue.value), tagPath)
 
@@ -78,7 +79,7 @@ def gradeChangeIsLegit(tagPath, previousValue, currentValue, initialChange):
         return False, "This grade change is not legit because the quality is bad."
     
     tagPathRoot = tagPath[:tagPath.rfind('/')+ 1]
-    lastGrade = system.tag.read(tagPathRoot + "lastGradeProcessed").value
+    lastGrade = readTag(tagPathRoot + "lastGradeProcessed").value
     
     if currentValue.value == lastGrade:
         return False, "This grade <%s> has already been processed." % (str(lastGrade))
@@ -91,7 +92,7 @@ def resetCatInHours(tagPath, previousValue, currentValue, initialChange, tagPath
     When the grade changes, we need to reset the total cat in hours for this grade.
     '''
     print "Resetting the Cat In hours for ", unit
-    system.tag.write(tagPathRoot + "catInHours", 0.0)
+    writeTag(tagPathRoot + "catInHours", 0.0)
 
 
 '''
@@ -105,7 +106,7 @@ def logGradeChange(tagPath, previousValue, currentValue, initialChange, tagPathR
     try:
         log.infof("writing grade change information to the operator logbook for grade tag %s", tagPath)
         
-        qvs = system.tag.readAll([tagPathRoot + "currentProduction", tagPathRoot + "catInHours", tagPathRoot + "timeOfMostRecentGradeChange"])
+        qvs = system.tag.readBlocking([tagPathRoot + "currentProduction", tagPathRoot + "catInHours", tagPathRoot + "timeOfMostRecentGradeChange"])
         
         if qvs[0].quality.isGood():
             production = qvs[0].value
@@ -149,7 +150,7 @@ def updateCatInHours(tagPath, previousValue, currentValue, initialChange):
     
     tagPathRoot = tagPath[:tagPath.rfind('/')+ 1]
 
-    qv = system.tag.read(tagPathRoot + "catInHours")
+    qv = readTag(tagPathRoot + "catInHours")
     if qv.quality.isGood():
         catInHours = qv.value
         if catInHours == None:
@@ -159,4 +160,4 @@ def updateCatInHours(tagPath, previousValue, currentValue, initialChange):
     
     hoursBetween = system.date.secondsBetween(previousValue.value, currentValue.value) / 60.0 / 60.0
     catInHours = catInHours + hoursBetween 
-    system.tag.write(tagPathRoot + "catInHours", catInHours)
+    writeTag(tagPathRoot + "catInHours", catInHours)

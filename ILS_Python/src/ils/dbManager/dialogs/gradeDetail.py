@@ -6,6 +6,7 @@ Created on Mar 21, 2017
 Scripts in support of the "Grade Detail" dialog
 '''
 import system
+from ils.io.util import readTag
 from ils.dbManager.ui import populateRecipeFamilyDropdown, populateGradeForFamilyDropdown, populateVersionForGradeDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
 
@@ -56,7 +57,7 @@ def requery(rootContainer):
     if active:
         andWhere = andWhere+ " AND GM.Active = 1"
         
-    previewActiveOnly = system.tag.read('[Client]Preview Active Details Only').value
+    previewActiveOnly = readTag('[Client]Preview Active Details Only').value
     if previewActiveOnly:
         andWhere = andWhere+ " AND GD.RowActive = 1"
     

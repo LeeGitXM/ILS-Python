@@ -5,6 +5,7 @@ Created on Apr 11, 2017
 '''
 
 import system
+from ils.io.util import readTag, writeTag
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -41,7 +42,7 @@ def labDataWatchdog(tagProvider, udtPath):
     udtPath = "[%s]%s" % (tagProvider, udtPath)
     log.tracef("Evaluating a Lab Data Watchdog with <%s>", udtPath)
     
-    vals = system.tag.readAll([
+    vals = system.tag.readBlocking([
                 udtPath+"/currentValue", 
                 udtPath+"/lastValue",
                 udtPath+"/maxStalls",
@@ -66,12 +67,12 @@ def labDataWatchdog(tagProvider, udtPath):
     else:
         log.tracef("Passed the value changed test")
         
-    system.tag.write(udtPath+"/lastValue", currentValue)
+    writeTag(udtPath+"/lastValue", currentValue)
 
     if changeTestFailed:
-        system.tag.write(udtPath+"/stallCount", stallCount + 1)
+        writeTag(udtPath+"/stallCount", stallCount + 1)
     else:
-        system.tag.write(udtPath+"/stallCount", 0)
+        writeTag(udtPath+"/stallCount", 0)
 
 '''
 This is called from a gateway timer script. It doesn't make sense to call this for isolation.
@@ -106,7 +107,7 @@ def opcReadWatchdog(tagProvider, udtPath):
     udtPath = "[%s]%s" % (tagProvider, udtPath)
     log.tracef("Evaluating an opcReadWatchdog with <%s>", udtPath)
     
-    vals = system.tag.readAll([udtPath+"/tag", 
+    vals = system.tag.readBlocking([udtPath+"/tag", 
                                udtPath+"/changeStrategy", 
                                udtPath+"/readAndCompareStrategy",
                                udtPath+"/lastValue",
@@ -140,7 +141,7 @@ def opcReadWatchdog(tagProvider, udtPath):
         else:
             log.tracef("Passed the value changed test")
             
-        system.tag.write(udtPath+"/lastValue", val)
+        writeTag(udtPath+"/lastValue", val)
 
 # Not sure what this test is meant to do!!!!        
     if readAndCompareStrategy:
@@ -157,9 +158,9 @@ def opcReadWatchdog(tagProvider, udtPath):
             log.errorf("Failed readAndCompare test because the quality is not good!")
 
     if changeTestFailed or readAndCompareTestFailed:
-        system.tag.write(udtPath+"/stallCount", stallCount + 1)
+        writeTag(udtPath+"/stallCount", stallCount + 1)
     elif not(changeTestFailed or readAndCompareTestFailed) and stallCount > 0:
-        system.tag.write(udtPath+"/stallCount", 0)
+        writeTag(udtPath+"/stallCount", 0)
 
 '''
 This is called from a gateway timer script.  It doesn't make sense to call this for isolation.
@@ -197,7 +198,7 @@ def opcWriteWatchdog(tagProvider, udtPath):
     udtPath = "[%s]%s" % (tagProvider, udtPath)
     log.tracef("Evaluating an opcWriteWatchdog with <%s>", udtPath)
     
-    vals = system.tag.readAll([udtPath+"/tag", 
+    vals = system.tag.readBlocking([udtPath+"/tag", 
                                udtPath+"/WriteEnabled", 
                                udtPath+"/writeValue",
                                udtPath+"/serverName",
@@ -216,7 +217,7 @@ def opcWriteWatchdog(tagProvider, udtPath):
     internallyDriven=vals[6].value
     maxWriteVal=vals[7].value
     
-    globalWriteEnabled = system.tag.read("[%s]Configuration/Common/writeEnabled" % (tagProvider)).value
+    globalWriteEnabled = readTag("[%s]Configuration/Common/writeEnabled" % (tagProvider)).value
 
     stalled = False
     
@@ -227,7 +228,7 @@ def opcWriteWatchdog(tagProvider, udtPath):
         if writeValue > maxWriteVal:
             writeValue = 1
         tagpath = udtPath + "/writeValue"
-        system.tag.write(tagpath, writeValue)
+        writeTag(tagpath, writeValue)
         
     log.tracef("  Path: %s\n  Current Value: %s\n  Write Enabled %s\n  Write Value %s\n  Server Name: %s\n  Item Id: %s\n  Stall Count: %s\n", \
          udtPath, str(val), str(writeEnabled), str(writeValue), str(serverName), str(itemId), str(stallCount))
@@ -238,16 +239,16 @@ def opcWriteWatchdog(tagProvider, udtPath):
         try:
             tagpath = udtPath + "/tag"
             log.tracef("Writing %s to %s", str(writeValue), tagpath)
-            system.tag.writeSynchronous(tagpath, writeValue)
+            system.tag.writeBlocking([tagpath], [writeValue])
             log.tracef("Passed the watchdog write test")
         except:
             log.errorf("FAILED the write watchdog test because the synchronous write to (%s) failed", tagpath)
             stalled = True
             
     if stalled:
-        system.tag.write(udtPath+"/stallCount", stallCount + 1)
+        writeTag(udtPath+"/stallCount", stallCount + 1)
     elif not(stalled) and stallCount > 0:
-        system.tag.write(udtPath+"/stallCount", 0)
+        writeTag(udtPath+"/stallCount", 0)
 
 
 '''
@@ -282,7 +283,7 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
     udtPath = "[%s]%s" % (tagProvider, udtPath)
     log.tracef("Evaluating an opcHdaReadWatchdog with <%s>", udtPath)
     
-    vals = system.tag.readAll([udtPath+"/serverName",
+    vals = system.tag.readBlocking([udtPath+"/serverName",
                                udtPath+"/itemId",
                                udtPath+"/lastSampleValue",
                                udtPath+"/lastSampleTime",
@@ -303,16 +304,16 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
     sampleTimeChanged = False
     vals = []
     tags = []
-    manualEntryOverride = system.tag.read("[%s]Configuration/LabData/manualEntryOverride" % (tagProvider)).value
+    manualEntryOverride = readTag("[%s]Configuration/LabData/manualEntryOverride" % (tagProvider)).value
     if manualEntryOverride:
-        system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
+        writeTag("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
     
     log.tracef("Path: %s, Last Value: %s, Last Sample Time %s, Server Name: %s, Item Id: %s, Stall Count: %s", \
          udtPath, str(lastSampleValue), str(lastSampleTime), str(serverName), str(itemId), str(stallCount))
 
     ''' The first check is to just use the Ignition API to see if the server is available '''
     serverIsAvailable = system.opchda.isServerAvailable(serverName)
-    system.tag.write(udtPath+"/connectionAvailable", serverIsAvailable)
+    writeTag(udtPath+"/connectionAvailable", serverIsAvailable)
     
     if not(serverIsAvailable):
         log.errorf("The HDA server (%s) is *NOT* available as determined by calling system.opchda.isServerAvailable()!", serverName)
@@ -366,24 +367,24 @@ def opcHdaReadWatchdog(tagProvider, udtPath):
         tags.append(udtPath+"/stallCount")
         vals.append(stallCount + 1)
         if stallCount > maxStalls:
-            system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), False)
-            system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
+            writeTag("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), False)
+            writeTag("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), True)
     
     elif serverIsAvailable and sampleTimeChanged and stallCount > 0:
         ''' I'm not exactly sure what the scenario is that this handles  '''
         tags.append(udtPath+"/stallCount")
         vals.append(0)
-        system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
+        writeTag("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
         if not(manualEntryOverride):
-            system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), False)
+            writeTag("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), False)
     
     elif stallCount == 0:
-        system.tag.write("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
+        writeTag("[%s]Configuration/LabData/communicationHealthy" % (tagProvider), True)
         if not(manualEntryOverride):
-            system.tag.write("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), False)
+            writeTag("[%s]Configuration/LabData/manualEntryPermitted" % (tagProvider), False)
 
     if len(tags) > 0:
-        system.tag.writeAll(tags, vals)
+        system.tag.writeBlocking(tags, vals)
      
 '''
 -------------------------------------------------------------------------------------------------

@@ -9,6 +9,7 @@ from ils.common.notification import notifyError
 from ils.common.config import getIsolationModeClient, getTagProvider
 from ils.sfc.common.constants import CLIENT_DONE, NORMAL, LARGE_TEXT
 from ils.log.LogRecorder import LogRecorder
+from ils.io.util import readTag
 log = LogRecorder(__name__)
 
 # This is generally called from the gateway, but will also work when called from test (like from the test window)
@@ -50,7 +51,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     If the site has specified a custom alert callback, now is the time to call it.  A good thing to do here is to maximize the OC Ignition client. 
     ''' 
     provider = getTagProvider()
-    callback = system.tag.read("[%s]Configuration/Common/ocAlertCallback" % (provider)).value
+    callback = readTag("[%s]Configuration/Common/ocAlertCallback" % (provider)).value
     if callback not in ["", None, "None"]:
         log.tracef("Calling a callback...")
         ocAlertCallback(callback, payload)

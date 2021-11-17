@@ -4,11 +4,12 @@ Created on Sep 16, 2016
 @author: Pete
 '''
 
+from ils.io.util import readTag
 import system
 
 def internalFrameOpened(rootContainer):
     print "Initializing..."
-    db = system.tag.read("[Client]Database").value
+    db = readTag("[Client]Database").value
     print "The database is: ", db
     txId = system.db.beginTransaction(database=db, timeout=60000)
     rootContainer.txId = txId

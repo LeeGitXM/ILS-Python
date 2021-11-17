@@ -14,8 +14,8 @@ providing a starting place when we restart.  Use the Java
 methods.
 '''
 
-import system, string
-from java.util.prefs import Preferences
+import string
+from ils.io.util import readTag, writeTag
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -25,13 +25,13 @@ log = LogRecorder(__name__)
 # UNIT - the current procesing unit (or ALL)
 def get(key):
     if string.upper(key) in ["FAMILY", "UNIT"]:
-        val = system.tag.read('[Client]Family').value
+        val = readTag('[Client]Family').value
     elif string.upper(key) == "GRADE":
-        val = system.tag.read('[Client]Grade').value
+        val = readTag('[Client]Grade').value
     elif string.upper(key) == "VERSION":
-        val = system.tag.read('[Client]Version').value
+        val = readTag('[Client]Version').value
     elif string.upper(key) == "ACTIVE":
-        val = system.tag.read('[Client]Active Only').value
+        val = readTag('[Client]Active Only').value
     
     log.trace("userdefaults.get %s = %s" % (key,val))
     return val
@@ -39,10 +39,10 @@ def get(key):
 #
 def set(key,value):
     if string.upper(key) == "FAMILY":
-        system.tag.write('[Client]Family', value)
+        writeTag('[Client]Family', value)
     elif string.upper(key) == "GRADE":
-        system.tag.write('[Client]Grade', value)
+        writeTag('[Client]Grade', value)
     elif string.upper(key) == "VERSION":
-        system.tag.write('[Client]Version', value)
+        writeTag('[Client]Version', value)
     elif string.upper(key) == "ACTIVE":
-        system.tag.write('[Client]Active Only', value)
+        writeTag('[Client]Active Only', value)
