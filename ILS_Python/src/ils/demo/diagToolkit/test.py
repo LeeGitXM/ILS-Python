@@ -6,6 +6,7 @@ Created on Jun 18, 2018
 
 import system
 from ils.diagToolkit.common import checkFreshness, fetchDiagnosisActiveTime
+from ils.io.util import readTag
 
 def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In fd1_1_1"
@@ -125,7 +126,7 @@ def fd2_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     # Check that the filtered value is fresh by making sure is was updated after the unfiltered lab data value.
     filteredTagName = "[%s]LabData/RLA3/ETHYLENE-FILTERED-VALUE/filteredValue" % (provider)
     pvTagName = "[%s]LabData/RLA3/C2-LAB-DATA/value" % (provider)
-    qv = system.tag.read(pvTagName)
+    qv = readTag(pvTagName)
     activeTime = qv.timestamp
     
     isFresh=checkFreshness(filteredTagName, activeTime, provider, timeout=30)
@@ -133,7 +134,7 @@ def fd2_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
         print "%s: The filtered value (%s) is not fresh, proceeding with calculation anyway." % (__name__, filteredTagName)    
     
     # The data should be fresh so now read the value.
-    fv = system.tag.read(filteredTagName)
+    fv = readTag(filteredTagName)
     if not (fv.quality.isGood()):
         explanation = "%s - Filtered value is bad (%s) %s" % (__name__, filteredTagName, str(fv.quality))
         return False, explanation, recommendations
@@ -141,7 +142,7 @@ def fd2_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     
     # Now read the source of the recipe data
     tagName="[%s]LabData/RLA3/FD-C2-LAB-DATA/value" % (provider)
-    pv = system.tag.read(tagName)
+    pv = readTag(tagName)
     if not (pv.quality.isGood()):
         explanation = "%s - present value is bad (%s) %s" % (__name__, tagName, str(pv.quality))
         return False, explanation, recommendations

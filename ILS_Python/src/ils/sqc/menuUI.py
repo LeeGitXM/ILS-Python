@@ -6,13 +6,14 @@ Created on Dec 10, 2015
 
 import system, string
 from ils.common.config import getDatabaseClient, getTagProvider
+from ils.io.util import readTag
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)
     
-    database=system.tag.read("[Client]Database").value
+    database=readTag("[Client]Database").value
     log.tracef("The database is: %s", database)
     
     # Populate the list of all consoles - the selected console is passed from the console window and should be in the list
@@ -34,7 +35,7 @@ def newPostSelected(rootContainer):
 def populateRepeater(rootContainer):
     log.tracef("In %s.populateRepeater", __name__)
     selectedPost = rootContainer.selectedPost
-    database=system.tag.read("[Client]Database").value
+    database=readTag("[Client]Database").value
     log.tracef("The database is: %s and the selected post is: %s", database, str(selectedPost))
     
     SQL = "Select SQCDiagnosisName, SQCDiagnosisLabel, Status, SQCDiagnosisUUID, SQCDiagnosisName as LabValueName,SQCDiagnosisName as LabValueDescription, SQCDiagnosisName as ButtonLabel "\
@@ -53,7 +54,7 @@ def populateRepeater(rootContainer):
     SQL = "Select ValueName, Description from LtValue"
     LabValuePds = system.db.runQuery(SQL, database)
     
-    indexParameter = string.upper(system.tag.read("Configuration/LabData/sqcPlotMenuIndexParameter").value)
+    indexParameter = string.upper(readTag("Configuration/LabData/sqcPlotMenuIndexParameter").value)
     
     from ils.sqc.plot import getLabValueNameFromDiagram
     row = 0
@@ -120,7 +121,7 @@ def openSQCPlotForSQCDiagnosis(sqcDiagnosisName, SQCDiagnosisUUID, sqcDiagnosisL
         openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName,'sqcDiagnosisLabel': sqcDiagnosisLabel, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="CENTER", scale=1.0)
     else:
         provider = getTagProvider()
-        scaleFactor = system.tag.read("[%s]Configuration/Common/sqcPlotScaleFactor" % (provider)).value
+        scaleFactor = readTag("[%s]Configuration/Common/sqcPlotScaleFactor" % (provider)).value
         openWindowInstance(sqcWindowPath, {'sqcDiagnosisName': sqcDiagnosisName,'sqcDiagnosisLabel': sqcDiagnosisLabel, 'sqcDiagnosisUUID': SQCDiagnosisUUID, 'n': n, 'intervalType': intervalType}, mode="Tile", scale = scaleFactor)
 
 
@@ -154,7 +155,7 @@ def refresh(rootContainer):
     '''    
     log.tracef("In %s.refresh()", __name__)
     selectedPost = rootContainer.selectedPost
-    database=system.tag.read("[Client]Database").value
+    database=readTag("[Client]Database").value
     
     SQL = "Select SQCDiagnosisName, Status, SQCDiagnosisUUID "\
         "from DtSQCDiagnosis SQC, DtFamily F, DtApplication A, TkUnit U, TkPost P "\

@@ -9,14 +9,16 @@ allowed.
 
 import system
 from ils.common.cast import toBit
-from ils.common.util import substituteProvider
-MESSAGE_QUEUE_KEY = "LABFEEDBACK"
-from ils.queue.message import insert as insertMessage
-from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.common.config import getHistoryProvider
 from ils.common.error import catchError
+from ils.common.util import substituteProvider
+from ils.io.util import readTag, writeTag
+from ils.queue.message import insert as insertMessage
+from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
+
+MESSAGE_QUEUE_KEY = "LABFEEDBACK"
 
 def manualOverride(tagPath, previousValue, biasValue, initialchange): 
     try:
@@ -35,7 +37,7 @@ def manualOverride(tagPath, previousValue, biasValue, initialchange):
         ''' I think that manual overrides should not be subject to the updatePermitted tag, but I could be convinced to go either way '''
        
         '''
-        updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
+        updatePermitted = readTag(tagRoot + '/updatePermitted').value
         if not(updatePermitted):
             log.tracef("Skipping lab bias exponential updates for %s because updates are not permitted.", biasName)
             return
@@ -53,7 +55,7 @@ def manualOverride(tagPath, previousValue, biasValue, initialchange):
         
         log.infof("Writing the manual override bias value for %s (%s)", biasName, tagRoot)
     
-        system.tag.write(tagRoot + '/biasValue', biasValue)
+        writeTag(tagRoot + '/biasValue', biasValue)
     
         # Write this nicely calculated value to either the DCS or the PHD historian
         writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, system.date.now())
@@ -78,7 +80,7 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
             log.tracef("Skipping lab bias exponential updates for %s because this was an initial change.", biasName)
             return
         
-        updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
+        updatePermitted = readTag(tagRoot + '/updatePermitted').value
         if not(updatePermitted):
             log.tracef("Skipping lab bias exponential updates for %s because updates are not permitted.", biasName)
             return
@@ -98,9 +100,9 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
         if not(valueOk):
             return
         
-        sampleTime = system.tag.read(tagRoot + '/labSampleTime').value
-        filterConstant = system.tag.read(tagRoot + '/filterConstant').value
-        lastBiasValue = system.tag.read(tagRoot + '/biasValue').value
+        sampleTime = readTag(tagRoot + '/labSampleTime').value
+        filterConstant = readTag(tagRoot + '/filterConstant').value
+        lastBiasValue = readTag(tagRoot + '/biasValue').value
         if lastBiasValue == None:
             log.error("Unable to calculate a bias value for %s because the bias has not been initialized." % (tagPath))
             return
@@ -111,7 +113,7 @@ def exponentialFilter(tagPath, previousValue, newValue, initialchange):
         biasValue = filterConstant * rawBias + (1.0 - filterConstant) * lastBiasValue
         log.infof("...calculated the new biased value <%f> from <%f> and <%f> using a filter constant of <%f> for %s", biasValue, newValue, lastBiasValue, filterConstant, biasName)
     
-        system.tag.write(tagRoot + '/biasValue', biasValue)
+        writeTag(tagRoot + '/biasValue', biasValue)
     
         # Write this nicely calculated value to either the DCS or the PHD historian
         writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
@@ -135,7 +137,7 @@ def initializaExponentialFilter(tagPath, initialValue=1.0):
         log.infof("...initializing the bias value to <%f> for %s", biasValue, biasName)
     
         ''' This writes to the bias UDT in Ignition which is NOT an OPC tag.  I'm not sure if I should send this to an external system.  '''
-        system.tag.write(tagRoot + '/biasValue', biasValue)
+        writeTag(tagRoot + '/biasValue', biasValue)
     except:
         txt=catchError("exponentialFilter", "Caught an error initializing an exponential filter bias for %s" % (tagPath))
         log.error(txt)
@@ -158,7 +160,7 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
             log.tracef("Skipping lab bias PID updates for %s because this was an initial change.", biasName)
             return
         
-        updatePermitted = system.tag.read(tagRoot + '/updatePermitted').value
+        updatePermitted = readTag(tagRoot + '/updatePermitted').value
         if not(updatePermitted):
             log.tracef("Skipping lab bias PID updates for %s because updates are not permitted.", biasName)
             return
@@ -169,11 +171,11 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
         if not(valueOk):
             return
         
-        proportionalGain = system.tag.read(tagRoot + '/proportionalGain').value
-        integralGain = system.tag.read(tagRoot + '/integralGain').value
-        previousError = system.tag.read(tagRoot + '/previousError').value
-        sampleTime = system.tag.read(tagRoot + '/sampleTime').value
-        lastBiasValue = system.tag.read(tagRoot + '/biasValue').value
+        proportionalGain = readTag(tagRoot + '/proportionalGain').value
+        integralGain = readTag(tagRoot + '/integralGain').value
+        previousError = readTag(tagRoot + '/previousError').value
+        sampleTime = readTag(tagRoot + '/sampleTime').value
+        lastBiasValue = readTag(tagRoot + '/biasValue').value
         log.tracef("  Last Bias: %s", str(lastBiasValue))
         
         if lastBiasValue == None:
@@ -183,8 +185,8 @@ def pidFilter(tagPath, previousValue, newValue, initialchange):
         biasValue = proportionalGain * (newValue - previousError) + integralGain * sampleTime * newValue + lastBiasValue
         log.infof("Calculated the new biased value as: %f from %f and %f", biasValue, newValue, lastBiasValue)
         
-        system.tag.write(tagRoot + '/biasValue', biasValue)
-        system.tag.write(tagRoot + '/previousError', newValue)
+        writeTag(tagRoot + '/biasValue', biasValue)
+        writeTag(tagRoot + '/previousError', newValue)
         
         # Write this nicely calculated value to either the DCS or the PHD historian
         writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime)
@@ -201,7 +203,7 @@ def validateConditions(tagRoot, labValue, biasName):
     It basically makes sure that the conditions are OK to calculate a new bias.
     '''
     historyProvider = getHistoryProvider()
-    rateOfChangeLimit = system.tag.read(tagRoot + '/rateOfChangeLimit')
+    rateOfChangeLimit = readTag(tagRoot + '/rateOfChangeLimit')
     if not (rateOfChangeLimit.quality.isGood()) or rateOfChangeLimit.value == None:
         msg = "The rate of change limit is either bad or does not have a value.  The validity of the lab sample <%s> cannot be verified, aborting new bias calculations." % (biasName)
         log.warn(msg)
@@ -211,7 +213,7 @@ def validateConditions(tagRoot, labValue, biasName):
     '''
     Fetch the model value from history.  Get the value of the model at the time that the lab data sample was collected
     '''
-    modelDeadTimeMinutes = system.tag.read(tagRoot + '/modelDeadTimeMinutes')
+    modelDeadTimeMinutes = readTag(tagRoot + '/modelDeadTimeMinutes')
     if not (modelDeadTimeMinutes.quality.isGood()) or modelDeadTimeMinutes.value < 0.0:
         msg = "The Model dead time for <%s> is either bad or less than 0.0.  Overriding with 0.0 minutes." % (biasName)
         log.warn(msg)
@@ -221,7 +223,7 @@ def validateConditions(tagRoot, labValue, biasName):
         modelDeadTimeMinutes = modelDeadTimeMinutes.value
     deadTime = round(modelDeadTimeMinutes * 60.0)
     
-    averageWindowMinutes = system.tag.read(tagRoot + '/averageWindowMinutes')
+    averageWindowMinutes = readTag(tagRoot + '/averageWindowMinutes')
     if not (averageWindowMinutes.quality.isGood()) or averageWindowMinutes.value <= 0.0:
         msg = "The average window for <%s> is either bad or less than 0.0.  Overriding with 0.0 minutes." % (biasName)
         log.warn(msg)
@@ -233,7 +235,7 @@ def validateConditions(tagRoot, labValue, biasName):
     # Convert to seconds and divide by two so the history interval is the window size divided by 2.
     averageWindow = round( averageWindowMinutes * 60.0 / 2.0)
     
-    sampleTime = system.tag.read(tagRoot + '/labSampleTime')
+    sampleTime = readTag(tagRoot + '/labSampleTime')
     if not (sampleTime.quality.isGood()):
         msg = "The sample time for <%s> is bad.  Aborting new bias calculations." % (biasName)
         log.warn(msg)
@@ -275,7 +277,7 @@ def validateConditions(tagRoot, labValue, biasName):
     '''
     Check if this bias should be multiplicative
     '''
-    multiplicative = system.tag.read(tagRoot + '/multiplicative').value
+    multiplicative = readTag(tagRoot + '/multiplicative').value
     if multiplicative:
         #TODO call DB-SPECIAL-VAL-CHK
         rawBias = labValue / modelValue
@@ -285,7 +287,7 @@ def validateConditions(tagRoot, labValue, biasName):
     '''
     The final check is to check the rate of change
     '''
-    oldRawBias = system.tag.read(tagRoot + '/rawBias')
+    oldRawBias = readTag(tagRoot + '/rawBias')
     if not (oldRawBias.quality.isGood()) or oldRawBias.value == None:
         msg = "The old raw bias or <%s> is either bad or does not have a value.  Aborting new bias calculations." % (biasName)
         log.warn(msg)
@@ -300,7 +302,7 @@ def validateConditions(tagRoot, labValue, biasName):
         return False, rawBias
     
     log.trace("...the data is consistent, it is OK to calculate a new bias!")
-    system.tag.write(tagRoot + '/rawBias', rawBias)
+    writeTag(tagRoot + '/rawBias', rawBias)
     return True, rawBias
 
 def biasControlInUse():
@@ -312,21 +314,21 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
     productionProviderName = getTagProvider()   # Get the Production tag provider
     
     log.tracef("Writing %s for %s", str(biasValue), biasName)
-    writeEnabled = system.tag.read("[" + tagProvider + "]Configuration/LabFeedback/labFeedbackWriteEnabled").value
+    writeEnabled = readTag("[" + tagProvider + "]Configuration/LabFeedback/labFeedbackWriteEnabled").value
     if tagProvider == productionProviderName and not(writeEnabled):
         msg = "Unable to write bias value <%f> for <%s> because writes are inhibited for Lab Bias Feedback." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
         return
     
-    writeEnabled = system.tag.read("[" + tagProvider + "]Configuration/Common/writeEnabled").value
+    writeEnabled = readTag("[" + tagProvider + "]Configuration/Common/writeEnabled").value
     if tagProvider == productionProviderName and not(writeEnabled):
         msg = "Unable to write bias value <%f> for <%s> because all writes are globally inhibited." % (biasValue, biasName)
         log.warn(msg)
         insertMessage(MESSAGE_QUEUE_KEY, QUEUE_WARNING, msg)
         return
 
-    serverType = system.tag.read(tagRoot + '/biasTargetServerType')
+    serverType = readTag(tagRoot + '/biasTargetServerType')
     if not (serverType.quality.isGood()) or (serverType.value not in ["OPC", "HDA"]):
         msg = "Unable to write bias value <%f> for <%s> because the Target Server Type is bad or not one of OPC or HDA" % (biasValue, biasName)
         log.error(msg)
@@ -334,7 +336,7 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         return
     serverType = serverType.value
     
-    serverName = system.tag.read(tagRoot + '/biasTargetServerName')
+    serverName = readTag(tagRoot + '/biasTargetServerName')
     if not (serverName.quality.isGood()) or serverName.value == None:
         msg = "Unable to write bias value <%f> for <%s> because the Target Server name is bad or not specified" % (biasValue, biasName)
         log.error(msg)
@@ -342,7 +344,7 @@ def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleT
         return
     serverName = serverName.value
     
-    itemId = system.tag.read(tagRoot + '/biasTargetItemId')
+    itemId = readTag(tagRoot + '/biasTargetItemId')
     if not (itemId.quality.isGood()) or itemId.value == None:
         msg = "Unable to write bias value <%f> for <%s> because the Target Item-Id is bad or not specified" % (biasValue, biasName)
         log.error(msg)
@@ -374,6 +376,6 @@ def setUpdatePermitted(tagPath, updatePermitted):
     
     updatePermittedBit = toBit(updatePermitted)
     tagPath = tagPath + "/updatePermitted"
-    status = system.tag.write(tagPath, updatePermittedBit)
+    status = writeTag(tagPath, updatePermittedBit)
     if status == 0:
         log.errorf("Setting the updatePermitted of %s to %s failed", tagPath, str(updatePermitted))

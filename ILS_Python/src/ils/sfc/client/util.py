@@ -4,6 +4,7 @@ Created on Oct 31, 2014
 @author: rforbes
 '''
 import system.util, time
+from ils.io.util import readTag
 from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.sfc.recipeData.api import s88GetStepInfoFromId
@@ -195,15 +196,15 @@ def getStartInIsolationMode():
     '''Get the client-side flag that indicates whether to start charts in isolation mode.
        CAUTION: this does not relate to any particular chart run and is only meaningful
        at the moment a chart is started.'''
-    return system.tag.read('[Client]/Isolation Mode').value
+    return readTag('[Client]/Isolation Mode').value
 
 def getDatabase():
     '''Get the database name, taking isolation mode into account'''
-    return system.tag.read('[Client]/Database').value
+    return readTag('[Client]/Database').value
 
 def getTagProvider():
     '''Get the tag provider name, taking isolation mode into account'''
-    return system.tag.read('[Client]/Tag Provider').value
+    return readTag('[Client]/Tag Provider').value
 
 def sendMessageToGateway(project, handler, payload):
     '''Send a message to the gateway'''

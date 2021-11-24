@@ -5,6 +5,7 @@ Created on May 9, 2018
 '''
 
 import system
+from ils.io.util import readTag
 from ils.common.config import getDatabaseClient, getTagProviderClient
 
 def internalFrameOpened(rootContainer):
@@ -61,7 +62,7 @@ def refreshGrade(rootContainer):
     
     tagPath = "[%s]Site/%s/Grade/grade" % (tagProvider, recipeFamilyName)
     print "Refreshing grade for family %s from %s " % (recipeFamilyName, tagPath)
-    qv = system.tag.read(tagPath)
+    qv = readTag(tagPath)
     grade = qv.value
     print "Read grade: ", grade
     gradeField.text = str(grade)

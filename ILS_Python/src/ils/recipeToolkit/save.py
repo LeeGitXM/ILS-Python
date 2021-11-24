@@ -5,6 +5,7 @@ Created on Oct 5, 2014
 '''
 import sys, traceback, system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.io.util import readTag
 from ils.recipeToolkit.fetch import fetchFamilyId
 from ils.recipeToolkit.common import checkForUncommentedChanges
 from ils.common.error import catchError
@@ -18,7 +19,7 @@ def callback(event):
     version = rootContainer.version
     
     provider = rootContainer.getPropertyValue("provider")
-    requireComments = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
+    requireComments = readTag("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
     if requireComments:
         uncommentedChanges = checkForUncommentedChanges(rootContainer)
         if uncommentedChanges:

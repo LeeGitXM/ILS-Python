@@ -8,6 +8,7 @@ see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and S88-RECIPE-O
 
 import system, string
 from java.util import Date 
+from ils.io.util import readTag
 from ils.sfc.gateway.api import getIsolationMode
 from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
 from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
@@ -202,7 +203,7 @@ def activate(scopeContext, stepProperties, state):
                             configRow.targetValue = float(configRow.targetNameIdOrValue)
                         elif targetType == TAG:
                             # Read the value from a tag
-                            qv = system.tag.read("[" + providerName + "]" + configRow.targetNameIdOrValue)
+                            qv = readTag("[" + providerName + "]" + configRow.targetNameIdOrValue)
                             configRow.targetValue = qv.value
                         elif targetType == RECIPE:
                             # This means that the target value will be in some property of the recipe data
@@ -353,7 +354,7 @@ def activate(scopeContext, stepProperties, state):
             
                         # Display the PVs as soon as the block starts running, even before the SP has been written
                         tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
-                        qv = system.tag.read(tagPath)
+                        qv = readTag(tagPath)
                         
                         logger.tracef("  (%s) The current PV is: %s-%s (%s)", stepName, str(qv.value), str(qv.quality), tagPath)
                         if not(qv.quality.isGood()):
@@ -498,7 +499,7 @@ def activate(scopeContext, stepProperties, state):
                         tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
                         strippedTagpath = stripProvider(tagPath)
 
-                        qv = system.tag.read(tagPath)
+                        qv = readTag(tagPath)
                         pv=qv.value
                         target=configRow.targetValue
                         toleranceType=configRow.toleranceType

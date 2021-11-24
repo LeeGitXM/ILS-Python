@@ -6,11 +6,11 @@ Created on Feb 4, 2015
 
 import system, string, time
 from __builtin__ import False
-from ils.io.util import getOuterUDT
-from ils.queue.message import insertPostMessage
-from ils.io.api import confirmControllerMode
-from ils.io.api import write
 from ils.diagToolkit.setpointSpreadsheet import hideDetailMap
+from ils.io.api import confirmControllerMode, write
+from ils.io.util import getOuterUDT, readTag
+from ils.queue.message import insertPostMessage
+
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -59,7 +59,7 @@ def downloadCallback(event, rootContainer):
         system.gui.messageBox("Cancelling download because one or more of the controllers is unreachable!")
         return
 
-    confirmationEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/downloadConfirmationEnabled").value
+    confirmationEnabled = readTag("[" + tagProvider + "]/Configuration/DiagnosticToolkit/downloadConfirmationEnabled").value
     if confirmationEnabled:
         ans = system.gui.confirm("There are setpoints to download and the controllers are in the correct mode, press 'Yes' to proceed with the downlaod.")
     else:
@@ -148,7 +148,7 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                 else:
                     # The second check is to read the current SP - I guess if a controller doesn't have a SP then the
                     # odds of writing a new one successfully are low!
-                    qv=system.tag.read(outputTagPath)
+                    qv=readTag(outputTagPath)
                     if not(qv.quality.isGood()):
                         okToDownload = False
                         unreachableCnt=unreachableCnt+1
@@ -203,7 +203,7 @@ def serviceDownload(post, ds, tagProvider, db):
     # iterate through each row of the dataset that is marked to go and download it.
     log.info("Starting to download...")
     
-    diagToolkitWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
+    diagToolkitWriteEnabled = readTag("[" + tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
     print "DiagToolkitWriteEnabled: ", diagToolkitWriteEnabled
     
     logbookMessage = "<HTML>Download performed for the following:<UL>"

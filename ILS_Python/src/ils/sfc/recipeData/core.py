@@ -5,6 +5,7 @@ Created on Nov 30, 2016
 '''
 
 import system, string
+from ils.io.util import readTag
 from ils.common.units import convert
 from ils.common.cast import toBit, isFloat
 from ils.common.util import formatDateTime, isText
@@ -1654,7 +1655,7 @@ def readTag(chartScope, tagPath):
     '''  Read a tag substituting provider according to isolation mode.  '''
     provider = getProviderName(chartScope)
     fullPath = substituteProvider(tagPath, provider)
-    qv = system.tag.read(fullPath)
+    qv = readTag(fullPath)
     return qv.value
 
 def getProviderName(chartProperties):

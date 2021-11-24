@@ -10,6 +10,7 @@ EDIT_MODE = "edit"
 import system
 from ils.common.config import getTagProviderClient
 from ils.common.cast import extendedPropertiesToDictionary
+from ils.io.util import readTag, writeTag
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -28,11 +29,11 @@ def internalFrameOpened(rootContainer):
         if biasType == EXPONENTIAL:
             udtPath = "LabData/" + unit + "/LabFeedback/" + biasName
     
-            extendedProperties = system.tag.read(udtPath +".ExtendedProperties").value
+            extendedProperties = readTag(udtPath +".ExtendedProperties").value
             properties = extendedPropertiesToDictionary(extendedProperties)
             log.infof("Property Dictionary: %s", str(properties))
             
-            tagValues = system.tag.readAll([udtPath+"/averageWindowMinutes", udtPath+"/filterConstant", udtPath+"/modelDeadTimeMinutes", udtPath+"/multiplicative", udtPath+"/rateOfChangeLimit" ])
+            tagValues = system.tag.readBlocking([udtPath+"/averageWindowMinutes", udtPath+"/filterConstant", udtPath+"/modelDeadTimeMinutes", udtPath+"/multiplicative", udtPath+"/rateOfChangeLimit" ])
             
             averageWindowMinutes = tagValues[0].value
             filterConstant = tagValues[1].value
@@ -59,11 +60,11 @@ def internalFrameOpened(rootContainer):
         elif biasType == PID:
             udtPath = "LabData/" + unit + "/LabFeedback/" + biasName
     
-            extendedProperties = system.tag.read(udtPath +".ExtendedProperties").value
+            extendedProperties = readTag(udtPath +".ExtendedProperties").value
             properties = extendedPropertiesToDictionary(extendedProperties)
             log.infof("Property Dictionary: %s", str(properties))
             
-            tagValues = system.tag.readAll([udtPath+"/averageWindowMinutes", udtPath+"/initializingBias", udtPath+"/integralGain", udtPath+"/modelDeadTimeMinutes", udtPath+"/multiplicative", udtPath+"/proportionalGain", udtPath+"/rateOfChangeLimit" ])
+            tagValues = system.tag.readBlocking([udtPath+"/averageWindowMinutes", udtPath+"/initializingBias", udtPath+"/integralGain", udtPath+"/modelDeadTimeMinutes", udtPath+"/multiplicative", udtPath+"/proportionalGain", udtPath+"/rateOfChangeLimit" ])
             
             averageWindowMinutes = tagValues[0].value
             initializingBias = tagValues[1].value
@@ -164,13 +165,13 @@ def okCallback(event):
             system.tag.editTag(tagPath, parameters=parameters, attributes=attributes)
             
             tagPath = "[" + tagProvider + "]LabData/" + unitName + "/LabFeedback/"  + newBiasName
-            system.tag.write(tagPath + "/averageWindowMinutes", averageWindowMinutes)
-            system.tag.write(tagPath + "/initializingBias", initializingBias)
-            system.tag.write(tagPath + "/integralGain", integralGain)
-            system.tag.write(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
-            system.tag.write(tagPath + "/proportionalGain", proportionalGain)
-            system.tag.write(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
-            system.tag.write(tagPath + "/multiplicative", multiplicative)
+            writeTag(tagPath + "/averageWindowMinutes", averageWindowMinutes)
+            writeTag(tagPath + "/initializingBias", initializingBias)
+            writeTag(tagPath + "/integralGain", integralGain)
+            writeTag(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
+            writeTag(tagPath + "/proportionalGain", proportionalGain)
+            writeTag(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
+            writeTag(tagPath + "/multiplicative", multiplicative)
             
         else:
             UDTType='Lab Bias/Lab Bias PID'
@@ -189,13 +190,13 @@ def okCallback(event):
                 
                 tagPath = path + "/" + newBiasName
 
-                system.tag.write(tagPath + "/averageWindowMinutes", averageWindowMinutes)
-                system.tag.write(tagPath + "/initializingBias", initializingBias)
-                system.tag.write(tagPath + "/integralGain", integralGain)
-                system.tag.write(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
-                system.tag.write(tagPath + "/proportionalGain", proportionalGain)
-                system.tag.write(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
-                system.tag.write(tagPath + "/multiplicative", multiplicative)
+                writeTag(tagPath + "/averageWindowMinutes", averageWindowMinutes)
+                writeTag(tagPath + "/initializingBias", initializingBias)
+                writeTag(tagPath + "/integralGain", integralGain)
+                writeTag(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
+                writeTag(tagPath + "/proportionalGain", proportionalGain)
+                writeTag(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
+                writeTag(tagPath + "/multiplicative", multiplicative)
     
     elif biasType == EXPONENTIAL:
         '''   Exponential   '''
@@ -218,11 +219,11 @@ def okCallback(event):
             system.tag.editTag(tagPath, parameters=parameters, attributes=attributes)
             
             tagPath = "[" + tagProvider + "]LabData/" + unitName + "/LabFeedback/"  + newBiasName
-            system.tag.write(tagPath + "/averageWindowMinutes", averageWindowMinutes)
-            system.tag.write(tagPath + "/filterConstant", filterConstant)
-            system.tag.write(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
-            system.tag.write(tagPath + "/multiplicative", multiplicative)
-            system.tag.write(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
+            writeTag(tagPath + "/averageWindowMinutes", averageWindowMinutes)
+            writeTag(tagPath + "/filterConstant", filterConstant)
+            writeTag(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
+            writeTag(tagPath + "/multiplicative", multiplicative)
+            writeTag(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
             
         else:
             UDTType='Lab Bias/Lab Bias Exponential Filter'
@@ -241,11 +242,11 @@ def okCallback(event):
                 
                 tagPath = path + "/" + newBiasName
 
-                system.tag.write(tagPath + "/averageWindowMinutes", averageWindowMinutes)
-                system.tag.write(tagPath + "/filterConstant", filterConstant)
-                system.tag.write(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
-                system.tag.write(tagPath + "/multiplicative", multiplicative)
-                system.tag.write(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
+                writeTag(tagPath + "/averageWindowMinutes", averageWindowMinutes)
+                writeTag(tagPath + "/filterConstant", filterConstant)
+                writeTag(tagPath + "/modelDeadTimeMinutes", modelDeadTimeMinutes)
+                writeTag(tagPath + "/multiplicative", multiplicative)
+                writeTag(tagPath + "/rateOfChangeLimit", rateOfChangeLimit)
     else:
         system.gui.errorBox("Unrecognized bias type: %s" % (biasType))
         return

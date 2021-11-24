@@ -7,6 +7,7 @@ Created on Jan 9, 2017
 import system, string, time
 from system.util import jsonDecode
 import xml.etree.ElementTree as ET
+from ils.io.util import readTag
 from ils.sfc.recipeData.structureManager import getTxId
 from ils.common.error import catchError
 from ils.common.cast import toBit, isFloat
@@ -19,7 +20,7 @@ def migrateChart(chartPath, resourceId, chartResourceAsXML):
     db = getDatabase()
     
     provider = getTagProvider()
-    recipeDataMigrationEnabled = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataMigrationEnabled" % (provider)).value
+    recipeDataMigrationEnabled = readTag("[%s]Configuration/SFC/sfcRecipeDataMigrationEnabled" % (provider)).value
     if not(recipeDataMigrationEnabled):
         log.infof("Recipe Data migration is disabled!")
         log.tracef("========================")

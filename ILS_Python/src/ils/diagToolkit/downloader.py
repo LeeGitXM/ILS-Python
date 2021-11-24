@@ -4,8 +4,9 @@ Created on Jul 17, 2018
 @author: phass
 '''
 import system, string, threading, time
-from ils.io.util import getOuterUDT
 from ils.io.api import write, writeRamp
+from ils.io.util import getOuterUDT
+from ils.io.util import readTag
 from ils.queue.message import insertPostMessage
 
 from ils.log.LogRecorder import LogRecorder
@@ -87,7 +88,7 @@ class Downloader():
     def download(self):
         log.infof("Start Downloading...")
         
-        diagToolkitWriteEnabled = system.tag.read("[" + self.tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
+        diagToolkitWriteEnabled = readTag("[" + self.tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
         log.tracef("DiagToolkitWriteEnabled: %s", str(diagToolkitWriteEnabled))
     
         # First update the download status of every output we intend to write

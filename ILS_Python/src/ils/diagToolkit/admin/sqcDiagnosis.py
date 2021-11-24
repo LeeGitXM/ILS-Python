@@ -5,11 +5,12 @@ Created on Dec 12, 2016
 '''
 
 import system
+from ils.io.util import readTag
 from ils.common.util import getDate, formatDateTime
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()"
-    database=system.tag.read("[Client]Database").value
+    database=readTag("[Client]Database").value
 
     print "The database is: ", database
     

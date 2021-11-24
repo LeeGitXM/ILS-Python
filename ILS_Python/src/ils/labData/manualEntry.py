@@ -4,6 +4,7 @@ Created on Apr 30, 2015
 @author: Pete
 '''
 import system
+from ils.io.util import readTag
 from ils.common.config import getDatabaseClient
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -30,8 +31,8 @@ def chooserInitialization(rootContainer):
             ds = system.dataset.addRow(ds, vals)
         return ds
     
-    communicationHealthy = system.tag.read("Configuration/LabData/communicationHealthy").value
-    manualEntryPermitted = system.tag.read("Configuration/LabData/manualEntryPermitted").value
+    communicationHealthy = readTag("Configuration/LabData/communicationHealthy").value
+    manualEntryPermitted = readTag("Configuration/LabData/manualEntryPermitted").value
     from ils.common.user import isAE
     isAE = isAE()
     
@@ -234,7 +235,7 @@ def entryFormEnterData(rootContainer, db = ""):
     from ils.labData.scanner import updateTags
     tags, tagValues = updateTags(provider, unitName, valueName, sampleValue, sampleTime, True, True, [], [], log)
     print "Writing ", tagValues, " to ", tags
-    system.tag.writeAll(tags, tagValues)
+    system.tag.writeBlocking(tags, tagValues)
     
     # Refresh the table of recent values to show what we just entered.
     refreshRecentValues(rootContainer, valueId, db)
@@ -252,8 +253,8 @@ def entryFormEnterData(rootContainer, db = ""):
         serverName = record["InterfaceName"]
         
         # Check if writing is enabled
-        labDataWriteEnabled= system.tag.read("[" + provider + "]Configuration/LabData/labDataWriteEnabled").value
-        globalWriteEnabled = system.tag.read("[" + provider + "]Configuration/Common/writeEnabled").value
+        labDataWriteEnabled= readTag("[" + provider + "]Configuration/LabData/labDataWriteEnabled").value
+        globalWriteEnabled = readTag("[" + provider + "]Configuration/Common/writeEnabled").value
         writeEnabled = provider != productionProvider or (labDataWriteEnabled and globalWriteEnabled)
         
         if writeEnabled:

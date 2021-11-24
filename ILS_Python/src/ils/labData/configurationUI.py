@@ -6,6 +6,7 @@ Created on Jun 15, 2015
 import system, string
 from ils.common.config import getTagProviderClient, getDatabaseClient
 from ils.common.constants import CR
+from ils.io.util import readTag, writeTag
 from ils.labData.limits import calcSQCLimits
 from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue, updateLabValueUdt
 from ils.log.LogRecorder import LogRecorder
@@ -638,30 +639,30 @@ def updateLimitTag(unitName, valueName, limitType, colName, newValue):
 
         if colName == 'UpperReleaseLimit' and limitType == "RELEASE":
             tagPath = tagPath + '/upperReleaseLimit'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
         elif colName == 'LowerReleaseLimit' and limitType == "RELEASE":
             tagPath = tagPath + '/lowerReleaseLimit'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
             
         elif colName == 'UpperValidityLimit' and limitType in ["SQC", "VALIDITY"]:
             tagPath = tagPath + '/upperValidityLimit'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
         elif colName == 'LowerValidityLimit' and limitType in ["SQC", "VALIDITY"]:
             tagPath = tagPath + '/lowerValidityLimit'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
             
         elif colName == 'UpperSQCLimit' and limitType == "SQC":
             tagPath = tagPath + '/upperSQCLimit'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
         elif colName == 'LowerSQCLimit' and limitType == "SQC":
             tagPath = tagPath + '/lowerSQCLimit'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
         elif colName == 'Target' and limitType == "SQC":
             tagPath = tagPath + '/target'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
         elif colName == 'StandardDeviation' and limitType == "SQC":
             tagPath = tagPath + '/standardDeviation'
-            system.tag.write(tagPath, newValue)
+            writeTag(tagPath, newValue)
 
         else:
             print "Change was to a property (%s) that does not exist in the UDT for a %s limit" % (colName, limitType)
@@ -869,7 +870,7 @@ def readLimitsFromRecipe(event):
     unitName = rootContainer.unitName
     db = rootContainer.db
     provider = rootContainer.provider
-    grade = system.tag.read("[%s]Site/%s/Grade/grade" % (provider, unitName)).value
+    grade = readTag("[%s]Site/%s/Grade/grade" % (provider, unitName)).value
     
     SQL = "select UpperLimit, LowerLimit from RtSQCLimitView "\
         "where RecipeFamilyName = '%s' "\
@@ -888,8 +889,8 @@ def readLimitsFromRecipe(event):
     record = pds[0]
     upperSQCLimit = record["UpperLimit"]
     lowerSQCLimit = record["LowerLimit"]
-    standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (provider)).value
-    standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (provider)).value
+    standardDeviationsToSQCLimits = readTag("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (provider)).value
+    standardDeviationsToValidityLimits = readTag("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (provider)).value
     
     target, standardDeviation, lowerValidityLimit, upperValidityLimit = calcSQCLimits(lowerSQCLimit, upperSQCLimit, standardDeviationsToSQCLimits, standardDeviationsToValidityLimits)
 
@@ -917,8 +918,8 @@ def calculateConstantLimits(event):
 
     upperSQCLimit = rootContainer.getComponent("Upper SQC Limit Field").floatValue
     lowerSQCLimit = rootContainer.getComponent("Lower SQC Limit Field").floatValue
-    standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (provider)).value
-    standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (provider)).value
+    standardDeviationsToSQCLimits = readTag("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (provider)).value
+    standardDeviationsToValidityLimits = readTag("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (provider)).value
     
     target, standardDeviation, lowerValidityLimit, upperValidityLimit = calcSQCLimits(lowerSQCLimit, upperSQCLimit, standardDeviationsToSQCLimits, standardDeviationsToValidityLimits)
 

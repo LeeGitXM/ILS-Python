@@ -6,6 +6,7 @@ Created on Sep 10, 2014
 
 import system, time
 from ils.common.config import getTagProvider, getDatabaseClient
+from ils.io.util import readTag
 from ils.recipeToolkit.common import formatLocalTagName, formatTagName
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
@@ -16,9 +17,9 @@ def automatedRunner(parentTagPath, dsProcessed, provider, recipeKey, grade, vers
     
     log.tracef("Starting the automated download monitor using databse %s...", database)
     
-    localWriteAlias = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value
-    recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
-    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
+    localWriteAlias = readTag("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value
+    recipeMinimumDifference = readTag("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
+    recipeMinimumRelativeDifference = readTag("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
        
     from ils.recipeToolkit.downloadComplete import downloadCompleteRunner
     
@@ -57,7 +58,7 @@ def automatedRunner(parentTagPath, dsProcessed, provider, recipeKey, grade, vers
             status
         ]
     
-    system.tag.writeAll(tags, vals)
+    system.tag.writeBlocking(tags, vals)
 
 def start(rootContainer):
     log.info("Starting the download monitor timer...")
@@ -66,8 +67,6 @@ def start(rootContainer):
 
 # This is called from the timer widget on the Recipe viewer screen in client scope.
 def runner(rootContainer):
-    from java.util import Date
-
     log.trace("Starting a download monitor cycle...")
     timer = rootContainer.getComponent("Monitor Timer")
     
@@ -79,7 +78,7 @@ def runner(rootContainer):
     familyName = rootContainer.getPropertyValue("familyName")
     logId = rootContainer.logId
     
-    localWriteAlias = system.tag.read("/Configuration/RecipeToolkit/localWriteAlias").value
+    localWriteAlias = readTag("/Configuration/RecipeToolkit/localWriteAlias").value
     
     table = rootContainer.getComponent("Power Table")
     recipeMinimumDifference = table.getPropertyValue("recipeMinimumDifference")
@@ -120,8 +119,8 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
     
     productionProvider = getTagProvider()     # Get the production tag provider.
     
-    recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
-    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
+    recipeWriteEnabled = readTag("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+    globalWriteEnabled = readTag("[" + provider + "]/Configuration/Common/writeEnabled").value
     writeEnabled = provider != productionProvider or (recipeWriteEnabled and globalWriteEnabled)
 
     pds = system.dataset.toPyDataSet(ds)
@@ -163,12 +162,12 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                     '''
                     if writeLocation == localWriteAlias:
                         tagName = formatLocalTagName(provider, storTagName)
-                        storVal = system.tag.read(tagName).value
+                        storVal = readTag(tagName).value
                         tagName = formatLocalTagName(provider, compTagName)
-                        compVal = system.tag.read(tagName).value
+                        compVal = readTag(tagName).value
                     else:
-                        storVal = system.tag.read(formatTagName(provider, familyName, storTagName) + '/value').value
-                        compVal = system.tag.read(formatTagName(provider, familyName, compTagName) + '/value').value
+                        storVal = readTag(formatTagName(provider, familyName, storTagName) + '/value').value
+                        compVal = readTag(formatTagName(provider, familyName, compTagName) + '/value').value
 
                     if writeEnabled:                    
                         if writeLocation == localWriteAlias:
@@ -191,7 +190,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                             
                         else:
                             tagName=formatTagName(provider, familyName, storTagName) + '/writeStatus'
-                            qv = system.tag.read(tagName)
+                            qv = readTag(tagName)
                             writeStatus=str(qv.value)
                             
                             if string.upper(writeStatus) == 'SUCCESS' or string.upper(writeStatus) == 'FAILURE':
@@ -202,7 +201,7 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
                                 else:
                                     failures = failures + 1 
                                     status = 'Failure'
-                                    errorMessage = system.tag.read(formatTagName(provider, familyName, storTagName) + '/writeErrorMessage').value
+                                    errorMessage = readTag(formatTagName(provider, familyName, storTagName) + '/writeErrorMessage').value
     
                                 ds = system.dataset.setValue(ds, i, "Download Status", status)
                                 ds = system.dataset.setValue(ds, i, "Stor", storVal)

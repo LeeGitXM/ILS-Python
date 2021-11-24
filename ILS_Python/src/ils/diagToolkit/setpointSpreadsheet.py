@@ -6,16 +6,16 @@ Created on Sep 9, 2014
 
 import system, string
 from ils.sfc.common.constants import SQL
+from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.common.constants import CR
-from ils.diagToolkit.constants import OBSERVATION_BLOCK_LIST
 from ils.common.operatorLogbook import insertForPost
+from ils.common.util import dsToText
+from ils.diagToolkit.api import resetManualMove
+from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
+from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD, OBSERVATION_BLOCK_LIST
+from ils.io.util import readTag
 from ils.queue.message import insertPostMessage
 from ils.queue.constants import QUEUE_INFO
-from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.common.util import dsToText
-from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
-from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
-from ils.diagToolkit.api import resetManualMove
 
 from ils.log.LogRecorder import LogRecorder
 log=LogRecorder(__name__)
@@ -31,7 +31,7 @@ def initialize(rootContainer):
 
 def refresh(rootContainer):
     log.infof("In %s.refresh()...", __name__)
-    db=system.tag.read("[Client]Database").value
+    db=readTag("[Client]Database").value
     
     post = rootContainer.post
     fetchAndSetDownloadActiveFlag(rootContainer, post, db)
@@ -121,7 +121,7 @@ def getSetpointSpreadsheetDataset(post, db):
         if outputLimitedStatus != 'Minimum Change Bound':
             # Determine the number format dynamically by reading the number format of the tag
             tagPath = record["TagPath"]
-            numberPattern= system.tag.read(tagPath + ".FormatString").value
+            numberPattern= readTag(tagPath + ".FormatString").value
             
             action = record['DownloadAction']
     
@@ -174,7 +174,7 @@ def checkIfDownloadComplete(event):
         
         ''' Now get to work '''
         rootContainer.downloadActive = False
-        db=system.tag.read("[Client]Database").value
+        db=readTag("[Client]Database").value
         db=getDatabaseClient()
         tagProvider=getTagProviderClient()
         updateDownloadActiveFlag(rootContainer.post, False, db)
@@ -206,7 +206,7 @@ def checkIfDownloadComplete(event):
 # This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
 def updateQuantOutputAction(rootContainer, ds, row, action):
     log.info("Updating the database with the QuantOutput action...")
-    database=system.tag.read("[Client]Database").value
+    database=readTag("[Client]Database").value
     quantOutputId = ds.getValueAt(row, 'qoId')
     SQL = "update DtQuantOutput set DownloadAction = '%s' where QuantOutputId = %i " % (action, quantOutputId)
     system.db.runUpdateQuery(SQL, database)
@@ -244,7 +244,7 @@ def resetAllApplicationAndOutputActions(rootContainer):
 # This is called from the cliant when they press the STOP / GO action button an a row of the spreadsheet.  This updates the database so that we can synchronize another client
 def updateApplicationAction(rootContainer, ds, row, action):
     log.info("Updating the database with the application action...")
-    database=system.tag.read("[Client]Database").value
+    database=readTag("[Client]Database").value
     applicationName = ds.getValueAt(row, 'application')
     SQL = "update DtApplication set DownloadAction = '%s' where ApplicationName = '%s'" % (string.upper(action), applicationName)
     system.db.runUpdateQuery(SQL, database)
@@ -405,8 +405,8 @@ def recalcCallback(event):
     rootContainer=event.source.parent
     rootContainer.recalculateFlag=True
     post=rootContainer.post
-    database=system.tag.read("[Client]Database").value
-    tagProvider=system.tag.read("[Client]Tag Provider").value
+    database=readTag("[Client]Database").value
+    tagProvider=readTag("[Client]Tag Provider").value
     
     # Don't do a recalc if there is a download in progress
     if rootContainer.downloadActive:
@@ -536,7 +536,7 @@ def recalcTimer(event):
     if len(applications):
         rootContainer.recalculateFlag=True
         post=rootContainer.post
-        tagProvider=system.tag.read("[Client]Tag Provider").value
+        tagProvider=readTag("[Client]Tag Provider").value
         payload={"post": post, "database": db, "provider": tagProvider, "applications": [applicationName]}
         log.infof("Sending a RECALC message to the gateway to manage applications: %s (database: %s)", str(payload), db)
         system.util.sendMessage(projectName, "recalc", payload, "G")  
@@ -1215,7 +1215,7 @@ def logActionMessageHandler(payload):
     action = payload.get("action", "")
     ds = payload.get("ds", None)
     timestamp = system.date.format(system.date.now(), "yyyy_MM_dd_HH_mm_ss")
-    reportHome = system.tag.read("Configuration/Common/reportHome").value
+    reportHome = readTag("Configuration/Common/reportHome").value
     filename = "%s/Event_Logs/Diagnostic_Actions/%s_%s.csv" % (reportHome, timestamp, action)
     
     txt = "action,%s%s" % (action, CR)

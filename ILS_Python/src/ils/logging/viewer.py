@@ -4,6 +4,7 @@ Created on Aug 29, 2020
 @author: aedmw
 '''
 import system, datetime, string
+from ils.io.util import readTag, writeTag
 from ils.dataset.util import toList, fromList
 
 from ils.log.LogRecorder import LogRecorder
@@ -27,17 +28,17 @@ def clientStartup():
     ''' Set the start and end date of the client tags synchronized with the manual times '''
     print "In %s.clientStartup()" % (__name__)
     now = system.date.now()
-    system.tag.write("[Client]Logging/Historical Start Time", system.date.addHours(now, -4))
-    system.tag.write("[Client]Logging/Historical End Time", now)
-    system.tag.write("[Client]Logging/Historical Outer Start Time", system.date.addDays(now, -7))
-    system.tag.write("[Client]Logging/Historical Outer End Time", now)
-    system.tag.write("[Client]Logging/Manual Start Time", system.date.addHours(now, -4))
-    system.tag.write("[Client]Logging/Manual End Time", now)
-    system.tag.write(ORDER_TAGPATH, DESCENDING)
-    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
-    system.tag.write("[Client]Logging/Realtime Units", "Minutes")
-    system.tag.write("[Client]Logging/Realtime Value", 10)
-    system.tag.write("[Client]Logging/Mode", "Realtime")
+    writeTag("[Client]Logging/Historical Start Time", system.date.addHours(now, -4))
+    writeTag("[Client]Logging/Historical End Time", now)
+    writeTag("[Client]Logging/Historical Outer Start Time", system.date.addDays(now, -7))
+    writeTag("[Client]Logging/Historical Outer End Time", now)
+    writeTag("[Client]Logging/Manual Start Time", system.date.addHours(now, -4))
+    writeTag("[Client]Logging/Manual End Time", now)
+    writeTag(ORDER_TAGPATH, DESCENDING)
+    writeTag("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
+    writeTag("[Client]Logging/Realtime Units", "Minutes")
+    writeTag("[Client]Logging/Realtime Value", 10)
+    writeTag("[Client]Logging/Mode", "Realtime")
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.IntenalFrameOpened()", __name__)
@@ -61,11 +62,11 @@ def resetAllFilters():
         
     for columnFilter in FILTER_LIST:
         tagPath = "[Client]Logging/Column Filters/" + columnFilter 
-        system.tag.write(tagPath + "/Excludes", emptyDataset)
-        system.tag.write(tagPath + "/Filter Mode", "No Filter")
-        system.tag.write(tagPath + "/Includes", emptyDataset)
+        writeTag(tagPath + "/Excludes", emptyDataset)
+        writeTag(tagPath + "/Filter Mode", "No Filter")
+        writeTag(tagPath + "/Includes", emptyDataset)
         
-    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
+    writeTag("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
 
 def updateFilterAction(table, columnName, val, include_exclude):
     '''
@@ -111,7 +112,7 @@ def setFilterMode(table, columnName, mode):
     columnName = columnName.rstrip()
     log.tracef("In %s.setFilterMode. <%s> <%s>", __name__, columnName, mode)
     tagpath = "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)    
-    system.tag.write(tagpath, mode)
+    writeTag(tagpath, mode)
     update(rootContainer)
     
 def readFilter(columnName):
@@ -121,7 +122,7 @@ def readFilter(columnName):
         "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, columnName)
         ]
     
-    qvs = system.tag.readAll(tagpaths)
+    qvs = system.tag.readBlocking(tagpaths)
     
     excludes = toList(qvs[0].value)
     includes = toList(qvs[1].value)
@@ -139,7 +140,7 @@ def writeFilter(columnName, mode, includes, excludes):
     excludes = fromList(excludes)
     includes = fromList(includes)
     
-    system.tag.writeAll(tagpaths, [excludes, includes, mode])
+    system.tag.writeBlocking(tagpaths, [excludes, includes, mode])
 
 def update(rootContainer):
     '''
@@ -159,7 +160,7 @@ def update(rootContainer):
         endTime = system.date.now()
         units = container.getComponent("Realtime Container").getComponent('Realtime Units Dropdown').selectedStringValue
         val = container.getComponent("Realtime Container").getComponent('Spinner').intValue
-        clearTime = system.tag.read("[Client]Logging/Realtime Clear Time").value
+        clearTime = readTag("[Client]Logging/Realtime Clear Time").value
         log.tracef("The clear time is %s", str(clearTime))
         
         if units == "Days":
@@ -189,7 +190,7 @@ def update(rootContainer):
     whereClause = getWhereClause()
 
     tagpath = "%s/Max Records" % (TAG_ROOT)
-    maxRecords = system.tag.read(tagpath).value
+    maxRecords = readTag(tagpath).value
     subquery = SUB_SQL % (maxRecords, startTime, endTime, whereClause)
     SQL = MAIN_SQL % subquery
     log.tracef(SQL)
@@ -201,7 +202,7 @@ def update(rootContainer):
     log.tracef("The query took %.3f ms", queryTime / 1000.0)
     ds = system.dataset.toDataSet(pds)
     
-    order = system.tag.read(ORDER_TAGPATH).value
+    order = readTag(ORDER_TAGPATH).value
     log.tracef("The order is: %s", order)
     if order == DESCENDING:
         ds = system.dataset.sort(ds, "timestamp", False)
@@ -221,7 +222,7 @@ def getWhereClause():
             "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, sqlFilter)
             ]
     
-        qvs = system.tag.readAll(tagpaths)
+        qvs = system.tag.readBlocking(tagpaths)
         
         excludes = toList(qvs[0].value)
         includes = toList(qvs[1].value)
@@ -293,7 +294,7 @@ def refreshFilterWindow(rootContainer):
             "%s/Column Filters/%s/Filter Mode" % (TAG_ROOT, sqlFilter)
             ]
     
-        qvs = system.tag.readAll(tagpaths)
+        qvs = system.tag.readBlocking(tagpaths)
         
         excludes = toList(qvs[0].value)
         filterValues = appender(filterValues, sqlFilter, "Exclude", excludes)
@@ -331,7 +332,7 @@ def deleteFilterValueAction(rootContainer):
     
     ''' Read the dataset from the client tag and remove the desired row '''
     tagPath = "%s/%s/%ss" % (loggingPath, filterName, mode)
-    ds = system.tag.read(tagPath).value
+    ds = readTag(tagPath).value
     filterList = toList(ds)
     ''' Really no way it can't be in the list, but be safe '''
     if not val in filterList:
@@ -340,7 +341,7 @@ def deleteFilterValueAction(rootContainer):
     filterList.remove(val)
     
     ''' Write the updated list out to the client tag '''
-    system.tag.write(tagPath, fromList(filterList))
+    writeTag(tagPath, fromList(filterList))
     refreshFilterWindow(rootContainer)
     
 def escapeSqlQuotes(txt):

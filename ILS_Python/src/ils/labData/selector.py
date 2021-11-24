@@ -5,7 +5,8 @@ Created on Mar 29, 2015
 '''
 import system
 from ils.common.error import catchError
-from ils.common.config import getDatabase, getDatabaseClient
+from ils.common.config import getDatabase
+from ils.io.util import readTag, writeTag
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -17,7 +18,7 @@ def valueChanged(tagPath):
      
         # Find the root of the tag by stripping off the /value or /sampleTime   
         tagRoot=tagPath.rstrip('/trigger') 
-        enabled=system.tag.read(tagRoot + '/processingEnabled').value
+        enabled=readTag(tagRoot + '/processingEnabled').value
     
         if enabled:
             # Because the value and the sampleTime tags both update nearly simultaneously, wait here 
@@ -31,7 +32,7 @@ def valueChanged(tagPath):
         catchError("%s.valueChanged" % (__name__))
         
     # Reset the trigger
-    system.tag.write(tagRoot + "/trigger", False)
+    writeTag(tagRoot + "/trigger", False)
 
 
 def configureSelector(unitName, selectorName, sourceName, tagProvider, database):

@@ -12,6 +12,7 @@ it does not do any validation that the number is correct.  Numbers in & numbers 
 import system, sys, string, traceback
 from ils.diagToolkit.common import checkFreshness, fetchDiagnosisActiveTime
 from ils.diagToolkit.manualMoveEntry import fetchManualMoveInfoById
+from ils.io.util import readTag
 
 def populateTable(table, applicationName):
     SQL = "select ApplicationName, FamilyName, FinalDiagnosisName, Constant, CalculationMethod, 0 as Run, '' as Status "\
@@ -175,7 +176,7 @@ def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     explanation = "Turn down the flame and open the window."
     recommendations = []
     
-    val = system.tag.read("[XOM]DiagnosticToolkit/Inputs/T3").value
+    val = readTag("[XOM]DiagnosticToolkit/Inputs/T3").value
     if val < 15:
         recommendations.append({"QuantOutput": "TESTQ2", "Value": 42.9})
     else:
@@ -325,8 +326,8 @@ def fd2_1_1b(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     explanation = "Get the steak out."
     recommendations = []
     
-    pv = system.tag.read("[%s]DiagnosticToolkit/Inputs/Lab_Data/value" % (provider)).value
-    sp = system.tag.read("[%s]DiagnosticToolkit/Inputs/T1_Target" % (provider)).value
+    pv = readTag("[%s]DiagnosticToolkit/Inputs/Lab_Data/value" % (provider)).value
+    sp = readTag("[%s]DiagnosticToolkit/Inputs/T1_Target" % (provider)).value
     
     manualMove, manualMoveAllowed = fetchManualMoveInfoById(finalDiagnosisId, database)
     print "   Manual Move Allowed: ", manualMoveAllowed

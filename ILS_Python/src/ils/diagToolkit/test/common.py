@@ -7,6 +7,7 @@ Created on Sep 13, 2016
 import system, time, string
 from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 from ils.common.util import escapeSqlQuotes
+from ils.io.util import readTag, writeTag
 
 from ils.log.LogRecorder import LogRecorder
 logger=LogRecorder("com.ils.test")
@@ -32,22 +33,22 @@ def run():
     #-------------------------------------------
     def initializeTags():
         logger.infof("Initializing tags...")
-        system.tag.write("[XOM]Configuration/DiagnosticToolkit/zeroChangeThreshold", 0.00005)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T1", 0.1)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T2", 0.2)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T3", 0.3)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T4", 0.4)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T5", 0.5)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T6", 0.6)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T7", 0.7)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T8", 0.8)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T9", 0.9)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T10", 0.1)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T11", 0.2)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T12", 0.3)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T13", 0.4)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T14", 0.5)
-        system.tag.write("[XOM]DiagnosticToolkit/Inputs/T15", 0.6)
+        writeTag("[XOM]Configuration/DiagnosticToolkit/zeroChangeThreshold", 0.00005)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T1", 0.1)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T2", 0.2)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T3", 0.3)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T4", 0.4)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T5", 0.5)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T6", 0.6)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T7", 0.7)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T8", 0.8)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T9", 0.9)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T10", 0.1)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T11", 0.2)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T12", 0.3)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T13", 0.4)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T14", 0.5)
+        writeTag("[XOM]DiagnosticToolkit/Inputs/T15", 0.6)
         logger.infof("Initializing the database...")
     
     #-------------------------------------------
@@ -288,7 +289,7 @@ def run():
             logger.info("  The gold file <%s> does not exist!" % (goldFilename))
             logger.info("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
-            system.tag.write("Sandbox/Diagnostic/Final Test/Table", ds)
+            writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
             return ds
         
         # Check if the output file exists
@@ -296,7 +297,7 @@ def run():
             logger.info("  The output file <%s> does not exist!" % (outputFilename))
             logger.info("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
-            system.tag.write("Sandbox/Diagnostic/Final Test/Table", ds)
+            writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
             return ds
     
         # Check if the two files are identical
@@ -312,21 +313,21 @@ def run():
                 
         # Try to update the status row of the table
         ds = system.dataset.setValue(ds, row, 'result', txt)
-        system.tag.write("Sandbox/Diagnostic/Final Test/Table", ds)
+        writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
     
         logger.trace("Done analyzing results!")
         return ds
     #-------------------------------------------
     
     logger.infof("In %s.run() Starting to run tests...", __name__)
-    system.tag.write("Sandbox/Diagnostic/Final Test/State","Running")
+    writeTag("Sandbox/Diagnostic/Final Test/State","Running")
     package="ils.diagToolkit.test.tests"
     tableTagPath="Sandbox/Diagnostic/Final Test/Table"
-    path = system.tag.read("Sandbox/Diagnostic/Final Test/Path").value
-    ds = system.tag.read(tableTagPath).value
+    path = readTag("Sandbox/Diagnostic/Final Test/Path").value
+    ds = readTag(tableTagPath).value
     post = "XO1TEST"
     projectName = "XOM"
-    db = system.tag.read("Sandbox/Diagnostic/Final Test/db").value
+    db = readTag("Sandbox/Diagnostic/Final Test/db").value
     provider = "XOM"
 
     # Clear the results column for selected rows
@@ -336,7 +337,7 @@ def run():
         if selected:
             cnt = cnt + 1
             ds = system.dataset.setValue(ds, row, 'result', 'Running')
-            system.tag.write(tableTagPath, ds) 
+            writeTag(tableTagPath, ds) 
                 
             functionName = ds.getValueAt(row, 'function')
             logger.infof("Starting to prepare to run: %s", functionName)
@@ -354,7 +355,7 @@ def run():
             
             time.sleep(60)
             ds = system.dataset.setValue(ds, row, 'result', 'Analyzing')
-            system.tag.write(tableTagPath, ds) 
+            writeTag(tableTagPath, ds) 
             
             # Define the path to the results file in an O/S neutral way
             outputFilename = os.path.join(path, functionName + "-out.csv")
@@ -387,7 +388,7 @@ def run():
         
     # If we get all of the way through, and there is nothing left to run, then stop the timer.
     logger.trace("...totally done!")
-    system.tag.write("Sandbox/Diagnostic/Final Test/State","Done")
+    writeTag("Sandbox/Diagnostic/Final Test/State","Done")
 
 
 def scrubDatabase(applicationName):
@@ -621,7 +622,7 @@ def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncreme
     quantOutputId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     logger.tracef("...inserted a quant output with id: %d", quantOutputId)
     logger.tracef("Writing %s to %s", str(tagValue), tagPath)
-    system.tag.write(tagPath, tagValue, 60)
+    writeTag(tagPath, tagValue)
     return quantOutputId
 
 # Define a Message Queue

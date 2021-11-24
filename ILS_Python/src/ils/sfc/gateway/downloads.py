@@ -9,6 +9,7 @@ Created on Jun 18, 2015
 
 import system, string
 from java.util import Date
+from ils.io.util import readTag
 from ils.sfc.recipeData.api import s88Set, s88Get, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
 from ils.sfc.common.constants import START_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, ERROR_COUNT_LOCAL, \
@@ -69,7 +70,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
         '''
         Only pay attention to the write enabled flag if we are writing to a production tag.
         '''
-        s88WriteEnabled = system.tag.read("[" + providerName + "]/Configuration/SFC/sfcWriteEnabled").value   
+        s88WriteEnabled = readTag("[" + providerName + "]/Configuration/SFC/sfcWriteEnabled").value   
         if providerName == productionProviderName and not(s88WriteEnabled):
             logger.info('Write bypassed for %s because SFC writes are inhibited!' % (tagPath))
             s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)

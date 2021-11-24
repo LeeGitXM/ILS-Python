@@ -5,6 +5,7 @@ Created on Sep 10, 2014
 '''
 
 import system
+from ils.io.util import readTag
 
 def test():
     print "Testy1"
@@ -80,7 +81,7 @@ def getTagPath(recipeKey, tagName):
 
 # Animate the screen color based on the status of the download
 def setBackgroundColor(rootContainer, colorTagName):
-    color = system.tag.read("/Configuration/RecipeToolkit/" + colorTagName)
+    color = readTag("/Configuration/RecipeToolkit/" + colorTagName)
     rootContainer.setPropertyValue("backgroundColor", color.value)
 
 def checkForUncommentedChanges(rootContainer):

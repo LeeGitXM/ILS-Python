@@ -6,6 +6,7 @@ Created on Feb 10, 2017
 import system
 from ils.common.config import getDatabaseClient
 from ils.common.windowUtil import clearTable, clearTree
+from ils.io.util import readTag, writeTag
 from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE
 from ils.common.config import getTagProviderClient
 from sys import path
@@ -36,10 +37,10 @@ def internalFrameOpened(rootContainer, db):
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     
     ''' Try to restore whatever they were looking at the last time the window was open '''
-    viewMode = system.tag.read("[Client]SFC Browser/Chart View State").value
-    selectedChartPath = system.tag.read("[Client]SFC Browser/Selected Chart Path").value
-    selectedChartRow = system.tag.read("[Client]SFC Browser/Selected Chart Row").value
-    selectedStep = system.tag.read("[Client]SFC Browser/Selected Step").value
+    viewMode = readTag("[Client]SFC Browser/Chart View State").value
+    selectedChartPath = readTag("[Client]SFC Browser/Selected Chart Path").value
+    selectedChartRow = readTag("[Client]SFC Browser/Selected Chart Row").value
+    selectedStep = readTag("[Client]SFC Browser/Selected Step").value
     log.debugf("The selected chart path is: %s", selectedChartPath)
     log.debugf("The selected chart row is: %d", selectedChartRow)
     log.debugf("The selected step is: %s", selectedStep)
@@ -106,7 +107,7 @@ def viewStateChanged(rootContainer):
 def updateSfcs(rootContainer, db):
     log.debugf("In %s.updateSfcs(), Updating the SFC Tree and Table Widgets...", __name__)
     tagProvider = getTagProviderClient()
-    sfcRecipeDataShowProductionOnly = system.tag.read("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
+    sfcRecipeDataShowProductionOnly = readTag("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
     chartPath = "%"
     updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
     updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
@@ -332,16 +333,16 @@ def makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     return trees
 
 def setChartViewState(viewState):
-    system.tag.write("[Client]SFC Browser/Chart View State", viewState)
+    writeTag("[Client]SFC Browser/Chart View State", viewState)
 
 def setSelectedChartPath(selectedPath):
-    system.tag.write("[Client]SFC Browser/Selected Chart Path", selectedPath)
+    writeTag("[Client]SFC Browser/Selected Chart Path", selectedPath)
 
 def setSelectedChartRow(selectedRow):
-    system.tag.write("[Client]SFC Browser/Selected Chart Row", selectedRow)
+    writeTag("[Client]SFC Browser/Selected Chart Row", selectedRow)
     
 def setSelectedStep(selectedRow):
-    system.tag.write("[Client]SFC Browser/Selected Step", selectedRow)
+    writeTag("[Client]SFC Browser/Selected Step", selectedRow)
 
 '''
 These methods have to do with the list of steps

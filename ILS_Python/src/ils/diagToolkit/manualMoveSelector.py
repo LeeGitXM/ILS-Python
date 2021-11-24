@@ -6,6 +6,7 @@ Created on Jan 11, 2019
 
 import system, string
 from ils.common.config import getDatabaseClient
+from ils.io.util import readTag
 from com.jidesoft.grid import Row
 
 def launcher(event):
@@ -14,7 +15,7 @@ def launcher(event):
     username = system.security.getUsername()
     
     ''' Verify that the user is autorized to make an adhoc move '''
-    ds = system.tag.read("Configuration/DiagnosticToolkit/manualChangeUsernames").value
+    ds = readTag("Configuration/DiagnosticToolkit/manualChangeUsernames").value
     
     if ds == None:
         unauthorizedUserWarning(username)

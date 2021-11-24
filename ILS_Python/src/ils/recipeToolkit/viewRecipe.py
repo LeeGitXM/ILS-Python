@@ -4,8 +4,10 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
-from ils.recipeToolkit.tagFactory import createUDT
 from sys import path
+from ils.io.util import readTag
+from ils.recipeToolkit.tagFactory import createUDT
+
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -21,7 +23,7 @@ def semiAutomatedDownloadCallback(event, payload):
     system.nav.closeParentWindow(event)
     
     targetPost = payload.get("post", "None")
-    myPost = system.tag.read("[Client]Post").value
+    myPost = readTag("[Client]Post").value
 
     # If the message was intended for another post then bail    
     if string.upper(targetPost) != string.upper(myPost):
@@ -122,34 +124,34 @@ def initialize(rootContainer):
     # don't work the very first time I open a window.  So here I will explicitly read the tags and set the properties, 
     # which is exactly what a binding is supposed to do automatically
     def initializeTableColors(table):
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorError").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorError").value
         table.setPropertyValue("backgroundColorError", color)
         
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorMismatch").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorMismatch").value
         table.setPropertyValue("backgroundColorMismatch", color)
         
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorNoChange").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorNoChange").value
         table.setPropertyValue("backgroundColorNoChange", color)
         
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorReadOnly").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorReadOnly").value
         table.setPropertyValue("backgroundColorReadOnly", color)
 
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorReadWrite").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorReadWrite").value
         table.setPropertyValue("backgroundColorReadWrite", color)
 
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorWriteError").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorWriteError").value
         table.setPropertyValue("backgroundColorWriteError", color)
 
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorWritePending").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorWritePending").value
         table.setPropertyValue("backgroundColorWritePending", color)
 
-        color = system.tag.read("/Configuration/RecipeToolkit/backgroundColorWriteSuccess").value
+        color = readTag("/Configuration/RecipeToolkit/backgroundColorWriteSuccess").value
         table.setPropertyValue("backgroundColorWriteSuccess", color)
         
-        val = system.tag.read("/Configuration/RecipeToolkit/recipeMinimumDifference").value
+        val = readTag("/Configuration/RecipeToolkit/recipeMinimumDifference").value
         table.setPropertyValue("recipeMinimumDifference", val)
         
-        val = system.tag.read("/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
+        val = readTag("/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
         table.setPropertyValue("recipeMinimumRelativeDifference", val)
     #=======================================================================================
         
@@ -229,7 +231,7 @@ def resetRecipeDetails(provider, familyName):
             tags.append(path + detail.name + "/command")
             vals.append("")
             
-    system.tag.writeAll(tags, vals)
+    system.tag.writeBlocking(tags, vals)
 
 # Update the table with the recipe data - this is called when we change the grade.  This does not
 # incorporate the DCS data, that is done in refresh()
@@ -402,9 +404,9 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     tags = []
     recipeDetailTagNames = []
     recipeDetailTagValues = []
-    specialValueNAN = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/Special Values/NAN").value
-    localWriteAlias = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/localWriteAlias").value
-    itemIdPrefix = system.tag.read("[" + provider + "]Configuration/RecipeToolkit/itemIdPrefix").value
+    specialValueNAN = readTag("[" + provider + "]Configuration/RecipeToolkit/Special Values/NAN").value
+    localWriteAlias = readTag("[" + provider + "]Configuration/RecipeToolkit/localWriteAlias").value
+    itemIdPrefix = readTag("[" + provider + "]Configuration/RecipeToolkit/itemIdPrefix").value
     
     log.tracef("Special NAN Value: %s", str(specialValueNAN))
     log.tracef("Local G2 Alias: %s", str(localWriteAlias))

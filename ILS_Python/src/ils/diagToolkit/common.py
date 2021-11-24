@@ -6,6 +6,7 @@ Created on Sep 19, 2014
 
 import system, time
 import system.ils.blt.diagram as scriptingInterface
+from ils.io.util import readTag
 
 from ils.log.LogRecorder import LogRecorder
 log=LogRecorder(__name__)
@@ -42,7 +43,7 @@ def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeo
     log.trace("Checking if %s and %s are consistent..." % (tagPath1, tagPath2))
     while isConsistent == False and (system.date.secondsBetween(startTime, system.date.now())) < timeout:
         log.trace("Checking consistency...")
-        vals = system.tag.readAll([tagPath1, tagPath2])
+        vals = system.tag.readBlocking([tagPath1, tagPath2])
         timestamp1 = vals[0].timestamp
         timestamp2 = vals[1].timestamp
         secondsBetween = abs(system.date.secondsBetween(timestamp1, timestamp2))
@@ -62,11 +63,11 @@ def checkConsistency(tagPath1, tagPath2, tolerance=5, recheckInterval=1.0, timeo
 # is omitted.  This uses theLastChange property of a tag, so what would happen if we received two consecutive identical values?
 def checkFreshness(tagPath, theTime="now", provider="XOM", tolerance=-1, recheckInterval=1.0, timeout=-1.0):
     if tolerance < 0.0:
-        tolerance = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessToleranceSeconds" % (provider)).value
+        tolerance = readTag("[%s]Configuration/DiagnosticToolkit/freshnessToleranceSeconds" % (provider)).value
         print "Using the default freshness tolerance: ", tolerance
 
     if timeout < 0.0:
-        timeout = system.tag.read("[%s]Configuration/DiagnosticToolkit/freshnessTimeoutSeconds" % (provider)).value
+        timeout = readTag("[%s]Configuration/DiagnosticToolkit/freshnessTimeoutSeconds" % (provider)).value
         print "Using the default timeout: ", timeout
         
     if theTime == "now" or theTime == None:
@@ -83,7 +84,7 @@ def checkFreshness(tagPath, theTime="now", provider="XOM", tolerance=-1, recheck
     log.trace("Checking if %s is fresh..." % (tagPath))
     while isFresh == False and system.date.secondsBetween(startTime, now) < timeout:
         log.trace("Checking freshness...")
-        qv = system.tag.read(tagPath)
+        qv = readTag(tagPath)
         timestamp = qv.timestamp
 
         log.tracef("Comparing tag time (%s) to (%s)", str(timestamp), str(theTime))
@@ -108,7 +109,7 @@ def checkFresher(tagPath1, tagPath2, recheckInterval=1.0, timeout=60):
     log.trace("Checking if %s is fresher than %s..." % (tagPath1, tagPath2))
     while isFresher == False and (system.date.secondsBetween(startTime, system.date.now())) < timeout:
         log.trace("Checking freshness...")
-        vals = system.tag.readAll([tagPath1, tagPath2])
+        vals = system.tag.readBlocking([tagPath1, tagPath2])
         timestamp1 = vals[0].timestamp
         timestamp2 = vals[1].timestamp
         

@@ -4,6 +4,7 @@ Created on Mar 18, 2016
 @author: ils
 '''
 import system
+from ils.io.util import readTag
 
 # This is called from a timer embedded in the Setpoint Spreadsheet Button on the console window.
 # It does a quick little query to see if there are any active outputs for this console .
@@ -12,7 +13,7 @@ import system
 # any time they want, even if there isn't an active output, but the arrow animation is useful 
 # to quickly see if there is something to see. 
 def checkRecommendationState(buttonContainer):
-    database=system.tag.read("[Client]Database").value    
+    database=readTag("[Client]Database").value    
     post = buttonContainer.post
     
     from ils.diagToolkit.common import fetchActiveOutputsForPost

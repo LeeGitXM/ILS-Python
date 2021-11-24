@@ -4,6 +4,7 @@ Created on Sep 9, 2014
 @author: ILS
 '''
 import system, string
+from ils.io.util import readTag
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -13,8 +14,8 @@ def build(rootContainer):
     log.infof("Building a recommendation map for Quant Output: %s/%s", applicationName, quantOutputName)
 
     # Get the production/isolation tag provider and database 
-    db=system.tag.read("[Client]Database").value
-    provider=system.tag.read("[Client]Tag Provider").value
+    db=readTag("[Client]Database").value
+    provider=readTag("[Client]Tag Provider").value
     
     theMap = rootContainer.getComponent("TheMap")
     diagnoses = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=db)
@@ -52,7 +53,7 @@ def fetchQuantOutput(applicationName, quantOutputName, db, provider):
         else:
             log.tracef("Need to read current SP")
             tagPath = '[' + provider + ']' + record['TagPath']
-            sp = system.tag.read(tagPath)
+            sp = readTag(tagPath)
             if sp.quality.isGood():
                 sp = sp.value
             else:
@@ -257,7 +258,7 @@ def hideFinalDiagnosis(theMap, diagnosisIdx):
 def expandFinalDiagnosis(theMap, diagnosisIdx):
     print "In expandFinalDiagnosis..."
     # Get the production/isolation tag provider and database 
-    db=system.tag.read("[Client]Database").value
+    db=readTag("[Client]Database").value
     finalDiagnosisName = getFinalDiagnosisName(theMap, diagnosisIdx)
     
     ds = theMap.outputs
@@ -315,8 +316,8 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
     rootContainer = theMap.parent
         
     # Get the production/isolation database 
-    db=system.tag.read("[Client]Database").value
-    provider=system.tag.read("[Client]Tag Provider").value
+    db=readTag("[Client]Database").value
+    provider=readTag("[Client]Tag Provider").value
     
     ds = theMap.diagnoses
     multiplier = ds.getValueAt(finalDiagnosisIdx, "Multiplier")
@@ -449,7 +450,7 @@ or a new diagnosis was made.
 def update(rootContainer):
     print "Updating a recommendation map..."
     theMap = rootContainer.getComponent("TheMap")
-    db=system.tag.read("[Client]Database").value
+    db=readTag("[Client]Database").value
     
     # Update the recommendations Dataset
     '''
@@ -527,7 +528,7 @@ Recommendation callbacks
 def manualRecommendation(theMap, recommendationIdx):
     print "In changeRecommendation..."
     # Get the production/isolation database 
-    db=system.tag.read("[Client]Database").value
+    db=readTag("[Client]Database").value
     ds = theMap.recommendations
     manualRecommendation = ds.getValueAt(recommendationIdx, "Manual")
     autoRecommendation = ds.getValueAt(recommendationIdx, "Auto")
@@ -582,7 +583,7 @@ def hideOutput(theMap, outputIdx):
 def expandOutput(theMap, outputIdx):
     print "In expandOutput, the index is %i..." % (outputIdx)
     # Get the production/isolation database 
-    db=system.tag.read("[Client]Database").value
+    db=readTag("[Client]Database").value
     rootContainer = theMap.parent
     applicationName=rootContainer.getPropertyValue("applicationName")
     quantOutputName = getOutputName(theMap, outputIdx)

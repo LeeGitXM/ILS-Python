@@ -17,6 +17,7 @@ from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML, escapeSqlQuotes
 from ils.common.database import lookup
+from ils.io.util import readTag
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -71,7 +72,7 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     ''' Reset the flag that indicates that minimum change requirements should be ignored. '''
     resetOutputLimits(finalDiagnosisId, database)
     
-    grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
+    grade=readTag("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
 
     ''' Insert an entry into the diagnosis queue '''
     log.info("Posting a diagnosis entry (from _manageFinalDiagnosis) for project: %s, application: %s, family: %s, final diagnosis: %s, grade: %s" % (projectName, applicationName, familyName, finalDiagnosisName, str(grade)))
@@ -271,7 +272,7 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     finalDiagnosisName=record.get('FinalDiagnosisName','Unknown Final Diagnosis')
     finalDiagnosisExplanation=record.get('Explanation','')
 
-    grade=system.tag.read("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
+    grade=readTag("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
     log.trace("The grade is: %s" % (str(grade)))
     
     txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagnosisExplanation)
@@ -352,7 +353,7 @@ def _scanner(database, tagProvider, projectName=""):
     pds = system.db.runQuery(SQL, database)
     log.tracef("Fetched %d records...", len(pds))
     
-    ageInterval = system.tag.read("[%s]Configuration/DiagnosticToolkit/diagnosticAgeInterval" % (tagProvider)).value
+    ageInterval = readTag("[%s]Configuration/DiagnosticToolkit/diagnosticAgeInterval" % (tagProvider)).value
 
     for record in pds:  
         applicationName = record["ApplicationName"]  
@@ -910,7 +911,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
     explanation = ""
     diagnosisEntryId = -1
     noChange = False
-    zeroChangeThreshold = system.tag.read("[%s]Configuration/DiagnosticToolkit/zeroChangeThreshold" % (provider)).value
+    zeroChangeThreshold = readTag("[%s]Configuration/DiagnosticToolkit/zeroChangeThreshold" % (provider)).value
     
     # Fetch the list of final diagnosis that were most important the last time we managed
     oldList=fetchPreviousHighestPriorityDiagnosis(application, database)
@@ -1054,7 +1055,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                     explanation = "<HTML>" + explanation
     
                 explanations.append({"explanation": explanation, "diagnosisEntryId": diagnosisEntryId})
-                writeToLogbook = system.tag.read("[%s]Configuration/DiagnosticToolkit/writeTextRecommendationsToLogbook" % provider)
+                writeToLogbook = readTag("[%s]Configuration/DiagnosticToolkit/writeTextRecommendationsToLogbook" % provider)
                 if writeToLogbook:
                     writeTextRecommendationsToLogbook(applicationName, post, staticExplanation, originalExplanation, database)
 
@@ -1158,7 +1159,7 @@ def checkBounds(applicationName, quantOutput, quantOutputName, database, provide
     tagpath = '[' + provider + ']' + quantOutput.get('TagPath','unknown')
     outputTagPath = getOutputForTagPath(provider, tagpath, "sp")
     log.trace("   ...reading the current value of tag: %s" % (outputTagPath))
-    qv=system.tag.read(outputTagPath)
+    qv=readTag(outputTagPath)
     if not(qv.quality.isGood()):
         txt = "Error reading the current setpoint for %s from (%s), tag quality is: (%s)" % (quantOutputName, outputTagPath, str(qv.quality))
         log.error(txt)
@@ -1283,7 +1284,7 @@ def calculateVectorClamps(quantOutputs, provider):
     
     tagExists=system.tag.exists(tagName)
     if tagExists:
-        qv=system.tag.read(tagName)
+        qv=readTag(tagName)
         vectorClampMode = string.upper(qv.value)
     else:
         vectorClampMode = "DISABLED"

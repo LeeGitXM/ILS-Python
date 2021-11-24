@@ -7,6 +7,7 @@ The purpose of this module is to scan / poll of of the lab data points for new v
 '''
 
 import sys, system, string, traceback
+from ils.io.util import readTag, writeTag
 from ils.common.config import getTagProvider, getIsolationTagProvider, getDatabase, getIsolationDatabase
 from ils.labData.common import postMessage
 from java.util import Calendar
@@ -36,25 +37,25 @@ def scanner():
     tagProvider = getTagProvider()
     tagProviderIsolation = getIsolationTagProvider()
     
-    if system.tag.read("[%s]Configuration/LabData/pollingEnabled" % (tagProvider)).value == True:
+    if readTag("[%s]Configuration/LabData/pollingEnabled" % (tagProvider)).value == True:
         main(database, tagProvider)
     else:
         log.tracef("Lab data polling is disabled") 
 
-    if system.tag.read("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
+    if readTag("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
         main(isolationDatabase, tagProviderIsolation)
         
     ''' Tickle the watchdogs '''
     tagPath = "[%s]Site/Watchdogs/Lab Data Watchdog/currentValue" % (tagProvider)
     if system.tag.exists(tagPath):
-        currentValue = system.tag.read(tagPath).value
+        currentValue = readTag(tagPath).value
         
         if currentValue > 100:
             currentValue = 0
         else:
             currentValue = currentValue + 1
             
-        system.tag.write(tagPath, currentValue)
+        writeTag(tagPath, currentValue)
 
 
 def main(database, tagProvider):
@@ -68,7 +69,7 @@ def main(database, tagProvider):
     limits=fetchLimits(tagProvider, database)
     
     if system.tag.exists("[%s]Configuration/Common/simulateHDA" % (tagProvider)):
-        simulateHDA = system.tag.read("[%s]Configuration/Common/simulateHDA" % (tagProvider)).value
+        simulateHDA = readTag("[%s]Configuration/Common/simulateHDA" % (tagProvider)).value
     else:
         simulateHDA = False
 
@@ -115,7 +116,7 @@ def tagWriter(tags, vals, mode="synch"):
     
     if mode == "asynchAll":
         try:
-            system.tag.writeAll(tags, vals)
+            system.tag.writeBlocking(tags, vals)
         except:
             log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(vals), str(tags), mode)
     elif mode == "asynch":
@@ -123,13 +124,13 @@ def tagWriter(tags, vals, mode="synch"):
         for tag in tags:
             val = vals[i]
             try:
-                system.tag.write(tag, val)
+                writeTag(tag, val)
             except:
                 log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(val), str(tag), mode)
             i = i + 1
     elif mode == "synchAll":
         try:
-            system.tag.writeAllSynchronous(tags, vals)
+            system.tag.writeAsync(tags, vals)
         except:
             log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(vals), str(tags), mode)
     elif mode == "synch":
@@ -137,7 +138,7 @@ def tagWriter(tags, vals, mode="synch"):
         for tag in tags:
             val = vals[i]
             try:
-                system.tag.writeSynchronous(tag, val)
+                system.tag.writeBlocking([tag], [val])
             except:
                 log.errorf("Error: Lab Data Scanner, (%s.tagWriter): writing %s to %s, mode: %s", __name__, str(val), str(tag), mode)
             i=i+1
@@ -259,8 +260,8 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, s
             log.errorf("**** Error writing derived value to PHD via HDA: %f for %s to %s at %s ****", newVal, valueName, resultItemId, str(sampleTime))
     
     cal = Calendar.getInstance()
-    labDataWriteEnabled=system.tag.read("[" + tagProvider + "]" + "Configuration/LabData/labDataWriteEnabled").value
-    globalWriteEnabled=system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
+    labDataWriteEnabled=readTag("[" + tagProvider + "]" + "Configuration/LabData/labDataWriteEnabled").value
+    globalWriteEnabled=readTag("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
     productionProviderName = getTagProvider()   # Get the Production tag provider
     writeEnabled = tagProvider != productionProviderName or (labDataWriteEnabled and globalWriteEnabled)
     
@@ -454,7 +455,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         
         tagName = "LabData/%s/DCS-Lab-Values/%s" % (unitName, valueName)
         dcsLog.trace("Reading: %s " % (tagName))    
-        qv = system.tag.read(tagName)
+        qv = readTag(tagName)
 
         dcsLog.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
         
@@ -788,7 +789,7 @@ def storeSelector(tagRoot, database):
     selectorLog.trace("   ...the selector value name is <%s> (unit=%s)" % (valueName,unitName))
 
     # Read the value and the sample time
-    vals = system.tag.readAll([tagRoot + '/value', tagRoot + '/sampleTime'])
+    vals = system.tag.readBlocking([tagRoot + '/value', tagRoot + '/sampleTime'])
     value=vals[0].value
     sampleTime=vals[1].value
     

@@ -6,6 +6,7 @@ Created on Mar 29, 2015
 import system, string
 import ils.common.util as util
 from ils.common.config import getTagProviderClient
+from ils.io.util import readTag
 from ils.labData.scanner import simulateReadRaw
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -224,7 +225,7 @@ def fetchHistory(container):
     log.tracef("In labData.viewer.fetchHistory(), fetching missing data for %s - %d", valueName, valueId)
     
     if system.tag.exists("[%s]Configuration/Common/simulateHDA" % (tagProvider)):
-        simulateHDA = system.tag.read("[%s]Configuration/Common/simulateHDA" % (tagProvider)).value
+        simulateHDA = readTag("[%s]Configuration/Common/simulateHDA" % (tagProvider)).value
     else:
         simulateHDA = False
     

@@ -4,6 +4,7 @@ Created on Mar 31, 2015
 @author: Pete
 '''
 import system, string
+from ils.io.util import readTag, writeTag
 
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
@@ -193,7 +194,7 @@ def fetchLimits(tagProvider, database):
             if limitValue != None:
                 tagName="[%s]LabData/%s/%s/%s" % (tagProvider, unitName, valueName, limitType)
                 log.tracef("Writing Limit <%s> to %s", limitValue, tagName)
-                result=system.tag.write(tagName, limitValue)
+                result=writeTag(tagName, limitValue)
                 if result == 0:
                     log.error("Writing new limit value of <%s> to <%s> failed" % (str(limitValue), tagName))
         #-------------
@@ -425,8 +426,8 @@ def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
     The old system would look at the SQC limit blocks that use this lab data and find the max standard deviation,
     I'm not real sure how I am going to do this. 
     '''
-    standardDeviationsToSQCLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (tagProvider)).value
-    standardDeviationsToValidityLimits = system.tag.read("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (tagProvider)).value
+    standardDeviationsToSQCLimits = readTag("[%s]Configuration/LabData/standardDeviationsToSQCLimits" % (tagProvider)).value
+    standardDeviationsToValidityLimits = readTag("[%s]Configuration/LabData/standardDeviationsToValidityLimits" % (tagProvider)).value
     log.trace("Using %f standard deviations to the SQC limits and %s standard deviations to the validity limits" % (standardDeviationsToSQCLimits, str(standardDeviationsToValidityLimits)))
 
     if limitType == "Release":
@@ -538,8 +539,8 @@ def updateLabLimits(valueName, unitName, limitType, limitId, upperSQCLimit, lowe
 
     
     # Now perform the write and feedback any errors
-    status=system.tag.writeAll(tags, vals)
-
+    status=system.tag.writeBlocking(tags, vals)
+    # TODO - not sure about the return values w/ igm 8 PH 11/17/21
     i = 0
     for stat in status:
         if stat == 0:

@@ -4,6 +4,7 @@ Created on Aug 1, 2015
 @author: Pete
 '''
 import system
+from ils.io.util import readTag, writeTag
 from ils.labData.common import postMessage
 from ils.common.ocAlert import sendAlert
 from ils.log.LogRecorder import LogRecorder
@@ -232,10 +233,10 @@ def accept(valueId, unitName, valueName, rawValue, sampleTime, status, tagProvid
     tagName="[%s]LabData/%s/%s" % (tagProvider, unitName, valueName)
 
     # The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
-    system.tag.write(tagName + "/value", rawValue)
-    system.tag.write(tagName + "/sampleTime", sampleTime)
-    system.tag.write(tagName + "/badValue", False)
-    system.tag.write(tagName + "/status", status)
+    writeTag(tagName + "/value", rawValue)
+    writeTag(tagName + "/sampleTime", sampleTime)
+    writeTag(tagName + "/badValue", False)
+    writeTag(tagName + "/status", status)
 
 
 # There is nothing that needs to be done if the operator determines that the value is not valid, by doing nothing we ignore 
@@ -261,8 +262,8 @@ def rejectValue(event):
     
     log.trace("Writing to tag <%s>" % (tagName))
     #  The operator has accepted the value so write it and the sample time to the UDT - I'm not sure what should happen to the badValue tag
-    system.tag.write(tagName + "/badValue", True)
-    system.tag.write(tagName + "/status", "Operator rejected value")    
+    writeTag(tagName + "/badValue", True)
+    writeTag(tagName + "/status", "Operator rejected value")    
 
 
 # If the operator does not respond to the notification in a timely manner, then by default accept the value.  The burden is on
@@ -272,5 +273,5 @@ def timeOutValue(event):
     acceptValue(event, True)
     
 def readTimeout(tagProvider):
-    timeoutSeconds = system.tag.read("[%s]configuration/LabData/limitWarningTimeoutSeconds" % (tagProvider)).value
+    timeoutSeconds = readTag("[%s]configuration/LabData/limitWarningTimeoutSeconds" % (tagProvider)).value
     return timeoutSeconds

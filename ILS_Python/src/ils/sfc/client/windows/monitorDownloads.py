@@ -5,6 +5,7 @@ Created on May 29, 2015
 '''
 import system, string
 from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.io.util import readTag
 from ils.sfc.recipeData.api import s88GetFromId, s88GetRecordFromId, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
 from ils.sfc.common.constants import SECONDARY_SORT_BY_ALPHABETICAL, SECONDARY_SORT_BY_ORDER
@@ -33,7 +34,7 @@ def internalFrameOpened(event):
     guiAdjustmentTagPath = "[%s]Configuration/SFC/sfcMaxDownloadGuiAdjustment" % provider
     exists = system.tag.exists(guiAdjustmentTagPath)
     if exists:
-        maxAdjustment = system.tag.read(guiAdjustmentTagPath).value
+        maxAdjustment = readTag(guiAdjustmentTagPath).value
     else:
         maxAdjustment = 1.7
         log.warnf("Using default max adjustment of %f because configuration tag %s does not exist!", maxAdjustment, guiAdjustmentTagPath)

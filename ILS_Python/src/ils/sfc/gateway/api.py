@@ -7,6 +7,7 @@ Created on Oct 30, 2014
 '''
     
 import system, time, string
+from ils.io.util import readTag
 from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
     DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT, MAX_CONTROL_PANEL_MESSAGE_LENGTH
@@ -630,7 +631,7 @@ def readTag(chartScope, tagPath):
     '''  Read a tag substituting provider according to isolation mode.  '''
     provider = getProviderName(chartScope)
     fullPath = substituteProvider(tagPath, provider)
-    qv = system.tag.read(fullPath)
+    qv = readTag(fullPath)
     return qv.value
 
 def registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database):

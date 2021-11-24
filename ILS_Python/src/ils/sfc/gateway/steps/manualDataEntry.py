@@ -8,6 +8,7 @@ import system, string
 from system.ils.sfc import getManualDataEntryConfig 
 from ils.sfc.common.util import isEmpty
 from ils.common.cast import isFloat, isInteger
+from ils.io.util import readTag, writeTag
 from ils.sfc.gateway.api import registerWindowWithControlPanel, deleteAndSendClose, getControlPanelId, \
     getStepProperty, logStepDeactivated, dbStringForFloat, getTopChartRunId, getChartLogger, getDatabaseName, getProviderName, sendMessageToClient, getProject, handleUnexpectedGatewayError
 from ils.sfc.recipeData.api import s88Set, s88Get, s88GetStep, s88SetWithUnits, s88GetWithUnits, getRecipeByReference, substituteScopeReferences
@@ -47,7 +48,7 @@ def activate(scopeContext, stepProperties, state):
                     if string.upper(row.destination) == "TAG":
                         logger.tracef("...setting from tag: %s - %s - %s - %s", row.destination, row.key, row.defaultValue, str(row.units))
                         tagPath = "[%s]%s" % (provider, row.key)
-                        system.tag.write(tagPath, row.defaultValue)
+                        writeTag(tagPath, row.defaultValue)
                     elif row.units in ["", None]: 
                         logger.tracef("...setting: %s - <%s> - <%s> - <%s>", row.destination, row.key, row.defaultValue, str(row.units))
                         s88Set(chartScope, stepScope, row.key, row.defaultValue, row.destination)
@@ -130,7 +131,7 @@ def activate(scopeContext, stepProperties, state):
                             if string.upper(row.destination) == "TAG":
                                 tagPath = "[%s]%s" % (provider, row.key)
                                 logger.tracef("...reading the current value from tagPath: %s", tagPath)
-                                qv = system.tag.read(tagPath)
+                                qv = readTag(tagPath)
                                 if qv.quality.isGood():
                                     defaultValue = qv.value
                                 else:

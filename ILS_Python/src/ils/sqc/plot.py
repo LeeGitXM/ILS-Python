@@ -5,6 +5,7 @@ Created on Dec 10, 2015
 '''
 import system, string, math
 from ils.common.config import getTagProviderClient, getDatabaseClient
+from ils.io.util import readTag
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -217,8 +218,8 @@ def configureChartValuePen(rootContainer, unitName, labValueName, lastResetTime,
     chart=rootContainer.getComponent("Plot Container").getComponent('Easy Chart')
     ds = chart.pens
 
-    freshColor = system.tag.read("/Configuration/LabData/sqcPlotFreshDataColor").value
-    staleColor = system.tag.read("/Configuration/LabData/sqcPlotStaleDataColor").value
+    freshColor = readTag("/Configuration/LabData/sqcPlotFreshDataColor").value
+    staleColor = readTag("/Configuration/LabData/sqcPlotStaleDataColor").value
     
     # Set the color of the current and stale data pens
     ds = system.dataset.setValue(ds, 0, "COLOR", freshColor)

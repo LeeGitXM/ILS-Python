@@ -4,6 +4,7 @@ Created on Dec 17, 2015
 @author: rforbes
 '''
 from ils.common.error import catchError
+from ils.io.util import readTag 
 from ils.sfc.gateway.api import getChartLogger, getProviderName, handleUnexpectedGatewayError, standardDeviation, getTopLevelProperties, getStepProperty, getTopChartRunId
 from ils.sfc.recipeData.api import s88Set
 from ils.sfc.common.constants import COLLECT_DATA_CONFIG
@@ -31,7 +32,7 @@ def activate(scopeContext, stepProperties, state):
                 try:
                     tagPath = "[%s]%s" % (provider, row['tagPath'])
                     logger.trace("Collecting %s from %s" % (str(valueType), str(tagPath)))
-                    tagReadResult = system.tag.read(tagPath)
+                    tagReadResult = readTag(tagPath)
                     tagValue = tagReadResult.value
                     readOk = tagReadResult.quality.isGood()
                 except:
