@@ -8,6 +8,7 @@ import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForParameter
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
 POWER_TABLE_NAME = "SQC Table"
 
@@ -56,11 +57,12 @@ def requery(rootContainer):
             table.setColumnWidth(col, 110)
     
 def fetchColumns(recipeFamilyName):
+    db = getDatabaseClient()
     SQL = "select  P.Parameter "\
         "from RtSQCParameter P,  RtRecipeFamily F "\
         "where P.RecipeFamilyId = F.RecipeFamilyId "\
         " and F.RecipeFamilyName = '%s' order by Parameter" % (recipeFamilyName)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     columns = []
     for record in pds:
@@ -71,12 +73,13 @@ def fetchColumns(recipeFamilyName):
     return columns
     
 def fetchRows(recipeFamilyName):
+    db = getDatabaseClient()
     SQL = "select distinct GM.Grade "\
         " from RtGradeMaster GM,  RtRecipeFamily RF "\
         " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
 
     print "SQL: ", SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     print "Selected %d grades..." % (len(pds))
     
     grades = []
@@ -87,10 +90,11 @@ def fetchRows(recipeFamilyName):
     return grades
 
 def fetchData(recipeFamilyName):
+    db = getDatabaseClient()
     SQL = "select Grade, Parameter, UpperLimit, LowerLimit "\
         " from RtSQCLimitView "\
         " where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     print "Fetched %d rows of data..." % (len(pds))
     return pds
 
@@ -118,6 +122,7 @@ def mergeData(rootContainer, grades, columns, pds):
 
 def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     print "Setting the new value to <%s>" % (newValue)
+    db = getDatabaseClient()
     rootContainer = self.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     familyId = idForFamily(familyName)
@@ -142,7 +147,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
         SQL = "update RtSQCLimit set %s = %s where ParameterId = %d and Grade = '%s'" % (limitType, str(newValue), parameterId, grade)
     print SQL
     
-    rows = system.db.runUpdateQuery(SQL)
+    rows = system.db.runUpdateQuery(SQL, database=db)
     
     if rows == 0:
         print "   --- no rows were updated, try to insert ---"
@@ -151,7 +156,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
         else:
             SQL = "INSERT INTO RtSQCLimit (ParameterId, Grade, %s) VALUES (%i, '%s', %s)" % (limitType, parameterId, grade, str(newValue))
         print SQL
-        rows = system.db.runUpdateQuery(SQL)
+        rows = system.db.runUpdateQuery(SQL, database=db)
         if rows == 0:
             print "*** NO ROWS WERE ADDED ***"
     
@@ -159,6 +164,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
 
 def deleteColumns(event):
     print "In %s.deleteColumns()" % (__name__)
+    db = getDatabaseClient()
     rootContainer = event.source.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     recipeFamilyId = idForFamily(familyName)
@@ -170,12 +176,12 @@ def deleteColumns(event):
     print "Deleting SQC Parameter: <%s>" % (parameter)
     
     SQL = "delete from RtSQCParameter where Parameter = '%s' and RecipeFamilyId = %d" % (parameter, recipeFamilyId)
-    system.db.runUpdateQuery(SQL)
-    
+    system.db.runUpdateQuery(SQL, database=db)
+
     requery(rootContainer)
 
-
 def exportCallback(event):
+    db = getDatabaseClient()
     where = ""
     
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
@@ -189,7 +195,7 @@ def exportCallback(event):
         " %s order by RecipeFamilyName, Grade, Parameter" % (where)
     print SQL
         
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     log.trace(SQL)
     print "Fetched %d rows of data..." % (len(pds))
 

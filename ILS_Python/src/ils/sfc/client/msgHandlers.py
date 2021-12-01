@@ -204,11 +204,12 @@ def sfcCloseWindow(payload):
         openWindows = system.gui.getOpenedWindows()
         for window in openWindows:
             # Not all windows have a windowId, so be careful
+            log.tracef("Checking window: %s", str(window))
             rootContainer = window.getRootContainer()
             openWindowId = rootContainer.getPropertyValue("windowId")
             if str(openWindowId) == str(windowId):
+                log.tracef("...closing %s", str(window))
                 system.nav.closeWindow(window)
-
 
 def sfcCloseWindowByName(payload):
     log.infof("In %s.sfcCloseWindowByName() with %s", __name__, str(payload))

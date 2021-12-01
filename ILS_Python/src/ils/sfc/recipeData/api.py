@@ -102,7 +102,7 @@ def s88GetUnits(chartProperties, stepProperties, keyAndAttribute, scope):
 # Return a value only for a specific key, otherwise raise an exception.
 def s88Get(chartProperties, stepProperties, keyAndAttribute, scope):
     scope = scope.lower()
-    logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
+    logger.tracef("s88Get(): %s - %s - %s", keyAndAttribute, scope, str(stepProperties))
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)

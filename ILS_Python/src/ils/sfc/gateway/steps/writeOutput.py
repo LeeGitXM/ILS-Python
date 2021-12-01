@@ -9,9 +9,10 @@ So no need to include information about immediate writes because they will be do
 '''
 
 import system, string
-from ils.sfc.recipeData.api import s88Get, s88Set, s88GetRecipeDataId, s88GetFromId, s88SetFromId
-from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, getTopChartRunId, getIsolationMode, getProviderName, getDatabaseName
-from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, \
+from ils.sfc.recipeData.api import s88Get, s88Set, s88GetRecipeDataId, s88GetFromId, s88SetFromId 
+from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, handleUnexpectedGatewayErrorWithKnownCause, getStepProperty, \
+    getTopChartRunId, getIsolationMode, getProviderName, getDatabaseName, getTimer, TimerException
+from ils.sfc.common.constants import TIMER_SET, \
     START_TIMER, PAUSE_TIMER, RESUME_TIMER, STEP_NAME, TOOLTIP, OUTPUT_TYPE, RAMP_TIME, \
     STEP_SUCCESS, STEP_FAILURE, DOWNLOAD, OUTPUT_VALUE, TAG, RECIPE_LOCATION, WRITE_OUTPUT_CONFIG, ACTUAL_DATETIME, ACTUAL_TIMING, TIMING, DOWNLOAD_STATUS, WRITE_CONFIRMED, \
     ERROR_COUNT_LOCAL, ERROR_COUNT_SCOPE, ERROR_COUNT_MODE, ERROR_COUNT_KEY, \
@@ -165,11 +166,9 @@ def activate(scopeContext, stepProperties, state):
                 writeComplete = True
                 writeConfirmComplete = True
             if timerNeeded:
-                logger.tracef("Getting the recipeDataId for the timer...")
-                timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
-                timerKey = getStepProperty(stepProperties, TIMER_KEY)
-                timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
-                logger.tracef("%s - The timer recipe data id is: %s using %s and %s", __name__, str(timerRecipeDataId), timerLocation, timerKey)
+                timerRecipeDataId = getTimer(chartScope, stepScope, stepProperties)
+                
+                logger.tracef("%s - The timer recipe data id is: %s", __name__, str(timerRecipeDataId))
                 stepScope["timerRecipeDataId"] = timerRecipeDataId
     
                 if getStepProperty(stepProperties, TIMER_SET):
@@ -378,8 +377,12 @@ def activate(scopeContext, stepProperties, state):
             
             ''' Set up the step for the next time it is called if this is in a loop '''
             stepScope[INITIALIZED]=False
+    
+    except TimerException:
+        handleUnexpectedGatewayErrorWithKnownCause(chartScope, stepProperties, "Unexpected error in %s" % (__name__), logger)
+    
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in writeOutput.py', logger)
+        handleUnexpectedGatewayError(chartScope, stepProperties, "Unexpected error in %s" % (__name__), logger)
     finally:
         # do cleanup here
         pass

@@ -125,9 +125,15 @@ class Compiler():
         
         The reason that we want to reserve the record in SfcChart and SfcSteps is so that recipe data is preserved.
         '''
-        log.tracef("Handling moved resources:")
+        log.tracef("Handling moved resources, (resources that are marked for deletion: %s)", str(self.deletedResources))
         cntr = 0
+        
+        ''' I need to make a local copy of the list because I am removing members of the list as I go which throws off the iteration '''
+        deletedResourceIds = []
         for deletedResourceId in self.deletedResources:
+            deletedResourceIds.append(deletedResourceId)
+
+        for deletedResourceId in deletedResourceIds:
             log.tracef("    Checking deleted resource %s", str(deletedResourceId))
             deletedChartPath, deletedChartName, deletedChartId = self.fetchChartForResourceId(deletedResourceId)
             
@@ -154,7 +160,7 @@ class Compiler():
                         
                         ''' 
                         When a chart is moved, all of the callers to that chart are broken (because IA uses absolute path references). 
-                        Presumably. the engineer will go and fix the references, but when they do I will receive and updated dictionary.
+                        Presumably, the engineer will go and fix the references, but when they do I will receive and updated dictionary.
                         '''
                         self.deleteChartFromDatabaseHierarchy(deletedChartId)
                         
@@ -168,6 +174,7 @@ class Compiler():
                             del self.changedResources[deletedResourceId]
                             res["chartPath"]  = addedChartPath
                             self.changedResources[addedResourceId] = res
+
         log.tracef("...done with moved resources, moved %d charts", cntr)
             
                             
@@ -192,7 +199,7 @@ class Compiler():
         The problem is that the "/" is also a path delimiter
         '''
         chartName = chartPath[chartPath.rfind("/")+1:]
-        print "Found <%s> <%s>" % (chartPath, chartName)
+        log.tracef("     Found <%s> <%s>", chartPath, chartName)
         return chartPath, chartName, chartId
 
 
@@ -233,11 +240,10 @@ class Compiler():
                     log.tracef("Deleting %s from the list of changed resources...", str(resourceId))
                     del self.changedResources[resourceId]
                     j = j + 1
-                '''
-                Do not delete the chart from the database now.  This is now done at the end in order to support a moved step (and the recipe data on it)  
-                '''
+                
+                ''' Do not delete the chart from the database now.  This is now done at the end in order to support a moved step (and the recipe data on it)'''
                 #deleteChart(resourceId, db)
-                log.tracef("...dine with deleted resources (Phase 1) - handled %d deleted charts and removed %d from the update list", i, j)
+            log.tracef("...done with deleted resources (Phase 1) - handled %d deleted charts and removed %d from the update list", i, j)
                 
         elif phase == self.PHASE_2:    
             try:

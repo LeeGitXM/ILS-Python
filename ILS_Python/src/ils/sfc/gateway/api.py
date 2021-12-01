@@ -21,7 +21,7 @@ NEWLINE = '\n\r'
 from ils.log.LogRecorder import LogRecorder
 logger = LogRecorder(__name__)
 
-def abortHandler(chartScope, msg):
+def abortHandler(chart, msg):
     '''
     This API can be used in the OnAbort handler of a chart.
     This will cancel the charts from the bottom up of all charts running under the unit procedure.
@@ -39,16 +39,16 @@ def abortHandler(chartScope, msg):
     
     stepProperties = None
     try:
-        msg = msg + NEWLINE + chartScope.abortCause
+        abortCause = str(chart.abortCause)
     except:
         try:
             ''' This treats the error as a JythonExecException, but doesn't always work. '''
-            abortCause = chartScope.abortCause.getLocalizedMessage()
+            abortCause = chart.abortCause.getLocalizedMessage()
         except:
             abortCause = "Unknown Error"
             
     msg = msg + NEWLINE + abortCause
-    notifyGatewayError(chartScope, stepProperties, msg, logger)
+    notifyGatewayError(chart, stepProperties, msg, logger)
     
     if logger <> None:
         logger.error("Canceling the chart due to an error.")
@@ -58,8 +58,8 @@ def abortHandler(chartScope, msg):
         print "*****************************************"
     
     '''cancel the entire chart hierarchy'''
-    topChartRunId = getTopChartRunId(chartScope)
-    chartPath = getChartPath(chartScope)
+    topChartRunId = getTopChartRunId(chart)
+    chartPath = getChartPath(chart)
     
     print "The chart path of the aborting chart is", chartPath
     logger.infof("Cancelling chart with id: %s", str(topChartRunId))
@@ -98,14 +98,26 @@ def chartIsRunning(chartPath):
         running = False
         
     return running
-    
 
-def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
+def handleUnexpectedGatewayErrorWithKnownCause(chartScope, stepProperties, msg, logger=None):
     '''
-    Report an unexpected error so that it is visible to the operator--
-    e.g. put in a message queue. Then cancel the chart.
-    '''  
-    notifyGatewayError(chartScope, stepProperties, msg, logger)
+    Report an unexpected error to the operator by posting a message to the client.
+    This version does not include a Java/Python stack trace.  It should be used when we have really narrowed down the error cause
+    and can supply an adequate error message.  Send an message to the client and then cancelthe chart from the top down.
+    '''
+    chartPath = chartScope.get("chartPath", "")
+    if stepProperties == None:
+        stepName = "Unknown"
+    else:
+        stepName = getStepProperty(stepProperties, NAME)
+        
+    import sys
+    exception = sys.exc_info()[1]
+    
+    payloadMsg = "Chart path: %s\nStep Name: %s\n%s\n%s\nCancelling the Unit Procedure." % (chartPath, stepName, msg, str(exception))
+    payload = dict()
+    payload[MESSAGE] = payloadMsg
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
     
     if logger <> None:
         logger.error("Canceling the chart due to an error.")
@@ -113,23 +125,56 @@ def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
         print "Canceling the chart due to an error."
     cancelChart(chartScope)
 
+
+def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
+    '''
+    Report an unexpected error to the operator by posting a message to the client.
+    '''  
+    notifyGatewayError(chartScope, stepProperties, msg, logger)
+    
+    if logger <> None:
+        logger.error("Canceling the chart due to an error.")
+    else:
+        print "Canceling the chart due to an error."
+
+    cancelChart(chartScope)
+
 def notifyGatewayError(chartScope, stepProperties, msg, logger=None):
-    '''  Report an unexpected error so that it is visible to the operator.  '''
+    '''  Report an unexpected error to the operator by posting a message to the client.  '''
     fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
     chartPath = chartScope.get("chartPath", "")
     if stepProperties == None:
         stepName = "Unknown"
     else:
         stepName = getStepProperty(stepProperties, NAME)
-    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
+    
+    print "-------------------------------"
+    print "msg:", msg
+    print "-------------------------------"
+    print "fullMsg: ", fullMsg
+    print "-------------------------------"
+    print "tracebackMsg: ", tracebackMsg
+    print "-------------------------------"
+    print "javaCauseMsg: ", javaCauseMsg
+    print "-------------------------------"
+    
+    payloadMsg = "Chart path: %s\nStep Name: %s\n\nException details:%s" % (chartPath, stepName, fullMsg)
+    
+    if tracebackMsg.find("None") != 0:
+        print "Adding traceback"
+        payloadMsg = "%s\n%s" % (payloadMsg, tracebackMsg)
+    
+    if javaCauseMsg != None:
+        print "Adding javaCauseMsg"
+        payloadMsg = "%s\n%s" % (payloadMsg, javaCauseMsg)
+        
     payload = dict()
     payload[MESSAGE] = payloadMsg
     sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
     
 def handleExpectedGatewayError(chartScope, stepName, msg, logger=None):
     '''
-    Report an expected error so that it is visible to the operator--
-    e.g. put in a message queue. Then cancel the chart.
+    Report an unexpected error to the operator by posting a message to the client
     '''
 
     chartPath = chartScope.get("chartPath", "")
@@ -434,6 +479,13 @@ def getChartLogger(chartScope):
 def getChartPath(chartProperties):
     return chartProperties.chartPath 
 
+def getConsoleName(chartProperties, db):
+    controlPanelId = getControlPanelId(chartProperties)
+    SQL = "select ConsoleName from TkConsole C, SfcControlPanel CP "\
+        " where CP.PostId = C.PostId and CP.ControlPanelId = %d" % (controlPanelId)
+    consoleName = system.db.runScalarQuery(SQL, db) 
+    return consoleName
+
 def getControlPanelId(chartScope):
     topScope = getTopLevelProperties(chartScope)
     controlPanelId=topScope.get(CONTROL_PANEL_ID,None)
@@ -518,14 +570,6 @@ def getProject(chartProperties):
     from ils.sfc.common.constants import PROJECT
     return str(getTopLevelProperties(chartProperties)[PROJECT])
 
-def getConsoleName(chartProperties, db):
-    controlPanelId = getControlPanelId(chartProperties)
-    SQL = "select ConsoleName from TkConsole C, SfcControlPanel CP "\
-        " where CP.PostId = C.PostId and CP.ControlPanelId = %d" % (controlPanelId)
-    consoleName = system.db.runScalarQuery(SQL, db) 
-    return consoleName
-
-
 def getProviderName(chartProperties):
     '''Get the name of the tag provider for this chart, taking isolation mode into account'''
     from system.ils.sfc import getProviderName, getIsolationMode
@@ -567,6 +611,39 @@ def getTimeFactor(chartProperties):
     from system.ils.sfc import getTimeFactor as getModuleTimeFactor
     isolationMode = getIsolationMode(chartProperties)
     return getModuleTimeFactor(isolationMode)
+
+class TimerException(Exception):
+    def __init__(self, txt):
+        self.txt = txt
+    def __str__(self):
+        return "Timer Error: " + self.txt
+        
+def getTimer(chartScope, stepScope, stepProperties):
+    from ils.sfc.common.constants import TIMER_LOCATION, TIMER_KEY
+    from ils.sfc.recipeData.api import s88GetRecipeDataId
+    
+    timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
+    timerKey = getStepProperty(stepProperties, TIMER_KEY)
+    
+    ''' Check if the user specified a attribute along with timer key. '''
+    if timerKey.find(".") > -1:
+        attr = timerKey[timerKey.find("."):]
+        raise TimerException("Illegal timer key: <%s>\nThe timer key should not include the recipe data attribute: <%s>" % (timerKey, attr))
+    
+    ''' Check if the user forgot to specify the timer key. '''
+    if timerKey == "":
+        raise TimerException("Missing timer key - the timer key has not been specified!")
+        
+    logger.tracef("...using timer %s.%s...", timerLocation, timerKey)
+    try:
+        timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
+    except:
+        raise TimerException("Unable to find the timer for this step.\nRecipe data does not exist with key: <%s> at scope: <%s>" % (timerKey, timerLocation))
+    
+    if timerRecipeDataType != "Timer":
+        raise TimerException("Invalid type of recipe data for a timer.\nThe data at <%s.%s> is a <%s> and should be a <Timer>" % (timerLocation, timerKey, timerRecipeDataType))
+   
+    return timerRecipeDataId
 
 def getTopChartRunId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''

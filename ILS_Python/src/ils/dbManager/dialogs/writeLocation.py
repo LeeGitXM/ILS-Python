@@ -11,6 +11,7 @@ from ils.common.util import getRootContainer
 from ils.dbManager.sql import idForPost
 from ils.common.error import notifyError
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
 
 # Called only when the screen is first displayed
@@ -24,6 +25,7 @@ def internalFrameActivated(component):
 
 # Re-query the database and update the screen accordingly.
 def requery(component):
+    db = getDatabaseClient()
     log.info("unit.requery ...")
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
@@ -32,7 +34,7 @@ def requery(component):
         " FROM TkWriteLocation "\
         " ORDER by Alias"
     try:
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         table.data = pds
     except:
         notifyError(__name__, "Fetching families")
@@ -40,6 +42,7 @@ def requery(component):
 # Delete the selected row.  The family is a primary key for many of the other recipe tables.  This delete works using cascade deletes.
 def deleteRow(button):
     log.info("recipeFamily.deleteRow ...")
+    db = getDatabaseClient()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -51,7 +54,7 @@ def deleteRow(button):
         confirm = system.gui.confirm("Are you sure that you want to delete write location <%s>?" % (alias))
         if confirm:
             SQL = "DELETE FROM TkWriteLocation WHERE WriteLocationId="+str(writeLocationId)
-            system.db.runUpdateQuery(SQL)
+            system.db.runUpdateQuery(SQL, database=db)
             ds = system.dataset.deleteRow(ds,rownum)
             table.data = ds
             table.selectedRow = -1
@@ -67,6 +70,7 @@ def showWindow():
 # Update database for a cell edit
 def update(table, row, colname, value):
     log.info("%s.update (%d:%s)=%s ..." % (__name__, row, colname, str(value)))
+    db = getDatabaseClient()
     ds = table.data
     writeLocationId = ds.getValueAt(row,0)
     
@@ -78,13 +82,13 @@ def update(table, row, colname, value):
         if alias <> "" and serverName <> "" and scanClass <> "":
             SQL = "insert into TkWriteLocation (Alias, ServerName, ScanClass) values ('%s', '%s', '%s') " % (alias, serverName, scanClass)
             log.info(SQL)
-            writeLocationId = system.db.runUpdateQuery(SQL)
+            writeLocationId = system.db.runUpdateQuery(SQL, database=db)
             ds = system.dataset.setValue(ds, row, "WriteLocationId", writeLocationId)
 
     else:
         SQL = "UPDATE TkWriteLocation SET "+colname+" = '"+value+"' WHERE WriteLocationId="+str(writeLocationId)
         log.info(SQL)
-        system.db.runUpdateQuery(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
     
 def addCallback(event):
     rootContainer = event.source.parent
@@ -93,10 +97,10 @@ def addCallback(event):
     ds = system.dataset.addRow(ds, [-1,"", "", ""])
     table.data = ds
     
-def exportCallback(event):        
+def exportCallback(event):
+    db = getDatabaseClient()      
     SQL = "SELECT WriteLocationId, Alias, ServerName, ScanClass FROM TkWriteLocation ORDER by Alias"
-
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     csv = system.dataset.toCSV(pds)
     filePath = system.file.saveFile("WriteLocation.csv", "csv", "Comma Separated Values")
     if filePath:

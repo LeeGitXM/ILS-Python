@@ -15,12 +15,13 @@ from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STA
     SECONDARY_SORT_KEY, SECONDARY_SORT_BY_ALPHABETICAL, SECONDARY_SORT_BY_ORDER
 from system.ils.sfc import getMonitorDownloadsConfig
 from ils.sfc.gateway.downloads import handleTimer
-from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpectedGatewayError, sendMessageToClient, getStepProperty, getControlPanelId, \
-    registerWindowWithControlPanel, getTopChartRunId, getDatabaseName
+from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpectedGatewayError, handleUnexpectedGatewayErrorWithKnownCause, \
+    sendMessageToClient, getStepProperty, getControlPanelId, \
+    registerWindowWithControlPanel, getTopChartRunId, getDatabaseName, TimerException
 
 '''
 I'd like the Download GUI block to work the same as PV Monitoring, but this block doesn't have a watch/monitoring setting for each item
-so I need to infer the users intent!  If the recipe data is an input then always show it, if the recipe data is an output then respect the DOWNLOAD flag.
+so I need to infer the user's intent!  If the recipe data is an input then always show it, if the recipe data is an output then respect the DOWNLOAD flag.
 If the download flag is dynamically set, then we don't want to show items that are not slated for download.  It the user wants to watch something 
 then they should use an input recipe data pointing at the PV of the controller.
 In summary, just because an item is configured in this block does not gaurantee that it will be shown at run time.
@@ -38,11 +39,15 @@ def activate(scopeContext, stepProperties, state):
         log = getChartLogger(chartScope)
         log.tracef("In monitorDownload.activate()...")
     
+        '''
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
-        secondarySortKey = getStepProperty(stepProperties, SECONDARY_SORT_KEY)
         log.tracef("...using timer %s.%s...", timerLocation, timerKey)
         timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
+        '''
+        
+        from ils.sfc.gateway.api import getTimer
+        timerRecipeDataId = getTimer(chartScope, stepScope, stepProperties)
          
         secondarySortKey = getStepProperty(stepProperties, SECONDARY_SORT_KEY)
         if secondarySortKey == None:
@@ -122,17 +127,19 @@ def activate(scopeContext, stepProperties, state):
                 
                 SQL = "insert into SfcDownloadGUITable (windowId, RecipeDataId, RecipeDataType, labelAttribute) "\
                         "values ('%s', '%s', '%s', '%s')" % (windowId, recipeDataId, recipeDataType, row.labelAttribute)
-                print SQL
+
                 system.db.runUpdateQuery(SQL, database)
         
-        #TODO This is temprary to see if this is even used!
-        recipeDataStepUUID = -1
-        payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, TARGET_STEP_UUID: recipeDataStepUUID, IS_SFC_WINDOW: True}
+        payload = {WINDOW_ID: windowId, WINDOW_PATH: windowPath, IS_SFC_WINDOW: True}
         sendMessageToClient(chartScope, messageHandler, payload)
         
         log.tracef("   Monitor Download payload: %s", str(payload))
         log.trace("...leaving monitorDownload.activate()")      
+
+    except TimerException:
+        handleUnexpectedGatewayErrorWithKnownCause(chartScope, stepProperties, "Unexpected error in %s" % (__name__), log)
+
     except:
-        handleUnexpectedGatewayError(chartScope, stepProperties, 'Unexpected error in monitorDownload.py', log)
+        handleUnexpectedGatewayError(chartScope, stepProperties, "Unexpected error in %s" % (__name__), log)
 
     return True

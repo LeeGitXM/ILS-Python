@@ -4,6 +4,8 @@ Created on Mar 21, 2017
 @author: phass
 
 Scripts in support of the "Gains" dialog
+
+*** THIS IS OBSOLETE *** (PH 11/2/2021)
 '''
 
 import system

@@ -10,6 +10,7 @@ import system
 from ils.common.util import getRootContainer
 from ils.common.error import notifyError
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
 
 
@@ -25,18 +26,17 @@ def showWindow():
 def internalFrameOpened(window):
     log.trace("InternalFrameOpened")
 
-
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"
 def internalFrameActivated(rootContainer):
     log.trace("InternalFrameActivated")
     requery(rootContainer)
 
-
 # Re-query the database and update the screen accordingly.
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("flyingswitch.requery ...")
+    db = getDatabaseClient()
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
     
@@ -45,7 +45,7 @@ def requery(component):
         "ORDER BY CurrentGrade, NextGrade"
     
     try:
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         table.data = pds
     except:
         notifyError(__name__, "Fetching Flying Switches")
@@ -54,6 +54,7 @@ def requery(component):
 # By deleting a row, we are deleting a flying switch grade transition.
 def deleteRow(button):
     log.info("flyingswitch.deleteRow ...")
+    db = getDatabaseClient()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -64,7 +65,7 @@ def deleteRow(button):
         try:
             SQL = "DELETE FROM RtAllowedFlyingSwitch WHERE id = %i" % (rowId)
             log.trace(SQL)
-            rows = system.db.runUpdateQuery(SQL)
+            rows = system.db.runUpdateQuery(SQL, database=db)
             log.trace("%d rows were deleted" % (rows))
         except:
             notifyError(__name__, "Error deleting a Flying Switch")
@@ -90,6 +91,7 @@ def addRow(button):
 # Update database for a cell edit.  Can do an insert or update!
 def update(table,row):
     log.info("flyingswitch.update (row %d)..." % (row))
+    db = getDatabaseClient()
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     rowId = ds.getValueAt(row,'Id')
@@ -101,7 +103,7 @@ def update(table,row):
         try:
             SQL = "INSERT into RtAllowedFlyingSwitch (CurrentGrade, NextGrade) values ('%s', '%s')" % (str(currentGrade), str(nextGrade))
             log.trace(SQL)
-            rowId = system.db.runUpdateQuery(SQL, getKey=True)
+            rowId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
             log.trace("Inserted new id: %s" % (str(id)))
 
         except:
@@ -117,7 +119,7 @@ def update(table,row):
             SQL = "UPDATE RtAllowedFlyingSwitch SET CurrentGrade = '%s', NextGrade = '%s' " \
                 " WHERE Id = %s " % (str(currentGrade), str(nextGrade), str(rowId))
             log.trace(SQL)
-            rows = system.db.runUpdateQuery(SQL)
+            rows = system.db.runUpdateQuery(SQL, database=db)
             log.trace("Updated %d rows" % (rows))
         except:
             notifyError(__name__, "Error updating RtAllowedFlyingSwitch.")

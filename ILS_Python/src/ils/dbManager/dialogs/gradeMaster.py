@@ -13,6 +13,7 @@ from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
 
 # When the screen is first displayed, set widgets for user defaults
@@ -22,7 +23,6 @@ def internalFrameOpened(component):
     root = getRootContainer(component)
     active = root.getComponent("ActiveOnlyCheckBox")
     active.selected = True
-
 
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"
@@ -37,6 +37,7 @@ def internalFrameActivated(component):
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("grademaster.requery ...")
+    db = getDatabaseClient()
     rootContainer = getRootContainer(component)
     table = rootContainer.getComponent("DatabaseTable")
     
@@ -57,9 +58,8 @@ def requery(component):
 
     log.trace(SQL)
     
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     table.data = pds
-
 
 # Clear the popup screen.
 def refreshPopup(component):
@@ -69,10 +69,10 @@ def refreshPopup(component):
     dropdown = container.getComponent("FamilyDropdown")
     dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))    
 
-
 # Called from a button on the Grade Master screen
 # (I don't think this is ever called)
 def deleteGrade(component):
+    db = getDatabaseClient()
     container = getRootContainer(component)
     dropbox = container.getComponent("GradeDeletionDropdown")
     grade = dropbox.selectedStringValue
@@ -80,7 +80,7 @@ def deleteGrade(component):
     
     confirm = system.gui.confirm("Are you sure that you want to delete grade <%S> from family <%s>?" % (grade, family))
     if confirm:
-        tx = system.db.beginTransaction()
+        tx = system.db.beginTransaction(database=db)
         
         try:
             # Take care of the detail, we're deleting all versions
@@ -101,6 +101,7 @@ def deleteGrade(component):
 # By deleting a row, we are deleting a version for the grade.
 def deleteRow(button):
     log.info("grademaster.deleteRow ...")
+    db = getDatabaseClient()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -113,7 +114,7 @@ def deleteRow(button):
     
     confirm = system.gui.confirm("Are you sure that you want to delete grade: <%s> version: <%s> from family <%s>?" % (grade, vers, familyName))
     if confirm:
-        tx = system.db.beginTransaction()
+        tx = system.db.beginTransaction(database=db)
         
         try:
             # Take care of the detail, we're deleting all versions
@@ -147,6 +148,7 @@ def deleteRow(button):
 # When complete, the button will re-query
 def duplicateRow(button):
     log.info("grademaster.duplicateRow ...")
+    db = getDatabaseClient()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
     rownum = table.selectedRow
@@ -156,7 +158,7 @@ def duplicateRow(button):
     vers = nextVersion(familyId,grade)
     log.infof("Duplicating family: %s, grade: %s, version: %s...", str(familyId), str(grade), str(vers - 1))
 
-    tx = system.db.beginTransaction()
+    tx = system.db.beginTransaction(database=db)
     try:
         SQL = "INSERT INTO RtGradeMaster(RecipeFamilyId,Grade,Version,Active) VALUES("+str(familyId)+",'"+str(grade)+"',"+str(vers)+",0)"
         log.trace(SQL)
@@ -184,10 +186,10 @@ def duplicateRow(button):
     if checkBox.selected:
         system.gui.messageBox("The new version was created as Inactive - in order to see it you must uncheck the 'Active Only' checkbox.")
 
-#     
 def nextVersion(familyId,grade):
+    db = getDatabaseClient()
     SQL = "SELECT MAX(Version) FROM RtGradeMaster WHERE Grade='"+str(grade)+"' AND RecipeFamilyId="+str(familyId)
-    val = system.db.runScalarQuery(SQL)
+    val = system.db.runScalarQuery(SQL, database=db)
     val = val + 1
     return val
 
@@ -205,7 +207,7 @@ Cell does a re-query
 '''
 def update(table,row,colname,value):
     log.info("grademaster.update, row:%d, column:%s, value:%s ..." % (row, colname, str(value)))
-    
+    db = getDatabaseClient()    
     ds = table.data
     recipeFamilyId = ds.getValueAt(row,"RecipeFamilyId")
     grade = ds.getValueAt(row,"Grade")
@@ -216,22 +218,22 @@ def update(table,row,colname,value):
     if str(value) == "0":
         SQL = "UPDATE RtGradeMaster SET ACTIVE=0 WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"' AND Version="+str(vers)
         print SQL
-        rows = system.db.runUpdateQuery(SQL)
+        rows = system.db.runUpdateQuery(SQL, database=db)
         print "Updated %d rows" % (rows)
     
     else:
         # Before setting the value, we need to make all other versions inactive
         SQL = "UPDATE RtGradeMaster SET ACTIVE=0 WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"'"
-        system.db.runUpdateQuery(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
         
         SQL = "UPDATE RtGradeMaster SET ACTIVE=1"
         SQL = SQL+" WHERE RecipeFamilyId="+str(recipeFamilyId)+" AND Grade='"+str(grade)+"' AND Version="+str(vers)
-        system.db.runUpdateQuery(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
 
 
 def exportCallback(event):
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family and active flag.  <br>Would you like to export the <b>entire</b> table?")
-    
+    db = getDatabaseClient()
     rootContainer = event.source.parent
     
     andWhere = ""
@@ -252,7 +254,7 @@ def exportCallback(event):
     
     log.trace(SQL)
 
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     csv = system.dataset.toCSV(pds)
     filePath = system.file.saveFile("GradeMaster.csv", "csv", "Comma Separated Values")
     if filePath:

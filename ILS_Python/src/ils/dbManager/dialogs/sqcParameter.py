@@ -10,6 +10,7 @@ import string, system
 from ils.dbManager.sql import idForFamily
 from ils.common.error import notifyError
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
 
 # When the screen is first displayed, set widgets for user defaults
@@ -25,6 +26,7 @@ def internalFrameActivated(rootContainer):
 # By adding a new parameter, we are adding a new parameter for every grade for the family
 # Will get an error if the row exists.
 def insertRow(rootContainer):
+    db = getDatabaseClient()
     # Family
     family = rootContainer.family
     if family == "" or string.upper(family) == "ALL":
@@ -39,7 +41,7 @@ def insertRow(rootContainer):
         try:
             SQL = "INSERT INTO RtSQCParameter(RecipeFamilyId, Parameter) VALUES(%s, '%s')" % (str(familyId), parameter)
             log.trace(SQL)
-            system.db.runUpdateQuery(SQL)
+            system.db.runUpdateQuery(SQL, database=db)
         except:
             notifyError(__name__, "Inserting a SQC Parameter")
         else:

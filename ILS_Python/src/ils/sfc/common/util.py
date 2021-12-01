@@ -10,6 +10,8 @@ from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTR
     HANDLER, MESSAGE_QUEUE, ORIGINATOR, POSITION, PROJECT, SCALE, POST
 from ils.common.util import isClientScope
 
+log = system.util.getLogger(__name__)
+
 '''
 This is designed to be called from a tag change script that will trigger the execution of a SFC.   
 An SFC will run just fine without the control panel, even if control panel messages are used.  If the SFC 
@@ -259,25 +261,31 @@ def getChartStatus(runId):
 
 def chartIsRunning(chartPath, isolationMode=False):
     '''Check if the given chart is running. '''
-    print "Checking if <%s> is already running in Isolation Mode: %s..." % (chartPath, isolationMode)
+    log.infof("Checking if <%s> is currently running in Isolation Mode: %s...", chartPath, isolationMode)
     ds = system.sfc.getRunningCharts(chartPath)
-    print "Fetched %d running <%s> charts" % (ds.rowCount, chartPath)
+    log.tracef("Found %d running <%s> chart(s)", ds.rowCount, chartPath)
     if ds.rowCount == 0:
+        log.infof("The chart is NOT already running!")
         return False
     
+    ''' We found a running chart, determine if the isolation Mode of the running chart matches the desired isolation mode.'''
     for row in range(ds.rowCount):
         chartState = str(ds.getValueAt(row, "ChartState"))
-        print "The chart state is: <%s>" % (chartState)
+        log.tracef("The chart state is: <%s>", str(chartState))
         if string.upper(chartState) in ["RUNNING", "PAUSED"]:
             instanceId = ds.getValueAt(row, "instanceId")
-            print "...found a running chart with instance id: ", instanceId
-            chartScope = system.sfc.getVariables(instanceId)
+            log.tracef("...found a running chart with instance id: %s", instanceId)
+            chartVars = system.sfc.getVariables(instanceId)
+            log.tracef("Chart variables: %s", str(chartVars))
 
-            if chartScope.get("isolationMode", "UNKNOWN") == isolationMode:
+            instanceIsolationMode = chartVars.get("isolationMode", None)
+            log.tracef("Running chart isolation mode: %s", str(instanceIsolationMode))
+            
+            if instanceIsolationMode == isolationMode:
+                log.infof("The chart IS already running!")
                 return True
-            else:
-                print "The isolation mode does not match so keep looking..."
-
+        
+    log.infof("The chart is NOT already running!")
     return False
 
 def logExceptionCause(contextMsg, logger=None):

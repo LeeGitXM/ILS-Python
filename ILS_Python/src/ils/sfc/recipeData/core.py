@@ -231,14 +231,14 @@ def getRecipeDataId(stepName, stepId, keyOriginal, db):
     if len(pds) == 0:
         if folder == "":
             logger.errorf("Error the key <%s> was not found for step <%s>", key, stepName)
-            raise ValueError, "Missing recipe data - Key <%s> was not found for step <%s> (id %d)" % (key, stepName, stepId)
+            raise RecipeException("Missing recipe data - Key <%s> was not found for step <%s> (id %d)" % (key, stepName, stepId))
         else:
             logger.errorf("Error the key <%s.%s> was not found for step <%s>", folder, key, stepName)
-            raise ValueError, "Missing recipe data - Key <%s.%s> was not found for step <%s> (id %d)" % (folder, key, stepName, stepId)
+            raise RecipeException("Missing recipe data - Key <%s.%s> was not found for step <%s> (id %d)" % (folder, key, stepName, stepId))
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
-        raise ValueError, "Multiple records were found for key <%s> for step %s (id %d))" % (keyOriginal, stepName, stepId)
+        raise RecipeException("Multiple records were found for key <%s> for step %s (id %d))" % (keyOriginal, stepName, stepId))
     
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
@@ -306,7 +306,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
             val = record["%sVALUE" % string.upper(valueType)]
             logger.tracef("Fetched the value: %s", str(val))
         else:
-            raise ValueError, "Unsupported attribute: %s for a simple value recipe data %s" % (attribute, record['RECIPEDATAKEY']) 
+            raise RecipeException("Unsupported attribute: %s for a simple value recipe data %s" % (attribute, record['RECIPEDATAKEY']))
     
     elif recipeDataType == TIMER:
         SQL = "select STARTTIME, STOPTIME, TIMERSTATE, CUMULATIVEMINUTES from SfcRecipeDataTimer where RecipeDataId = %s" % (recipeDataId)
@@ -337,7 +337,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
                 val = 0.0
 
         else:
-            raise ValueError, "Unsupported attribute: %s for a timer recipe data" % attribute
+            raise RecipeException("Unsupported attribute: %s for a timer recipe data" % attribute)
         
         logger.tracef("Fetched the value: %s", str(val))
         
@@ -352,7 +352,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
         if attribute in ["PRESENTATIONORDER", "STORETAG", "COMPARETAG", "MODEATTRIBUTE", "MODEVALUE", "CHANGELEVEL", "RECOMMENDEDVALUE", "LOWLIMIT", "HIGHLIMIT"]:
             val = record[attribute]
         else:
-            raise ValueError, "Unsupported attribute: %s for an input recipe data %s" % (attribute, record['RECIPEDATAKEY'])
+            raise RecipeException("Unsupported attribute: %s for an input recipe data %s" % (attribute, record['RECIPEDATAKEY']))
     
     elif recipeDataType == SQC:
         SQL = "select RECIPEDATAKEY, LOWLIMIT, TARGETVALUE, HIGHLIMIT from SfcRecipeDataSQCView where RecipeDataId = %s" % (recipeDataId)
@@ -362,7 +362,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
         if attribute in ["LOWLIMIT", "TARGETVALUE", "HIGHLIMIT"]:
             val = record[attribute]
         else:
-            raise ValueError, "Unsupported attribute: %s for an sqc recipe data %s" % (attribute, record['RECIPEDATAKEY'])
+            raise RecipeException("Unsupported attribute: %s for an sqc recipe data %s" % (attribute, record['RECIPEDATAKEY']))
     
     elif recipeDataType == INPUT:
         SQL = "select TAG, RECIPEDATAKEY, VALUETYPE, ERRORCODE, ERRORTEXT, RECIPEDATATYPE, "\
@@ -383,7 +383,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
             theAttribute = "PV%sVALUE" % (valueType)
             val = record[theAttribute]
         else:
-            raise ValueError, "Unsupported attribute: %s for an input recipe data %s" % (attribute, record['RECIPEDATAKEY'])
+            raise RecipeException("Unsupported attribute: %s for an input recipe data %s" % (attribute, record['RECIPEDATAKEY']))
     
     elif recipeDataType == OUTPUT:
         SQL = "select RECIPEDATAKEY, TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
@@ -409,7 +409,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
             theAttribute = "PV%sVALUE" % (valueType)
             val = record[theAttribute]
         else:
-            raise ValueError, "Unsupported attribute: %s for an output recipe data %s" % (attribute, record['RECIPEDATAKEY'])
+            raise RecipeException("Unsupported attribute: %s for an output recipe data %s" % (attribute, record['RECIPEDATAKEY']))
     
     elif recipeDataType == OUTPUT_RAMP:
         SQL = "select RECIPEDATAKEY, TAG, VALUETYPE, OUTPUTTYPE, DOWNLOAD, DOWNLOADSTATUS, ERRORCODE, ERRORTEXT, TIMING, RECIPEDATATYPE, "\
@@ -436,7 +436,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
             theAttribute = "PV%sVALUE" % (valueType)
             val = record[theAttribute]
         else:
-            raise ValueError, "Unsupported attribute: %s for an output ramp recipe data %s" % (attribute, record['RECIPEDATAKEY'])
+            raise RecipeException("Unsupported attribute: %s for an output ramp recipe data %s" % (attribute, record['RECIPEDATAKEY']))
     
     elif recipeDataType == ARRAY:
         if attribute == "VALUE":
@@ -469,7 +469,7 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
                 val = record["%sVALUE" % string.upper(valueType)]
                 logger.tracef("Fetched the value: %s", str(val))
         else:
-            raise ValueError, "Unsupported attribute: %s for array recipe data" % (attribute)
+            raise RecipeException("Unsupported attribute: %s for array recipe data" % (attribute))
     
     elif recipeDataType == MATRIX:
         if attribute == "VALUE":
@@ -519,10 +519,10 @@ def fetchRecipeDataFromId(recipeDataId, recipeDataType, attribute, units, arrayI
                 logger.tracef("Fetched the value: %s", str(val))
 
         else:
-            raise ValueError, "Unsupported attribute: %s for matrix recipe data" % (attribute)
+            raise RecipeException("Unsupported attribute: %s for matrix recipe data" % (attribute))
     
     else:
-        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
+        raise RecipeException("Unsupported recipe data type: %s" % (recipeDataType))
     
     return val
 
@@ -557,11 +557,11 @@ def fetchRecipeDataRecord(stepName, stepId, folderId, key, db):
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         logger.errorf("Error: the key <%s> was not found for step <%s>", key, stepName)
-        raise ValueError, "Missing recipe data - Key <%s> was not found for step <%s>" % (key, stepName)
+        raise RecipeException("Missing recipe data - Key <%s> was not found for step <%s>" % (key, stepName))
     
     if len(pds) > 1:
         logger.errorf("Error: multiple records were found for key <%s> for step <%s>", key, stepName)
-        raise ValueError, "Multiple records were found for key <%s> for step <%s>" % (key, stepName)
+        raise RecipeException("Multiple records were found for key <%s> for step <%s>" % (key, stepName))
     
     record = pds[0]
     recipeDataId = record["RECIPEDATAID"]
@@ -644,11 +644,11 @@ def fetchRecipeDataRecordFromRecipeDataId(recipeDataId, recipeDataType, db):
         return val
     
     else:
-        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
+        raise RecipeException("Unsupported recipe data type: %s" % (recipeDataType))
 
     pds = system.db.runQuery(SQL, db)
     if len(pds) <> 1:
-        raise ValueError, "%d rows were returned when exactly 1 was expected" % (len(pds))
+        raise RecipeException("%d rows were returned when exactly 1 was expected" % (len(pds)))
 
     record = pds[0]
     return record
@@ -732,7 +732,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
             SQL = "select ValueType, %s from SfcRecipeDataInputView where RecipeDataId = %s" % (attrName, recipeDataId)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to find the value type for Input recipe data"
+                raise RecipeException("Unable to find the value type for Input recipe data")
             record = pds[0]
             valueType = record["ValueType"]
             valueId = record[attrName]
@@ -751,7 +751,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
         else:
             txt = "Unsupported attribute <%s> for input recipe data" % (attribute)
             logger.errorf(txt)
-            raise ValueError, txt
+            raise RecipeException(txt)
             
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d input recipe data records', rows)
@@ -779,7 +779,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
             logger.tracef(SQL)
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
-                raise ValueError, "Unable to find the value type for Output recipe data"
+                raise RecipeException("Unable to find the value type for Output recipe data")
             record = pds[0]
             valueType = record["ValueType"]
             valueId = record[attrName]
@@ -810,7 +810,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
             SQL = "update SfcRecipeDataOutputRamp set %s = %s where recipeDataId = %s" % (attribute, str(val), recipeDataId)
         else: 
             logger.errorf("Unsupported attribute <%s> for output recipe data", attribute)
-            raise ValueError, "Unsupported attribute <%s> for %s recipe data" % (attribute, recipeDataType)
+            raise RecipeException("Unsupported attribute <%s> for %s recipe data" % (attribute, recipeDataType))
             
         rows = system.db.runUpdateQuery(SQL, db)
         logger.tracef('...updated %d output recipe data records', rows)
@@ -869,7 +869,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
                     SQL = "update SfcRecipeDataTimer set StopTime = '%s', TimerState = '%s' where RecipeDataId = %d" % (now, TIMER_PAUSED, recipeDataId)
   
             else:
-                raise ValueError, "Unsupported timer command <%s> for timer recipe data" % (val)
+                raise RecipeException("Unsupported timer command <%s> for timer recipe data" % (val))
 
             logger.tracef(SQL)
             rows = system.db.runUpdateQuery(SQL, db)
@@ -880,7 +880,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
 #            logger.tracef('...updated %d timer recipe data records', rows)
         else:
             logger.errorf("Unsupported attribute <%s> for timer recipe data", attribute)
-            raise ValueError, "Unsupported attribute <%s> for timer recipe data" % (attribute)
+            raise RecipeException("Unsupported attribute <%s> for timer recipe data" % (attribute))
         
     
     elif recipeDataType == ARRAY:
@@ -941,7 +941,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
        
     elif recipeDataType == MATRIX:
         if rowIndex == None or columnIndex == None:
-            raise ValueError, "Matrix Recipe data must specify a row and a column index"
+            raise RecipeException("Matrix Recipe data must specify a row and a column index")
         
         # Dereference array keys
         if isText(rowIndex):
@@ -973,7 +973,7 @@ def setRecipeDataFromId(recipeDataId, recipeDataType, attribute, val, units, tar
         
     else:
         logger.errorf("Unsupported recipe data type: %s", record["RecipeDataType"])
-        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
+        raise RecipeException("Unsupported recipe data type: %s" % (recipeDataType))
 
 
 # Separate the key from the array index if there is an array index
@@ -1041,7 +1041,7 @@ def splitKey(keyAndAttribute):
     tokens = keyAndAttribute.split(".")
     if len(tokens) < 2:
         txt = "Recipe access failed while attempting to split the key and attribute because there were not enough tokens: <%s> " % (keyAndAttribute)
-        raise ValueError, txt
+        raise RecipeException(txt)
     folder = ".".join(tokens[:len(tokens) - 2])
     key = string.upper(tokens[len(tokens) - 2])
     attribute = string.upper(tokens[len(tokens) - 1])
@@ -1347,7 +1347,7 @@ def s88GetRecipeDataDS(stepId, recipeDataType, db):
         ds = system.dataset.toDataSet(header, data)
     
     else:
-        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
+        raise RecipeException("Unsupported recipe data type: %s" % (recipeDataType))
     
     return ds
 
@@ -1488,7 +1488,7 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
         logger.errorf('Copying target timer recipe data HAS NOT BEEN IMPLEMENTED...')
     else:
         logger.errorf("Unsupported target recipe data type: %s", targetRecipeDataType)
-        raise ValueError, "Unsupported target recipe data type: %s" % targetRecipeDataType
+        raise RecipeException("Unsupported target recipe data type: %s" % targetRecipeDataType)
         return
     
     if sourceRecipeDataType == SIMPLE_VALUE:
@@ -1526,7 +1526,7 @@ def copySourceToTargetValues(sourceRecord, targetRecord, db):
         logger.errorf('Copying matrix recipe data HAS NOT BEEN IMPLEMENTED...')
     else:
         logger.errorf("Unsupported recipe data type: %s", sourceRecipeDataType)
-        raise ValueError, "Unsupported recipe data type: %s" % (sourceRecipeDataType)
+        raise RecipeException("Unsupported recipe data type: %s" % (sourceRecipeDataType))
 
 def copySourceToTarget(sourceRecord, targetRecord, db):
     '''
@@ -1566,7 +1566,7 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         
     if recipeDataType != targetRecipeDataType:
         errorText = "Unable to copy recipe data of dissimilar type!  %s != %s" % (recipeDataType, targetRecipeDataType)
-        raise ValueError, errorText
+        raise RecipeException(errorText)
         return
     
     if recipeDataType == SIMPLE_VALUE:
@@ -1605,7 +1605,7 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         
     else:
         logger.errorf("Unsupported recipe data type: %s", recipeDataType)
-        raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
+        raise RecipeException("Unsupported recipe data type: %s" % (recipeDataType))
     
 '''
 ************************************************************************************************************
@@ -1661,3 +1661,9 @@ def getProviderName(chartProperties):
     '''Get the name of the tag provider for this chart, taking isolation mode into account'''
     from system.ils.sfc import getProviderName, getIsolationMode
     return getProviderName(getIsolationMode(chartProperties))
+
+class RecipeException(Exception):
+    def __init__(self, txt):
+        self.txt = txt
+    def __str__(self):
+        return "S88 Recipe Error: " + self.txt

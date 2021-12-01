@@ -71,6 +71,7 @@ def updateCallback(rootContainer):
     '''
     This is called when the user presses the button on the "Update Lab Limits From Recipe"
     '''
+    print "In %s.updateCallback" % (__name__)
     tagProvider = getTagProviderClient()
     database = getDatabaseClient()
     

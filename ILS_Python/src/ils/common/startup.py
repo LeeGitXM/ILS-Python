@@ -5,7 +5,7 @@ Created on Nov 18, 2014
 '''
 
 import system, string, time
-from system.ils.log.properties import getUserLibDir
+#from system.ils.log.properties import getUserLibDir
 from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
 from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus,\
@@ -227,8 +227,8 @@ def updateDatabaseSchema(tagProvider, db):
             log.warnf("Exiting updateDatabaseSchema because %s does not exist, (hopefully this is the first startup after an install and the tag will be created later)", tagPath)
             return
         
-        ''' Use the magic function in the SFC module that tells us where Ignition is installered and therefore where the SQL scripts are. '''
-        homeDir = getUserLibPathFromCommonModule()
+        ''' Use the magic function in the SFC module that tells us where Ignition is installed and therefore where the SQL scripts are. '''
+        homeDir = getUserLibPath()
         homeDir = homeDir + "/database/"
         
         currentId = readCurrentDbVersionId(strategy, db)
@@ -251,22 +251,11 @@ def updateDatabaseSchema(tagProvider, db):
         log.errorf("%s", str(txt))
         
     
-def getUserLibPathFromCommonModule():
-    def getter():
-        log.infof("...getting homeDir from Common...")
-        try:
-            homeDir = getUserLibDir()
-        except:
-            log.infof("...COMMON module isn't quite ready, sleeping...")
-            time.sleep(5)
-            homeDir = None
-            
-        return homeDir
-    
-    homeDir = None
-    while homeDir == None:
-        homeDir = getter()
-        
+def getUserLibPath():
+    ''' This only works in gateway scope '''
+    from com.inductiveautomation.ignition.gateway import SRContext
+    context = SRContext.get()
+    homeDir = context.getUserlibDir().getAbsolutePath()
     return homeDir
 
 
@@ -290,6 +279,19 @@ def getTagProviderFromBltModule():
 
 def readCurrentDbVersionId(strategy, db):
     ''' Check if the table exists'''
+    
+    log.tracef("Checking if the version table exists....")
+    count = -1
+    i = 0
+    SQL = "select count(*) FROM sys.Tables"
+    while count < 0 and i < 5:
+        i = i + 1
+        try:
+            count = system.db.runScalarQuery(SQL, db)
+        except:
+            log.infof("...waiting for the database...")
+            time.sleep(5)
+
     log.tracef("Checking if the version table exists....")
     SQL = "select count(*) FROM sys.Tables WHERE  Name = 'Version' AND Type = 'U' "
     count = system.db.runScalarQuery(SQL, db)
@@ -342,7 +344,7 @@ def readCurrentDbVersionId(strategy, db):
 
 
 def createVersionTable(strategy, db):
-    homeDir = getUserLibPathFromCommonModule()
+    homeDir = getUserLibPath()
     filename = homeDir + "/database/createVersion.sql"
 
     log.infof("Creating Version table")

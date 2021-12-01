@@ -277,7 +277,7 @@ class TDCController(controller.Controller):
             
             #CRC Edit 1/6/2021 to only write if you are still in PROGRAM
             qvs = system.tag.readAll([self.path + "/permissive", self.path + "/permissiveValue"])
-            permissiveCheck = (qvs[0].value == qvs[1].value)
+            permissiveCheck = (string.upper(qvs[0].value) == string.upper(qvs[1].value))
             if not(permissiveCheck):
                 print "Exiting because it failed the permissive check"
                 self.permissiveAsFound = qvs[0].value
@@ -296,7 +296,7 @@ class TDCController(controller.Controller):
         ''' Write the final point and confirm this one '''
         #CRC Edit 1/6/2021 to only write if you are still in PROGRAM
         qvs = system.tag.readAll([self.path + "/permissive", self.path + "/permissiveValue"])
-        permissiveCheck = (qvs[0].value == qvs[1].value)
+        permissiveCheck = (string.upper(qvs[0].value) == string.upper(qvs[1].value))
         if permissiveCheck:
             targetTag.writeDatum(val, valType)
         #End CRC Edit 1/6/2021

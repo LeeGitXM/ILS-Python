@@ -401,7 +401,7 @@ def parseRecipeFamilyFromGradeTagPath(tagPath):
 # This is called in response to a grade change (and also maybe on restart).  It fetches the grade specific SQC limits from recipe and 
 # updates the lab data database tables.
 def updateLabLimitsFromRecipe(recipeFamily, grade, tagProvider, database):
-    log.infof("Loading SQC limits from recipe for family: %s, grade: %s, tagProvider: %s", recipeFamily, str(grade), tagProvider)
+    log.infof("In %s.updateLabLimitsFromRecipe(): Loading SQC limits from recipe for family: %s, grade: %s, tagProvider: %s", __name__, recipeFamily, str(grade), tagProvider)
     
     if grade == None:
         log.warn("Unable to load SQC limits for an unknown grade.")

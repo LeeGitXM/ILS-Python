@@ -7,6 +7,7 @@ Created on Sep 20, 2017
 import system
 from ils.common.error import notifyError
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
 
 def internalFrameOpened(rootContainer):
@@ -17,6 +18,7 @@ def internalFrameActivated(rootContainer):
 
 def createFamily(rootContainer):
     print "In createGrade..."
+    db = getDatabaseClient()
     family = rootContainer.getComponent("Family").text
     post = rootContainer.getComponent("Post").selectedStringValue
     postId = rootContainer.getComponent("Post").selectedValue
@@ -52,7 +54,7 @@ def createFamily(rootContainer):
     SQL="INSERT INTO RtRecipeFamily(RecipeFamilyName, RecipeUnitPrefix, RecipeNameAlias, PostId, HasSQC, HasGains, Comment) VALUES(?,?,?,?,?,?,?)"
     
     try:
-        system.db.runPrepUpdate(SQL,[family, unitPrefix, recipeAlias, postId, hasSQC, hasGains, comment])
+        system.db.runPrepUpdate(SQL,[family, unitPrefix, recipeAlias, postId, hasSQC, hasGains, comment], database=db)
     except:
         notifyError(__name__, "Inserting a new family")
         

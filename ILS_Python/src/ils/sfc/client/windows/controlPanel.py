@@ -5,7 +5,7 @@ Created on Dec 9, 2015
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.common.config import getDatabaseClient, getIsolationModeClient
 from ils.sfc.client.util import getStartInIsolationMode
 from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
 from ils.sfc.common.constants import HANDLER, WINDOW
@@ -15,7 +15,7 @@ from ils.sfc.common.notify import sfcNotify
 
 immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SFC/RecipeDataBrowser', 'SFC/RecipeDataEditor', 'SFC/RecipeDataKey', 
                     'SFC/RecipeDataTypeChooser', 'SFC/RecipeDataViewer', 'SFC/SfcHierarchy', 'SFC/SfcHierarchyWithRecipeBrowser', 'SFC/SFC Runner',
-                    'SFC/ControlPanelSFCViewer']
+                    'SFC/ControlPanelSFCViewer', 'SFC/Viewer']
 
 sfcWindowPrefix = 'SFC/'
 
@@ -23,17 +23,18 @@ from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
 def internalFrameOpened(event):
-    print "In internalFrameOpened..."
+    log.infof("In %s.internalFrameOpened()...", __name__)
     rootContainer = event.source.rootContainer
     rootContainer.selectedMessage=0
     rootContainer.autoIndex=True
     
 def openControlPanel(controlPanelName, controlPanelId, startImmediately, position="CENTER"):
-    print "In openControlPanel()..."
-    
-    chartPath = getControlPanelChartPath(controlPanelName)
+    log.infof("In %s.openControlPanel()...", __name__)
+    db = getDatabaseClient()
+    isolationMode = getIsolationModeClient()
+    chartPath = getControlPanelChartPath(controlPanelName, db)
     print "...the chart path for this control panel is: ", chartPath
-    if not chartIsRunning(chartPath):
+    if not chartIsRunning(chartPath, isolationMode):
         print "...the chart is not running so reset the control panel..."
         resetControlPanel(controlPanelName)
     
@@ -63,11 +64,13 @@ def openControlPanel(controlPanelName, controlPanelId, startImmediately, positio
         else:
             system.gui.messageBox('This chart <%s> is already running' % (chartPath))
         
+        ''' I'm not sure what we are refreshing but I hope it has a binding for the database to use '''
         system.db.refresh(rootContainer, "windowData")
 
 def startChartFromControlPanel(rootContainer):
     controlPanelName = rootContainer.controlPanelName
-    chartPath = getControlPanelChartPath(controlPanelName)
+    db = getDatabaseClient()
+    chartPath = getControlPanelChartPath(controlPanelName, db)
     originator = system.security.getUsername()
     project = system.util.getProjectName()
     isolationMode = getStartInIsolationMode()
@@ -82,13 +85,13 @@ def resumeChart(event):
 
 def cancelChart(event):
     system.sfc.cancelChart(system.gui.getParentWindow(event).rootContainer.chartRunId)
-    closeAllPopups()
+    #closeAllPopups()
        
 def updateChartStatus(event):
     '''Get the status of this panel's chart run and set the status field appropriately.
        Will show None if the chart is not running.'''
 
-    database = getDatabaseClient()
+    db = getDatabaseClient()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     
@@ -111,7 +114,7 @@ def updateChartStatus(event):
 
     # Fetch the enable/disable state of the control panel command buttons.
     SQL = "Select * from SfcControlPanel where chartRunId = '%s'" % (chartRunId)
-    pds = system.db.runPrepQuery(SQL, database=database)
+    pds = system.db.runPrepQuery(SQL, database=db)
     
     if len(pds) <> 1:
         return
@@ -133,12 +136,12 @@ def updateChartStatus(event):
 
 def updateMessageCenter(rootContainer):
     # print "Updating the message center... "
-    database = getDatabaseClient()
+    db = getDatabaseClient()
     controlPanelId = rootContainer.controlPanelId
     selectedMessage = rootContainer.selectedMessage
     SQL = "select id, createTime, message, priority, ackRequired, priority + CAST(ackRequired as varchar(5)) as state "\
         " from SfcControlPanelMessage where controlPanelId = %s order by createTime asc" % (str(controlPanelId))
-    pds = system.db.runQuery(SQL, database)
+    pds = system.db.runQuery(SQL, database=db)
     rootContainer.messages = pds
     numMessages = len(pds)
     
@@ -165,7 +168,7 @@ def updateSelectedMessageText(rootContainer):
 
 def reset(event):
     print "In %s.reset()" % (__name__)
-    database = getDatabaseClient()
+    db = getDatabaseClient()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     rootContainer.selectedMessage = 0
@@ -183,12 +186,12 @@ def reset(event):
     post = "?"
     
     SQL = "select windowPath from SfcWindow where controlPanelId = %s" % (controlPanelId)
-    pds = system.db.runQuery(SQL, database) 
+    pds = system.db.runQuery(SQL, database=db) 
     for record in pds:
         windowPath = record["windowPath"]
         print "Closing %s on all clients..." % (windowPath)
         payload = {HANDLER: messageHandler, WINDOW: windowPath}
-        sfcNotify(project, message, payload, post, controlPanelName, controlPanelId, database)
+        sfcNotify(project, message, payload, post, controlPanelName, controlPanelId, db)
     
     resetControlPanel(rootContainer.controlPanelName)
     closeAllPopups()
@@ -203,26 +206,26 @@ def closeAllPopups():
     
 def resetControlPanel(controlPanelName):
     print "Resetting the database for control panel: ", controlPanelName
-    database = getDatabaseClient()
+    db = getDatabaseClient()
     
-    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database)
+    system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database=db)
     
-    controlPanelId = getControlPanelIdForName(controlPanelName, database)
+    controlPanelId = getControlPanelIdForName(controlPanelName, db)
     print "Found control panel id <%s> for <%s>" % (str(controlPanelId), controlPanelName)
     if controlPanelId != None:
-        system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % (controlPanelId), database)
+        system.db.runUpdateQuery("delete from SfcControlPanelMessage where controlPanelId = %s" % (controlPanelId), database=db)
         
         ''' Added this back in with a slightly different where clause, not sure why it was ever removed. -PAH 7/28/21 '''
-        system.db.runUpdateQuery("delete from SfcWindow where controlPanelId = %s" % (controlPanelId), database)
+        system.db.runUpdateQuery("delete from SfcWindow where controlPanelId = %s" % (controlPanelId), database=db)
 
 def getControlPanelIdForChartRunId(chartRunId, db):
     '''Get the control panel id given the name, or None'''
-    controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where chartRunId = '%s'" % (chartRunId), db)
+    controlPanelId = system.db.runScalarQuery("select controlPanelId from SfcControlPanel where chartRunId = '%s'" % (chartRunId), database=db)
     return controlPanelId
     
 def getControlPanelIdForName(controlPanelName, db=""):
     '''Get the control panel id given the name, or None'''
-    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), db)
+    results = system.db.runQuery("select controlPanelId from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database=db)
     if len(results) == 1:
         return results[0][0]
     else:
@@ -232,41 +235,38 @@ def createControlPanel(controlPanelName, db=""):
     '''create a new control panel with the given name, returning the id.
        This name must be unique'''
     system.db.runUpdateQuery("insert into SfcControlPanel (controlPanelName, chartPath, enableCancel, enablePause, enableReset, enableResume, enableStart) "\
-                             "values ('%s', '', 1, 1, 1, 1, 1)" % (controlPanelName), db)
+                             "values ('%s', '', 1, 1, 1, 1, 1)" % (controlPanelName), database=db)
     return getControlPanelIdForName(controlPanelName)
 
-def getControlPanelChartPath(controlPanelName):
+def getControlPanelChartPath(controlPanelName, db):
     '''get the name of the SFC chart associated with the given control panel'''
-    database = getDatabaseClient()
-    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database)
+    results = system.db.runQuery("select chartPath from SfcControlPanel where controlPanelName = '%s'" % (controlPanelName), database=db)
     if len(results) == 1:
         return results[0][0]
     else:
         return None
 
-def getControlPanelIdForChartPath(chartPath):
+def getControlPanelIdForChartPath(chartPath, db):
     '''get the id of the SFC chart associated with the given chart path, or None'''
-    database = getDatabaseClient()
-    results = system.db.runQuery("select controlPanelId from SfcControlPanel where chartPath = '%s'" % (chartPath), database)
+    results = system.db.runQuery("select controlPanelId from SfcControlPanel where chartPath = '%s'" % (chartPath), database=db)
     if len(results) == 1:
         return results[0][0]
     else:
         return None
 
-def setControlPanelChartPath(controlPanelId, chartPath):
+def setControlPanelChartPath(controlPanelId, chartPath, db):
     '''set the name of the SFC chart associated with the given control panel.
        this will fail if there is already a control panel for that chart.
        use getControlPanelForChartPath() to check'''
-    database = getDatabaseClient()
-    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId), database)
+    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId), database=db)
 
 def showMsgQueue(window):
     rootContainer = window.getRootContainer()
     controlPanelId = rootContainer.controlPanelId
-    database = getDatabaseClient()
+    db = getDatabaseClient()
     
     SQL = "Select MsgQueue from SfcControlPanel where ControlPanelId = %s" % (str(controlPanelId))
-    queueKey=system.db.runScalarQuery(SQL, database)
+    queueKey=system.db.runScalarQuery(SQL, database=db)
     
     print "The queue is: ", queueKey
     from ils.queue.message import view
@@ -283,7 +283,7 @@ def ackMessage(window):
     selectedMessage = rootContainer.selectedMessage
     msgId = rootContainer.messages.getValueAt(selectedMessage, 'id')
     SQL = "DELETE from SfcControlPanelMessage where id = '%s'" % msgId
-    numUpdated = system.db.runUpdateQuery(SQL, db)
+    numUpdated = system.db.runUpdateQuery(SQL, database=db)
     
 def findOpenControlPanel(controlPanelName):   
     for window in system.gui.findWindow('SFC/ControlPanel'):
@@ -294,14 +294,40 @@ def findOpenControlPanel(controlPanelName):
 def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, position="CENTER"):
     '''
     Open a control panel to run the given chart, starting the chart if startImmediately is true. If no control panel is associated 
-    with the given chart, use the one with the given name (creating that if it doesn't exist).
+    with the given chart, use the one with the given name (creating it if it doesn't exist).
     This method is useful for development where a "scratch" control panel is used to run many different ad-hoc charts.
     This should only be called from a client. 
     '''
     # First, check for an existing panel associated with this chart:
     db = getDatabaseClient()
-    controlPanelId = getControlPanelIdForChartPath(chartPath)
-    log.infof("In %s.openDynamicControlPanel() - The id for chart %s is %s", __name__, chartPath, str(controlPanelId)) 
+
+    # check for an existing panel with the given name, creating if not found:
+    log.infof("In %s.openDynamicControlPanel() - looking for a control panel named %s", __name__, controlPanelName)
+    controlPanelId = getControlPanelIdForName(controlPanelName, db)
+    log.infof("...found an existing control panel with id: %s", str(controlPanelId))
+    if controlPanelId == None:
+        log.infof("Creating a control panel...")
+        controlPanelId = createControlPanel(controlPanelName, db)
+        log.infof("...the new control panel id is: %s", str(controlPanelId))
+    
+    # reset the panel's chart to the desired one:
+    setControlPanelChartPath(controlPanelId, chartPath, db)
+    
+    log.infof("Opening a control panel named <%s> with id: %s", controlPanelName, str(controlPanelId)) 
+    openControlPanel(controlPanelName, controlPanelId, startImmediately, position)
+    
+def openDynamicControlPanelOriginal(chartPath, startImmediately, controlPanelName, position="CENTER"):
+    '''
+       I'm not sure why I look for a control panel using the chart path, I think priority should be given to the control panel name.
+       
+    Open a control panel to run the given chart, starting the chart if startImmediately is true. If no control panel is associated 
+    with the given chart, use the one with the given name (creating it if it doesn't exist).
+    This method is useful for development where a "scratch" control panel is used to run many different ad-hoc charts.
+    This should only be called from a client. 
+    '''
+    # First, check for an existing panel associated with this chart:
+    db = getDatabaseClient()
+    controlPanelId = getControlPanelIdForChartPath(chartPath, db)
 
     if controlPanelId == None:
         # next, check for an existing panel with the given name, creating if not found:
@@ -311,7 +337,7 @@ def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, posit
             print "Creating a control panel..."
             controlPanelId = createControlPanel(controlPanelName, db)
         # re-set the panel's chart to the desired one:
-        setControlPanelChartPath(controlPanelId, chartPath)
+        setControlPanelChartPath(controlPanelId, chartPath, db)
     
     print "Opening a control panel named: ", controlPanelName
     openControlPanel(controlPanelName, controlPanelId, startImmediately, position)
