@@ -748,7 +748,7 @@ class Sql():
         return stepId
     
     def insertRecipeDataFolder(self, stepId, recipeDataKey, description, label, parentFolderId):
-        log.infof("      Inserting recipe data folder:  %s with parent %d...", recipeDataKey, parentFolderId)
+        log.infof("      Inserting recipe data folder:  %s with parent %s...", recipeDataKey, str(parentFolderId))
         if parentFolderId == None:
             SQL = "insert into SfcRecipeDataFolder (RecipeDataKey, StepId, Description, Label) values ('%s', %d, '%s', '%s')" % (recipeDataKey, stepId, description, label)
         else:
@@ -775,8 +775,8 @@ class Sql():
             SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, Units) values (?, ?, ?, ?, ?, ?, ?)"
             args = [stepId, key, recipeDataTypeId, label, description, advice, units]
         else:
-            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, RecipeDataFolderId, Units) values (%d, '%s', %d, '%s', '%s', '%s', %d, '%s')" % \
-                (stepId, key, recipeDataTypeId, label, description, advice, folderId, units)
+            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, RecipeDataFolderId, Units) values (?, ?, ?, ?, ?, ?, ?, ?)"
+            args = [stepId, key, recipeDataTypeId, label, description, advice, folderId, units]
         
         #recipeDataId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
         recipeDataId = system.db.runPrepUpdate(SQL, args, tx=self.txId, getKey=True)
