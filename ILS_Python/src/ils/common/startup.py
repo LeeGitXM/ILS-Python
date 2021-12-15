@@ -5,11 +5,9 @@ Created on Nov 18, 2014
 '''
 
 import system, string, time
-from system.ils.log.properties import getUserLibDir
 from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
 from ils.common.user import isOperator
-from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus,\
-    removeUnwantedMenus, ConsoleMenus
+from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus, removeUnwantedMenus, ConsoleMenus
 from ils.common.error import catchError
 from ils.io.util import readTag, writeTag
 
@@ -227,7 +225,7 @@ def updateDatabaseSchema(tagProvider, db):
             return
         
         ''' Use the magic function in the SFC module that tells us where Ignition is installered and therefore where the SQL scripts are. '''
-        homeDir = getUserLibPathFromCommonModule()
+        homeDir = getUserLibPath()
         homeDir = homeDir + "/database/"
         
         currentId = readCurrentDbVersionId(strategy, db)
@@ -250,22 +248,11 @@ def updateDatabaseSchema(tagProvider, db):
         log.errorf("%s", str(txt))
         
     
-def getUserLibPathFromCommonModule():
-    def getter():
-        log.infof("...getting homeDir from Common...")
-        try:
-            homeDir = getUserLibDir()
-        except:
-            log.infof("...COMMON module isn't quite ready, sleeping...")
-            time.sleep(5)
-            homeDir = None
-            
-        return homeDir
-    
-    homeDir = None
-    while homeDir == None:
-        homeDir = getter()
-        
+def getUserLibPath():
+    ''' This only works in gateway scope '''
+    from com.inductiveautomation.ignition.gateway import SRContext
+    context = SRContext.get()
+    homeDir = context.getUserlibDir.getAbsolutePath()
     return homeDir
 
 
@@ -341,7 +328,7 @@ def readCurrentDbVersionId(strategy, db):
 
 
 def createVersionTable(strategy, db):
-    homeDir = getUserLibPathFromCommonModule()
+    homeDir = getUserLibDir()
     filename = homeDir + "/database/createVersion.sql"
 
     log.infof("Creating Version table")

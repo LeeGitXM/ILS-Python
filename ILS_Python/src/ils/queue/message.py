@@ -6,9 +6,8 @@ Created on Sep 9, 2014
 import  system, string
 from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
 from ils.common.error import catchError
-from ils.common.config import getDatabaseClient
+from ils.common.config import getDatabaseClient, getProductionDatabase
 from ils.common.windowUtil import positionWindow
-from system.ils.blt.diagram import getProductionDatabase
 from ils.common.user import isAE, isOperator, isAdmin
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)

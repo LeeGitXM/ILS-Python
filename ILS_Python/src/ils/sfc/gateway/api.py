@@ -15,6 +15,7 @@ from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.queue.constants import QUEUE_ERROR
 from ils.sfc.recipeData.api import substituteScopeReferences
+from ils.common.config import getProductionDatabase, getIsolationDatabase
 
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
@@ -448,20 +449,16 @@ def getCurrentMessageQueue(chartProperties):
     topScope = getTopLevelProperties(chartProperties)
     return topScope[MESSAGE_QUEUE]
 
+
 def getDatabaseName(chartProperties):
     '''Get the name of the database this chart is using, taking isolation mode into account'''
     isolationMode = getIsolationMode(chartProperties)
-    
-    ''' I added some strange looking Python to get this to work from the Test Framework. '''
 
     if isolationMode:
-        IM = True
+        db = getIsolationDatabase()
     else:
-        IM = False
+        db = getProductionDatabase()
     
-    ''' Leave this include here to avoid name clash '''
-    from system.ils.sfc import getDatabaseName as systemGetDatabaseName
-    db = systemGetDatabaseName(IM)
     return db
 
 def getDelaySeconds(delay, delayUnit):

@@ -1616,19 +1616,17 @@ These are here to prevent a circular import problem for sfc.recipeData.api back 
 from ils.common.util import substituteProvider
 
 def getDatabaseName(chartProperties):
+    from ils.common.config import getProductionDatabase, getIsolationDatabase
     '''Get the name of the database this chart is using, taking isolation mode into account'''
     isolationMode = getIsolationMode(chartProperties)
     
     ''' I added some strange looking Python to get this to work from the Test Framework. '''
 
     if isolationMode:
-        IM = True
+        db = getIsolationDatabase()
     else:
-        IM = False
+        db = getProductionDatabase()
     
-    ''' Leave this include here to avoid name clash '''
-    from system.ils.sfc import getDatabaseName as systemGetDatabaseName
-    db = systemGetDatabaseName(IM)
     return db
 
 def getIsolationMode(chartProperties):

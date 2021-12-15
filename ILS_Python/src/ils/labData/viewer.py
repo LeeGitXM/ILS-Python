@@ -21,7 +21,9 @@ def launcher(displayTableTitle):
     
     # First check if this queue is already displayed
     windows = system.gui.findWindow(windowName)
+    print "Found %d lab data viewer windows" % (len(windows))
     for window in windows:
+        print "Window: ", window
         windowDisplayTableTitle = window.rootContainer.displayTableTitle
         log.tracef("...found a window with key: %s", windowDisplayTableTitle)
         if windowDisplayTableTitle == displayTableTitle:
@@ -36,9 +38,9 @@ def launcher(displayTableTitle):
 # Initialize the lab data viewer page with all of the parameters that are defined for 
 # this page.  There is really only one component on this window - the template repeater.
 # Once the repeater is configured, each component in the repeater knows how to configure itself.
-def internalFrameActivated(rootContainer):
-    log.tracef("In %s.internalFrameActivated()", __name__)
-     
+def internalFrameActivated(event):
+    log.infof("In %s.internalFrameActivated()", __name__)
+    rootContainer = event.source.rootContainer
     displayTableTitle = rootContainer.displayTableTitle
     log.tracef("The table being displayed is: %s", displayTableTitle)
     

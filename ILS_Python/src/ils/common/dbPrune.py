@@ -5,43 +5,67 @@ Created on Mar 8, 2020
 '''
 
 import system
-from ils.common.config import getDatabase, getTagProvider
+from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.common.constants import CR
 from ils.common.database import toDateString
 from ils.io.util import readTag
+from ils.log.LogRecorder import LogRecorder
+log = LogRecorder(__name__)
 
-def prune():
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__)
+SQL = [
+    "delete from alarm_events where eventTime ",
+    "delete from BtBatchRun where StartDate",
+    "delete from DtDiagnosisEntry where Timestamp",
+    "delete from DtFinalDiagnosisLog where Timestamp",
+    "delete from LtHistory where SampleTime",
+    "delete from QueueDetail where Timestamp",
+    "delete from RtDownloadMaster where DownloadStartTime",
+    "delete from SfcRunLog where StartTime",
+    "delete from TkLogbookDetail where Timestamp"
+    ]
+    
+def pruneClient(event):
+    log.infof("In %s.pruneClient", __name__)
 
-    log.infof("In %s.prune", __name__)
-    
-    db = getDatabase()
-    provider = getTagProvider()
-    
+    db = getDatabaseClient()
+    provider = getTagProviderClient()
     pruneDays = readTag("[%s]Configuration/Common/dbPruneDays" % (provider)).value
     log.tracef("Pruning to %d days", pruneDays)
+    pruneDate = system.date.addDays(system.date.now(), -1 * pruneDays)
+    pruneDate = toDateString(pruneDate)
+    textArea = event.source.parent.getComponent("Text Area")
+    textArea.text = ""
+    
+    def work(textArea=textArea):
+        txt = ""
+        for sql in SQL:
+            t = pruner(sql, pruneDate, db)
+            txt = txt + CR + t
+            textArea.text = txt
+    
+    system.util.invokeLater(work)
+    
+def prune(db, provider):
+    ''' This can be called from a timer script or a cron timer '''
+    log.infof("In %s.prune", __name__)
+    
+    pruneDays = readTag("[%s]Configuration/Common/dbPruneDays" % (provider)).value
+    log.infof("Pruning to %d days", pruneDays)
     
     pruneDate = system.date.addDays(system.date.now(), -1 * pruneDays)
     pruneDate = toDateString(pruneDate)
-
-    pruner("delete from alarm_events where eventTime < '%s'" % pruneDate, "alarm_events", db, log)
-    ''' TODO: Need to delete from alarm_event_data '''
     
-    ''' This was also prune BtBatchLog and BtStripperBatchLog due to a cascade delete. '''
-    pruner("delete from BtBatchRun where StartDate < '%s'" % pruneDate, "BtBatchRun", db, log)
-    pruner("delete from DtDiagnosisEntry where Timestamp < '%s'" % pruneDate, "DtDiagnosisEntry", db, log)
-    pruner("delete from DtFinalDiagnosisLog where Timestamp < '%s'" % pruneDate, "DtFinalDiagnosisLog", db, log)
-    pruner("delete from LtHistory where SampleTime < '%s'" % pruneDate, "LtHistory", db, log)
-    pruner("delete from QueueDetail where Timestamp < '%s'" % pruneDate, "QueueDetail", db, log)
-    pruner("delete from RtDownloadMaster where DownloadStartTime < '%s'" % pruneDate, "RtDownloadMaster", db, log)
-    pruner("delete from SfcRunLog where StartTime < '%s'" % pruneDate, "SfcRunLog", db, log)
-    pruner("delete from TkLogbookDetail where Timestamp < '%s'" % pruneDate, "TkLogbookDetail", db, log)
+    for sql in SQL:
+        txt = pruner(sql, pruneDate, db)
+        log.infof(txt)
+        
+    log.infof("...done pruning!")
     
-    ''' Not including UIRs in this measure '''
-    
-    log.tracef("...done pruning!")
-    
-def pruner(SQL, table, db, log):
+def pruner(SQL, pruneDate, db):
+    words = SQL.split(" ")
+    tableName = words[2]
+    SQL = "%s < '%s'" % (SQL, pruneDate)
     log.tracef(SQL)
     rows = system.db.runUpdateQuery(SQL, db)
-    log.tracef("Pruned %d rows from %s", rows, table)
+    txt = "Pruned %d rows from %s" % (rows, tableName)
+    return txt

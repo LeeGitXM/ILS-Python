@@ -12,7 +12,7 @@ from ils.diagToolkit.api import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
     RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD, RECOMMENDATION_TEXT_POSTED
 from ils.io.util import getOutputForTagPath
-from system.ils.blt.diagram import getProductionDatabase
+from ils.common.config import getProductionDatabase, getProductionTagProvider, getIsolationDatabase, getIsolationTagProvider
 from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML, escapeSqlQuotes
@@ -336,8 +336,8 @@ def scanner():
     if projectName == "[global]":
         print "Skipping the diagnostic scanner for the global project"
         return
-    _scanner(scriptingInterface.getProductionDatabase(), scriptingInterface.getProductionTagProvider())
-    _scanner(scriptingInterface.getIsolationDatabase(), scriptingInterface.getIsolationTagProvider())    
+    _scanner(getProductionDatabase(), getProductionTagProvider())
+    _scanner(getIsolationDatabase(), getIsolationTagProvider())    
 
         
 def _scanner(database, tagProvider, projectName=""):

@@ -20,8 +20,11 @@ treeMode = "fullPath"
 
 LIBRARY_ICON = "Custom/sfcLibrary.png"
 CHART_ICON = "Custom/sfc.png"
+CYCLE_ICON = "Custom/sfcCycle.png"
 TREE_MODE = 0
 LIST_MODE = 1
+MAX_DEPTH = 100
+MAX_DEPTH = 10
 
 
 def internalFrameOpened(rootContainer, db):
@@ -46,31 +49,29 @@ def internalFrameOpened(rootContainer, db):
     log.debugf("The selected step is: %s", selectedStep)
     
     def setTableRow(table=table, tree=tree, stepTable=stepTable, selectedChartRow=selectedChartRow, selectedChartPath=selectedChartPath, selectedStep=selectedStep):
-        ''' Select the node of the tree or the row of the table.  I'm not sure why I have to call this in its own thread but I do. '''
+        ''' 
+        Select the node of the chart tree or the row of the chart table.  I'm not sure why I have to call this in its own thread but I do. 
+        If I don't do it in its own thread then something else competes with it and undos it.
+        '''
+        log.tracef("In %s.setTableRow(), row: %s, chart: %s, step: %s", __name__, str(selectedChartRow), str(selectedChartPath), str(selectedStep))
         table.selectedRow = selectedChartRow
         tree.selectedPath = selectedChartPath
-        ''' This doesn't work because the steps above cause the table to refresh '''
-        #stepTable.selectedRow = selectedStep
     
     rootContainer.chartViewState = viewMode
     updateSfcs(rootContainer, db)    
 
     if selectedChartPath <> "" or selectedChartRow >= 0:
-        log.debugf("...there is a previously selected path (or table row)...")    
-        
-        ''' I'd like to set the selected row of the chart table here, but for some reason it doesn't do anything, or is undone by something else. '''
+        log.infof("...there is a previously selected path (or table row)...")
         system.util.invokeLater(setTableRow, 250)
-
-        ''' Normally this is done from an event handler, but we need the steps in the table before we set the selected step. '''
-        # refreshSteps(rootContainer, db)
     else:
-        log.debugf("...there is NOT a previously selected path...")
+        log.infof("...there is NOT a previously selected path...")
         stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
         clearTable(stepTable)
         recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
         clearTree(recipeDataTree)
-        
-    rootContainer.initializationComplete = True
+
+    timer = rootContainer.getComponent("Timer")
+    timer.running = True
     log.debugf("DONE in internalFrameOpened!")
 
 
@@ -89,10 +90,6 @@ def viewStateChanged(rootContainer):
     '''
     log.debugf("In %s.viewStateChanged(), detected a change in the view state...", __name__)
     
-    if not(rootContainer.initializationComplete):
-        log.debugf("...exiting because initialization is not complete...")
-        return
-    
     stepTable = rootContainer.getComponent("Step Container").getComponent("Steps")
     clearTable(stepTable)
     recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
@@ -105,7 +102,7 @@ def viewStateChanged(rootContainer):
 
 
 def updateSfcs(rootContainer, db):
-    log.debugf("In %s.updateSfcs(), Updating the SFC Tree and Table Widgets...", __name__)
+    log.infof("In %s.updateSfcs(), Updating the SFC Tree and Table Widgets...", __name__)
     tagProvider = getTagProviderClient()
     sfcRecipeDataShowProductionOnly = readTag("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
     chartPath = "%"
@@ -115,8 +112,11 @@ def updateSfcs(rootContainer, db):
 
 def updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
     log.debugf("In %s.updateSfcTable(), Updating the SFC Table Widget...", __name__)
-    
-    SQL = "select chartId, chartPath from SfcChart where chartPath like '%s' order by chartPath" % (chartPath)
+
+    if sfcRecipeDataShowProductionOnly:
+        SQL = "select chartId, chartPath from SfcChart where chartPath like '%s' and IsProduction = 1 order by chartPath" % (chartPath)
+    else:
+        SQL = "select chartId, chartPath from SfcChart where chartPath like '%s' order by chartPath" % (chartPath)    
     ds = system.db.runQuery(SQL, database=db)
     table=rootContainer.getComponent("Tree Container").getComponent("Power Table")
     table.data = ds
@@ -125,15 +125,20 @@ def updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db
 def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db):
     log.debugf("In %s.updateSfcTree(), updating the SFC Tree Widget...", __name__)
 
+    log.tracef("Fetching hierarchyPDS...")
     hierarchyPDS = fetchHierarchy(chartPath, sfcRecipeDataShowProductionOnly, db)
+    log.tracef("Fetching hiearachyHandlerPDS...")
     hierarchyHandlerPDS = fetchHierarchyHandler(chartPath, sfcRecipeDataShowProductionOnly, db)
+    log.tracef("Fetching Charts...")
     chartPDS = fetchCharts(chartPath, sfcRecipeDataShowProductionOnly, db)
-    trees = makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS)
+    log.tracef("Making Trees...")
+    trees, cycleNodes = makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS)
     
     ''' 
     Create a dictionary of charts where the chartId is the key. Replace the path delimiter (a forward slash) 
     with a backwards slash which needs to be escaped with another backwards slash.
     '''
+    log.tracef("Making dictionaries...")
     chartDict = {}
     for record in chartPDS:
         chartId=record["ChartId"]
@@ -142,24 +147,26 @@ def updateSfcTree(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
         # Chart Paths use the '/' to indicate the path structure, but the tree widget interprets that as a child.  I want to treat
         # the chart path as the name so replace "/" with ":"
         chartDict[chartId] = chartPath.replace('/',' \\ ')
-
+    log.tracef("The chart dictionary is %s", str(chartDict))
+    
     '''
     Now take the SFC tree model and format it for the tree widget.
     I think the way that we need to prepare data for the tree is widget is that we need a record for each leaf node.
     '''
-    log.tracef("The chart dictionary is %s", str(chartDict))
+    log.tracef("Making tree model...")
     rows=[]
     for tree in trees:
         log.tracef("%s", str(tree))
-        rows = expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS)
+        rows = expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS, cycleNodes)
 
+    log.tracef("The tree model is: %s", str(rows))
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
     treeWidget=rootContainer.getComponent("Tree Container").getComponent("Tree View")
     treeWidget.data = ds
 
     
-def expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS):
+def expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS, cycleNodes):
     
     def isNew(rows, parent, chartPath):
         for row in rows:
@@ -175,7 +182,7 @@ def expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS):
         token = tokens[index]
     '''
     for token in tokens:
-        log.tracef("  Token: ", token)
+        log.tracef("  Token: %s", str(token))
         chartPath = chartDict.get(int(token),"Unknown")
 
         if logicalPath == "":
@@ -190,6 +197,8 @@ def expandTree(rows, tree, chartDict, hierarchyPDS, hierarchyHandlerPDS):
         log.tracef(" **** %s has %d references ****", chartPath, refs)
         if refs > 1:
             icon = LIBRARY_ICON
+        elif token in cycleNodes:
+            icon = CYCLE_ICON
         else:
             icon = CHART_ICON
         
@@ -272,32 +281,60 @@ def getChildren(chartId, hierarchyPDS, hierarchyHandlerPDS):
 # This version traverses and creates a list of strings
 def makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     
-    def depthSearch(trees, depth, hierarchyPDS, hierarchyHandlerPDS):
+    def depthSearch(finishedTrees, trees, depth, hierarchyPDS, hierarchyHandlerPDS, cycleNodes):
         log.tracef("------------")
-        log.tracef("Searching depth %d, the trees are %s", depth, str(trees))
+        log.tracef("Searching depth %d, the trees are %s (finished trees: 5s)", depth, str(trees), str(finishedTrees))
 
         foundChild = False
         newTrees = []
+        i = 0
         for tree in trees:
-            log.tracef("The tree is: %s", str(tree))
+            alreadyVisitedList = tree.split(",")
+            log.tracef("The tree %d is: %s", i, str(tree))
+            log.tracef("Already visited list: %s", str(alreadyVisitedList))
             ids = tree.split(",")
             node = ids[-1]
             log.tracef("The last node is: %s", node)
             children=getChildren(int(node), hierarchyPDS, hierarchyHandlerPDS)
-            if len(children) == 0 or depth > 100:
-                if depth > 100: 
-                    log.errorf("Error!, SFC Tree depth has exceeded 100 levels.  Pruning the tree at this level, please investigate for a possible loop in the branches near %s", node)
+            if len(children) == 0 or depth > MAX_DEPTH:
+                if depth > MAX_DEPTH: 
+                    log.errorf("Error: SFC Tree depth has exceeded maximum depth of %d.  Pruning the tree at this level, please investigate for a possible loop in the branches near %s - %s", MAX_DEPTH, node, str(tree))
 
                 log.tracef("...there are no children!")
-                newTrees.append(tree)
+                finishedTrees.append(tree)
+                #newTrees.append(tree)
             else:
                 log.tracef("The children are: %s", str(children))
+                everyChildIsCycle = True
                 for child in children:
-                    foundChild = True
-                    newTree = "%s,%s" % (tree, child)
-                    newTrees.append(newTree)
+                    if str(child) in alreadyVisitedList:
+                        log.tracef("Hmmm - this child (%s) looks familiar, so add node (%s) to cycle list." % (str(child), str(node)))
+                        ''' TODO - Need to be smarter here - if I take this out I don't get the terminal tree, if I leave it in I hit recursion limit '''
+                        #if tree not in newTrees:
+                        #    newTrees.append(tree)
+                        
+                        if node not in cycleNodes:
+                            cycleNodes.append(node)
+                    else:
+                        log.tracef("...found a child <%s> that is not in the already visited list: %s", str(child), str(alreadyVisitedList) )
+                        everyChildIsCycle = False
+                        foundChild = True
+                        newTree = "%s,%s" % (tree, child)
+                        newTrees.append(newTree)
+                
+                ''' If the chart has children, but all of the children are part of a cycle, then processing this tree is done, so add it to the finished tree list '''
+                if everyChildIsCycle:
+                    log.tracef("...every child is part of a cycle so add this tree to the finished tree list")
+                    finishedTrees.append(tree)
+                    
+            i = i + 1
+        
+        ''' This is a bit of a hack to handle cycles '''
+        if len(newTrees) == 0:
+            newTrees = trees
+                    
         log.tracef("The new trees are: %s", str(newTrees))
-        return newTrees, foundChild
+        return finishedTrees, newTrees, foundChild, cycleNodes
     
     # A root is any chart that is never a child of another chart.
     def isRoot(chartId, hierarchyPDS, hierarchyHandlerPDS):
@@ -314,7 +351,10 @@ def makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     
     # Get the roots
     log.tracef("In %s.makeSfcTree() - Getting the root nodes...", __name__)
+    finishedTrees = []
     trees = []
+    lastTrees = []
+    cycleNodes = []
     for chartRecord in chartPDS:
         chartId = chartRecord["ChartId"]
 
@@ -326,11 +366,17 @@ def makeSfcTree(chartPDS, hierarchyPDS, hierarchyHandlerPDS):
     foundChild = True
     depth = 0
     while foundChild:
-        trees, foundChild = depthSearch(trees, depth, hierarchyPDS, hierarchyHandlerPDS)
+        finishedTrees, trees, foundChild, cycleNodes = depthSearch(finishedTrees, trees, depth, hierarchyPDS, hierarchyHandlerPDS, cycleNodes)
         depth = depth + 1
-    log.tracef("The trees are: %s", str(trees))
+        if trees == lastTrees:
+            log.tracef("Stopping because no changes were detected")
+            foundChild = False
+        lastTrees = trees
+        
+    log.tracef("The trees are: %s", str(finishedTrees))
+    log.infof("The nodes with a cycle are: %s", str(cycleNodes))
 
-    return trees
+    return finishedTrees, cycleNodes
 
 def setChartViewState(viewState):
     writeTag("[Client]SFC Browser/Chart View State", viewState)

@@ -61,6 +61,7 @@ def activate(scopeContext, stepProperties, state):
             
             controlPanelId = getControlPanelId(chartScope)
             database = getDatabaseName(chartScope)
+            logger.tracef("...using database: %s", database)
             chartRunId = getTopChartRunId(chartScope)
             
             position = getStepProperty(stepProperties, POSITION) 

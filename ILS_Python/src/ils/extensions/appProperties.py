@@ -4,6 +4,7 @@
 import system
 
 from ils.common.database import getUnitName, getPostForUnitId, lookupKeyFromId
+from ils.common.config import getProductionDatabase
 from ils.queue.commons import getQueueForDiagnosticApplication
 
 from com.ils.common.log import LogMaker
@@ -19,9 +20,7 @@ def delete(applicationUUID):
     '''
     log.infof("In %s.delete()", __name__)
     
-    import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
-    handler = ControllerRequestHandler.getInstance()
-    db = handler.getProductionDatabase()
+    db = getProductionDatabase()
     
     SQL = "delete from DtApplication where ApplicationUUID = '%s'" % (applicationUUID)
     rows = system.db.runUpdateQuery(SQL, db)
