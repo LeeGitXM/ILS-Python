@@ -14,13 +14,21 @@ def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     recommendations.append({"QuantOutput": "Q1", "Value": 12.3})
     return True, explanation, recommendations
 
+def fd1_2_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_1" % (__name__)
+    explanation = "Use data of gain = 1.2, 1.5, and 0.9, SP = 23.4."
+    recommendations = []
+    recommendations.append({"QuantOutput": "Q1", "Value": 31.4})
+    recommendations.append({"QuantOutput": "Q2", "Value": 53.4})
+    return True, explanation, recommendations
+
 
 def fd1_2_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In fd1_2_2"
     explanation = "Turn down the flame and open the window."
     recommendations = []
-    recommendations.append({"QuantOutput": "Q2", "Value": 5.4})
-    recommendations.append({"QuantOutput": "Q3", "Value": -20.4})
+    recommendations.append({"QuantOutput": "Q2", "Value": 40.0, "RampTime": 2.0})
+    recommendations.append({"QuantOutput": "Q3", "Value": 60.0, "RampTime": 3.0})
     return True, explanation, recommendations
 
 def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):

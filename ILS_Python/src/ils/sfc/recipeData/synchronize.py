@@ -29,6 +29,8 @@ def synchronizeCallback(chartPath, deep, sourceDb, destinationDb):
             system.gui.errorBox("An error was encountered while synchronizing recipe data!")
     except:
         notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
+        system.gui.errorBox("An error was encountered while synchronizing recipe data!  Check the console log for details.")
+        status = False
         
     return status
         
@@ -43,7 +45,6 @@ class Synchronizer():
     
     def synchronize(self, chartPath, deep):
         exporter =Exporter(self.sourceDb)
-        importer = Importer(self.destinationDb)
         
         chartPaths = []
         chartPaths.append(chartPath)
@@ -51,6 +52,7 @@ class Synchronizer():
         for chartPath in chartPaths:
             chartXML=exporter.export(chartPath, deep)
             
+        importer = Importer(self.destinationDb)
         status = importer.importFromString(chartXML)
         
         return status

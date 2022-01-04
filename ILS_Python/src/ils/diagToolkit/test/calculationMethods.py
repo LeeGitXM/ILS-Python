@@ -3,10 +3,14 @@ Created on May 5, 2017
 
 @author: phass
 
-The pupose of this test module is to test the configuration of the the test mthods for a final 
+The purpose of this test module is to test the configuration of the the test mthods for a final 
 diagnosis and to perform a basic sanity check on the calculation method.  Essentially does it run,
 it does not do any validation that the number is correct.  Numbers in & numbers out.
 
+********************************************************************************************************************
+* The calculation methods are used exclusively by the automated testing.
+* It is NOT used by the demo schematics.
+******************************************************************************************************************** 
 '''
 
 import system, sys, string, traceback
@@ -97,8 +101,8 @@ def fd1_2_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     print "In %s.fd1_2_1" % (__name__)
     explanation = "The TESTFD1_2_1 will use data of gain = 1.2, 1.5, and 0.9, SP = 23.4."
     recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 53.4})
+    recommendations.append({"QuantOutput": "Q1", "Value": 31.4})
+    recommendations.append({"QuantOutput": "Q2", "Value": 53.4})
     return True, explanation, recommendations
 
 def fd1_2_1a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
@@ -155,11 +159,14 @@ def fd1_2_1f(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     return True, explanation, recommendations
 
 def fd1_2_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    '''
+    Test writing a ramp to a regular controller AND to a ramp controller.
+    '''
     print "In %s.fd1_2_2" % (__name__)
     explanation = "Turn down the flame and open the window."
     recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ2", "Value": 5.4})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": -20.4})
+    recommendations.append({"QuantOutput": "Q2", "Value": 40.0, "RampTime": 2.0})
+    recommendations.append({"QuantOutput": "Q3", "Value": 60.0, "RampTime": 3.0})
     return True, explanation, recommendations
 
 def fd1_2_2a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):

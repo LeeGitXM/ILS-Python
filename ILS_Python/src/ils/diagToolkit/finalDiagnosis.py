@@ -1046,6 +1046,14 @@ def manage(application, recalcRequested=False, database="", provider=""):
             log.tracef( "Quant Outputs (after merge): %s", str(quantOutputs))
             log.tracef( "-----------------")
             
+            ''' 
+            There are two things strings being manipulated:
+                explanation: text recommendation (not sure why I refer to it here as explanation)
+                staticExplanation: The explation property of the block
+                
+            if the final diagnosis has a static explanation AND the showExplanationWithRecommendation is True, then concatenate the 
+           text recommendation and the explanation.
+            '''
             if postTextRecommendation and explanation != "":
                 originalExplanation = explanation
                 if showExplanationWithRecommendation and len(staticExplanation) > 0:
@@ -1394,10 +1402,10 @@ def updateQuantOutput(quantOutput, database='', provider=''):
     is ramped is if the recommendation contains a "rampTime" property.  A QuantOutput may be used one time to write an output directly or a ramp setpoint.
     '''
     recommendations = quantOutput.get("Recommendations", [])
-    print "Recommendations: ", recommendations
+    log.tracef("Recommendations: %s", str(recommendations))
     rampTime = None
     for recommendation in recommendations:
-        print "  recommendation: ", recommendation
+        log.tracef("    recommendation: %s", str(recommendation))
         rampTime = recommendation.get("RampTime", None)
         if rampTime <> None:
             log.tracef("*** Found a ramp time ***")

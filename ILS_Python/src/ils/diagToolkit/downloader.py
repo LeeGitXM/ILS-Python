@@ -62,6 +62,10 @@ class DownloadThread(threading.Thread):
 
 class Downloader():
     '''
+    This class is used in the client and in the gateway!
+    I suspect that it initially ran in the gateway but some refactoring took place and now the portion that formats the loogbook message runs in the client and 
+    the part that actually orchestrates the download runs in the gateway.  Who knows what happens if we lose the client while the download is underway!
+    
     This class is created when we receive a serviceDownload message from the client.  This class creates a download thread for each output that needs to be 
     downloaded.  This class lives until all of the threads are done.
     '''
@@ -271,7 +275,12 @@ class Downloader():
                         outputName = recRecord["QuantOutputName"]
                         tagPath = recRecord["TagPath"]
                         autoRecommendation = recRecord["AutoRecommendation"]
-                        fdText += "<li>desired change in %s = %f</li>" % (tagPath, autoRecommendation)
+                        rampTime = recRecord["RampTime"]
+                        
+                        if rampTime == None:
+                            fdText += "<li>desired change in %s = %f</li>" % (tagPath, autoRecommendation)
+                        else:
+                            fdText += "<li>desired ramp in %s = %f over %s minutes</li>" % (tagPath, autoRecommendation, str(rampTime))
                     fdText += "</UL>"
                 fdText += "</UL>"
                 
@@ -358,7 +367,7 @@ class Downloader():
         SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
             " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
             " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
-            " R.Recommendation, R.AutoRecommendation, R.ManualRecommendation, R.AutoOrManual "\
+            " R.Recommendation, R.AutoRecommendation, R.ManualRecommendation, R.AutoOrManual, R.RampTime "\
             " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R, Lookup L "\
             " where L.LookupTypeCode = 'FeedbackMethod'"\
             " and L.LookupId = QO.FeedbackMethodId "\

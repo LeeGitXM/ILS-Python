@@ -38,11 +38,13 @@ def gateway(tagProvider, isolationTagProvider, database):
             log.infof("The status of %s is: %s", database, status)
             if status == "Valid":
                 break
+            elif status == "Disabled":
+                return
             else:
                 if i == 10:
                     log.warnf("Aborting the Symbolic AI startup because the database is still bad after 10 checks.")
                     return
-                log.info("Sleeping...")
+                log.infof("Sleeping in %s...", __name__)
                 sleep(sleepSeconds)
                 log.info("...waking")
                 sleepSeconds = sleepSeconds * 2

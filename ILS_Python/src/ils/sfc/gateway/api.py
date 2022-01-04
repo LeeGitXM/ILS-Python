@@ -70,7 +70,7 @@ def abortHandler(chart, msg):
         i = 0
         running = chartIsRunning(chartPath)
         while running:
-            logger.tracef("...sleeping...")
+            logger.tracef("...sleeping in %s...", __name__)
             time.sleep(0.1)
             running = chartIsRunning(chartPath)
     

@@ -436,7 +436,6 @@ def fetchActiveOutputsForFinalDiagnosis(applicationName, familyName, finalDiagno
     return pds, outputList
 
 def convertOutputRecordToDictionary(record):
-    print "Record: ", record, " is a ", type(record) 
     output = {}
     output['QuantOutputId'] = record['QuantOutputId']
     output['QuantOutput'] = str(record['QuantOutputName'])
