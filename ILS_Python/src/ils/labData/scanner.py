@@ -79,7 +79,7 @@ def main(database, tagProvider, lastValueCache, triggerCache, derivedCalculation
 
     log.trace("Last Value Cache: %s" % (str(lastValueCache)))
     if len(lastValueCache) == 0:
-        lastValueCache, initializeCache(database, lastValueCache)
+        lastValueCache = initializeCache(database, lastValueCache)
     
     from ils.labData.limits import fetchLimits
     limits=fetchLimits(tagProvider, database)
@@ -453,7 +453,8 @@ def checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, write
         
     dcsLog.tracef("Checking for new DCS Lab values ... ")    
     
-    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds "\
+    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds, "\
+        "DV.SampleTimeConstantMinutes "\
         "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, LtOpcInterface OPC "\
         "WHERE V.ValueId = DV.ValueId "\
         " and V.UnitId = U.UnitId "\
@@ -471,6 +472,7 @@ def checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, write
         post = record["Post"]
         validationProcedure = record["ValidationProcedure"]
         minimumSampleIntervalSeconds  = record["MinimumSampleIntervalSeconds"]
+        sampleTimeConstantMinutes = record["SampleTimeConstantMinutes"]
         
         tagName = "LabData/%s/DCS-Lab-Values/%s" % (unitName, valueName)
         dcsLog.trace("Reading: %s " % (tagName))    
@@ -479,9 +481,10 @@ def checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, write
         dcsLog.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
         
         if str(qv.quality) == 'Good':
-            new = checkIfValueIsNew(valueName, qv.value, qv.timestamp, minimumSampleIntervalSeconds, dcsLog)
+            sampleTime = system.date.addMinutes(qv.timestamp, int(-1 * abs(sampleTimeConstantMinutes)))
+            new = checkIfValueIsNew(valueName, qv.value, sampleTime, minimumSampleIntervalSeconds, dcsLog)
             if new:
-                lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, qv.value, qv.timestamp, \
+                lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, qv.value, sampleTime, \
                      database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, dcsLog)
         else:
             # I don't want to post this to the queue because this is called every minute, and if the same tag is bad for a day 
