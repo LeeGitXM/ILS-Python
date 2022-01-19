@@ -6,9 +6,9 @@ Created on Oct 31, 2014
 import system.util, time
 from ils.io.util import readTag
 from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
+from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.sfc.recipeData.api import s88GetStepInfoFromId
-from ils.common.config import getDatabaseClient
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -200,11 +200,11 @@ def getStartInIsolationMode():
 
 def getDatabase():
     '''Get the database name, taking isolation mode into account'''
-    return readTag('[Client]/Database').value
+    return getDatabaseClient()
 
 def getTagProvider():
     '''Get the tag provider name, taking isolation mode into account'''
-    return readTag('[Client]/Tag Provider').value
+    return getTagProviderClient()
 
 def sendMessageToGateway(project, handler, payload):
     '''Send a message to the gateway'''

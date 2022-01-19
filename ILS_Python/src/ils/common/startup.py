@@ -5,7 +5,7 @@ Created on Nov 18, 2014
 '''
 
 import system, string, time
-from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
+from ils.common.config import getTagProviderFromInternalDatabase, getDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase, getUserLibDir
 from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus, removeUnwantedMenus, ConsoleMenus
 from ils.common.error import catchError
@@ -23,15 +23,17 @@ name and calls them.
 def gateway():
     log.infof("In %s.gateway()", __name__)
     
-    project = system.util.getProjectName()
-    log.infof("Starting project %s...", project)
+    projectName = system.util.getProjectName()
+    log.infof("Starting project %s...", projectName)
     
     setLogLevels()
     
     ''' Call a special function that will wait until BLT is ready and running - this goes into a wait loop until it succeeds. '''
-    tagProvider = getTagProviderFromBltModule()
-    productionDatabase = getDatabase()
-    isolationDatabase = getIsolationDatabase()
+    log.infof("Getting database and tag providers...")
+    tagProvider = getTagProviderFromInternalDatabase(projectName)
+    productionDatabase = getDatabaseFromInternalDatabase(projectName)
+    isolationDatabase = getIsolationDatabaseFromInternalDatabase(projectName)
+    log.infof("   Production Tag Provider: %s", tagProvider)
     
     updateDatabaseSchema(tagProvider, productionDatabase)
     updateDatabaseSchema(tagProvider, isolationDatabase)
@@ -45,7 +47,7 @@ def gateway():
     siteName = record["SiteName"]
     gatewayStartupScript = record["GatewayStartupScript"]
     
-    log.infof("Running gateway startup script named <%s> for %s", gatewayStartupScript, siteName)
+    log.infof("Running gateway startup script named <%s> for site: <%s>", gatewayStartupScript, siteName)
     
     separator=string.rfind(gatewayStartupScript, ".")
     packagemodule=gatewayStartupScript[0:separator]
@@ -119,6 +121,36 @@ For an engineer there will not be a matching post.
 def clientCommon():    
     log.infof("In %s.clientCommon()", __name__)
     
+    
+    #tagProvider = getTagProvider()
+    #isolationTagProvider = getIsolationTagProvider()
+    #historyProvider = getHistoryProvider()
+    #database = getDatabase()
+    
+    isolationMode = system.tag.readBlocking(["[Client]Isolation Mode"])[0].value
+    print "The currentIsolationMode is: ", isolationMode
+    
+    if isolationMode:
+        ''' This should trigger the tag change handler which will read the values from the Internal database '''
+        log.infof("   ...ticling the Isolation Mode client tag...")
+        system.tag.writeBlocking(["[Client]Isolation Mode"], [False])
+    else:
+        ''' Isolation Mode is set correctly, but that doesn't mean that the tag provider and database 
+            tags are set correctly.  So set them without touching the isolation mode. '''
+             
+        projectName = system.util.getProjectName()
+
+        payload = {"project": projectName, "isolationMode": False}
+        log.infof("Payload: %s", payload)
+        tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
+        log.infof("   Tag Provider: %s", tagProvider)
+        database = system.util.sendRequest(projectName, "getDatabase", payload)
+        log.infof("   Database: %s", database)
+
+        log.infof("   ...writing to client tags...")        
+        system.tag.writeBlocking(["[Client]Tag Provider", "[Client]Database"], [tagProvider, database])
+    
+    
     username = system.security.getUsername()
     rows = system.db.runScalarQuery("select count(*) from TkPost where post = '%s'" % (username)) 
     if rows > 0:
@@ -169,7 +201,7 @@ def gatewayCommon(tagPprovider, isolationTagProvider):
 
 
 def createTags(tagProvider, log):
-    print "Creating common configuration tags...."
+    log.tracef("Creating common configuration tags....")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     
@@ -212,6 +244,9 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 3, "version": "1.3r0", "filename": "update_1.3r0.sql", "releaseData": "2020-09-14"})
         dbVersions.append({"versionId": 4, "version": "1.4r0", "filename": "update_1.4r0.sql", "releaseData": "2020-10-25"})
         dbVersions.append({"versionId": 5, "version": "1.5r0", "filename": "update_1.5r0.sql", "releaseData": "2021-04-15"})
+        dbVersions.append({"versionId": 6, "version": "1.6r0", "filename": "update_1.6r0.sql", "releaseData": "2021-07-04"})
+        dbVersions.append({"versionId": 7, "version": "1.7r0", "filename": "update_1.7r0.sql", "releaseData": "2021-08-31"})
+        dbVersions.append({"versionId": 8, "version": "1.8r0", "filename": "update_1.8r0.sql", "releaseData": "2021-10-08"})
         
         projectName = system.util.getProjectName()
         log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
@@ -254,25 +289,7 @@ def getUserLibPath():
     context = SRContext.get()
     homeDir = context.getUserlibDir.getAbsolutePath()
     return homeDir
-
-
-def getTagProviderFromBltModule():
-    def getter():
-        log.infof("...getting tagProvider from BLT...")
-        try:
-            tagProvider = getTagProvider()
-        except:
-            log.tracef("...BLT module isn't quite ready, sleeping...")
-            time.sleep(5)
-            tagProvider = None
-            
-        return tagProvider
-    
-    tagProvider = None
-    while tagProvider == None:
-        tagProvider = getter()
-        
-    return tagProvider
+   
 
 def readCurrentDbVersionId(strategy, db):
     ''' Check if the table exists'''

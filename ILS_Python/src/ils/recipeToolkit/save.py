@@ -5,21 +5,22 @@ Created on Oct 5, 2014
 '''
 import sys, traceback, system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-from ils.io.util import readTag
 from ils.recipeToolkit.fetch import fetchFamilyId
 from ils.recipeToolkit.common import checkForUncommentedChanges
 from ils.common.error import catchError
+from ils.common.config import getDatabaseClient
 log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
 
 def callback(event):
-    log.info("Saving the modified recipe (ils.recipeToolkit.save.callback)")
+    log.infof("Saving the modified recipe (%s.callback)", __name__)
+    db = getDatabaseClient()
     rootContainer = event.source.parent
     familyName = rootContainer.familyName
     grade = rootContainer.grade
     version = rootContainer.version
     
     provider = rootContainer.getPropertyValue("provider")
-    requireComments = readTag("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
+    requireComments = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
     if requireComments:
         uncommentedChanges = checkForUncommentedChanges(rootContainer)
         if uncommentedChanges:
@@ -28,7 +29,7 @@ def callback(event):
     
     recipeFamilyId = fetchFamilyId(familyName)
     
-    txId = system.db.beginTransaction()
+    txId = system.db.beginTransaction(database=db)
     
     try:
         newVersion = insertGradeMaster(recipeFamilyId, grade, txId)
@@ -56,8 +57,7 @@ def callback(event):
 # Get the highest existing version number and then increment it 
 # (The version that we are viewing may not be the highest version)
 def insertGradeMaster(recipeFamilyId, grade, txId):
-    log.trace("In insertGradeMaster()")
-    
+    log.infof("In %s.insertGradeMaster()", __name__)
     SQL = "select max(version) from RtGradeMaster where RecipeFamilyId = %i and Grade = '%s'" % (recipeFamilyId, grade)
     log.trace(SQL)
     version = system.db.runScalarQuery(SQL, tx=txId)
@@ -74,6 +74,8 @@ def insertGradeMaster(recipeFamilyId, grade, txId):
 
 
 def insertRecipe(recipeFamilyId, grade, newVersion, version, txId):
+    log.tracef("In %s.insertRecipe()", __name__)
+    
     # Now copy the existing recipe
     SQL="INSERT INTO RtGradeDetail(RecipeFamilyId,Grade,ValueId,Version,RecommendedValue,LowLimit,HighLimit) " \
             "SELECT RecipeFamilyId, Grade, ValueId, %i, RecommendedValue,LowLimit,HighLimit FROM RtGradeDetail " \
@@ -84,6 +86,7 @@ def insertRecipe(recipeFamilyId, grade, newVersion, version, txId):
 
 
 def updateRecipe(event, recipeFamilyId, grade, newVersion, txId):
+    log.tracef("In %s.updateRecipe()", __name__)
     table = event.source.parent.getComponent('Power Table')
     ds = table.data
     pds = system.dataset.toPyDataSet(ds)
@@ -97,6 +100,7 @@ def updateRecipe(event, recipeFamilyId, grade, newVersion, txId):
 
         
 def updateGradeDetail(recipeFamilyId, grade, version, valueId, pend, lowLimit, highLimit, txId):   
+    log.tracef("In %s.updateGradeDetail()", __name__)
     if pend == '':
         pend = None
 

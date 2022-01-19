@@ -6,9 +6,9 @@ scope, there should only be one project per JVM.
 #
 import os,sys
 import system
-import ch.qos.logback.classic.Level as Level
-import org.slf4j.MDC as MDC
-import com.ils.common.log.LogMaker as LogMaker
+#import ch.qos.logback.classic.Level as Level
+#import org.slf4j.MDC as MDC
+#import com.ils.common.log.LogMaker as LogMaker
 
 # next bit filched from 1.5.2's inspect.py
 def currentframe():
@@ -76,7 +76,7 @@ class LogRecorder:
         self.logger.info(msg)
         
     def infof(self, msg, *args):
-        self.setAttributes()
+#        self.setAttributes()
         try:
             msg = msg % tuple(args)
         except:
@@ -113,12 +113,12 @@ class LogRecorder:
         # Get a stack track and fill in line number, function and module
         fn, lno, func = self.findCaller()
         
-        MDC.put(LogMaker.MODULE_KEY, fn)
-        MDC.put(LogMaker.FUNCTION_KEY, func)
-        MDC.put(LogMaker.LINE_KEY,str(lno))
+#        MDC.put(LogMaker.MODULE_KEY, fn)
+#        MDC.put(LogMaker.FUNCTION_KEY, func)
+#        MDC.put(LogMaker.LINE_KEY,str(lno))
         
-        MDC.put(LogMaker.CLIENT_KEY,self.clientId)
-        MDC.put(LogMaker.PROJECT_KEY,self.projectName)
+#        MDC.put(LogMaker.CLIENT_KEY,self.clientId)
+#        MDC.put(LogMaker.PROJECT_KEY,self.projectName)
 
     # next bit filched from 1.5.2's inspect.py
     def currentframe(self):

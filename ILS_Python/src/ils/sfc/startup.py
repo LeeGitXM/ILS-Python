@@ -10,7 +10,7 @@ log = LogUtil.getLogger("com.ils.sfc")
 
 def gateway(tagProvider, isolationTagProvider):
     from ils.common.util import isWarmboot
-    if isWarmboot():
+    if isWarmboot(tagProvider):
         log.info("Bypassing SFC Toolkit startup for a warmboot")
         return 
     
@@ -31,7 +31,7 @@ def client():
     log.info("---------------------------------------------------------")
 
 def createTags(tagProvider):
-    print "Creating SFC configuration tags..."
+    log.tracef("Creating SFC configuration tags...")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/SFC/"
@@ -41,7 +41,6 @@ def createTags(tagProvider):
     data.append([path, "sfcRecipeDataShowProductionOnly", "Boolean", "True"])
     data.append([path, "sfcWriteEnabled", "Boolean", "True"])
     
-          
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
     createConfigurationTags(ds, log)

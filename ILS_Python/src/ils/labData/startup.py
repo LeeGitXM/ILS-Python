@@ -16,7 +16,7 @@ def gateway(tagProvider, isolationTagProvider):
     from ils.labData.version import version
     
     from ils.common.util import isWarmboot
-    if isWarmboot():
+    if isWarmboot(tagProvider):
         log.info("Bypassing Lab Data Toolkit startup for a warmboot")
         return 
     
@@ -52,7 +52,7 @@ def client():
     
 
 def createTags(tagProvider):
-    print "Creating Lab Data configuration tags...."
+    log.tracef("Creating Lab Data configuration tags....")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/LabData/"

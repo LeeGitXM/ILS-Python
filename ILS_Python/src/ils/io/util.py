@@ -160,7 +160,7 @@ def getOutputForTagPath(tagProvider, tagPath, outputType):
         which I have embedded in each of our I/O UDTs.  Then I could create a method to get the output path fri the UDT, but 
         instead I did the cheap and cheerful case statement.  It would be more robust to take the OO method approach.
         '''
-        pythonClass = system.tag.read(tagPath + "/pythonClass").value
+        pythonClass = readTag(tagPath + "/pythonClass").value
         if pythonClass in ["PKSController", "PKSACEController", "PKSRampController"]:
             tagPath = "%s/%s/value" % (tagPath, outputType)
         elif pythonClass in ["OPCOutput", "OPCTag"]:
@@ -330,7 +330,7 @@ def getInnerUDT(fullTagPath):
 def getUDTType(fullTagPath):
     # Strip off the provider
 #    print "Getting the type of UDT for tagpath: ", fullTagPath
-    UDTType = system.tag.read(fullTagPath + '.UDTParentType').value
+    UDTType = readTag(fullTagPath + '.UDTParentType').value
     return UDTType
 
 #    UDTType=None
@@ -351,7 +351,7 @@ def checkIfController(fullTagPath):
     if not(exists):
         return False
 
-    pythonClass=system.tag.read(tagPath).value
+    pythonClass=readTag(tagPath).value
 #    print "Checking if <%s> contains <CONTROLLER>" % (pythonClass)
     if pythonClass.upper().find('CONTROLLER') > -1:
         return True
@@ -425,7 +425,7 @@ def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0):
     delta = (Date().getTime() - startTime) / 1000
     
     while (delta < timeout):
-        qv = system.tag.read(tagPath)
+        qv = readTag(tagPath)
         log.trace("%s - %s: comparing <%s> (%s) to <%s>" % (__name__, tagPath, str(qv.value), str(qv.quality), str(val)))
         if string.upper(str(val)) == "NAN":
             if qv.value == None:
@@ -456,10 +456,10 @@ def waitForWriteConfirm(tagRoot, timeout=60, frequency=1):
     delta = (Date().getTime() - startTime) / 1000
 
     while (delta < timeout):
-        writeStatus = system.tag.read(tagRoot + "/writeStatus").value
+        writeStatus = readTag(tagRoot + "/writeStatus").value
         if string.upper(writeStatus) in ["SUCCESS", "FAILURE"]:
-            writeConfirmed = writeStatus = system.tag.read(tagRoot + "/writeConfirmed").value
-            writeErrorMessage = writeStatus = system.tag.read(tagRoot + "/writeErrorMessage").value
+            writeConfirmed = writeStatus = readTag(tagRoot + "/writeConfirmed").value
+            writeErrorMessage = writeStatus = readTag(tagRoot + "/writeErrorMessage").value
             return writeConfirmed, writeErrorMessage
 
         # Time in seconds
@@ -480,11 +480,11 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
     delta = (Date().getTime() - startTime) / 1000
 
     while (delta < timeout):
-        writeStatus = system.tag.read(tagRoot + "/writeStatus").value
+        writeStatus = readTag(tagRoot + "/writeStatus").value
         if string.upper(writeStatus) == "SUCCESS":
             return True, ""
         elif string.upper(writeStatus) == "FAILURE":
-            writeErrorMessage = system.tag.read(tagRoot + "/writeErrorMessage").value
+            writeErrorMessage = readTag(tagRoot + "/writeErrorMessage").value
             return False, writeErrorMessage
 
         # Time in seconds
@@ -581,18 +581,16 @@ def checkConfig(tagPath):
         log.error(reason)
         return False, reason
 
-    productionProviderName = getTagProvider()   # Get the Production tag provider
     providerName = getProviderFromTagPath(tagPath)
-    globalWriteEnabled = system.tag.read("[" + providerName + "]/Configuration/Common/writeEnabled").value
+    globalWriteEnabled = readTag("[" + providerName + "]/Configuration/Common/writeEnabled").value
     
 #    print "----------"
 #    print "Tag:                 ", tagPath
-#    print "Production Provider: ", productionProviderName
 #    print "This tag provider:   ", providerName
 #    print "Global Write Enabled:", globalWriteEnabled
 #    print "----------"
     
-    if providerName == productionProviderName and not(globalWriteEnabled):
+    if not(globalWriteEnabled):
         log.info('Write bypassed for %s because writes are inhibited!' % (tagPath))
         return False, 'Writing is currently inhibited'
     

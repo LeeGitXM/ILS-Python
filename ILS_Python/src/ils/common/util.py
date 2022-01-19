@@ -145,12 +145,11 @@ def isUserConnected(userName):
     log.tracef("The user is NOT connected")
     return False
 
-def isWarmboot():
+def isWarmboot(tagProvider):
     '''
     This is called by many (all) of the toolkits during startup.  It is ok that we are using the production tag provider here since a 
     warmboot is a warmboot regardless of tag provider.
     '''
-    tagProvider = getTagProvider()
     runHours = getRunHours(tagProvider)
     
     if runHours > 5.0 / 60.0:
@@ -162,11 +161,13 @@ def getRunHours(tagProvider):
     tagPath = "[%s]Site/Watchdogs/Ignition Uptime Minutes" % (tagProvider)
     exists = system.tag.exists(tagPath)
     if exists:
-        runMinutes = system.tag.readBlocking([tagPath]).value
-        if runMinutes == None:
-            runHours = 0.0
-        else:
+        vals = system.tag.readBlocking([tagPath])
+        runMinutes = vals[0]
+        if runMinutes.quality.isGood():
             runHours = runMinutes / 60.0
+        else:
+            runHours = 0.0
+            
     else:
         runHours = 0.0
         print "WARNING: the Ignition uptime counter tag (%s) does not exist!" % (tagPath)

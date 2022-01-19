@@ -9,8 +9,10 @@ Created on Jun 18, 2018
 @author: phass
 '''
 
-import system, time
-from ils.common.config import getTagProvider, getIsolationTagProvider, getHistoryProvider, getDatabase, getIsolationDatabase
+import system
+from ils.common.config import getHistoryProvider
+from ils.common.config import getProductionDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase
+from ils.common.config import getProductionTagProviderFromInternalDatabase, getIsolationTagProviderFromInternalDatabase
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -18,47 +20,59 @@ def client():
     print "***********************************************"
     print "*** Running the SITE client startup script. ***"
     print "***********************************************"
-
-    tagProvider = getTagProvider()
-    isolationTagProvider = getIsolationTagProvider()
-    historyProvider = getHistoryProvider()
-    database = getDatabase()
-
-    system.tag.write("[Client]Database", database)
-    system.tag.write("[Client]Tag Provider", tagProvider)
+    
+    projectName = system.util.getProjectName()
+    payload = {"project": projectName, "isolationMode": False}
+    tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
+    database = system.util.sendRequest(projectName, "getDatabase", payload)
         
     import ils.recipeToolkit.startup as recipeToolkitStartup
-    recipeToolkitStartup.client()
+    recipeToolkitStartup.client(tagProvider, database)
 
     import ils.diagToolkit.startup as diagToolkitStartup
-    diagToolkitStartup.client()
+    diagToolkitStartup.client(tagProvider, database)
     
 
 def gateway():
+    projectName = system.util.getProjectName()
+    
+    log.infof("------------------------------")
+    log.infof("In %s.gateway() for project <%s>", __name__, projectName)
+    log.infof("------------------------------")
+    
+    tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
+    isolationTagProvider = getIsolationTagProviderFromInternalDatabase(projectName)
+    database = getProductionDatabaseFromInternalDatabase(projectName)
+    isolationDatabase = getIsolationDatabaseFromInternalDatabase(projectName)
+    
+    log.infof("Checking for a warmboot...")
     from ils.common.util import isWarmboot
-    if isWarmboot():
+    if isWarmboot(tagProvider):
         log.info("Bypassing Symbolic AI startup for a warmboot")
         return 
     
+    log.infof("...getting version...")
     from ils.demo.version import version
     version, revisionDate = version()
     
-    log.info("Starting Symbolic AI version %s - %s" % (version, revisionDate))
-    
-    tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase = getDbAndTagProviderFromBltModule()
+    log.infof("In %s.gateway(): Starting Symbolic AI version %s - %s for project <%s>", __name__, version, revisionDate, projectName)
+
+    historyProvider = getHistoryProvider()
 
     #------------------------------------------------------------------------------------------------
     # Putting this in its own function allows the other startups to proceed while this sleeps.
-    def doit(tagProvider=tagProvider, isolationTagProvider=isolationTagProvider, historyProvider=historyProvider, database=database, isolationDatabase=isolationDatabase, log=log):
-        log.info("Starting the deferred startup...")
+    def doit(tagProvider=tagProvider, isolationTagProvider=isolationTagProvider, historyProvider=historyProvider, database=database, 
+             isolationDatabase=isolationDatabase, projectName=projectName, log=log):
+        log.infof("Starting the deferred startup for project <%s>...", projectName)
 
         # Start all of the packages used at the site
         
         import ils.recipeToolkit.startup as recipeToolkitStartup
         recipeToolkitStartup.gateway(tagProvider, isolationTagProvider)
     
-        import ils.diagToolkit.startup as diagToolkitStartup
-        diagToolkitStartup.gateway(tagProvider, isolationTagProvider, database)
+        log.warnf("Skipping startup of SymbolicAi until it has been ported to 8.x!")
+        #import ils.diagToolkit.startup as diagToolkitStartup
+        #diagToolkitStartup.gateway(tagProvider, isolationTagProvider, database)
         
         import ils.uir.startup as uirStartup
         uirStartup.gateway(tagProvider, isolationTagProvider)
@@ -77,49 +91,15 @@ def gateway():
         
         import ils.dataPump.startup as dataPumpStartup
         dataPumpStartup.gateway(tagProvider, isolationTagProvider)
-        
-        '''
-        Now perform very specific startup for the client
-        '''
-        createTags("[" + tagProvider + "]", log)
-        createTags("[" + isolationTagProvider + "]", log)
 
-        log.tracef("Done with core startup...")
+        log.infof("...done with deferred startup for project <%s>!", projectName)
 
     #---------------------------------------------------------------------------------------------------------
 
 
-    system.util.invokeAsynchronous(doit)
+    '''
+    I used to finish the startup asynchronously... but that makes things much harder to debug a multi project gateway
+    '''
+    #system.util.invokeAsynchronous(doit)
+    doit()
     
-
-def createTags(tagProvider, log):
-    print "Creating global constant memory tags...."
-    headers = ['Path', 'Name', 'Data Type', 'Value']
-    data = []
-
-def getDbAndTagProviderFromBltModule():
-    
-    def getter():
-        log.infof("...getting db and tagProviders from BLT...")
-        try:
-            tagProvider = getTagProvider()
-            isolationTagProvider = getIsolationTagProvider()
-            historyProvider = getHistoryProvider()
-            database = getDatabase()
-            isolationDatabase = getIsolationDatabase()
-        except:
-            log.tracef("...BLT module isn't quite ready, sleeping...")
-            time.sleep(5)
-            tagProvider = None
-            isolationTagProvider = None
-            historyProvider = None
-            database = None
-            isolationDatabase = None
-            
-        return tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase
-    
-    tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase = getter()
-    while tagProvider == None or isolationTagProvider == None or historyProvider == None or database == None or isolationDatabase == None:
-        tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase = getter()
-        
-    return tagProvider, isolationTagProvider, historyProvider, database, isolationDatabase

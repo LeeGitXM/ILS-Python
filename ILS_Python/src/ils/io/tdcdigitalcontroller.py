@@ -6,6 +6,7 @@ Created on Nov 4, 2018
 
 import ils.io.controller as controller
 import system, string, time
+from ils.io.util import confirmWrite, readTag, getProviderFromTagPath
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
 log = LogUtil.getLogger("com.ils.io")
@@ -19,8 +20,9 @@ class TDCDigitalController(controller.Controller):
     def __init__(self,path):
         controller.Controller.__init__(self,path)
         self.opTag = opcoutput.OPCOutput(path + '/op')
-        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
-        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+        tagProvider = getProviderFromTagPath(path)
+        self.PERMISSIVE_LATENCY_TIME = readTag("[%s]Configuration/Common/opcPermissiveLatencySeconds" % (tagProvider)).value
+        self.OPC_LATENCY_TIME = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (tagProvider)).value
 
     def reset(self):
         ''' Reset the UDT in preparation for a write '''

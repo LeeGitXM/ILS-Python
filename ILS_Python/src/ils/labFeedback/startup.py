@@ -15,7 +15,7 @@ PID_BIAS_UDT = "Lab Bias/Lab Bias PID"
 def gateway(tagProvider, isolationTagProvider):
     
     from ils.common.util import isWarmboot
-    if isWarmboot():
+    if isWarmboot(tagProvider):
         log.info("Bypassing Lab Feedback Toolkit startup for a warmboot")
         return 
     
@@ -31,7 +31,7 @@ def gateway(tagProvider, isolationTagProvider):
     initializeTags(tagProvider)
 
 def createTags(tagProvider):
-    print "Creating Lab Feedback configuration tags...."
+    log.tracef("Creating Lab Feedback configuration tags....")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/LabFeedback/"
@@ -43,26 +43,22 @@ def createTags(tagProvider):
     createConfigurationTags(ds, log)
 
 def initializeTags(provider):
-    log.info("Initializing Bias feedback UDTs...")
+    log.tracef("Initializing Bias feedback UDTs...")
     
     parentPath = "[%s]LabData" % (provider)
     for udtParentType in [EXPONENTIAL_FILTER_BIAS_UDT, PID_BIAS_UDT]:
-
-        udts = system.tag.browseTags(
-            parentPath=parentPath, 
-            tagType="UDT_INST", 
-            udtParentType=udtParentType,
-            recursive=True)
+        filters = {"tagType": "UDT_INST", "typeId": udtParentType, "recursive": True}
+        udts = system.tag.browse(parentPath, filters)
         
         log.infof("   Discovered %d %s UDTs...", len(udts), udtParentType)
         
         for udt in udts:
-            log.infof("Initializing: %s", udt.path)
-            udtPath = udt.path
+            udtPath = str(udt['fullPath'])
+            log.infof("Initializing: %s", udtPath)
             biasName = udtPath[udtPath.rfind("/") + 1:]
             
             # Read the memory tags
-            vals = system.tag.readAll([udtPath + "/biasTargetItemId", udtPath + "/biasTargetServerName",  udtPath + "/biasValue"])
+            vals = system.tag.readBlocking([udtPath + "/biasTargetItemId", udtPath + "/biasTargetServerName",  udtPath + "/biasValue"])
             itemId=vals[0].value
             opcServer=vals[1].value
             localBias=vals[2]
@@ -81,9 +77,9 @@ def initializeTags(provider):
                         print "   ...initializing a PID bias..."
                     
                     log.tracef("   writing %f to the rawBias and biasValue...", dcsBias)
-                    system.tag.writeAll([udtPath + "/rawBias", udtPath + "/biasValue"], [dcsBias, dcsBias])
+                    system.tag.writeBlocking([udtPath + "/rawBias", udtPath + "/biasValue"], [dcsBias, dcsBias])
             else:
                 log.warnf("Unable to initialize %s because the quality of the local bias or the DCS bias was bad or the value was None", biasName)
-                system.tag.writeAll([udtPath + "/rawBias", udtPath + "/biasValue"], [0.0, 0.0])
+                system.tag.writeBlocking([udtPath + "/rawBias", udtPath + "/biasValue"], [0.0, 0.0])
                 
     log.info("...done initializing Bias Feedback UDTs!")

@@ -9,10 +9,10 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 log = LogUtil.getLogger("com.ils.recipeToolkit")
 
-def gateway(provider, isolationTagProvider):
+def gateway(tagProvider, isolationTagProvider):
     
     from ils.common.util import isWarmboot
-    if isWarmboot():
+    if isWarmboot(tagProvider):
         log.info("Bypassing Recipe Toolkit startup for a warmboot")
         return 
     
@@ -22,10 +22,10 @@ def gateway(provider, isolationTagProvider):
     log.info("Starting Recipe Toolkit version %s - %s" % (version, revisionDate))
     log.info("---------------------------------------------------------")
 
-    createTags("[" + provider + "]")
+    createTags("[" + tagProvider + "]")
     createTags("[" + isolationTagProvider + "]")
 
-def client():
+def client(tagProvider, database):
     print "In recipeToolkit.startup.client()"
     log = LogUtil.getLogger("com.ils.recipeToolkit.download")
     log.info("Initializing the recipe toolkit")

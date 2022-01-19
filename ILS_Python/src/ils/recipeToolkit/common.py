@@ -6,6 +6,8 @@ Created on Sep 10, 2014
 
 import system
 from ils.io.util import readTag
+RECIPE_VALUES_INDEX = 0
+PROCESS_VALUES_INDEX = 1
 
 def test():
     print "Testy1"

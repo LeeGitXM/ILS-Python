@@ -8,7 +8,8 @@ import system, string
 from ils.sfc.recipeData.core import fetchRecipeData, fetchRecipeDataRecord, setRecipeData, splitKey, fetchRecipeDataType, recipeDataExists, s88GetRecipeDataDS, \
     getStepName, getPriorStep, getSuperiorStep, walkUpHieracrchy, copyRecipeDatum, fetchRecipeDataFromId, setRecipeDataFromId, getRecipeDataId, \
     fetchRecipeDataRecordFromRecipeDataId, getFolderForStep, copyFolderValues, getStepId, getStepInfoFromId, getStepInfoFromUUID
-from ils.sfc.recipeData.core import getDatabaseName, readTag, getProviderName
+from ils.sfc.recipeData.core import getDatabaseName, readTag, getProviderName, getSuperiorAncestors, walkUpHierarchyLookingForStepType, \
+    getFirstEnclosingChart
 from ils.common.units import convert
 from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, REFERENCE_SCOPE, \
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
@@ -73,6 +74,39 @@ def s88DataExists(chartProperties, stepProperties, keyAndAttribute, scope):
     folder,key,attribute = splitKey(keyAndAttribute)
     exists = recipeDataExists(stepId, folder, key, attribute, db)
     return exists
+
+
+def s88GetAncestors(chartPath, scope, db=""):
+    logger.tracef("s88GetAncestors(): getting the %s ancestor for %s", scope, chartPath)
+    ancestors = []
+    
+    if string.lower(scope) in [SUPERIOR_SCOPE]:
+        ancestors = getSuperiorAncestors(chartPath, db)
+    elif string.lower(scope) in [GLOBAL_SCOPE]:
+        ancestors = walkUpHierarchyLookingForStepType(chartPath, GLOBAL_SCOPE, db)
+    elif scope == OPERATION_SCOPE:
+        ancestors = walkUpHierarchyLookingForStepType(chartPath, OPERATION_SCOPE, db)
+    elif scope == PHASE_SCOPE:
+        ancestors = walkUpHierarchyLookingForStepType(chartPath, PHASE_SCOPE, db)
+    else:
+        print "Unsupported scope: %s" % (scope)
+    
+    return ancestors
+
+def s88GetEnclosingCharts(chartPath, db=""):
+    logger.tracef("s88GetEnclosingChart(): getting the enclosing charts for %s", chartPath)
+    data = []
+    
+    while chartPath != None:
+        logger.tracef("Getting the enclosing chart for %s", chartPath)
+        chartPath, stepName, stepUUID, stepType, factoryId = getFirstEnclosingChart(chartPath, db)
+        
+        if chartPath != None:
+            logger.tracef("...found %s", chartPath)
+            data.append([chartPath, stepName, stepUUID, stepType, factoryId])
+        
+    ds = system.dataset.toDataSet(["chartPath", "stepName", "stepUUID", "stepType", "factoryId"], data)
+    return ds
 
 def s88GetType(chartProperties, stepProperties, keyAndAttribute, scope):
     scope = scope.lower()

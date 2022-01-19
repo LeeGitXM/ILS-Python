@@ -5,9 +5,24 @@ Created on Nov 3, 2014
 '''
 import system, string
 from ils.sfc.common.notify import sfcNotify
-from ils.common.config import getDatabaseClient, getDatabase, getIsolationDatabase
-from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTROL_PANEL_WINDOW_PATH, DATABASE, DEFAULT_MESSAGE_QUEUE, ISOLATION_MODE, \
-    HANDLER, MESSAGE_QUEUE, ORIGINATOR, POSITION, PROJECT, SCALE, POST
+from ils.common.config import getDatabaseClient, \
+    getTagProviderClient ,\
+    getTimeFactorClient
+from ils.sfc.common.constants import CONTROL_PANEL_ID, \
+    CONTROL_PANEL_NAME, \
+    CONTROL_PANEL_WINDOW_PATH, \
+    DATABASE, \
+    DEFAULT_MESSAGE_QUEUE, \
+    HANDLER, \
+    ISOLATION_MODE, \
+    MESSAGE_QUEUE, \
+    ORIGINATOR, \
+    POSITION, \
+    PROJECT, \
+    SCALE, \
+    POST, \
+    TAG_PROVIDER, \
+    TIME_FACTOR
 
 '''
 This is designed to be called from a tag change script that will trigger the execution of a SFC.   
@@ -59,10 +74,9 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode, 
         print "Exiting because the chart is already running!"
         return
     
-    if isolationMode:
-        db = getIsolationDatabase()
-    else:
-        db = getDatabase()
+    db = getDatabaseClient()
+    tagProvider = getTagProviderClient()
+    timeFactor = getTimeFactorClient()
 
     from ils.sfc.client.windows.controlPanel import createControlPanel, getControlPanelIdForName
     controlPanelId = getControlPanelIdForName(controlPanelName, db)
@@ -76,7 +90,11 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode, 
     initialChartParams[CONTROL_PANEL_ID] = controlPanelId
     initialChartParams[ORIGINATOR] = originator
     initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
+    initialChartParams[DATABASE] = db
+    initialChartParams[TAG_PROVIDER] = tagProvider
+    initialChartParams[TIME_FACTOR] = timeFactor
 
+    # What does this do??? (PH 12/21/2021
     initialChartParams.update(chartParams)
 
     print "Starting a chart with: ", initialChartParams
@@ -101,11 +119,16 @@ def startChartWithoutControlPanel(chartPath, project, originator, isolationMode,
         print "Exiting because the chart is already running!"
         return
     
+    db = getDatabaseClient()
+    tagProvider = getTagProviderClient()
+    
     initialChartParams = dict()
     initialChartParams[PROJECT] = project
     initialChartParams[ISOLATION_MODE] = isolationMode
     initialChartParams[ORIGINATOR] = originator
     initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
+    initialChartParams[DATABASE] = db
+    initialChartParams[TAG_PROVIDER] = tagProvider
     
     initialChartParams.update(chartParams)
     

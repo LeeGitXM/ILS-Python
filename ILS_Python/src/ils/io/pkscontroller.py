@@ -7,7 +7,7 @@ Created on Dec 1, 2014
 import system, string, time
 import ils.io.controller as controller
 import ils.io.opcoutput as opcoutput
-from ils.io.util import confirmWrite
+from ils.io.util import confirmWrite, readTag, getProviderFromTagPath
 from ils.log.LogRecorder import LogRecorder
 log = LogRecorder(__name__)
 
@@ -28,8 +28,9 @@ class PKSController(controller.Controller):
         self.spTag = opcoutput.OPCOutput(self.path + '/sp')
         self.opTag = opcoutput.OPCOutput(self.path + '/op')
         log.tracef("OP Tag path: %s", self.opTag.path)
-        self.PERMISSIVE_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcPermissiveLatencySeconds").value
-        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
+        tagProvider = getProviderFromTagPath(path)
+        self.PERMISSIVE_LATENCY_TIME = readTag("[%s]Configuration/Common/opcPermissiveLatencySeconds" % (tagProvider)).value
+        self.OPC_LATENCY_TIME = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (tagProvider)).value
 
     def reset(self):
         ''' Reset the UDT in preparation for a write '''

@@ -4,12 +4,15 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
-from sys import path
-from ils.io.util import readTag
 from ils.recipeToolkit.tagFactory import createUDT
-
+from ils.recipeToolkit.fetch import fetchHighestVersion
+from ils.io.util import readTag 
+from sys import path
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
+
+from ils.recipeToolkit.common import RECIPE_VALUES_INDEX, PROCESS_VALUES_INDEX
 
 '''
 This runs in the client when the operator presses the "View Recipe" button on the OC Alert.
@@ -20,6 +23,7 @@ screen with the new grade selected.  It is up to the operator to press the Downl
 '''
 def semiAutomatedDownloadCallback(event, payload):
     print "In %s.automatedDownloadMessageHandler(), the payload is %s" % (__name__, payload)
+    db = getDatabaseClient()
     system.nav.closeParentWindow(event)
     
     targetPost = payload.get("post", "None")
@@ -40,35 +44,33 @@ def semiAutomatedDownloadCallback(event, payload):
         if win.getPath() == "Recipe/Recipe Viewer":
             print "Found a recipe viewer that was already open - closing it"
             system.nav.closeWindow(win.getPath())
-        
-    
+
     grade = payload.get("grade", "")
     version = payload.get("version", 0)
     recipeKey = payload.get("recipeKey", "")
     triggerTagPath = payload.get("triggerTagPath", "")
-    downloadType = 'GradeChange'
+    downloadType = 'Recipe Values'
     
-    # Save the grade and type to the recipe map table.
-    SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
-        "Timestamp = getdate() where RecipeFamilyName = '%s'" \
-        % (str(grade), version, recipeKey)
-    
-    print "SQL: ", SQL
-    rows = system.db.runUpdateQuery(SQL)
-    print "Successfully updated %i rows" % (rows)
+    # Save the grade and type to the recipe map table. - This should be done when they press download, not when we open the window - PAH 1/12/2022
+    #SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
+    #   "Timestamp = getdate() where RecipeFamilyName = '%s'" \
+    #    % (str(grade), version, recipeKey)
+    #rows = system.db.runUpdateQuery(SQL, database=db)
+    #print "Successfully updated %i rows" % (rows)
 
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType, 
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeKey, 'grade': grade, 'version': version, 'downloadTypeIndex': RECIPE_VALUES_INDEX, 
                                                    'mode': 'semi-automatic', 'triggerTagPath': triggerTagPath})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
 
 def showCurrentRecipeCallback(familyName):
     log.infof("In %s.showCurrentRecipeCallback() ", __name__)
+    db = getDatabaseClient()
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
     # but it is probably a string
     SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
     print "SQL: ", SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
 
     if len(pds) == 0:
         system.gui.errorBox("Unable to retrieve the current recipe for recipe key: %s" % (familyName), "Error")
@@ -84,24 +86,25 @@ def showCurrentRecipeCallback(familyName):
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade,'downloadType':'GradeChange', 'mode': 'manual'})
+    version = fetchHighestVersion(familyName, grade, db)
+    
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade,'version':version, 'downloadTypeIndex': RECIPE_VALUES_INDEX, 'mode': 'manual'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
-    return
-
-def showMidRunRecipeCallback(recipeFamilyName):
+def showMidRunRecipeCallback(familyName):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
+    db = getDatabaseClient()
     #   Fetch the grade and type from the recipe map table. The grade looks like an int, but it is probably a string
-    SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (recipeFamilyName)
+    SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
     print "SQL: ", SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
 
     if len(pds) == 0:
-        system.gui.errorBox("Unable to retrieve the current recipe for recipe family: %s" % (recipeFamilyName), "Error")
+        system.gui.errorBox("Unable to retrieve the current recipe for recipe family: %s" % (familyName), "Error")
         return 
 
     if len(pds) > 1:
-        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe family: %s" % (recipeFamilyName), "Error")
+        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe family: %s" % (familyName), "Error")
         return 
 
     record = pds[0];
@@ -110,10 +113,10 @@ def showMidRunRecipeCallback(recipeFamilyName):
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeFamilyName, 'grade': grade, 'downloadType':'MidRun', 'mode': 'manual'})
+    version = fetchHighestVersion(familyName, grade, db)
+    
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade, 'version':version, 'downloadTypeIndex': PROCESS_VALUES_INDEX, 'mode': 'manual'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
-
-    return
 
 
 def initialize(rootContainer):
@@ -157,6 +160,7 @@ def initialize(rootContainer):
         
     from ils.common.config import getTagProviderClient
     provider = getTagProviderClient()
+    db = getDatabaseClient()
     rootContainer.provider = provider
     familyName = rootContainer.familyName
     grade = rootContainer.grade
@@ -164,7 +168,7 @@ def initialize(rootContainer):
 
     # fetch the recipe family
     from ils.recipeToolkit.fetch import recipeFamily as fetchRecipeFamily
-    recipeFamily = fetchRecipeFamily(familyName)
+    recipeFamily = fetchRecipeFamily(familyName, db)
 
     status = str(recipeFamily['Status'])
     rootContainer.status = status
@@ -181,7 +185,7 @@ def initialize(rootContainer):
 
     # Fetch the recipe
     from ils.recipeToolkit.fetch import details
-    pds = details(familyName, grade, version)
+    pds = details(familyName, grade, version, db)
 
     # Initialize table colors and put the raw recipe into a dataset attribute of the table
     table = rootContainer.getComponent('Power Table')
@@ -210,14 +214,14 @@ def initialize(rootContainer):
 # Reset all of the recipe detail objects.  This really isn't necessary for the detail objects that
 # were newly created, but is necessary for ones that were existing
 def resetRecipeDetails(provider, familyName):
-    log.infof("Resetting recipe details...")
+    log.infof("In %s.resetRecipeDetails()...", __name__)
             
     tags = []
     vals = []
     path = "[%s]Recipe/%s/" % (provider, familyName)
 
     for udtType in ['Recipe Data/Recipe Details']:
-        details = system.tag.browseTags(path, udtParentType=udtType)
+        details = system.tag.browse(path, {"tagType":"UdtInstance", "typeId":udtType})
         for detail in details:
             tags.append(path + detail.name + "/valueTagName")
             vals.append("")
@@ -230,14 +234,17 @@ def resetRecipeDetails(provider, familyName):
             
             tags.append(path + detail.name + "/command")
             vals.append("")
-            
-    system.tag.writeBlocking(tags, vals)
+
+    if len(tags) > 0:
+        print "Tags: ", tags
+        print "Vals: ", vals
+        system.tag.writeBlocking(tags, vals)
 
 # Update the table with the recipe data - this is called when we change the grade.  This does not
 # incorporate the DCS data, that is done in refresh()
 def update(rawData):
-    log.trace("In project.recipe.viewRecipe.update()")
-    log.trace("Updating the table with data from the recipe database")
+    log.tracef("In %s.update()...", __name__)
+    log.tracef("Updating the table with data from the recipe database")
 
     headers = ['Descriptor', 'Pend', 'Stor', 'Comp', 'Recc', 'High Limit', 'Low Limit', 'Reason',\
         'Store Tag', 'Comp Tag', 'Change Level', 'Write Location', 'Step', 'Mode Attribute', \
@@ -302,6 +309,7 @@ def update(rawData):
 def createOPCTags(ds, provider, recipeKey, database = ""):
     from ils.recipeToolkit.tagFactory import createRecipeDetailUDT
     from ils.recipeToolkit.common import formatLocalTagPathAndName
+    log.tracef("In %s.createOPCTags()...", __name__)
     
     #------------------------------------------------------------
     # Fetch the alias to OPC server map from the EMC database
@@ -460,6 +468,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
     log.infof("...the tags with limits are: %s", str(tagsWithLimits))
     
     #----------------
+    log.infof("Creating tags...")
     for record in pds:
         step = record['Step']
         changeLevel = record['Change Level']
@@ -480,7 +489,7 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
             tagPath, tagName = formatLocalTagPathAndName(provider, tagName)
             
             # Determine the data type by browsing the tag
-            browseTags = system.tag.browseTags(parentPath=tagPath, tagPath="*"+tagName)
+            browseTags = system.tag.browse(tagPath, {"name":"*"+tagName})
             
             if len(browseTags) == 0:
                 log.tracef("The tag %s does not exist", tagName)
@@ -513,8 +522,11 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                     downloadType = "Immediate"
                     
                     # Use the modeAttribute, modeAttributeValue and recc to determine the class of tag
+                    print "A"
                     tagRoot, tagSuffix, tagName = parseRecipeTagName(storOrCompTag)
+                    print "B"
                     modeAttribute, modeAttributeValue = determineOPCTypeModeAndVal(modeAttribute, modeAttributeValue)
+                    print "C"
                     UDTType, conditionalDataType = determineTagClass(recc, valueType, modeAttribute, modeAttributeValue, specialValueNAN)
                     log.tracef("   %s: OPC server: %s,  class name (UDT): %s, tag suffix: %s", storOrCompTag, opcServer, UDTType, tagSuffix)
                     itemId = itemIdPrefix + storOrCompTag
@@ -522,7 +534,9 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                     path = "/Recipe/" + recipeKey
     
                     # The tag factory will check if the tag already exists
+                    log.tracef("Creating a UDT...")
                     createUDT(UDTType, provider, path, valueType, tagName, opcServer, scanClass, itemId, modeAttribute, modeAttributeValue, conditionalDataType)
+                    log.tracef("...created!")
     
                     # The tags list list all of the tags that are required for this recipe.  It will be used
                     # later to determine which tags are no longer required. 
@@ -611,7 +625,8 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
         i = i + 1
 
     # Update the recipe detail objects, they were previously reset, now update
-    results = system.tag.writeAll(recipeDetailTagNames, recipeDetailTagValues)
+    if len(recipeDetailTagNames) > 0:
+        system.tag.writeBlocking(recipeDetailTagNames, recipeDetailTagValues)
     
     return ds, tags
 
@@ -622,7 +637,7 @@ def sweepTags(provider, recipeKey, tags):
 
     unneededTags = []
     path = "[" + provider + "]Recipe/" + recipeKey
-    existingTags = system.tag.browseTagsSimple(path, "ASC")
+    existingTags = system.tag.browse(path)
     for tag in existingTags:
         
         if tag.isUDT():
@@ -630,5 +645,5 @@ def sweepTags(provider, recipeKey, tags):
                 unneededTags.append(path + '/' + tag.name)
                 print "   Deleting unneeded tag: ", tag.name
 
-    system.tag.removeTags(unneededTags)
+    system.tag.deleteTags(unneededTags)
     print "   Done (%i tags were deleted)!" % ( len(unneededTags) )

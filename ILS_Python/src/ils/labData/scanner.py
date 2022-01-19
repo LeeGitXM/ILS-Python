@@ -4,6 +4,16 @@ Created on Mar 27, 2015
 @author: Pete
 
 The purpose of this module is to scan / poll of of the lab data points for new values
+
+This runs every 30 seconds from a gateway timer script.
+The scanner utilizes a cache of processed values that are maintained from run to run, this
+saves the work of a fair amount of database queries and slicing and dicing every 30 seconds even when nothing changed.
+The cache used to just be a module level global.  This worked great except that it got initialized every time Python was 
+reloaded, which happens every time ANY file is changed in the PYLIB structure.  The logic still worked fine except that this 
+would trigger it to reprocess the most recent value.  Generally this happens behind the scenes and doesn't matter, but if the 
+most recent value was bad and violated some lab limits then it will generate an OC alert every time your Python is saved.
+So, to work around this I changed using a module level global to using IA's global scheme.  At the beginning of each scan I 
+get the globals and at the end I stash them.
 '''
 
 import sys, system, string, traceback
@@ -23,27 +33,31 @@ customValidationLog = LogRecorder(__name__ + ".customValidation")
 selectorLog = LogRecorder(__name__ + ".selector")
 import ils.common.util as util
 
-# This should persist from one run to the next 
-lastValueCache = {}
-triggerCache = {}
-derivedCalculationCache = {}
+LAST_VALUE_CACHE = "lastValueCache"
+TRIGGER_CACHE = "triggerCache"
+DERIVED_CALCULATION_CACHE = "derivedCalculationCache"
 
 '''
 This is called from a gateway timer script
 '''
 def scanner():
+    iaGlobals = system.util.getGlobals()
+    lastValueCache = iaGlobals.get(LAST_VALUE_CACHE, {})
+    triggerCache= iaGlobals.get(TRIGGER_CACHE, {})
+    derivedCalculationCache = iaGlobals.get(DERIVED_CALCULATION_CACHE, {})
+
     database = getDatabase()
     isolationDatabase = getIsolationDatabase()
     tagProvider = getTagProvider()
     tagProviderIsolation = getIsolationTagProvider()
     
     if readTag("[%s]Configuration/LabData/pollingEnabled" % (tagProvider)).value == True:
-        main(database, tagProvider)
+        lastValueCache, triggerCache, derivedCalculationCache = main(database, tagProvider, lastValueCache, triggerCache, derivedCalculationCache)
     else:
         log.tracef("Lab data polling is disabled") 
 
     if readTag("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
-        main(isolationDatabase, tagProviderIsolation)
+        lastValueCache, triggerCache, derivedCalculationCache = main(isolationDatabase, tagProviderIsolation, lastValueCache, triggerCache, derivedCalculationCache)
         
     ''' Tickle the watchdogs '''
     tagPath = "[%s]Site/Watchdogs/Lab Data Watchdog/currentValue" % (tagProvider)
@@ -57,13 +71,16 @@ def scanner():
             
         writeTag(tagPath, currentValue)
 
+    system.util.getGlobals()[LAST_VALUE_CACHE]= lastValueCache
+    system.util.getGlobals()[TRIGGER_CACHE] = triggerCache
+    system.util.getGlobals()[DERIVED_CALCULATION_CACHE] = derivedCalculationCache
 
-def main(database, tagProvider):
+def main(database, tagProvider, lastValueCache, triggerCache, derivedCalculationCache):
     log.tracef("Scanning for lab data (%s, %s)...", database, tagProvider)
 
     log.trace("Last Value Cache: %s" % (str(lastValueCache)))
     if len(lastValueCache) == 0:
-        initializeCache(database)
+        lastValueCache = initializeCache(database, lastValueCache)
     
     from ils.labData.limits import fetchLimits
     limits=fetchLimits(tagProvider, database)
@@ -77,7 +94,7 @@ def main(database, tagProvider):
     newValue = False
     writeTags=[]
     writeTagValues=[]
-    writeTags, writeTagValues = checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues, simulateHDA)
+    lastValueCache, writeTags, writeTagValues = checkForNewPHDLabValues(lastValueCache, database, tagProvider, limits, writeTags, writeTagValues, simulateHDA)
     log.debug("Writing %i new PHD lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
     if len(writeTags) > 0:
@@ -85,7 +102,7 @@ def main(database, tagProvider):
     
     writeTags=[]
     writeTagValues=[] 
-    writeTags, writeTagValues = checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues)
+    lastValueCache, writeTags, writeTagValues = checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, writeTags, writeTagValues)
     log.debug("Writing %i new DCS lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
     if len(writeTags) > 0:
@@ -93,8 +110,8 @@ def main(database, tagProvider):
     
     writeTags=[]
     writeTagValues=[] 
-    checkForDerivedValueTriggers(database)
-    writeTags, writeTagValues = checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, simulateHDA)
+    triggerCache, derivedCalculationCache = checkForDerivedValueTriggers(database, triggerCache, derivedCalculationCache)
+    derivedCalculationCache, writeTags, writeTagValues = checkDerivedCalculations(derivedCalculationCache, database, tagProvider, writeTags, writeTagValues, simulateHDA)
     log.debug("Writing %i new derived lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
     if len(writeTags) > 0:
@@ -104,6 +121,7 @@ def main(database, tagProvider):
         notifyClients()
 
     log.tracef("...finished lab data scanning!")
+    return lastValueCache, triggerCache, derivedCalculationCache
 
 
 def notifyClients():
@@ -145,7 +163,7 @@ def tagWriter(tags, vals, mode="synch"):
             
 #-------------
 # 
-def checkForDerivedValueTriggers(database):
+def checkForDerivedValueTriggers(database, triggerCache, derivedCalculationCache):
     derivedLog.trace("Checking the derived value triggers ... ")
 
     derivedLog.trace("------------------------------")
@@ -241,12 +259,13 @@ def checkForDerivedValueTriggers(database):
                 derivedLog.trace("...adding %s to the calculation cache" % (str(d)))
                 
                 derivedCalculationCache[valueName]=d
+    return triggerCache, derivedCalculationCache
 
 
 # The logic that drives the derived calculations is a little different here than in the old system.  In the old system each 
 # calculation procedure had the responsibility to collect consistent lab data.  In the new framework, the engine will collect
 # all of the necessary information and then call the calculation method.
-def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, simulateHDA):
+def checkDerivedCalculations(derivedCalculationCache, database, tagProvider, writeTags, writeTagValues, simulateHDA):
     derivedLog.tracef("Checking the derived calculations...")
     
     def writeToPHD(resultServerName, resultItemId, newVal, sampleTime, simulateHDA):
@@ -387,11 +406,11 @@ def checkDerivedCalculations(database, tagProvider, writeTags, writeTagValues, s
 
     derivedLog.tracef(" ...done processing the derived values for this cycle!")
 
-    return writeTags, writeTagValues
+    return derivedCalculationCache, writeTags, writeTagValues
 
 
 #-------------
-def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagValues):
+def checkForNewDCSLabValues(lastValueCache, database, tagProvider, limits, writeTags, writeTagValues):
     
     #----------------------------------------------------------------------
     def checkIfValueIsNew(valueName, rawValue, sampleTime, minimumSampleIntervalSeconds, log):
@@ -434,7 +453,8 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         
     dcsLog.tracef("Checking for new DCS Lab values ... ")    
     
-    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds "\
+    SQL = "select V.ValueName, V.ValueId, V.ValidationProcedure, DV.ItemId, OPC.InterfaceName, U.UnitName, P.Post, DV.MinimumSampleIntervalSeconds, "\
+        "DV.SampleTimeConstantMinutes "\
         "FROM LtValue V, TkUnit U, LtDCSValue DV, TkPost P, LtOpcInterface OPC "\
         "WHERE V.ValueId = DV.ValueId "\
         " and V.UnitId = U.UnitId "\
@@ -452,6 +472,7 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         post = record["Post"]
         validationProcedure = record["ValidationProcedure"]
         minimumSampleIntervalSeconds  = record["MinimumSampleIntervalSeconds"]
+        sampleTimeConstantMinutes = record["SampleTimeConstantMinutes"]
         
         tagName = "LabData/%s/DCS-Lab-Values/%s" % (unitName, valueName)
         dcsLog.trace("Reading: %s " % (tagName))    
@@ -460,9 +481,10 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
         dcsLog.trace("...read %s: %s - %s - %s - %s" % (valueName, itemId, str(qv.value), str(qv.timestamp), str(qv.quality)))
         
         if str(qv.quality) == 'Good':
-            new = checkIfValueIsNew(valueName, qv.value, qv.timestamp, minimumSampleIntervalSeconds, dcsLog)
+            sampleTime = system.date.addMinutes(qv.timestamp, int(-1 * abs(sampleTimeConstantMinutes)))
+            new = checkIfValueIsNew(valueName, qv.value, sampleTime, minimumSampleIntervalSeconds, dcsLog)
             if new:
-                writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, qv.value, qv.timestamp, \
+                lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, qv.value, sampleTime, \
                      database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, dcsLog)
         else:
             # I don't want to post this to the queue because this is called every minute, and if the same tag is bad for a day 
@@ -471,10 +493,10 @@ def checkForNewDCSLabValues(database, tagProvider, limits, writeTags, writeTagVa
 
     dcsLog.tracef("...done checking for new DCS Lab values!")
     
-    return writeTags, writeTagValues
+    return lastValueCache, writeTags, writeTagValues
 
     
-def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagValues, simulateHDA):
+def checkForNewPHDLabValues(lastValueCache, database, tagProvider, limits, writeTags, writeTagValues, simulateHDA):
     
     #----------------------------------------------------------------------
     def checkIfValueIsNew(valueName, rawValue, sampleTime, log):
@@ -625,7 +647,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
 
                 new, rawValue, sampleTime, status = checkForANewPHDLabValue(valueName, itemId, valueList, endDate, simulateHDA)
                 if new:
-                    writeTags, writeTagValues = handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, \
+                    lastValueCache, writeTags, writeTagValues = handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, rawValue, sampleTime, \
                         database, tagProvider, limits, validationProcedure, writeTags, writeTagValues, phdLog)
                 elif status != "":
                     writeTags, writeTagValues = handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, writeTagValues)
@@ -633,7 +655,7 @@ def checkForNewPHDLabValues(database, tagProvider, limits, writeTags, writeTagVa
     phdLog.trace("Writing %s to %s" % (str(writeTagValues), str(writeTags)))
 
     phdLog.tracef("Done reading PHD lab values")
-    return writeTags, writeTagValues
+    return lastValueCache, writeTags, writeTagValues
     
     
 '''
@@ -641,8 +663,9 @@ Handle a new value generically, regardless of its source..  The first thing to d
 # limits then operator intervention is required before storing the value.  If there are no limits or the value is within the validity limits
 # then store the value automatically
 '''
-def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
+def handleNewLabValue(lastValueCache, post, unitName, valueId, valueName, rawValue, sampleTime, database, tagProvider, limits, 
                       validationProcedure, writeTags, writeTagValues, log):
+    
     
     limit=limits.get(valueId,None)
     log.trace("...handling a new lab value for %s, checking limits (%s)..." % (valueName, str(limit)))
@@ -669,8 +692,8 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
 
             # Remember that updateTags does not always promote the value...
             writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, isValid, foundConsole, writeTags, writeTagValues, log, notifyConsole, statusMessage)
-            updateCache(valueId, valueName, rawValue, sampleTime)
-            return writeTags, writeTagValues
+            lastValueCache = updateCache(lastValueCache, valueId, valueName, rawValue, sampleTime)
+            return lastValueCache, writeTags, writeTagValues
         
     validValidity = True
     validSQCValidity = True
@@ -719,9 +742,9 @@ def handleNewLabValue(post, unitName, valueId, valueName, rawValue, sampleTime, 
         writeTags, writeTagValues = updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, True, True, writeTags, writeTagValues, log)
             
     # regardless of whether we passed or failed validation, add the value to the cache so we don't process it again
-    updateCache(valueId, valueName, rawValue, sampleTime)
+    lastValueCache = updateCache(lastValueCache, valueId, valueName, rawValue, sampleTime)
     
-    return writeTags, writeTagValues
+    return lastValueCache, writeTags, writeTagValues
 
 # Handle a bad value.  Write the status to the status tag of the UDT
 def handleBadLabValue(unitName, valueName, tagProvider, status, writeTags, writeTagValues):
@@ -741,17 +764,21 @@ def storeValue(valueId, valueName, rawValue, sampleTime, unitName, log, tagProvi
 
     from ils.common.grade import getGradeForUnit
     grade=getGradeForUnit(unitName, tagProvider)
-    insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database)
+    insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database)
 
 
 # This should be the only place anywhere that inserts into the LtHistory table.
-def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database=""):
+def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, database=""):
+    log.tracef("Inserting %s (%d) %s at %s for grade %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
     success = True  # If the row already exists then consider it a success
     insertedRows = 0
 
     sampleTimeType = type(sampleTime).__name__
     if sampleTimeType == "Date":
         log.tracef("sampleTime is a date, converting to a string...")
+        sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
+    elif sampleTimeType == "Timestamp":
+        log.tracef("sampleTime is a **Timestamp**, converting to a string...")
         sampleTime=system.db.dateFormat(sampleTime, "yyyy-MM-dd HH:mm:ss")
     
     if sampleTime.find(".") > 0:
@@ -764,15 +791,20 @@ def insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, database
             # Step 1 - Insert the value into the lab history table.
             SQL = "insert into LtHistory (valueId, RawValue, Grade, SampleTime, ReportTime) values (%i, %s, '%s', '%s', getdate())" % (valueId, str(rawValue), grade, sampleTime)
             historyId = system.db.runUpdateQuery(SQL, database, getKey=1)
+            log.tracef("...inserted value with history id: %d", historyId)
             
             # Step 2 - Update LtValue with the id of the latest history value
-            SQL = "update LtValue set LastHistoryId = %i where valueId = %i" % (historyId, valueId)
+            SQL = "update LtValue set LastHistoryId = %d where valueId = %d" % (historyId, valueId)
             system.db.runUpdateQuery(SQL, database)
             success = True
             insertedRows = 1
         except:
-            log.error("Failed to insert into a lab value for %s-%i, %s at %s, grade: %s" % (valueName, valueId, str(rawValue), str(sampleTime), str(grade)))
+            log.errorf("Failed to insert into a lab value for %s-%i, %s at %s, grade: %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
             success = False
+    else:
+        ''' This isn't an error, due to timing we may get the same values twice, the check is just to prevent duplicates. '''
+        log.tracef("Skipping insert of %s (%d) %s at %s for grade %s", valueName, valueId, str(rawValue), str(sampleTime), str(grade))
+        
     return success, insertedRows
 
 # This is called by a selector tag change script.  There is a listener on the SampleTime and on the value.  They both call this handler.
@@ -813,8 +845,9 @@ def storeSelector(tagRoot, database):
     storeValue(valueId, valueName, value, sampleTime, unitName, selectorLog, tagProvider, database)
 
     
-def updateCache(valueId, valueName, rawValue, sampleTime):
+def updateCache(lastValueCache, valueId, valueName, rawValue, sampleTime):
     lastValueCache[valueName]={'valueId': valueId, 'rawValue': rawValue, 'sampleTime': sampleTime}
+    return lastValueCache
 
 
 # Update the Lab Data UDT tags
@@ -880,7 +913,7 @@ def updateTags(tagProvider, unitName, valueName, rawValue, sampleTime, valid, fo
 
 
 # This is called on startup to load the most recent measurement into the cache
-def initializeCache(database):
+def initializeCache(database, lastValueCache):
     log.tracef("Initializing the last Value Cache...")
     
     SQL = "select * from LtLastValueView"
@@ -893,7 +926,7 @@ def initializeCache(database):
         reportTime=record['ReportTime']
         lastValueCache[valueName]={'valueId':valueId, 'rawValue': rawValue, 'sampleTime': sampleTime, 'reportTime': reportTime}
     log.trace("Loaded %i measurements into the last value cache..." % (len(pds)))
-#    print lastValueCache
+    return lastValueCache
 
 def simulateReadRaw(itemIds, startDate, endDate):
     retVals = []

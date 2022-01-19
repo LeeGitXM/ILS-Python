@@ -61,17 +61,17 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
                     recipeDataScope=recipeDataScope, tagPath=tagPath, outputType=outputType):
         from ils.io.api import write, writeRamp
         from ils.common.config import getTagProvider
-        from ils.sfc.gateway.api import postToQueue
+        from ils.sfc.gateway.api import postToQueue, getIsolationMode
         from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
         from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, RAMP_TIME, RAMP_UPDATE_FREQUENCY
 
-        productionProviderName = getTagProvider()   # Get the production tag provider
+        isolationMode = getIsolationMode(chartScope)
         
         '''
         Only pay attention to the write enabled flag if we are writing to a production tag.
         '''
         s88WriteEnabled = readTag("[" + providerName + "]/Configuration/SFC/sfcWriteEnabled").value   
-        if providerName == productionProviderName and not(s88WriteEnabled):
+        if not(isolationMode) and not(s88WriteEnabled):
             logger.info('Write bypassed for %s because SFC writes are inhibited!' % (tagPath))
             s88Set(chartScope, stepScope, config.key + "." + DOWNLOAD_STATUS, STEP_FAILURE, recipeDataScope)
 

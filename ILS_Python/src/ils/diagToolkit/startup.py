@@ -14,7 +14,7 @@ log=LogRecorder(__name__)
 def gateway(tagProvider, isolationTagProvider, database):
     
     from ils.common.util import isWarmboot
-    if isWarmboot():
+    if isWarmboot(tagProvider):
         log.info("Bypassing Symbolic AI startup for a warmboot")
         return 
     
@@ -60,7 +60,7 @@ def gateway(tagProvider, isolationTagProvider, database):
     resetRecommendations("%", log, database)
     resetOutputs("%", log, database)
 
-def client():
+def client(tagProvider, database):
     from ils.diagToolkit.version import version
     version, releaseDate = version()
     log.info("Initializing the Symbolic AI client version %s" % (version))

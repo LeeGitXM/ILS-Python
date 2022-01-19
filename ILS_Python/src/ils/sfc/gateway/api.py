@@ -9,13 +9,13 @@ Created on Oct 30, 2014
 import system, time, string
 from ils.io.util import readTag
 from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
-from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
-    DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT, MAX_CONTROL_PANEL_MESSAGE_LENGTH
+from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, DATABASE, DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, \
+    HANDLER, MAX_CONTROL_PANEL_MESSAGE_LENGTH, MESSAGE, MESSAGE_QUEUE, NAME, ORIGINATOR, RESPONSE, TAG_PROVIDER, TIME_FACTOR, TIMED_OUT, \
+    TIMEOUT, TIMEOUT_TIME, TIMEOUT_UNIT, WINDOW_ID
 from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.queue.constants import QUEUE_ERROR
 from ils.sfc.recipeData.api import substituteScopeReferences
-from ils.common.config import getProductionDatabase, getIsolationDatabase
 
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
@@ -449,18 +449,6 @@ def getCurrentMessageQueue(chartProperties):
     topScope = getTopLevelProperties(chartProperties)
     return topScope[MESSAGE_QUEUE]
 
-
-def getDatabaseName(chartProperties):
-    '''Get the name of the database this chart is using, taking isolation mode into account'''
-    isolationMode = getIsolationMode(chartProperties)
-
-    if isolationMode:
-        db = getIsolationDatabase()
-    else:
-        db = getProductionDatabase()
-    
-    return db
-
 def getDelaySeconds(delay, delayUnit):
     '''get the delay time and convert to seconds'''
     if delayUnit == DELAY_UNIT_SECOND:
@@ -506,17 +494,20 @@ def getConsoleName(chartProperties, db):
     consoleName = system.db.runScalarQuery(SQL, db) 
     return consoleName
 
+def getDatabaseName(chartProperties):
+    '''Get the name of the database this chart is using, we conveniently put this into the top properties '''
+    from ils.sfc.recipeData.core import getDatabaseName as getDatabaseNameFromCore
+    return getDatabaseNameFromCore(chartProperties)
 
 def getProviderName(chartProperties):
-    '''Get the name of the tag provider for this chart, taking isolation mode into account'''
-    from system.ils.sfc import getProviderName, getIsolationMode
-    return getProviderName(getIsolationMode(chartProperties))
+    '''Get the name of the tag provider for this chart, we conveniently put this into the top properties '''
+    from ils.sfc.recipeData.core import getProviderName as getProviderNameFromCore
+    return getProviderNameFromCore(chartProperties)
 
-#returns with square brackets
 def getProvider(chartProperties):
     '''Like getProviderName(), but puts brackets around the provider name'''
-    provider = getProviderName(chartProperties)
-    return "[" + provider + "]"
+    from ils.sfc.recipeData.core import getProvider as getProviderFromCore
+    return getProviderFromCore(chartProperties)
   
 def getSessionId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''
@@ -544,10 +535,12 @@ def getTimeoutTime(chartScope, stepProperties):
     return timeoutTime
    
 def getTimeFactor(chartProperties):
-    '''Get the factor by which all times should be multiplied (typically used to speed up tests)'''
-    from system.ils.sfc import getTimeFactor as getModuleTimeFactor
-    isolationMode = getIsolationMode(chartProperties)
-    return getModuleTimeFactor(isolationMode)
+    '''
+    Get the factor by which all times should be multiplied (typically used to speed up tests) which 
+    we conveniently put into the top properties. 
+    '''
+    topProperties = getTopLevelProperties(chartProperties)
+    return topProperties[TIME_FACTOR]
 
 def getTopChartRunId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''

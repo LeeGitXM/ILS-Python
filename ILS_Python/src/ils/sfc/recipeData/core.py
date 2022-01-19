@@ -9,8 +9,9 @@ from ils.io.util import readTag
 from ils.common.units import convert
 from ils.common.cast import toBit, isFloat
 from ils.common.util import formatDateTime, isText
-from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, \
-    TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED
+from ils.common.util import substituteProvider
+from ils.sfc.common.constants import DATABASE, START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUME_TIMER, CLEAR_TIMER, \
+    TAG_PROVIDER, TIMER_CLEARED, TIMER_STOPPED, TIMER_RUNNING, TIMER_PAUSED, GLOBAL_SCOPE, OPERATION_SCOPE, PHASE_SCOPE
 
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, SQC, RECIPE, \
     SIMPLE_VALUE, TIMER, ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_NAME
@@ -231,11 +232,11 @@ def getRecipeDataId(stepName, stepId, keyOriginal, db):
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         if folder == "":
-            logger.errorf("Error the key <%s> was not found for step <%s>", key, stepName)
-            raise ValueError, "Missing recipe data - Key <%s> was not found for step <%s> (id %d)" % (key, stepName, stepId)
+            logger.errorf("Error the key <%s> was not found for step <%s> using db <%s>", key, stepName, db)
+            raise ValueError, "Missing recipe data - Key <%s> was not found for step <%s> using db <%s> (id %d)" % (key, stepName, db, stepId)
         else:
-            logger.errorf("Error the key <%s.%s> was not found for step <%s>", folder, key, stepName)
-            raise ValueError, "Missing recipe data - Key <%s.%s> was not found for step <%s> (id %d)" % (folder, key, stepName, stepId)
+            logger.errorf("Error the key <%s.%s> was not found for step <%s> using db <%s>", folder, key, stepName, db)
+            raise ValueError, "Missing recipe data - Key <%s.%s> was not found for step <%s> using db <%s>(id %d)" % (folder, key, stepName, db, stepId)
     
     if len(pds) > 1:
         logger.errorf("Error multiple records were found")
@@ -1608,26 +1609,13 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         logger.errorf("Unsupported recipe data type: %s", recipeDataType)
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
     
-'''
-************************************************************************************************************
-These are here to prevent a circular import problem for sfc.recipeData.api back into sfc.gateway.api
-************************************************************************************************************
-'''
-from ils.common.util import substituteProvider
+
+
 
 def getDatabaseName(chartProperties):
-    from ils.common.config import getProductionDatabase, getIsolationDatabase
-    '''Get the name of the database this chart is using, taking isolation mode into account'''
-    isolationMode = getIsolationMode(chartProperties)
-    
-    ''' I added some strange looking Python to get this to work from the Test Framework. '''
-
-    if isolationMode:
-        db = getIsolationDatabase()
-    else:
-        db = getProductionDatabase()
-    
-    return db
+    '''Get the name of the database this chart is using, we conveniently put this into the top properties '''
+    topProperties = getTopLevelProperties(chartProperties)
+    return topProperties[DATABASE]
 
 def getIsolationMode(chartProperties):
     '''Returns true if the chart is running in isolation mode'''
@@ -1656,7 +1644,76 @@ def readTag(chartScope, tagPath):
     qv = readTag(fullPath)
     return qv.value
 
+
 def getProviderName(chartProperties):
     '''Get the name of the tag provider for this chart, taking isolation mode into account'''
-    from system.ils.sfc import getProviderName, getIsolationMode
-    return getProviderName(getIsolationMode(chartProperties))
+    topProperties = getTopLevelProperties(chartProperties)
+    provider = topProperties[TAG_PROVIDER]
+    return provider
+
+def getProvider(chartProperties):
+    '''Like getProviderName(), but puts brackets around the provider name'''
+    topProperties = getTopLevelProperties(chartProperties)
+    provider = topProperties[TAG_PROVIDER]
+    return "[" + provider + "]"
+
+def getSuperiorAncestors(chartPath, db):
+    ancestors=[]
+    SQL = "select ChartPath from SfcHierarchyView where ChildChartPath = '%s'" % (chartPath)
+    pds = system.db.runQuery(SQL, db)
+    for record in pds:
+        print record["ChartPath"]
+        ancestors.append(record["ChartPath"])
+    return ancestors
+
+def getFirstEnclosingChart(chartPath, db):
+    '''
+    "First" is a bit arbitrary, since a chart can be called by more than one parent.
+    This is used when mocking up the call hierarchy when debugging from designer.
+    '''
+    SQL = "select chartPath, stepName, stepUUID, stepType, factoryId from SfcHierarchyView where ChildChartPath = '%s'" % (chartPath)    
+    pds = system.db.runQuery(SQL, db)
+    if len(pds) == 0:
+        return None, None, None, None, None
+    
+    record = pds[0]
+    chartPath = record["chartPath"]
+    stepName = record["stepName"]
+    stepUUID = record["stepUUID"]
+    stepType = record["stepType"]
+    factoryId = record["factoryId"]
+    return chartPath, stepName, stepUUID, stepType, factoryId
+
+def walkUpHierarchyLookingForStepType(chartPath, ancestorType, db):
+    
+    def fetchParents(chartPaths, ancestorType):
+        terminals = []
+        parents = []
+        
+        for cp in chartPaths:
+            SQL = "select ChartPath, StepType from SfcHierarchyView where ChildChartPath = '%s'" % (cp)
+            pds = system.db.runQuery(SQL, database=db)
+            for record in pds:
+                print record["ChartPath"], " - ", record["StepType"]
+                if ancestorType == GLOBAL_SCOPE and record["StepType"] == "Unit Procedure":
+                    terminals.append(record["ChartPath"])
+                elif ancestorType == OPERATION_SCOPE and record["StepType"] == "Operation":
+                    terminals.append(record["ChartPath"])
+                else:
+                    parents.append(record["ChartPath"])
+        print "   returning %s - %s" % (str(terminals), str(parents)) 
+        return terminals, parents
+    
+    ancestors=[]
+    chartPaths = [chartPath]
+    
+    i = 0
+    while len(chartPaths) > 0 and i < 5:
+        print "(%d) Looking for <%s> ancestors for %s" % (i, ancestorType, str(chartPaths))
+        terminals, chartPaths = fetchParents(chartPaths, ancestorType)
+        ancestors = ancestors + terminals
+        i = i + 1
+        
+    print "The <%s> ancestors of %s are %s" % (ancestorType, chartPath, str(ancestors))
+    
+    return ancestors

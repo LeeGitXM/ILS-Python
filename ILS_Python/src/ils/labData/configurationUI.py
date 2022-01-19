@@ -214,6 +214,7 @@ def insertDataRow(rootContainer):
             return False
         
         minimumTimeBetweenSamples = rootContainer.getComponent("minimumTimeBetweenSamples").intValue
+		sampleTimeOffset = rootContainer.getComponent("sampleTimeOffset").intValue  
         itemId = rootContainer.getComponent("itemId").text
         if itemId == "":
             system.gui.messageBox("You must specify an Item-Id for the lab value!", "Warning")
@@ -255,8 +256,8 @@ def insertDataRow(rootContainer):
         system.db.runUpdateQuery(sql, database=db)
         
     elif labDataType == "DCS":
-        sql = "INSERT INTO LtDCSValue (ValueId, InterfaceId, ItemId, MinimumSampleIntervalSeconds)"\
-            "VALUES (%s, %s, '%s', %s)" %(str(valueId), str(interfaceId), str(itemId), str(minimumTimeBetweenSamples))
+        sql = "INSERT INTO LtDCSValue (ValueId, InterfaceId, ItemId, MinimumSampleIntervalSeconds, SampleTimeConstantMinutes)"\
+            "VALUES (%s, %s, '%s', %s, %s)" %(str(valueId), str(interfaceId), str(itemId), str(minimumTimeBetweenSamples), str(sampleTimeOffset))
         system.db.runUpdateQuery(sql, database=db)
         createDcsTag(unitName, newName, interfaceName, itemId)
         
@@ -305,7 +306,8 @@ def update(rootContainer, db):
         table.data = pds
         table.updateInProgress = False
     elif dataType == "DCS":
-        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, DS.MinimumSampleIntervalSeconds, V.UnitId, DS.AllowManualEntry, OPC.InterfaceName, DS.ItemId, V.ValidationProcedure "\
+        SQL = "SELECT V.ValueId, V.ValueName, V.Description, V.DisplayDecimals, DS.MinimumSampleIntervalSeconds, DS.SampleTimeConstantMinutes, V.UnitId, DS.AllowManualEntry, "\
+            " OPC.InterfaceName, DS.ItemId, V.ValidationProcedure "\
             " FROM LtValue V, LtDCSValue DS, LtOpcInterface OPC "\
             " WHERE V.ValueId = DS.ValueId "\
             " AND V.UnitId = %i "\
@@ -550,6 +552,9 @@ def dataCellEdited(table, rowIndex, colName, oldValue, newValue):
     elif colName == "MinimumSampleIntervalSeconds":
         SQL = "UPDATE LtDCSValue SET MinimumSampleIntervalSeconds = %d WHERE ValueId = %d " % (newValue, valueId)
         
+	elif colName == "SampleTimeConstantMinutes":
+        SQL = "UPDATE LtDCSValue SET SampleTimeConstantMinutes = %d WHERE ValueId = %d " % (newValue, valueId)
+		
     elif colName == "AllowManualEntry":
         if dataType == "PHD":
             SQL = "UPDATE LtPHDValue SET AllowManualEntry = %d WHERE ValueId = %d " % (newValue, valueId)

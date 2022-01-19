@@ -197,6 +197,10 @@ class Compiler():
 
 
     def handleAddedResources(self):
+        '''
+        When they add a new chart, it will appear in the added resource list and in the modified resource list.
+        This routine needs to just create a record in the SfcChart table.
+        '''
         log.tracef("Handling added resources:")
         for resourceId in self.addedResources.keys():
             chartPath = self.addedResources[resourceId]
