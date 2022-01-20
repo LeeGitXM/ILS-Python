@@ -63,7 +63,7 @@ def isUDTorFolder(fullTagPath, strategy="PYTHONCLASS"):
     '''
     This strategy uses readTag(tagPath + ".TagType") this returns an integer enumeration whose return values
     are undocumented (I'm sure it is documented somewhere, but I don't know where).  The problem with this strategy is that 
-    I get deifferent results in client scope than I do in gateway scope. In client scope, a folder is a 6 and an opc tag is a 0
+    I get different results in client scope than I do in gateway scope. In client scope, a folder is a 6 and an opc tag is a 0
     In gateway scope, a folder is 0 and an opc tag is a 0
     '''
     if strategy == "TAGTYPE":
@@ -117,35 +117,23 @@ def isUDTorFolder(fullTagPath, strategy="PYTHONCLASS"):
  
 def isUDT(fullTagPath):
     '''
-    Try and figure out if the thing is a UDT. Return True if the tag path is a UDT, false otherwise.
-    There is possibly an easier way to do this and avoid the whole broseTag API issues of 
-    having to put a wild card in front of the tagPath.  I could use system.tag.read(tagPath + ".TagType.
-    but I don't know how to decode the integer enumeration that is returned.  
-    
-    TODO: This should be easier to do in Ignition 8!
+    Determine if the referenced tag is a UDT. Return True if the tag path is a UDT, false otherwise.
     '''
     log.tracef("Checking if %s is a UDT...", fullTagPath)
     try:
         isUDT = False
-        parentPath, tagPath = splitTagPath(fullTagPath)
-        log.tracef("Parent: <%s>, Tag: <%s>", parentPath, tagPath)
-#        tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
-#        for tag in tags:
-#            log.tracef("Checking <%s> vs <%s>", tag.fullPath, fullTagPath)
-#            if tag.fullPath == fullTagPath:
-#                log.tracef(" --names match--")
-#                isUDT = tag.isUDT()
-#                log.tracef("  isUDT: %s", str(isUDT)) 
-        tags = system.tag.browseTagsSimple(parentPath, "ASC")
-        for tag in tags:
-            log.tracef("Checking <%s> vs <%s>", tag.fullPath, fullTagPath)
-            if tag.fullPath == fullTagPath:
-                log.tracef(" --names match--")
-                isUDT = tag.isUDT()
-                log.tracef("  isUDT: %s", str(isUDT)) 
-                return isUDT
+        parentPath, tagName = splitTagPath(fullTagPath)
+        log.tracef("Parent: <%s>, Tag: <%s>", parentPath, tagName)
+
+        results = system.tag.browse(parentPath, {"name": tagName})
+        for tag in results.getResults():
+            if str(tag['tagType']) == "UdtInstance":
+                isUDT = True
+            else:
+                isUDT = False
+                
     except:
-        log.errorf("Error attempting to determine if <%s> is a UDT, parent: %s, tag path: %s", fullTagPath, parentPath, tagPath)
+        log.errorf("Error attempting to determine if <%s> is a UDT, parent: %s, tag: %s", fullTagPath, parentPath, tagName)
         isUDT = False  
     return isUDT
 

@@ -4,7 +4,7 @@ Created on Nov 30, 2014
 @author: Pete
 '''
 import string, system, traceback
-from ils.io.util import isUDTorFolder, checkConfig
+from ils.io.util import isUDTorFolder, checkConfig, readTag, writeTag
 from ils.common.error import catchError
 
 # These imports may have warnings in eclipse, but they ARE needed!
@@ -113,7 +113,7 @@ def reset(tagname):
     log.trace("Resetting %s" % (tagname))
     
     # Get the name of the Python class that corresponds to this UDT.
-    pythonClass = system.tag.read(tagname + "/pythonClass").value
+    pythonClass = readTag(tagname + "/pythonClass").value
     pythonClass = pythonClass.lower()+"."+pythonClass
 
     # Dynamically create an object (that won't live very long) and then call its reset method
@@ -141,18 +141,7 @@ def writeDatum(tagPath, val, valueType=""):
         return False, reason
 
     success, errorMessage = writer(tagPath, val, valueType, "writeDatum")
-    '''
-    --- I think this is redundant, there is a write confirm 
-    if success:
-        # The write was successful, now confirm the write by reading the value back
-        success, errorMessage = simpleWriteConfirm(tagPath, val, valueType)
-        if success:
-            log.info("   Confirmed writing %s to %s" % (str(val), tagPath))
-        else:
-            log.error("WriteDatum failed to confirm writing %s to %s because %s" % (str(val), str(tagPath), errorMessage))
-    else:
-        log.error("WriteDatum failed while writing %s to %s because %s" % (str(val), str(tagPath), errorMessage))
-    ''' 
+
     return success, errorMessage
 
 
@@ -201,7 +190,7 @@ def writeRamp(tagPath, val, valType, rampTime, updateFrequency, writeConfirm):
         log.trace("The target is a UDT - resetting...")
         
         ''' Get the name of the Python class that corresponds to this UDT. '''
-        pyc = system.tag.read(tagPath + "/pythonClass").value
+        pyc = readTag(tagPath + "/pythonClass").value
         pkg = "ils.io.%s"%pyc.lower()
         pythonClass = pyc.lower()+"."+pyc
 
@@ -287,7 +276,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
         log.trace("The target is a UDT - resetting...")
         
         ''' Get the name of the Python class that corresponds to this UDT. '''
-        pyc = system.tag.read(tagPath + "/pythonClass").value
+        pyc = readTag(tagPath + "/pythonClass").value
         pythonClass = pyc.lower()+"."+pyc
 
         ''' Dynamically create an object (that won't live very long) '''
@@ -325,7 +314,7 @@ def writer(tagPath, val, valueType="", command="writeDatum"):
             return configOK, errorMessage
         
         log.trace("Simple write of %s to %s..." % (str(val), tagPath))
-        status = system.tag.write(tagPath, val)
+        status = writeTag(tagPath, val)
         if status == 0:
             success = False
             errorMessage = "Write of %s to %s failed immediately" % (str(val), str(tagPath))
@@ -347,7 +336,7 @@ def simpleWriteConfirm(tagPath, val, valueType, timeout=60, frequency=1):
       For now ALWAYS read the value in the tag. 
     '''
     if isUDTorFolder(tagPath):
-        pythonClass = system.tag.read(tagPath + "/pythonClass").value
+        pythonClass = readTag(tagPath + "/pythonClass").value
         if pythonClass in ["PKSController", "PKSACEController", "PKSACERampController", "PKSRampController"]:
             if string.upper(valueType) in ["SP", "SETPOINT"]:
                 fullTagPath = tagPath + '/sp/value'
@@ -392,7 +381,7 @@ def confirmControllerMode(tagPath, val, testForZero, checkPathToValve, valueType
         return True, "The target is not a Controller", itemId
 
     ''' Get the name of the Python class that corresponds to this UDT. '''
-    pyc = system.tag.read(tagPath + "/pythonClass").value
+    pyc = readTag(tagPath + "/pythonClass").value
     pythonClass = pyc.lower()+"."+pyc
 
     ''' Dynamically create an object (that won't live very long) and then call its reset method '''
@@ -430,18 +419,18 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute, outputType):
         log.trace("Using Item Id...")
         # This needs to be smart enough to not blow up if using memory tags (which we will be in isolation)
         if isUDTorFolder(fullTagPath):
-            pythonClass = system.tag.read(fullTagPath + '/pythonClass').value
+            pythonClass = readTag(fullTagPath + '/pythonClass').value
             if string.upper(pythonClass) in ["OPCTAG", "OPCCONDITIONALOUTPUT", "OPCOUTPUT"]:
-                displayName = system.tag.read(fullTagPath + '/value.OPCItemPath').value
+                displayName = readTag(fullTagPath + '/value.OPCItemPath').value
             elif string.upper(pythonClass) in ["PKSCONTROLLER", "PKSRAMPCONTROLLER", "PKSACECONTROLLER", "PKSACERAMPCONTROLLER", "PKSDIGITALCONTROLLER", "TDCCONTROLLER", "TDCDIGITALCONTROLLER", "TDCRAMPCONTROLLER"]:
                 if string.upper(outputType) in ["SETPOINT", "SETPOINT RAMP"]:
-                    displayName = system.tag.read(fullTagPath + '/sp/value.OPCItemPath').value
+                    displayName = readTag(fullTagPath + '/sp/value.OPCItemPath').value
                 else:
-                    displayName = system.tag.read(fullTagPath + '/op/value.OPCItemPath').value
+                    displayName = readTag(fullTagPath + '/op/value.OPCItemPath').value
             else:
                 raise ValueError, "Unknown I/O class: %s" % (pythonClass)      
         else:
-            displayName = system.tag.read(fullTagPath + '.OPCItemPath').value
+            displayName = readTag(fullTagPath + '.OPCItemPath').value
 
     else:
         displayName = ''

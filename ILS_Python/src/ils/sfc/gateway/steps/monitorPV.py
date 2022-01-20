@@ -9,11 +9,12 @@ see the G2 procedures S88-RECIPE-INPUT-DATA__S88-MONITOR-PV.txt and S88-RECIPE-O
 import system, string
 from java.util import Date 
 from ils.io.util import readTag
-from ils.sfc.gateway.api import getIsolationMode
-from system.ils.sfc import getProviderName, getPVMonitorConfig, getDatabaseName
+from ils.sfc.gateway.api import getIsolationMode, getProviderName, getDatabaseName
+from system.ils.sfc import getPVMonitorConfig
 from ils.sfc.gateway.downloads import handleTimer, getElapsedMinutes
 from ils.io.api import getMonitoredTagPath
 from ils.io.util import stripProvider
+from ils.common.cast import determineType
 
 from ils.sfc.common.util import callMethodWithParams
 from ils.sfc.recipeData.api import s88Get, s88Set, s88GetStep, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88GetFromId, s88SetFromId
@@ -26,11 +27,15 @@ from ils.sfc.common.constants import TIMER_SET, TIMER_KEY, TIMER_LOCATION, ACTIV
     ERROR_COUNT_SCOPE, ERROR_COUNT_KEY, ERROR_COUNT_MODE, COUNT_ABSOLUTE, \
     LOCAL_SCOPE, PRIOR_SCOPE, SUPERIOR_SCOPE, PHASE_SCOPE, OPERATION_SCOPE, GLOBAL_SCOPE, CHART_SCOPE, STEP_SCOPE, REFERENCE_SCOPE, \
     NAME, PV_MONITOR_STATUS, PV_MONITORING, PV_WARNING, PV_OK_NOT_PERSISTENT, PV_OK, \
-    PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM
+    PV_BAD_NOT_CONSISTENT, PV_ERROR, SETPOINT_STATUS, SETPOINT_PROBLEM, WATCH
 from ils.sfc.recipeData.constants import TIMER, OUTPUT
-from ils.sfc.gateway.api import getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget
+from ils.sfc.gateway.api import getIsolationMode, getChartLogger, handleUnexpectedGatewayError, getStepProperty, compareValueToTarget, compareStringValueToTarget
 from ils.sfc.gateway.api import postToQueue
 from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
+
+NUMERIC_DATA_TYPE = "Numeric"
+STRING_DATA_TYPE = "String"
+BOOLEAN_DATA_TYPE = "Boolean"
 
 def activate(scopeContext, stepProperties, state):
     # some local constants
@@ -58,8 +63,8 @@ def activate(scopeContext, stepProperties, state):
 
         # Everything will have the same tag provider - check isolation mode and get the provider
         isolationMode = getIsolationMode(chartScope)
-        providerName = getProviderName(isolationMode)
-        database = getDatabaseName(isolationMode)
+        providerName = getProviderName(chartScope)
+        database = getDatabaseName(chartScope)
 
         # This does not initially exist in the step scope dictionary, so we will get a value of False
         initialized = stepScope.get(INITIALIZED, False)   
@@ -100,6 +105,7 @@ def activate(scopeContext, stepProperties, state):
                 
                 for configRow in config.rows:
                     
+                    logger.tracef("----------------------")
                     logger.trace("PV Key: %s - Target Type: %s - Target Name: %s - Strategy: %s - Deadtime: %s, Persistence: %s, tolerance: %s" % 
                                  (configRow.pvKey, configRow.targetType, configRow.targetNameIdOrValue, configRow.strategy, str(configRow.deadTime), str(configRow.persistence), str(configRow.tolerance)))
 
@@ -111,11 +117,53 @@ def activate(scopeContext, stepProperties, state):
                     else:
                         pvRecipeDataId, pvRecipeDataType = s88GetRecipeDataIdFromStep(targetStepUUID, configRow.pvKey, database)
                     
+                    ''' Read the PV now, before the monitoring phase starts, in order to determine that data type. ''' 
+                    tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
+                    qv = readTag(tagPath)
+                    valueType, val = determineType(qv.value)
+                    logger.tracef("  The current PV for %s is: %s-%s, the value type is: %s", tagPath, str(qv.value), str(qv.quality), valueType)
+
                     configRow.status = MONITORING
+                    configRow.pvRecipeDataId = pvRecipeDataId
+                    configRow.pvRecipeDataType = pvRecipeDataType
                     
                     if configRow.strategy == MONITOR:
                         watchOnly = False
-                    
+                        
+                    '''
+                    If we're just reading for display purposes (WATCH strategy), we're done with this row.
+                    Do the minimum amount of configuration to facilitate the watch.
+                    '''
+                    if configRow.strategy != MONITOR:
+                        logger.tracef('  ...skipping target setup because the strategy is WATCH!')
+                        configRow.targetRecipeDataType = pvRecipeDataType
+                        configRow.targetRecipeDataId = pvRecipeDataId
+                        
+                        logger.tracef("   ...initializing recipe data with id %d", pvRecipeDataId)
+                        s88SetFromId(pvRecipeDataId, pvRecipeDataType, PV_VALUE, "Null", database)
+                        s88SetFromId(pvRecipeDataId, pvRecipeDataType, PV_MONITOR_STATUS, PV_MONITORING, database)
+                        s88SetFromId(pvRecipeDataId, pvRecipeDataType, PV_MONITOR_ACTIVE, True, database)
+                        
+                        # I'm not sure if we SHOULD use output in watch mode, but I guess if we can someone will
+                        if pvRecipeDataType == OUTPUT:
+                            s88SetFromId(pvRecipeDataId, pvRecipeDataType, SETPOINT_STATUS, "", database)
+                        
+                        ''' Even though we are watching this item we need to read the pv now so that we can establish the data type '''
+                        tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)
+                        qv = readTag(tagPath)
+                        
+                        logger.tracef("Reading initial value to determine the type from <%s> value: %s", tagPath, str(qv))
+                        
+                        valueType, val = determineType(qv.value)
+                        if valueType in ["Float", "Integer"]:
+                            configRow.dataType = NUMERIC_DATA_TYPE
+                        elif valueType in ["Boolean"]:
+                            configRow.dataType = BOOLEAN_DATA_TYPE
+                        else:
+                            configRow.dataType = STRING_DATA_TYPE
+        
+                        logger.tracef("...valueType: %s, dataType: %s", valueType, configRow.dataType)
+                        continue
                     '''
                     This is a little clever - the type of the target determines where we will store the results.  These results are used by the 
                     download GUI block.  The target of a PV monitoring  
@@ -152,9 +200,7 @@ def activate(scopeContext, stepProperties, state):
                             pass
                     
                     if configRow.enabled:
-                        configRow.pvRecipeDataId = pvRecipeDataId
-                        configRow.pvRecipeDataType = pvRecipeDataType
-                        logger.trace(" ...PV Recipe Id: %d - Recipe Data Type: %s" % (pvRecipeDataId, pvRecipeDataType))
+                        logger.tracef(" ...PV Recipe Id: %d - Recipe Data Type: %s", pvRecipeDataId, pvRecipeDataType)
     
                         configRow.lastPV = -999999.99
                         configRow.lastStatus = "UNKNOWN"
@@ -188,7 +234,7 @@ def activate(scopeContext, stepProperties, state):
                         if targetType == SETPOINT:
                             # This means that the recipe data is an OUTPUT recipe data that points to some part of a controller I/O,
                             # the recipe data will tell what
-                            logger.trace("Getting the target value using SETPOINT strategy...")
+                            logger.tracef("Getting the target value using SETPOINT strategy...")
                             targetKey = configRow.targetNameIdOrValue  # This is a different targetKey than we used above when we got the recipe data id
                             tagPath =    s88GetFromId(targetRecipeDataId, targetRecipeDataType, 'Tag', database)
                             outputType = s88GetFromId(targetRecipeDataId, targetRecipeDataType, 'OutputType', database)
@@ -196,22 +242,40 @@ def activate(scopeContext, stepProperties, state):
                             
                             # I'm not sure why I need to put this into the configrow PAH 2/19/17
                             logger.tracef("get from id target id: %s target type: %s", targetRecipeDataId, targetRecipeDataType)
-                            configRow.targetValue = s88GetFromId(targetRecipeDataId, targetRecipeDataType, 'OutputValue', database)
+                            targetValue = s88GetFromId(targetRecipeDataId, targetRecipeDataType, 'OutputValue', database)
                             
                         elif targetType == VALUE:
                             # The target value is hard coded in the config data
-                            configRow.targetValue = float(configRow.targetNameIdOrValue)
+                            valueType, val = determineType(configRow.targetNameIdOrValue)
+                            logger.tracef("The datatype of the target value is: %s and the value is: %s", valueType, str(val))
+                            if valueType == 'String':
+                                targetValue = configRow.targetNameIdOrValue
+                            else:
+                                targetValue = float(configRow.targetNameIdOrValue)
                         elif targetType == TAG:
                             # Read the value from a tag
                             qv = readTag("[" + providerName + "]" + configRow.targetNameIdOrValue)
-                            configRow.targetValue = qv.value
+                            targetValue = qv.value
                         elif targetType == RECIPE:
                             # This means that the target value will be in some property of the recipe data
                             logger.tracef("Getting the target value from Recipe key: %s-%s", recipeDataLocation, configRow.targetNameIdOrValue)
-                            configRow.targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeDataLocation) 
+                            targetValue = s88Get(chartScope, stepScope, configRow.targetNameIdOrValue, recipeDataLocation) 
     
-                        logger.trace("...the target value is: %s" % (str(configRow.targetValue)))
+                        else:
+                            logger.errorf("Unexpected target type: <%s>", targetType)
+                            targetValue = None
+                        
+                        valueType, val = determineType(targetValue)
+                        if valueType in ["Float", "Integer"]:
+                            configRow.targetValue = targetValue
+                            configRow.dataType = NUMERIC_DATA_TYPE
+                        else:
+                            configRow.targetStringValue = str(targetValue)
+                            configRow.dataType = STRING_DATA_TYPE
+                        logger.tracef("...the target value is: %s (value type: %s)", str(targetValue), valueType)
 
+                logger.tracef("Summarizing the configuration (watch only: %s)", str(watchOnly))
+                
                 # Put the initialized config data back into step scope for the next iteration
                 stepScope[PV_MONITOR_CONFIG] = config
                 stepScope[MONITOR_ACTIVE_COUNT] = monitorActiveCount
@@ -268,8 +332,8 @@ def activate(scopeContext, stepProperties, state):
                 else:
                     stepScope["timerStarted"] = False
 
-                # If there are no rows configured to monitor, then the block is done, even though the block is probably misconfigured
-                if monitorActiveCount <= 0:
+                ''' If the step is not in watch only mode AND there are no rows configured to monitor, then the block is done, even though the block is probably misconfigured. '''
+                if not(watchOnly)  and monitorActiveCount <= 0:
                     logger.warn("PV Monitoring block is not configured to monitor anything")
                     complete = True
 
@@ -286,6 +350,7 @@ def activate(scopeContext, stepProperties, state):
                     
                 config = stepScope[PV_MONITOR_CONFIG]
                 watchOnly = stepScope[WATCH_ONLY]
+                logger.tracef("(%s) Watch only: %s", stepName, str(watchOnly))
             
                 # Wait until the timer starts before doing anything, once the timer has been started, we don't need to query it again.
                 # It is possible that this block starts before some other block starts the timer
@@ -323,6 +388,11 @@ def activate(scopeContext, stepProperties, state):
                         pvRecipeDataId = configRow.pvRecipeDataId
                         pvRecipeDataType = configRow.pvRecipeDataType
                         
+                        ''' Here are the new row properties supported to handle Strings '''                    
+                        dataType = configRow.dataType
+                        numericTargetValue = configRow.targetValue
+                        stringTargetValue = configRow.targetStringValue
+                        logger.tracef("%s - %s - %s", dataType, str(numericTargetValue), str(stringTargetValue))
                         # SUCCESS is a terminal state - once the criteria is met stop monitoring that PV
                         if configRow.status == PV_OK:
                             continue
@@ -362,10 +432,21 @@ def activate(scopeContext, stepProperties, state):
                             continue
     
                         pv=qv.value
-                        if pv != configRow.lastPV:
-#                            s88Set(chartScope, stepScope, targetKey + ".pvValue", pv, recipeDataLocation)
+    
+                        if dataType == NUMERIC_DATA_TYPE:
+                            logger.tracef("  (%s) The current PV is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastPV))
+                        elif dataType == STRING_DATA_TYPE:
+                            pv = pv.rstrip()
+                            logger.tracef("  (%s) The current PV (string) is: %s-%s (%s) (last PV: %s)", stepName, str(qv.value), str(qv.quality), tagPath, str(configRow.lastStringPV))
+                        
+                        if dataType == NUMERIC_DATA_TYPE and pv != configRow.lastPV:
+                            logger.tracef("  Updating the PV recipe for a changed numeric value (%s - %s - pvValue)...", str(targetRecipeDataId), targetRecipeDataType)
                             s88SetFromId(targetRecipeDataId, targetRecipeDataType, "pvValue", pv, database)
                             configRow.lastPV = pv
+                        elif dataType == STRING_DATA_TYPE and pv != configRow.lastStringPV:
+                            logger.tracef("  Updating the PV recipe for a changed string value (%s - %s - pvValue)...", str(targetRecipeDataId), targetRecipeDataType)
+                            s88SetFromId(targetRecipeDataId, targetRecipeDataType, "pvValue", pv, database)
+                            configRow.lastStringPV = pv
                         else:
                             logger.tracef("  Skipping update of pv because it has not changed")
     
@@ -405,7 +486,10 @@ def activate(scopeContext, stepProperties, state):
                         else:
                             stepScope['tooltip'] = "%s<br>     %s, value: %s, target: %s" % (stepScope["tooltip"], strippedTagpath, str(pv), str(target))
 
-                        valueOk,txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
+                        if dataType == STRING_DATA_TYPE:
+                            valueOk, txt = compareStringValueToTarget(pv,  configRow.targetStringValue , logger)
+                        else:
+                            valueOk, txt = compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger)
                         
                         # check persistence and consistency
                         if valueOk:
