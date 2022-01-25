@@ -34,8 +34,11 @@ def gateway():
     productionDatabase = getDatabase()
     isolationDatabase = getIsolationDatabase()
     
-    updateDatabaseSchema(tagProvider, productionDatabase)
-    updateDatabaseSchema(tagProvider, isolationDatabase)
+    ''' Use the magic function in the SFC module that tells us where Ignition is installed and therefore where the SQL scripts are. '''
+    homeDir = getUserLibPath()
+    
+    updateDatabaseSchema(tagProvider, homeDir, productionDatabase)
+    updateDatabaseSchema(tagProvider, homeDir, isolationDatabase)
     
     pds = system.db.runQuery("select * from TkSite")
     if len(pds) <> 1:
@@ -180,6 +183,8 @@ def createTags(tagProvider, log):
     data.append([path, "dbPruneDays", "Int8", "365"])
     data.append([path, "dbUpdateStrategy", "String", "implement"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
+    data.append([path, "ioMinimumDifference", "Float8", "0.00001"])
+    data.append([path, "ioMinimumRelativeDifference", "Float8", "0.00001"])
     data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
     data.append([path, "ocAlertCallback", "String", ""])
     data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
@@ -189,6 +194,8 @@ def createTags(tagProvider, log):
     data.append([path, "simulateHDA", "Boolean", "False"])
     data.append([path, "sqcPlotScaleFactor", "Float4", "0.75"])
     data.append([path, "writeEnabled", "Boolean", "True"])
+    
+
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
@@ -204,7 +211,7 @@ def createTags(tagProvider, log):
     createConfigurationTags(ds, log)
     
     
-def updateDatabaseSchema(tagProvider, db):
+def updateDatabaseSchema(tagProvider, homeDir, db):
     try:
         dbVersions = []
         dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})
@@ -215,6 +222,7 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 6, "version": "1.6r0", "filename": "update_1.6r0.sql", "releaseData": "2021-07-04"})
         dbVersions.append({"versionId": 7, "version": "1.7r0", "filename": "update_1.7r0.sql", "releaseData": "2021-08-31"})
         dbVersions.append({"versionId": 8, "version": "1.8r0", "filename": "update_1.8r0.sql", "releaseData": "2021-10-08"})
+        dbVersions.append({"versionId": 9, "version": "1.9r0", "filename": "update_1.9r0.sql", "releaseData": "2022-01-24"})
         
         projectName = system.util.getProjectName()
         log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
@@ -227,8 +235,6 @@ def updateDatabaseSchema(tagProvider, db):
             log.warnf("Exiting updateDatabaseSchema because %s does not exist, (hopefully this is the first startup after an install and the tag will be created later)", tagPath)
             return
         
-        ''' Use the magic function in the SFC module that tells us where Ignition is installed and therefore where the SQL scripts are. '''
-        homeDir = getUserLibPath()
         homeDir = homeDir + "/database/"
         
         currentId = readCurrentDbVersionId(strategy, db)

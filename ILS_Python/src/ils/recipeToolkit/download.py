@@ -209,6 +209,14 @@ def downloadCallback(rootContainer):
     message = "Starting MANUAL download of %s - %s for %s" % (str(grade), str(version), str(familyName))
     from ils.common.operatorLogbook import insert
     insert(familyName, message)
+    
+    # Save the grade and type to the recipe family table.
+    # grade looks like an int, but it is probably a string
+    db = getDatabaseClient()
+    SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
+        "Timestamp = getdate() where RecipeFamilyName = '%s'" % (str(grade), version, familyName)
+    rows = system.db.runUpdateQuery(SQL, database=db)
+    print "Successfully updated %i rows" % (rows)
 
     download(rootContainer)
 

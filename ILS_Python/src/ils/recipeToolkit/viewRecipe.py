@@ -5,9 +5,13 @@ Created on Sep 10, 2014
 '''
 import system, string
 from ils.recipeToolkit.tagFactory import createUDT
+from ils.recipeToolkit.fetch import fetchHighestVersion
 from sys import path
 from ils.log.LogRecorder import LogRecorder
+from ils.common.config import getDatabaseClient
 log = LogRecorder(__name__)
+
+from ils.recipeToolkit.common import RECIPE_VALUES_INDEX, PROCESS_VALUES_INDEX
 
 '''
 This runs in the client when the operator presses the "View Recipe" button on the OC Alert.
@@ -18,6 +22,7 @@ screen with the new grade selected.  It is up to the operator to press the Downl
 '''
 def semiAutomatedDownloadCallback(event, payload):
     print "In %s.automatedDownloadMessageHandler(), the payload is %s" % (__name__, payload)
+    db = getDatabaseClient()
     system.nav.closeParentWindow(event)
     
     targetPost = payload.get("post", "None")
@@ -38,35 +43,33 @@ def semiAutomatedDownloadCallback(event, payload):
         if win.getPath() == "Recipe/Recipe Viewer":
             print "Found a recipe viewer that was already open - closing it"
             system.nav.closeWindow(win.getPath())
-        
-    
+
     grade = payload.get("grade", "")
     version = payload.get("version", 0)
     recipeKey = payload.get("recipeKey", "")
     triggerTagPath = payload.get("triggerTagPath", "")
-    downloadType = 'GradeChange'
+    downloadType = 'Recipe Values'
     
-    # Save the grade and type to the recipe map table.
-    SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
-        "Timestamp = getdate() where RecipeFamilyName = '%s'" \
-        % (str(grade), version, recipeKey)
-    
-    print "SQL: ", SQL
-    rows = system.db.runUpdateQuery(SQL)
-    print "Successfully updated %i rows" % (rows)
+    # Save the grade and type to the recipe map table. - This should be done when they press download, not when we open the window - PAH 1/12/2022
+    #SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
+    #   "Timestamp = getdate() where RecipeFamilyName = '%s'" \
+    #    % (str(grade), version, recipeKey)
+    #rows = system.db.runUpdateQuery(SQL, database=db)
+    #print "Successfully updated %i rows" % (rows)
 
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeKey, 'grade': grade, 'version': version, 'downloadType':downloadType, 
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeKey, 'grade': grade, 'version': version, 'downloadTypeIndex': RECIPE_VALUES_INDEX, 
                                                    'mode': 'semi-automatic', 'triggerTagPath': triggerTagPath})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
 
 def showCurrentRecipeCallback(familyName):
     log.infof("In %s.showCurrentRecipeCallback() ", __name__)
+    db = getDatabaseClient()
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
     # but it is probably a string
     SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
     print "SQL: ", SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
 
     if len(pds) == 0:
         system.gui.errorBox("Unable to retrieve the current recipe for recipe key: %s" % (familyName), "Error")
@@ -82,24 +85,25 @@ def showCurrentRecipeCallback(familyName):
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade,'downloadType':'GradeChange', 'mode': 'manual'})
+    version = fetchHighestVersion(familyName, grade, db)
+    
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade,'version':version, 'downloadTypeIndex': RECIPE_VALUES_INDEX, 'mode': 'manual'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
 
-    return
-
-def showMidRunRecipeCallback(recipeFamilyName):
+def showMidRunRecipeCallback(familyName):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
+    db = getDatabaseClient()
     #   Fetch the grade and type from the recipe map table. The grade looks like an int, but it is probably a string
-    SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (recipeFamilyName)
+    SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
     print "SQL: ", SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
 
     if len(pds) == 0:
-        system.gui.errorBox("Unable to retrieve the current recipe for recipe family: %s" % (recipeFamilyName), "Error")
+        system.gui.errorBox("Unable to retrieve the current recipe for recipe family: %s" % (familyName), "Error")
         return 
 
     if len(pds) > 1:
-        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe family: %s" % (recipeFamilyName), "Error")
+        system.gui.errorBox("Multiple rows retrieve for the current recipe for recipe family: %s" % (familyName), "Error")
         return 
 
     record = pds[0];
@@ -108,10 +112,10 @@ def showMidRunRecipeCallback(recipeFamilyName):
     
     print "Fetched %s" % (str(grade))
     
-    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': recipeFamilyName, 'grade': grade, 'downloadType':'MidRun', 'mode': 'manual'})
+    version = fetchHighestVersion(familyName, grade, db)
+    
+    system.nav.openWindow('Recipe/Recipe Viewer', {'familyName': familyName, 'grade': grade, 'version':version, 'downloadTypeIndex': PROCESS_VALUES_INDEX, 'mode': 'manual'})
     system.nav.centerWindow('Recipe/Recipe Viewer')
-
-    return
 
 
 def initialize(rootContainer):
@@ -155,6 +159,7 @@ def initialize(rootContainer):
         
     from ils.common.config import getTagProviderClient
     provider = getTagProviderClient()
+    db = getDatabaseClient()
     rootContainer.provider = provider
     familyName = rootContainer.familyName
     grade = rootContainer.grade
@@ -162,7 +167,7 @@ def initialize(rootContainer):
 
     # fetch the recipe family
     from ils.recipeToolkit.fetch import recipeFamily as fetchRecipeFamily
-    recipeFamily = fetchRecipeFamily(familyName)
+    recipeFamily = fetchRecipeFamily(familyName, db)
 
     status = str(recipeFamily['Status'])
     rootContainer.status = status
@@ -179,7 +184,7 @@ def initialize(rootContainer):
 
     # Fetch the recipe
     from ils.recipeToolkit.fetch import details
-    pds = details(familyName, grade, version)
+    pds = details(familyName, grade, version, db)
 
     # Initialize table colors and put the raw recipe into a dataset attribute of the table
     table = rootContainer.getComponent('Power Table')

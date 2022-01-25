@@ -438,7 +438,10 @@ def dataTypeMatch(val1, val2):
 # OPC tag that we are confirming, not the UDT that contains it. 
 def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0): 
     log.trace("%s - Confirming the write of <%s> to %s..." % (__name__, str(val), tagPath))
- 
+    provider = getProviderFromTagPath(tagPath)
+    recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/Common/ioMinimumDifference").value
+    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/Common/ioMinimumRelativeDifference").value
+    
     startTime = Date().getTime()
     delta = (Date().getTime() - startTime) / 1000
     
@@ -452,7 +455,7 @@ def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0):
             if string.upper(str(qv.quality)) == 'GOOD':
                 if qv.value == val:
                     return True, ""
-                if equalityCheck(qv.value, val, 0.0001, 0.0001):
+                if equalityCheck(qv.value, val, recipeMinimumDifference, recipeMinimumRelativeDifference):
                     return True, ""
 
         # Time in seconds

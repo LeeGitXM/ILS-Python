@@ -17,9 +17,10 @@ def refresh(rootContainer):
         system.gui.warningBox("Ignoring the refresh request because a download is in process!")
         return
 
-    # The downloadType is either GradeChange or MidRun
+    # The downloadType is either GradeChange (Recipe Values) or MidRun (Process Values)
     downloadType = rootContainer.getPropertyValue("downloadType")
     familyName = rootContainer.getPropertyValue("familyName")
+    log.infof("   family: %s, download type: %s", familyName, downloadType)
     rootContainer.status = "Refreshing"
 
     from ils.recipeToolkit.common import setBackgroundColor
@@ -41,8 +42,8 @@ def refresh(rootContainer):
 
 def automatedRefresh(familyName, processedData, provider, database):
     log.infof("In %s.automatedRefresh()", __name__)
-    # The downloadType is either GradeChange or MidRun
-    downloadType = "GradeChange"
+    # The downloadType is either GradeChange (Recipe Values) or MidRun (Process Values)
+    downloadType = "Recipe Values"
 
     processedData = refresher(familyName, processedData, downloadType, provider, database)
     return processedData
@@ -172,15 +173,19 @@ def refresher(familyName, ds, downloadType, provider, database=""):
                 compQuality = str(values[idx].quality)
 
             ds = system.dataset.setValue(ds, i, "Comp", compVal)
-            if downloadType == 'MidRun':
-                ds = system.dataset.setValue(ds, i, "Pend", compVal)
+            if downloadType in ['MidRun', 'Process Values']:
+                print "Setting pend val to actual for row: ", i
                 pendVal = compVal
+            else:
+                print "Setting pend val to recipe for row: ", i
+                pendVal = reccVal
+            ds = system.dataset.setValue(ds, i, "Pend", pendVal)
                 
         log.trace("line %i - step %i :: pend: %s - stor: %s (%s)- comp: %s (%s)" % (i, step, str(pendVal), str(storVal), str(storQuality), str(compVal), str(compQuality)))
         
         # Based on everything that we have collected about this tag, determine if we should download it
         # This will override any reason that may have already been entered, which doesn't seem right
-        if downloadType == 'MidRun':
+        if downloadType in ['MidRun', 'Process Values'] :
             reason = ""
         else:
             if writeLocation == "" or writeLocation == None or changeLevel == "CC":

@@ -5,6 +5,8 @@ Created on Sep 10, 2014
 '''
 
 import system
+RECIPE_VALUES_INDEX = 0
+PROCESS_VALUES_INDEX = 1
 
 def test():
     print "Testy1"
