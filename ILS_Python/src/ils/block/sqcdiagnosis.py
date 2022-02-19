@@ -1,8 +1,11 @@
 #  Copyright 2014 ILS Automation
 
 import system
+from ils.common.database import toDateString
 from ils.block import basicblock
 from ils.log.LogRecorder import LogRecorder
+from ils.sfc.common.util import logExceptionCause
+log = LogRecorder(__name__)
 
 def getClassName():
     return "SQCDiagnosis"
@@ -107,24 +110,6 @@ class SQCDiagnosis(basicblock.BasicBlock):
         
             # The name couldn't be found either so this must be a totally new SQC diagnosis which we have never seen before
             self.log.trace("...that didn't work either, try inserting a new record, this must be a new block...")
-
-            applicationName = handler.getApplication(self.parentuuid).getName()
-            familyName = handler.getFamily(self.parentuuid).getName()
-            self.log.trace("From the BLT handler, the family name is: %s" % (familyName))
-            from ils.diagToolkit.common import fetchFamilyId
-            familyId = fetchFamilyId(familyName, database)
-            if familyId == None:
-                self.log.error("Unable to insert the SQC diagnosis into the database because the family <%s> is undefined" % (familyName))
-                return
-        
-            print "Application: %s\nFamily: %s (%d)" % (applicationName, familyName, familyId)
-        
-            SQL = "insert into DtSQCDiagnosis (SQCDiagnosisUUID, DiagramUUID, Status, SQCDiagnosisName, FamilyId) "\
-                "values ('%s', '%s', '%s', %s)" % (str(self.uuid), str(self.parentuuid), str(value), sqcDiagnosisName, str(familyId))
-            rows=system.db.runUpdateQuery(SQL, database)
-            if rows > 0:
-                print "...success"
-                return
         
             self.log.error("Unable to update a change in value for an SQC Diagnosis")
         except:
@@ -159,3 +144,104 @@ class SQCDiagnosis(basicblock.BasicBlock):
             from ils.common.error import catchError
             txt=catchError(__name__, "Error resetting a SQC Diagnosis")
             self.log.error(txt)
+            
+
+'''
+Synchronize the aux data in the block with the SQL*Server database.
+'''
+def setAuxData(block, applicationName, familyName, diagramUUID, blockName, auxData, db):
+    from ils.blt.util import getProperty
+    blockUUID = str(block.getBlockId())
+    log.infof("In %s.setAuxData() with %s - %s - %s - %s - %s", __name__, applicationName, familyName, blockName, blockUUID, str(auxData))
+    
+    log.tracef("************************************************")
+    log.tracef("* Saving SQC Diagnosis %s Data to <%s>*", blockName, db)
+    log.tracef("************************************************")
+    
+    # All of these things in the auxData general purpose container are Linked HashMaps which is some Jave class that is more like a This is a LinkedHashMap
+    lists = auxData.getLists()
+    log.tracef("Lists: (a %s), %s", type(lists).__name__, str(lists)) 
+
+    mapLists = auxData.getMapLists()
+    log.tracef("Map Lists: (a %s), %s", type(mapLists).__name__, str(mapLists)) 
+    
+    properties = auxData.getProperties()
+    log.tracef("Properties: (a %s), %s", type(properties).__name__, str(properties)) 
+    
+    ''' 
+    The properties should have a SQC diagnosis label but there is a bigger problem here, mainly that the label isn't showing
+    up on property editor.  I think the label is important for the SQC plotting facility, but for now there needs to be another way to get it there.
+    '''
+    sqcDiagnosisLabel = ""
+  
+    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
+    applicationId = system.db.runScalarQuery(SQL, db)
+    log.tracef("The application Id is: %s", str(applicationId))
+    if applicationId == None:
+        SQL = "insert into DtApplication (ApplicationName) values (?)"
+        applicationId = system.db.runPrepUpdate(SQL, [applicationName], db, getKey=1)
+
+    SQL = "SELECT familyId FROM DtFamily "\
+          " WHERE ApplicationId = %s"\
+          "  AND familyName = '%s'" % (applicationId, familyName)
+    familyId = system.db.runScalarQuery(SQL,db)
+    log.tracef("The family Id is: %s", str(familyId))
+    if familyId == None:
+        SQL = "INSERT INTO DtFamily (applicationId,familyName,familyPriority) VALUES (?, ?, 0.0)"
+        log.tracef(SQL)
+        familyId = system.db.runPrepUpdate(SQL, [applicationId, familyName], db, getKey=1)
+
+    ''' 
+    The UUID assigned to a SQC Diagnosis does appear to be Universally Unique.  
+    Copy and pasting a SQC Diagnosis results in a new UUID for the new diagnosis.  
+    (I shouldn't really include the family ID here, the UUID should be enough)
+    '''
+    SQL = "SELECT sqcDiagnosisId FROM DtSqcDiagnosis "\
+          " WHERE FamilyId = %s"\
+          "  AND SQCDiagnosisUUID = '%s'" % (familyId, blockUUID)
+    log.tracef(SQL)
+    blockId = system.db.runScalarQuery(SQL, db)
+    log.tracef("The SQC diagnosis Id is: %s", str(blockId))
+    if blockId == None:
+        log.tracef("*** Inserting a new SQC diagnosis ***")
+        lastResetTime = system.date.now()
+        lastResetTime = system.date.addMonths(lastResetTime, -12)
+        lastResetTime = toDateString(lastResetTime)
+        status = "New"
+        
+        SQL = "INSERT INTO DtSqcDiagnosis (SqcDiagnosisName, SqcDiagnosisLabel, Status, FamilyId, "\
+               "SqcDiagnosisUUID, DiagramUUID, lastResetTime)"\
+               " VALUES (?,?,?,?,?,?,?)"
+        log.tracef("SQL: %s", SQL)
+        try:
+            args =  [blockName, sqcDiagnosisLabel, status, familyId, blockUUID, diagramUUID, lastResetTime]
+            log.tracef("Arguments (%d): %s", len(args), str(args))
+            blockId = system.db.runPrepUpdate(SQL, args, db, getKey=1)
+            log.tracef("Inserted a new SQC diagnosis with id: %d", blockId)
+        except:
+            logExceptionCause("Inserting a new SQC Diagnosis", log)
+            return
+    else:
+        log.tracef("*** Updating an existing SQC diagnosis ***")
+
+        ''' I shouldn't really need to update the UUID here, it should never change, but there may be old systems where it wasn't stored. '''
+        SQL = "UPDATE DtSqcDiagnosis SET SqcDiagnosisName=?, SqcDiagnosisLabel=?, familyId=?, SqcDiagnosisUUID=?, DiagramUUID=? "\
+            " WHERE SqcDiagnosisId = ?"
+
+        args = [blockName, sqcDiagnosisLabel, familyId, blockUUID, diagramUUID, blockId]
+        
+        log.tracef("SQL: %s", SQL)
+        log.tracef("Args: %s", str(args))
+        rows = system.db.runPrepUpdate(SQL, args, db)
+        log.tracef("Updated %d rows", rows)
+
+    return blockId
+
+def removeDeletedBlocksFromDatabase(ids, db):
+    log.infof("Removing SQC diagnosis ids: %s", str(ids))
+    totalRows = 0
+    for ID in ids:
+        SQL = "Delete from DtSqcDiagnosis where SQCDiagnosisId = %s" % (str(ID))
+        rows = system.db.runUpdateQuery(SQL, db)
+        totalRows = totalRows + rows
+    log.tracef("Deleted %d SQC Diagnosis", totalRows)

@@ -240,3 +240,16 @@ def setBlockState(block,state):
         block.setState(state)
     else:
         log.infof("%s.setBlockState: block <%s> not defined" ,  __name__, block)
+
+def getProperty(properties, key, defaultValue):
+    '''
+    This is only relevant to Symbolic Ai blocks that are implemented in Python. It is used to get the value out of a Java property
+    map which is stored in the aux data.  The map is sort of like a dictionary but not quite.
+    '''
+    try:
+        val = properties[key]
+        if val == None: val = defaultValue
+    except:
+        val = defaultValue
+
+    return val

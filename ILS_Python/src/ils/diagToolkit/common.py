@@ -333,6 +333,24 @@ def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
     diagramUUID = system.db.runScalarQuery(SQL, database)
     return diagramUUID
 
+def fetchFinalDiagnosisOnDiagram(diagramUUID, database=""):
+    ids = []
+    SQL = "select FinalDiagnosisId from DtFinalDiagnosis where DiagramUUID = '%s' " % (diagramUUID)
+    log.tracef("%s.fetchFinalDiagnosisOnDiagram(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database)
+    for record in pds:
+        ids.append(record["FinalDiagnosisId"])
+    return ids
+
+def fetchSqcDiagnosisOnDiagram(diagramUUID, database=""):
+    ids = []
+    SQL = "select SQCDiagnosisId from DtSQCDiagnosis where DiagramUUID = '%s' " % (diagramUUID)
+    log.tracef("%s.fetchFinalDiagnosisOnDiagram(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database)
+    for record in pds:
+        ids.append(record["SQCDiagnosisId"])
+    return ids
+
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
     SQL = "select U.UnitName, FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FamilyId, FD.FinalDiagnosisPriority, "\

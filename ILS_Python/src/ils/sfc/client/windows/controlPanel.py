@@ -269,6 +269,9 @@ def showMsgQueue(window):
     queueKey=system.db.runScalarQuery(SQL, database=db)
     
     print "The queue is: ", queueKey
+    if queueKey == None:
+        queueKey = "SFC"
+        
     from ils.queue.message import view
     view(queueKey, useCheckpoint=True)
     
