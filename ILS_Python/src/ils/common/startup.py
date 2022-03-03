@@ -180,6 +180,7 @@ def createTags(tagProvider, log):
     data = []
     
     path = tagProvider + "Configuration/Common/"
+    data.append([path, "dbLoggingEnabled", "Boolean", "True"])
     data.append([path, "dbPruneDays", "Int8", "365"])
     data.append([path, "dbUpdateStrategy", "String", "implement"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])

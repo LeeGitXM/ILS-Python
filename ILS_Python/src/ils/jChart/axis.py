@@ -4,25 +4,31 @@ Created on Aug 27, 2014
 @author: ILS
 '''
 
-# For a stacked chart, the top plot is index 0
+'''
+X Axis Manipulations 
 
-#
-# X Axis Manipulations 
-#
-# I don't ever envision having more than a single X (Domain) axis, I'm not even sure you can,
-# but I will allow the axisIndex to be passed in just in case.
+I don't ever envision having more than a single X (Domain) axis, I'm not even sure you can,
+but I will allow the axisIndex to be passed in just in case.
+
+Usage hints:
+    - For a stacked chart, the top plot is index 0
+    - the chart is always an Ignition chart
+'''
+from ils.jChart.common import getJFChart
+
 def xLimits(chart, lowLimit, highLimit, plotIndex=0, axisIndex=0):
+    jFChart = getJFChart(chart)
     from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)
+    plot = getPlot(jFChart, plotIndex)
     axis = plot.getDomainAxis(axisIndex)
     if axis != None:
         axis.setLowerBound(lowLimit)
         axis.setUpperBound(highLimit)
 
 def xLabel(chart, label, plotIndex=0, axisIndex=0):
+    jFChart = getJFChart(chart)
     from ils.jChart.common import getPlot
-    axisIndex = 0
-    plot = getPlot(chart, plotIndex)
+    plot = getPlot(jFChart, plotIndex)
     axis = plot.getDomainAxis(axisIndex)
     if axis != None:
         axis.setLabel(label)
@@ -74,50 +80,58 @@ def yOrientation(chart, plotIndex, axisIndex, label, leftOrRight):
     plot.setRangeAxisLocation(axisIndex, location)
 
     
-def yLabel(chart, plotIndex, axisIndex, label):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)
-    axis = plot.getRangeAxis(axisIndex)
+def yLabel(chart, axisName, axisLabel):
+    axes = chart.getYAxes()
+    axis = axes.get(axisName)
     if axis != None:
-        axis.setLabel(label)
+        axis.setLabel(axisLabel)
+        chart.createChart()
 
 
-def yLimits(chart, plotIndex, axisIndex, lowLimit, highLimit):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)        
-    axis = plot.getRangeAxis(axisIndex)
+def yLimits(chart, axisName, lowLimit, highLimit):
+    ''' In order to do this the axis must not be in auto range mode. '''
+    axes = chart.getYAxes()
+    axis = axes.get(axisName)
+
     if axis != None:
         axis.setLowerBound(lowLimit)
         axis.setUpperBound(highLimit)
+        axis.setAutoRange(False)
+        chart.setYAxes(axes)
+        chart.createChart()
 
 
-def yAutoRange(chart, plotIndex, axisIndex):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)
-    axis = plot.getRangeAxis(axisIndex)
+def yAutoRange(chart, axisName, autoRange):
+    axes = chart.getYAxes()
+    axis = axes.get(axisName)
     if axis != None:
-        axis.setAutoRangeIncludesZero(False)
-        axis.setAutoRange(True)
+        if autoRange:
+            axis.setAutoRangeIncludesZero(False)
+            axis.setAutoRange(True)
+        else:
+            axis.setAutoRangeIncludesZero(True)
+            axis.setAutoRange(False)
+        chart.createChart()
 
 
-def yVisibility(chart, plotIndex, axisIndex, visible):
-    from ils.jChart.common import getPlot
-    plot = getPlot(chart, plotIndex)        
-    axis = plot.getRangeAxis(axisIndex)
+def yVisibility(chart, axisName, visible):
+    axes = chart.getYAxes()
+    axis = axes.get(axisName)
     if axis != None:
         axis.setVisible(visible)
+        chart.createChart()
 
 # TODO - Not sure what the intent of this was...
 # Getthe number of y-axis
-def yNum(chart):
+def yNumTODO(chart):
     print "In yNum"
     plot = chart.getChart().getXYPlot()
     axes = plot.getAxesAtLeft()
     print axes
     
 # TODO
-def yDelete(chart, axisIndex):
-    print "In xAxisLimits"
+def yDeleteTODO(chart, axisIndex):
+    print "In yDelete"
     axes = chart.getXAxes()
 
     axis = axes.get('axisName')
