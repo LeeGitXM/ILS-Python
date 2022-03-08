@@ -9,8 +9,8 @@ from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PAN
 from ils.sfc.client.windowUtil import shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
 from ils.common.config import getDatabaseClient
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 '''
 This is the worst name in the history of bad names.  This is the handler in the client that catches the message, not the sender!

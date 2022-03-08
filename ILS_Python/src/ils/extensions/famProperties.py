@@ -3,8 +3,8 @@
 '''
 import system
 from ils.diagToolkit.common import fetchApplicationId
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 '''
 These run in Gateway scope

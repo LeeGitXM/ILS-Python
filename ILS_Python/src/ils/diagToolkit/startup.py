@@ -8,7 +8,7 @@ import system
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from time import sleep
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 log=LogRecorder(__name__)
 
 def gateway(tagProvider, isolationTagProvider, database):

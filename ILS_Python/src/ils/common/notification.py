@@ -6,7 +6,7 @@ Created on Nov 5, 2016
 
 import system
 from ils.common.config import getDatabase, getIsolationDatabase
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 logger = LogRecorder(__name__)
 
 def notifyError(project, message, payload, post, db, isolationMode):

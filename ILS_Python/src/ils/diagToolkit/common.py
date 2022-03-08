@@ -7,7 +7,7 @@ Created on Sep 19, 2014
 import system, time
 import system.ils.blt.diagram as scriptingInterface
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getTagProvider
 log=LogRecorder(__name__)
 

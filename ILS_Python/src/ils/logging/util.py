@@ -4,8 +4,8 @@ Created on Sep 4, 2020
 @author: aedmw
 '''
 import system, datetime
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder('ils.logging.util')
+from ils.log import getLogger
+log =getLogger('ils.logging.util')
 
 def logCleanup(db_name='Logs'):
     '''

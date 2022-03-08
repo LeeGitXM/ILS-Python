@@ -12,9 +12,9 @@ from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"

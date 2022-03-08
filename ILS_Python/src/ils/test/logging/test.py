@@ -1,6 +1,6 @@
 import time
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def work():
     print "In %s.work()" % (__name__)

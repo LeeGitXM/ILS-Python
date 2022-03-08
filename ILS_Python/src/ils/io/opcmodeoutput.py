@@ -20,8 +20,8 @@ import ils.io.opcoutput as opcoutput
 import system, string, time
 from ils.common.config import getTagProvider
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 class OPCModeOutput(opcoutput.OPCOutput):
     '''

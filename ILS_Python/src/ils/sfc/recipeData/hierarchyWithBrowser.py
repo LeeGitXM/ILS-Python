@@ -11,8 +11,8 @@ from ils.common.config import getTagProviderClient
 from sys import path
 from __builtin__ import True
 from ils.sfc.common.constants import SQL
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 #treeMode = "chartName"
 treeMode = "fullPath"

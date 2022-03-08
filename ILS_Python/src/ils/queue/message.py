@@ -10,8 +10,8 @@ from ils.common.config import getDatabaseClient
 from ils.common.windowUtil import positionWindow
 from system.ils.blt.diagram import getProductionDatabase
 from ils.common.user import isAE, isOperator, isAdmin
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def insertPostMessage(post, status, message, db='', project='', console=''):
     from ils.queue.commons import getQueueForPost

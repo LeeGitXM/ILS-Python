@@ -5,8 +5,8 @@ Created on Sep 10, 2014
 '''
 
 import system, string
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def refresh(rootContainer):
     log.infof("In %s.refresh()", __name__)

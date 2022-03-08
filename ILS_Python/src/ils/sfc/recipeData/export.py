@@ -8,8 +8,8 @@ import system, os, string
 from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy
 from ils.common.config import getDatabaseClient
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def exportCallback(event):
     '''

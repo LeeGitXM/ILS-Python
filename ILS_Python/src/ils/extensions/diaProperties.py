@@ -10,8 +10,8 @@ import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
 import com.ils.blt.gateway.engine.BlockExecutionController as BlockExecutionController
 import system.ils.blt.diagram as diagram
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 controllerRequestHandler = ControllerRequestHandler.getInstance()
 blockExecutionController = BlockExecutionController.getInstance()

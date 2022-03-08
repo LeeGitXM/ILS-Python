@@ -27,8 +27,8 @@ import ils.io.tdcautomancontroller
 import ils.io.universalcontroller
 from ils.io.client import writeRamp
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def write(fullTagPath, val, writeConfirm, valueType="value"):
     '''

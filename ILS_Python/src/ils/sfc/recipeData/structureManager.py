@@ -7,9 +7,9 @@ Created on Dec 29, 2016
 import system
 from ils.common.error import catchError
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-parseLog = LogRecorder(__name__ + ".xmlParser")
+from ils.log import getLogger
+log =getLogger(__name__)
+parselog =getLogger(__name__ + ".xmlParser")
 
 def getTxId(db):
     txId = system.db.beginTransaction(database=db, timeout=86400000)    # timeout is one day

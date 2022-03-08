@@ -18,7 +18,7 @@ from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClas
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD
 from ils.diagToolkit.api import resetManualMove
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 log=LogRecorder(__name__)
 
 def initialize(rootContainer):

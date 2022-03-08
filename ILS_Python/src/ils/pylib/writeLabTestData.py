@@ -5,8 +5,8 @@ import system.ils.blt.diagram as blt
 from java.util import Calendar
 from java.util import Date
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def writeLabHistValues(common,db,labTagName,labTagVal,labTagTimeOffset):
     log.info("In writeLabHistoryTestValues ...")

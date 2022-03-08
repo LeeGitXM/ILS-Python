@@ -7,9 +7,9 @@ import system, string
 import ils.common.util as util
 from ils.common.config import getTagProviderClient
 from ils.labData.scanner import simulateReadRaw
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.windowUtil import stackWindow
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 # This is called from the button on the data table chooser screen.  We want to allow multiple lab data table screens,
 # but not multiple screens showing the same table.

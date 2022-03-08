@@ -10,9 +10,9 @@ Created on Mar 21, 2017
 # for querying and updating the Recipe database
 
 import system
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 # This method is SQL*Server-specific
 def getColumnNames(database, table): 

@@ -2,8 +2,8 @@
 # ready for automated testing.
 
 import system
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def resetActiveProblems(common,db):
     ''' Turn off competing votes for most important problm to be worked. '''

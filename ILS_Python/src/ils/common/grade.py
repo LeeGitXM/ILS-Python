@@ -5,8 +5,8 @@ The grade tag must always be in a folder that is the name of the unit.  So we ca
 '''
 
 import system
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 # Read the current grade for a unit.  The works because we adhere to the convention of a grade UDT inside 
 # a unit folder in the site folder.

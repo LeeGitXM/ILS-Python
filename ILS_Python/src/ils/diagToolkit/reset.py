@@ -8,7 +8,7 @@ import system, string
 import system.ils.blt.diagram as diagram
 from ils.common.error import catchError
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 log=LogRecorder(__name__)
 
 '''

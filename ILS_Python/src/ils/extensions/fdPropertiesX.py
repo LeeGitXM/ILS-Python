@@ -15,8 +15,8 @@ Gateway Scope Functions
 def delete(finalDiagnosisUUID):
     '''    Even though a delete is initiated from Designer scope, this runs in gateway scope!  '''
     handler = ControllerRequestHandler.getInstance()
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".delete")
+    from ils.log import getLogger
+    log =getLogger(__name__ + ".delete")
     log.infof("In %s.delete()", __name__)
     db = handler.getProductionDatabase()
     
@@ -35,8 +35,8 @@ def save(uuid):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".save")
+    from ils.log import getLogger
+    log =getLogger(__name__ + ".save")
     
     log.infof("In %s.save(), doing nothing", __name__)
 
@@ -61,8 +61,8 @@ def rename(uuid,oldName,newName):
         system.db.runUpdateQuery(SQL,db)
     
     handler = ControllerRequestHandler.getInstance()
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".rename")
+    from ils.log import getLogger
+    log =getLogger(__name__ + ".rename")
     
     log.infof("In %s.rename(), renaming from %s to %s", __name__, oldName, newName)
     db = handler.getProductionDatabase()
@@ -82,8 +82,8 @@ def getAux(uuid, aux, db):
     Fill the aux structure with values from the database.
     '''
     handler = ControllerRequestHandler.getInstance()
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".getAux")
+    from ils.log import getLogger
+    log =getLogger(__name__ + ".getAux")
     log.infof("In %s.getAux...", __name__)
     appName = handler.getApplicationName(uuid)
     familyName = handler.getFamilyName(uuid)
@@ -171,8 +171,8 @@ def getAux(uuid, aux, db):
 
 def setAux(uuid,aux,db):
     handler = ControllerRequestHandler.getInstance()
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".setAux")
+    from ils.log import getLogger
+    log =getLogger(__name__ + ".setAux")
     log.infof("In %s.setAux using db: %s", __name__, db)
     app  = handler.getApplicationName(uuid)
     family = handler.getFamilyName(uuid)

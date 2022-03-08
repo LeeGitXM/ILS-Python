@@ -6,9 +6,9 @@ Created on Apr 19, 2019
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForGain
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 POWER_TABLE_NAME = "Gain Table"
 
 # Called from the client startup script: View menu

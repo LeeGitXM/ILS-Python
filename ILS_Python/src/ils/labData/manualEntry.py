@@ -5,8 +5,8 @@ Created on Apr 30, 2015
 '''
 import system
 from ils.common.config import getDatabaseClient
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 # Everything in this module runs in the client, so the use of loggers isn't too important since nothing will go 
 # to the wrapper log anyway.

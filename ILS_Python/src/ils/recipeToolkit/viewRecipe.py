@@ -7,9 +7,9 @@ import system, string
 from ils.recipeToolkit.tagFactory import createUDT
 from ils.recipeToolkit.fetch import fetchHighestVersion
 from sys import path
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 from ils.recipeToolkit.common import RECIPE_VALUES_INDEX, PROCESS_VALUES_INDEX
 

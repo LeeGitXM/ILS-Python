@@ -7,8 +7,8 @@ Created on Sep 13, 2016
 import system, time
 from ils.diagToolkit.test.common import insertApp1, insertApp2, insertQuantOutput, insertApp1Families, insertApp2Families, initLog, updateFinalDiagnosisTextRecommendation
 from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 project = "XOM"
 T1TagName='DiagnosticToolkit/Outputs/T1'

@@ -3,9 +3,9 @@
 import system
 from ils.common.database import toDateString
 from ils.block import basicblock
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.sfc.common.util import logExceptionCause
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 def getClassName():
     return "SQCDiagnosis"
@@ -16,7 +16,7 @@ def getClassName():
 class SQCDiagnosis(basicblock.BasicBlock):
     def __init__(self):
         basicblock.BasicBlock.__init__(self)
-        self.log = LogRecorder(__name__)
+        self.log =getLogger(__name__)
         self.log.infof("Instantiating a new SQC Diagnosis...")
         self.initialize()
     

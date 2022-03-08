@@ -9,9 +9,9 @@ from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchChartIdFr
 from ils.common.util import formatDateTimeForDatabase
 from ils.common.error import catchError
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-parseLog = LogRecorder(__name__ + ".xmlParser")
+from ils.log import getLogger
+log =getLogger(__name__)
+parselog =getLogger(__name__ + ".xmlParser")
 
 def compileCharts(deletedResources, addedResources, changedResources, db):
     '''

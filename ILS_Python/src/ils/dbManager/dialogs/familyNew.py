@@ -6,9 +6,9 @@ Created on Sep 20, 2017
 
 import system
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.trace("InternalFrameOpened")

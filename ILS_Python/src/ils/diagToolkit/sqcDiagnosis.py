@@ -6,7 +6,7 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import system.ils.blt.diagram as script
 from ils.diagToolkit.common import getDiagram
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 log=LogRecorder(__name__)
 
 # Return two lists:

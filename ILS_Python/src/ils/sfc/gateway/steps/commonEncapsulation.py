@@ -10,8 +10,8 @@ This updates the run log for collecting SFC KPI statistics.
 import system, time
 from ils.common.util import formatDateTimeForDatabase
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
     
 RUNNING = "Running"
 STARTING = "Starting"

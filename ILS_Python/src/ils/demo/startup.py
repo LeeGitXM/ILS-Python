@@ -11,8 +11,8 @@ Created on Jun 18, 2018
 
 import system, time
 from ils.common.config import getTagProvider, getIsolationTagProvider, getHistoryProvider, getDatabase, getIsolationDatabase
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def client():
     print "***********************************************"

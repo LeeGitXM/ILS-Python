@@ -10,8 +10,8 @@ from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, CONTR
     HANDLER, MESSAGE_QUEUE, ORIGINATOR, POSITION, PROJECT, SCALE, POST
 from ils.common.util import isClientScope
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 '''
 This is designed to be called from a tag change script that will trigger the execution of a SFC.   

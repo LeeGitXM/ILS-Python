@@ -8,8 +8,8 @@ import system
 from ils.sfc.recipeData.export import Exporter
 from ils.sfc.recipeData.importer import Importer
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def synchronizeCallback(chartPath, deep, sourceDb, destinationDb):
     '''

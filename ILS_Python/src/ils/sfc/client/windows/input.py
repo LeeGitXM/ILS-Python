@@ -8,8 +8,8 @@ This handles both the GetInput step and the GetInputWithLimits step.
 import system
 from ils.common.config import getDatabaseClient
 from ils.sfc.client.util import setClientDone, setClientResponse
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__)

@@ -6,8 +6,8 @@ Created on Mar 22, 2017
 import system
 from ils.common.util import formatDateTime
 from ils.common.config import getTagProviderClient
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)

@@ -8,8 +8,8 @@ from ils.common.config import getTagProviderClient, getDatabaseClient
 from ils.common.constants import CR
 from ils.labData.limits import calcSQCLimits
 from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue, updateLabValueUdt
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened(), reserving a cursor...", __name__)

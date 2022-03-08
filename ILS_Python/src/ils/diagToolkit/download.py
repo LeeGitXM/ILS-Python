@@ -11,8 +11,8 @@ from ils.queue.message import insertPostMessage
 from ils.io.api import confirmControllerMode
 from ils.io.api import write
 from ils.diagToolkit.setpointSpreadsheet import hideDetailMap
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def downloadLogbookTestCallback(event, rootContainer):
     from ils.common.config import getTagProviderClient, getDatabaseClient

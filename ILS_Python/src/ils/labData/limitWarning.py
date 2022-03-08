@@ -6,12 +6,12 @@ Created on Aug 1, 2015
 import system
 from ils.labData.common import postMessage
 from ils.common.ocAlert import sendAlert
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.util import isUserConnected
 from ils.common.message.client import sendCloseWindowMessage
 from ils.common.config import getDatabaseClient, getIsolationModeClient
 from ils.labData.scanner import notifyClients
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 #------------------------------
 # Custom Validation Failure

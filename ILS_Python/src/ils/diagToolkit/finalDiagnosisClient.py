@@ -9,7 +9,7 @@ from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.diagToolkit.common import fetchApplicationsForPost, fetchActiveTextRecommendationsForPost
 from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 log=LogRecorder(__name__)
 
 # Not sure if this is used in production, but it is needed for testing

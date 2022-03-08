@@ -7,7 +7,7 @@ Created on Dec, 2015
 def setValues(udtTagPath):
     import system
     # Get a logger
-    from ils.log.LogRecorder import LogRecorder
+    from ils.log import getLogger
     logger = LogRecorder(__name__)
     logger.trace("Inside external ils.opcDatasetCollector.triggerTag.setValues")
     # Get the dataset of tagpaths

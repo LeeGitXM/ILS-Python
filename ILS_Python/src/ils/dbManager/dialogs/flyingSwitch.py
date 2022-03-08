@@ -9,9 +9,9 @@ Scripts in support of the "Flying Switch" dialog
 import system
 from ils.common.util import getRootContainer
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 
 # Called from the client startup script: View menu

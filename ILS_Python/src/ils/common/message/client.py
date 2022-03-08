@@ -8,8 +8,8 @@ import system, string
 from ils.common.config import getDatabaseClient, getIsolationModeClient
 from ils.common.windowUtil import positionWindow
 from ils.common.database import getConsoleWindowNameForConsole
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def handle(payload):
     print "Received a message with payload: ", payload

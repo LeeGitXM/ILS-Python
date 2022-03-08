@@ -17,8 +17,8 @@ import org.apache.commons.math3.analysis.function.Tan as Tangent
 import org.apache.commons.math3.util.Precision as Precision
 
 import java.lang.Double as Double   
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 class Arithmetic(basicblock.BasicBlock):
     def __init__(self):

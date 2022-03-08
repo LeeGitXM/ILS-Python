@@ -156,8 +156,8 @@ class Replicater():
     log = None
     
     def __init__(self):
-        from ils.log.LogRecorder import LogRecorder
-        self.log = LogRecorder(__name__)
+        from ils.log import getLogger
+        self.log =getLogger(__name__)
         self.log.infof("Initializing a Replicator")
         
         self.selectedTagPath = system.tag.read(SELECTED_TAG_PATH_TAG_PATH).value

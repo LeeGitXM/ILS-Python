@@ -17,8 +17,8 @@ methods.
 import system, string
 from java.util.prefs import Preferences
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 # These are the well-known keys:
 # DATABASE - the current recipe database in use

@@ -3,8 +3,8 @@
 
 from ils.common.error import catchError
 import string, system
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def getClassName():
     return "Action"

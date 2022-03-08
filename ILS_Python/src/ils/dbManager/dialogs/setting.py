@@ -9,8 +9,8 @@ Scripts in support of the "Add Grade Setting" dialog
 import system
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 # Refresh the text field and dropdowns
 def refresh(component):

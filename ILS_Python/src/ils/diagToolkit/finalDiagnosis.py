@@ -18,8 +18,8 @@ from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML, escapeSqlQuotes
 from ils.common.database import lookup
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 logSQL = LogRecorder(__name__ + ".SQL")
 
 

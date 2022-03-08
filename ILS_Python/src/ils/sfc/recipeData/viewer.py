@@ -7,8 +7,8 @@ Created on Feb 23, 2020
 import system
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.hierarchyWithBrowser import deleteRecipeData
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def editCallback(event):
     log.infof("In %s.editCallback()...", __name__)

@@ -10,8 +10,8 @@ import java.text.SimpleDateFormat as SimpleDateFormat
 import java.util.Date as Date
 import java.awt.geom.Ellipse2D.Double as Ellipse
 from ils.common.windowUtil import getRootContainer
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 # This class is initialized when a chart is re-configured. 
 class ValueTooltipGenerator(labels.XYToolTipGenerator):

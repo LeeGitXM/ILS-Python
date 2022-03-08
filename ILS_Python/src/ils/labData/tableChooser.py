@@ -4,8 +4,8 @@ Created on Mar 25, 2015
 @author: Pete
 '''
 import system
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 '''
 This runs in client scope and is called from a client message handler...

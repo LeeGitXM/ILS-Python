@@ -11,8 +11,8 @@ from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
 from ils.common.config import getTagProvider
 
 MAX_TRIES = 3
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 '''
 This is called from the source tag of the "Data Transfer" UDT.

@@ -9,9 +9,9 @@ Scripts in support of the "SQC Parameter" dialog
 import string, system
 from ils.dbManager.sql import idForFamily
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"

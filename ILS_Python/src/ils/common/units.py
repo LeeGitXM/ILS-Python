@@ -7,7 +7,7 @@ Created on Sep 16, 2014
 '''
 import system, sys, string
 from ils.common.error import catchError
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 logger = LogRecorder(__name__)
 
 FACTOR = 'FACTOR'

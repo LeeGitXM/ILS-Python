@@ -10,8 +10,8 @@ from ils.sfc.recipeData.constants import TIMER
 from ils.sfc.common.constants import SECONDARY_SORT_BY_ALPHABETICAL, SECONDARY_SORT_BY_ORDER
 from ils.common.util import escapeSqlQuotes
 from ils.sfc.common.util import getChartStatus
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 # This is called when the Download GUI window is opened.  The window is opened in response to a message sent 
 # from the gateway to the client when the download GUI task runs in the gateway.  The gateway task populates the 

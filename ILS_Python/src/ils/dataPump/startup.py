@@ -9,8 +9,8 @@ created manually from a standard XML export.
 '''
 
 import system
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def gateway(tagProvider, isolationTagProvider):
     from ils.labFeedback.version import version

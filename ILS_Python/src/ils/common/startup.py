@@ -12,8 +12,8 @@ from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus
     removeUnwantedMenus, ConsoleMenus
 from ils.common.error import catchError
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 IMPLEMENT = "IMPLEMENT"
 PLAN = "PLAN"
 

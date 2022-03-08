@@ -18,7 +18,7 @@ from ils.sfc.recipeData.api import substituteScopeReferences
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 logger = LogRecorder(__name__)
 
 def abortHandler(chart, msg):

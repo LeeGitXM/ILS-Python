@@ -4,10 +4,13 @@ Created on Aug 29, 2020
 @author: aedmw
 '''
 import system, datetime, string
+from java.awt import Toolkit
+from java.awt.datatransfer import StringSelection
 from ils.dataset.util import toList, fromList
+from ils.common.constants import CR
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 MAIN_SQL = 'SELECT id, timestamp, log_level, log_level_name, logger_name, log_message, module, function_name, line_number, project, scope, client_id,  process_id, thread, thread_name FROM (%s) T ORDER BY timestamp ASC'
 SUB_SQL = "SELECT TOP %d * FROM log WHERE timestamp > '%s' AND timestamp < '%s' %s ORDER BY timestamp DESC"
@@ -23,6 +26,9 @@ DESCENDING = "Descending"
 
 ORDER_TAGPATH = "[Client]Logging/Order"
 
+PLAY_STATE = 0
+PAUSE_STATE = 1
+
 def clientStartup():
     ''' Set the start and end date of the client tags synchronized with the manual times '''
     print "In %s.clientStartup()" % (__name__)
@@ -34,13 +40,14 @@ def clientStartup():
     system.tag.write("[Client]Logging/Manual Start Time", system.date.addHours(now, -4))
     system.tag.write("[Client]Logging/Manual End Time", now)
     system.tag.write(ORDER_TAGPATH, DESCENDING)
-    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
+    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addYears(system.date.now(), -5))
     system.tag.write("[Client]Logging/Realtime Units", "Minutes")
     system.tag.write("[Client]Logging/Realtime Value", 10)
     system.tag.write("[Client]Logging/Mode", "Realtime")
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.IntenalFrameOpened()", __name__)
+    rootContainer.getComponent("Date Time Control Container").getComponent("Realtime Container").state = PLAY_STATE
 
 def resetAllFiltersAction(rootContainer):
     '''
@@ -65,28 +72,58 @@ def resetAllFilters():
         system.tag.write(tagPath + "/Filter Mode", "No Filter")
         system.tag.write(tagPath + "/Includes", emptyDataset)
         
-    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addDays(system.date.now(), -5))
+    system.tag.write("[Client]Logging/Realtime Clear Time", system.date.addYears(system.date.now(), -5))
+    
+def copyToClipboardAction(event):
+    '''
+    Copy the VISIBLE rows of the power table to the clipboard so that the user can then paste it into an e-mail, notepad, their sock drawer, etc.
+    '''
+    log.tracef("In %s.copyToClipboardAction()", __name__)
+    rootContainer = event.source.parent
+    table = rootContainer.getComponent("Power Table")
+    ds = table.viewDataset
+    
+    rows = []
+    for row in range(ds.rowCount):
+        vals = []
+        for col in range(ds.columnCount):
+            vals.append(str(ds.getValueAt(row,col)))
+        rowTxt = ",".join(vals)
+        rows.append(rowTxt)
+    
+    txt = CR.join(rows)
+    clipboard = Toolkit.getDefaultToolkit().getSystemClipboard()
+    clipboard.setContents(StringSelection(txt), None)
 
 def updateFilterAction(table, columnName, val, include_exclude):
     '''
     Called by the Popup menu on one of the filterable columns.
+    This is called from a popup menu on the power table when they right-click on a cell.
+    They want to INCLUDE or EXCLUDE values from ALL of the selected rows in the selected column.
+    So I ignore the value that is passed in here and instead get the values for all of the selected rows. 
     '''
     rootContainer = table.parent
     columnName = columnName.rstrip()
     val = val.rstrip()
     include_exclude = string.capitalize(include_exclude)
-    log.tracef("In %s.updateFilterAction. <%s> - <%s> - <%s>", __name__, columnName, val, include_exclude)
+    log.tracef("In %s.updateFilterAction. <%s> - <%s>", __name__, columnName, include_exclude)
     
-    mode, includes, excludes = readFilter(columnName)
+    filterMode, includes, excludes = readFilter(columnName)
     
     mode = include_exclude
     
-    if string.lower(include_exclude) == INCLUDE:
-        if val not in includes:
-            includes.append(val)
-    else:
-        if val not in excludes:
-            excludes.append(val)
+    ds = table.data
+    rows = table.getSelectedRows()
+    
+    for row in rows:
+        val = ds.getValueAt(row, columnName)
+        print "%s: %s - %s - %s" % (include_exclude, columnName, row, val)
+        if string.lower(include_exclude) == INCLUDE:
+            if val not in includes:
+                includes.append(val)
+        else:
+            if val not in excludes:
+                excludes.append(val)
 
     writeFilter(columnName, mode, includes, excludes)
     update(rootContainer)
@@ -283,6 +320,7 @@ def refreshFilterWindow(rootContainer):
         return filterValues
     ''' ------------------------------------------------------------ '''
     
+    filterContainer = rootContainer.getComponent("Filter Configuration Container")
     filterModes = []
     filterValues = []
     
@@ -306,18 +344,19 @@ def refreshFilterWindow(rootContainer):
         
     header = ["Filter", "Mode", "Value"]
     ds = system.dataset.toDataSet(header, filterValues)
-    rootContainer.getComponent("Filters Table").data = ds
+    filterContainer.getComponent("Filters Table").data = ds
     
     header = ["Filter", "Mode"]
     ds = system.dataset.toDataSet(header, filterModes)
-    rootContainer.getComponent("Filter Mode Table").data = ds
+    filterContainer.getComponent("Filter Mode Table").data = ds
     
 def deleteFilterValueAction(rootContainer):
     '''
     Delete the filter by figuring out what was selected from the table, updating the client tag, and then refreshing the table
     '''
+    filterContainer = rootContainer.getComponent("Filter Configuration Container")
     loggingPath = rootContainer.loggingPath
-    table = rootContainer.getComponent("Filters Table")
+    table = filterContainer.getComponent("Filters Table")
     if table.selectedRow < 0:
         system.gui.messageBox("Please select a filter value to delete.")
         return

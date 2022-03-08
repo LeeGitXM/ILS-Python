@@ -19,8 +19,8 @@ immuneWindowList = ['SFC/ControlPanel', 'SFC/ErrorPopup', 'SFC/DownloadKey', 'SF
 
 sfcWindowPrefix = 'SFC/'
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()...", __name__)

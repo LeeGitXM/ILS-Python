@@ -8,8 +8,8 @@ import system
 
 def gateway(tagProvider, isolationTagProvider):
     # Create gateway loggers
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__)
+    from ils.log import getLogger
+    log =getLogger(__name__)
     
     from ils.uir.version import version
     version, revisionDate = version()

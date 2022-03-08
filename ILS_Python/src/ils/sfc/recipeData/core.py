@@ -14,7 +14,7 @@ from ils.sfc.common.constants import START_TIMER, STOP_TIMER, PAUSE_TIMER, RESUM
 from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, SQC, RECIPE, \
     SIMPLE_VALUE, TIMER, ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_NAME
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 logger = LogRecorder(__name__)
 
 def walkUpHieracrchy(chartProperties, stepType):

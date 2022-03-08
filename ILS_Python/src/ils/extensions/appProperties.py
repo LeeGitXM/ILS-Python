@@ -3,10 +3,10 @@
   Note: The ControllerRequestHandler is only available in gateway scope, so be careful where it is imported!
 '''
 import system
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.database import getUnitName, getPostForUnitId, lookupKeyFromId
 from ils.queue.commons import getQueueForDiagnosticApplication
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 def delete(applicationUUID):
     '''

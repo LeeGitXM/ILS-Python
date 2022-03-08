@@ -8,7 +8,7 @@ import system, time, string
 from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 from ils.common.util import escapeSqlQuotes
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 logger=LogRecorder("com.ils.test")
 
 T1TagName='Sandbox/Diagnostic/T1'

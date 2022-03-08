@@ -14,7 +14,7 @@ from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE,
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
 from ils.common.util import parseBracketedScopeReference, findBracketedScopeReference
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 logger = LogRecorder(__name__)
 
 def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):

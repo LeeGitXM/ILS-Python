@@ -23,13 +23,13 @@ from java.util import Calendar
 from ils.common.database import toDateString
 from ils.common.cast import toDateTime
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 dcsLog =LogRecorder(__name__ + ".dcs")
-phdLog = LogRecorder(__name__ + ".phd")
-derivedLog = LogRecorder(__name__ + ".derivedValues")
-customValidationLog = LogRecorder(__name__ + ".customValidation")
-selectorLog = LogRecorder(__name__ + ".selector")
+phdlog =getLogger(__name__ + ".phd")
+derivedlog =getLogger(__name__ + ".derivedValues")
+customValidationlog =getLogger(__name__ + ".customValidation")
+selectorlog =getLogger(__name__ + ".selector")
 import ils.common.util as util
 
 LAST_VALUE_CACHE = "lastValueCache"

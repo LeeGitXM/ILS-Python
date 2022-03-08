@@ -10,9 +10,9 @@ Copyright 2014 ILS Automation
 import system
 from ils.common.cast import toBit
 from ils.common.database import toDateString
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.sfc.common.util import logExceptionCause
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 DEBUG = True
 
 def getClassName():
@@ -32,7 +32,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.initialize()
         self.state = "UNKNOWN"
         self.handler.setAlerterClass(self.getClassName())
-        self.log = LogRecorder(__name__)
+        self.log =getLogger(__name__)
         self.log.infof("Instantiating a Final Diagnosis...")
     
     # Set attributes custom to this class

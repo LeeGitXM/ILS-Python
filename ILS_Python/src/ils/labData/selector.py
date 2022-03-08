@@ -6,8 +6,8 @@ Created on Mar 29, 2015
 import system
 from ils.common.error import catchError
 from ils.common.config import getDatabase, getDatabaseClient
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def valueChanged(tagPath):
     import time

@@ -10,9 +10,9 @@ from ils.dbManager.sql import idForFamily
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+log =getLogger(__name__)
 
 # Called from the client startup script: View menu
 # Note: No attempt is made at this point to reconcile with any tab strip

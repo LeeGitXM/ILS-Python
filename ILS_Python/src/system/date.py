@@ -10,6 +10,9 @@ def addMonths(date1,months):
 def addWeeks(date1,weeks):
     return date1
 
+def addYears(date1,years):
+    return date1
+
 def addHours(date1,hours):
     return date1
 

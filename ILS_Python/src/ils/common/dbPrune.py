@@ -9,8 +9,8 @@ from ils.common.config import getDatabase, getTagProvider
 from ils.common.database import toDateString
 
 def prune():
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__)
+    from ils.log import getLogger
+    log =getLogger(__name__)
 
     log.infof("In %s.prune", __name__)
     

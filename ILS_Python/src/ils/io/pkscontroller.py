@@ -9,8 +9,8 @@ import ils.io.controller as controller
 import ils.io.opcoutput as opcoutput
 from ils.io.util import confirmWrite
 from ils.common.config import getTagProvider
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 class PKSController(controller.Controller):
     opTag = None

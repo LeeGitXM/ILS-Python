@@ -7,8 +7,8 @@ Created on Nov 30, 2014
 import ils.io.opctag as opctag
 import ils.io.opcmodeoutput as opcmodeoutput
 import system
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 class Controller(opctag.OPCTag):
     

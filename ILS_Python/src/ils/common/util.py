@@ -5,8 +5,8 @@ Created on Sep 10, 2014
 '''
 
 import system, string, re
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 from ils.common.config import getTagProvider
 from ils.common.constants import CR, TAG
 from system.date import secondsBetween

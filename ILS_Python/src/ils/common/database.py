@@ -5,8 +5,8 @@ Created on Jan 5, 2015
 '''
 import system
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def version():
     SQL = "select VersionId, Version, ReleaseDate from Version where VersionId = (select MAX(VersionId) from Version)"

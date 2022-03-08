@@ -5,7 +5,7 @@ import system.ils.sfc as ilssfc
 import system.ils.tf as testframe
 from ils.sfc.recipeData.api import s88GetFromName, s88SetFromName
 
-from ils.log.LogRecorder import LogRecorder
+from ils.log import getLogger
 logger = LogRecorder(__name__)
 
 '''

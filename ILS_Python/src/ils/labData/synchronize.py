@@ -7,8 +7,8 @@ Created on Jul 17, 2015
 import system, string
 from ils.common.config import getTagProviderClient
 from ils.common.util import append
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 LAB_DATA_ROOT = "LabData"
 
 def createLabValue(unitName, valueName):

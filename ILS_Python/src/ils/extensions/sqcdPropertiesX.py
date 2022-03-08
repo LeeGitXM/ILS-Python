@@ -13,8 +13,8 @@ import system
 import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
 
 handler = ApplicationRequestHandler()
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 def delete(uuid):
     log.infof("In %s.delete()", __name__)
