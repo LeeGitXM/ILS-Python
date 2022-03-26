@@ -19,7 +19,7 @@ SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
 
 from ils.log import getLogger
-logger = LogRecorder(__name__)
+logger = getLogger(__name__)
 
 def abortHandler(chart, msg):
     '''
@@ -474,7 +474,7 @@ def dumpProperties(properties):
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
     pypath = getChartPath(chartScope).replace("/",".")
-    return LogRecorder(pypath)
+    return getLogger(pypath)
 
 def getChartPath(chartProperties):
     return chartProperties.chartPath 

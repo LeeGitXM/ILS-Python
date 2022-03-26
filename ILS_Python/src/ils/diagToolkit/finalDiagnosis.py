@@ -20,7 +20,7 @@ from ils.common.database import lookup
 
 from ils.log import getLogger
 log =getLogger(__name__)
-logSQL = LogRecorder(__name__ + ".SQL")
+logSQL = getLogger(__name__ + ".SQL")
 
 
 def manageFinalDiagnosisGlobally(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):

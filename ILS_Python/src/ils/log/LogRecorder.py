@@ -21,6 +21,7 @@ Warning = LogLevel('WARNING', 30, 24*30)
 Info    = LogLevel('INFO',    20, 24*10)
 Debug   = LogLevel('DEBUG',   10, 24*5)
 Trace   = LogLevel('TRACE',    1, 24)
+Off = LogLevel('OFF', 0, 0)
 
 def getLogLevel(name, levelName):
     if levelName is None:
@@ -35,6 +36,8 @@ def getLogLevel(name, levelName):
         return Debug
     elif string.upper(levelName) == 'TRACE':
         return Trace
+    elif string.upper(levelName) == 'OFF':
+        return Off
     else:
         raise Exception('getLogLevel(%s): Level Name "%s" invalid.' % (name, levelName))
     
@@ -50,7 +53,6 @@ class LogRecorder:
     then the trace mode must prevail.
     '''
     def __init__(self, name, dbName="Logs", levelName=None, enableTraceThread=False):
-        print "Creating a new LogRecorder <%s> level: <%s>" % (name, str(levelName))
         self.name = name
         self.dbName = dbName
         self.logLevel = getLogLevel(name, levelName)
@@ -128,7 +130,6 @@ class LogRecorder:
     def setLevel(self):
         ''' Set the level of the Ignition logger to match the level of the DB logger. '''
         levelName = self.logLevel.levelName
-        print "... setting the level to: ", levelName
         self.logger.getLoggerSLF4J().setLevel(Level.toLevel(levelName))
 
     def printStack(self):
@@ -171,16 +172,17 @@ class DB_Logger():
     Logging handler that puts logs to the database.
     '''
     def __init__(self, parent):
-        print "Creating a new DB_Logger()"
         self.parent = parent
         '''
         Changing the state of this global tag will not update the enabled state of loggers that have already been made.
         This could be an issue for long lived loggers in gateway scope - but I don't expect this tag to be changed often, 
         a site will either use or won't use DB logging.
         '''
+        
+        #TODO leaving XOM for now
         tagPath = "[XOM]Configuration/Common/dbLoggingEnabled"
         if system.tag.exists(tagPath):
-            self.enabled = system.tag.read(tagPath).qv
+            self.enabled = system.tag.read(tagPath).value
         else:
             self.enabled = True
         

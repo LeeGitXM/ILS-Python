@@ -14,7 +14,7 @@ from ils.queue.constants import QUEUE_INFO
 from ils.common.util import escapeSqlQuotes
 
 from ils.log import getLogger
-log=LogRecorder(__name__)
+log=getLogger(__name__)
 
 def setTextOfRecommendation(applicationName, familyName, finalDiagnosisName, textRecommendation, db):
     ''' Return the ProcessDiagram at the specified path '''

@@ -22,6 +22,19 @@ These are the startup dispatchers.  They are called by the project startup scrip
 name and calls them.
 '''
 def gateway():
+    '''
+    The very first thing that needs to happen is to turn off the DB logging feature if it has not been already configured to avoid an error on every log statement
+    '''
+    
+    ''' Call a special function that will wait until BLT is ready and running - this goes into a wait loop until it succeeds. '''
+    tagProvider = getTagProviderFromBltModule()
+    
+    tagPath = "[%s]Configuration/Common" % (tagProvider)
+    tagName = "dbLoggingEnabled"
+    exists = system.tag.exists("%s/%s" % (tagPath, tagName))
+    if not(exists):
+        system.tag.addTag(parentPath=tagPath, name=tagName, tagType="MEMORY", dataType="Boolean", value=False)
+    
     log.infof("In %s.gateway()", __name__)
     
     project = system.util.getProjectName()
@@ -29,8 +42,7 @@ def gateway():
     
     setLogLevels()
     
-    ''' Call a special function that will wait until BLT is ready and running - this goes into a wait loop until it succeeds. '''
-    tagProvider = getTagProviderFromBltModule()
+
     productionDatabase = getDatabase()
     isolationDatabase = getIsolationDatabase()
     
@@ -124,6 +136,9 @@ For an engineer there will not be a matching post.
 '''
 def clientCommon():    
     log.infof("In %s.clientCommon()", __name__)
+    from javax.swing import ToolTipManager
+    ToolTipManager.sharedInstance().setDismissDelay(30000)
+    ToolTipManager.sharedInstance().setInitialDelay(300)
     
     username = system.security.getUsername()
     rows = system.db.runScalarQuery("select count(*) from TkPost where post = '%s'" % (username)) 
@@ -175,7 +190,7 @@ def gatewayCommon(tagPprovider, isolationTagProvider):
 
 
 def createTags(tagProvider, log):
-    print "Creating common configuration tags...."
+    log.infof("Creating common configuration tags....")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     
@@ -195,8 +210,6 @@ def createTags(tagProvider, log):
     data.append([path, "simulateHDA", "Boolean", "False"])
     data.append([path, "sqcPlotScaleFactor", "Float4", "0.75"])
     data.append([path, "writeEnabled", "Boolean", "True"])
-    
-
 
     ds = system.dataset.toDataSet(headers, data)
     from ils.common.tagFactory import createConfigurationTags
@@ -267,12 +280,13 @@ def getUserLibPath():
 
 
 def getTagProviderFromBltModule():
+    ''' Avoid log statements here because this is called at the start before we know if DB logging is enabled. '''
     def getter():
-        log.infof("...getting tagProvider from BLT...")
+        print "...getting tagProvider from BLT..."
         try:
             tagProvider = getTagProvider()
         except:
-            log.tracef("...BLT module isn't quite ready, sleeping...")
+            print "...BLT module isn't quite ready, sleeping..."
             time.sleep(5)
             tagProvider = None
             

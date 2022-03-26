@@ -52,7 +52,7 @@ def client():
     
 
 def createTags(tagProvider):
-    print "Creating Lab Data configuration tags...."
+    log.infof("Creating Lab Data configuration tags....")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/LabData"

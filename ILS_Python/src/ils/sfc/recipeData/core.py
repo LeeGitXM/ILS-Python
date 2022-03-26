@@ -15,7 +15,7 @@ from ils.sfc.recipeData.constants import ARRAY, INPUT, MATRIX, OUTPUT, OUTPUT_RA
     SIMPLE_VALUE, TIMER, ENCLOSING_STEP_SCOPE_KEY, PARENT, S88_LEVEL, STEP_NAME
 
 from ils.log import getLogger
-logger = LogRecorder(__name__)
+logger = getLogger(__name__)
 
 def walkUpHieracrchy(chartProperties, stepType):
     logger.tracef("Walking up the hierarchy looking for %s", stepType)

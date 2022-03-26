@@ -10,7 +10,7 @@ from ils.diagToolkit.common import fetchApplicationsForPost, fetchActiveTextReco
 from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
 
 from ils.log import getLogger
-log=LogRecorder(__name__)
+log=getLogger(__name__)
 
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):

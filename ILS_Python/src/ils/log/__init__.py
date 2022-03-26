@@ -14,6 +14,4 @@ def getLogger(name, levelName='INFO', enableTraceThread=True):
     if logger == None:
         logger = LogRecorder(name, levelName=levelName, enableTraceThread=enableTraceThread)
         logs[name] = logger
-    else:
-        print "returning an existing logger!"
     return logger

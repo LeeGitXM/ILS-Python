@@ -7,7 +7,7 @@ import system, string
 
 from ils.log import getLogger
 log =getLogger(__name__)
-sqllog =getLogger(__name__ + ".sql")
+sqlLog =getLogger(__name__ + ".sql")
 
 '''
 This is a memory resident dictionary of limit dictionaries that survives from scan to scan.  

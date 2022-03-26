@@ -11,7 +11,7 @@ from ils.common.error import catchError
 
 from ils.log import getLogger
 log =getLogger(__name__)
-parselog =getLogger(__name__ + ".xmlParser")
+parseLog =getLogger(__name__ + ".xmlParser")
 
 def compileCharts(deletedResources, addedResources, changedResources, db):
     '''
@@ -82,7 +82,6 @@ class Compiler():
         '''
         self.handleDeletedCharts(self.PHASE_2)
         
-        
         '''
         We are all done, close the database transaction, which should delete it
         '''
@@ -115,6 +114,7 @@ class Compiler():
             log.tracef("        resource Id: %s, path: %s", k, res["chartPath"])
             log.tracef("        xml: %s", res["chartXml"])
             log.tracef("")
+        log.tracef("--------------------------------")
 
             
     def handleMovedCharts(self):
@@ -400,9 +400,9 @@ class Compiler():
         SQL = "delete from SfcHierarchy where ChartId = %d" % chartId
         rows = system.db.runUpdateQuery(SQL, tx=self.txId)
         log.tracef( "...deleted %d parents from SfcChartHierarchy...", rows)
-    
 
     def setupCharts(self):
+        log.tracef( "Setting up %d changed charts...", len(self.changedResources.keys()))
         for resourceId in self.changedResources.keys():
             res = self.changedResources[resourceId]
             chart = Chart(res, resourceId, self, self.txId)
@@ -439,7 +439,7 @@ class Chart():
     compiler = None
 
     def __init__(self, resource, resourceId, compiler, txId):
-        log.tracef("Creating a new chart() with txId: %s...", txId)
+        log.tracef("...creating a new internal Chart object with txId: %s...", txId)
         self.resource = resource
         self.resourceId = resourceId
         self.txId = txId

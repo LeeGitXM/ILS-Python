@@ -9,14 +9,7 @@ from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 from ils.common.util import escapeSqlQuotes
 
 from ils.log import getLogger
-logger=LogRecorder("com.ils.test")
-
-T1TagName='Sandbox/Diagnostic/T1'
-T2TagName='Sandbox/Diagnostic/T2'
-T3TagName='Sandbox/Diagnostic/T3'
-TC100TagName='Sandbox/Diagnostic/TC100/sp/value'
-TC101TagName='Sandbox/Diagnostic/TC101/sp/value'
-
+logger=getLogger("com.ils.test")
     
 # This is called from a button
 def initLog():
@@ -591,7 +584,7 @@ def insertApp2(db):
     app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed, db)
     return app2Id
 
-def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1', db="CRAP"):
+def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1', db="CRAP"):
     logger.tracef("Entering insertApp2Families...")
 
     family = 'FT_Family2_1'
@@ -609,6 +602,7 @@ def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calcu
     insertRecommendationDefinition(finalDiagnosisId, Q23_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q24_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q25_id, db)
+    insertRecommendationDefinition(finalDiagnosisId, Q26_id, db)
     logger.tracef("...done inserting App2!")
 
 # Insert a Quant Output

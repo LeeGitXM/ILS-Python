@@ -6,7 +6,7 @@ import system.ils.tf as testframe
 from ils.sfc.recipeData.api import s88GetFromName, s88SetFromName
 
 from ils.log import getLogger
-logger = LogRecorder(__name__)
+logger = getLogger(__name__)
 
 '''
 If we are starting a chart from the top then we don't need to call this.

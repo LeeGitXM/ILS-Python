@@ -25,11 +25,11 @@ from ils.common.cast import toDateTime
 
 from ils.log import getLogger
 log =getLogger(__name__)
-dcsLog =LogRecorder(__name__ + ".dcs")
-phdlog =getLogger(__name__ + ".phd")
-derivedlog =getLogger(__name__ + ".derivedValues")
-customValidationlog =getLogger(__name__ + ".customValidation")
-selectorlog =getLogger(__name__ + ".selector")
+dcsLog =getLogger(__name__ + ".dcs")
+phdLog =getLogger(__name__ + ".phd")
+derivedLog =getLogger(__name__ + ".derivedValues")
+customValidationLog =getLogger(__name__ + ".customValidation")
+selectorLog =getLogger(__name__ + ".selector")
 import ils.common.util as util
 
 LAST_VALUE_CACHE = "lastValueCache"

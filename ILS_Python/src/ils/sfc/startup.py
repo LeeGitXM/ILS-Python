@@ -33,7 +33,7 @@ def client():
     system.tag.write("[Client]SFC Browser/Selected Step", -1)
 
 def createTags(tagProvider):
-    print "Creating SFC configuration tags..."
+    log.infof("Creating SFC configuration tags...")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/SFC"

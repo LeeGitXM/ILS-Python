@@ -9,7 +9,7 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from time import sleep
 
 from ils.log import getLogger
-log=LogRecorder(__name__)
+log=getLogger(__name__)
 
 def gateway(tagProvider, isolationTagProvider, database):
     
@@ -68,7 +68,7 @@ def client():
     log.info("Initializing the Symbolic AI client version %s" % (version))
 
 def createTags(tagProvider):
-    print "Creating Symbolic AI configuration tags..."
+    log.infof("Creating Symbolic AI configuration tags...")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     

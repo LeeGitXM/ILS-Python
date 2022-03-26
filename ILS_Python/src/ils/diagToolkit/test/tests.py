@@ -20,6 +20,7 @@ TC101_TagName='DiagnosticToolkit/Outputs/TC101'
 TC102_TagName='DiagnosticToolkit/Outputs/TC102'
 TC103_TagName='DiagnosticToolkit/Outputs/TC103'
 TC104_TagName='DiagnosticToolkit/Outputs/TC104'
+TC105_TagName='DiagnosticToolkit/Outputs/TC105'
 
 T100_TagName='DiagnosticToolkit/Outputs/T100'
 T101_TagName='DiagnosticToolkit/Outputs/T101'
@@ -46,7 +47,9 @@ def test00(db):
     Q23_id=insertQuantOutput(appId, 'TEST_Q23', T100_TagName,    2.31, db=db)
     Q24_id=insertQuantOutput(appId, 'TEST_Q24', T101_TagName,   36.23, db=db)
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName,   15.2, db=db)
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a', db=db)
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a', db=db)
     return applicationName
 
 
@@ -735,8 +738,16 @@ def test16a(db):
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 10.5, db=db)
     
+    system.tag.write("[XOM]" + TC105_TagName + "/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
     print "Inserting families..."
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a', db=db)
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a', db=db)
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     print "posting entry..."
@@ -773,7 +784,15 @@ def test16b(db):
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5, db=db)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1b', db=db)
+    system.tag.write("[XOM]" + TC105_TagName + "/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1b', db=db)
     
     print "Setting the manual move for the final diagnosis in the database..."
     manualMove = 2.0
@@ -814,7 +833,15 @@ def test16c(db):
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5, db=db)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1b', db=db)
+    system.tag.write("[XOM]" + TC105_TagName + "/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1b', db=db)
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family2_1', 'FT_FD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
@@ -848,7 +875,15 @@ def test16d(db):
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5, db=db)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1c', db=db)
+    system.tag.write("[XOM]" + TC105_TagName + "/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1c', db=db)
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family2_1', 'FT_FD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM")
@@ -882,7 +917,15 @@ def test16e(db):
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5, db=db)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1d', db=db)
+    system.tag.write("[XOM]" + TC105_TagName + "/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1d', db=db)
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family2_1', 'FT_FD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
@@ -917,7 +960,15 @@ def test16f(db):
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5, db=db)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1e', db=db)
+    system.tag.write("[XOM]" + TC105_TagName + "/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1e', db=db)
     
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family2_1', 'FT_FD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
@@ -1050,7 +1101,15 @@ def test17a(db):
     system.tag.write("[XOM]" + TC102_TagName + "/sp/rampState", "")
     Q25_id=insertQuantOutput(appId, 'TEST_Q25', TC102_TagName, 20.5, db=db)
     
-    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a', db=db)
+    system.tag.write("[XOM]" + TC105_TagName + "/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/mode/value", "AUTO")
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/value", 20.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/targetValue", 0.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampTime", 10.0)
+    system.tag.write("[XOM]" + TC105_TagName + "/sp/rampState", "")
+    Q26_id=insertQuantOutput(appId, 'TEST_Q26', TC105_TagName, 10.0, db=db)
+    
+    insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1a', db=db)
     # Insert a diagnosis Entry - This simulates the FD becoming True
     postDiagnosisEntry(project, applicationName, 'FT_Family2_1', 'FT_FD2_1_1', 'FD_UUID', 'DIAGRAM_UUID', provider="XOM", database=db)
     

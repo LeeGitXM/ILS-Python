@@ -7,7 +7,7 @@ Created on Nov 5, 2016
 import system
 from ils.common.config import getDatabase, getIsolationDatabase
 from ils.log import getLogger
-logger = LogRecorder(__name__)
+logger = getLogger(__name__)
 
 def notifyError(project, message, payload, post, db, isolationMode):
     logger.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, isolation: %s, payload: <%s>", __name__, str(message), str(project), str(post), str(isolationMode), str(payload))

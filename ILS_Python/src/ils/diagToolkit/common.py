@@ -9,7 +9,7 @@ import system.ils.blt.diagram as scriptingInterface
 
 from ils.log import getLogger
 from ils.common.config import getTagProvider
-log=LogRecorder(__name__)
+log=getLogger(__name__)
 
 # -------------------------- Helper methods ----------------------
 # Return the ProcessDiagram at the specified path

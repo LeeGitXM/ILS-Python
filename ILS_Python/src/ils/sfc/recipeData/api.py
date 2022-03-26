@@ -15,7 +15,7 @@ from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE,
 from ils.common.util import parseBracketedScopeReference, findBracketedScopeReference
 
 from ils.log import getLogger
-logger = LogRecorder(__name__)
+logger = getLogger(__name__)
 
 def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
     ''' Check that the desired setpoint (from recipe), the actual setpoint, and the actual PV are within tolerance.  '''

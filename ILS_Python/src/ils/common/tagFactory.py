@@ -7,7 +7,7 @@ import system, time
 DEBUG = False
 
 def createConfigurationTags(ds, log):
-    log.infof("Creating %d configuration tags...", ds.rowCount)
+    log.infof("Processing %d configuration tags...", ds.rowCount)
     pds = system.dataset.toPyDataSet(ds)
 
     for row in pds:

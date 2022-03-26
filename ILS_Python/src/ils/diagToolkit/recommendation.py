@@ -11,8 +11,8 @@ from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR
 from ils.diagToolkit.constants import RECOMMENDATION_REC_MADE, RECOMMENDATION_NONE_MADE, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
 
 from ils.log import getLogger
-log=LogRecorder(__name__)
-logSQL=LogRecorder(__name__ + ".SQL")
+log=getLogger(__name__)
+logSQL=getLogger(__name__ + ".SQL")
 
 def notifyConsole():
     print "Waking up the console"

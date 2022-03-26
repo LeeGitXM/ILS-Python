@@ -7,7 +7,7 @@ import system.ils.blt.diagram as script
 from ils.diagToolkit.common import getDiagram
 
 from ils.log import getLogger
-log=LogRecorder(__name__)
+log=getLogger(__name__)
 
 # Return two lists:
 # 1) the names of all of the input blocks in the diagram

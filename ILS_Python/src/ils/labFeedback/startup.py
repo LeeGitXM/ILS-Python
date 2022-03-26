@@ -31,7 +31,7 @@ def gateway(tagProvider, isolationTagProvider):
     initializeTags(tagProvider)
 
 def createTags(tagProvider):
-    print "Creating Lab Feedback configuration tags...."
+    log.infof("Creating Lab Feedback configuration tags...")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     
