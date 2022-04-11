@@ -184,7 +184,8 @@ class DB_Logger():
         if system.tag.exists(tagPath):
             self.enabled = system.tag.read(tagPath).value
         else:
-            self.enabled = True
+            ''' If they havn't set the enabled tag to True, then they probably havn't created the log DB either. '''
+            self.enabled = False
         
         if self.isGatewayScope():
             self.scope = "gateway"

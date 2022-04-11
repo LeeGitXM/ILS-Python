@@ -42,6 +42,29 @@ def initialize(rootContainer):
     rootContainer.unitProcedureChartName = ""
     rootContainer.unitProcedureStartTime = ""
     
+def mousePressHandler(table, rowIndex, colIndex, colName, value, event):
+    if rowIndex >= 0:
+        viewer = table.parent.getComponent("SFC Monitor")
+        ds = table.data
+        instanceId = ds.getValueAt(rowIndex, 0)
+        chartPath = ds.getValueAt(rowIndex, 1)
+        
+        ''' I keep a permanent record of the chart instances in the table, so make sure that the selected chart is still running to avoid an error.  
+        By supplying the chartPath I will cut down on the runmber of returned charts, but there may still be more than one match. '''
+        
+        chartDs = system.sfc.getRunningCharts(chartPath)
+        found = False
+        for row in range(chartDs.rowCount):
+            if instanceId == chartDs.getValueAt(row, 0):
+                found = True
+
+        if found:
+            print "Setting: ", instanceId
+            viewer.instanceId = instanceId
+        else:
+            viewer.instanceId = None
+            system.gui.messageBox("The chart has finished and can no longer be viewed!")
+    
 def formatRunningTime(rt):
     secsBetween = abs(system.date.secondsBetween(system.date.now(), rt))
 
@@ -59,7 +82,7 @@ def fetchUnitProcedure(rootContainer):
     pds = system.db.runPrepQuery(SQL, [startDate], database=db)
     
     if len(pds) == 0 or len(pds) > 1:    
-        log.infof("Unable to find a single running unit procedure!")
+        log.tracef("Unable to find a single running unit procedure!")
         return
     
     record = pds[0]
@@ -88,7 +111,10 @@ def update(rootContainer):
     for row in range(runningDataSet.rowCount):
         runningInstanceId = runningDataSet.getValueAt(row, INSTANCE_ID)
         startDate = runningDataSet.getValueAt(row, START_DATE)
-        runningTime = formatRunningTime(startDate)
+        if startDate == None:
+            runningTime = formatRunningTime(system.date.now())
+        else:
+            runningTime = formatRunningTime(startDate)
         chartState = str(runningDataSet.getValueAt(row, CHART_STATE))
             
         if runningInstanceId not in instanceIds:
@@ -117,8 +143,8 @@ def update(rootContainer):
                     existingDataSet = system.dataset.setValue(existingDataSet, row, CHART_STATE, chartState)
                     
                     log.tracef("%s - %s", lastChartState, chartState)
-                    if lastChartState == RUNNING and chartState == STOPPED:
-                        log.tracef("Found a chart thar was running and is now stopped...")
+                    if lastChartState == RUNNING and chartState != RUNNING:
+                        log.tracef("Found a chart that was running and is now stopped...")
                         existingDataSet = system.dataset.setValue(existingDataSet, row, STOP_DATE, system.date.now())
                         existingDataSet = system.dataset.setValue(existingDataSet, row, RUNNING_TIME, runningTime)
     
