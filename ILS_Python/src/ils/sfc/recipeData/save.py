@@ -14,8 +14,8 @@ from ils.common.config import getDatabaseClient
 from ils.common.cast import toBit, isFloat
 from ils.common.error import catchError
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def storeToDatabase(chartPath, chartXML):
     '''

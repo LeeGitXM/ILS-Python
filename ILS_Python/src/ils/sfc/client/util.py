@@ -9,8 +9,8 @@ from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.sfc.recipeData.api import s88GetStepInfoFromId
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # This is called from a timer
 def checkTimeout(rootContainer):
@@ -51,14 +51,22 @@ def setClientResponse(rootContainer, response):
         db = getDatabaseClient()
         
         '''
-        An optimization is to not require them to enter ".value" for everything in the step properties.
-        Check if the keyAndAttribute has ".value", if it doesn't then add it.
+        An optimization is to assume that the attribute is ".value" if they did not enter an attribute.
+        At one point, I assumed that the response could ONLT be stuffed into a SIMPLE VALUE type of recipe data.  
+        Segun came up with a pretty cool use case where they would select the mode of a control from a SELECT INPUT step.
+        So in stead of looking for ".value",  just look for a "."  Segun wants the response to go to the outputValue of an OUTPUT.
+        The new strategy might get confused if we are specifying a folder; but I think that if they specify a folder then they MUST specify the attribute.
         '''
         if keyAndAttribute.find(".value") < 0:
             keyAndAttribute = keyAndAttribute + ".value"
             
         folder,key,attribute = splitKey(keyAndAttribute)
+        log.tracef("   folder: %s", folder)
+        log.tracef("   key: %s", key)
+        log.tracef("   attribute: %s", attribute)
         chartPath, stepName = s88GetStepInfoFromId(targetStepId, db)
+        log.tracef("  chartPath: %s", chartPath)
+        log.tracef("   stepName: %s", stepName)
         setRecipeData(stepName, targetStepId, folder, key, attribute, response, db)
 
 

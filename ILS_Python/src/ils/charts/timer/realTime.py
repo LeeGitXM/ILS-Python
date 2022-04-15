@@ -4,8 +4,8 @@ Created on Nov 28, 2016
 @author: phassler
 '''
 import string, system
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def update(rootContainer):
     n = rootContainer.n

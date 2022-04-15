@@ -12,8 +12,8 @@ import java.awt.geom.Ellipse2D as Ellipse2D
 import org.jfree.chart.plot.PlotOrientation as PlotOrientation
 import org.jfree.util.ShapeUtilities as ShapeUtilities
 from ils.jChart.common import getPlot
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log =getLogger(__name__)
 
 
 # Configure the chart with a custom renderer that colors

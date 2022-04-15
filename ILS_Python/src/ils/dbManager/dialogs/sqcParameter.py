@@ -9,8 +9,9 @@ Scripts in support of the "SQC Parameter" dialog
 import string, system
 from ils.dbManager.sql import idForFamily
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.common.config import getDatabaseClient
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"
@@ -25,6 +26,7 @@ def internalFrameActivated(rootContainer):
 # By adding a new parameter, we are adding a new parameter for every grade for the family
 # Will get an error if the row exists.
 def insertRow(rootContainer):
+    db = getDatabaseClient()
     # Family
     family = rootContainer.family
     if family == "" or string.upper(family) == "ALL":
@@ -35,11 +37,11 @@ def insertRow(rootContainer):
     # Parameter
     parameter = rootContainer.getComponent("ParameterNameField").text
     if parameter!=None and len(parameter)>0:
-        
+    
         try:
             SQL = "INSERT INTO RtSQCParameter(RecipeFamilyId, Parameter) VALUES(%s, '%s')" % (str(familyId), parameter)
             log.trace(SQL)
-            system.db.runUpdateQuery(SQL)
+            system.db.runUpdateQuery(SQL, database=db)
         except:
             notifyError(__name__, "Inserting a SQC Parameter")
         else:

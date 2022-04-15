@@ -20,8 +20,8 @@ from ils.sfc.recipeData.api import substituteScopeReferences
 SFC_MESSAGE_QUEUE = 'SFC-Message-Queue'
 NEWLINE = '\n\r'
 
-from ils.log.LogRecorder import LogRecorder
-logger = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def abortHandler(chart, msg):
     '''
@@ -50,10 +50,10 @@ def abortHandler(chart, msg):
             abortCause = "Unknown Error"
             
     msg = msg + NEWLINE + abortCause
-    notifyGatewayError(chart, stepProperties, msg, logger)
+    notifyGatewayError(chart, stepProperties, msg, log)
     
-    if logger <> None:
-        logger.error("Canceling the chart due to an error.")
+    if log <> None:
+        log.error("Canceling the chart due to an error.")
     else:
         print "*****************************************"
         print "Canceling the chart due to an error."
@@ -64,15 +64,15 @@ def abortHandler(chart, msg):
     chartPath = getChartPath(chart)
     
     print "The chart path of the aborting chart is", chartPath
-    logger.infof("Cancelling chart with id: %s", str(topChartRunId))
+    log.infof("Cancelling chart with id: %s", str(topChartRunId))
     
     def cancelWork(topChartRunId=topChartRunId, chartPath=chartPath):
-        logger.infof("In cancelWork(), an asynchronous thread...")
+        log.infof("In cancelWork(), an asynchronous thread...")
         
         i = 0
         running = chartIsRunning(chartPath)
         while running:
-            logger.tracef("...sleeping in %s...", __name__)
+            log.tracef("...sleeping in %s...", __name__)
             time.sleep(0.1)
             running = chartIsRunning(chartPath)
     
@@ -81,10 +81,10 @@ def abortHandler(chart, msg):
                 running = False
         
         time.sleep(0.1)
-        logger.tracef("...the chart is done aborting, i = %d", i)
-        logger.tracef("...cancelling...")
+        log.tracef("...the chart is done aborting, i = %d", i)
+        log.tracef("...cancelling...")
         system.sfc.cancelChart(topChartRunId)
-        logger.tracef("...the asynchronous thread is complete!")
+        log.tracef("...the asynchronous thread is complete!")
     
     system.util.invokeAsynchronous(cancelWork)
     
@@ -95,7 +95,7 @@ def chartIsRunning(chartPath):
         chartState = ds.getValueAt(0, "chartState")
         if str(chartState) == "Aborted":
             running = False
-        logger.tracef("The chart state is: %s", str(chartState)) 
+        log.tracef("The chart state is: %s", str(chartState)) 
     else:
         running = False
         
@@ -122,7 +122,7 @@ def handleUnexpectedGatewayErrorWithKnownCause(chartScope, stepProperties, msg, 
     sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
     
     if logger <> None:
-        logger.error("Canceling the chart due to an error.")
+        log.error("Canceling the chart due to an error.")
     else:
         print "Canceling the chart due to an error."
     cancelChart(chartScope)
@@ -134,7 +134,7 @@ def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
     notifyGatewayError(chartScope, stepProperties, msg, logger)
     
     if logger <> None:
-        logger.error("Canceling the chart due to an error.")
+        log.error("Canceling the chart due to an error.")
     else:
         print "Canceling the chart due to an error."
 
@@ -175,7 +175,7 @@ def handleExpectedGatewayError(chartScope, stepName, msg, logger=None):
     sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
     
     if logger <> None:
-        logger.error("Canceling the chart due to an error.")
+        log.error("Canceling the chart due to an error.")
     else:
         print "Canceling the chart due to an error."
 
@@ -187,7 +187,7 @@ This is used to run a chart from the stop, cancel, or abort end handlers.
 The third argument can optionally be used to call one chart from multiple handlers, sort o like the old toolkit.
 '''
 def endHandlerRunner(chartPath, chartScope, handler=""):
-    logger.infof("In %s.endHandlerRunner(), starting %s", __name__, chartPath)
+    log.infof("In %s.endHandlerRunner(), starting %s", __name__, chartPath)
     
     if handler == "":
         payload = {"callerChartScope": chartScope}
@@ -196,24 +196,24 @@ def endHandlerRunner(chartPath, chartScope, handler=""):
         
     sfcId = system.sfc.startChart(chartPath, payload)
     
-    logger.tracef("The calling chart scope is: %s", str(chartScope))
-    logger.tracef("...started a chart with run Id: %s", sfcId)
+    log.tracef("The calling chart scope is: %s", str(chartScope))
+    log.tracef("...started a chart with run Id: %s", sfcId)
 
     '''
     Wait until the chart completes.
     '''
     time.sleep(0.5)
     while getChartStatus(sfcId) == "Running":
-        logger.tracef("The chart status is %s", getChartStatus(sfcId))
+        log.tracef("The chart status is %s", getChartStatus(sfcId))
         time.sleep(0.5)
     
-    logger.tracef("The chart is done!")
+    log.tracef("The chart is done!")
     
 def endHandlerSetup(chart):
-    logger.infof("In %s.endHandlerSetup()...", __name__)
+    log.infof("In %s.endHandlerSetup()...", __name__)
     
-    logger.tracef("The chart scope is: %s", str(chart))
-    logger.tracef("The caller's chart scope is: %s", str(chart.callerChartScope))
+    log.tracef("The chart scope is: %s", str(chart))
+    log.tracef("The caller's chart scope is: %s", str(chart.callerChartScope))
     
     '''
     Get a couple of important properties out of the calling scope and overwrite the current chart scope
@@ -223,7 +223,7 @@ def endHandlerSetup(chart):
     if enclosingStep <> "None":
         chart.enclosingStep = enclosingStep
     
-    logger.tracef("The NEW chart scope is: %s", str(chart))
+    log.tracef("The NEW chart scope is: %s", str(chart))
 
 
 '''
@@ -231,12 +231,12 @@ This is called from the gateway by a running chart, it does not have a window ha
 a window.  Display a message on the control panel
 '''
 def addControlPanelMessage(chartProperties, stepScope, message, priority, ackRequired):    
-    logger.tracef("The untranslated message is <%s>...", message)
+    log.tracef("The untranslated message is <%s>...", message)
     message = substituteScopeReferences(chartProperties, stepScope, message)
     message = escapeSqlQuotes(message)
     message = message[:MAX_CONTROL_PANEL_MESSAGE_LENGTH]
     
-    logger.tracef("...the translated message is <%s>", message)
+    log.tracef("...the translated message is <%s>", message)
     
     database = getDatabaseName(chartProperties)
     controlPanelId = getControlPanelId(chartProperties)
@@ -256,7 +256,7 @@ def addControlPanelMessage(chartProperties, stepScope, message, priority, ackReq
 def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''
     topChartRunId = getTopChartRunId(chartProperties)
-    logger.infof("Cancelling chart with id: %s", str(topChartRunId))
+    log.infof("Cancelling chart with id: %s", str(topChartRunId))
     system.sfc.cancelChart(topChartRunId)
     raise SystemExit
 
@@ -281,7 +281,7 @@ def checkForResponse(chartScope, stepScope, stepProperties):
 def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger):
     ''' This is mainly called by PV monitoring but is pretty generic '''
 
-    logger.trace("Comparing value to target - PV: %s, Target %s, Tolerance: %s, Limit-Type: %s, Tolerance: %s" % (str(pv), str(target), str(tolerance), limitType, toleranceType))
+    log.trace("Comparing value to target - PV: %s, Target %s, Tolerance: %s, Limit-Type: %s, Tolerance: %s" % (str(pv), str(target), str(tolerance), limitType, toleranceType))
 
     txt = ""
     valueOk = True
@@ -297,7 +297,7 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
         highLimit = target + tolerance;
         lowLimit = target - tolerance;
 
-    logger.tracef("    PV=%f, Target=%f, High Limit=%f, Low Limit=%f", pv, target, highLimit, lowLimit)
+    log.tracef("    PV=%f, Target=%f, High Limit=%f, Low Limit=%f", pv, target, highLimit, lowLimit)
 
     if limitType == "High/Low":
         if pv > highLimit or pv < lowLimit:
@@ -314,14 +314,14 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     else:
         return False, "Illegal limit type: <%s>" % (limitType)
 
-    logger.trace("Returning %s because %s" % (str(valueOk), txt))
+    log.trace("Returning %s because %s" % (str(valueOk), txt))
     
     return valueOk, txt
 
 def compareStringValueToTarget(pv, target, logger):
     ''' This is is called mainly by PV monitoring but is pretty generic '''
 
-    logger.trace("Comparing string value to target - PV: %s, Target %s" % (str(pv), str(target)))
+    log.trace("Comparing string value to target - PV: %s, Target %s" % (str(pv), str(target)))
     
     if pv == target:
         txt = ""
@@ -330,7 +330,7 @@ def compareStringValueToTarget(pv, target, logger):
         valueOk = False
         txt = "%s is not the same as target value of %s" % (str(pv), str(target))
 
-    logger.trace("Returning %s because %s" % (str(valueOk), txt))
+    log.trace("Returning %s because %s" % (str(valueOk), txt))
     
     return valueOk, txt
 def copyRowToDict(dbRows, rowNum, pdict, create):
@@ -362,8 +362,8 @@ def createFilepath(chartScope, stepProperties, includeExtension):
         else:
             extension = ''
     
-    logger.tracef("Filename:  <%s>", filename)
-    logger.tracef("Extension: <%s>", extension)
+    log.tracef("Filename:  <%s>", filename)
+    log.tracef("Extension: <%s>", extension)
     
     # lookup the directory if it is a variab,e
     if directory.startswith('['):
@@ -372,7 +372,7 @@ def createFilepath(chartScope, stepProperties, includeExtension):
             print "ERROR: directory key " + directory + " not found"
             
     doTimestamp = getStepProperty(stepProperties, TIMESTAMP) 
-    logger.tracef("Creating a filepath, doTimestamp is: %s", str(doTimestamp))
+    log.tracef("Creating a filepath, doTimestamp is: %s", str(doTimestamp))
     if doTimestamp == None:
         doTimestamp = False
     
@@ -462,7 +462,7 @@ def dumpProperties(properties):
 def getChartLogger(chartScope):
     '''Get the logger associated with this chart'''
     pypath = getChartPath(chartScope).replace("/",".")
-    return LogRecorder(pypath)
+    return getLogger(pypath)
 
 def getChartPath(chartProperties):
     return chartProperties.chartPath 
@@ -611,7 +611,7 @@ def getTimer(chartScope, stepScope, stepProperties):
     if timerKey == "":
         raise TimerException("Missing timer key - the timer key has not been specified!")
         
-    logger.tracef("...using timer %s.%s...", timerLocation, timerKey)
+    log.tracef("...using timer %s.%s...", timerLocation, timerKey)
     try:
         timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
     except:
@@ -735,8 +735,8 @@ def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage
 
 def sendMessageToClient(chartScope, messageHandler, payload):
     '''Send a message to the client(s) of this chart'''
-    logger.tracef("In %s.sendMessageToClient() - Sending a %s SFC message... ", __name__, str(messageHandler))
-    logger.tracef("The chart scope is: %s", str(chartScope))
+    log.tracef("In %s.sendMessageToClient() - Sending a %s SFC message... ", __name__, str(messageHandler))
+    log.tracef("The chart scope is: %s", str(chartScope))
     controlPanelId = getControlPanelId(chartScope)
     controlPanelName = getControlPanelName(chartScope)
     project = getProject(chartScope)
@@ -748,7 +748,7 @@ def sendMessageToClient(chartScope, messageHandler, payload):
     payload[CONTROL_PANEL_ID] = controlPanelId
     payload[CONTROL_PANEL_NAME] = controlPanelName
     payload[ORIGINATOR] = originator
-    logger.tracef("   payload: %s" , str(payload))
+    log.tracef("   payload: %s" , str(payload))
 
     from ils.sfc.common.notify import sfcNotify
     sfcNotify(project, 'sfcMessage', payload, post, controlPanelName, controlPanelId, db)

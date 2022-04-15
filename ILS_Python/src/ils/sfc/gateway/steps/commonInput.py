@@ -35,11 +35,11 @@ def initializeResponse(scopeContext, stepProperties, windowId):
         responseKey = getStepProperty(stepProperties, RESPONSE_KEY_AND_ATTRIBUTE)
     else:
         responseKey = getStepProperty(stepProperties, KEY)
-        if responseKey.find(".value") < 0:
+        if responseKey.find(".") < 0:
             responseKey = responseKey + ".value"
         
     responseLocation = getStepProperty(stepProperties, RECIPE_LOCATION)
-    logger.tracef("In %s.initializeResponse(), initializing %s.%s", __name__, responseLocation, responseKey)
+    logger.tracef("In %s.initializeResponse(), initializing <%s.%s>", __name__, responseLocation, responseKey)
     
     if responseLocation in [ REFERENCE_SCOPE, GLOBAL_SCOPE, OPERATION_SCOPE, PHASE_SCOPE, SUPERIOR_SCOPE, LOCAL_SCOPE, PRIOR_SCOPE]:
         s88Set(chartScope, stepScope, responseKey, "NULL", responseLocation)

@@ -6,9 +6,9 @@ Created on Mar 31, 2015
 import system, string
 from ils.io.util import readTag, writeTag
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-sqlLog = LogRecorder(__name__ + ".sql")
+from ils.log import getLogger
+log = getLogger(__name__)
+sqlLog = getLogger(__name__ + ".sql")
 
 '''
 This is a memory resident dictionary of limit dictionaries that survives from scan to scan.  

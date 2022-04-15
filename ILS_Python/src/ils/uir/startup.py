@@ -6,11 +6,10 @@ Created on Oct 9, 2015
 
 import system
 
+from ils.log import getLogger
+log = getLogger(__name__)
+
 def gateway(tagProvider, isolationTagProvider):
-    # Create gateway loggers
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__)
-    
     from ils.uir.version import version
     version, revisionDate = version()
     log.info("Starting UIR modules version %s - %s" % (version, revisionDate))
@@ -19,7 +18,7 @@ def gateway(tagProvider, isolationTagProvider):
     createTags("[" + isolationTagProvider + "]", log)
 
 def createTags(tagProvider, log):
-    print "Creating UIR configuration tags...."
+    log.infof("Creating UIR configuration tags....")
     path = tagProvider + "Configuration/UIR/"
     
     # Make an empty dataset for the email list

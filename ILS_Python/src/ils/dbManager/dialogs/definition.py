@@ -14,13 +14,12 @@ from ils.dbManager.sql import idForFamily
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-
+from ils.common.config import getDatabaseClient
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(component):
     log.trace("InternalFrameOpened")
-
 
 def internalFrameActivated(component):
     log.trace("InternalFrameActivated")
@@ -29,7 +28,6 @@ def internalFrameActivated(component):
     container = getRootContainer(component)
     dropdown = container.getComponent("FamilyDropdown")
     populateRecipeFamilyDropdown(dropdown, True)
-#    dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
 
     requery(component)
 
@@ -37,6 +35,7 @@ def internalFrameActivated(component):
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("definiton.requery ...")
+    db = getDatabaseClient()
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
     whereExtension = getWhereExtension()
@@ -52,7 +51,7 @@ def requery(component):
     log.trace(SQL)
 
     try:
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         table.data = pds
         refresh(table)
     except:
@@ -78,6 +77,7 @@ def refresh(component):
 # for the following rows. Button must requery to sync display.
 def deleteRow(button):
     log.info("definiton.deleteRow ...")
+    db = getDatabaseClient()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -90,7 +90,7 @@ def deleteRow(button):
     confirm = system.gui.confirm("Are you sure that you want to delete this value definitions for all grades in this family <%s>?" % (familyName))
     if confirm:
         
-        tx = system.db.beginTransaction()
+        tx = system.db.beginTransaction(database=db)
         
         try:
             vid = ds.getValueAt(rownum,'ValueId')
@@ -116,12 +116,13 @@ def deleteRow(button):
 # When complete, the button will re-query
 def duplicateRow(button):
     log.info("definiton.duplicateRow ...")
+    db = getDatabaseClient()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
     defaultValueTypeId = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = 'Float'") 
     
-    tx = system.db.beginTransaction()
+    tx = system.db.beginTransaction(database=db)
     
     try:
         ds = table.data
@@ -197,7 +198,8 @@ def moveRows(table,rows,rowData,dropIndex):
     if dropOrder>maxOrder:
         dropOrder = dropOrder - 1
 
-    tx = system.db.beginTransaction()
+    db = getDatabaseClient()
+    tx = system.db.beginTransaction(database=db)
 
     try:
         # First of all collapse rows greater than our range
@@ -235,6 +237,7 @@ def showWindow():
 # Update database for a cell edit.
 def update(table,row,colname,value):
     log.info("definiton.update (%d:%s)=%s ..." %(row,colname,str(value)))
+    db = getDatabaseClient()
     ds = table.data
     # All editable columns are strings.
     familyid = ds.getValueAt(row,"RecipeFamilyId")
@@ -243,11 +246,11 @@ def update(table,row,colname,value):
     # The Alias and valueType columns requires a lookup
     if colname == "Alias":
         colname = "WriteLocationId"
-        value = system.db.runScalarQuery("select WriteLocationId from TkWriteLocation where Alias = '%s'" % (value))
+        value = system.db.runScalarQuery("select WriteLocationId from TkWriteLocation where Alias = '%s'" % (value), database=db)
 
     elif colname == "ValueType":
         colname = "ValueTypeId"
-        value = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = '%s'" % (value))
+        value = system.db.runScalarQuery("select ValueTypeId from RtValueType where ValueType = '%s'" % (value), database=db)
 
     if value == None:
         SQL = "UPDATE RtValueDefinition SET "+colname+" = NULL " + \
@@ -258,14 +261,13 @@ def update(table,row,colname,value):
     print SQL
     
     try:
-        system.db.runUpdateQuery(SQL)
+        system.db.runUpdateQuery(SQL, database=db)
     except:
         notifyError(__name__, "Error updating a value definition")
 
-
 def validate(rootContainer):
     print "In %s.validate()" % (__name__)
-    
+    db = getDatabaseClient()
     family = getUserDefaults("FAMILY")
     
     SQL = "select VD.valueId, RF.RecipeFamilyId "\
@@ -273,7 +275,7 @@ def validate(rootContainer):
         " where RF.RecipeFamilyName = '%s' "\
         " and RF.RecipeFamilyId = VD.RecipeFamilyId " % (family)  
         
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     masterCnt = len(pds)
     
     print "Fetched %d value definitions" % (masterCnt)
@@ -288,7 +290,7 @@ def validate(rootContainer):
         " where RecipeFamilyId = %d "\
         " group by grade, version" % (recipeFamilyId)
     
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     repairCounter = 0
     
     for record in pds:
@@ -305,14 +307,14 @@ def validate(rootContainer):
         system.gui.messageBox("<HTML>%d grades were updated - consult the client console log for details.  <br>Please review the recommended values for these new detail records." % repairCounter, "Recipe Maintenance Notification") 
 
 def repairGrade(recipeFamilyId, grade, version, masterValueIds):
-    
+    db = getDatabaseClient()    
     SQL = "select ValueId "\
         " from RtGradeDetail "\
         " where RecipeFamilyId = %d "\
         " and grade = '%s' "\
         " and version = %d " % (recipeFamilyId, grade, version)
     
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     gradeValueIds = []
     for record in pds:
@@ -320,7 +322,7 @@ def repairGrade(recipeFamilyId, grade, version, masterValueIds):
         if valueId not in masterValueIds:
             print "         Deleting ", valueId
             SQL = "delete from RtGradeDetail where RecipeFamilyId = %d and grade = '%s' and version = %d and ValueId = %d " % (recipeFamilyId, grade, version, valueId)
-            system.db.runUpdateQuery(SQL)
+            system.db.runUpdateQuery(SQL, database=db)
         else:
             gradeValueIds.append(valueId)
             
@@ -328,10 +330,11 @@ def repairGrade(recipeFamilyId, grade, version, masterValueIds):
         if valueId not in gradeValueIds:
             print "          Adding ", valueId
             SQL = "insert into RtGradeDetail (RecipeFamilyId, grade, version, ValueId) values (%d, '%s', %d, %d)" % (recipeFamilyId, grade, version, valueId)
-            system.db.runUpdateQuery(SQL)
+            system.db.runUpdateQuery(SQL, database=db)
 
    
 def exportCallback(event):
+    db = getDatabaseClient()
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
     
     if entireTable:
@@ -350,9 +353,8 @@ def exportCallback(event):
         " %s ORDER BY F.RecipeFamilyName,VD.PresentationOrder" % (whereExtension)
     log.trace(SQL)
 
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     csv = system.dataset.toCSV(pds)
     filePath = system.file.saveFile("ValueDefinition.csv", "csv", "Comma Separated Values")
     if filePath:
         system.file.writeFile(filePath, csv)
-    

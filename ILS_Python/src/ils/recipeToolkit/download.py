@@ -15,11 +15,11 @@ import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 from ils.io.client import writeWithNoChecks, writeRecipeDetails, writeDatums
 from ils.io.util import getTagSuffix
-from ils.common.config import getTagProvider, getTagProviderClient, getDatabaseClient, getIsolationModeClient
+from ils.common.config import getDatabaseClient, getIsolationModeClient
 from ils.common.ocAlert import sendAlert
-from ils.io.util import getProviderFromTagPath
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.io.util import getProviderFromTagPath, readTag
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def automatedDownloadHandler(tagPath, grade):
     
@@ -36,11 +36,11 @@ def automatedDownloadHandler(tagPath, grade):
         log.trace('Exiting automatedDownloadHandler because a NULL grade was detected.')
         return
     
-    automatedDownload = system.tag.read(parentTagPath + "/automatedDownload").value
-    post = system.tag.read(parentTagPath + "/post").value
-    project = system.tag.read(parentTagPath + "/project").value
-    database = system.tag.read(parentTagPath + "/database").value
-    recipeKey = system.tag.read(parentTagPath + "/recipeKey").value
+    automatedDownload = readTag(parentTagPath + "/automatedDownload").value
+    post = readTag(parentTagPath + "/post").value
+    project = readTag(parentTagPath + "/project").value
+    database = readTag(parentTagPath + "/database").value
+    recipeKey = readTag(parentTagPath + "/recipeKey").value
     
     grade = str(grade)
     log.infof("In %s.automatedDownloadHandler(), the recipeKey is: %s, automated download is %s", __name__, recipeKey, str(automatedDownload))
@@ -91,7 +91,8 @@ def automatedDownloadHandler(tagPath, grade):
                 "Sending OC Alert"
             ]
         
-        system.tag.writeAll(tags, vals)
+        if len(tags) > 0:
+            system.tag.writeBlocking(tags, vals)
 
 
 '''
@@ -124,11 +125,11 @@ def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, g
     # Refresh the table with data from the DCS and determine what needs to be downloaded
     dsProcessed = recipeToolkit_refresh.automatedRefresh(familyName, dsProcessed, tagProvider, database)
 
-    recipeWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
-    globalWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
+    recipeWriteEnabled = readTag("[" + tagProvider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+    globalWriteEnabled = readTag("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
     writeEnabled = recipeWriteEnabled and globalWriteEnabled
-    localWriteAlias = string.upper(system.tag.read("[" + tagProvider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
-    downloadTimeout = system.tag.read("[" + tagProvider + "]/Configuration/RecipeToolkit/downloadTimeout").value
+    localWriteAlias = string.upper(readTag("[" + tagProvider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
+    downloadTimeout = readTag("[" + tagProvider + "]/Configuration/RecipeToolkit/downloadTimeout").value
     
     log.info("Downloading recipe <%s> (RecipeWriteEnabled: %s, timeout: %s seconds)..." % (familyName, str(writeEnabled), str(downloadTimeout)))
     
@@ -162,7 +163,8 @@ def fullyAutomatedDownload(parentTagPath, post, project, database, familyName, g
             "Downloading"
         ]
     
-    system.tag.writeAll(tags, vals)
+    if len(tags) > 0:
+        system.tag.writeBlocking(tags, vals)
 
     # Normally at this time we would log skipped tags, but since this automated, there can't be skipped tags
     
@@ -181,7 +183,7 @@ def downloadCallback(rootContainer):
     log.info("Starting a download...")
     
     provider = rootContainer.getPropertyValue("provider")
-    requireComments = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
+    requireComments = readTag("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
     if requireComments:
         uncommentedChanges = checkForUncommentedChanges(rootContainer)
         if uncommentedChanges:
@@ -230,15 +232,13 @@ def download(rootContainer):
     mode = rootContainer.getPropertyValue("mode")
     table = rootContainer.getComponent("Power Table")
     
-    productionProvider = getTagProvider()     # Get the production tag provider.
-    
-    localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
-    recipeWriteEnabled = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
-    globalWriteEnabled = system.tag.read("[" + provider + "]/Configuration/Common/writeEnabled").value
-    writeEnabled = (provider != productionProvider) or (recipeWriteEnabled and globalWriteEnabled)
+    localWriteAlias = string.upper(readTag("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
+    recipeWriteEnabled = readTag("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
+    globalWriteEnabled = readTag("[" + provider + "]/Configuration/Common/writeEnabled").value
+    writeEnabled = recipeWriteEnabled and globalWriteEnabled
     print "The combined write enabled status, considering the tag provider, is: ", writeEnabled
     
-    downloadTimeout = system.tag.read("[%s]/Configuration/RecipeToolkit/downloadTimeout" % (provider)).value
+    downloadTimeout = readTag("[%s]/Configuration/RecipeToolkit/downloadTimeout" % (provider)).value
     rootContainer.downloadTimeout = downloadTimeout
     print "The download timeout is ", downloadTimeout, " seconds"
     
@@ -257,7 +257,7 @@ def download(rootContainer):
         tagPath = rootContainer.getPropertyValue("triggerTagPath")
         tags = [tagPath + "/status", tagPath + "/failedDownloads", tagPath + "/passedDownloads", tagPath + "/totalDownloads", tagPath + "/downloadStartTime"]
         vals = ["Downloading", 0, 0, 0, now]
-        system.tag.writeAll(tags, vals)
+        system.tag.writeBlocking(tags, vals)
 
     # Set the background color to indicate Downloading
     recipeToolkit_common.setBackgroundColor(rootContainer, "screenBackgroundColorDownloading")
@@ -322,11 +322,11 @@ def resetTags(ds, provider, familyName, localWriteAlias):
             tags.append(tagName + '/badValue')
             vals.append(False)
 
+
     # Write them all at once
-    status = system.tag.writeAll(tags, vals)
-    
-    # TODO - I should check that the reset was successful
-    log.trace("Tag write status: %s" % (str(status)))
+    if len(tags) > 0:
+        status = system.tag.writeBlocking(tags, vals)
+        log.trace("Tag write status: %s" % (str(status)))
     
     return
 
@@ -337,16 +337,17 @@ def resetRecipeDetails(provider, familyName):
             
     tags = []
     vals = []
-    path = "[%s]Recipe/%s/" % (provider, familyName)
+    parentPath = "[%s]Recipe/%s/" % (provider, familyName)
 
     for udtType in ['Recipe Data/Recipe Details']:
-        details = system.tag.browseTags(path, udtParentType=udtType)
-        for detail in details:           
-            tags.append(path + detail.name + "/command")
+        results = system.tag.browse(parentPath, udtParentType=udtType)
+        for detail in results.getResults():           
+            tags.append(parentPath + detail['name'] + "/command")
             vals.append("")
 
-    log.infof("...reset %d recipe detail UDTs", len(details))            
-    system.tag.writeAll(tags, vals)
+    log.infof("...reset %d recipe detail UDTs", len(results))  
+    if len(tags) > 0:
+        system.tag.writeBlocking(tags, vals)
 
 # Log any tags that are skipped by the operator
 def logSkippedTags(table, logId, database):
@@ -444,7 +445,8 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
     log.tracef("Permissive Tags: %s", str(permissiveTags))
     log.tracef("Permissive Values: %s", str(permissiveValues))
     
-    system.tag.writeAll(permissiveTags, permissiveValues)
+    if len(permissiveTags) > 0:
+        system.tag.writeBlocking(permissiveTags, permissiveValues)
 
     # Write the writevals all at once - first the local tags (non OPC)
 
@@ -471,7 +473,7 @@ def writeImmediate(ds, provider, familyName, logId, localWriteAlias, writeEnable
             is to just wait for the site configurable latency time.
             If this wait is typically more than a couple of seconds then this should all be put into an asynchronous thread so as not to lock the UI
             '''
-            latencyTime = system.tag.read("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
+            latencyTime = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
             time.sleep(latencyTime)
             
         log.infof("Writing to %d immediate OPC tags...", opcTagCntr) 
@@ -498,8 +500,8 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled, project, isolat
     '''
     from ils.recipeToolkit.common import formatTagName
 
-    log.trace("=====================================")
-    log.trace("Writing to deferred (recipe detail) tags...")
+    log.tracef("=====================================")
+    log.tracef("Writing to %d deferred (recipe detail) tags...", ds.rowCount)
     
     # Collect all of the details that need to be downloaded
     pds = system.dataset.toPyDataSet(ds)
@@ -548,8 +550,9 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled, project, isolat
     log.trace("    The actual tags are:   %s" % (str(tags)))
     log.trace("    The actual vals are:   %s" % (str(vals)))
     
-    status = system.tag.writeAll(tags, vals)
-    log.trace("Tag write status: %s" % (str(status)))
+    if len(tags) > 0:
+        status = system.tag.writeBlocking(tags, vals)
+        log.trace("Tag write status: %s" % (str(status)))
     
     if isolationMode:
         ''' If we are in isolation mode then the recie detail UDTs have been turned into folders so none of the production logic will work in isolation,
@@ -577,8 +580,9 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled, project, isolat
         log.trace("*** Writing the deferred tags immediately because we are in Isolation mode ***")
         log.trace("    Tags:     %s" % (str(rootTags)))
         log.trace("    Values:   %s" % (str(pendVals)))
-        status = system.tag.writeAll(rootTags, pendVals)
-        log.trace("Tag write status: %s" % (str(status)))
+        if len(rootTags) > 0:
+            status = system.tag.writeBlocking(rootTags, pendVals)
+            log.trace("Tag write status: %s" % (str(status)))
         
     else:
         log.trace("    --- matching recipe detail UDTS with deferred tags ---")
@@ -593,11 +597,11 @@ def writeDeferred(ds, provider, familyName, logId, writeEnabled, project, isolat
                 tagName = formatTagName(provider, familyName, detail.name)
                 log.tracef("  Tag: %s", tagName)
     
-                highLimitTagName = system.tag.read(tagName+'/highLimitTagName').value
+                highLimitTagName = readTag(tagName+'/highLimitTagName').value
                 highLimitTagName = formatTagName(provider, familyName, highLimitTagName)
-                lowLimitTagName = system.tag.read(tagName+'/lowLimitTagName').value
+                lowLimitTagName = readTag(tagName+'/lowLimitTagName').value
                 lowLimitTagName = formatTagName(provider, familyName, lowLimitTagName)
-                valueTagName = system.tag.read(tagName+'/valueTagName').value
+                valueTagName = readTag(tagName+'/valueTagName').value
                 valueTagName = formatTagName(provider, familyName, valueTagName)
                 
                 if highLimitTagName in rootTags or lowLimitTagName in rootTags or valueTagName in rootTags:

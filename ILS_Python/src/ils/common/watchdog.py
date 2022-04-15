@@ -5,36 +5,31 @@ Created on Apr 11, 2017
 '''
 
 import system
+from ils.common.config import getProductionTagProviderFromInternalDatabase
 from ils.io.util import readTag, writeTag
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 '''
-This is called from a gateway timer script. It doesn't make sense to call this for isolation.
-(The UDTS do not exist in isolation as they get converted to folders. )
+This is called from a gateway timer script. 
 '''
-def scanLabDataWatchdogs(tagProvider):
-    projectName = system.util.getProjectName()
-    if projectName == "[global]":
-        print "Skipping the Lab Data Watchdog scanner for the global project"
-        return
-    
-    log.info("Scanning Lab Data watchdogs...")
-    
-    udtParentType = "Lab Data Watchdog"
+def scanLabDataWatchdogs(projectName):    
+    log.infof("Scanning Lab Data watchdogs for project <%s>...", projectName)
+    tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
-        
-    udts = system.tag.browseTags(
-        parentPath=parentPath, 
-        tagType="UDT_INST", 
-        udtParentType="Watchdogs/" + udtParentType,
-        recursive=True)
     
+    filters = {
+               "tagType": "UdtInstance",
+               "typeId": "Watchdogs/Lab Data Watchdog",
+               "recursive": True
+               }
+
+    udts = system.tag.browse(parentPath, filters)
     log.tracef("...discovered %d Lab Data watchdog UDTs...", len(udts))
     
-    for udt in udts:
-        udtPath = udt.path
-        log.tracef("Found a %s at %s", udtParentType, udtPath)
+    for udt in udts.getResults():
+        udtPath = str(udt['fullPath'])
+        log.tracef("...found %s", udtPath)
         labDataWatchdog(tagProvider, udtPath)
 
 
@@ -75,31 +70,26 @@ def labDataWatchdog(tagProvider, udtPath):
         writeTag(udtPath+"/stallCount", 0)
 
 '''
-This is called from a gateway timer script. It doesn't make sense to call this for isolation.
-(The UDTS do not exist in isolation as they get converted to folders. )
+This is called from a gateway timer script.
 '''
-def scanOpcReadWatchdogs(tagProvider):
-    projectName = system.util.getProjectName()
-    if projectName == "[global]":
-        print "Skipping the OPC Watchdog scanner for the global project"
-        return
+def scanOpcReadWatchdogs(projectName):    
+    log.infof("Scanning OPC Read watchdogs for project <%s>...", projectName)
     
-    log.info("Scanning OPC Read watchdogs...")
-    
-    udtParentType = "OPC Read Watchdog"
+    tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
-        
-    udts = system.tag.browseTags(
-        parentPath=parentPath, 
-        tagType="UDT_INST", 
-        udtParentType="Watchdogs/" + udtParentType,
-        recursive=True)
     
-    log.tracef("...Discovered %d read watchdog UDTs...", len(udts))
+    filters = {
+               "tagType": "UdtInstance",
+               "typeId": "Watchdogs/OPC Read Watchdog",
+               "recursive": True
+               }
+    udts = system.tag.browse(parentPath, filters)
+   
+    log.tracef("...discovered %d Lab Data watchdog UDTs...", len(udts))
     
-    for udt in udts:
-        udtPath = udt.path
-        log.tracef("Found a %s at %s", udtParentType, udtPath)
+    for udt in udts.getResults():
+        udtPath = str(udt['fullPath'])
+        log.tracef("...found %s", udtPath)
         opcReadWatchdog(tagProvider, udtPath)
 
 
@@ -163,30 +153,26 @@ def opcReadWatchdog(tagProvider, udtPath):
         writeTag(udtPath+"/stallCount", 0)
 
 '''
-This is called from a gateway timer script.  It doesn't make sense to call this for isolation.
-(The UDTS do not exist in isolation as they get converted to folders. )
+This is called from a gateway timer script.
 '''
-def scanOpcWriteWatchdogs(tagProvider):
-    projectName = system.util.getProjectName()
-    if projectName == "[global]":
-        print "Skipping the OPC Watchdog scanner for the global project"
-        return
+def scanOpcWriteWatchdogs(projectName):
+    log.infof("Scanning OPC write watchdogs for project <%s>...", projectName)
+
+    tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
+    parentPath = "[%s]Site/Watchdogs" % (tagProvider)
     
-    log.info("Scanning OPC write watchdogs...")
+    filters = {
+               "tagType": "UdtInstance",
+               "typeId": "Watchdogs/OPC Write Watchdog",
+               "recursive": True
+               }
+    udts = system.tag.browse(parentPath, filters)
     
-    udtParentType = "OPC Write Watchdog"
+    log.tracef("...discovered %d OPC Write watchdog UDTs...", len(udts))
     
-    udts = system.tag.browseTags(
-        parentPath="[%s]Site/Watchdogs" % (tagProvider), 
-        tagType="UDT_INST", 
-        udtParentType="Watchdogs/" + udtParentType,
-        recursive=True)
-    
-    log.tracef("...Discovered %d write watchdog UDTs...", len(udts))
-    
-    for udt in udts:
-        udtPath = udt.path
-        log.tracef("Found a %s at %s", udtParentType, udtPath)
+    for udt in udts.getResults():
+        udtPath = str(udt['fullPath'])
+        log.tracef("...found %s", udtPath)
         opcWriteWatchdog(tagProvider, udtPath)
 
 '''
@@ -252,31 +238,26 @@ def opcWriteWatchdog(tagProvider, udtPath):
 
 
 '''
-This is called from a gateway timer script. It doesn't make sense to call this for isolation.
-(The UDTS do not exist in isolation as they get converted to folders. )
+This is called from a gateway timer script. 
 '''
-def scanHdaReadWatchdogs(tagProvider):
-    projectName = system.util.getProjectName()
-    if projectName == "[global]":
-        print "Skipping the HDA Watchdog scanner for the global project"
-        return
+def scanHdaReadWatchdogs(projectName):    
+    log.infof("Scanning HDA Read watchdogs for project <%s>...", projectName)
     
-    log.info("Scanning HDA Read watchdogs...")
-    
-    udtParentType = "HDA Watchdog"
+    tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
-        
-    udts = system.tag.browseTags(
-        parentPath=parentPath, 
-        tagType="UDT_INST", 
-        udtParentType="Watchdogs/" + udtParentType,
-        recursive=True)
     
-    log.tracef("...Discovered %d HDA Read watchdog UDTs...", len(udts))
+    filters = {
+               "tagType": "UdtInstance",
+               "typeId": "Watchdogs/HDA Watchdog",
+               "recursive": True
+               }
+    udts = system.tag.browse(parentPath, filters)
     
-    for udt in udts:
-        udtPath = udt.path
-        log.tracef("Found a %s at %s", udtParentType, udtPath)
+    log.tracef("...discovered %d HDA Read watchdog UDTs...", len(udts))
+    
+    for udt in udts.getResults():
+        udtPath = str(udt['fullPath'])
+        log.tracef("...found %s", udtPath)
         opcHdaReadWatchdog(tagProvider, udtPath)
 
 def opcHdaReadWatchdog(tagProvider, udtPath):

@@ -10,6 +10,10 @@ def addRow():
 def addColumn(dataset):
     return True
 
+def appendDataset(ds1, ds2):
+    ds = ds1 + ds2
+    return ds
+
 def clearDataset(dataset):
     return dataset
 

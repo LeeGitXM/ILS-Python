@@ -5,8 +5,8 @@ Created on Sep 9, 2014
 '''
 import system, string
 from ils.io.util import readTag
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def build(rootContainer):
     applicationName=rootContainer.getPropertyValue("applicationName")

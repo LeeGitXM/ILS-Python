@@ -6,7 +6,7 @@ Created on Nov 4, 2018
 
 import ils.io.controller as controller
 import system, string, time
-from ils.io.util import confirmWrite, readTag, getProviderFromTagPath
+from ils.io.util import confirmWrite, readTag, writeTag
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
 log = LogUtil.getLogger("com.ils.io")
@@ -20,9 +20,6 @@ class TDCDigitalController(controller.Controller):
     def __init__(self,path):
         controller.Controller.__init__(self,path)
         self.opTag = opcoutput.OPCOutput(path + '/op')
-        tagProvider = getProviderFromTagPath(path)
-        self.PERMISSIVE_LATENCY_TIME = readTag("[%s]Configuration/Common/opcPermissiveLatencySeconds" % (tagProvider)).value
-        self.OPC_LATENCY_TIME = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (tagProvider)).value
 
     def reset(self):
         ''' Reset the UDT in preparation for a write '''
@@ -30,17 +27,17 @@ class TDCDigitalController(controller.Controller):
         errorMessage = ""
         log.tracef('Resetting a %s Controller...', __name__)       
         
-        system.tag.write(self.path + '/badValue', False)
-        system.tag.write(self.path + '/writeErrorMessage', '')
-        system.tag.write(self.path + '/writeConfirmed', False)
-        system.tag.write(self.path + '/writeStatus', '')
+        writeTag(self.path + '/badValue', False)
+        writeTag(self.path + '/writeErrorMessage', '')
+        writeTag(self.path + '/writeConfirmed', False)
+        writeTag(self.path + '/writeStatus', '')
         
         for embeddedTag in ['/mode', '/op']:
             tagPath = self.path + embeddedTag
-            system.tag.write(tagPath + '/badValue', False)
-            system.tag.write(tagPath + '/writeErrorMessage', '')
-            system.tag.write(tagPath + '/writeConfirmed', False)
-            system.tag.write(tagPath + '/writeStatus', '')
+            writeTag(tagPath + '/badValue', False)
+            writeTag(tagPath + '/writeErrorMessage', '')
+            writeTag(tagPath + '/writeConfirmed', False)
+            writeTag(tagPath + '/writeStatus', '')
 
     def confirmControllerMode(self, newVal, testForZero, checkPathToValve, outputType):
         ''' Check if a controller is in the appropriate mode for writing to.  This does not attempt to change the 
@@ -61,7 +58,7 @@ class TDCDigitalController(controller.Controller):
 
         ''' Read the current values of all of the tags we need to consider to determine if the configuration is valid. '''
         tagpaths = [tagRoot + '/value', self.path + '/mode/value',  self.path + '/mode/value.OPCItemPath', self.path + '/windup']
-        qvs = system.tag.readAll(tagpaths)
+        qvs = system.tag.readBlocking(tagpaths)
         
         currentValue = qvs[0]
         mode = qvs[1]
@@ -126,8 +123,8 @@ class TDCDigitalController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
         
@@ -139,7 +136,7 @@ class TDCDigitalController(controller.Controller):
         the write so this needs to just wait around for the answer. '''
 
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeDatum(val, valueType)
 
         return confirmed, errorMessage
@@ -158,7 +155,7 @@ class TDCDigitalController(controller.Controller):
         However, if we are using isolation tags then we DO write to memory tags!  If we are writing to memory tags then 
         it doesn't make sense to check for an item id or OPC server.
         '''
-        tagType = system.tag.read(tagRoot + ".TagType").value
+        tagType = readTag(tagRoot + ".TagType").value
         if tagType == 1:
             return True, ""
         
@@ -191,8 +188,8 @@ class TDCDigitalController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
         
@@ -205,14 +202,14 @@ class TDCDigitalController(controller.Controller):
         the write so this needs to just wait around for the answer '''
 
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeWithNoCheck(val, valueType)
         if not(confirmed):
             log.error(errorMessage)
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             return confirmed, errorMessage
          
-        system.tag.write(self.path + "/writeStatus", "Success")
+        writeTag(self.path + "/writeStatus", "Success")
         
         return confirmed, errorMessage

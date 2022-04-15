@@ -9,8 +9,8 @@ from ils.common.constants import CR
 from ils.io.util import readTag, writeTag
 from ils.labData.limits import calcSQCLimits
 from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue, updateLabValueUdt
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened(), reserving a cursor...", __name__)
@@ -214,7 +214,7 @@ def insertDataRow(rootContainer):
             return False
         
         minimumTimeBetweenSamples = rootContainer.getComponent("minimumTimeBetweenSamples").intValue
-		sampleTimeOffset = rootContainer.getComponent("sampleTimeOffset").intValue  
+        sampleTimeOffset = rootContainer.getComponent("sampleTimeOffset").intValue  
         itemId = rootContainer.getComponent("itemId").text
         if itemId == "":
             system.gui.messageBox("You must specify an Item-Id for the lab value!", "Warning")
@@ -365,7 +365,6 @@ def validate(rootContainer):
             
         return txt
 
-
     def validateDcsTag(unitName, valueName, interfaceName, itemId, tagProvider, txt):
         log.tracef("   ...validating DCS lab data: %s - %s - %s", valueName, interfaceName, itemId)
         
@@ -417,8 +416,12 @@ def validate(rootContainer):
                 log.tracef("         ... Lab limit UDT exists")
             else:
                 log.infof("         --- Creating lab limit UDT ---")
-                system.tag.addTag(parentPath=parentPath, name=valueName + suffix, tagType="UDT_INST", 
-                      attributes={"UDTParentType":udtType})
+                tag = {
+                       "name": valueName + suffix,
+                       "tagType": "UdtInstance",
+                       "typeId": udtType
+                    }
+                system.tag.configure(parentPath, tags=[tag])
                 txt = "%s%sCreated Lab Limit UDT for %s - %s" % (txt, CR, valueName + suffix, udtType)
                 
         return txt
@@ -552,9 +555,9 @@ def dataCellEdited(table, rowIndex, colName, oldValue, newValue):
     elif colName == "MinimumSampleIntervalSeconds":
         SQL = "UPDATE LtDCSValue SET MinimumSampleIntervalSeconds = %d WHERE ValueId = %d " % (newValue, valueId)
         
-	elif colName == "SampleTimeConstantMinutes":
+    elif colName == "SampleTimeConstantMinutes":
         SQL = "UPDATE LtDCSValue SET SampleTimeConstantMinutes = %d WHERE ValueId = %d " % (newValue, valueId)
-		
+
     elif colName == "AllowManualEntry":
         if dataType == "PHD":
             SQL = "UPDATE LtPHDValue SET AllowManualEntry = %d WHERE ValueId = %d " % (newValue, valueId)

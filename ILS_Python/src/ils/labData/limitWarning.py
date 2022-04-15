@@ -7,11 +7,11 @@ import system
 from ils.io.util import readTag, writeTag
 from ils.labData.common import postMessage
 from ils.common.ocAlert import sendAlert
-from ils.log.LogRecorder import LogRecorder
 from ils.common.util import isUserConnected
 from ils.common.message.client import sendCloseWindowMessage
 from ils.common.config import getDatabaseClient, getIsolationModeClient
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 #------------------------------
 # Custom Validation Failure

@@ -4,8 +4,8 @@ Created on Feb 17, 2020
 @author: phass
 '''
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 '''
 This is called from the Tools menu and the designer hook

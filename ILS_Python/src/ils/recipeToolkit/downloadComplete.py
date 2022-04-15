@@ -32,7 +32,7 @@ def downloadComplete(rootContainer):
         print "Updating: ", tagPath
         tags = [tagPath + "/status", tagPath + "/failedDownloads", tagPath + "/passedDownloads", tagPath + "/totalDownloads", tagPath + "/downloadEndTime"]
         vals = [status, failures, successes, downloads, system.date.now()]
-        system.tag.writeAll(tags, vals)
+        system.tag.writeBlocking(tags, vals)
 
     from ils.recipeToolkit.common import setBackgroundColor
     if failures == 0:

@@ -6,8 +6,9 @@ Created on Mar 21, 2017
 
 import system
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.common.config import getDatabaseClient
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.trace("InternalFrameOpened")
@@ -17,16 +18,16 @@ def internalFrameActivated(rootContainer):
 
 def createGrade(rootContainer):
     print "In createGrade..."
+    db = getDatabaseClient()
     newGrade = rootContainer.getComponent("GradeTextField").text
     oldGrade = rootContainer.oldGrade
     oldVersion = rootContainer.oldVersion
     familyName = rootContainer.familyName
     familyId = rootContainer.familyId
     
-    tx = system.db.beginTransaction()
+    tx = system.db.beginTransaction(database=db)
     
     try:
-    
         if oldGrade == None:
             print "In createFirstGrade..."
             newGrade = rootContainer.getComponent("GradeTextField").text

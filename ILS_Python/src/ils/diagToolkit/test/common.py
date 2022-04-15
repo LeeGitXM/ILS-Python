@@ -9,8 +9,8 @@ from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 from ils.common.util import escapeSqlQuotes
 from ils.io.util import readTag, writeTag
 
-from ils.log.LogRecorder import LogRecorder
-logger=LogRecorder("com.ils.test")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 T1TagName='Sandbox/Diagnostic/T1'
 T2TagName='Sandbox/Diagnostic/T2'
@@ -32,7 +32,7 @@ def run():
     
     #-------------------------------------------
     def initializeTags():
-        logger.infof("Initializing tags...")
+        log.infof("Initializing tags...")
         writeTag("[XOM]Configuration/DiagnosticToolkit/zeroChangeThreshold", 0.00005)
         writeTag("[XOM]DiagnosticToolkit/Inputs/T1", 0.1)
         writeTag("[XOM]DiagnosticToolkit/Inputs/T2", 0.2)
@@ -49,13 +49,13 @@ def run():
         writeTag("[XOM]DiagnosticToolkit/Inputs/T13", 0.4)
         writeTag("[XOM]DiagnosticToolkit/Inputs/T14", 0.5)
         writeTag("[XOM]DiagnosticToolkit/Inputs/T15", 0.6)
-        logger.infof("Initializing the database...")
+        log.infof("Initializing the database...")
     
     #-------------------------------------------
     def initializeDatabase(db):
         #TODO Do something smarter about DtRecommendationDefinition
         rows = -99
-        logger.infof("Initializing the database...")
+        log.infof("Initializing the database...")
         for SQL in [
             "delete from DtFinalDiagnosisLog",
             "delete from DtRecommendation", 
@@ -84,18 +84,18 @@ def run():
             "delete from DtApplication where ApplicationName like 'FINAL_TEST%'"
             ]:
 
-            logger.tracef( "   %s", SQL)
+            log.tracef( "   %s", SQL)
             rows=system.db.runPrepUpdate(SQL, database=db)
-            logger.tracef("   ...deleted %d rows", rows)
+            log.tracef("   ...deleted %d rows", rows)
         
-        logger.tracef("...done initializing the database")
+        log.tracef("...done initializing the database")
         
     #----------------
     # Fetch Recommendations
     def logTextRecommendations(post, filename, db):
         SQL = "select count(*) from DtTextRecommendation"
         rows = system.db.runScalarQuery(SQL)
-        logger.trace("There are %i Text recommendations..." % (rows))
+        log.trace("There are %i Text recommendations..." % (rows))
     
         SQL = "select F.FamilyName, F.FamilyPriority, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, DE.Status,"\
             " DE.RecommendationStatus, R.TextRecommendation "\
@@ -106,13 +106,13 @@ def run():
             " order by FamilyName, FinalDiagnosisName "
             
         pds = system.db.runQuery(SQL, database=db)
-        logger.trace("   fetched %i Text recommendation..." % (len(pds)))
+        log.trace("   fetched %i Text recommendation..." % (len(pds)))
 
         header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
             'RecommendationStatus,TextRecommendation,'\
             'A,B,C,D,E,F,G,H,I,J,K,L,M,N'
         
-        logger.trace("   writing results to filename: %s" % (filename))
+        log.trace("   writing results to filename: %s" % (filename))
         system.file.writeFile(filename, header, False)
         
         for record in pds:
@@ -122,14 +122,14 @@ def run():
                 (record['FamilyName'], str(record['FamilyPriority']), record['FinalDiagnosisName'], \
                 str(record['FinalDiagnosisPriority']), record['Status'], record['RecommendationStatus'], \
                 textRecommendation)
-            logger.trace("%s" % (txt))
+            log.trace("%s" % (txt))
             system.file.writeFile(filename, txt, True)
     
     
     def logRecommendations(post, filename, db):
         SQL = "select count(*) from DtRecommendation"
         rows = system.db.runScalarQuery(SQL)
-        logger.trace("There are %i recommendations..." % (rows))
+        log.trace("There are %i recommendations..." % (rows))
         
         SQL = "select F.FamilyName, F.FamilyPriority, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, DE.Status, "\
             " DE.RecommendationStatus, DE.TextRecommendation, QO.QuantOutputName, QO.TagPath, R.Recommendation, "\
@@ -144,13 +144,13 @@ def run():
             "   and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
             " order by FamilyName, FinalDiagnosisName"
         pds = system.db.runQuery(SQL, database=db)
-        logger.trace("   fetched %i recommendation..." % (len(pds)))
+        log.trace("   fetched %i recommendation..." % (len(pds)))
 
         header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
             'RecommendationStatus,TextRecommendation,QuantOutput, TagPath,Recommendation,'\
             'AutoRecommendation,ManualRecommendation,A,B,C,D,E,F,G,H,I'
         
-        logger.trace("   writing results to filename: %s" % (filename))
+        log.trace("   writing results to filename: %s" % (filename))
         system.file.writeFile(filename, header, False)
 
         for record in pds:
@@ -161,14 +161,14 @@ def run():
                 str(record['FinalDiagnosisPriority']), record['Status'], record['RecommendationStatus'], \
                 textRecommendation, record['QuantOutputName'], record['TagPath'],\
                 str(record['Recommendation']), str(record['AutoRecommendation']), str(record['ManualRecommendation']))
-            logger.trace("%s" % (txt))
+            log.trace("%s" % (txt))
             system.file.writeFile(filename, txt, True)
             
     def logRecommendationsExtended(post, filename, db):
         print "In logRecommendationsExtended()..."
         SQL = "select count(*) from DtRecommendation"
         rows = system.db.runScalarQuery(SQL)
-        logger.trace("There are %i recommendations..." % (rows))
+        log.trace("There are %i recommendations..." % (rows))
             
         SQL = "SELECT     DtFamily.FamilyName, DtFamily.FamilyPriority, DtFinalDiagnosis.FinalDiagnosisName, DtFinalDiagnosis.FinalDiagnosisPriority, DtDiagnosisEntry.Status, "\
             " DtDiagnosisEntry.RecommendationStatus, DtDiagnosisEntry.TextRecommendation, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, "\
@@ -184,13 +184,13 @@ def run():
             
         print SQL
         pds = system.db.runQuery(SQL, database=db)
-        logger.trace("   fetched %i recommendation..." % (len(pds)))
+        log.trace("   fetched %i recommendation..." % (len(pds)))
 
         header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
             'RecommendationStatus,TextRecommendation,QuantOutput, TagPath,Recommendation,'\
             'AutoRecommendation,ManualRecommendation,Ramp,B,C,D,E,F,G,H,I'
         
-        logger.trace("   writing results to filename: %s" % (filename))
+        log.trace("   writing results to filename: %s" % (filename))
         system.file.writeFile(filename, header, False)
 
         for record in pds:
@@ -201,7 +201,7 @@ def run():
                 str(record['FinalDiagnosisPriority']), record['Status'], record['RecommendationStatus'], \
                 textRecommendation, record['QuantOutputName'], record['TagPath'],\
                 str(record['Recommendation']), str(record['AutoRecommendation']), str(record['ManualRecommendation']), str(record['Ramp']) )
-            logger.trace("%s" % (txt))
+            log.trace("%s" % (txt))
             system.file.writeFile(filename, txt, True)
             
     #----------------------------------------------------
@@ -225,7 +225,7 @@ def run():
             " order by QuantOutputName" % (post, applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
-        logger.trace("   fetched %i  QuantOutputs..." % (len(pds)))
+        log.trace("   fetched %i  QuantOutputs..." % (len(pds)))
 
         header = "\nQuantOutput,TagPath,MostNegativeIncrement,MostPositiveIncrement,"\
             "MinimumIncrement,SetpointHighLimit,SetpointLowLimit,FeedbackMethod,"\
@@ -247,7 +247,7 @@ def run():
                 str(record['ManualOverride']), str(record['Active']), str(record['CurrentSetpoint']), \
                 str(record['FinalSetpoint']),str(record['DisplayedRecommendation']) )
 
-            logger.trace("%s" % (txt))
+            log.trace("%s" % (txt))
             system.file.writeFile(filename, txt, True)
 
     #----------------------------------------------------
@@ -263,7 +263,7 @@ def run():
             " order by FD.FinalDiagnosisName" % (applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
-        logger.trace("   fetched %i Diagnosis..." % (len(pds)))
+        log.trace("   fetched %i Diagnosis..." % (len(pds)))
 
         header = "\nFinalDiagnosis,Status,TextRecommendation,RecommendationStatus, "\
             "Multiplier,Constant,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O"
@@ -277,49 +277,49 @@ def run():
                 record['RecommendationStatus'], \
                 str(record['Multiplier']),str(record['Constant']))
 
-            logger.trace("%s" % (txt))
+            log.trace("%s" % (txt))
             system.file.writeFile(filename, txt, True)
 
     #-------------------------------------------
     def compareResults(outputFilename, goldFilename, ds, row):
-        logger.info("...analyzing the results...")
+        log.info("...analyzing the results...")
     
         # Check if the Gold file exists
         if not(system.file.fileExists(goldFilename)):
-            logger.info("  The gold file <%s> does not exist!" % (goldFilename))
-            logger.info("Complete ........................... FAILED")
+            log.info("  The gold file <%s> does not exist!" % (goldFilename))
+            log.info("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
             writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
             return ds
         
         # Check if the output file exists
         if not(system.file.fileExists(outputFilename)):
-            logger.info("  The output file <%s> does not exist!" % (outputFilename))
-            logger.info("Complete ........................... FAILED")
+            log.info("  The output file <%s> does not exist!" % (outputFilename))
+            log.info("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
             writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
             return ds
     
         # Check if the two files are identical
         from ils.diagToolkit.test.diff import diff
-        result, explanation = diff(outputFilename, goldFilename, logger)
+        result, explanation = diff(outputFilename, goldFilename, log)
                 
         if result:
             txt = 'Passed'
-            logger.info("Complete ........................... Passed")
+            log.info("Complete ........................... Passed")
         else:
             txt = 'Failed'
-            logger.info("Complete ........................... FAILED")
+            log.info("Complete ........................... FAILED")
                 
         # Try to update the status row of the table
         ds = system.dataset.setValue(ds, row, 'result', txt)
         writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
     
-        logger.trace("Done analyzing results!")
+        log.trace("Done analyzing results!")
         return ds
     #-------------------------------------------
     
-    logger.infof("In %s.run() Starting to run tests...", __name__)
+    log.infof("In %s.run() Starting to run tests...", __name__)
     writeTag("Sandbox/Diagnostic/Final Test/State","Running")
     package="ils.diagToolkit.test.tests"
     tableTagPath="Sandbox/Diagnostic/Final Test/Table"
@@ -340,7 +340,7 @@ def run():
             writeTag(tableTagPath, ds) 
                 
             functionName = ds.getValueAt(row, 'function')
-            logger.infof("Starting to prepare to run: %s", functionName)
+            log.infof("Starting to prepare to run: %s", functionName)
 
             # Start with a clean slate            
             initializeDatabase(db)
@@ -348,10 +348,10 @@ def run():
             time.sleep(2)
             
             # Run a specific test
-            logger.trace("...calling %s..." % (functionName))
+            log.trace("...calling %s..." % (functionName))
             from ils.diagToolkit.test import tests
             applicationName = eval("tests." + functionName)(db)
-            logger.trace("...done! (application = %s)" % (applicationName))
+            log.trace("...done! (application = %s)" % (applicationName))
             
             time.sleep(60)
             ds = system.dataset.setValue(ds, row, 'result', 'Analyzing')
@@ -362,7 +362,7 @@ def run():
             goldFilename = os.path.join(path, functionName + "-gold.csv")
             
             # Fetch the results from the database
-            logger.trace("...fetching results... (filename=%s, database=%s)" % (outputFilename, db))
+            log.trace("...fetching results... (filename=%s, database=%s)" % (outputFilename, db))
             
             resultsMode = ds.getValueAt(row, 'Results')
             print "The results mode is: ", resultsMode
@@ -376,18 +376,18 @@ def run():
                 logQuantOutputs(post, applicationName, outputFilename, db)
                 logDiagnosis(post, applicationName, outputFilename, db)
                 
-            logger.trace("...done fetching results!")
+            log.trace("...done fetching results!")
             time.sleep(1)
             
             # Compare the results of this run to the Master results
-            logger.trace("Comparing results...")
-            logger.info("Test: %s" % (functionName))
+            log.trace("Comparing results...")
+            log.info("Test: %s" % (functionName))
             ds=compareResults(outputFilename, goldFilename, ds, row)
             time.sleep(2)
 
         
     # If we get all of the way through, and there is nothing left to run, then stop the timer.
-    logger.trace("...totally done!")
+    log.trace("...totally done!")
     writeTag("Sandbox/Diagnostic/Final Test/State","Done")
 
 
@@ -588,7 +588,7 @@ def insertApp2(db):
     return app2Id
 
 def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1', db="CRAP"):
-    logger.tracef("Entering insertApp2Families...")
+    log.tracef("Entering insertApp2Families...")
 
     family = 'FT_Family2_1'
     familyPriority=5.2
@@ -597,31 +597,31 @@ def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calcu
     finalDiagnosis = 'FT_FD2_1_1'
     finalDiagnosisPriority=7.8
     textRecommendation = "Final Diagnosis 2.1.1"
-    logger.tracef("...inserting final diagnosis...")
+    log.tracef("...inserting final diagnosis...")
     finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD211calculationMethod, textRecommendation, db=db)
-    logger.tracef("...inserting recdefs...")
+    log.tracef("...inserting recdefs...")
     insertRecommendationDefinition(finalDiagnosisId, Q21_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q22_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q23_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q24_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q25_id, db)
-    logger.tracef("...done inserting App2!")
+    log.tracef("...done inserting App2!")
 
 # Insert a Quant Output
 def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncrement=-500.0, mostPositiveIncrement=500.0, minimumIncrement=0.0001,
         setpointHighLimit=1000.0, setpointLowLimit=-1000.0, feedbackMethod='Most Positive', incrementalOutput=True, db="CRAP"):
     
-    logger.tracef("Inserting QuantOutput named: %s", quantOutput)
+    log.tracef("Inserting QuantOutput named: %s", quantOutput)
     feedbackMethodId=fetchFeedbackMethodId(feedbackMethod, db)
     SQL = "insert into DtQuantOutput (QuantOutputName, ApplicationId, TagPath, MostNegativeIncrement, MostPositiveIncrement, MinimumIncrement, "\
         "SetpointHighLimit, SetpointLowLimit, FeedbackMethodId, IncrementalOutput) values "\
         "('%s', %i, '%s', %f, %f, %f, %f, %f, %i, '%s')" % \
         (quantOutput, appId, tagPath, mostNegativeIncrement, mostPositiveIncrement, minimumIncrement,
         setpointHighLimit, setpointLowLimit, feedbackMethodId, incrementalOutput)
-    logger.tracef("...SQL: %s", SQL)
+    log.tracef("...SQL: %s", SQL)
     quantOutputId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
-    logger.tracef("...inserted a quant output with id: %d", quantOutputId)
-    logger.tracef("Writing %s to %s", str(tagValue), tagPath)
+    log.tracef("...inserted a quant output with id: %d", quantOutputId)
+    log.tracef("Writing %s to %s", str(tagValue), tagPath)
     writeTag(tagPath, tagValue)
     return quantOutputId
 
@@ -729,11 +729,11 @@ def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calcu
     args = [finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod, 
         textRecommendation, constant, postTextRecommendation, postProcessingCallback, refreshRate, trapInsignificantRecommendations]
     
-    logger.tracef("%s", SQL)
-    logger.tracef("%s", str(args))
+    log.tracef("%s", SQL)
+    log.tracef("%s", str(args))
             
     finalDiagnosisId = system.db.runPrepUpdate(SQL, args, getKey=True, database=db)
-    logger.tracef("Insert a new Final Diagnosis with id: %d", finalDiagnosisId)
+    log.tracef("Insert a new Final Diagnosis with id: %d", finalDiagnosisId)
     return finalDiagnosisId
     
 # Create the recommendationDefinitions
@@ -746,6 +746,6 @@ def insertRecommendationDefinition(finalDiagnosisId, quantOutputId, db):
 def updateFinalDiagnosisTextRecommendation(finalDiagnosisName, textRecommendation, db):
     textRecommendation = escapeSqlQuotes(textRecommendation)
     SQL = "update DtFinalDiagnosis set TextRecommendation = '%s' where FinalDiagnosisName = '%s' " % (textRecommendation, finalDiagnosisName)
-    logger.tracef("%s", SQL)   
+    log.tracef("%s", SQL)   
     rows = system.db.runUpdateQuery(SQL, database=db)
-    logger.tracef("Updated %d rows", rows)
+    log.tracef("Updated %d rows", rows)

@@ -17,8 +17,8 @@ from ils.io.util import readTag
 from ils.queue.message import insertPostMessage
 from ils.queue.constants import QUEUE_INFO
 
-from ils.log.LogRecorder import LogRecorder
-log=LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def initialize(rootContainer):
     log.infof("In %s.initialize()...", __name__)

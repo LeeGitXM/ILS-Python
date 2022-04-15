@@ -8,7 +8,7 @@ This step caused some problems because of the brilliant decision to have an impl
 
 import system, string
 from ils.common.config import getDatabaseClient
-from ils.sfc.recipeData.api import s88GetStepInfoFromUUID
+from ils.sfc.recipeData.api import s88GetStepInfoFromId
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 
 def internalFrameOpened(rootContainer):
@@ -24,12 +24,12 @@ def internalFrameOpened(rootContainer):
     tabs = rootContainer.getComponent("tabs")
     tabs.selectedTab = "primary"
     
-    pds = system.db.runQuery("select showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel from SfcReviewData where windowId = '%s'" % (str(windowId)), database)
+    pds = system.db.runQuery("select showAdvice, targetStepID, responseKey, primaryTabLabel, secondaryTabLabel from SfcReviewData where windowId = '%s'" % (str(windowId)), database)
     print "Fetched %d records from sfcReviewData" % (len(pds))
     
     record = pds[0]
     showAdvice = record["showAdvice"]
-    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.targetStepID = record["targetStepID"]
     rootContainer.responseKey = record["responseKey"]
     primaryTabLabel = record["primaryTabLabel"]
     secondaryTabLabel = record["secondaryTabLabel"]
@@ -79,7 +79,7 @@ def actionPerformed(event, response):
     db = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
-    targetStepUUID = rootContainer.targetStepUUID
+    targetStepID = rootContainer.targetStepID
     responseKey = rootContainer.responseKey
     
     '''
@@ -87,10 +87,10 @@ def actionPerformed(event, response):
     '''
     if string.lower(responseKey[len(responseKey) - 6:]) != ".value":
         responseKey = responseKey + ".value"
-    print "From the root container properties, targetStepUUID: %s, responseKey: %s" % (targetStepUUID, responseKey)
-    folder,key,attribute = splitKey(responseKey)
-    chartPath, stepName = s88GetStepInfoFromUUID(targetStepUUID, db)
-    setRecipeData(stepName, targetStepUUID, folder, key, attribute, response, db)
+    print "From the root container properties, targetStepID: %s, responseKey: %s" % (str(targetStepID), responseKey)
+    folder, key, attribute = splitKey(responseKey)
+    chartPath, stepName = s88GetStepInfoFromId(targetStepID, db)
+    setRecipeData(stepName, targetStepID, folder, key, attribute, response, db)
     system.nav.closeParentWindow(event)
 
 

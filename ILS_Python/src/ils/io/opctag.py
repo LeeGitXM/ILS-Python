@@ -13,16 +13,21 @@
 @author: phassler
 '''
 
-import system, string
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+import string
+from ils.io.util import getProviderFromTagPath, readTag, writeTag
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class OPCTag():
     path = None     # Path is the root tag path of the UDT which this object encapsulates
+    tagProvider = None
+    OPC_LATENCY_TIME = None
 
     def __init__(self,path):
         ''' Set any default properties.  For this abstract class there aren't many (yet). '''
         self.path = str(path)
+        self.tagProvider = getProviderFromTagPath(path)
+        self.OPC_LATENCY_TIME = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (self.tagProvider)).value
         
     def checkConfig(self):
         ''' Check for the existence of the tag and the global write flag. '''
@@ -34,7 +39,7 @@ class OPCTag():
             return status, reason
         
         ''' Read the value and check the quality.  If NaN causes the tag to appear bad then we will need to look at the specific reason. '''
-        val = system.tag.read(self.path + "/value")
+        val = readTag(self.path + "/value")
         if val.quality.isGood() or str(val.quality) in ['Tag Evaluation Error', 'foo']:
             return True, ""
             
@@ -68,7 +73,7 @@ class OPCTag():
  
         ''' Write the value to the OPC tag. '''
         log.tracef("%s - Writing value <%s> to %s/value", __name__, str(val), self.path)
-        status = system.tag.write(self.path + "/value", val)
+        status = writeTag(self.path + "/value", val)
         log.tracef("%s - Write status: %s", __name__, status)
                                
         status, msg = self.confirmWrite(val)

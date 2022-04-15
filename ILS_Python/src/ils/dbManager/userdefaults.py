@@ -17,8 +17,8 @@ methods.
 import string
 from ils.io.util import readTag, writeTag
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # These are the well-known keys:
 # DATABASE - the current recipe database in use

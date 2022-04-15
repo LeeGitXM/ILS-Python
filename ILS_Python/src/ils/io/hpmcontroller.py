@@ -8,7 +8,7 @@ import ils.io.controller as controller
 import system, string, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
-from ils.io.util import confirmWrite, readTag, getProviderFromTagPath
+from ils.io.util import confirmWrite, readTag, writeTag
 
 log = LogUtil.getLogger("com.ils.io")
 
@@ -19,8 +19,6 @@ class HPMController(controller.Controller):
     permissiveConfirmation = True
     permissiveValue = ""
     CONFIRM_TIMEOUT = 10.0
-    PERMISSIVE_LATENCY_TIME = 0.0
-    OPC_LATENCY_TIME = 0.0
     
     def __init__(self,path):
         log.tracef("In %s.__int__()", __name__)
@@ -29,9 +27,6 @@ class HPMController(controller.Controller):
         self.spTag = opcoutput.OPCOutput(path + '/sp')
         self.opTag = opcoutput.OPCOutput(path + '/op')
         log.tracef("OP Tag path: %s", self.opTag.path)
-        tagProvider = getProviderFromTagPath(path)
-        self.PERMISSIVE_LATENCY_TIME = readTag("[%s]Configuration/Common/opcPermissiveLatencySeconds" % (tagProvider)).value
-        self.OPC_LATENCY_TIME = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (tagProvider)).value
         
     def reset(self):
         ''' Reset the UDT in preparation for a write '''
@@ -39,17 +34,17 @@ class HPMController(controller.Controller):
         errorMessage = ""
         log.tracef('Resetting a %s Controller...', __name__)       
         
-        system.tag.write(self.path + '/badValue', False)
-        system.tag.write(self.path + '/writeErrorMessage', '')
-        system.tag.write(self.path + '/writeConfirmed', False)
-        system.tag.write(self.path + '/writeStatus', '')
+        writeTag(self.path + '/badValue', False)
+        writeTag(self.path + '/writeErrorMessage', '')
+        writeTag(self.path + '/writeConfirmed', False)
+        writeTag(self.path + '/writeStatus', '')
         
         for embeddedTag in ['/mode', '/op', '/sp']:
             tagPath = self.path + embeddedTag
-            system.tag.write(tagPath + '/badValue', False)
-            system.tag.write(tagPath + '/writeErrorMessage', '')
-            system.tag.write(tagPath + '/writeConfirmed', False)
-            system.tag.write(tagPath + '/writeStatus', '')
+            writeTag(tagPath + '/badValue', False)
+            writeTag(tagPath + '/writeErrorMessage', '')
+            writeTag(tagPath + '/writeConfirmed', False)
+            writeTag(tagPath + '/writeStatus', '')
 
         return status, errorMessage
 
@@ -57,24 +52,24 @@ class HPMController(controller.Controller):
         log.trace("Writing permissive...")
         
         ''' Update the status to "Writing" '''
-        system.tag.write(self.path + "/writeStatus", "Writing Permissive")
+        writeTag(self.path + "/writeStatus", "Writing Permissive")
  
         ''' Read the current permissive and save it so that we can put it back the way is was when we are done '''
-        self.permissiveAsFound = system.tag.read(self.path + "/permissive").value
+        self.permissiveAsFound = readTag(self.path + "/permissive").value
         log.tracef("   permissive as found: %s", self.permissiveAsFound)
         
         ''' Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed '''
         self.permissiveValue = 'PROGRAM'
-        self.permissiveConfirmation = system.tag.read(self.path + "/permissiveConfirmation").value
+        self.permissiveConfirmation = readTag(self.path + "/permissiveConfirmation").value
         
         ''' Write the permissive value to the permissive tag and wait until it gets there '''
         log.tracef("   writing permissive value: %s", self.permissiveValue)
-        system.tag.write(self.path + "/permissive", self.permissiveValue)
+        writeTag(self.path + "/permissive", self.permissiveValue)
         
         ''' Confirm the permissive if necessary.  If the UDT is configured for confirmation, then it MUST be confirmed for the write to proceed '''
         if self.permissiveConfirmation:
             log.trace("   confirming permissive...")
-            system.tag.write(self.path + "/writeStatus", "Confirming Permissive")
+            writeTag(self.path + "/writeStatus", "Confirming Permissive")
             
             confirmed, errorMessage = confirmWrite(self.path + "/permissive", self.permissiveValue, self.CONFIRM_TIMEOUT)
  
@@ -83,8 +78,8 @@ class HPMController(controller.Controller):
             else:
                 errorMessage = "Failed to confirm permissive write of <%s> to %s because %s" % (str(self.permissiveValue), self.path, errorMessage)
                 log.error(errorMessage)
-                system.tag.write(self.path + "/writeStatus", "Failure")
-                system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+                writeTag(self.path + "/writeStatus", "Failure")
+                writeTag(self.path + "/writeErrorMessage", errorMessage)
                 return confirmed, errorMessage
         else:
             log.trace("...dwelling in lieu of permissive confirmation...")
@@ -97,7 +92,7 @@ class HPMController(controller.Controller):
     def restorePermissive(self):
         time.sleep(self.PERMISSIVE_LATENCY_TIME)
         log.trace("Restoring permissive")
-        system.tag.write(self.path + "/permissive", self.permissiveAsFound)
+        writeTag(self.path + "/permissive", self.permissiveAsFound)
         if self.permissiveConfirmation:
             confirmed, confirmMessage = confirmWrite(self.path + "/permissive", self.permissiveAsFound, self.CONFIRM_TIMEOUT)
             if confirmed:    
@@ -105,12 +100,12 @@ class HPMController(controller.Controller):
             else:
                 txt = "Failed to confirm permissive write of <%s> to %s because %s" % (str(self.permissiveAsFound), self.path, confirmMessage)
                 log.error(txt)
-                system.tag.write(self.path + "/writeStatus", "Failure")
-                system.tag.write(self.path + "/writeErrorMessage", txt)
+                writeTag(self.path + "/writeStatus", "Failure")
+                writeTag(self.path + "/writeErrorMessage", txt)
                 
     def writeDatum(self, val, valueType):
         '''Get the previous mode'''
-        modeAsFound = system.tag.read(self.path + '/mode/value').value
+        modeAsFound = readTag(self.path + '/mode/value').value
         
         ''' writeDatum for a controller supports writing values to the OP, SP, or MODE, one at a time. '''    
         log.tracef("In %s.writeDatum() %s - %s - %s", __name__, self.path, str(val), valueType)
@@ -149,8 +144,8 @@ class HPMController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
 
@@ -167,11 +162,11 @@ class HPMController(controller.Controller):
         '''
             
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeDatum(val, valueType, confirmTagPath)
          
         ''' Return the mode to its original value.  Don't let the success or failure of this override the result of the overall write. '''
-        system.tag.write(self.path + '/mode/value', modeAsFound)
+        writeTag(self.path + '/mode/value', modeAsFound)
         
         return confirmed, errorMessage
 
@@ -189,7 +184,7 @@ class HPMController(controller.Controller):
         However, if we are using isolation tags then we DO write to memory tags!  If we are writing to memory tags then 
         it doesn't make sense to check for an item id or OPC server.
         '''
-        tagType = system.tag.read(tagRoot + ".TagType").value
+        tagType = readTag(tagRoot + ".TagType").value
         if tagType == 1:
             return True, ""
         
@@ -227,7 +222,7 @@ class HPMController(controller.Controller):
 
         ''' Read the current values of all of the tags we need to consider to determine if the configuration is valid. '''
         tagpaths = [tagRoot + '/value', self.path + '/mode/value',  self.path + '/mode/value.OPCItemPath', self.path + '/windup', self.path + rcasRoot, self.path + permissiveRoot]
-        qvs = system.tag.readAll(tagpaths)
+        qvs = system.tag.readBlocking(tagpaths)
         
         currentValue = qvs[0]
         mode = qvs[1]
@@ -354,8 +349,8 @@ class HPMController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(valuePathRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
 
@@ -375,7 +370,7 @@ class HPMController(controller.Controller):
             return False, errorMessage
         
         ''' Read the starting point for the ramp which is the current value '''
-        startValue = system.tag.read(valuePathRoot + '/value')
+        startValue = readTag(valuePathRoot + '/value')
         if str(startValue.quality) != 'Good':
             errorMessage = "ERROR: TDC Controller <%s> - ramp aborted due to inability to read the starting value for a %s from <%s>!" % (self.path, valType, valuePathRoot)
             log.errorf(errorMessage)
@@ -385,7 +380,7 @@ class HPMController(controller.Controller):
 
         log.infof("Ramping the %s of TDC controller <%s> from %s to %s over %s minutes", valType, self.path, str(startValue), str(val), str(rampTime))
         baseTxt = "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime))
-        system.tag.write(self.path + "/writeStatus", baseTxt)
+        writeTag(self.path + "/writeStatus", baseTxt)
 
         rampTimeSeconds = float(rampTime) * 60.0
 
@@ -401,7 +396,7 @@ class HPMController(controller.Controller):
             log.tracef("HPM Controller <%s> ramping to %s (elapsed time: %s)", self.path, str(aVal), str(deltaSeconds))
             
             #Stop the ramp if the controller is taken out of CAS
-            qv = system.tag.read(self.path + '/mode/value')
+            qv = readTag(self.path + '/mode/value')
             if str(qv.quality) == 'Good':
                 mode = str(qv.value)
                 mode = string.strip(mode)
@@ -412,14 +407,14 @@ class HPMController(controller.Controller):
             targetTag.writeWithNoCheck(aVal)
             
             txt = "%s (%.2f at %s)" % (baseTxt, aVal, str(deltaSeconds))
-            system.tag.write(self.path + "/writeStatus", txt)
+            writeTag(self.path + "/writeStatus", txt)
  
             ''' Time in seconds '''
             time.sleep(updateFrequency)
             deltaSeconds = system.date.secondsBetween(startTime, system.date.now())
         
         # Write the final point and confirm this one only if the mode is CAS
-        qv = system.tag.read(self.path + '/mode/value')
+        qv = readTag(self.path + '/mode/value')
         if str(qv.quality) == 'Good':
             mode = str(qv.value)
             mode = string.strip(mode)
@@ -448,8 +443,8 @@ class HPMController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(valuePathRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
 
@@ -478,27 +473,27 @@ class HPMController(controller.Controller):
         # Check the basic configuration of the tag we are trying to write to.
         success, errorMessage = self.checkConfig(valuePathRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
         
         log.infof("Ramping the %s of TDC controller <%s> to %s over %s minutes", valType, self.path, str(val), str(rampTime))
-        system.tag.write(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
+        writeTag(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
 
         log.trace("...writing PRESET to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", "PRESET")            
+        writeTag(self.path + "/sp/rampState", "PRESET")            
         time.sleep(self.OPC_LATENCY_TIME)
 
         '''   ramp time must always be in minutes '''
         
         log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
-        system.tag.write(self.path + "/sp/rampTime", rampTime)
-        system.tag.write(self.path + "/sp/setpointTargetValue", val)
+        writeTag(self.path + "/sp/rampTime", rampTime)
+        writeTag(self.path + "/sp/setpointTargetValue", val)
         time.sleep(self.OPC_LATENCY_TIME)
         
         log.trace("...writing RUN to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", "RUN")
+        writeTag(self.path + "/sp/rampState", "RUN")
         time.sleep(self.OPC_LATENCY_TIME)
         
         log.infof("TDC Controller <%s> done ramping!", self.path)
@@ -553,16 +548,16 @@ class HPMController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
         
         # Check the basic configuration of the permissive of the controller we are writing to.
         success, errorMessage = self.checkConfig(self.path + '/permissive')
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", self.path + '/permissive', errorMessage)
             return False, errorMessage
         
@@ -623,12 +618,12 @@ class HPMController(controller.Controller):
         '''
         """
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeWithNoCheck(val, valueType)
         if not(confirmed):
             log.error(errorMessage)
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             return confirmed, errorMessage
          
         ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''

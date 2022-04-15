@@ -1,149 +1,331 @@
-'''
-imports require the ils-common jar file and the ILS Logger module.
-We believe that the use of MDC is appropriate here because in client
-scope, there should only be one project per JVM.
-'''
 #
-import os,sys
 import system
-#import ch.qos.logback.classic.Level as Level
-#import org.slf4j.MDC as MDC
-#import com.ils.common.log.LogMaker as LogMaker
+from ch.qos.logback.classic import Level
+import sys, os, traceback, threading, string, datetime
 
-# next bit filched from 1.5.2's inspect.py
-def currentframe():
-    """Return the frame object for the caller's stack frame."""
-    try:
-        raise Exception
-    except:
-        return sys.exc_traceback.tb_frame.f_back
+# These are the keys available for grouping log statements
+CLIENT_KEY="client"
+FUNCTION_KEY="function"
+LINE_KEY="linenumber"
+MODULE_KEY="module"
+PROJECT_KEY="project"
 
-if hasattr(sys, '_getframe'): currentframe = lambda: sys._getframe(3)
-# done filching
+class LogLevel(object):
+    def __init__(self, name, levelNumber, retention):
+        self.levelName = name
+        self.levelNumber = levelNumber
+        self.retention = retention
+        
+Error   = LogLevel('ERROR',   40, 24*180)
+Warning = LogLevel('WARNING', 30, 24*30)
+Info    = LogLevel('INFO',    20, 24*10)
+Debug   = LogLevel('DEBUG',   10, 24*5)
+Trace   = LogLevel('TRACE',    1, 24)
+Off = LogLevel('OFF', 0, 0)
 
-#---------------------------------------------------------------------------
-#   The logging record
-#---------------------------------------------------------------------------
-
+def getLogLevel(name, levelName):
+    if levelName is None:
+        return None
+    if string.upper(levelName) == 'ERROR':
+        return Error
+    elif string.upper(levelName) == 'WARNING':
+        return Warning
+    elif string.upper(levelName) == 'INFO':
+        return Info
+    elif string.upper(levelName) == 'DEBUG':
+        return Debug
+    elif string.upper(levelName) == 'TRACE':
+        return Trace
+    elif string.upper(levelName) == 'OFF':
+        return Off
+    else:
+        raise Exception('getLogLevel(%s): Level Name "%s" invalid.' % (name, levelName))
+    
 class LogRecorder:
-    def __init__(self,name):
+    '''
+    Like the standard Ignition / Log4j loggers, the db logger has a long life.  It will survive as long as the client or gateway are alive.
+    It is important to understand that the actual Java logger, created by Ignition, only needs to be created once. 
+    Each client has its own pool of loggers.  Likewise, the gateway has its own pool of loggers.  Even if it is created in a button, the Java 
+    logger will persist in the client's JVM.  This creates a problem because we are maintaining the level of the logger in this class based 
+    on the level requested at the time it was created and it is not synchronized with Java logger.   The user can either use the Gateway 
+    web page to change the mode of a gateway logger or the Client Diagnostics window to change the state of a client logger.  
+    So if the logger was initially created at Info level in a button script, the user changes it to trace and presses the button again, 
+    then the trace mode must prevail.
+    '''
+    def __init__(self, name, dbName="Logs", levelName=None, enableTraceThread=False):
         self.name = name
-        self.projectName = system.util.getProjectName()
-        if self.projectName=="":
-            self.projectName = "Global"
-        if self.projectName=="Global":
-            self.scope = "Global"
-            self.clientId = ""
-        else:
-            # Need to consider gateway activity such as a gateway timer script, belongs to a project but runs in the gateway
-            try:
-                self.scope = "client"
-                self.clientId = system.util.getClientId()
-            except:
-                self.scope = "gateway"
-                self.clientId = ""
+        self.dbName = dbName
+        self.logLevel = getLogLevel(name, levelName)
+        self.created = datetime.datetime.now()
+        self.enableTraceThread = enableTraceThread
         
         # Standard call returns a LoggerEx which is itself a wrapper
         self.logger = system.util.getLogger(self.name)
+        self.dbLogger = DB_Logger(self)
+        
+        # Set the level of the Ignition logger to match the requested level
+        if levelName != None:
+            self.setLevel()
         
     def trace(self, msg):
-        self.setAttributes()
         self.logger.trace(msg)
+        self.dbLogger.trace(msg)
         
     def tracef(self, msg, *args):
-        self.setAttributes()
         try:
             msg = msg % tuple(args)
         except:
-            msg = "Error in tracef() - not enough arguments in %s" % msg
-
+            msg = "Error in tracef() - not enough arguments in %s %s" % (msg, str(tuple(args)))
         self.logger.trace(msg)
+        self.dbLogger.trace(msg)
 
     def debug(self, msg):
-        self.setAttributes()
         self.logger.debug(msg)
+        self.dbLogger.debug(msg)
 
     def debugf(self, msg, *args):
-        self.setAttributes()
         try:
             msg = msg % tuple(args) 
         except:
-            msg = "Error in tracef() - not enough arguments in %s" % msg
+            msg = "Error in debugf() - not enough arguments in %s %s" % (msg, str(tuple(args)))
         self.logger.debug(msg)
+        self.dbLogger.debug(msg)
 
     def info(self, msg):
-        self.setAttributes()
         self.logger.info(msg)
+        self.dbLogger.info(msg)
         
     def infof(self, msg, *args):
-#        self.setAttributes()
         try:
             msg = msg % tuple(args)
         except:
-            msg = "Error in infof() - not enough arguments in %s" % msg
+            msg = "Error in infof() - not enough arguments in %s %s" % (msg, str(tuple(args)))
         self.logger.info(msg)
+        self.dbLogger.info(msg)
 
     def warn(self, msg):
-        self.setAttributes()
         self.logger.warn(msg)
+        self.dbLogger.warn(msg)
 
     def warnf(self, msg, *args):
-        self.setAttributes()
         try:
             msg = msg % tuple(args) 
         except:
-            msg = "Error in warnf() - not enough arguments in %s" % msg
+            msg = "Error in warnf() - not enough arguments in %s %s" % (msg, str(tuple(args)))
         self.logger.warn(msg)
+        self.dbLogger.warn(msg)
     
     def error(self, msg):
-        self.setAttributes()
         self.logger.error(msg)
+        self.dbLogger.error(msg)
 
     def errorf(self, msg, *args):
-        self.setAttributes()
         try:
             msg = msg % tuple(args) 
         except:
-            msg = "Error in errorf() - not enough arguments in %s" % msg
+            msg = "Error in errorf() - not enough arguments in %s %s" % (msg, str(tuple(args)))
         self.logger.error(msg)
-
-    # Place attributes into the MDC specific to this message
-    # MDC = Mapped Diagnostic Contexts
-    def setAttributes(self):
-        # Get a stack track and fill in line number, function and module
-        fn, lno, func = self.findCaller()
+        self.dbLogger.error(msg)
         
-#        MDC.put(LogMaker.MODULE_KEY, fn)
-#        MDC.put(LogMaker.FUNCTION_KEY, func)
-#        MDC.put(LogMaker.LINE_KEY,str(lno))
-        
-#        MDC.put(LogMaker.CLIENT_KEY,self.clientId)
-#        MDC.put(LogMaker.PROJECT_KEY,self.projectName)
+    def setLevel(self):
+        ''' Set the level of the Ignition logger to match the level of the DB logger. '''
+        levelName = self.logLevel.levelName
+        self.logger.getLoggerSLF4J().setLevel(Level.toLevel(levelName))
 
-    # next bit filched from 1.5.2's inspect.py
-    def currentframe(self):
-        """Return the frame object for the caller's stack frame."""
+    def printStack(self):
         try:
             raise Exception
         except:
-            return sys.exc_traceback.tb_frame.f_back
+            tb = sys.exc_info()[2]
+            while 1:
+                if not tb.tb_next:
+                    break
+                tb = tb.tb_next
+            stack = []
+            f = tb.tb_frame
+            while f:
+                stack.append(f)
+                f = f.f_back
+            stack.reverse(  )
+            traceback.print_exc(  )
+            print "Locals by frame, innermost last"
+            for frame in stack:
+                print
+                print "Frame %s in %s at line %s" % (frame.f_code.co_name,
+                                                     frame.f_code.co_filename,
+                                                     frame.f_lineno)
+                for key, value in frame.f_locals.items(  ):
+                    print "\t%20s = " % key,
+                    # We have to be VERY careful not to cause a new error in our error
+                    # printer! Calling str(  ) on an unknown object could cause an
+                    # error we don't want, so we must use try/except to catch it --
+                    # we can't stop it from happening, but we can and should
+                    # stop it from propagating if it does happen!
+                    try:
+                        print value
+                    except:
+                        print "<ERROR WHILE PRINTING VALUE>"
+                    
 
-    # Iterate over the stack trace to find the caller.
-    # When we've found it, store results in the MDC
+class DB_Logger():
+    '''
+    Logging handler that puts logs to the database.
+    '''
+    def __init__(self, parent):
+        self.parent = parent
+        '''
+        If the user has not created a database connection named "Logs" then he can't use the database logging feature.
+        And just because he has created the interface, doesn't mean we automatically should use db logging.  
+        Make sure that the log table exists and that the enabled flag is set.
+        Changing the state of this global tag will not update the enabled state of loggers that have already been made.
+        This could be an issue for long lived loggers in gateway scope - but I don't expect this tag to be changed often, 
+        a site will either use or won't use DB logging.
+        '''
+        
+        connectionDataset = system.db.getConnectionInfo(self.parent.dbName)
+        if connectionDataset.rowCount == 0:
+            print "Setting dbLogging to False for <%s> because the interface named <%s> does not exist!" % (parent.name, self.parent.dbName)
+            self.enabled = False
+        else:
+            SQL = "select enabled from config" 
+            enabled = system.db.runScalarQuery(SQL, self.parent.dbName)
+            if not(enabled):
+                
+                self.enabled = False
+            else:
+                print "Enabling dbLogging for <%s>!" % (parent.name)
+                if self.isGatewayScope():
+                    self.scope = "gateway"
+                    self.clientId = ""
+                else:
+                    self.scope = "client"
+                    self.clientId = system.util.getClientId()
+                        
+                self.projectName = system.util.getProjectName()
+                if not self.projectName:
+                    self.projectName = "Global"
+        
+    def error(self, msg):
+        if self.logMe(Error):
+            self.emit(msg, Error)
+            
+    def warn(self, msg):
+        if self.logMe(Warning):
+            self.emit(msg, Warning)
+        
+    def info(self, msg):
+        if self.logMe(Info):
+            self.emit(msg, Info)
+            
+    def debug(self, msg):
+        if self.logMe(Debug):
+            self.emit(msg, Debug)
+
+    def trace(self, msg):
+        if self.logMe(Trace):
+            self.emit(msg, Trace)
+
+    def logMe(self, msgLevel):
+        ''' 
+        Return True if the logger level matches the msgLevel.
+        Before we do anything, make sure that the log level of this logger is the same as the level of the Java logger. 
+        '''
+        effLevel = self.parent.logger.getLoggerSLF4J().getEffectiveLevel()        
+        if effLevel.toString() != self.parent.logLevel.levelName:
+            ''' Update the level of THIS logger '''
+            self.parent.logLevel = getLogLevel(self.parent.name, effLevel.toString())
+        
+        if self.parent.enableTraceThread:  # Don't check if feature off for efficiency
+            if self.logMeThreadLevel():
+                return True
+        if not self.enabled:
+            return False
+
+        if self.parent.logLevel is None:
+            # Use system level if not set locally
+            if msgLevel.levelName == 'INFO':
+                if self.parent.logger.isInfoEnabled():
+                    return True
+            if msgLevel.levelName == 'DEBUG':
+                if self.parent.logger.isDebugEnabled():
+                    return True
+            if msgLevel.levelName == 'TRACE':
+                if self.parent.logger.isTraceEnabled():
+                    return True
+            return False
+        else:
+            if msgLevel.levelName == 'ERROR' or msgLevel.levelName == 'WARNING':
+                return True
+            if msgLevel.levelNumber >= self.parent.logLevel.levelNumber:
+                return True
+        return False
+            
+    def logMeThreadLevel(self):
+        frame = sys._getframe(3)  # current frame
+        while frame.f_back:
+            frame = frame.f_back
+            if '__THREAD_LOG' in frame.f_locals.keys():
+                return True
+        return False
+    
+    def formatDate(self, timestamp):
+        ''' Format the timestamp to be compatible with SQL*Server '''
+        return timestamp
+    
+    def emit(self, msg, logLevel):
+        module, lineNumber, functionName = self.findCaller()
+        threadName = self.getThreadName()
+        retainUntil = self.formatDate(system.date.addHours(system.date.now(), logLevel.retention))
+        timestamp = self.formatDate(system.date.now())
+        msg = self.filterSQL(msg)
+        SQL = '''INSERT INTO log (project, scope, client_id, thread_name, module, logger_name, timestamp, log_level, log_level_name, log_message, 
+                                function_name, line_number, retain_until) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'''
+        values = [self.projectName, self.scope, self.clientId, threadName, module, self.parent.name, timestamp, logLevel.levelNumber, logLevel.levelName, msg, 
+                  functionName, lineNumber, retainUntil]
+
+        try:
+            system.db.runPrepUpdate(SQL, values, self.parent.dbName)
+        except Exception, e:
+            print 'Caught exception while DB logging: %s' % str(e)
+
+    def isClientScope(self):
+        ''' This utility lives elsewhere but is COPIED here to make logging self sufficient, otherwise we get a circular import problem. '''
+        try:
+            flags = system.util.getSystemFlags()
+            clientScope = (flags & 4) > 0
+        except:
+            clientScope = False
+
+        return clientScope
+
+    def isGatewayScope(self):
+        ''' This utility lives elsewhere but is COPIED here to make logging self sufficient, otherwise we get a circular import problem. '''
+        try:
+            flags = system.util.getSystemFlags()
+            gatewayScope = (flags & 1) <= 0 and (flags & 4) <= 0
+        except:
+            gatewayScope = True
+    
+        return gatewayScope
+    
+    def filterSQL(self, msg):
+        ''' There may be certain characters that cause issues with SQL*Server.  This filters them out '''
+        msg = msg.replace('\'', '\'\'')
+        return msg
+
     def findCaller(self):
         """
         Find the stack frame of the caller so that we can note the source
         file name, line number and function name.
         """
-        __normFile__ = os.path.normcase(__file__)
-
-        f = currentframe().f_back
+        currentFrame = sys._getframe(3)
+        topFilename = os.path.normcase(currentFrame.f_code.co_filename)
+        f = currentFrame.f_back
         rv = "(unknown file)", 0, "(unknown function)"
         while hasattr(f, "f_code"):
             co = f.f_code
             filename = os.path.normcase(co.co_filename)
-
-            if filename == __normFile__:
+            if filename == topFilename:
                 f = f.f_back
                 continue
         
@@ -154,12 +336,16 @@ class LogRecorder:
             rv = (filename, f.f_lineno, co.co_name)
             break
         return rv
-
-    def getLevel(self):
-        level = str(self.logger.getLoggerSLF4J().getLevel())
-        #print "LogRecorder: get level ",level
-        return level
+    
+    def getThreadName(self):
+        """
+        Find the stack frame of the caller so that we can note the source
+        file name, line number and function name.
+        """
+        try:
+            thread = threading.currentThread()
+            threadName = thread.getName()
+        except:
+            threadName = "Unknown" 
         
-    def setLevel(self,level):
-        #print "LogRecorder: set level ",level
-        self.logger.getLoggerSLF4J().setLevel(Level.valueOf(level))
+        return threadName

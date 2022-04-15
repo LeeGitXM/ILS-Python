@@ -19,9 +19,9 @@ from ils.common.util import addHTML, escapeSqlQuotes
 from ils.common.database import lookup
 from ils.io.util import readTag
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-logSQL = LogRecorder(__name__ + ".SQL")
+from ils.log import getLogger
+log = getLogger(__name__)
+logSQL = getLogger(__name__ + ".SQL")
 
 
 def manageFinalDiagnosisGlobally(projectName, applicationName, familyName, finalDiagnosisName, textRecommendation, database="", provider = ""):

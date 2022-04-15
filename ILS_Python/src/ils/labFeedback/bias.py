@@ -15,8 +15,8 @@ from ils.common.util import substituteProvider
 from ils.io.util import readTag, writeTag
 from ils.queue.message import insert as insertMessage
 from ils.queue.constants import QUEUE_INFO, QUEUE_ERROR, QUEUE_WARNING
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 MESSAGE_QUEUE_KEY = "LABFEEDBACK"
 

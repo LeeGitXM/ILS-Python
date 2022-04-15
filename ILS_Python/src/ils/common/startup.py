@@ -11,8 +11,9 @@ from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus
 from ils.common.error import catchError
 from ils.io.util import readTag, writeTag
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
+
 IMPLEMENT = "IMPLEMENT"
 PLAN = "PLAN"
 
@@ -47,7 +48,7 @@ def gateway():
     siteName = record["SiteName"]
     gatewayStartupScript = record["GatewayStartupScript"]
     
-    log.infof("Running gateway startup script named <%s> for site: <%s>", gatewayStartupScript, siteName)
+    log.infof("Running gateway startup script named <%s> for TkSite.SiteName: <%s>", gatewayStartupScript, siteName)
     
     separator=string.rfind(gatewayStartupScript, ".")
     packagemodule=gatewayStartupScript[0:separator]
@@ -60,7 +61,7 @@ def gateway():
 
     eval(gatewayStartupScript)()
     
-    print "...completed %s.gateway()" % (__name__)
+    log.infof("...completed %s.gateway()", __name__)
 
 
 def setLogLevels():
@@ -83,6 +84,9 @@ def client():
     '''
     from ils.logging.viewer import clientStartup
     clientStartup()
+    
+    from ils.sfc.startup import client as sfcClientStartup
+    sfcClientStartup()
     
     project = system.util.getProjectName()
     print "The project is: %s (ils.common.startup.client)" % (project)
@@ -121,7 +125,10 @@ For an engineer there will not be a matching post.
 def clientCommon():    
     log.infof("In %s.clientCommon()", __name__)
     
-    
+    from javax.swing import ToolTipManager
+    ToolTipManager.sharedInstance().setDismissDelay(30000)
+    ToolTipManager.sharedInstance().setInitialDelay(300)
+
     #tagProvider = getTagProvider()
     #isolationTagProvider = getIsolationTagProvider()
     #historyProvider = getHistoryProvider()
@@ -194,7 +201,7 @@ def clientCommon():
 def gatewayCommon(tagPprovider, isolationTagProvider):  
     from ils.common.version import version
     version, revisionDate = version()
-    log.info("Starting common modules version %s - %s" % (version, revisionDate))
+    log.infof("Starting common modules version %s - %s", version, revisionDate)
     
     createTags("[" + tagPprovider + "]", log)
     createTags("[" + isolationTagProvider + "]", log)
@@ -210,6 +217,8 @@ def createTags(tagProvider, log):
     data.append([path, "dbPruneDays", "Int8", "365"])
     data.append([path, "dbUpdateStrategy", "String", "implement"])
     data.append([path, "historyTagProvider", "String", "XOMHistory"])
+    data.append([path, "ioMinimumDifference", "Float8", "0.00001"])
+    data.append([path, "ioMinimumRelativeDifference", "Float8", "0.00001"])
     data.append([path, "memoryTagLatencySeconds", "Float4", "2.5"])
     data.append([path, "ocAlertCallback", "String", ""])
     data.append([path, "opcTagLatencySeconds", "Float4", "5.0"])
@@ -236,7 +245,7 @@ def createTags(tagProvider, log):
     
     
 def updateDatabaseSchema(tagProvider, db):
-    print "Yo!"
+    log.infof("In %s.updateDatabaseSchema()", __name__)
     try:
         dbVersions = []
         dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})
@@ -247,6 +256,7 @@ def updateDatabaseSchema(tagProvider, db):
         dbVersions.append({"versionId": 6, "version": "1.6r0", "filename": "update_1.6r0.sql", "releaseData": "2021-07-04"})
         dbVersions.append({"versionId": 7, "version": "1.7r0", "filename": "update_1.7r0.sql", "releaseData": "2021-08-31"})
         dbVersions.append({"versionId": 8, "version": "1.8r0", "filename": "update_1.8r0.sql", "releaseData": "2021-10-08"})
+        dbVersions.append({"versionId": 9, "version": "1.9r0", "filename": "update_1.9r0.sql", "releaseData": "2022-01-24"})
         
         projectName = system.util.getProjectName()
         log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
@@ -260,10 +270,10 @@ def updateDatabaseSchema(tagProvider, db):
             return
         
         ''' Use the magic function in the SFC module that tells us where Ignition is installered and therefore where the SQL scripts are. '''
-        homeDir = getUserLibPath()
+        homeDir = getUserLibDir(projectName)
         homeDir = homeDir + "/database/"
         
-        currentId = readCurrentDbVersionId(strategy, db)
+        currentId = readCurrentDbVersionId(projectName, strategy, db)
         log.infof("The current database version is %d (%s)", currentId, strategy)
         
         for dbVersion in dbVersions:
@@ -281,17 +291,9 @@ def updateDatabaseSchema(tagProvider, db):
         txt = "Caught an error while updating the database schema for %s" % (db)
         txt = catchError(__name__, txt)
         log.errorf("%s", str(txt))
-        
-    
-def getUserLibPath():
-    ''' This only works in gateway scope '''
-    from com.inductiveautomation.ignition.gateway import SRContext
-    context = SRContext.get()
-    homeDir = context.getUserlibDir.getAbsolutePath()
-    return homeDir
    
 
-def readCurrentDbVersionId(strategy, db):
+def readCurrentDbVersionId(projectName, strategy, db):
     ''' Check if the table exists'''
     log.tracef("Checking if the version table exists....")
     SQL = "select count(*) FROM sys.Tables WHERE  Name = 'Version' AND Type = 'U' "
@@ -299,7 +301,7 @@ def readCurrentDbVersionId(strategy, db):
     
     if count == 0:
         log.infof("*** The VERSION table doesn't exist! ***")
-        createVersionTable(strategy, db)
+        createVersionTable(projectName, strategy, db)
         currentId = -1
     else:
         ''' 
@@ -325,14 +327,14 @@ def readCurrentDbVersionId(strategy, db):
                 log.infof("...it DOES NOT exist, so we are version 0!")
                 if strategy == IMPLEMENT:
                     system.db.runUpdateQuery("drop table Version", db)
-                    createVersionTable(strategy, db)
+                    createVersionTable(projectName, strategy, db)
                     system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01')", db)
             else:
                 currentId = 1
                 log.infof("...it exists, so we are version 1!")
                 if strategy == IMPLEMENT:
                     system.db.runUpdateQuery("drop table Version", db)
-                    createVersionTable(strategy, db)
+                    createVersionTable(projectName, strategy, db)
                     system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (0, '1.0r0', '2019-10-01', '2019-10-01') ", db)
                     system.db.runUpdateQuery("Insert into Version (VersionId, Version, ReleaseDate, InstallDate) values (1, '1.1r0', '2020-04-01', '2020-04-01') ", db)
         else:
@@ -344,8 +346,8 @@ def readCurrentDbVersionId(strategy, db):
     return currentId
 
 
-def createVersionTable(strategy, db):
-    homeDir = getUserLibDir()
+def createVersionTable(projectName, strategy, db):
+    homeDir = getUserLibDir(projectName)
     filename = homeDir + "/database/createVersion.sql"
 
     log.infof("Creating Version table")

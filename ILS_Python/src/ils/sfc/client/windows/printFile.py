@@ -7,8 +7,8 @@ Created on Jun 17, 2020
 import system, string
 from ils.common.config import getDatabaseClient
 from ils.common.util import parseFilename
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__)

@@ -6,8 +6,9 @@ Created on Sep 20, 2017
 
 import system
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.common.config import getDatabaseClient
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.trace("InternalFrameOpened")
@@ -17,6 +18,7 @@ def internalFrameActivated(rootContainer):
 
 def createFamily(rootContainer):
     print "In createGrade..."
+    db = getDatabaseClient()
     family = rootContainer.getComponent("Family").text
     post = rootContainer.getComponent("Post").selectedStringValue
     postId = rootContainer.getComponent("Post").selectedValue
@@ -45,14 +47,14 @@ def createFamily(rootContainer):
     if len(comment) >= 2000:
         system.gui.messageBox("Maximum comment length is 200 characters, comment will be truncated.")
         comment = comment[:2000]
-        
+
     print "Creating a new family..."
 
     # Insert row into RtRecipeFamily
     SQL="INSERT INTO RtRecipeFamily(RecipeFamilyName, RecipeUnitPrefix, RecipeNameAlias, PostId, HasSQC, HasGains, Comment) VALUES(?,?,?,?,?,?,?)"
     
     try:
-        system.db.runPrepUpdate(SQL,[family, unitPrefix, recipeAlias, postId, hasSQC, hasGains, comment])
+        system.db.runPrepUpdate(SQL,[family, unitPrefix, recipeAlias, postId, hasSQC, hasGains, comment], database=db)
     except:
         notifyError(__name__, "Inserting a new family")
         

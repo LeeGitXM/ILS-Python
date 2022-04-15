@@ -6,11 +6,11 @@ Created on Sep 10, 2014
 import system, string
 from ils.recipeToolkit.tagFactory import createUDT
 from ils.recipeToolkit.fetch import fetchHighestVersion
-from ils.io.util import readTag 
+from ils.io.util import readTag, isUDT 
 from sys import path
-from ils.log.LogRecorder import LogRecorder
 from ils.common.config import getDatabaseClient
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 from ils.recipeToolkit.common import RECIPE_VALUES_INDEX, PROCESS_VALUES_INDEX
 
@@ -221,18 +221,18 @@ def resetRecipeDetails(provider, familyName):
     path = "[%s]Recipe/%s/" % (provider, familyName)
 
     for udtType in ['Recipe Data/Recipe Details']:
-        details = system.tag.browse(path, {"tagType":"UdtInstance", "typeId":udtType})
-        for detail in details:
-            tags.append(path + detail.name + "/valueTagName")
+        results = system.tag.browse(path, {"tagType":"UdtInstance", "typeId":udtType})
+        for detail in results.getResults():
+            tags.append(path + detail['name'] + "/valueTagName")
             vals.append("")
                     
-            tags.append(path + detail.name + "/highLimitTagName")
+            tags.append(path + detail['name'] + "/highLimitTagName")
             vals.append("")
                 
-            tags.append(path + detail.name + "/lowLimitTagName")
+            tags.append(path + detail['name'] + "/lowLimitTagName")
             vals.append("")
             
-            tags.append(path + detail.name + "/command")
+            tags.append(path + detail['name'] + "/command")
             vals.append("")
 
     if len(tags) > 0:
@@ -489,15 +489,14 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
             tagPath, tagName = formatLocalTagPathAndName(provider, tagName)
             
             # Determine the data type by browsing the tag
-            browseTags = system.tag.browse(tagPath, {"name":"*"+tagName})
+            results = system.tag.browse(tagPath, {"name":"*"+tagName})
             
-            if len(browseTags) == 0:
+            if len(results) == 0:
                 log.tracef("The tag %s does not exist", tagName)
                 dataType = "Float"
             else:
-                browseTag = browseTags[0]
-                dataType = browseTag.dataType
-                dataType = str(dataType)
+                browseTag = results.getResults()[0]
+                dataType = str(browseTag['dataType'])
             
                 if dataType == "Float8":
                     dataType = "Float"
@@ -522,11 +521,8 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
                     downloadType = "Immediate"
                     
                     # Use the modeAttribute, modeAttributeValue and recc to determine the class of tag
-                    print "A"
                     tagRoot, tagSuffix, tagName = parseRecipeTagName(storOrCompTag)
-                    print "B"
                     modeAttribute, modeAttributeValue = determineOPCTypeModeAndVal(modeAttribute, modeAttributeValue)
-                    print "C"
                     UDTType, conditionalDataType = determineTagClass(recc, valueType, modeAttribute, modeAttributeValue, specialValueNAN)
                     log.tracef("   %s: OPC server: %s,  class name (UDT): %s, tag suffix: %s", storOrCompTag, opcServer, UDTType, tagSuffix)
                     itemId = itemIdPrefix + storOrCompTag
@@ -634,16 +630,19 @@ def createOPCTags(ds, provider, recipeKey, database = ""):
 # not needed by the current recipe.
 def sweepTags(provider, recipeKey, tags):
     print "Sweeping unused recipe tags..."
-
+    print "Required tags: ", tags
+    
     unneededTags = []
-    path = "[" + provider + "]Recipe/" + recipeKey
-    existingTags = system.tag.browse(path)
-    for tag in existingTags:
-        
-        if tag.isUDT():
-            if tag.name not in tags:
-                unneededTags.append(path + '/' + tag.name)
-                print "   Deleting unneeded tag: ", tag.name
+    parentPath = "[" + provider + "]Recipe/" + recipeKey
+    results = system.tag.browse(parentPath)
+    for tag in results.getResults():
+        fullPath = str(tag['fullPath'])
+        if isUDT(fullPath):
+            tagName = str(tag['name'])
+            if tagName not in tags:
+                unneededTags.append(fullPath)
+                print "   Deleting unneeded tag: ", tagName
 
-    system.tag.deleteTags(unneededTags)
+    if len(unneededTags) > 0:
+        system.tag.deleteTags(unneededTags)
     print "   Done (%i tags were deleted)!" % ( len(unneededTags) )

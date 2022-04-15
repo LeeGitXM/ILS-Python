@@ -8,250 +8,34 @@ import system, string, time
 from java.util import Date
 from ils.common.util import isText
 from ils.common.config import getTagProvider, getIsolationTagProvider,  getDatabase, getIsolationDatabase
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
-def runChecks():
-    for tagPath in [
-            "DiagnosticToolkit/CRX/CRX-BLOCK-POLYMER-FLAG",
-            "Data Pump/data",
-            "SFC IO/Fast Scan Data",
-            "SFC IO/Fast Scan Data/VRF006Z",
-            "SFC IO/Fast Scan Data/VRF006Z/permissiveValue"
-            ]:
 
-        providers = []
-        providers.append(getTagProvider())
-        providers.append(getIsolationTagProvider())
-
-        for provider in providers:
-            fullTagPath = provider + tagPath
-            print "-------------------------"
-            print "Checking ", fullTagPath
-            
-            for strategy in ["TAGTYPE", "BROWSETAGS", "BROWSETAGSSIMPLE", "PYTHONCLASS"]:
-                isUDT = isUDTorFolder(fullTagPath, strategy)
-                print "Check 1: ", isUDT
-
-def getUDTProperty(fullTagPath, prop):
+def checkIfController(fullTagPath):
     '''
-    IA has made it annoyingly difficult to get the value of a custom property out of an instance of a UDT.  
-    This is a utility to get the value of a property.
+    Try and figure out if the thing is a controller, we should already know that it is a UDT.
+    If it has a tag PythonClass, and the Python class contains the word controller then it is a controller, 
+    otherwise it is NOT a controller.
+    (I don't think this is used - PAH 2/6/2022)
     '''
-    log.tracef("Getting %s from %s...", prop, fullTagPath)
-    
-    path = "%s.ExtendedProperties" % fullTagPath
-    props = readTag(path)
-    if props.value is not None:
-            for p in props.value:
-                if p.getProperty().name.lower() == prop.lower():
-                    return p.value
+    tagPath=fullTagPath + '/pythonClass'
+    exists=system.tag.exists(tagPath)
+    if not(exists):
+        return False
 
-    return None
+    pythonClass=readTag(tagPath).value
+    if pythonClass.upper().find('CONTROLLER') > -1:
+        return True
 
-'''
-Try and figure out if the thing is a UDT or a folder (the folder support is for I/O in isolation where
-UDTs are replaced by folders).  Return True if the tag path is a UDT or a folder, false otherwise.
-I have tried lot's of different approaches to crack this nut and none of them seem to work to well.
-I have left them in here because something might change in Ignition at some point that will change the way they work,
-or maybe I am calling one of the APIs incorrectly.  The goal is to find one approach that works quickly and 
-reliably in all scopes.
-'''
-def isUDTorFolder(fullTagPath, strategy="PYTHONCLASS"):
-    log.tracef("Checking if %s is a UDT or a folder...", fullTagPath)
-    
-    '''
-    This strategy uses readTag(tagPath + ".TagType") this returns an integer enumeration whose return values
-    are undocumented (I'm sure it is documented somewhere, but I don't know where).  The problem with this strategy is that 
-    I get different results in client scope than I do in gateway scope. In client scope, a folder is a 6 and an opc tag is a 0
-    In gateway scope, a folder is 0 and an opc tag is a 0
-    '''
-    if strategy == "TAGTYPE":
-        tagType = readTag(fullTagPath + ".TagType").value
-        log.tracef("...is of type %s", str(tagType))
-        if tagType in [6, 10]:
-            return True
-    
-    # This strategy uses the browseTags() API to get a browseTag object which has a great isUDT() and isFolder() method.
-    elif strategy == "BROWSETAGS":
-        parentPath = fullTagPath[0:fullTagPath.rfind("/")]
-        tagPath = fullTagPath[fullTagPath.rfind("/")+1:]
-        browseTags = system.tag.browseTags(parentPath, "*", recursive=False)
-        for browseTag in browseTags:
-            if browseTag.fullPath == fullTagPath:
-                if browseTag.isUDT():
-                    return True
-                elif browseTag.isFolder():
-                    return True
-                else:
-                    return False
-    
-    # This strategy uses the browseTagsSimple() API to get a browseTag object which has a great isUDT() and isFolder() method.
-    elif strategy == "BROWSETAGSSIMPLE":
-        parentPath = fullTagPath[0:fullTagPath.rfind("/")]
-        tagPath = fullTagPath[fullTagPath.rfind("/")+1:]
-        browseTags = system.tag.browseTagsSimple(parentPath, "ASC")
-        for browseTag in browseTags:
-            if browseTag.fullPath == fullTagPath:
-                if browseTag.isUDT():
-                    return True
-                elif browseTag.isFolder():
-                    return True
-                else:
-                    return False
-
-    # This implements a strategy that may work for ILS I/O but is not at all general purpose.  It relies on the
-    # conventiion that UDTs have a memory tag named "pythonClass".  This tag is copied to isolation when we make 
-    # isolation tags. 
-    elif strategy == "PYTHONCLASS":
-        tagExists = system.tag.exists(fullTagPath + "/pythonClass")
-        if tagExists:
-            return True
-        else:
-            return False
-    else:
-        print "Unexpected strategy"
-   
     return False
 
- 
-def isUDT(fullTagPath):
-    '''
-    Determine if the referenced tag is a UDT. Return True if the tag path is a UDT, false otherwise.
-    '''
-    log.tracef("Checking if %s is a UDT...", fullTagPath)
-    try:
-        isUDT = False
-        parentPath, tagName = splitTagPath(fullTagPath)
-        log.tracef("Parent: <%s>, Tag: <%s>", parentPath, tagName)
-
-        results = system.tag.browse(parentPath, {"name": tagName})
-        for tag in results.getResults():
-            if str(tag['tagType']) == "UdtInstance":
-                isUDT = True
-            else:
-                isUDT = False
-                
-    except:
-        log.errorf("Error attempting to determine if <%s> is a UDT, parent: %s, tag: %s", fullTagPath, parentPath, tagName)
-        isUDT = False  
-    return isUDT
-
-def getOutputForTagPath(tagProvider, tagPath, outputType):
-    isolationMode = False
-    if tagProvider == getIsolationTagProvider():
-        isolationMode = True
-    
-    if isUDT(tagPath) or isolationMode:
-        '''
-        I have not figured out a good way of reading the type of a UDT.  So instead I will read the pythonClass memory tag
-        which I have embedded in each of our I/O UDTs.  Then I could create a method to get the output path fri the UDT, but 
-        instead I did the cheap and cheerful case statement.  It would be more robust to take the OO method approach.
-        '''
-        pythonClass = readTag(tagPath + "/pythonClass").value
-        if pythonClass in ["PKSController", "PKSACEController", "PKSRampController"]:
-            tagPath = "%s/%s/value" % (tagPath, outputType)
-        elif pythonClass in ["OPCOutput", "OPCTag"]:
-            tagPath = "%s/value" % (tagPath)
-        else:
-            raise ValueError, "Unexpected python I/O class <%s> for <%s> in %s" % (pythonClass, tagPath, __name__)
-        
-    return tagPath
-
-# This is the easier method but I need to know how to decode the tagTypoe integer
-#def ___isUDTNew(fullTagPath):
-#    isUDT = False
-#    tagType = system.tag.read(fullTagPath + ".TagType")
-#    print tagType       
-#    return isUDT
-
-
-def isFolder(fullTagPath):
-    log.tracef("Checking if %s is a folder...", fullTagPath)
-    isFolder = False
-    parentPath, tagPath = splitTagPath(fullTagPath)
-    log.tracef("Parent: <%s>, Tag: <%s>", parentPath, tagPath)
-    
-    tags = system.tag.browseTagsSimple(parentPath, "ASC")
-    for tag in tags:
-        log.tracef("Checking <%s> vs <%s>", tag.fullPath, fullTagPath)
-        if tag.fullPath == fullTagPath:
-            log.tracef(" --names match--")
-            isFolder = tag.isFolder()
-            log.tracef("  isFolder: %s", str(isFolder)) 
-            return isFolder    
-    
-    return isFolder
-
-def getTagScript(fullTagPath):
-    log.tracef("Looking for a tag change script for: %s", fullTagPath)
-    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
-    for tagConfig in tagConfigurations:
-        tagType = tagConfig.getTagType()
-        log.tracef("Tag type: <%s>", str(tagType))
-        if str(tagType) in ["DB", "OPC"]:
-            log.tracef("Checking properties...")
-            props = tagConfig.getProperties()
-            for prop in props:
-                log.tracef("%s %s", str(prop),  tagConfig.get(prop)) 
-                if str(prop) == "eventScripts":
-                    log.tracef("  --- found a tag change script ---")
-                    return tagConfig.get(prop)
-    log.tracef("    Did not find a tag script!")
-    return None
-
-def isExpressionTag(fullTagPath):
-    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
-    for tagConfig in tagConfigurations:
-        tagType = tagConfig.getTagType()
-        if str(tagType) == "DB":
-            props = tagConfig.getProperties()
-            for prop in props: 
-                if str(prop) == "expressionType":   
-                    if str(tagConfig.get(prop)) == "Expression":
-                        return True
-                    else:
-                        return False
-    return False
-
-def isQueryTag(fullTagPath):
-    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
-    for tagConfig in tagConfigurations:
-        tagType = tagConfig.getTagType()
-        if str(tagType) == "DB":
-            props = tagConfig.getProperties()
-            for prop in props:
-                if str(prop) == "expressionType": 
-                    if str(tagConfig.get(prop)) == "SQL_Query":
-                        return True
-                    else:
-                        return False
-    return False
-
-def getTagExpression(fullTagPath):
-    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
-    for tagConfig in tagConfigurations:
-        props = tagConfig.getProperties()
-        for prop in props:
-            log.tracef("%s: %s", str(prop), tagConfig.get(prop))
-            if str(prop) == "expression":
-                return tagConfig.get(prop)
-    return None
-
-def getTagSQL(fullTagPath):
-    tagConfigurations = system.tag.browseConfiguration(fullTagPath, False)
-    for tagConfig in tagConfigurations:
-        props = tagConfig.getProperties()
-        for prop in props:
-            if str(prop) == "expression":
-                return tagConfig.get(prop)
-    return None
-
-'''
-A controller is a complicated UDT with embedded UDTs.  Often we are given one of the inner UDTs, for the setpoint or mode for example and we want to 
-find the controller.  So we start at the root of the path and walk the tag path until we get a UDT.
-'''
 def getOuterUDT(fullTagPath):
+    '''
+    A controller is a complicated UDT with embedded UDTs.  Often we are given one of the inner UDTs, for the setpoint or mode for example and we want to 
+    find the controller.  So we start at the root of the path and walk the tag path until we get a UDT.
+    '''
+    
     # Strip off the provider   
     if fullTagPath.find("]")>=0:
         provider=fullTagPath[:fullTagPath.find("]") + 1]
@@ -279,80 +63,227 @@ def getOuterUDT(fullTagPath):
 #        print "There must not be a UDT in the tag path..."
     return None, tagPath
 
-def getInnerUDT(fullTagPath):
-    # Strip off the provider
-    UDTType=None
-    
-    if fullTagPath.find("]")>=0:
-        provider=fullTagPath[:fullTagPath.find("]") + 1]
-        tagPath=fullTagPath[fullTagPath.find("]") + 1:]
-    else:
-        provider="[]"
-        tagPath=fullTagPath
-    
-#    print "Provider: <%s>, tag path: <%s>" % (provider, tagPath)
 
-    # Before we start walking up the tag path, check if the tag itself is a UDT
-    tp = provider + tagPath
-    if isUDT(tp):
-        UDTType=getUDTType(tp)
-        return UDTType 
+
+def getOutputForTagPath(tagProvider, tagPath, outputType):
+    '''
+    Given a UDT path and an output type, return the tagpath of the desired target tag.
+    For example, if the UDT is a controller and the output type is setpoint then return root/setpoint/value;
+    if the UDT is a controller and the output type is output then return root/output/value.
+    If the udt is an OPCTag or OPCOutput then return root/value.
     
-    tokens=tagPath.split('/')
+    Note: The tagProvider argument is no longer used.  It used to help determine if we were in Isolation mode, but
+    that was before I implemented a distinct set of isolation UDTs. 
+    '''
+    log.tracef("Tag Provider: %s", tagProvider)
+    log.tracef("Tag Path: %s", tagPath)
+    log.tracef("Output Type: %s", outputType)
     
-    # Now walk up the tagpath until we find a UDT
-    tokens.reverse()
-    for token in tokens:
-        tp=provider + tagPath[:tagPath.rfind(token)]
-        if tp[len(tp) - 1] == "/":
-            tp = tp[:len(tp) - 1]
+    if isUDT(tagPath):
+        pythonClass = getUDTProperty(tagPath, "pythonClass")
+        if pythonClass in ["PKSController", "PKSACEController", "PKSRampController"]:
+            tagPath = "%s/%s/value" % (tagPath, outputType)
+        elif pythonClass in ["OPCOutput", "OPCTag"]:
+            tagPath = "%s/value" % (tagPath)
+        else:
+            raise ValueError, "Unexpected python I/O class <%s> for <%s> in %s" % (pythonClass, tagPath, __name__)
         
-#        print "Checking if <%s> is a UDT: " % (tp)
-        if isUDT(tp):
-            UDTType=getUDTType(tp)
-            return UDTType 
+    return tagPath
 
-#    print "There must not be a UDT in the tag path..."
-    return UDTType
+
+def getTagExpression(fullTagPath):
+    ''' Get the expression for an expression tag '''
+    try:
+        if not(isExpressionTag(fullTagPath)):
+            log.warnf("Tag <%s> is not an expression tag!", fullTagPath)
+            return None
+        
+        config = system.tag.getConfiguration(fullTagPath, False)
+        expr = config[0]['expression']
+
+        return expr
+                
+    except:
+        log.errorf("Error attempting to get the expression for <%s>.", fullTagPath)  
+        
+    return False
+
+
+def getTagScript(fullTagPath):
+    ''' Get the tag script - there are a lot of handlers, I guess get any and all.  Any type of tag can have a tag script '''
+    try:        
+        config = system.tag.getConfiguration(fullTagPath, False)
+        script = config[0].get('eventScripts', None)
+        return script
+                
+    except:
+        log.errorf("Error attempting to get the event scripts for <%s>.", fullTagPath)  
+        
+    return None
+
+
+def getTagSQL(fullTagPath):
+    ''' Get the SQL for a query tag '''
+    try:
+        if not(isQueryTag(fullTagPath)):
+            log.warnf("Tag <%s> is not a query tag!", fullTagPath)
+            return None
+        
+        config = system.tag.getConfiguration(fullTagPath, False)
+        print config
+        sql = config[0].get('query', None)
+        return sql
+                
+    except:
+        log.errorf("Error attempting to get the SQL for <%s>.", fullTagPath)  
+        
+    return None
+
+
+def getUDTProperty(fullTagPath, propertyName):
+    '''  
+    Get the value of a UDT property.
+    '''
+    log.tracef("Getting %s from %s...", propertyName, fullTagPath)
+    
+    if not(isUDT(fullTagPath)):
+        log.warnf("Unable to find the UDT property <%s> in <%s> because it is NOT a UDT", propertyName, fullTagPath)
+        return None
+    
+    config = system.tag.getConfiguration(fullTagPath, False)
+    udtParameters = config[0]['parameters']
+    prop = udtParameters.get(propertyName, None)
+    if prop == None:
+        log.warnf("Unable to find property <%s> in UDT <%s>", propertyName, fullTagPath)
+        return None
+    
+    propertyValue = prop.value
+    return propertyValue
+
 
 def getUDTType(fullTagPath):
-    # Strip off the provider
-#    print "Getting the type of UDT for tagpath: ", fullTagPath
-    UDTType = readTag(fullTagPath + '.UDTParentType').value
-    return UDTType
-
-#    UDTType=None
-#    parentPath, tagPath = splitTagPath(fullTagPath)
-#    tags = system.tag.browseTags(parentPath=parentPath, tagPath="*"+tagPath)
-#    for tag in tags:
-#        if tag.fullPath == fullTagPath:
-#            print tag.type, tag.dataType, tag.UDTParentType
-#    return UDTType
+    '''
+    Return the UDT type for the specified tag.  Return None if the tag is not a UDT instance.
+    '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
     
-            
-# Try and figure out if the thing is a controller, we should already know that it is a UDT.
-# If it has a tag PythonClass, and the Python class contains the word controller then it is a controller, 
-# otherwise it is NOT a controller.
-def checkIfController(fullTagPath):
-    tagPath=fullTagPath + '/pythonClass'
-    exists=system.tag.exists(tagPath)
-    if not(exists):
-        return False
+        if str(tagType) in ['UdtInstance']:
+            udtType = config[0]['typeId']
+            return udtType
+        else:
+            log.warnf("Tag <%s> is not a UDT instance", fullTagPath)
+            return None
+                
+    except:
+        log.errorf("Error attempting to determine the UDT type for <%s>.", fullTagPath)  
+        
+    return None
 
-    pythonClass=readTag(tagPath).value
-#    print "Checking if <%s> contains <CONTROLLER>" % (pythonClass)
-    if pythonClass.upper().find('CONTROLLER') > -1:
+
+def isExpressionTag(fullTagPath):
+    ''' Determine if the referenced tag is an expression tag '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
+    
+        if str(tagType) in ['AtomicTag']:
+            valueSource = config[0]['valueSource']
+            if str(valueSource) == 'expr':
+                return True
+            else:
+                return False
+
+        return False
+                
+    except:
+        log.errorf("Error attempting to determine if <%s> is a UDT.", fullTagPath)  
+        
+    return False
+
+
+def isFolder(fullTagPath):
+    '''
+    Determine if the referenced tag is a Folder. Return True if the tag path is a Folder, false otherwise.
+    '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
+    
+        if str(tagType) in ['Folder']:
+            return True
+
+        return False
+                
+    except:
+        log.errorf("Error attempting to determine if <%s> is a UDT.", fullTagPath)
+
+    return False
+    
+
+def isQueryTag(fullTagPath):
+    ''' Determine if the referenced tag is a query tag. '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
+    
+        if str(tagType) in ['AtomicTag']:
+            valueSource = config[0]['valueSource']
+            if str(valueSource) == 'db':
+                return True
+            else:
+                return False
+
+        return False
+                
+    except:
+        log.errorf("Error attempting to determine if <%s> is a UDT.", fullTagPath)  
+        
+    return False
+
+
+def isUDT(fullTagPath):
+    '''
+    Determine if the referenced tag is a UDT. Return True if the tag path is a UDT, false otherwise.
+    '''
+    try:
+        config = system.tag.getConfiguration(fullTagPath, False)
+        tagType = config[0]['tagType']
+    
+        if str(tagType) in ['UdtInstance']:
+            return True
+
+        return False
+                
+    except:
+        log.errorf("Error attempting to determine if <%s> is a UDT.", fullTagPath)  
+        
+    return False
+
+
+def isUDTorFolder(fullTagPath):
+    '''
+    Try and figure out if the thing is a UDT or a folder (the folder support is for I/O in isolation where
+    UDTs are replaced by folders).  Return True if the tag path is a UDT or a folder, false otherwise.
+    '''
+    log.tracef("Checking if %s is a UDT or a folder...", fullTagPath)
+    
+    config = system.tag.getConfiguration(fullTagPath, False)
+    tagType = config[0]['tagType']
+
+    if str(tagType) in ['UdtInstance', 'Folder']:
         return True
 
     return False
 
-# Compare two tag values taking into account that a float may be disguised as a text string and also
-# calling two floats the same if they are almost the same.
+
 def equalityCheck(val1, val2, recipeMinimumDifference, recipeMinimumRelativeDifference):
-#    if (val1 == None and val2 != None) or (val1 != None and val2 == None):
-#        print "Failed the initial check..."
-#        return False
- 
+    '''
+    Compare two tag values taking into account that a float may be disguised as a text string and also
+    calling two floats the same if they are almost the same.
+    '''
+
     val1IsText = isText(val1)
     val2IsText = isText(val2)
     
@@ -409,6 +340,10 @@ def dataTypeMatch(val1, val2):
 def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0): 
     log.trace("%s - Confirming the write of <%s> to %s..." % (__name__, str(val), tagPath))
  
+    provider = getProviderFromTagPath(tagPath)
+    recipeMinimumDifference = readTag("[" + provider + "]/Configuration/Common/ioMinimumDifference").value
+    recipeMinimumRelativeDifference = readTag("[" + provider + "]/Configuration/Common/ioMinimumRelativeDifference").value
+    
     startTime = Date().getTime()
     delta = (Date().getTime() - startTime) / 1000
     
@@ -422,7 +357,7 @@ def confirmWrite(tagPath, val, timeout=60.0, frequency=1.0):
             if string.upper(str(qv.quality)) == 'GOOD':
                 if qv.value == val:
                     return True, ""
-                if equalityCheck(qv.value, val, 0.0001, 0.0001):
+                if equalityCheck(qv.value, val, recipeMinimumDifference, recipeMinimumRelativeDifference):
                     return True, ""
 
         # Time in seconds

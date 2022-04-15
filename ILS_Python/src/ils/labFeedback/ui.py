@@ -6,8 +6,8 @@ Created on Mar 22, 2017
 import system
 from ils.common.util import formatDateTime
 from ils.common.config import getTagProviderClient
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)
@@ -21,39 +21,44 @@ def internalFrameActivated(rootContainer):
 def refreshCallback(rootContainer):
     log.infof("In %s.refreshCallback()...", __name__)
     tagProvider = getTagProviderClient()
+    
+    path = "[%s]LabData" % (tagProvider)        
+    if not(system.tag.exists(path)):
+        log.infof("Added Lab Data base folder!")
+        basePath = "[%s]" % (tagProvider)
+        system.tag.configure(basePath=basePath, tags=[{"name": "LabData", "tagType": "Folder", "tags":[{}]}])
 
     def refresh(rootContainer=rootContainer, tagProvider=tagProvider):
         log.infof("Refreshing in an asynchronous thread...")
-        udtList = []
         
         # Collect all of the lab bias UDTs
         biasType = ["Exponential", "PID"]
         i = 0
         data = []
-        for udtParentType in ["Lab Bias/Lab Bias Exponential Filter", "Lab Bias/Lab Bias PID"]:
+        for udtDict in [{"udtParentType":"Lab Bias/Lab Bias Exponential Filter", "biasType":"Exponential"}, 
+                     {"udtParentType":"Lab Bias/Lab Bias PID", "biasType":"PID"}]:
+    
+            udtParentType = udtDict.get("udtParentType", None)
+            biasType = udtDict.get("biasType", None)
+            log.infof("Browsing for %s - %s", udtParentType, biasType)
             
-            log.infof("Browsing for %s", udtParentType)
+            browseFilter = {"tagType":"UdtInstance", "typeId":udtParentType, "recursive": True}
+
+            print "Browsing: <%s>" % (path)
+            print "Filters: ", browseFilter
+
+            udts = system.tag.browse(path, browseFilter)
+                            
+            log.infof("...Discovered %d %s UDTs...", len(udts), biasType)
             
-            if udtParentType == "Lab Bias/Lab Bias Exponential Filter":
-                biasType = "Exponential"
-            else:
-                biasType = "PID"
-            
-            udts = system.tag.browseTags(
-                parentPath="[%s]LabData" % (tagProvider), 
-                tagType="UDT_INST", 
-                udtParentType=udtParentType,
-                recursive=True)
-            
-            log.infof("...Discovered %d Bias UDTs...", len(udts))
-            
-            for udt in udts:
-                udtPath = udt.path
-                udtType = udt.type    
-                biasName = udtPath[udtPath.rfind("/") + 1:]
+            for udt in udts.getResults():
+                udtPath = udt['fullPath']
+                #udtType = udt.type    
+                #biasName = udtPath[udtPath.rfind("/") + 1:]
+                biasName = udt['name']
                 rootPath = udtPath[:udtPath.rfind("/")]
                 
-                tagValues = system.tag.readAll([udtPath+"/labValue", udtPath+"/modelValue", udtPath+"/biasValue", udtPath+"/labSampleTime"])
+                tagValues = system.tag.readBlocking([udtPath+"/labValue", udtPath+"/modelValue", udtPath+"/biasValue", udtPath+"/labSampleTime"])
                 labValue = tagValues[0].value
                 modelValue = tagValues[1].value
                 biasValue = tagValues[2].value

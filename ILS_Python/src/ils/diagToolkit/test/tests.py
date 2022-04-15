@@ -7,8 +7,8 @@ Created on Sep 13, 2016
 import system, time
 from ils.diagToolkit.test.common import insertApp1, insertApp2, insertQuantOutput, insertApp1Families, insertApp2Families, initLog, updateFinalDiagnosisTextRecommendation
 from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 project = "XOM"
 T1TagName='DiagnosticToolkit/Outputs/T1'
@@ -32,7 +32,7 @@ def stub2(arg1):
     print "In stub2 with ", arg1
 
 def test00(db):
-    logger.tracef("Starting %s.test00()", __name__)
+    log.tracef("Starting %s.test00()", __name__)
     system.tag.write("[XOM]Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
     applicationName='FINAL_TEST_1'
     appId=insertApp1(db)

@@ -4,12 +4,12 @@ Created on Mar 29, 2018
 @author: phass
 '''
 
-
 import system, string, time
 import ils.io.pkscontroller as pkscontroller
 import ils.io.opcoutput as opcoutput
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.io.util import confirmWrite
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class PKSRampController(pkscontroller.PKSController):
     
@@ -37,6 +37,7 @@ class PKSRampController(pkscontroller.PKSController):
     '''
     A ramp controller implements the ramp in the DCS.  All we have to do is write the target value and the ramp time and the DCS does the rest.
     We also have to do all of the other handshaking, but we don't need to ramp from the current value to the new value one step at a time.
+    A ramp controller can only ramp the SP in hardware, if the request is to ramp an OP then the ramp will be implemented in Ignition.
     '''
     def writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm):       
         success = True
@@ -45,20 +46,11 @@ class PKSRampController(pkscontroller.PKSController):
             log.errorf("ERROR writing ramp for PKS Ramp controller: %s - One or more of the required arguments is missing val=%s rampTime=%s writeConfirm=%s valType=%s updateFreq=%s" % (self.path,val,rampTime,writeConfirm,valType,updateFrequency))
             return False, "One or more of the required arguments is missing"
         
-        '''
-        A ramp controller can only ramp the SP in hardware, if the request is to ramp an OP then the ramp will be implemented in Ignition..
-        '''
         if string.upper(valType) in ["OUTPUT RAMP"]:
             status, errorMessage = pkscontroller.PKSController.writeRamp(self, val, valType, rampTime, updateFrequency, writeConfirm)
             return status, errorMessage
-            
-        '''
-        This method only handles setpoint ramps
-        '''
-       
+
         pkscontroller.PKSController.setPermissive(self)
-       
-       
        
         log.tracef("In %s.writeRamp() writing a setpoint ramp for controller %s", __name__, self.path)
         if string.upper(valType) not in ["SETPOINT RAMP"]:
@@ -77,7 +69,6 @@ class PKSRampController(pkscontroller.PKSController):
             system.tag.write(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
-
         
         # Put the controller into the appropriate mode
         modeTag = self.modeTag
@@ -89,7 +80,7 @@ class PKSRampController(pkscontroller.PKSController):
         system.tag.write(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
 
 #        rampTimeSeconds = rampTime * 60.0
-
+        '''
         log.trace("...writing PRESET to the rampstate...")
         system.tag.write(self.path + "/sp/rampState", "PRESET")            
         time.sleep(self.OPC_LATENCY_TIME)
@@ -102,9 +93,34 @@ class PKSRampController(pkscontroller.PKSController):
         log.trace("...writing RUN to the rampstate...")
         system.tag.write(self.path + "/sp/rampState", "RUN")
         time.sleep(self.OPC_LATENCY_TIME)
+        '''
+        
+        ''' 
+        This is the new version that confirms each of the individual writes.
+        If we confirm each individual write then we don't need the inexact fixed delays.
+        The confirm will try for a minute to confirm the write.
+        PH 12/8/2021
+        '''
+        log.trace("...writing PRESET to the rampstate...")
+        system.tag.write(self.path + "/sp/rampState", "PRESET")
+        confirmed, errorMessage = confirmWrite(self.path + "/sp/rampState", "PRESET")   
+
+        ''' I want to write these simultaneously, rather than write one, wait as it is confirmed, and then write the other and wait to confirm it '''
+        if confirmed:
+            log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
+            system.tag.write(self.path + "/sp/rampTime", rampTime)
+            system.tag.write(self.path + "/sp/targetValue", val)
+            confirmed, errorMessage = confirmWrite(self.path + "/sp/rampTime", rampTime)
+            if confirmed:
+                confirmed, errorMessage = confirmWrite(self.path + "/sp/targetValue", val)
+        
+        if confirmed:
+            log.trace("...writing RUN to the rampstate...")
+            system.tag.write(self.path + "/sp/rampState", "RUN")
+            confirmed, errorMessage = confirmWrite(self.path + "/sp/rampState", "RUN")
         
         pkscontroller.PKSController.restorePermissive(self)
 
         log.infof("EPKS Controller <%s> done ramping!", self.path)
-        return success, errorMessage
+        return confirmed, errorMessage
     

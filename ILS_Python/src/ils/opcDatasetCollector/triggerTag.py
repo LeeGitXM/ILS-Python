@@ -7,11 +7,11 @@ Created on Dec, 2015
 def setValues(udtTagPath):
     import system
     # Get a logger
-    from ils.log.LogRecorder import LogRecorder
-    logger = LogRecorder(__name__)
-    logger.trace("Inside external ils.opcDatasetCollector.triggerTag.setValues")
+    from ils.log import getLogger
+    log = getLogger(__name__)
+    log.trace("Inside external ils.opcDatasetCollector.triggerTag.setValues")
     # Get the dataset of tagpaths
-    logger.tracef("UDT Tagpath: %s", str(udtTagPath))
+    log.tracef("UDT Tagpath: %s", str(udtTagPath))
     dsTagPaths = system.tag.read(udtTagPath + "/Dataset Tags").value  # Recall a qualified value so need .value
     pyDsTagPaths = system.dataset.toPyDataSet(dsTagPaths)  # Easier to work with py dataset for tagpaths
     # Get the dataset of values.  Datasets are immutable so this is just a copy not actual dataset
@@ -24,10 +24,10 @@ def setValues(udtTagPath):
     triggerTagPath = system.tag.read(udtTagPath + "/Trigger Tagpath").value  # This is the Trigger Tag path
     # Don't need to check if tag exists because would not get into code if it did not exist -- << Not true
     if triggerTagPath==None:
-        logger.warnf("opcDatasetCollector: Null trigger tagpath: for %s", str(udtTagPath))
+        log.warnf("opcDatasetCollector: Null trigger tagpath: for %s", str(udtTagPath))
         return
     
-    logger.tracef("Trigger Tagpath: %s", triggerTagPath)
+    log.tracef("Trigger Tagpath: %s", triggerTagPath)
     triggerTagQv = system.tag.read(triggerTagPath)
     # Read maximum # of rows to read
     maxRowNumberToRead = system.tag.read(udtTagPath + "/Maximum Row Number to Read").value 
@@ -35,7 +35,7 @@ def setValues(udtTagPath):
     if triggerTagQv.quality.isGood():
         epochTriggerTimestampMinutes = (triggerTagQv.timestamp.getTime() / 1000 / 60) 
     else:
-        logger.tracef("Trigger Tag quality is bad returning: %s", triggerTagPath)
+        log.tracef("Trigger Tag quality is bad returning: %s", triggerTagPath)
         return
     # Initialize timestamps aligned to True, 
     timestampsAligned = True
@@ -48,17 +48,17 @@ def setValues(udtTagPath):
     updateDs = True
     for row in pyDsTagPaths:
         tagPath = row["TagPath"]
-        logger.tracef("TagPath: %s", tagPath)
+        log.tracef("TagPath: %s", tagPath)
         valueRow = row["Row"]  # This is the row poistion in the value dataset where value goes
-        logger.tracef("Row Position in Dataset: %s", str(valueRow))
+        log.tracef("Row Position in Dataset: %s", str(valueRow))
         valueCol = row["Col"]  # This is the row poistion in the value dataset where value goes
-        logger.tracef("Column Position in Dataset: %s", str(valueCol))
+        log.tracef("Column Position in Dataset: %s", str(valueCol))
         useOPC = row["UseOPC"]  # Use OPC Value
-        logger.tracef("Use OPC: %s", useOPC)
+        log.tracef("Use OPC: %s", useOPC)
         dataType = row["DataType"]  # Use OPC Value
-        logger.tracef("Data Type: %s", dataType)
+        log.tracef("Data Type: %s", dataType)
         fallbackValue = row["FallbackValue"]  # Default Value can ve "LastValue"
-        logger.tracef("Default Value: %s", fallbackValue)
+        log.tracef("Default Value: %s", fallbackValue)
         tagExists = True  # Set to default value only applies for tags if OPC this is left as true
         # Process # of rows dynamically
         if maxRowNumberToRead == -1 or (valueRow <= maxRowNumberToRead):
@@ -70,18 +70,18 @@ def setValues(udtTagPath):
                     qv = system.tag.read(tagPath)
                 else:
                     # Print a statement regarding not finding a tag
-                    logger.trace("OPC Dataset Collector - could not find a tag:")
-                    logger.trace("Unknown tagpath: %s" % (str(tagPath)))
-                    logger.trace("Dataset Tags row/column location: row %i, column %i" % (int(valueRow), int(valueCol)))
-                    logger.trace("OPC Dataset Collector Tagpath: %s" % (udtTagPath))
+                    log.trace("OPC Dataset Collector - could not find a tag:")
+                    log.trace("Unknown tagpath: %s" % (str(tagPath)))
+                    log.trace("Dataset Tags row/column location: row %i, column %i" % (int(valueRow), int(valueCol)))
+                    log.trace("OPC Dataset Collector Tagpath: %s" % (udtTagPath))
                     alignTimestamps = False  # Don't assign data if tag does not exist, this is trick to not assign data
             else:  # OPC tag read
                 # Assume opc value
                 # ##!!! Need to check what happens during system read if item-id and/or OPC Server not really there
                 opcServer = row['OPCServer']
                 itemId = row['ItemID']
-                logger.tracef("OPC Server: %s", opcServer)
-                logger.tracef("OPC Item ID: %s", itemId)
+                log.tracef("OPC Server: %s", opcServer)
+                log.tracef("OPC Item ID: %s", itemId)
                 # Read tag value            
                 qv = system.opc.readValue(opcServer, itemId)
             # Extract the value and convert data, for OPC we don't know if tagExists so tagExists = true for OPC
@@ -103,9 +103,9 @@ def setValues(udtTagPath):
             if tagExists and qv.quality.isGood():
                 quality = qv.quality
                 timestamp = qv.timestamp
-                logger.tracef("Value: %s", value)
-                logger.tracef("Quality: %s", quality)
-                logger.tracef("Timestamp: %s", timestamp)
+                log.tracef("Value: %s", value)
+                log.tracef("Quality: %s", quality)
+                log.tracef("Timestamp: %s", timestamp)
                 # print qv.timestamp.getClass().getName() a little trick to return class name if a java class
                 epochTimestampMinutes = (qv.timestamp.getTime() / 1000 / 60)
                 diffMinutes = abs(epochTriggerTimestampMinutes - epochTimestampMinutes)
@@ -117,15 +117,15 @@ def setValues(udtTagPath):
                 dsTagValues = system.dataset.setValue(dsTagValues, valueRow, valueCol, str(value))
             else: # Here we assume quality is bad.  For direct OPC either because OPC says bad or OPC item not existing
                 if tagExists:
-                    logger.trace("OPC Dataset Collector - quality of tag 'Bad'")
-                    logger.tracef("Dataset Tags row/column location: row %i, column %i", int(valueRow), int(valueCol))
-                    logger.tracef("OPC Dataset Collector Tagpath: %s", udtTagPath)
+                    log.trace("OPC Dataset Collector - quality of tag 'Bad'")
+                    log.tracef("Dataset Tags row/column location: row %i, column %i", int(valueRow), int(valueCol))
+                    log.tracef("OPC Dataset Collector Tagpath: %s", udtTagPath)
                     if fallbackValue == "Use Bad":
-                        logger.trace("Fallback Value: Use Bad")
+                        log.trace("Fallback Value: Use Bad")
                         dsTagValues = system.dataset.setValue(dsTagValues, valueRow, valueCol, value)
                     elif fallbackValue == "Last Good":
                         # Here you don't do anything just use last value we read in the dataset
-                        logger.trace("Fallback Value: Last Good")                
+                        log.trace("Fallback Value: Last Good")                
                 else:
                     #Basically write a value saying tag does not exist
                     dsTagValues = system.dataset.setValue(dsTagValues, valueRow, valueCol, "Tag Does Not Exist")

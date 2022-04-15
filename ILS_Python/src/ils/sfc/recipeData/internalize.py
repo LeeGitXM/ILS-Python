@@ -12,8 +12,8 @@ import system
 from ils.common.config import getDatabaseClient
 from ils.common.util import escapeJSON
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # Use this to limit the scope during testing
 WHERE = "where chartId >= 769 and chartId <= 773 or chartId = 801 or chartId = 805"

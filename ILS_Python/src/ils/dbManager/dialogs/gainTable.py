@@ -6,8 +6,10 @@ Created on Apr 19, 2019
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForGain
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.common.config import getDatabaseClient
+from ils.log import getLogger
+log = getLogger(__name__)
+
 POWER_TABLE_NAME = "Gain Table"
 
 # Called from the client startup script: View menu
@@ -22,17 +24,18 @@ def internalFrameOpened(rootContainer):
     log.infof("In %s.InternalFrameOpened", __name__)
     dropdown = rootContainer.getComponent("FamilyDropdown")
     dropdown.setSelectedStringValue(getUserDefaults("FAMILY"))
-    
+
 # When the screen is first displayed, set widgets for user defaults
 # The "active" dropdown is always initialized to "TRUE"
 def internalFrameActivated(rootContainer):
     log.infof("In %s.InternalFrameActivated", __name__)
+    db = getDatabaseClient()
     requery(rootContainer)
     dropdown = rootContainer.getComponent("FamilyDropdown")
 
     SQL = "Select RecipeFamilyName from RtRecipeFamily where HasGains = 1 order by RecipeFamilyName"
-    pds = system.db.runQuery(SQL)
-    
+    pds = system.db.runQuery(SQL, database=db)
+
     # Create a new dataset using only the Name column
     header = ["Family"]
     names = []
@@ -52,7 +55,6 @@ def internalFrameActivated(rootContainer):
         # Loose old edits if we select a different database
         if oldSelection!=current:
             print "...new family selection %s ..." % (current)    
-    
 
 def requery(rootContainer):
     log.infof("In %s.requery", __name__)
@@ -81,11 +83,12 @@ def requery(rootContainer):
             table.setColumnWidth(col, 110)
     
 def fetchColumns(recipeFamilyName):
+    db = getDatabaseClient()
     SQL = "select  G.Parameter "\
         "from RtGain G,  RtRecipeFamily F "\
         "where G.RecipeFamilyId = F.RecipeFamilyId "\
         " and F.RecipeFamilyName = '%s' order by Parameter" % (recipeFamilyName)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     columns = []
     for record in pds:
@@ -95,6 +98,7 @@ def fetchColumns(recipeFamilyName):
     return columns
     
 def fetchRows(recipeFamilyName, activeOnly):
+    db = getDatabaseClient()
     if activeOnly:
         SQL = "select distinct GM.Grade "\
             " from RtGradeMaster GM,  RtRecipeFamily RF "\
@@ -105,7 +109,7 @@ def fetchRows(recipeFamilyName, activeOnly):
             " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
     
     print SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     rows = []
     for record in pds:
@@ -115,10 +119,11 @@ def fetchRows(recipeFamilyName, activeOnly):
     return rows
 
 def fetchData(recipeFamilyName):
+    db = getDatabaseClient()
     SQL = "select Grade, Parameter, Gain "\
         " from RtGainView "\
         "where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     print "Fetched %d rows of data..." % (len(pds))
     return pds
 
@@ -148,6 +153,7 @@ def mergeData(rootContainer, grades, columns, pds):
 
 def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     print "Setting the new value to <%s>" % (newValue)
+    db = getDatabaseClient()
     rootContainer = self.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     familyId = idForFamily(familyName)
@@ -165,7 +171,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
         SQL = "update RtGainGrade set gain = %s where ParameterId = %d and Grade = '%s'" % (str(newValue), parameterId, grade)
     print SQL
     
-    rows = system.db.runUpdateQuery(SQL)
+    rows = system.db.runUpdateQuery(SQL, database=db)
     
     if rows == 0:
         print "   --- no rows were updated, try to insert ---"
@@ -174,7 +180,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
         else:
             SQL = "INSERT INTO RtGainGrade (ParameterId, Grade, Gain) VALUES (%i, '%s', %s)" % (parameterId, grade, str(newValue))
         print SQL
-        rows = system.db.runUpdateQuery(SQL)
+        rows = system.db.runUpdateQuery(SQL, database=db)
         if rows == 0:
             print "*** NO ROWS WERE ADDED ***"
     
@@ -182,6 +188,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
 
 def deleteColumn(event):
     print "In %s.deleteColumn()" % (__name__)
+    db = getDatabaseClient()
     rootContainer = event.source.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     recipeFamilyId = idForFamily(familyName)
@@ -197,13 +204,14 @@ def deleteColumn(event):
     
     ''' Hopefully there is a cascade delete on the RtGainGrade table '''
     SQL = "delete from RtGain where Parameter = '%s' and RecipeFamilyId = %d" % (parameter, recipeFamilyId)
-    system.db.runUpdateQuery(SQL)
+    system.db.runUpdateQuery(SQL, database=db)
     
     requery(rootContainer)
 
 
 def addGainParameter(button, parameter):
     rootContainer = button.parent
+    db = getDatabaseClient()
     
     # Family
     family = rootContainer.getComponent("FamilyDropdown").selectedStringValue
@@ -217,12 +225,12 @@ def addGainParameter(button, parameter):
     if parameter!=None and len(parameter)>0:
         SQL = "INSERT INTO RtGain (RecipeFamilyId, Parameter) VALUES (%i, '%s')" % (familyId, parameter)
         log.trace(SQL)
-        system.db.runUpdateQuery(SQL)            
+        system.db.runUpdateQuery(SQL, database=db)
     else:
         system.gui.messageBox("Please enter a parameter name!")
 
 def exportCallback(event):
-    rootContainer = event.source.parent
+    db = getDatabaseClient()
     where = ""
     
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
@@ -236,7 +244,7 @@ def exportCallback(event):
         " %s order by RecipeFamilyName, Grade, Parameter" % (where)
     print SQL
         
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     log.trace(SQL)
     print "Fetched %d rows of data..." % (len(pds))
 

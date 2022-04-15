@@ -8,8 +8,8 @@ import system, time
 import system.ils.blt.diagram as scriptingInterface
 from ils.io.util import readTag
 
-from ils.log.LogRecorder import LogRecorder
-log=LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # -------------------------- Helper methods ----------------------
 # Return the ProcessDiagram at the specified path
@@ -331,8 +331,9 @@ def fetchFamilyNameForFinalDiagnosisId(finalDiagnosisId, db=""):
     return familyName
 
 # Lookup the family Id given the name
-def fetchFamilyId(familyName, database=""):
-    SQL = "select FamilyId from DtFamily where FamilyName = '%s'" % (familyName)
+def fetchFamilyId(applicationName, familyName, database=""):
+    SQL = "select F.FamilyId from DtApplication A, DtFamily F "\
+        "where A.ApplicationId = F.ApplicationId and A.ApplicationName = '%s' and F.FamilyName = '%s'" % (applicationName, familyName)
     log.tracef("%s.fetchFamilyId(): %s", __name__, SQL)
     familyId = system.db.runScalarQuery(SQL, database)
     return familyId

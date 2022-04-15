@@ -10,8 +10,9 @@ from ils.dbManager.sql import idForFamily
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.common.config import getDatabaseClient
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # Called from the client startup script: View menu
 # Note: No attempt is made at this point to reconcile with any tab strip
@@ -24,6 +25,7 @@ def showWindow():
 # If we get an exception, then rollback the transaction.
 def requery(rootContainer):
     log.info("event.requery ...")
+    db = getDatabaseClient()
     table = rootContainer.getComponent("DatabaseTable")
     whereExtension = getWhereExtension(rootContainer)
     SQL = "SELECT F.RecipeFamilyName, E.Grade, EP.Parameter, E.Value, EP.ParameterId " \
@@ -33,7 +35,7 @@ def requery(rootContainer):
         " ORDER BY RecipeFamilyName, Grade, Parameter" % (whereExtension)
     log.trace(SQL)
     try:
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         table.data = pds
     except:
         notifyError(__name__, "Error fetching the event data")
@@ -41,6 +43,7 @@ def requery(rootContainer):
 # By deleting a row, we are deleting the parameter for every grade for the family.
 def deleteRow(button):
     log.info("event.deleteRow ...")
+    db = getDatabaseClient()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
     
@@ -48,7 +51,7 @@ def deleteRow(button):
     ds = table.data
     pid = ds.getValueAt(rownum,'ParameterId')
     
-    tx = system.db.beginTransaction()
+    tx = system.db.beginTransaction(database=db)
     try:
         SQL = "DELETE FROM RtEvent WHERE ParameterId = %i" % (pid)
         log.trace(SQL)
@@ -67,7 +70,7 @@ def deleteRow(button):
         ds = system.dataset.deleteRow(ds,rownum)
         table.data = ds
         table.selectedRow = -1
-        
+
     system.db.closeTransaction(tx)
 
 # Enhance the joining where clause with the selects from the dropdowns
@@ -108,18 +111,20 @@ def internalFrameActivated(rootContainer):
 # Update database for a cell edit. We only allow edits of parameter name or limits.
 def update(table,row,colname,value):
     log.info("event.update (%d:%s)=%s ..." %(row,colname,str(value)))
+    db = getDatabaseClient()
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     paramid=ds.getValueAt(row,"ParameterId")
     grade=ds.getValueAt(row,"Grade")
     SQL = "UPDATE RtEvent SET value = %s WHERE ParameterId = %i and Grade = '%s'" % (str(value), paramid, grade)
     log.trace(SQL)
-    system.db.runUpdateQuery(SQL)
+    system.db.runUpdateQuery(SQL, database=db)
     
 # Add a new row to the RtEventParameters table and one row for each grade to the RtEvents table
 # By adding a new parameter, we are adding a new parameter for every grade for the family
 # Will get an error if the row exists.
 def addParameter(button, parameter):
+    db = getDatabaseClient()
     rootContainer = getRootContainer(button)
     
     # Family
@@ -131,7 +136,7 @@ def addParameter(button, parameter):
 
     # Parameter
     if parameter!=None and len(parameter)>0:
-        tx = system.db.beginTransaction()
+        tx = system.db.beginTransaction(database=db)
         
         try:
             SQL = "INSERT INTO RtEventParameter (RecipeFamilyId, Parameter) VALUES (%i, '%s')" % (familyId, parameter)

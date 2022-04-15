@@ -6,8 +6,8 @@ Created on Nov 9, 2014
 
 import system
 from ils.common.config import getDatabaseClient
-from ils.log.LogRecorder import LogRecorder
-logger = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def display():
     logger.infof("In %s.display() - Displaying the download log window", __name__)

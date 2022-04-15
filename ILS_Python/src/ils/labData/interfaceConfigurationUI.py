@@ -57,10 +57,22 @@ def deleteOpcServer(event):
     rootContainer = event.source.parent
     print "In %s.deleteOpcServers()" % (__name__)
 
+    db = getDatabaseClient()
     table = rootContainer.getComponent("OPC Servers")
     ds = table.data
     selectedRow = table.selectedRow
     serverName = ds.getValueAt(selectedRow, "InterfaceName")
+    
+    ''' Make sure that the interface is not in use anywhere '''
+    SQLs = ["select count(*) from LtDCSValueView where InterfaceName = '%s'" % (serverName),
+            "select count(*) from LtLimitView where InterfaceName = '%s'" % (serverName)]
+
+    for SQL in SQLs:
+        cnt = system.db.runScalarQuery(SQL, database=db)
+        if cnt > 0:
+            system.gui.messageBox("The OPC interface <%s> is currently in use.  The interface cannot be deleted until all references are removed." % (serverName))
+            return
+    
     removeOpcServer(serverName)
     refreshOpcServers(rootContainer)
     
@@ -115,6 +127,7 @@ def addHdaServer(event):
         refreshHdaServers(rootContainer)
     
 def deleteHdaServer(event):
+    db = getDatabaseClient()
     rootContainer = event.source.parent
     print "In %s.deleteHdaServers()" % (__name__)
 
@@ -122,6 +135,18 @@ def deleteHdaServer(event):
     ds = table.data
     selectedRow = table.selectedRow
     serverName = ds.getValueAt(selectedRow, "InterfaceName")
+    
+    ''' Make sure that the interface is not in use anywhere '''
+    SQLs = ["select count(*) from LtLocalValueView where InterfaceName = '%s'" % (serverName),
+            "select count(*) from LtPHDValueView where InterfaceName = '%s'" % (serverName),
+            "select count(*) from LtDerivedValueView where InterfaceName = '%s'" % (serverName)]
+
+    for SQL in SQLs:
+        cnt = system.db.runScalarQuery(SQL, database=db)
+        if cnt > 0:
+            system.gui.messageBox("The HDA interface <%s> is currently in use.  The interface cannot be deleted until all references are removed." % (serverName))
+            return
+
     removeHdaServer(serverName)
     refreshHdaServers(rootContainer)
     

@@ -7,8 +7,8 @@ import system
 import time
 from java.util import Calendar
 import ils.common.util as util
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # History should be restored on startup, but generally the site needs to perform a site specific selector
 # configuration BEFORE the history is performed.
@@ -34,15 +34,24 @@ def gateway(tagProvider, isolationTagProvider):
 
 # The Lab Selector Value UDT has a trigger tag which acts as a semaphore and needs to be reset on startup
 def resetSelectorTriggers(provider):
-    log.info("Resetting Lab Data Selector Trigger tags...")
-    selectors=system.tag.browseTags(parentPath=provider, udtParentType="Lab Data/Lab Selector Value", recursive=True)
+    log.infof("Resetting Lab Data Selector Trigger tags in %s...", provider)
+    filters = {
+              "tagType":"UdtInstance",
+              "typeId":"Lab Data/Lab Selector Value", 
+              "recursive": True
+              }
+    
+    selectors=system.tag.browse(path=provider, filter=filters)
+    log.infof("...found %d lab data selectors in %s", len(selectors), provider)
     
     tagNames=[]
     tagValues=[]
-    for selector in selectors:
-        tagNames.append(selector.fullPath + "/trigger")
+    for selector in selectors.getResults():
+        tagNames.append(str(selector['fullPath']) + "/trigger")
         tagValues.append(False)
-    system.tag.writeAll(tagNames, tagValues)
+    
+    if len(tagNames) > 0:
+        system.tag.writeBlocking(tagNames, tagValues)
         
 
 def client():
@@ -208,7 +217,7 @@ def restoreValueHistory(tagProvider, historyProvider, daysToRestore=7, database=
                     tags.append(tagName + "/status")
                     tagValues.append("Restore")
     
-    system.tag.writeAll(tags, tagValues)
+    system.tag.writeBlocking(tags, tagValues)
 
 def fetchGradeHistory(gradeHistory, unitName, daysToRestore, historyProvider):
     import datetime

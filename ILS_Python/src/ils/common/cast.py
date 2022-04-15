@@ -88,20 +88,36 @@ def jsonToDict(json):
 def determineType(val):
     '''
     If they supplied the value None then make a completely arbitrary decision to create a Float.
+    I wish I would have used the Python type constants rather than my names for Integer, Float, String, etc
     '''
     if val == None:
         return "Float", 0.0
     
-    if val in [True, 'TRUE', 'True', 'true']:
-        return "Boolean", True
-    elif val in [False, 'FALSE', 'False', 'false']:
-        return "Boolean", False
-    elif isInteger(val):
-        return "Integer", int(val)
-    elif isFloat(val):
-        return "Float", float(val)
+    ''' This isn't typical Python behavior ''' 
+    if val in ['TRUE', 'True', 'true']:
+        val = True
+    if val in ['FALSE', 'False', 'false']:
+        val = False
     
+    ''' This very carefully distinguishes between 1 / True and 0 / False '''
+    if val is True or val is False:
+        return "Boolean", val
+    
+    if isinstance(val, int):
+        return "Integer", int(val)
+    elif isinstance(val, float):
+        return "Float", float(val)
+    elif isinstance(val, str):
+        return "String", val
+
     return "String", val
+
+def listToDataset(valueList):
+    vals = []
+    for val in valueList:
+        vals.append([val])
+    ds = system.dataset.toDataSet(["val"], vals)
+    return ds
 
 def extendedPropertiesToDictionary(extendedProperties):
     dict = {}

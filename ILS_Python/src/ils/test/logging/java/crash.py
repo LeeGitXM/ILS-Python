@@ -4,8 +4,8 @@ Created on Feb 4, 2021
 @author: phass
 '''
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def work_ok():
     log.infof("work_ok() is starting...")

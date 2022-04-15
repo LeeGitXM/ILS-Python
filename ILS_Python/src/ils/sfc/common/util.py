@@ -24,6 +24,7 @@ from ils.sfc.common.constants import CONTROL_PANEL_ID, \
     TAG_PROVIDER, \
     TIME_FACTOR
 
+log = system.util.getLogger(__name__)
 '''
 This is designed to be called from a tag change script that will trigger the execution of a SFC.   
 An SFC will run just fine without the control panel, even if control panel messages are used.  If the SFC 
@@ -34,7 +35,7 @@ def startChartAndOpenControlPanel(chartPath, controlPanelName, project, post, is
     
     print "In %s.startChartAndOpenControlPanel" % (__name__)
     
-    if chartIsRunning(chartPath):
+    if chartIsRunning(chartPath, isolationMode):
         print "Exiting because the chart is already running!"
         return
     
@@ -67,10 +68,13 @@ unlike in the old system, where we ran a unit procedure, here we are running a c
 better have a unit procedure on the top chart.  However all this method has is a chart path, it has no
 way of knowing about the unit procedure block.  So when the unit procedure block runs we will update the 
 record in the SfcControlParameter table. 
+
+1/28/22 - I am now assuming that this is only called from a client.  If there is some mechanism to call this from the gateway
+          then it needs to check scope.
 '''
 def startChart(chartPath, controlPanelName, project, originator, isolationMode, chartParams={}):
     print "Starting a chart: <%s>, control panel: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, controlPanelName, project, originator, str(isolationMode))
-    if chartIsRunning(chartPath):
+    if chartIsRunning(chartPath, isolationMode):
         print "Exiting because the chart is already running!"
         return
     
@@ -115,7 +119,7 @@ def startChart(chartPath, controlPanelName, project, originator, isolationMode, 
 
 def startChartWithoutControlPanel(chartPath, project, originator, isolationMode, chartParams={}):
     print "Starting a chart: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, project, originator, str(isolationMode))
-    if chartIsRunning(chartPath):
+    if chartIsRunning(chartPath, isolationMode):
         print "Exiting because the chart is already running!"
         return
     
@@ -277,7 +281,36 @@ def getChartStatus(runId):
             status = str(chartState)
     return status
 
-def chartIsRunning(chartPath):
+def chartIsRunning(chartPath, isolationMode=False):
+    '''Check if the given chart is running. '''
+    log.infof("Checking if <%s> is currently running in Isolation Mode: %s...", chartPath, isolationMode)
+    ds = system.sfc.getRunningCharts(chartPath)
+    log.tracef("Found %d running <%s> chart(s)", ds.rowCount, chartPath)
+    if ds.rowCount == 0:
+        log.infof("The chart is NOT already running!")
+        return False
+    
+    ''' We found a running chart, determine if the isolation Mode of the running chart matches the desired isolation mode.'''
+    for row in range(ds.rowCount):
+        chartState = str(ds.getValueAt(row, "ChartState"))
+        log.tracef("The chart state is: <%s>", str(chartState))
+        if string.upper(chartState) in ["RUNNING", "PAUSED"]:
+            instanceId = ds.getValueAt(row, "instanceId")
+            log.tracef("...found a running chart with instance id: %s", instanceId)
+            chartVars = system.sfc.getVariables(instanceId)
+            log.tracef("Chart variables: %s", str(chartVars))
+
+            instanceIsolationMode = chartVars.get("isolationMode", None)
+            log.tracef("Running chart isolation mode: %s", str(instanceIsolationMode))
+            
+            if instanceIsolationMode == isolationMode:
+                log.infof("The chart IS already running!")
+                return True
+        
+    log.infof("The chart is NOT already running!")
+    return False
+
+def chartIsRunning_OLD(chartPath):
     '''Check if the given chart is running. '''
     ds = system.sfc.getRunningCharts(chartPath)
     print "Fetched %d running charts" % (ds.rowCount)

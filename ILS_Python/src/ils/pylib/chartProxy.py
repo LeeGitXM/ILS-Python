@@ -5,8 +5,8 @@ import system.ils.sfc as ilssfc
 import system.ils.tf as testframe
 from ils.sfc.recipeData.api import s88GetFromName, s88SetFromName
 
-from ils.log.LogRecorder import LogRecorder
-logger = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 '''
 If we are starting a chart from the top then we don't need to call this.
@@ -36,13 +36,13 @@ def updateConsoleRecord(common,path,controlPanelName,isolationMode):
 	system.db.runUpdateQuery(SQL,db)
 
 def getRecipeData(common,path,stepName,keyAndAttribute,isolationMode):
-	logger.tracef("s88GetFromName():  %s * %s * %s", path, stepName, keyAndAttribute)
+	log.tracef("s88GetFromName():  %s * %s * %s", path, stepName, keyAndAttribute)
 	db = ilssfc.getDatabaseName(str2bool(isolationMode))
 	data = s88GetFromName(path, stepName, keyAndAttribute, db)
 	common['result'] = str(data)
 	
 def setRecipeData(common,path,stepName,keyAndAttribute,theValue,isolationMode):
-	logger.tracef("s88SetFromName():  %s * %s * %s : %s", path, stepName, keyAndAttribute, theValue)
+	log.tracef("s88SetFromName():  %s * %s * %s : %s", path, stepName, keyAndAttribute, theValue)
 	if isolationMode in [True, "True"]:
 		isolationMode = True
 	else:

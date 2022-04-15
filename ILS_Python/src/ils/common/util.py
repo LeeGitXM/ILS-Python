@@ -5,11 +5,10 @@ Created on Sep 10, 2014
 '''
 
 import system, string, re
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
 from ils.common.config import getTagProvider
 from ils.common.constants import CR, TAG
-from system.date import secondsBetween
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def append(t1, t2):
     if t1 == "":
@@ -78,6 +77,15 @@ def parseFilename(filename):
         extension = ''
     
     return drive, filename, extension
+
+def parseResourcePath(fullPath):
+    if fullPath.rfind("/") == -1:
+        path = ""
+        resourceName = fullPath
+    else:
+        path = fullPath[:fullPath.rfind("/")]
+        resourceName = fullPath[fullPath.rfind("/")+1:]
+    return path, resourceName
 
 def fileWriterMessageHandler(payload):
     log.infof("In %sfileWriterMessageHandler.", __name__)

@@ -6,16 +6,15 @@ Created on Mar 21, 2017
 Scripts in support of the "Grade Detail" dialog
 '''
 import system
-from ils.io.util import readTag
+from ils.io.util import readTag							   
 from ils.dbManager.ui import populateRecipeFamilyDropdown, populateGradeForFamilyDropdown, populateVersionForGradeDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
-
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.common.config import getDatabaseClient
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     print "In %s.InternalFrameOpened()" % (__name__)
-
 
 def internalFrameActivated(rootContainer):
     print "In %s.InternalFrameActivated()" % (__name__)
@@ -28,14 +27,16 @@ def internalFrameActivated(rootContainer):
           
     dropdown = rootContainer.getComponent("VersionDropdown")
     populateVersionForGradeDropdown(dropdown)
-    
+
     requery(rootContainer)
 
-
-# Re-query the database and update the screen accordingly.
-# If we get an exception, then rollback the transaction.
+'''
+Re-query the database and update the screen accordingly.
+If we get an exception, then rollback the transaction.
+'''
 def requery(rootContainer):
     print "In %s.requery()" % (__name__)
+    db = getDatabaseClient()
     table = rootContainer.getComponent("DatabaseTable")
     print table
     
@@ -74,7 +75,7 @@ def requery(rootContainer):
         " ORDER BY F.RecipeFamilyName,GM.Grade,VD.PresentationOrder,GM.Version" % (andWhere)
     print SQL
 
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     table.data = pds
     print "...fetched %d rows" % (len(pds))
 
@@ -90,7 +91,7 @@ def showWindow():
 # limits.
 def update(table,row,colname,value):
     print "In %s.update() - row:%d, col: %s, value: <%s> ..." % (__name__, row, colname, str(value))
-
+    db = getDatabaseClient()
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     familyid = ds.getValueAt(row,"RecipeFamilyId")
@@ -128,7 +129,7 @@ def update(table,row,colname,value):
                     " WHERE RecipeFamilyId=%d and Grade='%s' and Version = %d and ValueId = %d" \
                     % (colname, str(value), familyid, str(gradeid), version, vid)
         print "SQL: ", SQL
-        rows = system.db.runUpdateQuery(SQL)
+        rows = system.db.runUpdateQuery(SQL, database=db)
         print "Updated %d rows" % (rows)
     except:
         system.gui.warningBox(msg)
@@ -137,6 +138,7 @@ def update(table,row,colname,value):
 
 
 def exportCallback(event):
+    db = getDatabaseClient()
     rootContainer = event.source.parent
     andWhere = ""
     
@@ -168,7 +170,7 @@ def exportCallback(event):
     
     log.trace(SQL)
 
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     csv = system.dataset.toCSV(pds)
     filePath = system.file.saveFile("GradeDetail.csv", "csv", "Comma Separated Values")
     if filePath:

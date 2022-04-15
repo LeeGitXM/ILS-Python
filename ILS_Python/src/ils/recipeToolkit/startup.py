@@ -7,7 +7,7 @@ Created on Sep 10, 2014
 import system
 
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.recipeToolkit")
+log = LogUtil.getLogger(__name__)
 
 def gateway(tagProvider, isolationTagProvider):
     
@@ -31,7 +31,7 @@ def client(tagProvider, database):
     log.info("Initializing the recipe toolkit")
 
 def createTags(tagProvider):
-    print "Creating global constant memory tags...."
+    log.infof("Creating global constant memory tags....")
     headers = ['Path', 'Name', 'Data Type', 'Value']
     data = []
     path = tagProvider + "Configuration/RecipeToolkit/"
@@ -121,6 +121,6 @@ def restoreLocalRecipe(recipeFamily, grade, tagProvider = "", database=""):
         vals.append(record["RecommendedValue"])
     
     if len(tags) > 0:
-        system.tag.writeAll(tags, vals)
+        system.tag.writeBlocking(tags, vals)
         
     log.info("Done restoring local recipe tags!")

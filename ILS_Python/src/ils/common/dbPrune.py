@@ -9,8 +9,8 @@ from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.common.constants import CR
 from ils.common.database import toDateString
 from ils.io.util import readTag
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 SQL = [
     "delete from alarm_events where eventTime ",

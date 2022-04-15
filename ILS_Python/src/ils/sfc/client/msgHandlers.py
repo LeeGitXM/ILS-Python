@@ -9,8 +9,8 @@ from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PAN
 from ils.sfc.client.windowUtil import shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
 from ils.common.config import getDatabaseClient
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 '''
 This is the worst name in the history of bad names.  This is the handler in the client that catches the message, not the sender!
@@ -168,18 +168,6 @@ def sfcOpenControlPanel(payload):
     clientDatabase = getDatabaseClient()
     
     log.tracef("...checking if the control panel should be shown on this client...")
-    '''
-    I'm not sure why we had distinct logic for the control panel, but we did.  Pete 4/22/21
-    
-    if database <> clientDatabase:
-        log.tracef("...the window should NOT be shown because the client database (%s) does not match the message database (%s)", clientDatabase, database)
-        return
-     
-    if string.upper(originator) <> string.upper(system.security.getUsername()):
-        log.tracef("...the window should NOT be shown because the user does not match!")
-        return
-    '''
-    
     if not(shouldShowWindow(payload)):
         return
     
@@ -204,9 +192,11 @@ def sfcCloseWindow(payload):
         openWindows = system.gui.getOpenedWindows()
         for window in openWindows:
             # Not all windows have a windowId, so be careful
+            log.tracef("Checking window: %s", str(window))
             rootContainer = window.getRootContainer()
             openWindowId = rootContainer.getPropertyValue("windowId")
             if str(openWindowId) == str(windowId):
+                log.tracef("...closing %s", str(window))
                 system.nav.closeWindow(window)
 
 
@@ -238,10 +228,6 @@ def sfcShowQueue(payload):
     log.tracef("...checking if the queue should be shown on this client...")
     if not(shouldShowWindow(payload)):
         return
-    
-#    if not(controlPanelOpen(controlPanelName)) and (originator != system.security.getUsername()) and not(showOverride):
-#        print "The control panel is not open and the originator is not this user so do not show the window here!"
-#        return
 
     from ils.queue.message import view
     view(queueKey, useCheckpoint=True, silent=True, position=position, scale=scale)

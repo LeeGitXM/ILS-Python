@@ -9,8 +9,8 @@ from ils.sfc.recipeData.core import fetchRecipeDataTypeId, fetchValueTypeId
 from ils.common.cast import determineType, toBit
 from ils.common.error import catchError
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def createDynamicRecipe(stepId, recipeDataType, key, db, val=None):
     log.infof("Creating dynamic recipe data for step: %d, type: %s, key: %s", stepId, recipeDataType, key)

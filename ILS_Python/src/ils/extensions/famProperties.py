@@ -17,8 +17,8 @@ def delete(familyUUID):
     I'd like to use the application name, which is guarenteed to be unique by the database, but I think that the gateway has already deleted the application so the getApplicationName()
     call fails - at least that is the only explanation I can come up with!  So instead use the UUID to delete the application.
     '''
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".delete")
+    from ils.log import getLogger
+    log = getLogger(__name__ + ".delete")
 
     log.infof("In %s.delete() with family uuid: %s", __name__, familyUUID)
     db = handler.getProductionDatabase()
@@ -41,8 +41,8 @@ def rename(uuid,oldName,newName):
         SQL = "UPDATE DtFamily SET FamilyName= '%s' WHERE FamilyName = '%s'" % (newName,oldName)
         system.db.runUpdateQuery(SQL,db)
     
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".rename")
+    from ils.log import getLogger
+    log = getLogger(__name__ + ".rename")
     
     log.infof("In %s.rename()", __name__)
     db = handler.getProductionDatabase()
@@ -62,8 +62,8 @@ def save(familyUUID):
     do anything (and I don't know how to get it).  This isn't really a show stopper because the engineer needs to
     open the big configuration popup Swing dialog which will insert a record if it doesn't already exist.
     '''
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".save")
+    from ils.log import getLogger
+    log = getLogger(__name__ + ".save")
     log.infof("In %s.save()", __name__)
     
     db = handler.getProductionDatabase()
@@ -118,8 +118,8 @@ production or isolation databases. The Gateway makes this call when converting i
 # 
 # Fill the aux structure with values from the database
 def getAux(uuid, aux, db):
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".getAux")
+    from ils.log import getLogger
+    log = getLogger(__name__ + ".getAux")
     log.infof("In %s.getAux()", __name__)
     
     applicationName  = handler.getApplicationName(uuid)
@@ -144,8 +144,8 @@ def getAux(uuid, aux, db):
 
 
 def setAux(uuid,aux,db):
-    from ils.log.LogRecorder import LogRecorder
-    log = LogRecorder(__name__ + ".setAux")
+    from ils.log import getLogger
+    log = getLogger(__name__ + ".setAux")
     log.infof("In %s.setAux()", __name__)
     
     appName  = handler.getApplicationName(uuid)

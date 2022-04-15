@@ -5,8 +5,8 @@ Created on Mar 21, 2017
 '''
 
 import system, string
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 from ils.common.error import notifyError
 
 

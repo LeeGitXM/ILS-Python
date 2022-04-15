@@ -9,9 +9,9 @@ from ils.sfc.recipeData.core import fetchStepTypeIdFromFactoryId, fetchChartIdFr
 from ils.common.util import formatDateTimeForDatabase
 from ils.common.error import catchError
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
-parseLog = LogRecorder(__name__ + ".xmlParser")
+from ils.log import getLogger
+log = getLogger(__name__)
+parseLog = getLogger(__name__ + ".xmlParser")
 
 def compileCharts(deletedResources, addedResources, changedResources, db):
     '''
@@ -125,9 +125,15 @@ class Compiler():
         
         The reason that we want to reserve the record in SfcChart and SfcSteps is so that recipe data is preserved.
         '''
-        log.tracef("Handling moved resources:")
-        cntr = 0
+        log.tracef("Handling moved resources, (resources that are marked for deletion: %s)", str(self.deletedResources))
+        
+        ''' I need to make a local copy of the list because I am removing members of the list as I go which throws off the iteration '''
+        deletedResourceIds = []
         for deletedResourceId in self.deletedResources:
+            deletedResourceIds.append(deletedResourceId)
+        
+        cntr = 0
+        for deletedResourceId in deletedResourceIds:
             log.tracef("    Checking deleted resource %s", str(deletedResourceId))
             deletedChartPath, deletedChartName, deletedChartId = self.fetchChartForResourceId(deletedResourceId)
             
@@ -154,7 +160,7 @@ class Compiler():
                         
                         ''' 
                         When a chart is moved, all of the callers to that chart are broken (because IA uses absolute path references). 
-                        Presumably. the engineer will go and fix the references, but when they do I will receive and updated dictionary.
+                        Presumably, the engineer will go and fix the references, but when they do I will receive and updated dictionary.
                         '''
                         self.deleteChartFromDatabaseHierarchy(deletedChartId)
                         
@@ -168,6 +174,7 @@ class Compiler():
                             del self.changedResources[deletedResourceId]
                             res["chartPath"]  = addedChartPath
                             self.changedResources[addedResourceId] = res
+        
         log.tracef("...done with moved resources, moved %d charts", cntr)
             
                             
@@ -192,7 +199,7 @@ class Compiler():
         The problem is that the "/" is also a path delimiter
         '''
         chartName = chartPath[chartPath.rfind("/")+1:]
-        print "Found <%s> <%s>" % (chartPath, chartName)
+        log.tracef("     Found <%s> <%s>", chartPath, chartName)
         return chartPath, chartName, chartId
 
 
@@ -241,7 +248,7 @@ class Compiler():
                 Do not delete the chart from the database now.  This is now done at the end in order to support a moved step (and the recipe data on it)  
                 '''
                 #deleteChart(resourceId, db)
-                log.tracef("...dine with deleted resources (Phase 1) - handled %d deleted charts and removed %d from the update list", i, j)
+                log.tracef("...done with deleted resources (Phase 1) - handled %d deleted charts and removed %d from the update list", i, j)
                 
         elif phase == self.PHASE_2:    
             try:
@@ -743,12 +750,18 @@ class Chart():
             childUpdateCntr = 0
             for child in self.children:
                 stepName = child.get("name")
-                childPath = child.get("childPath")
+                #childPath = child.get("childPath")
                 stepUUID = child.get("id") 
                 stepType = child.get("type")
                 log.tracef("----------------------------")
-                log.tracef("Checking stepName: %s, childPath: %s, stepUUID: %s, step type: %s...", stepName, childPath, stepUUID, stepType)
+                log.tracef("Checking stepName: %s, childPath: %s, stepUUID: %s, step type: %s...", stepName, child.get("childPath"), stepUUID, stepType)
                 
+                '''
+                If the path of the called chart begins with a "." then it is a relative chart path and we need to concatenat the
+                parent's path to the called chart path
+                '''
+                child["childPath"] = self.convertRelativeChartPath(child.get("childPath"))
+
                 '''
                 Compare the stepName and childPath from the Designer with what is already in the database
                 '''
@@ -758,7 +771,7 @@ class Chart():
                     if stepName == childDatabase["StepName"]:
                      
                         insertChild = False
-                        if childPath == childDatabase["ChildChartPath"]:
+                        if child.get("childPath") == childDatabase["ChildChartPath"]:
                             log.tracef("...this child already exists...")
                         else:
                             log.tracef("...this child already exists but is calling a different chart...")
@@ -866,6 +879,41 @@ class Chart():
 
         log.tracef("      --- step is not in the database ---")
         return False, None
+    
+    def convertRelativeChartPath(self, childPath):
+        '''
+        The child's chart path is w.r.t the folder containing the calling chart, so immediately pop off the chart name
+        '''
+        tokens = childPath.split("/")
+        if tokens[0] not in [".", ".."]:
+            log.tracef("The child path is absolute!")
+            return childPath
+        
+        log.infof("...converting a relative chart path <%s> <%s>...", self.chartPath, childPath)
+        
+        # Split the parent path into folders and drop the last token which is the chart name
+        parentFolders = self.chartPath.split("/")
+        del parentFolders[len(parentFolders)-1]
+        
+        for token in tokens:
+            if token == ".":
+                log.tracef("...starting at current folder...")
+                childPath = childPath[1:]
+                log.tracef("   <%s> <%s>", str(parentFolders), childPath)
+            elif token == "..":
+                log.tracef("...going up a level...")
+                del parentFolders[len(parentFolders)-1]
+                childPath = childPath[3:]
+                log.tracef("   <%s> <%s>", '/'.join(parentFolders), childPath)
+        
+        parentPath = '/'.join(parentFolders)
+        
+        if childPath[0] == "/":
+            childPath = childPath[1:]
+        
+        childPath = parentPath + "/" + childPath
+        log.infof("...absolute chart path: <%s>", childPath)
+        return childPath
     
     def checkForRenamedStep(self, stepName, stepUUID):
         '''

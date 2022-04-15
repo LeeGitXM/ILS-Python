@@ -18,8 +18,8 @@ class BasicTable():
 
     def __init__(self, tableStructure):
         ''' Set any default properties.  For this abstract class there aren't many (yet). '''
-        from ils.log.LogRecorder import LogRecorder
-        self.log = LogRecorder(__name__)
+        from ils.log import getLogger
+        self.log = getLogger(__name__)
         self.log.tracef("Initializing a %s", __name__)
         self.tableStructure = tableStructure
         

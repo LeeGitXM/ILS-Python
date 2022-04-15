@@ -27,7 +27,7 @@ def resetUnitParameters(tagProvider, recipeFamily):
         tagPaths.append(browseTag.fullPath + "/configurationChangeTime")
         tagValues.append(now)
 
-    system.tag.writeAll(tagPaths, tagValues)
+    system.tag.writeBlocking(tagPaths, tagValues)
 
 '''
 The state of the plant has changed either due to a reactor change or due to to setpoint "Download" or a "No Download".

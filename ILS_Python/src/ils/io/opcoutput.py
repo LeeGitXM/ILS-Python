@@ -9,10 +9,11 @@ Created on Jul 9, 2014
 import ils
 import ils.io
 import ils.io.opctag as opctag
+from ils.io.util import readTag, writeTag
 import system, string
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 
 class OPCOutput(opctag.OPCTag):
@@ -41,11 +42,11 @@ class OPCOutput(opctag.OPCTag):
         ''' Reset the UDT in preparation for a write '''
         status = True
         msg = ""
-        system.tag.write(self.path + '/command', '')
-        system.tag.write(self.path + '/badValue', False)
-        system.tag.write(self.path + '/writeConfirmed', False)
-        system.tag.write(self.path + '/writeErrorMessage', '')
-        system.tag.write(self.path + '/writeStatus', 'Reset')
+        writeTag(self.path + '/command', '')
+        writeTag(self.path + '/badValue', False)
+        writeTag(self.path + '/writeConfirmed', False)
+        writeTag(self.path + '/writeErrorMessage', '')
+        writeTag(self.path + '/writeStatus', 'Reset')
         return status, msg
  
     def confirmWrite(self, val, confirmTagPath=""):  
@@ -57,7 +58,7 @@ class OPCOutput(opctag.OPCTag):
         log.tracef("%s - Confirming the write of <%s> to %s...", __name__, str(val), confirmTagPath)
  
         from ils.io.util import confirmWrite as confirmWriteUtil
-        system.tag.write(self.path + '/writeStatus', 'Confirming')
+        writeTag(self.path + '/writeStatus', 'Confirming')
         confirmation, errorMessage = confirmWriteUtil(confirmTagPath, val)
         return confirmation, errorMessage
    
@@ -75,37 +76,38 @@ class OPCOutput(opctag.OPCTag):
             confirmTagPath = self.path + "/value"
 
         if val == None or string.upper(str(val)) == 'NAN':
+            log.tracef("...converting string NaN to float NaN...")
             val = float("NaN")
 
-        system.tag.write(self.path + "/writeConfirmed", False)
-        system.tag.write(self.path + "/writeStatus", "")
-        system.tag.write(self.path + "/writeErrorMessage", "")
+        writeTag(self.path + "/writeConfirmed", False)
+        writeTag(self.path + "/writeStatus", "")
+        writeTag(self.path + "/writeErrorMessage", "")
                                
         status,reason = self.checkConfig()
         if status == False :              
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", reason)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", reason)
             log.warnf("%s - Aborting write to %s, checkConfig failed due to: %s", __name__, self.path, reason)
             return status,reason
  
         ''' Update the status to "Writing" '''
-        system.tag.write(self.path + "/writeStatus", "Writing Value")
+        writeTag(self.path + "/writeStatus", "Writing Value")
  
         ''' Write the value to the OPC tag '''
         log.tracef("%s - Writing value <%s> to %s/value", __name__, str(val), self.path)
-        status = system.tag.write(self.path + "/value", val)
+        status = writeTag(self.path + "/value", val)
         log.tracef("%s - Write status: %s", __name__, status)
                                
         status, msg = self.confirmWrite(val, confirmTagPath)
  
         if status:
             log.tracef("%s - Confirmed: %s - %s - %s", __name__, self.path, status, msg)
-            system.tag.write(self.path + "/writeStatus", "Success")
-            system.tag.write(self.path + "/writeConfirmed", True)
+            writeTag(self.path + "/writeStatus", "Success")
+            writeTag(self.path + "/writeConfirmed", True)
         else:
             log.errorf("%s - Failed to confirm write of <%s> to %s because %s", __name__, str(val), self.path, msg)
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", msg)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", msg)
  
         return status, msg
 
@@ -116,34 +118,34 @@ class OPCOutput(opctag.OPCTag):
 
         log.tracef("%s.writeWithNoCheck() - Writing <%s> to %s, an OPCOutput with no confirmation", __name__, str(val), self.path)
 
-        system.tag.write(self.path + "/writeConfirmed", False)
-        system.tag.write(self.path + "/writeStatus", "")
-        system.tag.write(self.path + "/writeErrorMessage", "")
+        writeTag(self.path + "/writeConfirmed", False)
+        writeTag(self.path + "/writeStatus", "")
+        writeTag(self.path + "/writeErrorMessage", "")
                                
         status,reason = self.checkConfig()
 
         if status == False :              
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", reason)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", reason)
             log.warnf("%s - Aborting write to %s, checkConfig failed due to: %s", __name__, self.path, reason)
             return status,reason
  
         ''' Update the status to "Writing" '''
-        system.tag.write(self.path + "/writeStatus", "Writing Value")
+        writeTag(self.path + "/writeStatus", "Writing Value")
  
         ''' Write the value to the OPC tag '''
         log.tracef("%s - Writing value <%s> to %s/value", __name__, str(val), self.path)
-        status = system.tag.write(self.path + "/value", val)
+        status = writeTag(self.path + "/value", val)
         log.tracef("%s - Write status: %s", __name__, status)
                                
         if status == 0:
             success = False
             errorMessage = "Write failed immediately"
-            system.tag.write(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeStatus", "Failure")
         else:
             success = True
             errorMessage = ""
-            system.tag.write(self.path + "/writeStatus", "Success")
+            writeTag(self.path + "/writeStatus", "Success")
             
         log.tracef("%s - Write Status: %s - %s - %s", __name__, self.path, str(success), errorMessage)
  

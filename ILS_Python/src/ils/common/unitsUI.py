@@ -48,7 +48,17 @@ def internalFrameActivated(event):
     ds = clearDataset(ds)
     print "Rows: ", ds.rowCount
     aliasList.data = ds
+    
 
+def refreshTableWithClientDefinitions(event):
+    print "In %s.refreshTableWithClientDefinitions()" % (__name__)
+    ds=ils.common.units.getUnits()
+    ds = system.dataset.sort(ds, 0)
+    table = event.source.parent.getComponent("Power Table")
+    table.data=ds
+    numberOfUnitsLabel = event.source.parent.getComponent("Number of Units Label")
+    numberOfUnitsLabel.text = "%d units exist in client memory" % (ds.rowCount)
+    
 
 def getUnitsCallback():
     ds=ils.common.units.getUnits()

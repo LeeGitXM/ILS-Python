@@ -28,19 +28,22 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
     UDTType = 'Basic IO/' + UDTType
     parentPath = '[' + provider + ']' + path
     
-    productionProvider = getProductionTagProvider()
+    '''
+    I used to skip creating a UDT is we are in isolation mode.  I think that was before we had a good parallel set of isolation UDTs.
+    I think that the UDT that is created is the one defined for that provider.  So an isolation instance will use the isolation UDT.
+    PAH - 1/20/2022
+    '''
     tagPath = parentPath + "/" + tagName
     tagExists = system.tag.exists(tagPath)
     
     if tagExists:
         log.tracef("%s already exists!", tagPath)
-        pass
-    elif provider != productionProvider:
-        log.infof("Skipping the creation of %s, a %s, because we are in Isolation", tagName, UDTType)
     else:
         log.info("Creating a %s, Name: %s, Path: %s, Item Id: %s, Data Type: %s, Scan Class: %s, Server: %s, Conditional Data Type: %s" % (UDTType, tagName, tagPath, itemId, dataType, scanClass, serverName, conditionalDataType))
         if string.lower(dataType) == "string":
             dataType='String'
+        elif string.lower(dataType) == "float":
+            dataType='Float4'
     
         if UDTType == 'Basic IO/OPC Output':          
             config = {
@@ -65,7 +68,7 @@ def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass,
             }
             system.tag.configure(basePath=parentPath, tags=[config])
 
-        elif UDTType == 'Basic IO/OPC ConfitionalOutput':
+        elif UDTType == 'Basic IO/OPC Conditional Output':
             permissiveItemId = morphItemIdPermissive(itemId, modeAttribute, modeAttributeValue)
             config = {
                 'name': tagName,
@@ -101,17 +104,26 @@ def createRecipeDetailUDT(UDTType, provider, path, tagName):
     UDTType = 'Recipe Data/' + UDTType
     parentPath = '[' + provider + ']' + path
     
-    productionProvider = getProductionTagProvider()
+    '''
+    I used to skip creating a UDT is we are in isolation mode.  I think that was before we had a good parallel set of isolation UDTs.
+    I think that the UDT that is created is the one defined for that provider.  So an isolation instance will use the isolation UDT.
+    PAH - 1/20/2022
+    '''
+    
     tagPath = parentPath + "/" + tagName
     tagExists = system.tag.exists(tagPath)
             
     if tagExists:
-#        print tagName, " already exists!"
-        pass
-    elif provider != productionProvider:
-        log.infof("Skipping the creation of %s, a %s, because we are in Isolation", tagName, UDTType)
+        log.tracef("%s already exists!", tagName)
     else:
         log.info("Creating a %s, Name: %s, Path: %s" % (UDTType, tagName, tagPath)) 
-        print "TODO TODO TODO NEED TO CONVERT THIS "
+        config = {
+            'tagType': 'UdtInstance', 
+            'name': tagName, 
+            'typeId': UDTType
+        }
+        system.tag.configure(basePath=parentPath, tags=[config])
+            
+#        print "TODO TODO TODO NEED TO CONVERT THIS "
 #        system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
 #            attributes={"UDTParentType":UDTType} )

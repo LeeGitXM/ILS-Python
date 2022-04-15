@@ -24,10 +24,11 @@ import ils.io.tdcamcontroller
 import ils.io.tdcrampcontroller
 import ils.io.tdcdigitalcontroller
 import ils.io.tdcautomancontroller
+import ils.io.universalcontroller
 from ils.io.client import writeRamp
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def write(fullTagPath, val, writeConfirm, valueType="value"):
     '''
@@ -404,7 +405,7 @@ def validateValueType(valueType):
 def getDisplayName(provider, tagPath, valueType, displayAttribute, outputType):
     ''' Get the string that will typically be displayed in the DCS Tag Id column of the download monitor '''
     fullTagPath='[%s]%s' % (provider, tagPath)
-    log.tracef("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s, valueType: %s", fullTagPath, displayAttribute, valueType)
+    log.tracef("In getDisplayName(), the full tag path is: %s, the displayAttribute is: %s, valueType: %s, outputType: %s", fullTagPath, displayAttribute, valueType, outputType)
 
     ''' Check if the tag exists '''
     tagExists = system.tag.exists(fullTagPath)
@@ -435,6 +436,7 @@ def getDisplayName(provider, tagPath, valueType, displayAttribute, outputType):
     else:
         displayName = ''
 
+    log.tracef("...using display name: %s", displayName)
     return displayName
 
 

@@ -7,8 +7,8 @@ Created on Dec 10, 2015
 import system, string
 from ils.common.config import getDatabaseClient, getTagProvider
 from ils.io.util import readTag
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)

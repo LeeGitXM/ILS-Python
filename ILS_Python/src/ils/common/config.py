@@ -55,17 +55,16 @@ def isolationModeChangeHandler(newValue):
     system.tag.writeBlocking(['[Client]Tag Provider', '[Client]Time Factor', '[Client]Database'], [tagProvider, timeFactor, database])
 
 
-def getUserLibDir():
+def getUserLibDir(projectName):
     scope = getScope()
     if scope == GATEWAY:
         from com.inductiveautomation.ignition.gateway import IgnitionGateway
         context = IgnitionGateway.get()
         path = context.getSystemManager().getUserLibDir().getAbsolutePath()
     else:
-        path = "UNKNOWN"
-        log.warnf("The User Lib Dir <%s> only exists on the gateway!", path)
-    
-    print "The UserLib path is: ", path
+        payload = {}
+        path = system.util.sendRequest(projectName, "getUserLibDir", payload)
+
     return path
     
 
@@ -83,37 +82,6 @@ def readTag(tagPath):
     qv = qvs[0]
     return qv
 
-def getTagProvider(projectName):
-    tagProvider = getProductionTagProvider(projectName)
-    return tagProvider
-
-def getProductionTagProvider(projectName):
-    isolationMode = False
-    payload = {"project": projectName, "isolationMode": isolationMode}
-    tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
-    return tagProvider
-
-def getIsolationTagProvider(projectName):
-    isolationMode = True
-    payload = {"project": projectName, "isolationMode": isolationMode}
-    tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
-    return tagProvider
-
-def getDatabase(projectName):
-    db = getProductionDatabase()
-    return db
-    
-def getProductionDatabase(projectName):
-    isolationMode = False
-    payload = {"project": projectName, "isolationMode": isolationMode}
-    db = system.util.sendRequest(projectName, "getDatabase", payload)
-    return db
-
-def getIsolationDatabase(projectName):
-    isolationMode = True
-    payload = {"project": projectName, "isolationMode": isolationMode}
-    db = system.util.sendRequest(projectName, "getDatabase", payload)
-    return db
 
 '''
 These should be used only by a client.  They respect the isolation mode settings that are in force for the client.
@@ -137,6 +105,15 @@ def getDatabaseClient():
 def getIsolationModeClient():
     isolationMode=readTag("[Client]Isolation Mode").value
     return isolationMode
+
+def getTagProvidersClient():
+    print "In %s.getTagProvidersClient()" % (__name__)
+    projectName = system.util.getProjectName()
+    payload = {}
+    print "Sending request..."
+    tagProviderNames = system.util.sendRequest(projectName, "getTagProviders", payload)
+    log.infof("   Tag Providers: %s", str(tagProviderNames))
+    return tagProviderNames
 
 '''
 This set of APIs go all the way to the source (the internal database) and can be used from any scope although it might be faster 
@@ -230,3 +207,71 @@ def getIsolationTimeFactorFromInternalDatabase(projectName):
         db = system.util.sendRequest(projectName, "getTimeFactor", payload)
         
     return db
+
+def getDatabaseConnections():
+    '''
+    Get a list of available data connections using the information in the [System] tag provider.
+    This should be available from all scopes in all projects.
+    '''
+    dbConnections = []
+    ds = system.db.getConnections()
+    for row in range(ds.rowCount):
+        dbName = ds.getValueAt(row, "Name")
+        status = ds.getValueAt(row, "Status")
+        if status == "Valid":
+            dbConnections.append(dbName)
+
+    print "Returning: ", dbConnections
+    return dbConnections
+
+def getDefaultDatabase():
+    ''' Get the default database for a client '''
+    db = system.tag.readBlocking(["[System]Client/System/DefaultDatabase"])[0].value
+    print "The default database is: ", db
+    return db
+
+def getDefaultTagProvider():
+    ''' Get the default database for a client '''
+    tagProvider = system.tag.readBlocking(["[System]Client/System/DefaultTagProvider"])[0].value
+    print "The default tag provider is: ", tagProvider
+    return tagProvider
+
+
+'''
+This set of APIs really shouldn't be used.  If running in a client, then we should use the client version.
+If called from an SFC, then we should look at the chart scope dictionary (Remember that a chart is ALWAYS started from a client).
+Tag change scripts, this is the one thing that does not belong to a project, should extract the tag provider from the tag path.
+'''
+
+def getTagProvider(projectName):
+    tagProvider = getProductionTagProvider(projectName)
+    return tagProvider
+
+def getProductionTagProvider(projectName):
+    isolationMode = False
+    payload = {"project": projectName, "isolationMode": isolationMode}
+    tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
+    return tagProvider
+
+def getIsolationTagProvider(projectName):
+    isolationMode = True
+    payload = {"project": projectName, "isolationMode": isolationMode}
+    tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
+    return tagProvider
+
+def getDatabase(projectName):
+    db = getProductionDatabase()
+    return db
+    
+def getProductionDatabase(projectName):
+    isolationMode = False
+    payload = {"project": projectName, "isolationMode": isolationMode}
+    db = system.util.sendRequest(projectName, "getDatabase", payload)
+    return db
+
+def getIsolationDatabase(projectName):
+    isolationMode = True
+    payload = {"project": projectName, "isolationMode": isolationMode}
+    db = system.util.sendRequest(projectName, "getDatabase", payload)
+    return db
+

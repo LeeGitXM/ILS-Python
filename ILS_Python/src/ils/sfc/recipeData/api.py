@@ -15,8 +15,8 @@ from ils.sfc.common.constants import TAG, CHART, STEP, LOCAL_SCOPE, PRIOR_SCOPE,
     PHASE_STEP, OPERATION_STEP, UNIT_PROCEDURE_STEP
 from ils.common.util import parseBracketedScopeReference, findBracketedScopeReference
 
-from ils.log.LogRecorder import LogRecorder
-logger = LogRecorder(__name__)
+from ils.log import getLogger
+logger = getLogger(__name__)
 
 def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
     ''' Check that the desired setpoint (from recipe), the actual setpoint, and the actual PV are within tolerance.  '''
@@ -94,7 +94,7 @@ def s88GetAncestors(chartPath, scope, db=""):
     return ancestors
 
 def s88GetEnclosingCharts(chartPath, db=""):
-    logger.tracef("s88GetEnclosingChart(): getting the enclosing charts for %s", chartPath)
+    logger.infof("s88GetEnclosingChart(): getting the enclosing charts for %s", chartPath)
     data = []
     
     while chartPath != None:
@@ -149,7 +149,7 @@ def s88Get(chartProperties, stepProperties, keyAndAttribute, scope):
 
 def s88GetWithUnits(chartProperties, stepProperties, keyAndAttribute, scope, returnUnits):
     scope = scope.lower()
-    logger.tracef("s88Get(): %s - %s", keyAndAttribute, scope)
+    logger.tracef("s88Get(): %s - %s - %s", keyAndAttribute, scope, str(stepProperties))
     db = getDatabaseName(chartProperties)
     if scope == REFERENCE_SCOPE:
         scope, keyAndAttribute = getRecipeByReference(chartProperties, keyAndAttribute)

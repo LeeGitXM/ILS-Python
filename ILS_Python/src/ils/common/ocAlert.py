@@ -8,9 +8,9 @@ import system, string, sys, traceback
 from ils.common.notification import notifyError
 from ils.common.config import getIsolationModeClient, getTagProvider
 from ils.sfc.common.constants import CLIENT_DONE, NORMAL, LARGE_TEXT
-from ils.log.LogRecorder import LogRecorder
 from ils.io.util import readTag
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # This is generally called from the gateway, but will also work when called from test (like from the test window)
 def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, 
@@ -116,9 +116,13 @@ def handleMessage(payload):
         
         del payload['isolationMode']
 
-    windowName = payload["windowName"]
-    del payload['windowName']
-    if windowName in ["", None]:
+    ''' If the window name isn't specified, then use the default window. '''
+    windowName = payload.get("windowName", "NOT_FOUND")
+    
+    if windowName != "NOT_FOUND":
+        del payload['windowName']
+    
+    if windowName in ["NOT_FOUND", "", None]:
         windowName = "Common/OC Alert"
     
     system.nav.openWindowInstance(windowName, payload)

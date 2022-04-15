@@ -85,10 +85,10 @@ def activate(scopeContext, stepProperties, state):
             logger.tracef("The primary configuration: %s", str(primaryConfigJson))
             logger.tracef("The secondary configuration is: %s", str(secondaryConfigJson))
             
-            targetStepUUID, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
+            targetStepId, stepName, responseKey = s88GetStep(chartScope, stepScope, responseRecipeLocation, responseKey, database)
             
-            SQL = "insert into SfcReviewData (windowId, showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel) "\
-                "values ('%s', %d, '%s', '%s', '%s', '%s')" % (windowId, showAdvice, targetStepUUID, responseKey, primaryTabLabel, secondaryTabLabel)
+            SQL = "insert into SfcReviewData (windowId, showAdvice, targetStepId, responseKey, primaryTabLabel, secondaryTabLabel) "\
+                "values ('%s', %d, '%s', '%s', '%s', '%s')" % (windowId, showAdvice, targetStepId, responseKey, primaryTabLabel, secondaryTabLabel)
             system.db.runUpdateQuery(SQL, database)
             
             '''
@@ -166,8 +166,8 @@ def addData(chartScope, stepScope, windowId, row, rowNum, isPrimary, showAdvice,
     if showAdvice:
         advice = substituteScopeReferences(chartScope, stepScope,  row.get("advice", None) )
         
-        ''' If the advice field is blank, then use the advice of the destination recipe data '''
-        if advice in ["", None]:
+        ''' If the advice field is blank, and this is not intended as a blank row, then use the advice of the destination recipe data '''
+        if advice in ["null", "", None] and scope not in ["", "null", None]:
             if key.find(".") >= 0:
                 adviceKey=key[:key.find(".")] + ".advice"
             else:

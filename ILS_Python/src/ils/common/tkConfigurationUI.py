@@ -480,10 +480,10 @@ def addQueue(table):
     if ds.rowCount == 0:
         # take extra care to add the first row
         ds = system.dataset.toDataSet(["QueueId", "QueueKey", "Title", "CheckpointTimestamp","Position", "AutoViewSeverityThreshold", "AutoViewAdmin", "AutoViewAE", "AutoViewOperator"], 
-                                      [[-1, None, None, None, False, 10, False, False, False]])
+                                      [[-1, None, None, None, 'center', 10, False, False, False]])
         table.data = ds
     else:
-        table.data = system.dataset.addRow(table.data, [-1, None, None, None, False, 10, False, False, False])
+        table.data = system.dataset.addRow(table.data, [-1, None, None, None, 'center', 10, False, False, False])
 
 def deleteQueue(table):
     selectedRow = table.selectedRow

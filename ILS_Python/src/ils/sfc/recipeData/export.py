@@ -8,8 +8,8 @@ import system, os, string
 from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy
 from ils.common.config import getDatabaseClient
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def exportCallback(event):
     '''
@@ -56,13 +56,27 @@ def exportStepCallback(event):
     try:
         db = getDatabaseClient()
         log.infof("In %s.exportCallback()...", __name__)
-        treeWidget = event.source.parent.parent.getComponent("Tree Container").getComponent("Tree View")
+        stepContainer = event.source.parent
+        rootContainer = event.source.parent.parent
+        treeContainer = rootContainer.getComponent("Tree Container")
         
-        # First get the last node in the path
-        chartPath = treeWidget.selectedPath
-        log.tracef("The raw selected path is: <%s>", chartPath)
-        chartPath = chartPath[chartPath.rfind("/")+1:]
-        log.tracef("The selected chart path is <%s>", chartPath)
+        chartViewState = rootContainer.chartViewState
+        if chartViewState == 0:
+            treeWidget = treeContainer.getComponent("Tree View")
+                                                      
+            # First get the last node in the path
+            chartPath = treeWidget.selectedPath
+            log.tracef("The raw selected path is: <%s>", chartPath)
+            chartPath = chartPath[chartPath.rfind("/")+1:]
+            log.tracef("The selected chart path is <%s>", chartPath)
+        else:
+            table = treeContainer.getComponent("Power Table")
+            if table.selectedRow < 0:
+                system.gui.messageBox("Please select a chart.")
+                return
+            ds = table.data
+            chartPath = ds.getValueAt(table.selectedRow, "chartPath")
+            log.tracef("The selected chart path is <%s>", chartPath)
         
         # Now replace " / " with "/"
         chartPath = chartPath.replace(' \ ', '/')
@@ -71,7 +85,7 @@ def exportStepCallback(event):
             return
         
         # Now get the selected step
-        stepList = event.source.parent.getComponent("Steps")
+        stepList = stepContainer.getComponent("Steps")
         selectedRow = stepList.selectedRow
         if selectedRow < 0:
             return
@@ -79,7 +93,6 @@ def exportStepCallback(event):
         stepName = ds.getValueAt(selectedRow, 0)
         stepId = ds.getValueAt(selectedRow, 2)
         
-        rootContainer = event.source.parent.parent
         folder = rootContainer.importExportFolder
         filename = folder + "/recipeExport.xml"
         filename = system.file.saveFile(filename, "xml", "name of xml export file")
@@ -98,7 +111,7 @@ def exportStepCallback(event):
         txt = "<data>\n" + keyTxt + recipeFolderTxt + recipeDataTxt + "</data>"
     
         system.file.writeFile(filename, txt, False)
-        system.gui.messageBox("Chart and recipe were successfully exported!")
+        system.gui.messageBox("Step and recipe were successfully exported!")
         
     except:
         notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")

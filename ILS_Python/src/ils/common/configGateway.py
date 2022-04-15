@@ -34,7 +34,7 @@ def getDatabaseHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.infof("In getDatabaseHandler: %s", str(payload))
+    log.tracef("In getDatabaseHandler: %s", str(payload))
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     if project == None or isolationMode == None:
@@ -49,7 +49,7 @@ def getDatabaseHandler(payload):
     else:
         db = handler.getToolkitProjectProperty(project, PRODUCTION_DATABASE)
 
-    log.infof("Returning database: %s", db)
+    log.tracef("Returning database: %s", db)
     
     return db
 
@@ -57,7 +57,7 @@ def setDatabaseHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.infof("In setDatabaseHandler: %s", str(payload))
+    log.tracef("In setDatabaseHandler: %s", str(payload))
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     val = payload.get("val", None)
@@ -79,14 +79,14 @@ def setDatabaseHandler(payload):
     else:
         status = "success"
 
-    log.infof("Setting database: %s", status)
+    log.tracef("Setting database: %s", status)
     return status
 
 def getTagProviderHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.infof("In getTagProviderHandler: %s", payload)
+    log.tracef("In getTagProviderHandler: %s", payload)
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     if project == None or isolationMode == None:
@@ -101,14 +101,24 @@ def getTagProviderHandler(payload):
     else:
         tp = handler.getToolkitProjectProperty(project, PRODUCTION_TAG_PROVIDER)
 
-    log.infof("Returning tag provider: %s", tp)
+    log.tracef("Returning tag provider: %s", tp)
     return tp
+
+def getTagProvidersHandler(payload):
+    '''
+    This runs in the gateway in response to a message sent from a client.
+    '''
+    log.tracef("In %s.getTagProviderHandler(): %s", __name__, payload)
+    providers = getTagProviders()
+
+    log.tracef("Returning tag providers: %s", str(providers))
+    return providers
 
 def setTagProviderHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.infof("In setTagProviderHandler: %s", payload)
+    log.tracef("In setTagProviderHandler: %s", payload)
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     val = payload.get("val", None)
@@ -130,7 +140,7 @@ def setTagProviderHandler(payload):
     else:
         status = "success"
         
-    log.infof("Setting tag provider: %s", status)
+    log.tracef("Setting tag provider: %s", status)
     return status
 
 
@@ -138,7 +148,7 @@ def getTimeFactorHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.infof("In getTimeFactorHandler: %s", payload)
+    log.tracef("In getTimeFactorHandler: %s", payload)
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     if project == None or isolationMode == None:
@@ -153,7 +163,7 @@ def getTimeFactorHandler(payload):
     else:
         tp = handler.getToolkitProjectProperty(project, PRODUCTION_TIME_FACTOR)
 
-    log.infof("Returning time factor: %s", tp)
+    log.tracef("Returning time factor: %s", tp)
     return tp
 
 
@@ -161,7 +171,7 @@ def setTimeFactorHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.infof("In setTimeFactorHandler: %s", payload)
+    log.tracef("In setTimeFactorHandler: %s", payload)
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     val = payload.get("val", None)
@@ -183,92 +193,29 @@ def setTimeFactorHandler(payload):
     else:
         status = "success"
         
-    log.infof("Setting tag provider: %s", status)
+    log.tracef("Setting tag provider: %s", status)
     return status
 
+def getUserLibDirHandler(payload):
+    '''
+    This runs in the gateway in response to a message sent from a client.
+    '''
+    log.tracef("In getUserLibDirHandler: %s", str(payload))
+    
+    context = IgnitionGateway.get()
+    path = context.getSystemManager().getUserLibDir().getAbsolutePath()
+    log.tracef("Returning UserLibDir: %s", path)
+    
+    return path
 
 def getTagProviders():
-    from com.inductiveautomation.ignition.gateway import SRContext
-    context = SRContext.get()
-    tagProviderNames = []
-    for provider in context.getTagManager().getTagProviders():
-        tagProviderNames.append(provider.getInformation().getName())
+    context = IgnitionGateway.get()
+    tagProviderNames = context.getTagManager().getTagProviderNames()
+#    for provider in 
+    print "found ", tagProviderNames
+        #tagProviderNames.append(provider.getInformation().getName())
     return tagProviderNames
 
-'''
-def getUserLibDir():
-    scope = getScope()
-    if scope == GATEWAY:
-        from com.inductiveautomation.ignition.gateway import IgnitionGateway
-        context = IgnitionGateway.get()
-        path = context.getSystemManager().getUserLibDir().getAbsolutePath()
-    else:
-        path = "UNKNOWN"
-    
-    print "The UserLib path is: ", path
-    return path
-''' 
 
 def getHistoryProvider():
     return 'XOMhistory'
-
-
-'''
-def getTagProvider(project):
-    ToolkitProjectRecordHandler.getToolkitProjectProperty(project, )
-    return "foo"
-
-def getTagProviderX():
-    tp = getProductionTagProvider()
-    return tp
-    #return scriptingInterface.getProductionTagProvider()
-
-def getProductionTagProvider():
-    return 'XOM'
-    #return scriptingInterface.getProductionTagProvider()
-
-def getDatabase():
-    db = getProductionDatabase()
-    return db
-    #return scriptingInterface.getProductionDatabase()
-    
-def getProductionDatabase():
-    return 'XOM_Dev'
-    #return scriptingInterface.getProductionDatabase()
-
-def getIsolationTagProvider():
-    return 'XOM_ISOLATION'
-    #return scriptingInterface.getIsolationTagProvider()
-
-def getIsolationDatabase():
-    return 'XOM_ISOLATION'
-    #return scriptingInterface.getIsolationDatabase()
-
-# These should be used only by a client.  They totally respect the isolation mode settings that are in force for the client.
-def getHistoryTagProviderClient():
-    tagProvider=readTag("[Client]History Tag Provider").value
-    return tagProvider
-
-# These should be used only by a client.  They totally respect the isolation mode settings that are in force for the client.
-def getTagProviderClient():
-    tagProvider=readTag("[Client]Tag Provider").value
-    return tagProvider
-
-def getDatabaseClient():
-    database=readTag("[Client]Database").value
-    return database
-
-def getIsolationModeClient():
-    isolationMode=readTag("[Client]Isolation Mode").value
-    return isolationMode
-'''
-
-def readTag(tagPath):
-    '''
-    This reads a single tag using a blocking read and returns a single qualified value.
-    This just saves the caller the task of packing and unpacking the results when migrating
-    to Ignition 8. 
-    '''
-    qvs = system.tag.readBlocking([tagPath])
-    qv = qvs[0]
-    return qv

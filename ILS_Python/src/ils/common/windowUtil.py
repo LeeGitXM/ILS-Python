@@ -4,8 +4,8 @@ Created on Jan 12, 2016
 @author: ils
 '''
 import system, math, string
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def bringWindowToFront(windowName):
     windows = system.gui.findWindow(windowName)
@@ -208,7 +208,7 @@ def stackWindow(window, scale=1.0):
     mainWidth = mainWindow.getWidth()
     mainHeight = mainWindow.getHeight()
     thisWindowPath=window.getPath()
-    stackOffset = 15
+    stackOffset = 30
     
     log.tracef("===========")
     log.tracef("Main window size: %d X %d", mainWidth, mainHeight)

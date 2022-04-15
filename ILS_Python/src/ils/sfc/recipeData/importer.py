@@ -8,8 +8,8 @@ import xml.etree.ElementTree as ET
 import system, os
 from ils.common.config import getDatabaseClient
 from ils.common.error import notifyError
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def importRecipeDataCallback(event):
     db = getDatabaseClient()
@@ -28,11 +28,29 @@ def importStepRecipeDataCallback(event):
     try:
         db = getDatabaseClient()
         log.infof("In %s.importStepRecipeDataCallback()...", __name__)
-        treeWidget = event.source.parent.parent.getComponent("Tree Container").getComponent("Tree View")
         
-        # First get the last node in the path
-        chartPath = treeWidget.selectedPath
-        log.tracef("The raw selected path is: <%s>", chartPath)
+        stepContainer = event.source.parent
+        rootContainer = event.source.parent.parent
+        treeContainer = rootContainer.getComponent("Tree Container")
+        
+        chartViewState = rootContainer.chartViewState
+        if chartViewState == 0:
+            treeWidget = treeContainer.getComponent("Tree View")
+        
+            # First get the last node in the path
+            chartPath = treeWidget.selectedPath
+            log.tracef("The raw selected path is: <%s>", chartPath)
+            chartPath = chartPath[chartPath.rfind("/")+1:]
+            log.tracef("The selected chart path is <%s>", chartPath)
+        else:
+            table = treeContainer.getComponent("Power Table")
+            if table.selectedRow < 0:
+                system.gui.messageBox("Please select a chart.")
+                return
+            ds = table.data
+            chartPath = ds.getValueAt(table.selectedRow, "chartPath")
+            log.tracef("The selected chart path is <%s>", chartPath)
+
         chartPath = chartPath[chartPath.rfind("/")+1:]
         log.tracef("The selected chart path is <%s>", chartPath)
         
@@ -43,7 +61,7 @@ def importStepRecipeDataCallback(event):
             return
         
         # Now get the selected step
-        stepList = event.source.parent.getComponent("Steps")
+        stepList = stepContainer.getComponent("Steps")
         selectedRow = stepList.selectedRow
         if selectedRow < 0:
             return
@@ -66,9 +84,7 @@ def importStepRecipeDataCallback(event):
         importer.importStepFromFile(filename, chartPath, stepName, stepId)
         
     except:
-        notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
-
-
+        notifyError("%s.importStepRecipeDataCallback()" % (__name__), "Check the console log for details.")
 
 def buildFolderPath(recipeDataKey, oldParentFolderId, folderPaths):
     print "Building a folder path from: ", recipeDataKey, oldParentFolderId, folderPaths
@@ -731,7 +747,7 @@ class Sql():
         return stepId
     
     def insertRecipeDataFolder(self, stepId, recipeDataKey, description, label, parentFolderId):
-        log.infof("      Inserting recipe data folder:  %s with parent %d...", recipeDataKey, parentFolderId)
+        log.infof("      Inserting recipe data folder:  %s with parent %s...", recipeDataKey, str(parentFolderId))
         if parentFolderId == None:
             SQL = "insert into SfcRecipeDataFolder (RecipeDataKey, StepId, Description, Label) values ('%s', %d, '%s', '%s')" % (recipeDataKey, stepId, description, label)
         else:
@@ -743,16 +759,24 @@ class Sql():
         return folderId
     
     def insertRecipeData(self, stepId, key, recipeDataType, recipeDataTypeId, label, description, advice, units, folderId):
-        log.infof("      Inserting recipe data key:  %s, a %s...", key, recipeDataType)
+        log.infof("      Inserting recipe data key:  %s, a %s (%s - %s - %s - %s)...", key, recipeDataType, str(label), (description), str(advice), str(units))
+        
+        if label == None:
+            label=""
+        if description == None:
+            description = ""
+        if advice == None:
+            advice = ""
+        if units == None:
+            units = ""      
+        
         if folderId == None:
-            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, Units) values (%d, '%s', %d, '%s', '%s', '%s', '%s')"
             SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, Units) values (?, ?, ?, ?, ?, ?, ?)"
             args = [stepId, key, recipeDataTypeId, label, description, advice, units]
         else:
-            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, RecipeDataFolderId, Units) values (%d, '%s', %d, '%s', '%s', '%s', %d, '%s')" % \
-                (stepId, key, recipeDataTypeId, label, description, advice, folderId, units)
+            SQL = "insert into SfcRecipeData (StepID, RecipeDataKey, RecipeDataTypeId, Label, Description, Advice, RecipeDataFolderId, Units) values (?, ?, ?, ?, ?, ?, ?, ?)"
+            args = [stepId, key, recipeDataTypeId, label, description, advice, folderId, units]
         
-        #recipeDataId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
         recipeDataId = system.db.runPrepUpdate(SQL, args, tx=self.txId, getKey=True)
         return recipeDataId
     

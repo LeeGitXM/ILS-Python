@@ -7,6 +7,7 @@ Created on Dec 1, 2014
 import ils.io.controller as controller
 import system, string, time
 import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.io.util import confirmWrite, readTag, writeTag
 import ils.io.opcoutput as opcoutput
 log = LogUtil.getLogger("com.ils.io")
 
@@ -16,30 +17,28 @@ class TDCAutoManController(controller.Controller):
     modeTag = None
     outputTag = None
     CONFIRM_TIMEOUT = 10.0
-    OPC_LATENCY_TIME = 0.0
     
     def __init__(self,path):
         self.path = str(path)
         self.modeTag = opcoutput.OPCOutput(path + '/mode')
         self.outputTag = opcoutput.OPCOutput(path + '/output')
-        self.OPC_LATENCY_TIME = system.tag.read("[XOM]Configuration/Common/opcTagLatencySeconds").value
 
     def reset(self):
         ''' Reset the UDT in preparation for a write '''
         log.trace('Resetting a TDCController...')
         status = True
         errorMessage = ""
-        system.tag.write(self.path + '/badValue', False)
-        system.tag.write(self.path + '/writeErrorMessage', '')
-        system.tag.write(self.path + '/writeConfirmed', False)
-        system.tag.write(self.path + '/writeStatus', '')
+        writeTag(self.path + '/badValue', False)
+        writeTag(self.path + '/writeErrorMessage', '')
+        writeTag(self.path + '/writeConfirmed', False)
+        writeTag(self.path + '/writeStatus', '')
         
         for embeddedTag in ['/mode']:
             tagPath = self.path + embeddedTag
-            system.tag.write(tagPath + '/badValue', False)
-            system.tag.write(tagPath + '/writeErrorMessage', '')
-            system.tag.write(tagPath + '/writeConfirmed', False)
-            system.tag.write(tagPath + '/writeStatus', '')
+            writeTag(tagPath + '/badValue', False)
+            writeTag(tagPath + '/writeErrorMessage', '')
+            writeTag(tagPath + '/writeConfirmed', False)
+            writeTag(tagPath + '/writeStatus', '')
             
         log.trace('...done resetting a TDCAutomanController!')
         return status, errorMessage
@@ -68,7 +67,7 @@ class TDCAutoManController(controller.Controller):
         
         ''' Read the current values of all of the tags we need to consider to determine if the configuration is valid. '''
         tagpaths = [tagRoot + '/value', self.path + '/mode/value',  self.path + '/mode/value.OPCItemPath', self.path + '/windup']
-        qvs = system.tag.readAll(tagpaths)
+        qvs = system.tag.readBlocking(tagpaths)
         
         currentValue = qvs[0]
         mode = qvs[1]
@@ -155,8 +154,8 @@ class TDCAutoManController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
         
@@ -168,7 +167,7 @@ class TDCAutoManController(controller.Controller):
         # the write so this needs to just wait around for the answer
 
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))    
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))    
         confirmed, errorMessage = targetTag.writeDatum(val, valueType)
         
         return success, errorMessage
@@ -187,7 +186,7 @@ class TDCAutoManController(controller.Controller):
         However, if we are using isolation tags then we DO write to memory tags!  If we are writing to memory tags then 
         it doesn't make sense to check for an item id or OPC server.
         '''
-        tagType = system.tag.read(tagRoot + ".TagType").value
+        tagType = readTag(tagRoot + ".TagType").value
         if tagType == 1:
             return True, ""
         
@@ -222,8 +221,8 @@ class TDCAutoManController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(valuePathRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
 
@@ -235,7 +234,7 @@ class TDCAutoManController(controller.Controller):
             log.warnf("Warning: TDC Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!", self.path, modeValue)
 
         ''' Read the starting point for the ramp which is the current value '''
-        startValue = system.tag.read(valuePathRoot + '/value')
+        startValue = readTag(valuePathRoot + '/value')
         if str(startValue.quality) != 'Good':
             errorMessage = "ERROR: TDC Controller <%s> - ramp aborted due to inability to read the initial <%s> setpoint!" % (self.path, valType)
             log.error(errorMessage)
@@ -244,7 +243,7 @@ class TDCAutoManController(controller.Controller):
         startValue = startValue.value
 
         log.infof("Ramping the %s of TDC controller <%s> from %s to %s over %s minutes", valType, self.path, str(startValue), str(val), str(rampTime))
-        system.tag.write(self.path + "/writeStatus", "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime)))
+        writeTag(self.path + "/writeStatus", "Ramping the %s from %s to %s over %s minutes" % (valType, str(startValue), str(val), str(rampTime)))
 
         rampTimeSeconds = rampTime * 60.0
 
@@ -289,8 +288,8 @@ class TDCAutoManController(controller.Controller):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
         
@@ -300,12 +299,12 @@ class TDCAutoManController(controller.Controller):
                     
         ''' Write the value to the OPC tag. '''
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeWithNoCheck(val, valueType)
         if not(confirmed):
             log.error(errorMessage)
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             return confirmed, errorMessage
         
         return confirmed, errorMessage

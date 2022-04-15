@@ -9,6 +9,7 @@ for common configuration of widgets in the UI.
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.cast import toBit
+from ils.common.config import getDatabaseClient
 
 # When the window is closed, make sure that any open transaction
 # is cleaned up (rolled-back and closed). 
@@ -23,8 +24,9 @@ def handleWindowOpened(window):
 # Populate  combo-box with a dataset of containing names
 # of parameters available for a grade.
 def populateParameterForGradeDropdown(dropdown):
+    db = getDatabaseClient()
     SQL = "Select Name from RtSQCParameters "
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     # Create a new dataset using only the Name column
     header = ["Parameters"]
     names = []
@@ -49,6 +51,7 @@ def populateParameterForGradeDropdown(dropdown):
 # of grades available to a unit. Do not rollback on a change
 def populateGradeForFamilyDropdown(dropdown):
     print "In %s.populateGradeForFamilyDropdown()" % (__name__)
+    db = getDatabaseClient()
     family = getUserDefaults("FAMILY")
     active = getUserDefaults("ACTIVE")
     activeBit = toBit(str(active))
@@ -63,7 +66,7 @@ def populateGradeForFamilyDropdown(dropdown):
             SQL = SQL +  " and active = %s" % (str(activeBit))
     
     print "     SQL: ", SQL
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     print "     ...fetched %d unique grades" % (len(pds))
     
     # Create a new dataset using only the Name column
@@ -85,8 +88,9 @@ def populateGradeForFamilyDropdown(dropdown):
 # of recipe Families, plus "". Select the current UNIT
 def populateRecipeFamilyDropdown(dropdown, includeAll=True):
     print "In %s.populateRecipeFamilyDropdown()" % (__name__)
+    db = getDatabaseClient()
     SQL = "Select RecipeFamilyName from RtRecipeFamily order by RecipeFamilyName"
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     # Create a new dataset using only the Name column
     header = ["Family"]
@@ -114,12 +118,13 @@ def populateRecipeFamilyDropdown(dropdown, includeAll=True):
 # available for a grade on a unit. Custom grade component assumed.
 def populateVersionForGradeDropdown(dropdown):
     print "In %s.populateVersionForGradeDropdown()" % (__name__)
+    db = getDatabaseClient()
     SQL = "SELECT DISTINCT Version from RtGradeMaster "
     family = getUserDefaults("FAMILY")
     grade = getUserDefaults("GRADE") 
     
     if family == "<Family>" or grade == "<Grade>":
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         print "...fetched %d rows" % (len(pds))
     
     else:
@@ -130,7 +135,7 @@ def populateVersionForGradeDropdown(dropdown):
                 SQL = SQL+" AND Grade = '"+grade+"'"
         
         print "    SQL: ", SQL
-        pds = system.db.runQuery(SQL)
+        pds = system.db.runQuery(SQL, database=db)
         print "...fetched %d rows" % (len(pds))
     
     header = ["Grade"]

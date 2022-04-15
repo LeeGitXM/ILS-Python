@@ -10,8 +10,8 @@ from ils.common.error import catchError, notifyError
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, recipeDataExistsForStepId
 from ils.common.config import getDatabaseClient
 from ils.common.util import escapeSqlQuotes
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OUTPUT_RAMP, RECIPE, SIMPLE_VALUE, SQC, TIMER
 

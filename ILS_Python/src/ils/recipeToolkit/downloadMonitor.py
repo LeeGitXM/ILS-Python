@@ -117,11 +117,9 @@ def monitor(provider, familyName, localWriteAlias, recipeMinimumDifference, reci
 
     log.tracef("  Starting project.recipe.downloadMonitor.monitor() using database: %s", database)
     
-    productionProvider = getTagProvider()     # Get the production tag provider.
-    
     recipeWriteEnabled = readTag("[" + provider + "]/Configuration/RecipeToolkit/recipeWriteEnabled").value
     globalWriteEnabled = readTag("[" + provider + "]/Configuration/Common/writeEnabled").value
-    writeEnabled = provider != productionProvider or (recipeWriteEnabled and globalWriteEnabled)
+    writeEnabled = recipeWriteEnabled and globalWriteEnabled
 
     pds = system.dataset.toPyDataSet(ds)
 

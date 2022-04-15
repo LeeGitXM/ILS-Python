@@ -13,8 +13,8 @@ import system
 from ils.common.config import getHistoryProvider
 from ils.common.config import getProductionDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase
 from ils.common.config import getProductionTagProviderFromInternalDatabase, getIsolationTagProviderFromInternalDatabase
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def client():
     print "***********************************************"

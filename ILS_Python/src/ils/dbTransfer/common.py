@@ -9,8 +9,8 @@ from ils.sfc.recipeData.core import getFolderPath
 from ils.dbTransfer.constants import config, lookups, PRODUCTION, STRING, INTEGER
 from ils.common.util import clearDataset, escapeSqlQuotes
 
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def createClass(tableStructure):
     ''' 

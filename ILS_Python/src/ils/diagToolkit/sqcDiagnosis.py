@@ -6,8 +6,8 @@ import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import system.ils.blt.diagram as script
 from ils.diagToolkit.common import getDiagram
 
-from ils.log.LogRecorder import LogRecorder
-log=LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # Return two lists:
 # 1) the names of all of the input blocks in the diagram

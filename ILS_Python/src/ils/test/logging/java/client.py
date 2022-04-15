@@ -3,12 +3,12 @@ Created on Feb 1, 2021
 
 @author: phass
 
-This module tests using the ILS Java logging project called from Python
+This module tests logging called from Python
 '''
 
 import time
-from ils.log.LogRecorder import LogRecorder
-log = LogRecorder(__name__)
+from ils.log import getLogger
+log = getLogger(__name__)
 
 
 def work():

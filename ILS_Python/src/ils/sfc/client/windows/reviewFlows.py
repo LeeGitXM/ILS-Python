@@ -9,8 +9,7 @@ This step caused some problems because of the brilliant decision to have an impl
 import system, string
 from ils.common.config import getDatabaseClient
 from ils.sfc.recipeData.core import splitKey, setRecipeData
-from ils.sfc.recipeData.api import s88GetStepInfoFromUUID
-from ils.sfc.client.windows.reviewData import setAdviceVisibiity
+from ils.sfc.recipeData.api import s88GetStepInfoFromId
 
 def internalFrameOpened(rootContainer):
     database = getDatabaseClient()
@@ -25,9 +24,10 @@ def internalFrameOpened(rootContainer):
     title = system.db.runScalarQuery("Select title from SfcWindow where windowId = '%s'" % (windowId), database)
     rootContainer.title = title
     
-    pds = system.db.runQuery("select * from SfcReviewFlows where windowId = '%s'" % (windowId), database)
+    SQL = "select targetStepID, responseKey, heading1, heading2, heading3, primaryTabLabel, secondaryTabLabel from SfcReviewFlows where windowId = '%s'" % (windowId)
+    pds = system.db.runQuery(SQL, database)
     record = pds[0]
-    rootContainer.targetStepUUID = record["targetStepUUID"]
+    rootContainer.targetStepID = record["targetStepID"]
     rootContainer.responseKey = record["responseKey"]
     heading1 = record["heading1"]
     heading2 = record["heading2"]
@@ -64,7 +64,6 @@ def internalFrameOpened(rootContainer):
     pds = system.db.runQuery(SQL, database)
     print "...fetched %d rows for the secondary table" % (len(pds))
     table = rootContainer.getComponent("Secondary Table")
-#    setAdviceVisibiity(table, showAdvice, columnWidths)
     table.data = pds
     
     if len(pds) > 0:
@@ -87,7 +86,7 @@ def actionPerformed(event, response):
     db = getDatabaseClient()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
-    targetStepUUID = rootContainer.targetStepUUID
+    targetStepID = rootContainer.targetStepID
     responseKey = rootContainer.responseKey
     
     '''
@@ -97,6 +96,6 @@ def actionPerformed(event, response):
         responseKey = responseKey + ".value"
 
     folder,key,attribute = splitKey(responseKey)
-    chartPath, stepName = s88GetStepInfoFromUUID(targetStepUUID, db)
-    setRecipeData(stepName, targetStepUUID, folder, key, attribute, response, db)
+    chartPath, stepName = s88GetStepInfoFromId(targetStepID, db)
+    setRecipeData(stepName, targetStepID, folder, key, attribute, response, db)
     system.nav.closeParentWindow(event)
