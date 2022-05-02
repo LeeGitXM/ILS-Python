@@ -36,6 +36,7 @@ def saveCallback(event):
     db = getDatabaseClient()
     rootContainer = event.source.parent
     
+    applicationId = rootContainer.applicationId
     familyId = rootContainer.familyId
     familyName = rootContainer.familyName
     description = rootContainer.description
@@ -43,8 +44,8 @@ def saveCallback(event):
     
     if familyId == -1:
         print "Insert a new family"
-        SQL = "insert  DtFamily (FamilyName, Description, FamilyPriority) values(?, ?, ?)"
-        familyId = system.db.runPrepUpdate(SQL, [familyName, description, familyPriority], database=db)
+        SQL = "insert  DtFamily (FamilyName, ApplicationId, Description, FamilyPriority) values(?, ?, ?, ?)"
+        familyId = system.db.runPrepUpdate(SQL, [familyName, applicationId, description, familyPriority], database=db)
         rootContainer.familyId = familyId
     else:
         print "Updating..."

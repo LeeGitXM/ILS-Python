@@ -6,39 +6,58 @@ Created on Apr 12, 2022
 import system
 from ils.common.util import parseResourcePath
 from ils.common.config import getDatabaseClient
-#from ils.diagToolkit.common import fetchApplicationId, fetchFamilyId
+from ils.diagToolkit.common import fetchApplicationId, fetchFamilyId, fetchApplications, fetchFamilies, fetchDiagrams, fetchFinalDiagnosisList, fetchDiagramId, fetchFinalDiagnosisId
 
 from ils.log import getLogger
 log = getLogger(__name__)
 
 ROOT_NODE = "Symbolic Ai"
 
-SYMBOLIC_AI_ICON = "Block/icons/navtree/symbolicAi.png"
-APPLICATION_ICON = "Block/icons/navtree/application.png"
-FAMILY_ICON = "Block/icons/navtree/family.png"
-DIAGRAM_ICON = "Block/icons/navtree/diagram.png"
-FINAL_DIAGNOSIS_ICON = "Block/icons/navtree/finalDiagnosis.png"
+SYMBOLIC_AI_ICON = "Custom/blt/NavTree/symbolicAi.png"       # "Block/icons/navtree/symbolicAi.png"
+APPLICATION_ICON = "Custom/blt/NavTree/application.png"       # "Block/icons/navtree/application.png"
+FAMILY_ICON = "Custom/blt/NavTree/family.png"
+DIAGRAM_ICON = "Custom/blt/NavTree/diagram.png"           # "Block/icons/navtree/diagram.png"
+FINAL_DIAGNOSIS_ICON = "Custom/blt/NavTree/finalDiagnosis.png"
 
 WHITE = "color(255,255,255,255)"
 BLACK = "color(0,0,0,255)"
 MUSTARD = "color(250,214,138,255)"
 
+ROOT_TYPE = "Root"
 APPLICATION_TYPE = "Application"
 FAMILY_TYPE = "Family"
+DIAGRAM_TYPE = "Diagram"
 FINAL_DIAGNOSIS_TYPE = "Final Diagnosis"
 
-def refreshDiagramTree(rootContainer, db=""):
+def internalFrameOpened(event):
+    log.infof("In %s.internalFrameOpened()...", __name__)
+
+
+def internalFrameActivated(event):
+    log.infof("In %s.internalFrameActivated()...", __name__)
+    rootContainer = event.source.rootContainer
+    db = getDatabaseClient()
+    refreshDiagramTree(rootContainer, db)
+    refreshHierarchyTree(rootContainer, db)
+
+def refreshDiagramTreeCallback(rootContainer):
+    log.infof("In %s.refreshDiagramTreeCallback()...", __name__)
+    db = getDatabaseClient()
+    refreshDiagramTree(rootContainer, db)
+
+def refreshDiagramTree(rootContainer, db):
     log.infof("In %s.refreshDiagramTree()...", __name__)
     
     SQL = "select DiagramName from DtDiagram where FamilyId is NULL"
     pds = system.db.runQuery(SQL, database=db)
     
     rows = []
+    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, MUSTARD, BLACK, "", ""])
     for record in pds:
         fullDiagramName = record["DiagramName"]
-        parent, diagramName = parseResourcePath(fullDiagramName) 
-        icon = "default"
-        row = [parent,diagramName,icon,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",icon,"color(250,214,138,255)","color(0,0,0,255)","",""]
+        parent, diagramName = parseResourcePath(fullDiagramName)
+        parent = ROOT_NODE + "/" + parent 
+        row = [parent,diagramName,DIAGRAM_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",DIAGRAM_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
         rows.append(row)
         
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
@@ -46,26 +65,50 @@ def refreshDiagramTree(rootContainer, db=""):
     treeWidget = rootContainer.getComponent("Diagram Tree")
     treeWidget.data = ds
 
-def refreshHierarchyTree(rootContainer, db=""):
+def refreshHierarchyTreeCallback(rootContainer, db=""):
+    db = getDatabaseClient()
+    refreshHierarchyTree(rootContainer, db)
+    
+def refreshHierarchyTree(rootContainer, db):
     rows = []
-    rows.append(["", "Symbolic Ai", SYMBOLIC_AI_ICON, WHITE, BLACK, "A", "", "", SYMBOLIC_AI_ICON, MUSTARD, BLACK, "", ""])
+    rows.append(["", "Symbolic Ai", SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, MUSTARD, BLACK, "", ""])
     
     applications = fetchApplications(db)
     for application in applications:
         applicationName = application["ApplicationName"]
-        rows.append([ROOT_NODE, applicationName, APPLICATION_ICON, WHITE, BLACK, "A", "", "", APPLICATION_ICON, MUSTARD, BLACK, "", ""])
+        rows.append([ROOT_NODE, applicationName, APPLICATION_ICON, WHITE, BLACK, "", "", "", APPLICATION_ICON, MUSTARD, BLACK, "", ""])
         
     families = fetchFamilies(db)
     for family in families:
         applicationName = ROOT_NODE + "/" + family["ApplicationName"]
         familyName = family["FamilyName"]
-        rows.append([applicationName, familyName, FAMILY_ICON, WHITE, BLACK, "A", "", "", FAMILY_ICON, MUSTARD, BLACK, "", ""])
+        rows.append([applicationName, familyName, FAMILY_ICON, WHITE, BLACK, "", "", "", FAMILY_ICON, MUSTARD, BLACK, "", ""])
         
-    
+    diagrams = fetchDiagrams(db)
+    for diagram in diagrams:
+        applicationName = diagram["ApplicationName"]
+        familyName = diagram["FamilyName"]
+        
+        ''' For diagrams, the name in the databaset is the diagram path in the project tree.  For our display purposes, we just want the 
+            name, the full path will be in the tooltip.  '''
+        fullDiagramName = diagram["DiagramName"]
+        tokens = fullDiagramName.split("/")
+        diagramName = tokens[len(tokens)-1]
+        rows.append([ROOT_NODE + "/" + applicationName + "/" + familyName, diagramName, DIAGRAM_ICON, WHITE, BLACK, fullDiagramName, "", "", DIAGRAM_ICON, MUSTARD, BLACK, "", ""])
 
-#    rows.append(["A","B", FAMILY_ICON,WHITE,BLACK,"A","","",FAMILY_ICON,MUSTARD,BLACK,"",""])
-#    rows.append(["A/B","C", DIAGRAM_ICON,WHITE,BLACK,"A","","",DIAGRAM_ICON,MUSTARD,BLACK,"",""])
-#    rows.append(["A/B/C","D", FINAL_DIAGNOSIS_ICON,WHITE,BLACK,"A","","",FINAL_DIAGNOSIS_ICON,MUSTARD,BLACK,"",""])
+    FDs = fetchFinalDiagnosisList(db)
+    for FD in FDs:
+        applicationName = FD["ApplicationName"]
+        familyName = FD["FamilyName"]
+
+        fullDiagramName = FD["DiagramName"]
+        tokens = fullDiagramName.split("/")
+        diagramName = tokens[len(tokens)-1]
+        
+        fdName = FD["FinalDiagnosisName"]
+        parentNode = ROOT_NODE + "/" + applicationName + "/" + familyName + "/" + diagramName
+        print "Adding an application with parent: <%s>" % (parentNode)
+        rows.append([parentNode, fdName, FINAL_DIAGNOSIS_ICON, WHITE, BLACK, fdName, "", "", FINAL_DIAGNOSIS_ICON, MUSTARD, BLACK, "", ""])
 
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
@@ -76,8 +119,8 @@ def determineNodeType(event):
     '''
     We could also just look at the icon to determine the node type 
     '''
-    print "...determine node type..."
     tree = event.source
+    ds = tree.data
     selectedItem = event.newValue
     
     if selectedItem == -1:
@@ -91,14 +134,88 @@ def determineNodeType(event):
             tree.selectedNodeType = APPLICATION_TYPE
         elif len(tokens) == 3:
             tree.selectedNodeType = FAMILY_TYPE
+        elif len(tokens) == 4:
+            tree.selectedNodeType = DIAGRAM_TYPE
+        elif len(tokens) == 5:
+            tree.selectedNodeType = FINAL_DIAGNOSIS_TYPE
         else:
             tree.selectedNodeType = "Unknown"
 
 def addCallback(event):
+    ''' The add button is used to create a new application or a new family '''
     log.infof("In %s.addCallback()", __name__)
+    db = getDatabaseClient()
+    rootContainer = event.source.parent
+    tree = rootContainer.getComponent("Hierarchy Tree")
+    selectedPath = tree.selectedPath
+    tokens = selectedPath.split("/")
+    nodeType = tree.selectedNodeType
+    print nodeType, selectedPath
+    
+    if nodeType == ROOT_TYPE:
+        print "Selected the root node"
+        window = system.nav.openWindowInstance("DiagToolkit/Application Editor", {"applicationId": -1})
+        system.nav.centerWindow(window)
+        
+    elif nodeType == APPLICATION_TYPE:
+        print "Selected an application"
+        applicationName = tokens[1]
+        applicationId = fetchApplicationId(applicationName, db)
+        window = system.nav.openWindowInstance("DiagToolkit/Family Editor", {"applicationId": applicationId, "familyId": -1})
+        system.nav.centerWindow(window)
+    
+    else:
+        print "Unsupported node type"
     
 def deleteCallback(event):
-    log.infof("In %s.deleteCallback()", __name__) 
+    log.infof("In %s.deleteCallback()", __name__)
+    db = getDatabaseClient()
+    rootContainer = event.source.parent
+    tree = rootContainer.getComponent("Hierarchy Tree")
+    selectedPath = tree.selectedPath
+    tokens = selectedPath.split("/")
+    nodeType = tree.selectedNodeType
+    print nodeType, selectedPath
+    
+    if nodeType == APPLICATION_TYPE:
+        '''
+        Not sure if I should just delete the wholle application hierarchy without checking, ask for confirmation, or what...
+        There really isn't a right answer, but I think I'll be cautions and force them to delete the family before deleting the application.
+        '''
+        applicationName = tokens[1]
+        applicationId = fetchApplicationId(applicationName, db)
+        references = system.db.runScalarQuery("Select count(*) from DtFamily where applicationId = %d" % applicationId)
+        if references > 0:
+            system.gui.messageBox("There are families that belong to this application - families must be deleted before the application can be deleted!")
+            return
+        
+        SQL = "delete from DtApplication where ApplicationId = %d" % (applicationId)
+        rows = system.db.runUpdateQuery(SQL, database=db)
+        print "...deleted %d applications!" % (rows)
+        refreshHierarchyTree(rootContainer, db)
+        
+    elif nodeType == FAMILY_TYPE:
+        ''' remove all references to the family, delete the family, update both trees '''
+        applicationName = tokens[1]
+        familyName = tokens[2]
+        familyId = fetchFamilyId(applicationName, familyName, db)
+        SQL = "update DtDiagram set FamilyId = NULL where familyId = %d" % (familyId)
+        rows = system.db.runUpdateQuery(SQL, database=db)
+        print "...cleared %d diagram references to family %s..." % (rows, familyName)
+        
+        SQL = "delete from DtFamily where FamilyId = %d" % (familyId)
+        rows = system.db.runUpdateQuery(SQL, database=db)
+        print "...deleted %d families!" % (rows)
+        
+        refreshDiagramTree(rootContainer, db)
+        refreshHierarchyTree(rootContainer, db)
+        
+        
+def editCallbackForDoubleClick(event):
+    ''' I don't think this is hooked up '''
+    log.infof("In %s.editCallbackForDoubleClick()", __name__)
+    editCallback(event)    
+
     
 def editCallback(event):
     log.infof("In %s.editCallback()", __name__)
@@ -111,14 +228,14 @@ def editCallback(event):
     print nodeType, selectedPath
     
     if nodeType == APPLICATION_TYPE:
-        print "Selected an application"
+        log.tracef("Selected an application")
         applicationName = tokens[1]
         applicationId = fetchApplicationId(applicationName, db)
         window = system.nav.openWindowInstance("DiagToolkit/Application Editor", {"applicationId": applicationId})
         system.nav.centerWindow(window)
 
     elif nodeType == FAMILY_TYPE:
-        print "Selected a family"
+        log.tracef("Selected a family")
         applicationName = tokens[1]
         familyName = tokens[2]
         familyId = fetchFamilyId(applicationName, familyName, db)
@@ -126,12 +243,43 @@ def editCallback(event):
         system.nav.centerWindow(window)
 
     elif nodeType == FINAL_DIAGNOSIS_TYPE:
-        print "Selected a final diagnosis"
-        window = system.nav.openWindowInstance("DiagToolkit/Final Diagnosis Editor")
+        log.tracef("Selected a final diagnosis")
+        applicationName = tokens[1]
+        familyName = tokens[2]
+        familyId = fetchFamilyId(applicationName, familyName, db)
+        diagramName = getFullDiagramNameForFinalDiagnosis(rootContainer, selectedPath)
+        diagramNameShort = tokens[3]
+        fdName = tokens[4]
+        log.tracef("   application: %s    ", applicationName)
+        log.tracef("   family: %s         ", familyName)
+        log.tracef("   family id: %s      ", str(familyId))
+        log.tracef("   diagram (short): %s", diagramNameShort)
+        log.tracef("   diagram: %s        ", diagramName)
+        log.tracef("   final diagnosis: %s", fdName)
+        
+        finalDiagnosisId = fetchFinalDiagnosisId(diagramName, fdName, db)
+        window = system.nav.openWindowInstance("DiagToolkit/Final Diagnosis Editor", {"applicationName": applicationName, "finalDiagnosisId": finalDiagnosisId})
         system.nav.centerWindow(window)
 
     else:
-        print "Selected an unknown type: ", nodeType
+        log.errorf("Selected an unknown type: %s", nodeType)
+        
+def getFullDiagramNameForFinalDiagnosis(rootContainer, selectedPath):
+    log.infof("Looking for the full diagram path for this FD: <%s>", selectedPath)
+    tokens = selectedPath.split("/")
+    fdName = tokens.pop(len(tokens)-1)
+    diagramName = tokens.pop(len(tokens)-1)
+    parent = "/".join(tokens)
+    
+    tree = rootContainer.getComponent("Hierarchy Tree")
+    ds = tree.data
+    for row in range(ds.rowCount):
+        if ds.getValueAt(row, 0) == parent and ds.getValueAt(row, 1) == diagramName:
+            ''' For diagrams, the full name is stored in the tooltip column '''
+            diagramPath = ds.getValueAt(row, "tooltip")
+            return diagramPath
+        
+    return None
     
 def insertDiagramCallback(event):
     log.infof("In %s.insertDiagramCallback()", __name__)
@@ -143,7 +291,7 @@ def insertDiagramCallback(event):
     ''' The full diagram path is in the tooltip.  Because I don't use any intermediate nodes while building this Tree, I can go directly from the selected Item into the dataset '''
     ds = diagramTreeWidget.data
     diagramName = ds.getValueAt(row, "tooltip")
-    diagramId = fetchIdForDiagram(diagramName, db)
+    diagramId = fetchDiagramId(diagramName, db)
     log.infof("User selected diagram: %s - %s", diagramName, str(diagramId))
     
     hierarchyTreeWidget = rootContainer.getComponent("Hierarchy Tree")
@@ -152,45 +300,113 @@ def insertDiagramCallback(event):
     familyName = ds.getValueAt(row, "text")
     path = ds.getValueAt(row, "path")
     applicationName = path[path.find("/")+1:]
+    familyId = fetchFamilyId(applicationName, familyName, db)
     log.infof("User selected family <%s> in application <%s>", familyName, applicationName)
     
-
+    '''
+    1) Update the database so that the diagram is a member of the family
+    2) Refresh the diagram tree (by fetching  the diagrams from the database)
+    3) Refresh the Hierarchy Tree (by fetching the data from database)
+    '''
+    
+    SQL = "Update DtDiagram set FamilyId = %d where DiagramId = %d" % (familyId, diagramId)
+    system.db.runUpdateQuery(SQL, database=db)
+    refreshDiagramTree(rootContainer, db)
+    refreshHierarchyTree(rootContainer, db)
 
 def removeDiagramCallback(event):
     log.infof("In %s.removeDiagramCallback()", __name__)
+    db = getDatabaseClient()
+    rootContainer = event.source.parent
     
-'''
-Database Utilities
-'''
-def fetchApplications(db):
-    pds = system.db.runQuery("Select ApplicationName from DtApplication order by ApplicationName", database=db)
-    log.infof("Fetched %d applications." % (len(pds)))
-    return pds
+    ''' The full diagram name is stored in the tooltip of the hierarchy Tree '''
+    hierarchyTreeWidget = rootContainer.getComponent("Hierarchy Tree")
+    row = hierarchyTreeWidget.selectedItem
+    ds = hierarchyTreeWidget.data
+    diagramName = ds.getValueAt(row, "tooltip")
+    SQL = "Update DtDiagram set FamilyId = NULL where DiagramName = '%s'" % (diagramName)
+    system.db.runUpdateQuery(SQL, database=db)
+    refreshDiagramTree(rootContainer, db)
+    refreshHierarchyTree(rootContainer, db)
+    
+def mousePressedCallbackForApplicationHierarchyTree(event):
+    '''
+    I want to post a popup menu on a right-click because the left-click is used to select a node.      The problem with the 
+    right-click is that it doesn't change the selection AND I can't determine what they right-clicked on.  So if the 5th item 
+    is selected, and they right-click on the 2md item, the 5th item is still the selected item and I can't determine what item 
+    they right-clicked on.  I can get the x and y coordinates, but I find them to be useless...  I can't find a way to translate
+    from x, y coordinates to a node in the tree.
+    '''
+    
+    log.infof("In %s.mousePressedCallbackForApplicationHierarchyTree() - %s", __name__, event.button)
+    ''' Only post the popup on the right mouse button '''
+    if int(event.button) <> 3:
+        print "...not a right-click..."
+        return
+    
+    ''' Callbacks from the popups '''
+    def addApplicationPopupCallback(event):
+        window = system.nav.openWindowInstance("DiagToolkit/Application Editor", {"applicationId": -1})
+        system.nav.centerWindow(window)
 
-def fetchFamilies(db):
-    pds = system.db.runQuery("Select ApplicationName, FamilyName from DtApplicationFamilyView order by ApplicationName, FamilyName", database=db)
-    log.infof("Fetched %d applications." % (len(pds)))
-    return pds
+    def addFamilyPopupCallback(event):
+        db = getDatabaseClient()
+        tree = event.source
+        selectedPath = tree.selectedPath
+        tokens = selectedPath.split("/")
+        nodeType = tree.selectedNodeType
+        print nodeType, selectedPath
+    
+        applicationName = tokens[1]
+        applicationId = fetchApplicationId(applicationName, db)
+        window = system.nav.openWindowInstance("DiagToolkit/Family Editor", {"applicationId": applicationId, "familyId": -1})
+        system.nav.centerWindow(window)
+        
+    def editApplicationPopupCallback(event):
+        editCallback(event)
+        
+    def deleteApplicationPopupCallback(event):
+        deleteCallback(event)
 
-def fetchIdForDiagram(diagramName, db):
-    diagramId = system.db.runScalarQuery("select DiagramId from DtDiagram where DiagramName = '%s'" % (diagramName), database=db)
-    return diagramId
+    def editFamilyPopupCallback(event):
+        editCallback(event)
+        
+    def deleteFamilyPopupCallback(event):
+        deleteCallback(event)
 
-'''
-******************************************************************************
-**** Move these back to common.py once the blt module is back and working ****
-******************************************************************************
-'''
+    def disassociateDiagramCallback(event):
+        removeDiagramCallback(event)
 
-def fetchApplicationId(applicationName, database=""):
-    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
-    log.tracef("%s.fetchApplicationId(): %s", __name__, SQL)
-    applicationId = system.db.runScalarQuery(SQL, database)
-    return applicationId
+    def editFinalDiagnosisCallback(event):
+        editCallback(event)
 
-def fetchFamilyId(applicationName, familyName, database=""):
-    SQL = "select F.FamilyId from DtApplication A, DtFamily F "\
-        "where A.ApplicationId = F.ApplicationId and A.ApplicationName = '%s' and F.FamilyName = '%s'" % (applicationName, familyName)
-    log.tracef("%s.fetchFamilyId(): %s", __name__, SQL)
-    familyId = system.db.runScalarQuery(SQL, database)
-    return familyId
+
+    ''' The popup menu depends on the type of node that was selected '''
+    tree = event.source            
+    selectedNodeType = tree.selectedNodeType
+    print "Node type is: ", selectedNodeType
+    if selectedNodeType == ROOT_TYPE:
+        print "Selected the root"
+        menu = system.gui.createPopupMenu(["Add Application"], [addApplicationPopupCallback])
+        menu.show(event)
+        
+    elif selectedNodeType == APPLICATION_TYPE:
+        print "selected an application" 
+        menu = system.gui.createPopupMenu(["Edit Application", "Delete Application", "Add Family"], [editApplicationPopupCallback, deleteApplicationPopupCallback, addFamilyPopupCallback])
+        menu.show(event)
+    
+    elif selectedNodeType == FAMILY_TYPE:
+        print "selected a Family" 
+        menu = system.gui.createPopupMenu(["Edit Family","Delete Family"], [editFamilyPopupCallback, deleteFamilyPopupCallback])
+        menu.show(event)
+    
+    elif selectedNodeType == DIAGRAM_TYPE:
+        print "selected an application" 
+        menu = system.gui.createPopupMenu(["Disassociate from Family"], [disassociateDiagramCallback])
+        menu.show(event)
+        
+    elif selectedNodeType == FINAL_DIAGNOSIS_TYPE:
+        print "selected an application" 
+        menu = system.gui.createPopupMenu(["Edit Final Diagnosis"], [editFinalDiagnosisCallback])
+        menu.show(event)
+        

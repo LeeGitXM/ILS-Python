@@ -5,7 +5,7 @@ Created on Sep 19, 2014
 '''
 
 import system, time
-import system.ils.blt.diagram as scriptingInterface
+#import system.ils.blt.diagram as scriptingInterface
 from ils.io.util import readTag
 
 from ils.log import getLogger
@@ -121,16 +121,7 @@ def checkFresher(tagPath1, tagPath2, recheckInterval=1.0, timeout=60):
         time.sleep(recheckInterval)
 
     log.trace("** %s is NOT fresher than %s **" % (tagPath1, tagPath2))
-    return isFresher 
-
-# Fetch the time of the last recommendation, which should be the same as when the final diagnosis last became True
-def fetchDiagnosisActiveTime(finalDiagnosisId, database = ""):
-    SQL = "select LastRecommendationTime from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
-    log.trace(SQL)
-    lastRecommendtaionTime = system.db.runScalarQuery(SQL, database)
-    log.trace("The last recommendation time is: %s" % (str(lastRecommendtaionTime)))
-    return lastRecommendtaionTime 
-
+    return isFresher
 
 # This gets called at the beginning of each recommendation management cycle.  It clears all of the dynamic attributes of 
 # a Quant Output.  
@@ -148,6 +139,28 @@ def clearQuantOutputRecommendations(application, database=""):
     system.db.runUpdateQuery(SQL, database)
     return
 
+def convertOutputRecordToDictionary(record):
+    output = {}
+    output['QuantOutputId'] = record['QuantOutputId']
+    output['QuantOutput'] = str(record['QuantOutputName'])
+    output['TagPath'] = str(record['TagPath'])
+    output['MostNegativeIncrement'] = record['MostNegativeIncrement']
+    output['MostPositiveIncrement'] = record['MostPositiveIncrement']
+    output['MinimumIncrement'] = record['MinimumIncrement']
+    output['SetpointHighLimit'] = record['SetpointHighLimit']
+    output['SetpointLowLimit'] = record['SetpointLowLimit']
+    output['FeedbackMethod'] = record['FeedbackMethod']
+    output['OutputLimitedStatus'] = record['OutputLimitedStatus']
+    output['OutputLimited'] = record['OutputLimited']
+    output['OutputPercent'] = record['OutputPercent']
+    output['IncrementalOutput'] = record['IncrementalOutput']
+    output['FeedbackOutput'] = record['FeedbackOutput']
+    output['FeedbackOutputManual'] = record['FeedbackOutputManual']
+    output['FeedbackOutputConditioned'] = record['FeedbackOutputConditioned']
+    output['ManualOverride'] = record['ManualOverride']
+    output['IgnoreMinimumIncrement'] = record['IgnoreMinimumIncrement']
+    output['TrapInsignificantRecommendations'] = record['TrapInsignificantRecommendations']
+    return output
 
 # Fetch all of the active final diagnosis for an application.
 # Order the diagnosis from most import to least important - remember that the numeric priority is such that
@@ -172,25 +185,39 @@ def fetchActiveDiagnosis(applicationName, database=""):
     log.tracef("Fetched %d active diagnosis", len(pds))
     return pds
 
-# Fetch all of the active final diagnosis for an application.
-# Order the diagnosis from most import to least important - remember that the numeric priority is such that
-# low numbers are higher priority than high numbers. 
-def fetchHighestActiveDiagnosis(applicationName, database=""):
-    SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
-        " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.Multiplier, "\
-        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
-        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
+
+
+
+# Fetch the outputs for a final diagnosis and return them as a list of dictionaries
+# I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
+# that are used when calculating/managing recommendations and the output of those recommendations.
+def fetchActiveOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
+    SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+        " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
+        " FD.TrapInsignificantRecommendations "\
+        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
         " where A.ApplicationId = F.ApplicationId "\
         " and F.FamilyId = FD.FamilyId "\
-        " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
-        " and DE.Status = 'Active' "\
-        " and FD.Active = 1 "\
-        " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) "\
-        " and A.ApplicationName = '%s'"\
-        " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
-    log.tracef("%s.fetchHighestActiveDiagnosis(): %s", __name__, SQL)
+        " and L.LookupTypeCode = 'FeedbackMethod'"\
+        " and L.LookupId = QO.FeedbackMethodId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and RD.QuantOutputId = QO.QuantOutputId "\
+        " and A.ApplicationName = '%s' "\
+        " and F.FamilyName = '%s' "\
+        " and FD.FinalDiagnosisName = '%s' "\
+        " and QO.Active = 1"\
+        " order by QuantOutputName"  % (applicationName, familyName, finalDiagnosisName)
+    log.tracef("%s.fetchActiveOutputsForFinalDiagnosis(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
-    return pds
+    outputList = []
+    for record in pds:
+        output=convertOutputRecordToDictionary(record)       
+        outputList.append(output)
+    return pds, outputList
+
+
+
 
 
 # Fetch all of the active final diagnosis for an application.
@@ -224,21 +251,6 @@ def fetchActiveFinalDiagnosisForAnOutput(application, quantOutputId, database=""
         " and RD.quantOutputId = QO.QuantOutputId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and FD.Active = 1 "\
-        " and QO.QuantOutputId = %s " % (application, str(quantOutputId))
-    log.tracef("%s.fetchActiveFinalDiagnosisForAnOutput(): %s", __name__, SQL)
-    pds = system.db.runQuery(SQL, database)
-    return pds
-
-def fetchAnyFinalDiagnosisForAnOutput(application, quantOutputId, database=""):
-    SQL = "select FD.FinalDiagnosisName, FD.FinalDiagnosisId, F.FamilyName "\
-        " from DtFinalDiagnosis FD, DtFamily F, DtApplication A, DtQuantOutput QO, DtRecommendationDefinition RD "\
-        " where A.ApplicationId = F.ApplicationId "\
-        " and FD.FamilyId = F.FamilyId "\
-        " and A.ApplicationName = '%s' "\
-        " and F.FamilyId = FD.FamilyId "\
-        " and QO.ApplicationId = A.ApplicationId "\
-        " and RD.quantOutputId = QO.QuantOutputId "\
-        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and QO.QuantOutputId = %s " % (application, str(quantOutputId))
     log.tracef("%s.fetchActiveFinalDiagnosisForAnOutput(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
@@ -298,6 +310,27 @@ def fetchActiveTextRecommendationsForPost(post, database=""):
         log.tracef("%s - %s - %s", record["ApplicationName"], record["DiagnosisEntryId"], record["TextRecommendation"])
     return pds
 
+
+def fetchAnyFinalDiagnosisForAnOutput(application, quantOutputId, database=""):
+    SQL = "select FD.FinalDiagnosisName, FD.FinalDiagnosisId, F.FamilyName "\
+        " from DtFinalDiagnosis FD, DtFamily F, DtApplication A, DtQuantOutput QO, DtRecommendationDefinition RD "\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and FD.FamilyId = F.FamilyId "\
+        " and A.ApplicationName = '%s' "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and QO.ApplicationId = A.ApplicationId "\
+        " and RD.quantOutputId = QO.QuantOutputId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and QO.QuantOutputId = %s " % (application, str(quantOutputId))
+    log.tracef("%s.fetchActiveFinalDiagnosisForAnOutput(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+def fetchApplications(db):
+    pds = system.db.runQuery("Select ApplicationName from DtApplication order by ApplicationName", database=db)
+    log.infof("Fetched %d applications." % (len(pds)))
+    return pds
+
 # Fetch applications for a console
 def fetchApplicationsForPost(post, database=""):
     SQL = "select distinct A.ApplicationName "\
@@ -324,6 +357,28 @@ def fetchApplicationId(applicationName, database=""):
     applicationId = system.db.runScalarQuery(SQL, database)
     return applicationId
 
+def fetchDiagrams(db):
+    pds = system.db.runQuery("Select ApplicationName, FamilyName, DiagramName from DtApplicationHierarchyView order by ApplicationName, FamilyName, DiagramName", database=db)
+    log.infof("Fetched %d applications." % (len(pds)))
+    return pds
+
+def fetchDiagramId(diagramName, db):
+    diagramId = system.db.runScalarQuery("select DiagramId from DtDiagram where DiagramName = '%s'" % (diagramName), database=db)
+    return diagramId
+
+# Fetch the time of the last recommendation, which should be the same as when the final diagnosis last became True
+def fetchDiagnosisActiveTime(finalDiagnosisId, database = ""):
+    SQL = "select LastRecommendationTime from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
+    log.trace(SQL)
+    lastRecommendtaionTime = system.db.runScalarQuery(SQL, database)
+    log.trace("The last recommendation time is: %s" % (str(lastRecommendtaionTime)))
+    return lastRecommendtaionTime
+
+def fetchFamilies(db):
+    pds = system.db.runQuery("Select ApplicationName, FamilyName from DtApplicationFamilyView order by ApplicationName, FamilyName", database=db)
+    log.infof("Fetched %d applications." % (len(pds)))
+    return pds
+
 def fetchFamilyNameForFinalDiagnosisId(finalDiagnosisId, db=""):
     SQL = "select FamilyName from DtFinalDiagnosisView where FinalDiagnosisId = %s" % (str(finalDiagnosisId))
     log.tracef("%s.fetchFamilyId(): %s", __name__, SQL)
@@ -338,6 +393,11 @@ def fetchFamilyId(applicationName, familyName, database=""):
     familyId = system.db.runScalarQuery(SQL, database)
     return familyId
 
+def fetchFinalDiagnosisList(db):
+    pds = system.db.runQuery("Select ApplicationName, FamilyName, DiagramId, DiagramName, FinalDiagnosisName from DtFinalDiagnosisView order by ApplicationName, FamilyName, DiagramName, FinalDiagnosisName", database=db)
+    log.infof("Fetched %d final diagnosis." % (len(pds)))
+    return pds
+
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
     SQL = "select DiagramUUID "\
@@ -346,6 +406,13 @@ def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
     log.tracef("%s.fetchFinalDiagnosisDiagramUUID(): %s", __name__, SQL)
     diagramUUID = system.db.runScalarQuery(SQL, database)
     return diagramUUID
+
+def fetchFinalDiagnosisId(diagramName, fdName, db):
+    SQL = "select FD.FinalDiagnosisId from DtDiagram D, DtFinalDiagnosis FD "\
+        "where D.DiagramId = FD.DiagramId and D.DiagramName = '%s' and FD.FinalDiagnosisName = '%s'" % (diagramName, fdName)
+    log.tracef("%s.fetchFinalDiagnosisId(): %s", __name__, SQL)
+    finalDiagnosisId = system.db.runScalarQuery(SQL, database=db)
+    return finalDiagnosisId
 
 # Look up the final diagnosis id given the application, family, and final Diagnosis names
 def fetchFinalDiagnosis(application, family, finalDiagnosis, database=""):
@@ -381,17 +448,50 @@ def fetchFinalDiagnosisNameFromId(finalDiagnosisId, database=""):
     finalDiagnosisName = system.db.runScalarQuery(SQL, database)
     return finalDiagnosisName
 
-# Fetch all of the recommendations that touch a quant output.
-def fetchRecommendationsForOutput(QuantOutputId, database=""):
-    SQL = "select R.RecommendationId, R.Recommendation, R.AutoRecommendation, R.AutoRecommendation, R.ManualRecommendation, "\
-        " R.AutoOrManual, QO.QuantOutputName, QO.TagPath "\
-        " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
-        " where RD.QuantOutputId = QO.QuantOutputId "\
-        " and QO.QuantOutputId = %i "\
-        " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
-        " order by QO.QuantOutputName"  % (QuantOutputId)
-    log.tracef("%s.fetchRecommendationsForOutput(): %s", __name__, SQL)
+
+# Fetch all of the active final diagnosis for an application.
+# Order the diagnosis from most import to least important - remember that the numeric priority is such that
+# low numbers are higher priority than high numbers. 
+def fetchHighestActiveDiagnosis(applicationName, database=""):
+    SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
+        " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.Multiplier, "\
+        " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
+        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
+        " where A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = FD.FamilyId "\
+        " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
+        " and DE.Status = 'Active' "\
+        " and FD.Active = 1 "\
+        " and (FD.Constant = 0 or not(DE.RecommendationStatus in ('WAIT','NO-DOWNLOAD','DOWNLOAD'))) "\
+        " and A.ApplicationName = '%s'"\
+        " order by FamilyPriority ASC, FinalDiagnosisPriority ASC"  % (applicationName) 
+    log.tracef("%s.fetchHighestActiveDiagnosis(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
+    return pds
+
+# Fetch the post for an application
+def fetchNotificationStrategy(application, database=""):
+    SQL = "select NotificationStrategy, ClientId from DtApplication where ApplicationName = '%s' " % (application)
+    log.tracef("%s.fetchNotificationStrategy(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database)
+    record = pds[0]
+    return record["NotificationStrategy"], record["ClientId"]
+
+def fetchOutputNamesForApplication(applicationName, db):
+    SQL = "select QuantOutputName, QuantOutputId "\
+            "from DtQuantOutputDefinitionView "\
+            "where ApplicationName = '%s' "\
+            "order by QuantOutputName" % (applicationName)
+    pds = system.db.runQuery(SQL, database=db)
+    return pds
+
+def fetchOutputsForApplication(applicationName, db):
+    SQL = "select QuantOutputId, QuantOutputName, TagPath, MostNegativeIncrement, MostPositiveIncrement, IgnoreMinimumIncrement, "\
+            "MinimumIncrement, SetpointHighLimit, SetpointLowLimit, IncrementalOutput, FeedbackMethod "\
+            "from DtQuantOutputDefinitionView "\
+            "where ApplicationName = '%s' "\
+            "order by QuantOutputName" % (applicationName)
+    pds = system.db.runQuery(SQL, database=db)
     return pds
 
 # Fetch the outputs for a final diagnosis and return them as a list of dictionaries
@@ -421,87 +521,59 @@ def fetchOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisNam
         outputList.append(output)
     return pds, outputList
 
-# Fetch the outputs for a final diagnosis and return them as a list of dictionaries
-# I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
-# that are used when calculating/managing recommendations and the output of those recommendations.
-def fetchActiveOutputsForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database=""):
-    SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
-        " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
-        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
-        " FD.TrapInsignificantRecommendations "\
-        " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
-        " where A.ApplicationId = F.ApplicationId "\
-        " and F.FamilyId = FD.FamilyId "\
-        " and L.LookupTypeCode = 'FeedbackMethod'"\
+def fetchOutputNamesForFinalDiagnosisId(finalDiagnosisId, db=""):
+    ''' Fetch the outputs for a final diagnosis '''
+
+    SQL = "select QO.QuantOutputName, QO.QuantOutputId "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
+        " where L.LookupTypeCode = 'FeedbackMethod'"\
         " and L.LookupId = QO.FeedbackMethodId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
-        " and A.ApplicationName = '%s' "\
-        " and F.FamilyName = '%s' "\
-        " and FD.FinalDiagnosisName = '%s' "\
-        " and QO.Active = 1"\
-        " order by QuantOutputName"  % (applicationName, familyName, finalDiagnosisName)
-    log.tracef("%s.fetchActiveOutputsForFinalDiagnosis(): %s", __name__, SQL)
-    pds = system.db.runQuery(SQL, database)
-    outputList = []
-    for record in pds:
-        output=convertOutputRecordToDictionary(record)       
-        outputList.append(output)
-    return pds, outputList
+        " and FD.FinalDiagnosisId = %s "\
+        " order by QuantOutputName"  % (str(finalDiagnosisId))
+    log.tracef("%s.fetchOutputNamesForFinalDiagnosisId(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database=db)
+    return pds
 
-def convertOutputRecordToDictionary(record):
-    output = {}
-    output['QuantOutputId'] = record['QuantOutputId']
-    output['QuantOutput'] = str(record['QuantOutputName'])
-    output['TagPath'] = str(record['TagPath'])
-    output['MostNegativeIncrement'] = record['MostNegativeIncrement']
-    output['MostPositiveIncrement'] = record['MostPositiveIncrement']
-    output['MinimumIncrement'] = record['MinimumIncrement']
-    output['SetpointHighLimit'] = record['SetpointHighLimit']
-    output['SetpointLowLimit'] = record['SetpointLowLimit']
-    output['FeedbackMethod'] = record['FeedbackMethod']
-    output['OutputLimitedStatus'] = record['OutputLimitedStatus']
-    output['OutputLimited'] = record['OutputLimited']
-    output['OutputPercent'] = record['OutputPercent']
-    output['IncrementalOutput'] = record['IncrementalOutput']
-    output['FeedbackOutput'] = record['FeedbackOutput']
-    output['FeedbackOutputManual'] = record['FeedbackOutputManual']
-    output['FeedbackOutputConditioned'] = record['FeedbackOutputConditioned']
-    output['ManualOverride'] = record['ManualOverride']
-    output['IgnoreMinimumIncrement'] = record['IgnoreMinimumIncrement']
-    output['TrapInsignificantRecommendations'] = record['TrapInsignificantRecommendations']
-    return output
+def fetchOutputsForFinalDiagnosisId(finalDiagnosisId, db=""):
+    ''' Fetch the outputs for a final diagnosis '''
 
-# Fetch the SQC blocks that led to a Final Diagnosis becoming true.
-# We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
-# or 2) At the time we want to know the SQC blocks, we could query the diagram.
-def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName, database=""):
-    sqcRootCauses=[]
+    SQL = "select upper(QO.QuantOutputName) QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
+        " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
+        " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
+        " FD.TrapInsignificantRecommendations "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
+        " where L.LookupTypeCode = 'FeedbackMethod'"\
+        " and L.LookupId = QO.FeedbackMethodId "\
+        " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
+        " and RD.QuantOutputId = QO.QuantOutputId "\
+        " and FD.FinalDiagnosisId = %s "\
+        " order by QuantOutputName"  % (str(finalDiagnosisId))
+    log.tracef("%s.fetchOutputsForFinalDiagnosisId(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database=db)
+    return pds
 
-    import system.ils.blt.diagram as diagram
-    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
+# Fetch the post for an application
+def fetchPostForApplication(application, database=""):
+    SQL = "select post "\
+        " from TkPost P, TkUnit U, DtApplication A "\
+        " where P.PostId = U.PostId "\
+        " and U.UnitId = A.UnitId "\
+        " and A.ApplicationName = '%s' " % (application)
+    log.tracef("%s.fetchPostForApplication(): %s", __name__, SQL)
+    post = system.db.runScalarQuery(SQL, database)
+    return post
 
-    log.tracef("Searching for SQC blocks for %s:", finalDiagnosisName)
-    
-    SQL = "select DiagramUUID from DtFinalDiagnosis where FinalDiagnosisName = '%s'" % (finalDiagnosisName)
-    diagramUUID = system.db.runScalarQuery(SQL, database)
-    print "  Diagram UUID: %s" % (str(diagramUUID))
-        
-    if diagramUUID != None: 
-        # Get the upstream blocks, make sure to jump connections
-        blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
-            
-        log.tracef("...found %d upstream blocks...", len(blocks))
-    
-        for block in blocks:
-            if block.getClassName() == "com.ils.block.SQC":
-                log.tracef("   ... found a SQC block...")
-                blockId=block.getIdString()
-                blockName=block.getName()
-                log.tracef("Found: %s - %s", str(blockId), str(blockName))
-
-    return sqcRootCauses
-
+# Fetch the post for an application
+def fetchPostForUnit(unit, database=""):
+    SQL = "select post "\
+        " from TkPost P, TkUnit U "\
+        " where P.PostId = U.PostId "\
+        " and U.UnitName = '%s' " % (unit)
+    log.tracef("%s.fetchPostForUnit(): %s", __name__, SQL)
+    post = system.db.runScalarQuery(SQL, database)
+    return post
 
 def fetchQuantOutputsForFinalDiagnosisIds(finalDiagnosisIds, database=""):
     quantOutputIds=[]
@@ -535,44 +607,55 @@ def fetchQuantOutput(quantOutputId, database=""):
     pds = system.db.runQuery(SQL, database)
     return pds
 
-#
+
+# Fetch all of the recommendations that touch a quant output.
+def fetchRecommendationsForOutput(QuantOutputId, database=""):
+    SQL = "select R.RecommendationId, R.Recommendation, R.AutoRecommendation, R.AutoRecommendation, R.ManualRecommendation, "\
+        " R.AutoOrManual, QO.QuantOutputName, QO.TagPath "\
+        " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
+        " where RD.QuantOutputId = QO.QuantOutputId "\
+        " and QO.QuantOutputId = %i "\
+        " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
+        " order by QO.QuantOutputName"  % (QuantOutputId)
+    log.tracef("%s.fetchRecommendationsForOutput(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database)
+    return pds
+
+# Fetch the SQC blocks that led to a Final Diagnosis becoming true.
+# We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
+# or 2) At the time we want to know the SQC blocks, we could query the diagram.
+def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName, database=""):
+    sqcRootCauses=[]
+
+    import system.ils.blt.diagram as diagram
+    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
+
+    log.tracef("Searching for SQC blocks for %s:", finalDiagnosisName)
+    
+    SQL = "select DiagramUUID from DtFinalDiagnosis where FinalDiagnosisName = '%s'" % (finalDiagnosisName)
+    diagramUUID = system.db.runScalarQuery(SQL, database)
+    print "  Diagram UUID: %s" % (str(diagramUUID))
+        
+    if diagramUUID != None: 
+        # Get the upstream blocks, make sure to jump connections
+        blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
+            
+        log.tracef("...found %d upstream blocks...", len(blocks))
+    
+        for block in blocks:
+            if block.getClassName() == "com.ils.block.SQC":
+                log.tracef("   ... found a SQC block...")
+                blockId=block.getIdString()
+                blockName=block.getName()
+                log.tracef("Found: %s - %s", str(blockId), str(blockName))
+
+    return sqcRootCauses
+
 def fetchTagPathForQuantOutputName(quantOutputName, database=""):
     SQL = "select QuantOutputName from DtQuantOutput where QuantOutputName = '%s'"  % (quantOutputName)
     log.tracef("%s.fetchTagPathForQuantOutputName(): %s", __name__, SQL)
     tagPath = system.db.runScalarQuery(SQL, database)
     return tagPath
-
-
-# Fetch the post for an application
-def fetchPostForApplication(application, database=""):
-    SQL = "select post "\
-        " from TkPost P, TkUnit U, DtApplication A "\
-        " where P.PostId = U.PostId "\
-        " and U.UnitId = A.UnitId "\
-        " and A.ApplicationName = '%s' " % (application)
-    log.tracef("%s.fetchPostForApplication(): %s", __name__, SQL)
-    post = system.db.runScalarQuery(SQL, database)
-    return post
-
-# Fetch the post for an application
-def fetchPostForUnit(unit, database=""):
-    SQL = "select post "\
-        " from TkPost P, TkUnit U "\
-        " where P.PostId = U.PostId "\
-        " and U.UnitName = '%s' " % (unit)
-    log.tracef("%s.fetchPostForUnit(): %s", __name__, SQL)
-    post = system.db.runScalarQuery(SQL, database)
-    return post
-
-
-# Fetch the post for an application
-def fetchNotificationStrategy(application, database=""):
-    SQL = "select NotificationStrategy, ClientId from DtApplication where ApplicationName = '%s' " % (application)
-    log.tracef("%s.fetchNotificationStrategy(): %s", __name__, SQL)
-    pds = system.db.runQuery(SQL, database)
-    record = pds[0]
-    return record["NotificationStrategy"], record["ClientId"]
-
 
 def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
     log.trace("Updating the Bound Recommendation percent")
