@@ -74,6 +74,20 @@ def fd1_2_6(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
 
 def fd2_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In fd2_1_1"
+    explanation = "Turn it up!."
+    recommendations = []
+    recommendations.append({"QuantOutput": "Q2_1", "Value": 12.3})
+    return True, explanation, recommendations
+
+def fd2_1_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd2_1_3"
+    explanation = "Made a recommendation!."
+    recommendations = []
+    recommendations.append({"QuantOutput": "Q2_1", "Value": 25.0})
+    return True, explanation, recommendations
+
+def fd2_1_1_original(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In fd2_1_1"
     explanation = "Get the steak out."
     recommendations = []
     

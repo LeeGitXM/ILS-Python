@@ -201,7 +201,7 @@ def serviceDownloadMessageHandler(payload):
 
 def serviceDownload(post, ds, tagProvider, db):
     # iterate through each row of the dataset that is marked to go and download it.
-    log.info("Starting to download...")
+    log.info("Starting to download...***1***")
     
     diagToolkitWriteEnabled = system.tag.read("[" + tagProvider + "]/Configuration/DiagnosticToolkit/diagnosticToolkitWriteEnabled").value
     print "DiagToolkitWriteEnabled: ", diagToolkitWriteEnabled

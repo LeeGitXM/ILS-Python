@@ -42,7 +42,7 @@ class DownloadThread(threading.Thread):
         '''
         Be really careful with the handling of rampTime here.  It looks like None but it is really "None".  Not sure exactly who converted it to a text string...
         '''
-        log.infof("Running download thread #%d for writing %s to %s (ramp time = %s)...", self.row, str(self.newSetpoint), self.tagPath, self.rampTime)
+        log.infof("Running download thread for row #%d - writing %s to %s (ramp time = %s)...", self.row, str(self.newSetpoint), self.tagPath, self.rampTime)
         
         if self.rampTime in ["", "None", None]:
             success, errorMessage = write(self.tagPath, self.newSetpoint, self.writeConfirm, self.valueType)
@@ -52,9 +52,9 @@ class DownloadThread(threading.Thread):
         if success:
             self.downloader.updateQuantOutputDownloadStatus(self.quantOutputId, "Success")
             self.downloader.logbookMessage += "confirmed\n"
-            print "The write was successful"
+            log.infof("...successful download for row #%d (writing %s to %s)", self.row, str(self.newSetpoint), self.tagPath)
         else:
-            print "The write FAILED because: ", errorMessage
+            log.warnf("...error downloading row #%d (writing %s to %s)", self.row, str(self.newSetpoint), self.tagPath)
             self.downloader.updateQuantOutputDownloadStatus(self.quantOutputId, "Error")
             self.downloader.logbookMessage += "failed because of an error: %s\n" % (errorMessage)
 
