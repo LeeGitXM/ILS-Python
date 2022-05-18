@@ -252,11 +252,27 @@ def addControlPanelMessage(chartProperties, stepScope, message, priority, ackReq
 
     return msgId
 
+def cancelChartWithNotification(chartScope, notificationText):
+    '''cancel the entire chart hierarchy'''
+    topChartRunId = getTopChartRunId(chartScope)
+    log.infof("Canceling chart with id: %s because: %s", str(topChartRunId), notificationText)
+    
+    ''' Send a message to every client that the SFC has aborted due to an unexpected error '''
+    payload = dict()
+    payload[MESSAGE] = notificationText
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+
+    ''' Cancel from the top down '''
+    system.sfc.cancelChart(topChartRunId)
+    
+    raise SystemExit
+
 
 def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''
     topChartRunId = getTopChartRunId(chartProperties)
-    log.infof("Cancelling chart with id: %s", str(topChartRunId))
+    print "Chart Properties: ", chartProperties
+    log.infof("Canceling chart with id: %s", str(topChartRunId))
     system.sfc.cancelChart(topChartRunId)
     raise SystemExit
 
@@ -601,6 +617,8 @@ def getTimer(chartScope, stepScope, stepProperties):
     
     timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
     timerKey = getStepProperty(stepProperties, TIMER_KEY)
+    
+    print "Timer location: %s - key: %s" % (timerLocation, timerKey)
     
     ''' Check if the user specified a attribute along with timer key. '''
     if timerKey.find(".") > -1:

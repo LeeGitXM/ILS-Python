@@ -6,7 +6,7 @@ Created on Mar 31, 2015
 
 import system, string, sys, traceback
 from ils.common.notification import notifyError
-from ils.common.config import getIsolationModeClient, getTagProvider
+from ils.common.config import getIsolationModeClient, getProductionTagProviderFromInternalDatabase, getIsolationTagProviderFromInternalDatabase
 from ils.sfc.common.constants import CLIENT_DONE, NORMAL, LARGE_TEXT
 from ils.io.util import readTag
 from ils.log import getLogger
@@ -28,7 +28,7 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
         else:
             windowName = "Common/OC Alert"
 
-    # Now make the payload for the OC alert window
+    # Now make the payload for the OC alert window   
     payload = {
         "post": post,
         "windowName": windowName,
@@ -49,8 +49,12 @@ def sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel
     
     ''' 
     If the site has specified a custom alert callback, now is the time to call it.  A good thing to do here is to maximize the OC Ignition client. 
-    ''' 
-    provider = getTagProvider()
+    '''     
+    if isolationMode:
+        provider = getProductionTagProviderFromInternalDatabase(project)
+    else:
+        provider = getIsolationTagProviderFromInternalDatabase(project)
+
     callback = readTag("[%s]Configuration/Common/ocAlertCallback" % (provider)).value
     if callback not in ["", None, "None"]:
         log.tracef("Calling a callback...")

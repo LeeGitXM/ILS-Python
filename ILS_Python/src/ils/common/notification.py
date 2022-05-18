@@ -10,13 +10,13 @@ from ils.log import getLogger
 log = getLogger(__name__)
 
 def notifyError(project, message, payload, post, db, isolationMode):
-    logger.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, isolation: %s, payload: <%s>", __name__, str(message), str(project), str(post), str(isolationMode), str(payload))
+    log.infof("In %s.notifyError(), Sending <%s> message to project: <%s>, post: <%s>, isolation: %s, payload: <%s>", __name__, str(message), str(project), str(post), str(isolationMode), str(payload))
     
     notifier(project, message, payload, post, db, isolationMode)
 
 
 def notifyText(project, notificationText, post, isolationMode):
-    logger.infof("In %s.notifyText(), Sending <%s> message to project: <%s>, post: <%s>", __name__, str(notificationText), str(project), str(post), str(isolationMode))
+    log.infof("In %s.notifyText(), Sending <%s> message to project: <%s>, post: <%s>", __name__, str(notificationText), str(project), str(post), str(isolationMode))
     
     message = "consoleManager"
 
@@ -40,17 +40,17 @@ def notifier(project, message, payload, post, db, isolationMode):
     notifiedClients = []
     
     if post <> "":
-        logger.tracef("Targeting post: <%s>", post)
+        log.tracef("Targeting post: <%s>", post)
         
         foundClient = False
         
         ''' Implement rule #1 '''
-        logger.tracef("Rule #1 - looking for clients logged in as %s that are in isolation mode: %s!", post, str(isolationMode))
+        log.tracef("Rule #1 - looking for clients logged in as %s that are in isolation mode: %s!", post, str(isolationMode))
         from ils.common.message.interface import getPostClientIds
         clientSessionIds = getPostClientIds(post, project, db, isolationMode)
         if len(clientSessionIds) > 0:
             foundClient = True
-            logger.tracef("Found %d clients logged in as %s that are in isolation mode: %s!", len(clientSessionIds), post, str(isolationMode))
+            log.tracef("Found %d clients logged in as %s that are in isolation mode: %s!", len(clientSessionIds), post, str(isolationMode))
             
             for clientSessionId in clientSessionIds:
                 if clientSessionId not in notifiedClients:
@@ -58,7 +58,7 @@ def notifier(project, message, payload, post, db, isolationMode):
                     system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
 
         ''' Implement Rule #2 '''
-        logger.tracef("Rule #2 - looking for clients with consoles displayed...")
+        log.tracef("Rule #2 - looking for clients with consoles displayed...")
         from ils.common.message.interface import getConsoleClientIdsForPost
         clientSessionIds = getConsoleClientIdsForPost(post, project, db, isolationMode)
         if len(clientSessionIds) > 0:
@@ -66,15 +66,15 @@ def notifier(project, message, payload, post, db, isolationMode):
             foundClient = True
             for clientSessionId in clientSessionIds:
                 if clientSessionId not in notifiedClients:
-                    logger.tracef("Found a client with the console displayed %s with client Id %s", post, str(clientSessionId))
+                    log.tracef("Found a client with the console displayed %s with client Id %s", post, str(clientSessionId))
                     notifiedClients.append(clientSessionId)
                     system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
         
         if not(foundClient):
-            logger.trace("Notifying every client because I could not find the post logged in")
+            log.trace("Notifying every client because I could not find the post logged in")
             payload["showOverride"] = False
             system.util.sendMessage(project, message, payload, scope="C")
     else:
-        logger.trace("Sending notification to every client because this is not a targeted alert")
+        log.trace("Sending notification to every client because this is not a targeted alert")
         payload["showOverride"] = False
         system.util.sendMessage(project, message, payload, scope="C")

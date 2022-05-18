@@ -9,10 +9,10 @@ import system
 def activate(scopeContext, stepProperties, state):
     ''' Abort the chart execution'''
     from ils.sfc.common.constants import DEACTIVATED, CANCELLED, STEP_SCOPE, ACK_REQUIRED, WAITING_FOR_REPLY, CENTER, INSTANCE_ID, \
-        ID, CLIENT_DONE, WINDOW_ID, WINDOW_PATH, IS_SFC_WINDOW
+        ID, CLIENT_DONE, WINDOW_ID, WINDOW_PATH, IS_SFC_WINDOW, MESSAGE
     from ils.sfc.gateway.steps.commonInput import cleanup
-    from ils.sfc.gateway.api import getStepProperty, cancelChart, addControlPanelMessage, getChartLogger,handleUnexpectedGatewayError, logStepDeactivated, \
-        getControlPanelId, getDatabaseName, getTopChartRunId, registerWindowWithControlPanel, sendMessageToClient
+    from ils.sfc.gateway.api import getStepProperty, cancelChart, addControlPanelMessage, getChartLogger, handleUnexpectedGatewayError, logStepDeactivated, \
+        getControlPanelId, getDatabaseName, getTopChartRunId, registerWindowWithControlPanel, sendMessageToClient, substituteScopeReferences
 
     chartScope = scopeContext.getChartScope()
     stepScope = scopeContext.getStepScope()
@@ -66,15 +66,21 @@ def activate(scopeContext, stepProperties, state):
                 scale = 1.0
                 title = "Cancel Chart Confirmation" 
                 buttonLabel = "Cancel"
-                prompt = "<HTML>Are you sure you want to <b>cancel</b>?"
                 
+                prompt = getStepProperty(stepProperties, MESSAGE)
+                if prompt == "":
+                    prompt = "<HTML>Are you sure you want to <b>cancel</b>?"    
+                prompt = substituteScopeReferences(chartScope, stepScope, prompt)
+                if prompt.find("<HTML>") < 0:
+                    prompt = "<HTML>" + prompt
+                    
                 windowId = registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database)
                 stepScope[WINDOW_ID] = windowId
                 
                 ''' Clear the response recipe data so we know when the client has updated it '''
                 chartScope.responseKey = None
                 
-                ''' The recsponse here is totally internal to the implementation.  '''
+                ''' The response here is totally internal to the implementation.  '''
                 responseKeyAndAttribute = responseKey
                 targetStepId = -1
                 

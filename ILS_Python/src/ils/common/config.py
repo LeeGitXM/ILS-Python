@@ -33,7 +33,7 @@ def getScope():
 
 def isolationModeChangeHandler(newValue):
     '''
-    This is called from the tag change handler on a a client tag.
+    This is called from the tag change handler on a client tag.
     '''
     isolationMode = newValue.value
     log.infof("In %s.isolationModeChangeHandler(), new isolation mode: %s", __name__, str(isolationMode))
@@ -50,7 +50,6 @@ def isolationModeChangeHandler(newValue):
 
     database = system.util.sendRequest(projectName, "getDatabase", payload)
     log.infof("   Database: %s", database)
-    
     
     system.tag.writeBlocking(['[Client]Tag Provider', '[Client]Time Factor', '[Client]Database'], [tagProvider, timeFactor, database])
 
