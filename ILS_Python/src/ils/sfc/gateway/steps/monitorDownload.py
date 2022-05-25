@@ -7,7 +7,7 @@ This step used to be known as Download GUI
 '''
 
 import system, string
-from ils.sfc.recipeData.api import s88Set, s88Get, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88SetFromId
+from ils.sfc.recipeData.api import s88Set, s88Get, s88GetRecipeDataId, s88GetRecipeDataIdFromStep, s88SetFromId, s88GetFromId
 from ils.sfc.common.constants import PV_VALUE, PV_MONITOR_ACTIVE, PV_MONITOR_STATUS, SETPOINT_STATUS, SETPOINT_OK, STEP_PENDING, PV_NOT_MONITORED, WINDOW_ID, \
     WINDOW_PATH, BUTTON_LABEL, RECIPE_LOCATION, DOWNLOAD_STATUS, TARGET_STEP_UUID, IS_SFC_WINDOW, DOWNLOAD, \
     POSITION, SCALE, WINDOW_TITLE, MONITOR_DOWNLOADS_CONFIG, WRITE_CONFIRMED, NAME, ID, \
@@ -42,13 +42,14 @@ def activate(scopeContext, stepProperties, state):
         '''
         timerLocation = getStepProperty(stepProperties, TIMER_LOCATION) 
         timerKey = getStepProperty(stepProperties, TIMER_KEY)
+        secondarySortKey = getStepProperty(stepProperties, SECONDARY_SORT_KEY)
         log.tracef("...using timer %s.%s...", timerLocation, timerKey)
         timerRecipeDataId, timerRecipeDataType = s88GetRecipeDataId(chartScope, stepScope, timerKey, timerLocation)
         '''
         
         from ils.sfc.gateway.api import getTimer
         timerRecipeDataId = getTimer(chartScope, stepScope, stepProperties)
-         
+        
         secondarySortKey = getStepProperty(stepProperties, SECONDARY_SORT_KEY)
         if secondarySortKey == None:
             secondarySortKey = SECONDARY_SORT_BY_ALPHABETICAL
@@ -95,10 +96,10 @@ def activate(scopeContext, stepProperties, state):
             log.tracef("Resetting recipe data with key: %s at %s", row.key, recipeLocation)
             
             recipeDataId, recipeDataType = s88GetRecipeDataId(chartScope, stepProperties, row.key, recipeLocation)
-            log.tracef("...type:: %s", recipeDataType)
+            log.tracef("...type: %s, recipeDataId: %s", recipeDataType, str(recipeDataId))
 
-            if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:            
-                download = s88Get(chartScope, stepScope, row.key + "." + DOWNLOAD, recipeLocation)
+            if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:
+                download = s88GetFromId(recipeDataId, recipeDataType, DOWNLOAD, database)
                 if download or IGNORE_DOWNLOAD_FLAG:
                     # Initialize properties used by the write output process
                     s88SetFromId(recipeDataId, recipeDataType, DOWNLOAD_STATUS, STEP_PENDING, database)
@@ -138,7 +139,7 @@ def activate(scopeContext, stepProperties, state):
 
     except TimerException:
         handleUnexpectedGatewayErrorWithKnownCause(chartScope, stepProperties, "Unexpected error in %s" % (__name__), log)
-
+        
     except:
         handleUnexpectedGatewayError(chartScope, stepProperties, "Unexpected error in %s" % (__name__), log)
 

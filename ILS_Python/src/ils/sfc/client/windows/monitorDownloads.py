@@ -12,6 +12,9 @@ from ils.common.util import escapeSqlQuotes
 from ils.sfc.common.util import getChartStatus
 from ils.log import getLogger
 log =getLogger(__name__)
+PENDING = "pending"
+APPROACHING = "approaching"
+DOWNLOADING = "downloading"
 
 # This is called when the Download GUI window is opened.  The window is opened in response to a message sent 
 # from the gateway to the client when the download GUI task runs in the gateway.  The gateway task populates the 
@@ -155,7 +158,7 @@ def update(rootContainer):
     
     # Need to add a row at the top to specify the time that the download started.
     ds = system.dataset.toDataSet(pds)    
-    ds = system.dataset.addRow(ds,0,["","","",None,None,None,None,None, "", startTimeFormatted,None, "pending", "monitoring", ""])
+    ds = system.dataset.addRow(ds,0,["","","",None,None,None,None,None, "", startTimeFormatted,None, PENDING, "monitoring", ""])
     
     table=rootContainer.getComponent("table")
     table.data=ds
@@ -263,7 +266,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
             rawTiming = "NULL"
             tagPath = recipeRecord["TAG"]
             setpoint = recipeRecord["TARGETFLOATVALUE"]
-            downloadStatus = "pending"   # This will make cell background white
+            downloadStatus = PENDING   # This will make cell background white
             pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
             pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
             setpointStatus = ""
@@ -296,7 +299,7 @@ def initializeDatabaseTable(windowId, database, tagProvider):
         
         if description in [None, "None"]:
             description = ""
-            
+        
         description = escapeSqlQuotes(description)
         formattedPV = formatPV(valueType, pvMonitorActive, pvValue)
         formattedSP = formatPV(valueType, True, setpoint)
@@ -350,12 +353,16 @@ def updateDatabaseTable(windowId, database):
             valueType = string.upper(recipeRecord["VALUETYPE"])
             log.tracef("   valueType:%s", valueType)
             if valueType == "FLOAT":
+                setpoint = recipeRecord["OUTPUTFLOATVALUE"]
                 pvValue = recipeRecord["PVFLOATVALUE"]
             elif valueType == "INTEGER":
+                setpoint = recipeRecord["OUTPUTINTEGERVALUE"]
                 pvValue = recipeRecord["PVINTEGERVALUE"]
             elif valueType == "STRING":
+                setpoint = recipeRecord["OUTPUTSTRINGVALUE"]
                 pvValue = recipeRecord["PVSTRINGVALUE"]
             elif valueType == "BOOLEAN":
+                setpoint = recipeRecord["OUTPUTBOOLEANVALUE"]
                 pvValue = recipeRecord["PVBOOLEANVALUE"]
                 
             log.tracef("   value: %s", str(pvValue))
@@ -363,7 +370,7 @@ def updateDatabaseTable(windowId, database):
             stepTimestamp = recipeRecord["ACTUALDATETIME"]
             
         elif string.upper(recipeDataType) == "INPUT":
-            downloadStatus = "pending"  # This will make cell background white
+            downloadStatus = PENDING  # This will make cell background white
             pvMonitorStatus = recipeRecord["PVMONITORSTATUS"]
             pvMonitorActive = recipeRecord["PVMONITORACTIVE"]
             setpointStatus = ""
@@ -371,12 +378,16 @@ def updateDatabaseTable(windowId, database):
             valueType = string.upper(recipeRecord["VALUETYPE"])
             log.tracef("   valueType:%s", valueType)
             if valueType == "FLOAT":
+                setpoint = recipeRecord["TARGETFLOATVALUE"]
                 pvValue = recipeRecord["PVFLOATVALUE"]
             elif valueType == "INTEGER":
+                setpoint = recipeRecord["TARGETINTEGERVALUE"]
                 pvValue = recipeRecord["PVINTEGERVALUE"]
             elif valueType == "STRING":
+                setpoint = recipeRecord["TARGETSTRINGVALUE"]
                 pvValue = recipeRecord["PVSTRINGVALUE"]
             elif valueType == "BOOLEAN":
+                setpoint = recipeRecord["TARGETBOOLEANVALUE"]
                 pvValue = recipeRecord["PVBOOLEANVALUE"]
                 
             stepTimestamp = None
@@ -384,18 +395,32 @@ def updateDatabaseTable(windowId, database):
             log.errorf("*** Illegal recipe data type: %s", recipeDataType)
             return
         
+        log.tracef("   PV: %s, SP: %s, Download Status: %s (value type: %s)", str(pvValue), str(setpoint), downloadStatus, valueType)
         formattedPV = formatPV(valueType, pvMonitorActive, pvValue)
+        formattedSP = formatPV(valueType, True, setpoint)
 
         if stepTimestamp == None or stepTimestamp == "None":
             stepTimestamp = ""
         else:
             stepTimestamp = system.db.dateFormat(stepTimestamp, "dd-MMM-yy h:mm:ss a")
-
-        SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
-            "SetpointStatus='%s', StepTimestamp='%s' "\
-            "where windowId = '%s' and RecipeDataId = %s " % \
-            (str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
-             stepTimestamp, windowId, str(recipeDataId) )
+            
+        '''
+        Be careful to NOT update the target value if the setpoint has already been downloaded. 
+        This will prevent being able to use two writeoutput steps, with a delay between them, 
+        to write to the same location using the same piece of recipe data.
+        '''
+        if downloadStatus in [PENDING, APPROACHING, DOWNLOADING]:
+            SQL = "update SfcDownloadGUITable set SetPoint='%s', PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
+                "SetpointStatus='%s', StepTimestamp='%s' "\
+                "where windowId = '%s' and RecipeDataId = %s " % \
+                (str(formattedSP), str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
+                 stepTimestamp, windowId, str(recipeDataId) )
+        else:
+            SQL = "update SfcDownloadGUITable set PV='%s', DownloadStatus='%s', PVMonitorStatus='%s', " \
+                "SetpointStatus='%s', StepTimestamp='%s' "\
+                "where windowId = '%s' and RecipeDataId = %s " % \
+                (str(formattedPV), str(downloadStatus), str(pvMonitorStatus), str(setpointStatus), \
+                 stepTimestamp, windowId, str(recipeDataId) )
 
         log.tracef("SQL: %s", SQL)
         system.db.runUpdateQuery(SQL, database)

@@ -9,7 +9,8 @@ Created on Oct 30, 2014
 import system, time, string
 from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
 from ils.sfc.common.constants import MESSAGE_QUEUE, MESSAGE, NAME, CONTROL_PANEL_ID, ORIGINATOR, HANDLER, DATABASE, CONTROL_PANEL_NAME, \
-    DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT, MAX_CONTROL_PANEL_MESSAGE_LENGTH
+    DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, WINDOW_ID, TIMEOUT, TIMEOUT_UNIT, TIMEOUT_TIME, RESPONSE, TIMED_OUT, \
+    MAX_CONTROL_PANEL_MESSAGE_LENGTH, TIME_FACTOR
 from ils.common.ocAlert import sendAlert
 from ils.common.util import substituteProvider, escapeSqlQuotes
 from ils.queue.constants import QUEUE_ERROR
@@ -148,17 +149,7 @@ def notifyGatewayError(chartScope, stepProperties, msg, logger=None):
     else:
         stepName = getStepProperty(stepProperties, NAME)
     
-    print "-------------------------------"
-    print "msg:", msg
-    print "-------------------------------"
-    print "fullMsg: ", fullMsg
-    print "-------------------------------"
-    print "tracebackMsg: ", tracebackMsg
-    print "-------------------------------"
-    print "javaCauseMsg: ", javaCauseMsg
-    print "-------------------------------"
-    
-    payloadMsg = "Chart path: %s\nStep Name: %s\n\nException details:%s" % (chartPath, stepName, fullMsg)
+    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s" % (msg, chartPath, stepName, fullMsg)
     
     if tracebackMsg.find("None") != 0:
         print "Adding traceback"
@@ -262,6 +253,20 @@ def addControlPanelMessage(chartProperties, stepScope, message, priority, ackReq
 
     return msgId
 
+def cancelChartWithNotification(chartScope, notificationText):
+    '''cancel the entire chart hierarchy'''
+    topChartRunId = getTopChartRunId(chartScope)
+    logger.infof("Canceling chart with id: %s because: %s", str(topChartRunId), notificationText)
+    
+    ''' Send a message to every client that the SFC has aborted due to an unexpected error '''
+    payload = dict()
+    payload[MESSAGE] = notificationText
+    sendMessageToClient(chartScope, 'sfcUnexpectedError', payload)
+
+    ''' Cancel from the top down '''
+    system.sfc.cancelChart(topChartRunId)
+    
+    raise SystemExit
 
 def cancelChart(chartProperties):
     '''cancel the entire chart hierarchy'''
@@ -516,22 +521,6 @@ def getCurrentMessageQueue(chartProperties):
     topScope = getTopLevelProperties(chartProperties)
     return topScope[MESSAGE_QUEUE]
 
-def getDatabaseName(chartProperties):
-    '''Get the name of the database this chart is using, taking isolation mode into account'''
-    isolationMode = getIsolationMode(chartProperties)
-    
-    ''' I added some strange looking Python to get this to work from the Test Framework. '''
-
-    if isolationMode:
-        IM = True
-    else:
-        IM = False
-    
-    ''' Leave this include here to avoid name clash '''
-    from system.ils.sfc import getDatabaseName as systemGetDatabaseName
-    db = systemGetDatabaseName(IM)
-    return db
-
 def getDelaySeconds(delay, delayUnit):
     '''get the delay time and convert to seconds'''
     if delayUnit == DELAY_UNIT_SECOND:
@@ -570,16 +559,20 @@ def getProject(chartProperties):
     from ils.sfc.common.constants import PROJECT
     return str(getTopLevelProperties(chartProperties)[PROJECT])
 
-def getProviderName(chartProperties):
-    '''Get the name of the tag provider for this chart, taking isolation mode into account'''
-    from system.ils.sfc import getProviderName, getIsolationMode
-    return getProviderName(getIsolationMode(chartProperties))
+def getDatabaseName(chartProperties):
+    '''Get the name of the database this chart is using, we conveniently put this into the top properties '''
+    from ils.sfc.recipeData.core import getDatabaseName as getDatabaseNameFromCore
+    return getDatabaseNameFromCore(chartProperties)
 
-#returns with square brackets
+def getProviderName(chartProperties):
+    '''Get the name of the tag provider for this chart, we conveniently put this into the top properties '''
+    from ils.sfc.recipeData.core import getProviderName as getProviderNameFromCore
+    return getProviderNameFromCore(chartProperties)
+
 def getProvider(chartProperties):
     '''Like getProviderName(), but puts brackets around the provider name'''
-    provider = getProviderName(chartProperties)
-    return "[" + provider + "]"
+    from ils.sfc.recipeData.core import getProvider as getProviderFromCore
+    return getProviderFromCore(chartProperties)
   
 def getSessionId(chartProperties):
     '''Get the run id of the chart at the TOP enclosing level'''
@@ -607,7 +600,10 @@ def getTimeoutTime(chartScope, stepProperties):
     return timeoutTime
    
 def getTimeFactor(chartProperties):
-    '''Get the factor by which all times should be multiplied (typically used to speed up tests)'''
+    '''
+    Get the factor by which all times should be multiplied (typically used to speed up tests) which 
+    we conveniently put into the top properties. 
+    '''
     from system.ils.sfc import getTimeFactor as getModuleTimeFactor
     isolationMode = getIsolationMode(chartProperties)
     return getModuleTimeFactor(isolationMode)

@@ -3,7 +3,7 @@ Copyright 2014 ILS Automation
 
 **************************************************************************************
 * WARNING: This Python is not reloaded dynamically!                                         *
-* Any changes here requires a full gateway restart since this runs in the gateway *
+* Any changes here requires a full gateway restart!                                                *
 **************************************************************************************
 '''
 
@@ -33,7 +33,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.state = "UNKNOWN"
         self.handler.setAlerterClass(self.getClassName())
         self.log =getLogger(__name__)
-        self.log.infof("Instantiating a Final Diagnosis...")
+        self.log.infof("Instantiating an ILS Final Diagnosis...")
     
     # Set attributes custom to this class
     def initialize(self):
@@ -74,7 +74,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         # I'm not really using this, but I'm printing it up front just to make sure this works
         projectName = system.util.getProjectName()
-        self.log.tracef("FinalDiagnosis.acceptValue: %s (project: %s)", self.state, projectName)
+        self.log.infof("FinalDiagnosis.acceptValue: %s (project: %s)", self.state, projectName)
 
         if self.state != "UNKNOWN":
             print "Clearing the watermark"
@@ -83,25 +83,25 @@ class FinalDiagnosis(basicblock.BasicBlock):
         # On startup, it is possible for a block to get a value before
         # all resources (like the parent application) have been loaded. 
         if self.handler.getApplication(self.parentuuid)==None or self.handler.getFamily(self.parentuuid)==None:
-            print "FinalDiagnosis.acceptValue: Parent application or family not loaded yet, ignoring state change"
+            self.log.errorf("FinalDiagnosis.acceptValue: Parent application or family not loaded yet, ignoring state change")
             self.state = "UNKNOWN"
             return
 
         database = self.handler.getDefaultDatabase(self.parentuuid)
         provider = self.handler.getDefaultTagProvider(self.parentuuid)
         
-        print "Using database: %s and tag provider: %s " % (database, provider)
+        self.log.tracef("Using database: %s and tag provider: %s ", database, provider)
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
         familyName = self.handler.getFamily(self.parentuuid).getName()
-        print "Application: %s\nFamily: %s" % (applicationName, familyName)
+        self.log.tracef("Application: %s\nFamily: %s", applicationName, familyName)
         
         theFinalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
         finalDiagnosisName = theFinalDiagnosis.getName()
-        print "Final Diagnosis: %s" % (finalDiagnosisName)        
+        self.log.infof("Final Diagnosis: %s", finalDiagnosisName)        
 
         if self.state == "TRUE":
-            print "The diagnosis just became TRUE"
+            self.log.infof("The diagnosis just became TRUE")
             def work(fd=self,applicationName=applicationName,familyName=familyName,finalDiagnosisName=finalDiagnosisName,database=database,provider=provider):
                 # Notify inhibit blocks to temporarily halt updates to SQC
                 # handler.sendTimestampedSignal(self.parentuuid, "inhibit", "", "",time)
@@ -109,7 +109,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
                 postDiagnosisEntry(applicationName, familyName, finalDiagnosisName, fd.uuid, fd.parentuuid, database, provider)
             system.util.invokeAsynchronous(work)
         else:
-            print "The diagnosis just became FALSE"
+            self.log.tracef("The diagnosis just became FALSE")
             from ils.diagToolkit.finalDiagnosis import clearDiagnosisEntry
             clearDiagnosisEntry(applicationName, familyName, finalDiagnosisName, database, provider)
 
@@ -119,7 +119,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.time = ts
         self.postValue('out',value,quality,ts)
         
-        print "FinalDiagnosis.acceptValue: COMPLETE"
+        self.log.infof("FinalDiagnosis.acceptValue: COMPLETE")
     
     # Trigger property and connection notifications on the block
     def notifyOfStatus(self):
@@ -156,19 +156,19 @@ def setAuxData(block, applicationName, familyName, diagramUUID, fdName, auxData,
     print "**** ", properties
 
     finalDiagnosisLabel = str(getProperty(properties, "FinalDiagnosisLabel", ""))
-    priority = getProperty(properties, "Priority", "0.0")
+    priority = str(getProperty(properties, "Priority", "0.0"))
     calculationMethod = str(getProperty(properties, "CalculationMethod", ""))
-    postTextRecommendation = getProperty(properties, "PostTextRecommendation", "0")
+    postTextRecommendation = str(getProperty(properties, "PostTextRecommendation", "0"))
     postProcessingCallback = str(getProperty(properties, "PostProcessingCallback", ""))
-    refreshRate = getProperty(properties, "RefreshRate", "300")
+    refreshRate = str(getProperty(properties, "RefreshRate", "300"))
     textRecommendation = str(getProperty(properties, "TextRecommendation", ""))
-    active = getProperty(properties, "Active", "0")
+    active = str(getProperty(properties, "Active", "0"))
     explanation = str(getProperty(properties, "Explanation", "0"))
-    trapInsignificantRecommendations = getProperty(properties, "TrapInsignificantRecommendations", "1")
-    constant = getProperty(properties, "Constant", "0")
-    manualMoveAllowed = getProperty(properties, "ManualMoveAllowed", "0")
+    trapInsignificantRecommendations = str(getProperty(properties, "TrapInsignificantRecommendations", "1"))
+    constant = str(getProperty(properties, "Constant", "0"))
+    manualMoveAllowed = str(getProperty(properties, "ManualMoveAllowed", "0"))
     comment = str(getProperty(properties, "Comment", ""))
-    showExplanationWithRecommendation = getProperty(properties, "ShowExplanationWithRecommendation", "0")
+    showExplanationWithRecommendation = str(getProperty(properties, "ShowExplanationWithRecommendation", "0"))
     
     print "manualMoveAllowed: ", manualMoveAllowed
     

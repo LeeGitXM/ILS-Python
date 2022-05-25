@@ -5,6 +5,13 @@ Created on Sep 9, 2014
 '''
 import system, string
 
+# Create a new message queue 
+def createQueue(queueKey, db = ''):
+    SQL = "insert into QueueMaster (QueueKey, Title, AutoViewSeverityThreshold, Position, AutoViewAdmin, AutoViewAE, AutoViewOperator) "\
+        "values ('%s', '%s', 10, 'bottomLeft', 0, 0, 0) " % (queueKey, queueKey)
+    queueId = system.db.runUpdateQuery(SQL, db, getKeys=True)
+    return queueId
+
 # Fetch the queue  id given the Queue Key 
 def getQueueId(queueKey, db = ''):
     queueKey=string.upper(str(queueKey))    
