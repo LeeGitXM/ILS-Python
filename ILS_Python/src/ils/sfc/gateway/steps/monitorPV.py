@@ -389,7 +389,7 @@ def activate(scopeContext, stepProperties, state):
 
                             ''' Check for an updated target value if we have not already downloaded it (5/5/2022) '''
                             configRow, targetValue = getTargetValue(chartScope, stepScope, targetType, targetRecipeDataId, targetRecipeDataType, recipeDataLocation, configRow, database, providerName, log)
-                            log.infof("Current target value: %s", str(targetValue))
+                            log.tracef("Current target value: %s", str(targetValue))
 
                         # Display the PVs as soon as the block starts running, even before the SP has been written
                         tagPath = getMonitoredTagPath(pvRecipeDataId, pvRecipeDataType, providerName, database)

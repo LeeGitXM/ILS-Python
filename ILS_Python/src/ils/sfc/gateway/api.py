@@ -7,7 +7,6 @@ Created on Oct 30, 2014
 '''
     
 import system, time, string
-from ils.io.util import readTag
 from ils.sfc.common.util import boolToBit, logExceptionCause, getChartStatus
 from ils.sfc.common.constants import CONTROL_PANEL_ID, CONTROL_PANEL_NAME, DATABASE, DELAY_UNIT_SECOND, DELAY_UNIT_MINUTE, DELAY_UNIT_HOUR, \
     HANDLER, MAX_CONTROL_PANEL_MESSAGE_LENGTH, MESSAGE_QUEUE, MESSAGE, NAME, ORIGINATOR, RESPONSE, TAG_PROVIDER, TIME_FACTOR, TIMED_OUT, \
@@ -107,6 +106,7 @@ def handleUnexpectedGatewayErrorWithKnownCause(chartScope, stepProperties, msg, 
     This version does not include a Java/Python stack trace.  It should be used when we have really narrowed down the error cause
     and can supply an adequate error message.  Send an message to the client and then cancelthe chart from the top down.
     '''
+    
     chartPath = chartScope.get("chartPath", "")
     if stepProperties == None:
         stepName = "Unknown"
@@ -129,8 +129,9 @@ def handleUnexpectedGatewayErrorWithKnownCause(chartScope, stepProperties, msg, 
 
 def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
     '''
-    Report an unexpected error so that it is visible to the operator--
-    '''  
+    Report an unexpected error so that it is visible to the client
+    '''
+      
     notifyGatewayError(chartScope, stepProperties, msg, logger)
     
     if logger <> None:
@@ -141,15 +142,18 @@ def handleUnexpectedGatewayError(chartScope, stepProperties, msg, logger=None):
     cancelChart(chartScope)
 
 def notifyGatewayError(chartScope, stepProperties, msg, logger=None):
-    '''  Report an unexpected error so that it is visible to the operator.  '''
+    '''
+    Report an unexpected error so that it is visible to the client.
+    '''
+    
     fullMsg, tracebackMsg, javaCauseMsg = logExceptionCause(msg, logger)
     chartPath = chartScope.get("chartPath", "")
     if stepProperties == None:
         stepName = "Unknown"
     else:
         stepName = getStepProperty(stepProperties, NAME)
-										   
-    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s\n%s\n%s" % (msg, chartPath, stepName, fullMsg, tracebackMsg, javaCauseMsg)
+
+    payloadMsg = "%s\nChart path: %s\nStep Name: %s\n\nException details:%s" % (msg, chartPath, stepName, fullMsg)
 
     if tracebackMsg.find("None") != 0:
         print "Adding traceback"
@@ -181,12 +185,11 @@ def handleExpectedGatewayError(chartScope, stepName, msg, logger=None):
 
     cancelChart(chartScope)    
 
-
-'''
-This is used to run a chart from the stop, cancel, or abort end handlers.
-The third argument can optionally be used to call one chart from multiple handlers, sort o like the old toolkit.
-'''
 def endHandlerRunner(chartPath, chartScope, handler=""):
+    '''
+    This is used to run a chart from the stop, cancel, or abort end handlers.
+    The third argument can optionally be used to call one chart from multiple handlers, sort o like the old toolkit.
+    '''
     log.infof("In %s.endHandlerRunner(), starting %s", __name__, chartPath)
     
     if handler == "":
@@ -225,12 +228,11 @@ def endHandlerSetup(chart):
     
     log.tracef("The NEW chart scope is: %s", str(chart))
 
-
-'''
-This is called from the gateway by a running chart, it does not have a window handle or rootContainer.  In fact there may not be 
-a window.  Display a message on the control panel
-'''
 def addControlPanelMessage(chartProperties, stepScope, message, priority, ackRequired):    
+    '''
+    This is called from the gateway by a running chart, it does not have a window handle or rootContainer.  In fact there may not be 
+    a window.  Display a message on the control panel
+    '''
     log.tracef("The untranslated message is <%s>...", message)
     message = substituteScopeReferences(chartProperties, stepScope, message)
     message = escapeSqlQuotes(message)
@@ -253,7 +255,10 @@ def addControlPanelMessage(chartProperties, stepScope, message, priority, ackReq
     return msgId
 
 def cancelChartWithNotification(chartScope, notificationText):
-    '''cancel the entire chart hierarchy'''
+    '''
+    Cancel the entire chart hierarchy
+    '''
+    
     topChartRunId = getTopChartRunId(chartScope)
     log.infof("Canceling chart with id: %s because: %s", str(topChartRunId), notificationText)
     
@@ -269,7 +274,10 @@ def cancelChartWithNotification(chartScope, notificationText):
 
 
 def cancelChart(chartProperties):
-    '''cancel the entire chart hierarchy'''
+    '''
+    Cancel the entire chart hierarchy
+    '''
+    
     topChartRunId = getTopChartRunId(chartProperties)
     print "Chart Properties: ", chartProperties
     log.infof("Canceling chart with id: %s", str(topChartRunId))
@@ -277,8 +285,11 @@ def cancelChart(chartProperties):
     raise SystemExit
 
 def checkForResponse(chartScope, stepScope, stepProperties):
-    '''Common code for processing responses from client. Returns true if work was
-       completed, i.e. either response was received or timed out'''
+    '''
+    Common code for processing responses from client. Returns true if work was
+    completed, i.e. either response was received or timed out.
+    '''
+    
     timeoutTime = stepScope[TIMEOUT_TIME]
     stepScope[TIMED_OUT] = False
 
@@ -335,7 +346,9 @@ def compareValueToTarget(pv, target, tolerance, limitType, toleranceType, logger
     return valueOk, txt
 
 def compareStringValueToTarget(pv, target, logger):
-    ''' This is is called mainly by PV monitoring but is pretty generic '''
+    '''
+    This is is called mainly by PV monitoring but is pretty generic
+    '''
 
     log.trace("Comparing string value to target - PV: %s, Target %s" % (str(pv), str(target)))
     
@@ -349,6 +362,7 @@ def compareStringValueToTarget(pv, target, logger):
     log.trace("Returning %s because %s" % (str(valueOk), txt))
     
     return valueOk, txt
+
 def copyRowToDict(dbRows, rowNum, pdict, create):
     columnCount = dbRows.getColumnCount()
     for colNum in range(columnCount):
@@ -358,7 +372,10 @@ def copyRowToDict(dbRows, rowNum, pdict, create):
             pdict[colName] = value
 
 def createFilepath(chartScope, stepProperties, includeExtension):
-    '''Create a filepath from dir/file/suffix in step properties'''
+    '''
+    Create a filepath from dir/file/suffix in step properties
+    '''
+    
     from ils.sfc.common.constants import DIRECTORY, FILENAME, EXTENSION, TIMESTAMP
     import time
 
@@ -407,12 +424,6 @@ def createFilepath(chartScope, stepProperties, includeExtension):
 
     return directory, filename, filePath
 
-def createWindowRecord(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database):
-    print "********************************************************************************"
-    print "***** THIS IS AN OBSOLETE API PLEASE USE registerWindowWithControlPanel() ******"
-    print "********************************************************************************"
-    registerWindowWithControlPanel(chartRunId, controlPanelId, window, buttonLabel, position, scale, title, database)
-
 def createSaveDataRecord(windowId, textData, binaryData, filepath, fileLocation, printFile, showPrintDialog, viewFile, database, extension="txt"):
     print 'windowId: ', windowId 
     print 'filepath: ', filepath
@@ -436,14 +447,20 @@ def createSaveDataRecord(windowId, textData, binaryData, filepath, fileLocation,
             system.db.runPrepUpdate(SQL, [windowId, textData, filepath, fileLocation, printFile, showPrintDialog, viewFile], database)
 
 def dbStringForString(strValue):
-    '''return a string representation of the given string suitable for a nullable SQL varchar column'''
+    '''
+    Return a string representation of the given string suitable for a nullable SQL varchar column
+    '''
+    
     if strValue != None:
         return "'" + strValue + "'"
     else:
         return 'null'  
     
 def dbStringForFloat(numberValue):
-    '''return a string representation of the given number suitable for a nullable SQL float column'''
+    '''
+    Return a string representation of the given number suitable for a nullable SQL float column
+    '''
+    
     if numberValue != None:
         return str(numberValue)
     else:
@@ -476,7 +493,10 @@ def dumpProperties(properties):
         print k
 
 def getChartLogger(chartScope):
-    '''Get the logger associated with this chart'''
+    '''
+    Get the logger associated with this chart
+    '''
+    
     pypath = getChartPath(chartScope).replace("/",".")
     return getLogger(pypath)
 
@@ -489,6 +509,7 @@ def getConsoleName(chartProperties, db):
         " where CP.PostId = C.PostId and CP.ControlPanelId = %d" % (controlPanelId)
     consoleName = system.db.runScalarQuery(SQL, db) 
     return consoleName
+
 def getControlPanelId(chartScope):
     topScope = getTopLevelProperties(chartScope)
     controlPanelId=topScope.get(CONTROL_PANEL_ID,None)
@@ -515,12 +536,18 @@ def getControlPanelName(chartScope):
     return controlPanelName
 
 def getCurrentMessageQueue(chartProperties):
-    '''Get the currently used message queue'''
+    '''
+    Get the currently used message queue
+    '''
+    
     topScope = getTopLevelProperties(chartProperties)
     return topScope[MESSAGE_QUEUE]
 
 def getDelaySeconds(delay, delayUnit):
-    '''get the delay time and convert to seconds'''
+    '''
+    Get the delay time and convert to seconds
+    '''
+    
     if delayUnit == DELAY_UNIT_SECOND:
         delaySeconds = delay
     elif delayUnit == DELAY_UNIT_MINUTE:
@@ -538,7 +565,10 @@ def getHistoryProviderName(chartProperties):
     return "XOMhistory"
 
 def getIsolationMode(chartProperties):
-    '''Returns true if the chart is running in isolation mode'''
+    '''
+    Returns true if the chart is running in isolation mode
+    '''
+    
     from ils.sfc.common.constants import ISOLATION_MODE
     topProperties = getTopLevelProperties(chartProperties)
     return topProperties[ISOLATION_MODE]
@@ -553,27 +583,42 @@ def getPostForControlPanelName(controlPanelName, db=""):
     return postId
 
 def getProject(chartProperties):
-    '''Get the project associated with the client side of this SFC (not the global project!)'''
+    '''
+    Get the project associated with the client side of this SFC (not the global project!)
+    '''
+    
     from ils.sfc.common.constants import PROJECT
     return str(getTopLevelProperties(chartProperties)[PROJECT])
 
 def getDatabaseName(chartProperties):
-    '''Get the name of the database this chart is using, we conveniently put this into the top properties '''
+    '''
+    Get the name of the database this chart is using, we conveniently put this into the top properties 
+    '''
+    
     from ils.sfc.recipeData.core import getDatabaseName as getDatabaseNameFromCore
     return getDatabaseNameFromCore(chartProperties)
 
 def getProviderName(chartProperties):
-    '''Get the name of the tag provider for this chart, we conveniently put this into the top properties '''
+    '''
+    Get the name of the tag provider for this chart, we conveniently put this into the top properties 
+    '''
+    
     from ils.sfc.recipeData.core import getProviderName as getProviderNameFromCore
     return getProviderNameFromCore(chartProperties)
 
 def getProvider(chartProperties):
-    '''Like getProviderName(), but puts brackets around the provider name'''
+    '''
+    Like getProviderName(), but puts brackets around the provider name
+    '''
+    
     from ils.sfc.recipeData.core import getProvider as getProviderFromCore
     return getProviderFromCore(chartProperties)
   
 def getSessionId(chartProperties):
-    '''Get the run id of the chart at the TOP enclosing level'''
+    '''
+    Get the run id of the chart at the TOP enclosing level
+    '''
+    
     from ils.sfc.common.constants import SESSION_ID
     return str(getTopLevelProperties(chartProperties)[SESSION_ID])        
 
@@ -584,8 +629,10 @@ def getStepProperty(stepProperties, pname):
     return None
 
 def getTimeoutTime(chartScope, stepProperties):
-    '''For steps that time out, get the time in epoch seconds when the timeout expires.
-       Take the isolation mode time factor into account'''
+    '''
+    For steps that time out, get the time in epoch seconds when the timeout expires.
+    Take the isolation mode time factor into account
+    '''
 
     timeFactor = getTimeFactor(chartScope)
     timeoutTime = None
@@ -598,10 +645,11 @@ def getTimeoutTime(chartScope, stepProperties):
     return timeoutTime
    
 def getTimeFactor(chartProperties):
-    '''
+    ''' 
     Get the factor by which all times should be multiplied (typically used to speed up tests) which 
     we conveniently put into the top properties. 
     '''
+    
     topProperties = getTopLevelProperties(chartProperties)
     return topProperties[TIME_FACTOR]
 
@@ -639,13 +687,20 @@ def getTimer(chartScope, stepScope, stepProperties):
         raise TimerException("Invalid type of recipe data for a timer.\nThe data at <%s.%s> is a <%s> and should be a <Timer>" % (timerLocation, timerKey, timerRecipeDataType))
    
     return timerRecipeDataId
+
 def getTopChartRunId(chartProperties):
-    '''Get the run id of the chart at the TOP enclosing level'''
+    '''
+    Get the run id of the chart at the TOP enclosing level
+    '''
+    
     from ils.sfc.common.constants import INSTANCE_ID
     return str(getTopLevelProperties(chartProperties)[INSTANCE_ID])
 
 def getTopChartStartTime(chartProperties):
-    '''Get timespamp for chart start'''
+    '''
+    Get timespamp for chart start
+    '''
+    
     topProps = getTopLevelProperties(chartProperties)
     return topProps['startTime']
 
@@ -662,13 +717,6 @@ def getTopLevelProperties(chartProperties):
 #        print "   level: ", chartProperties.get("s88Level", None)
 #    print " --- returning --- "
     return chartProperties
-
-def getWithPath(properties, key):
-    '''
-    Get a value using a potentially compound key
-    '''
-
-    
     
 def hasStepProperty(stepProperties, pname):
     # Why isn't there a dictionary so we don't have to loop ?!
@@ -684,14 +732,20 @@ def logStepDeactivated(chartScope, stepProperties):
     chartLogger.info("Step %s in %s deactivated before completing" % (stepName, chartPath))
 
 def pauseChart(chartProperties):
-    '''  pause the entire chart hierarchy  '''
+    ''' 
+    Pause the entire chart hierarchy  
+    '''
+    
     topChartRunId = getTopChartRunId(chartProperties)
     system.sfc.pauseChart(topChartRunId)
 
 def postToQueue(chartScope, status, message, queueKey=None):
-    '''  Post a message to a queue from an SFC.
+    '''
+    Post a message to a queue from an SFC.
     If the queueKey is left blank then the current default queue for the unit procedure is used.
-    Expected status are Info, Warning, or Error.  If the queue was not specified then use the current default queue.  '''
+    Expected status are Info, Warning, or Error.  If the queue was not specified then use the current default queue.
+    '''
+    
     if queueKey == None:
         queueKey=getCurrentMessageQueue(chartScope)
 
@@ -702,7 +756,9 @@ def postToQueue(chartScope, status, message, queueKey=None):
     insertQueueMessage(queueKey, status, message, db, project, consoleName)
 
 def postError(chartScope, message, queueKey=SFC_MESSAGE_QUEUE):
-    '''  Post an error message to the SFC Message Queue if no other queue is specified.  '''
+    '''
+    Post an error message to the SFC Message Queue if no other queue is specified.
+    '''
 
     db=getDatabaseName(chartScope)
     project=getProject(chartScope)
@@ -715,10 +771,14 @@ def printSpace(level, out):
         out.write('   '),
 
 def readTag(chartScope, tagPath):
-    '''  Read a tag substituting provider according to isolation mode.  '''
+    '''
+    Read a tag substituting provider according to isolation mode.
+    '''
+    
     provider = getProviderName(chartScope)
     fullPath = substituteProvider(tagPath, provider)
-    qv = readTag(fullPath)
+    from ils.io.util import readTag as readTagUtil
+    qv = readTagUtil(fullPath)
     return qv.value
 
 def registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, buttonLabel, position, scale, title, database):
@@ -728,13 +788,19 @@ def registerWindowWithControlPanel(chartRunId, controlPanelId, windowPath, butto
     return windowId
 
 def resumeChart(chartProperties):
-    '''resume the entire chart hierarchy'''
+    '''
+    Resume the entire chart hierarchy
+    '''
+    
     topChartRunId = getTopChartRunId(chartProperties)
     system.sfc.resumeChart(topChartRunId)
 
 def scaleTimeForIsolationMode(chartProperties, value, unit):
-    '''If the supplied unit is a time unit and we are in isolation mode,
-       scale the value appropriately--otherwise, just return the value'''
+    '''
+    If the supplied unit is a time unit and we are in isolation mode,
+    scale the value appropriately--otherwise, just return the value
+    '''
+    
     if unit.type == 'TIME' and getIsolationMode(chartProperties):
         timeFactor = getTimeFactor(chartProperties)
         logger = getChartLogger(chartProperties)
@@ -746,13 +812,19 @@ def scaleTimeForIsolationMode(chartProperties, value, unit):
 
 def sendOCAlert(chartProperties, stepProperties, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback=None, callbackPayloadDictionary=None, 
                 timeoutEnabled=False, timeoutSeconds=0, isolationMode=False):
-    '''Send an OC alert'''
+    '''
+    Send an OC alert
+    '''
+    
     project=getProject(chartProperties)
     db = getDatabaseName(chartProperties)
     sendAlert(project, post, topMessage, bottomMessage, mainMessage, buttonLabel, callback, callbackPayloadDictionary, timeoutEnabled, timeoutSeconds, db, isolationMode)
 
 def sendMessageToClient(chartScope, messageHandler, payload):
-    '''Send a message to the client(s) of this chart'''
+    '''
+    Send a message to the client(s) of this chart
+    '''
+    
     log.tracef("In %s.sendMessageToClient() - Sending a %s SFC message... ", __name__, str(messageHandler))
     log.tracef("The chart scope is: %s", str(chartScope))
     controlPanelId = getControlPanelId(chartScope)
@@ -772,7 +844,10 @@ def sendMessageToClient(chartScope, messageHandler, payload):
     sfcNotify(project, 'sfcMessage', payload, post, controlPanelName, controlPanelId, db)
 
 def setCurrentMessageQueue(chartProperties, queue):
-    '''Set the currently used message queue'''
+    '''
+    Set the currently used message queue
+    '''
+    
     topScope = getTopLevelProperties(chartProperties)
     topScope[MESSAGE_QUEUE] = queue
     database = getDatabaseName(chartProperties)
@@ -780,13 +855,19 @@ def setCurrentMessageQueue(chartProperties, queue):
     system.db.runUpdateQuery("update SfcControlPanel set msgQueue = '%s' where controlPanelId = %d" % (queue, controlPanelId), database)
 
 def  writeToOperatorLogbook(chartScope, post, message):
-    '''Write a message to the system log file from an SFC.'''
+    '''
+    Write a message to the system log file from an SFC.
+    '''
+    
     db = getDatabaseName(chartScope)
     from ils.common.operatorLogbook import insertForPost
     insertForPost(post, message, db)
 
 def standardDeviation(dataset, column):
-    '''calculate the standard deviation of the given column of the dataset'''
+    '''
+    Calculate the standard deviation of the given column of the dataset
+    '''
+    
     import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation as StandardDeviation
     import jarray
     stdDev = StandardDeviation()

@@ -292,7 +292,8 @@ def handleMessage(payload):
     queueKey = payload["queueKey"]
     db = payload["database"]
     if db == "":
-        db = getProductionDatabase()
+        projectName = system.util.getProjectName()
+        db = getProductionDatabase(projectName)
 
     clientDB = getDatabaseClient()
     if clientDB <> db:

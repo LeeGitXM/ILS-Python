@@ -27,8 +27,9 @@ def setTextOfRecommendation(applicationName, familyName, finalDiagnosisName, tex
     
     SQL = "UPDATE FD "\
         "SET FD.TextRecommendation = '%s' "\
-        " FROM DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
-        " WHERE F.FamilyId = FD.FamilyId "\
+        " FROM DtFinalDiagnosis FD, DtFamily F, DtDiagram D, DtApplication A "\
+        " WHERE D.DiagramId = FD.DiagramId "\
+        " and F.FamilyId = D.FamilyId "\
         " and A.ApplicationId = F.ApplicationId "\
         " and A.ApplicationName = '%s' "\
         " and F.FamilyName = '%s'"\

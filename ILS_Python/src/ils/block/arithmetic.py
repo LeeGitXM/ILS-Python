@@ -16,14 +16,15 @@ import org.apache.commons.math3.analysis.function.Sin as Sine
 import org.apache.commons.math3.analysis.function.Tan as Tangent
 import org.apache.commons.math3.util.Precision as Precision
 
-import java.lang.Double as Double   
-from com.inductiveautomation.ignition.common.util import LogUtil
-log = LogUtil.getLogger("com.ils.block")
+import java.lang.Double as Double 
+from ils.log import getLogger  
+
 
 class Arithmetic(basicblock.BasicBlock):
     def __init__(self):
         basicblock.BasicBlock.__init__(self)
         self.initialize()
+        self.log = getLogger(__name__)
         
     # Set attributes custom to this class
     def initialize(self):

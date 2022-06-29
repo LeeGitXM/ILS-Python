@@ -1229,9 +1229,23 @@ def fetchFolderId(folderPDS, tokens):
     return isFolder, parentRecipeDataFolderId
 
 
-def mousePressedCallbackForTree(event):    
+def mousePressedCallbackForTree(event):
+    '''
+    This is triggered on mouseRelease (I should have renamed it...)
+    '''
+    
+    tree = event.source
+    if int(event.button) == 1:
+        tree.lastSelectedMouseClickY = event.y
+        
     ''' Only post the popup on the right mouse button '''
     if int(event.button) <> 3:
+        log.infof("...not a right-click...")
+        return
+
+    CLICK_THRESHOLD = 10
+    if abs(event.y - tree.lastSelectedMouseClickY) > CLICK_THRESHOLD and int(tree.selectedItem) >= 0:
+        log.infof("The right-click is not close enough to the last left click")
         return
     
     def showChartCallerCallback(event):

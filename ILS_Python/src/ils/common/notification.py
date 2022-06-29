@@ -42,33 +42,11 @@ def notifier(project, message, payload, post, db, isolationMode):
     if post <> "":
         log.tracef("Targeting post: <%s>", post)
         
-        foundClient = False
-        
         ''' Implement rule #1 '''
-        log.tracef("Rule #1 - looking for clients logged in as %s that are in isolation mode: %s!", post, str(isolationMode))
-        from ils.common.message.interface import getPostClientIds
-        clientSessionIds = getPostClientIds(post, project, db, isolationMode)
-        if len(clientSessionIds) > 0:
-            foundClient = True
-            log.tracef("Found %d clients logged in as %s that are in isolation mode: %s!", len(clientSessionIds), post, str(isolationMode))
-            
-            for clientSessionId in clientSessionIds:
-                if clientSessionId not in notifiedClients:
-                    notifiedClients.append(clientSessionId)
-                    system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
+        foundClient, notifiedClients = notifyByPost(project, message, payload, post, db, isolationMode)
 
         ''' Implement Rule #2 '''
-        log.tracef("Rule #2 - looking for clients with consoles displayed...")
-        from ils.common.message.interface import getConsoleClientIdsForPost
-        clientSessionIds = getConsoleClientIdsForPost(post, project, db, isolationMode)
-        if len(clientSessionIds) > 0:
-            payload["showOverride"] = True
-            foundClient = True
-            for clientSessionId in clientSessionIds:
-                if clientSessionId not in notifiedClients:
-                    log.tracef("Found a client with the console displayed %s with client Id %s", post, str(clientSessionId))
-                    notifiedClients.append(clientSessionId)
-                    system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
+        foundClient, notifiedClients = notifyByConsoleWindow(project, message, payload, post, db, isolationMode, foundClient, notifiedClients)
         
         if not(foundClient):
             log.trace("Notifying every client because I could not find the post logged in")
@@ -78,3 +56,33 @@ def notifier(project, message, payload, post, db, isolationMode):
         log.trace("Sending notification to every client because this is not a targeted alert")
         payload["showOverride"] = False
         system.util.sendMessage(project, message, payload, scope="C")
+        
+def notifyByPost(project, message, payload, post, db, isolationMode):
+    log.tracef("Rule #1 - looking for clients logged in as %s that are in isolation mode: %s!", post, str(isolationMode))
+    notifiedClients = []
+    foundClient = False
+    from ils.common.message.interface import getPostClientIds
+    clientSessionIds = getPostClientIds(post, project, db, isolationMode)
+    if len(clientSessionIds) > 0:
+        foundClient = True
+        log.tracef("Found %d clients logged in as %s that are in isolation mode: %s!", len(clientSessionIds), post, str(isolationMode))
+        
+        for clientSessionId in clientSessionIds:
+            if clientSessionId not in notifiedClients:
+                notifiedClients.append(clientSessionId)
+                system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
+    return foundClient, notifiedClients
+
+def notifyByConsoleWindow(project, message, payload, post, db, isolationMode, foundClient, notifiedClients):
+    log.tracef("Rule #2 - looking for clients with consoles displayed...")
+    from ils.common.message.interface import getConsoleClientIdsForPost
+    clientSessionIds = getConsoleClientIdsForPost(post, project, db, isolationMode)
+    if len(clientSessionIds) > 0:
+        payload["showOverride"] = True
+        foundClient = True
+        for clientSessionId in clientSessionIds:
+            if clientSessionId not in notifiedClients:
+                log.tracef("Found a client with the console displayed %s with client Id %s", post, str(clientSessionId))
+                notifiedClients.append(clientSessionId)
+                system.util.sendMessage(project, message, payload, scope="C", clientSessionId=clientSessionId)
+    return foundClient, notifiedClients

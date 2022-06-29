@@ -16,7 +16,6 @@ import time
 
 class BasicBlock():
     
-    
     def __init__(self):
         self.name = "UNSET"
         # Each block has a state, whether it is meaningful or not

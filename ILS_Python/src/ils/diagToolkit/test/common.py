@@ -7,10 +7,11 @@ Created on Sep 13, 2016
 import system, time, string
 from ils.diagToolkit.finalDiagnosisClient import postDiagnosisEntry
 from ils.common.util import escapeSqlQuotes
-from ils.io.util import readTag, writeTag
 
 from ils.log import getLogger
 log = getLogger(__name__)
+
+FINAL_TEST_PATH = "[Dev]Test/DiagnosticToolkit"
 
 T1TagName='Sandbox/Diagnostic/T1'
 T2TagName='Sandbox/Diagnostic/T2'
@@ -20,11 +21,54 @@ TC101TagName='Sandbox/Diagnostic/TC101/sp/value'
 
     
 # This is called from a button
-def initLog():
+def initLog(db):
     time.sleep(1.0)
     SQL = "delete from DtFinalDiagnosisLog"
-    system.db.runUpdateQuery(SQL)        
+    system.db.runUpdateQuery(SQL, database=db)        
     time.sleep(1.0)
+    
+#-------------------------------------------
+def initializeDatabase(db):
+    rows = -99
+    applicationName = "FINAL_TEST_1"
+    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
+    applicationId = system.db.runScalarQuery(SQL, database=db)
+    
+    log.infof("Initializing the database...")
+    for SQL in [
+        "delete from DtFinalDiagnosisLog",
+        "delete from DtRecommendation", 
+        "delete from QueueDetail", 
+        "delete from DtDiagnosisEntry",
+        
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TESTQ1' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TESTQ1' and ApplicationId = %d" % (applicationId), 
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TESTQ2' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TESTQ2' and ApplicationId = %d" % (applicationId), 
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TESTQ3' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TESTQ3' and ApplicationId = %d" % (applicationId),
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q21' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q21' and ApplicationId = %d" % (applicationId),
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q22' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q22' and ApplicationId = %d" % (applicationId), 
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q23' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q23' and ApplicationId = %d" % (applicationId), 
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q24' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q24' and ApplicationId = %d" % (applicationId), 
+        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q25' and ApplicationId=%d)" % (applicationId), 
+        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q25' and ApplicationId = %d" % (applicationId),
+        
+        "delete from DtFinalDiagnosis where FinalDiagnosisName like 'FT_%'", 
+        "delete from DtDiagram where DiagramName like 'FT_%'",
+        "delete from DtFamily where FamilyName like 'FT_FAMILY%'", 
+        "delete from DtApplication where ApplicationName like 'FINAL_TEST%'"
+        ]:
+
+        log.tracef( "   %s", SQL)
+        rows=system.db.runPrepUpdate(SQL, database=db)
+        log.tracef("   ...deleted %d rows", rows)
+    
+    log.infof("...done initializing the database")
 
 # This is called from a button
 def run():
@@ -32,63 +76,25 @@ def run():
     
     #-------------------------------------------
     def initializeTags():
+        '''
+        I'm not sure that tags are even used for this type of testing, maybe this clears things outside the scope of these tests
+        just to avoid conflicts.
+        '''
         log.infof("Initializing tags...")
-        writeTag("[XOM]Configuration/DiagnosticToolkit/zeroChangeThreshold", 0.00005)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T1", 0.1)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T2", 0.2)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T3", 0.3)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T4", 0.4)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T5", 0.5)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T6", 0.6)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T7", 0.7)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T8", 0.8)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T9", 0.9)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T10", 0.1)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T11", 0.2)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T12", 0.3)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T13", 0.4)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T14", 0.5)
-        writeTag("[XOM]DiagnosticToolkit/Inputs/T15", 0.6)
-        log.infof("Initializing the database...")
-    
-    #-------------------------------------------
-    def initializeDatabase(db):
-        #TODO Do something smarter about DtRecommendationDefinition
-        rows = -99
-        log.infof("Initializing the database...")
-        for SQL in [
-            "delete from DtFinalDiagnosisLog",
-            "delete from DtRecommendation", 
-            "delete from QueueDetail", 
-            "delete from DtDiagnosisEntry",
-            
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ1')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ1'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ2')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ2'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TESTQ3')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TESTQ3'",
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q21')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q21'",
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q22')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q22'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q23')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q23'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q24')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q24'", 
-            "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName = 'TEST_Q25')", 
-            "delete from DtQuantOutput where QuantOutputName = 'TEST_Q25'",
-            
-            "delete from DtFinalDiagnosis where FinalDiagnosisName like 'FT_%'", 
-            "delete from DtFamily where FamilyName like 'FT_FAMILY%'", 
-            "delete from DtApplication where ApplicationName like 'FINAL_TEST%'"
-            ]:
-
-            log.tracef( "   %s", SQL)
-            rows=system.db.runPrepUpdate(SQL, database=db)
-            log.tracef("   ...deleted %d rows", rows)
+        provider = "[Dev]"
+        writeTag(provider + "Configuration/DiagnosticToolkit/zeroChangeThreshold", 0.00005)
         
-        log.tracef("...done initializing the database")
+        parentPath = provider + "DiagnosticToolkit/TESTAPP1/Inputs"
+        writeTag(parentPath + "/T1", 0.1)
+        writeTag(parentPath + "/T2", 0.2)
+        writeTag(parentPath + "/T3", 0.3)
+        writeTag(parentPath + "/T4", 0.4)
+        writeTag(parentPath + "/T5", 0.5)
+        writeTag(parentPath + "/T6", 0.6)
+
+        log.infof("...done initializing tags!")
+    
+
         
     #----------------
     # Fetch Recommendations
@@ -99,8 +105,9 @@ def run():
     
         SQL = "select F.FamilyName, F.FamilyPriority, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, DE.Status,"\
             " DE.RecommendationStatus, R.TextRecommendation "\
-            " from DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE, DtTextRecommendation R "\
-            " where F.FamilyId = FD.FamilyId "\
+            " from DtFamily F, DtDiagram D, DtFinalDiagnosis FD, DtDiagnosisEntry DE, DtTextRecommendation R "\
+            " where F.FamilyId = D.FamilyId "\
+            " and D.DiagramId = FD.DiagramId "\
             " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
             " and DE.DiagnosisEntryId = R.DiagnosisEntryId "\
             " order by FamilyName, FinalDiagnosisName "
@@ -127,16 +134,18 @@ def run():
     
     
     def logRecommendations(post, filename, db):
+        log.tracef("In %s.logRecommendations()", __name__)
         SQL = "select count(*) from DtRecommendation"
-        rows = system.db.runScalarQuery(SQL)
+        rows = system.db.runScalarQuery(SQL, database=db)
         log.trace("There are %i recommendations..." % (rows))
         
         SQL = "select F.FamilyName, F.FamilyPriority, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, DE.Status, "\
             " DE.RecommendationStatus, DE.TextRecommendation, QO.QuantOutputName, QO.TagPath, R.Recommendation, "\
             " R.AutoRecommendation, R.ManualRecommendation "\
-            " from DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE, DtRecommendationDefinition RD, "\
+            " from DtFamily F, DtDiagram D, DtFinalDiagnosis FD, DtDiagnosisEntry DE, DtRecommendationDefinition RD, "\
             "      DtQuantOutput QO, DtRecommendation R"\
-            " where F.FamilyId = FD.FamilyId "\
+            " where F.FamilyId = D.FamilyId "\
+            "   and D.DiagramId = FD.DiagramId "\
             "   and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
             "   and DE.DiagnosisEntryId = R.DiagnosisEntryId "\
             "   and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
@@ -167,14 +176,15 @@ def run():
     def logRecommendationsExtended(post, filename, db):
         print "In logRecommendationsExtended()..."
         SQL = "select count(*) from DtRecommendation"
-        rows = system.db.runScalarQuery(SQL)
+        rows = system.db.runScalarQuery(SQL, database=db)
         log.trace("There are %i recommendations..." % (rows))
             
         SQL = "SELECT     DtFamily.FamilyName, DtFamily.FamilyPriority, DtFinalDiagnosis.FinalDiagnosisName, DtFinalDiagnosis.FinalDiagnosisPriority, DtDiagnosisEntry.Status, "\
             " DtDiagnosisEntry.RecommendationStatus, DtDiagnosisEntry.TextRecommendation, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, "\
             " DtRecommendation.Recommendation, DtRecommendation.AutoRecommendation, DtRecommendation.ManualRecommendation, DtQuantOutputRamp.Ramp "\
             " FROM  DtFamily INNER JOIN "\
-             " DtFinalDiagnosis ON DtFamily.FamilyId = DtFinalDiagnosis.FamilyId INNER JOIN "\
+            " DtDiagram ON DtFamily.FamilyId = DtDiagram.FamilyId INNER JOIN "\
+            " DtFinalDiagnosis ON DtDiagram.DiagramId = DtFinalDiagnosis.DiagramId INNER JOIN "\
             " DtDiagnosisEntry ON DtFinalDiagnosis.FinalDiagnosisId = DtDiagnosisEntry.FinalDiagnosisId INNER JOIN "\
             " DtRecommendationDefinition ON DtFinalDiagnosis.FinalDiagnosisId = DtRecommendationDefinition.FinalDiagnosisId INNER JOIN "\
             " DtQuantOutput ON DtRecommendationDefinition.QuantOutputId = DtQuantOutput.QuantOutputId INNER JOIN "\
@@ -221,7 +231,7 @@ def run():
             " and A.UnitId = U.UnitId "\
             " and P.PostId = U.PostId "\
             " and P.Post = '%s' "\
-            " and A.ApplicationName = '%s' "\
+            " and A.ApplicationName like '%s' "\
             " order by QuantOutputName" % (post, applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
@@ -255,11 +265,12 @@ def run():
     def logDiagnosis(post, applicationName,  filename, db):
         SQL = "select FD.FinalDiagnosisName, DE.Status, DE.TextRecommendation, DE.RecommendationStatus, "\
             " DE.Multiplier, FD.Constant "\
-            " from DtApplication A, DtFamily F, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
+            " from DtApplication A, DtFamily F, DtDiagram D, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
             " where A.ApplicationId = F.ApplicationId"\
-            " and F.FamilyId = FD.FamilyId"\
+            " and F.FamilyId = D.FamilyId"\
+            " and D.DiagramId = FD.DiagramId"\
             " and FD.FinalDiagnosisId = DE.FinalDiagnosisId"\
-            " and A.applicationName = '%s' "\
+            " and A.applicationName like '%s' "\
             " order by FD.FinalDiagnosisName" % (applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
@@ -289,7 +300,7 @@ def run():
             log.info("  The gold file <%s> does not exist!" % (goldFilename))
             log.info("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
-            writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
+            writeTag(FINAL_TEST_PATH + "/Table", ds)
             return ds
         
         # Check if the output file exists
@@ -297,7 +308,7 @@ def run():
             log.info("  The output file <%s> does not exist!" % (outputFilename))
             log.info("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
-            writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
+            writeTag(FINAL_TEST_PATH + "/Table", ds)
             return ds
     
         # Check if the two files are identical
@@ -313,22 +324,19 @@ def run():
                 
         # Try to update the status row of the table
         ds = system.dataset.setValue(ds, row, 'result', txt)
-        writeTag("Sandbox/Diagnostic/Final Test/Table", ds)
+        writeTag(FINAL_TEST_PATH + "/Table", ds)
     
         log.trace("Done analyzing results!")
         return ds
     #-------------------------------------------
     
     log.infof("In %s.run() Starting to run tests...", __name__)
-    writeTag("Sandbox/Diagnostic/Final Test/State","Running")
-    package="ils.diagToolkit.test.tests"
-    tableTagPath="Sandbox/Diagnostic/Final Test/Table"
-    path = readTag("Sandbox/Diagnostic/Final Test/Path").value
+    writeTag(FINAL_TEST_PATH + "/State","Running")
+    tableTagPath=FINAL_TEST_PATH + "/Table"
+    path = readTag(FINAL_TEST_PATH + "/Path").value
     ds = readTag(tableTagPath).value
     post = "XO1TEST"
-    projectName = "XOM"
-    db = readTag("Sandbox/Diagnostic/Final Test/db").value
-    provider = "XOM"
+    db = readTag(FINAL_TEST_PATH + "/db").value
 
     # Clear the results column for selected rows
     cnt = 0
@@ -338,7 +346,7 @@ def run():
             cnt = cnt + 1
             ds = system.dataset.setValue(ds, row, 'result', 'Running')
             writeTag(tableTagPath, ds) 
-                
+
             functionName = ds.getValueAt(row, 'function')
             log.infof("Starting to prepare to run: %s", functionName)
 
@@ -362,10 +370,10 @@ def run():
             goldFilename = os.path.join(path, functionName + "-gold.csv")
             
             # Fetch the results from the database
-            log.trace("...fetching results... (filename=%s, database=%s)" % (outputFilename, db))
+            log.tracef("...fetching results... (filename=%s, database=%s)",outputFilename, db)
             
             resultsMode = ds.getValueAt(row, 'Results')
-            print "The results mode is: ", resultsMode
+            log.tracef("The results mode is: %s", resultsMode)
             
             if resultsMode == "Basic":
                 logRecommendations(post, outputFilename, db)
@@ -416,8 +424,10 @@ def scrubDatabase(applicationName):
         print "   ...deleted %i rows from DtRecommendations..." % (rows)
         
         # Delete recommendationDefinitionss
-        SQL = "select FinalDiagnosisId from DtFinalDiagnosis FD, DtFamily F "\
-            " where F.ApplicationID = %i and FD.FamilyId = F.FamilyId " % applicationId
+        SQL = "select FinalDiagnosisId from DtFinalDiagnosis FD, DtFamily F, DtDiagram D "\
+            " where F.ApplicationID = %i "\
+            " and FD.DiagramId = D.DiagramId "\
+            " and D.FamilyId = F.FamilyId" % applicationId
         pds = system.db.runQuery(SQL)
         cnt = 0
         for record in pds:
@@ -477,6 +487,7 @@ def scrubDatabase(applicationName):
     
 # Create everything required for the APP1 test
 def insertApp1(db, groupRampMethod='Shortest'):
+    log.tracef("In %s.insertApp1()...", __name__)
     application='FINAL_TEST_1'
     messageQueue="Test"
     logbook='Test Logbook'
@@ -488,6 +499,7 @@ def insertApp1(db, groupRampMethod='Shortest'):
     queueKey='Test'
     managed=1
     app1Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed, db)
+    log.tracef("...%s.insertApp1() is finished!", __name__)
     return app1Id
 
 def insertApp1Families(appId,T1Id,T2Id,T3Id,
@@ -511,14 +523,18 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     trapInsignificantRecommendations=1
     ):
     
+    log.tracef("Entering %s.insertApp1Families()...", __name__)
     family = 'FT_Family1_1'
     familyPriority=5.4
     familyId=insertFamily(family, appId, familyPriority, db)
+    
+    diagramName = "FT_Diagram1_1"
+    diagramId = insertDiagram(diagramName, familyId, db)
 
     finalDiagnosis = 'FT_FD1_1_1'
     finalDiagnosisPriority=FD111Priority
     textRecommendation = "Final Diagnosis 1.1.1"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD111calculationMethod, textRecommendation, 
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD111calculationMethod, textRecommendation, 
                         postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
 
@@ -526,10 +542,13 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     familyPriority=7.6
     familyId=insertFamily(family, appId, familyPriority, db)
     
+    diagramName = "FT_Diagram1_2"
+    diagramId = insertDiagram(diagramName, familyId, db)
+    
     finalDiagnosis = 'FT_FD1_2_1'
     finalDiagnosisPriority = FD121Priority
     textRecommendation = "Final Diagnosis 1.2.1"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD121calculationMethod, textRecommendation, 
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD121calculationMethod, textRecommendation, 
                                           postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
     insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
@@ -539,7 +558,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     finalDiagnosis = 'FT_FD1_2_2'
     finalDiagnosisPriority=FD122Priority
     textRecommendation = "Final Diagnosis 1.2.2"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD122calculationMethod, textRecommendation, 
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD122calculationMethod, textRecommendation, 
                                           postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
     insertRecommendationDefinition(finalDiagnosisId, T3Id, db)
@@ -547,7 +566,7 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     finalDiagnosis = 'FT_FD1_2_3'
     finalDiagnosisPriority=FD123Priority
     textRecommendation = "Final Diagnosis 1.2.3"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD123calculationMethod, textRecommendation, 
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD123calculationMethod, textRecommendation, 
                                           postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     insertRecommendationDefinition(finalDiagnosisId, T1Id, db)
     insertRecommendationDefinition(finalDiagnosisId, T2Id, db)
@@ -556,23 +575,25 @@ def insertApp1Families(appId,T1Id,T2Id,T3Id,
     finalDiagnosis = 'FT_FD1_2_4'
     finalDiagnosisPriority=FD124Priority
     textRecommendation = "Final Diagnosis 1.2.4 is CONstant"
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD124calculationMethod, textRecommendation, 
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD124calculationMethod, textRecommendation, 
                                           constant=1, postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
     
     finalDiagnosis = 'FT_FD1_2_5'
     finalDiagnosisPriority=FD125Priority
     textRecommendation = "Final Diagnosis 1.2.5 is a low priority text recommendation.  "
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD125calculationMethod, textRecommendation, 
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD125calculationMethod, textRecommendation, 
                                           postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
 
     finalDiagnosis = 'FT_FD1_2_6'
     finalDiagnosisPriority=FD126Priority
     textRecommendation = "Final Diagnosis 1.2.6 is a high priority text recommendation which is correct 95% of the time.  "
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD126calculationMethod, textRecommendation, 
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD126calculationMethod, textRecommendation, 
                                           postTextRecommendation=1, postProcessingCallback=postProcessingCallback, db=db, trapInsignificantRecommendations=trapInsignificantRecommendations)
+    log.tracef("...%s.insertApp1Families() is finished!", __name__)
 
 # Create everything required for the APP2 test
 def insertApp2(db):
+    log.tracef("Entereing %s.insertApp2()...", __name__)
     application='FINAL_TEST_2'
     messageQueue="Test"
     logbook='Test Logbook'
@@ -585,31 +606,36 @@ def insertApp2(db):
     queueKey='Test'
     managed=1
     app2Id=insertApplication(application, postId, unit, groupRampMethod, queueKey, managed, db)
+    log.tracef("...%s.insertApp2() is finished!", __name__)
     return app2Id
 
-def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1', db="CRAP"):
+def insertApp2Families(appId, Q21_id, Q22_id, Q23_id, Q24_id, Q25_id, Q26_id, FD211calculationMethod='ils.diagToolkit.test.calculationMethods.fd2_1_1', db="CRAP"):
     log.tracef("Entering insertApp2Families...")
 
     family = 'FT_Family2_1'
     familyPriority=5.2
     familyId=insertFamily(family, appId, familyPriority, db)
+    
+    diagramName = "FT_Diagram2_1"
+    diagramId = insertDiagram(diagramName, familyId, db)
 
     finalDiagnosis = 'FT_FD2_1_1'
     finalDiagnosisPriority=7.8
     textRecommendation = "Final Diagnosis 2.1.1"
     log.tracef("...inserting final diagnosis...")
-    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, FD211calculationMethod, textRecommendation, db=db)
+    finalDiagnosisId=insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, FD211calculationMethod, textRecommendation, db=db)
     log.tracef("...inserting recdefs...")
     insertRecommendationDefinition(finalDiagnosisId, Q21_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q22_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q23_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q24_id, db)
     insertRecommendationDefinition(finalDiagnosisId, Q25_id, db)
+    insertRecommendationDefinition(finalDiagnosisId, Q26_id, db)
     log.tracef("...done inserting App2!")
 
 # Insert a Quant Output
 def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncrement=-500.0, mostPositiveIncrement=500.0, minimumIncrement=0.0001,
-        setpointHighLimit=1000.0, setpointLowLimit=-1000.0, feedbackMethod='Most Positive', incrementalOutput=True, db="CRAP"):
+        setpointHighLimit=1000.0, setpointLowLimit=-1000.0, feedbackMethod='Most Positive', incrementalOutput=True, db="CRAP", providerName="Dev"):
     
     log.tracef("Inserting QuantOutput named: %s", quantOutput)
     feedbackMethodId=fetchFeedbackMethodId(feedbackMethod, db)
@@ -621,8 +647,10 @@ def insertQuantOutput(appId, quantOutput, tagPath, tagValue, mostNegativeIncreme
     log.tracef("...SQL: %s", SQL)
     quantOutputId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     log.tracef("...inserted a quant output with id: %d", quantOutputId)
-    log.tracef("Writing %s to %s", str(tagValue), tagPath)
-    writeTag(tagPath, tagValue)
+    
+    fullTagPath = "[" + providerName + "]" + tagPath
+    log.tracef("Writing %s to %s", str(tagValue), fullTagPath)
+    writeTag(fullTagPath, tagValue)
     return quantOutputId
 
 # Define a Message Queue
@@ -703,14 +731,22 @@ def insertApplication(application, postId, unit, groupRampMethod, queueKey, mana
     applicationId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     return applicationId
 
-# Create all of the families in this Application
 def insertFamily(familyName, applicationId, familyPriority, db):
+    ''' Insert a family '''
+    log.tracef("Inserting family named: %s", familyName)
     SQL = "insert into DtFamily (FamilyName, ApplicationId, FamilyPriority) values ('%s', %i, %f)" % (familyName, applicationId, familyPriority)
     familyId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
     return familyId
 
+def insertDiagram(diagramName, familyId, db):
+    ''' Insert a diagram '''
+    log.tracef("Inserting diagram named: %s", diagramName)
+    SQL = "insert into DtDiagram (DiagramName, FamilyId) values ('%s', %i)" % (diagramName, familyId)
+    diagramId = system.db.runUpdateQuery(SQL, getKey=True, database=db)
+    return diagramId
+
 # Create a final diagnosis
-def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod='', 
+def insertFinalDiagnosis(finalDiagnosis, diagramId, finalDiagnosisPriority, calculationMethod='', 
     textRecommendation='', constant=0, postTextRecommendation=0, postProcessingCallback=None, 
     refreshRate=300, db="CRAP", trapInsignificantRecommendations=0):
 
@@ -722,11 +758,12 @@ def insertFinalDiagnosis(finalDiagnosis, familyId, finalDiagnosisPriority, calcu
 #        postTextRecommendation, postProcessingCallback, refreshRate)
 #    finalDiagnosisId = system.db.runUpdateQuery(SQL, getKey=True)
     
-    SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, FamilyId, FinalDiagnosisPriority, CalculationMethod, "\
+    log.tracef("Entering %s.insertFinalDiagnosis()...", __name__)
+    SQL = "insert into DtFinalDiagnosis (FinalDiagnosisName, DiagramId, FinalDiagnosisPriority, CalculationMethod, "\
             " TextRecommendation, Constant, PostTextRecommendation, " \
             " PostProcessingCallback, RefreshRate, Active, State, TrapInsignificantRecommendations) "\
             " values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)"
-    args = [finalDiagnosis, familyId, finalDiagnosisPriority, calculationMethod, 
+    args = [finalDiagnosis, diagramId, finalDiagnosisPriority, calculationMethod, 
         textRecommendation, constant, postTextRecommendation, postProcessingCallback, refreshRate, trapInsignificantRecommendations]
     
     log.tracef("%s", SQL)
@@ -749,3 +786,37 @@ def updateFinalDiagnosisTextRecommendation(finalDiagnosisName, textRecommendatio
     log.tracef("%s", SQL)   
     rows = system.db.runUpdateQuery(SQL, database=db)
     log.tracef("Updated %d rows", rows)
+    
+def disableVectorClampMode(provider):
+    writeTag(provider + "Configuration/DiagnosticToolkit/vectorClampMode", "Disabled")
+    
+def implementVectorClampMode(provider):
+    writeTag(provider + "Configuration/DiagnosticToolkit/vectorClampMode", "Implement")
+
+def adviseVectorClampMode(provider):
+    writeTag(provider + "Configuration/DiagnosticToolkit/vectorClampMode", "Advise")
+    
+def readTag(tagPath):
+    '''
+    This reads a single tag using a blocking read and returns a single qualified value.
+    This just saves the caller the task of packing and unpacking the results when migrating
+    to Ignition 8. 
+    '''
+    if not(system.tag.exists(tagPath)):
+        log.errorf("Error reading tag <%s> - the tag does not exist!", tagPath)
+        return None
+    
+    qvs = system.tag.readBlocking([tagPath])
+    qv = qvs[0]
+    return qv
+
+def writeTag(tagPath, val):
+    '''
+    This reads a single value to a single tag using an asynchronous write without confirmation or status return.
+    This just saves the caller the task of packing the arguments when migrating to Ignition 8. 
+    '''
+    if not(system.tag.exists(tagPath)):
+        log.errorf("Error writing tag <%s> - the tag does not exist!", tagPath)
+        return None
+
+    system.tag.writeAsync([tagPath], [val])

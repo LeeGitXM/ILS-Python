@@ -1607,9 +1607,6 @@ def copySourceToTarget(sourceRecord, targetRecord, db):
         logger.errorf("Unsupported recipe data type: %s", recipeDataType)
         raise ValueError, "Unsupported recipe data type: %s" % (recipeDataType)
     
-
-
-
 def getDatabaseName(chartProperties):
     '''Get the name of the database this chart is using, we conveniently put this into the top properties '''
     topProperties = getTopLevelProperties(chartProperties)
@@ -1642,7 +1639,6 @@ def readTag(chartScope, tagPath):
     qv = readTag(fullPath)
     return qv.value
 
-
 def getProviderName(chartProperties):
     '''Get the name of the tag provider for this chart, taking isolation mode into account'''
     topProperties = getTopLevelProperties(chartProperties)
@@ -1665,10 +1661,8 @@ def getSuperiorAncestors(chartPath, db):
     return ancestors
 
 def getFirstEnclosingChart(chartPath, db):
-    '''
-    "First" is a bit arbitrary, since a chart can be called by more than one parent.
-    This is used when mocking up the call hierarchy when debugging from designer.
-    '''
+    ''' "First" is a bit arbitrary, since a chart can be called by more than one parent.
+    This is used when mocking up the call hierarchy when debugging from designer. '''
     SQL = "select chartPath, stepName, stepUUID, stepType, factoryId from SfcHierarchyView where ChildChartPath = '%s'" % (chartPath)    
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:

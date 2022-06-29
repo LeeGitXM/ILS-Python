@@ -13,9 +13,9 @@ from ils.log import getLogger
 log = getLogger(__name__)
 
 # Not sure if this is used in production, but it is needed for testing
-def postDiagnosisEntry(projectName, application, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
+def postDiagnosisEntry(projectName, application, family, diagram, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
     log.infof("Sending a message to post a diagnosis entry...")
-    payload={"application": application, "family": family, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database, "provider":provider}
+    payload={"application": application, "family": family, "diagram": diagram, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database, "provider":provider}
     system.util.sendMessage(projectName, "postDiagnosisEntry", payload, "G")
 
 

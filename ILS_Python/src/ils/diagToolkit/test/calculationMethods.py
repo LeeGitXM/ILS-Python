@@ -176,7 +176,12 @@ def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     explanation = "Turn down the flame and open the window."
     recommendations = []
     
-    val = readTag("[XOM]DiagnosticToolkit/Inputs/T3").value
+    print "******"
+    print "Provider: ", provider
+    print "******"
+    
+    val = readTag("[" + provider + "]DiagnosticToolkit/Inputs/T3").value
+    print "Read T3 value of ", val
     if val < 15:
         recommendations.append({"QuantOutput": "TESTQ2", "Value": 42.9})
     else:
@@ -351,6 +356,7 @@ def fd2_1_1c(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     recommendations = []
 
     recommendations.append({"QuantOutput": "TEST_Q25", "Value": 120.0})
+    recommendations.append({"QuantOutput": "TEST_Q26", "Value": 80.0})
 
     return True, explanation, recommendations
 
@@ -361,6 +367,7 @@ def fd2_1_1d(applicationName, finalDiagnosisName, finalDiagnosisId, provider, da
     recommendations = []
 
     recommendations.append({"QuantOutput": "TEST_Q25", "Value": 120.0, "RampTime": 5.0})
+    recommendations.append({"QuantOutput": "TEST_Q26", "Value": 80.0})
 
     return True, explanation, recommendations
 

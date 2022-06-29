@@ -99,8 +99,8 @@ def activate(scopeContext, stepProperties, state):
             recipeDataId, recipeDataType = s88GetRecipeDataId(chartScope, stepProperties, row.key, recipeLocation)
             log.tracef("...type: %s, recipeDataId: %s", recipeDataType, str(recipeDataId))
 
-            if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]: 
-                download = s88GetFromId(recipeDataId, recipeDataType, DOWNLOAD, database)    
+            if string.upper(recipeDataType) in ["OUTPUT", "OUTPUT RAMP"]:
+                download = s88GetFromId(recipeDataId, recipeDataType, DOWNLOAD, database)
 
                 if download or IGNORE_DOWNLOAD_FLAG:
                     # Initialize properties used by the write output process

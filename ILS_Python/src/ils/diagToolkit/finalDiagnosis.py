@@ -12,7 +12,7 @@ from ils.diagToolkit.api import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
     RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD, RECOMMENDATION_TEXT_POSTED
 from ils.io.util import getOutputForTagPath
-from ils.common.config import getProductionDatabase, getProductionTagProvider, getIsolationDatabase, getIsolationTagProvider
+from ils.common.config import getProductionDatabase, getProductionTagProvider, getIsolationDatabase, getIsolationTagProvider, getProductionDatabaseFromInternalDatabase
 from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML, escapeSqlQuotes
@@ -171,8 +171,8 @@ def notifyClientsOfTextRecommendation(project, post, application, database, prov
 #   2) If #1 is not found then notify every client displaying the console window
 #   3) If #2 is not found then notify every client
 def notifier(project, post, messageHandler, payload, database):
-    log.tracef("%s.notifier() - Notifying...", __name__)
-    productionDatabase = getProductionDatabase()
+    log.tracef("In %s.notifier() - Notifying...", __name__)
+    productionDatabase = getProductionDatabaseFromInternalDatabase(project)
     if database == productionDatabase:
         isolationMode = False
     else:
@@ -208,11 +208,12 @@ def notifier(project, post, messageHandler, payload, database):
     #----------------------------------------------------------------------------------------------------------------      
     system.util.invokeAsynchronous(work)
 
-'''
-The notifies a specific client to open the setpoint spreadsheet.  It was implemented specifically for Rate Change where the user presses a button on the 
-Review Data window to trigger the download, and then we want the Setpoint spredsheet to come up on that window as fast as possible without the loud workspace.
-'''
+
 def notififySpecificClientToOpenSpreadsheet(project, post, applicationName, clientId, database, provider):
+    '''
+    The notifies a specific client to open the setpoint spreadsheet.  It was implemented specifically for Rate Change where the user presses a button on the 
+    Review Data window to trigger the download, and then we want the Setpoint spredsheet to come up on that window as fast as possible without the loud workspace.
+    '''
     print "Notifying..."
     messageHandler="consoleManager"
     payload={'type':'openSpreadsheetForSpecificClient', 'application':applicationName, 'post': post, 
@@ -230,17 +231,22 @@ def postDiagnosisEntryMessageHandler(payload):
 
     application=payload["application"]
     family=payload["family"]
+    diagram=payload["diagram"]
     finalDiagnosis=payload["finalDiagnosis"]
     UUID=payload["UUID"]
     diagramUUID=payload["diagramUUID"]
     database=payload["database"]
     provider=payload["provider"]
     
-    postDiagnosisEntry(application, family, finalDiagnosis, UUID, diagramUUID, database, provider)
+    postDiagnosisEntry(application, family, diagram, finalDiagnosis, UUID, diagramUUID, database, provider)
 
-# This is called from the finalDiagnosis method acceptValue when the value is True.  This should only happen afer we receiv a False and have cleared the previous diagnosis entry.
-# However, on a gateway restart, we may become True again.  There are two possibilities of how this could be handled: 1) I could ignore the Insert a record into the diagnosis queue
-def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
+
+def postDiagnosisEntry(applicationName, family, diagram, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
+    '''
+    This is called from the finalDiagnosis method acceptValue when the value is True.  This should only happen after we receive a False and have 
+    cleared the previous diagnosis entry.  However, on a gateway restart, we may become True again.  There are two possibilities of how this could 
+    be handled: 1) I could ignore the Insert a record into the diagnosis queue
+    '''
     projectName = system.util.getProjectName()
     log.infof("In %s.postDiagnosisEntry() for project: %s with database: %s and provider: %s", __name__, projectName, database, provider)
     
@@ -254,11 +260,11 @@ def postDiagnosisEntry(applicationName, family, finalDiagnosis, UUID, diagramUUI
     
     # Lookup the application Id
     from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
+    record = fetchFinalDiagnosis(applicationName, family, diagram, finalDiagnosis, database)
     
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
+        log.error("ERROR posting a diagnosis entry for %s - %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, diagram, finalDiagnosis))
         return
     
     unit=record.get('UnitName',None)
@@ -336,14 +342,12 @@ def scanner():
     if projectName == "[global]":
         print "Skipping the diagnostic scanner for the global project"
         return
-    _scanner(getProductionDatabase(), getProductionTagProvider())
-    _scanner(getIsolationDatabase(), getIsolationTagProvider())    
+    _scanner(getProductionDatabase(projectName), getProductionTagProvider(projectName), projectName)
+    _scanner(getIsolationDatabase(projectName), getIsolationTagProvider(projectName), projectName)
 
         
-def _scanner(database, tagProvider, projectName=""):
+def _scanner(database, tagProvider, projectName):
     log.tracef("Checking to see if there are applications to manage using database: %s...", database)
-    if projectName == "":
-        projectName = system.util.getProjectName()
 
     SQL = "select AMQ.ApplicationName, Provider, Timestamp "\
         " from DtApplicationManageQueue AMQ, DtApplication A"\
@@ -412,6 +416,7 @@ def _scanner(database, tagProvider, projectName=""):
                 
     log.tracef("...done managing for database: %s!", database)
 
+
 def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagnosisExplanation):
     log.tracef("Mining explanation for %s - <%s> <%s>", finalDiagnosisName, str(diagramUUID), str(UUID)) 
 
@@ -427,8 +432,9 @@ def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagn
         txt = "%s is TRUE for an unknown reason (explanation mining failed)" % (finalDiagnosisName)
     return txt
     
-# Clear the final diagnosis (make the status = 'InActive') 
+
 def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", provider=""):
+    '''  Clear the final diagnosis (make the status = 'InActive') '''
     projectName = system.util.getProjectName()
     log.tracef("Clearing the diagnosis entry for %s - %s - %s - %s...", projectName, applicationName, family, finalDiagnosis)
 
@@ -460,9 +466,11 @@ def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", pr
     requestToManage(applicationName, database, provider)
 
 
-# Unpack the payload into arguments and call the method that posts a diagnosis entry.  
-# This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure
 def recalcMessageHandler(payload):
+    '''
+    Unpack the payload into arguments and call the method that posts a diagnosis entry.
+    This only runs in the gateway.  I'm not sure who calls this - this might be to facilitate testing, but I'm not sure.
+    '''
     log.infof("In %s.recalcMessageHandler, the payload is: %s", __name__, str(payload))
     post=payload["post"]
     applications=payload["applications"]
@@ -544,17 +552,22 @@ def postRecommendationMessage(application, finalDiagnosis, finalDiagnosisId, dia
     insert("RECOMMENDATIONS", "Info", textRecommendation, database)
     return textRecommendation
 
-# Fetch the text recommendation for a final diagnosis from the database.  For FDs that have 
-# static text this is easy, but we might need to call a callback that will return dynamic text.
+
 def fetchTextRecommendation(finalDiagnosisId, database):
+    '''
+    Fetch the text recommendation for a final diagnosis from the database.  For FDs that have 
+    static text this is easy, but we might need to call a callback that will return dynamic text.
+    '''
     SQL = "select textRecommendation from DtFinalDiagnosis where FinalDiagnosisId = %s" % (str(finalDiagnosisId)) 
     txt=system.db.runScalarQuery(SQL, database)
     return txt
+
 
 def fetchExplanationUsingName(applicationName, finalDiagnosisName, database):
     SQL = "select explanation from DtFinalDiagnosisView where ApplicationName = '%s' and FinalDiagnosisName = '%s'" % (applicationName, finalDiagnosisName) 
     txt=system.db.runScalarQuery(SQL, database)
     return txt
+
 
 def fetchTextRecommendationUsingName(applicationName, finalDiagnosisName, database):
     SQL = "select textRecommendation from DtFinalDiagnosisView where ApplicationName = '%s' and FinalDiagnosisName = '%s'" % (applicationName, finalDiagnosisName) 
@@ -562,16 +575,19 @@ def fetchTextRecommendationUsingName(applicationName, finalDiagnosisName, databa
     return txt
 
 
-# Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
-# and is the first step in evaluating the active FDs and calculating new recommendations.
 def resetRecommendations(applicationName, log, database):
+    ''' 
+    Delete all of the recommendations for an Application.  This is in response to a change in the status of a final diagnosis
+    and is the first step in evaluating the active FDs and calculating new recommendations.
+    '''
     log.tracef("Deleting recommendations for %s", applicationName)
     
     SQL = "delete from DtRecommendation " \
         " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
-        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A"\
         " where A.ApplicationId = F.ApplicationId "\
-        " and F.FamilyId = FD.FamilyId "\
+        " and F.FamilyId = D.FamilyId "\
+        " and D.DiagramId = FD.DiagramId "\
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and A.ApplicationName = '%s')" % (applicationName)
     log.trace(SQL)
@@ -580,9 +596,10 @@ def resetRecommendations(applicationName, log, database):
     
     SQL = "delete from DtTextRecommendation " \
         " where DiagnosisEntryId in (select DE.DiagnosisEntryId "\
-        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
+        " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A"\
         " where A.ApplicationId = F.ApplicationId "\
-        " and F.FamilyId = FD.FamilyId "\
+        " and F.FamilyId = D.FamilyId "\
+        " and D.DiagramId = FD.DiagramId "\
         " and FD.FinalDiagnosisId = DE.FinalDiagnosisId "\
         " and A.ApplicationName = '%s')" % (applicationName)
     log.trace(SQL)
@@ -701,10 +718,11 @@ def manage(application, recalcRequested=False, database="", provider=""):
     def fetchPreviousHighestPriorityDiagnosis(applicationName, database):
         log.trace("Fetching the previous highest priority diagnosis...")
         SQL = "Select FinalDiagnosisName, FinalDiagnosisId "\
-            " from DtApplication A, DtFamily F, DtFinalDiagnosis FD "\
+            " from DtApplication A, DtFamily F, DtDiagram D, DtFinalDiagnosis FD "\
             " where A.ApplicationName = '%s' " \
             " and A.ApplicationId = F.ApplicationId "\
-            " and F.FamilyId = FD.FamilyId "\
+            " and F.FamilyId = D.FamilyId "\
+            " and D.DiagramId = FD.DiagramId "\
             " and FD.Active = 1"\
             % (applicationName)
         logSQL.trace(SQL)
@@ -730,7 +748,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
             if familyId not in families:
                 log.tracef("   ...clearing all FinalDiagnosis in family %s...", str(familyId))
                 families.append(familyId)
-                SQL = "update dtFinalDiagnosis set Active = 0 where FamilyId = %d" % (familyId)
+                SQL = "update dtFinalDiagnosis set Active = 0 where DiagramId in (select DiagramId from DtDiagram where FamilyId = %d)" % (familyId)
                 logSQL.trace(SQL)
                 rows=system.db.runUpdateQuery(SQL, database)
                 log.tracef("      updated %d rows!", rows)
@@ -815,9 +833,13 @@ def manage(application, recalcRequested=False, database="", provider=""):
         log.tracef("...rescinding **active** diagnosis and deleting recommendations for application %s...", application)
 
         SQL = "select R.RecommendationId "\
-            "from DtRecommendation R, DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
-              " where R.DiagnosisEntryId = DE.DiagnosisEntryId and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
-              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId and A.applicationName = '%s'" % (application)
+            "from DtRecommendation R, DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A"\
+              " where R.DiagnosisEntryId = DE.DiagnosisEntryId "\
+              " and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
+              " and FD.DiagramId = D.DiagramId "\
+              " and D.FamilyId = F.FamilyId "\
+              " and F.ApplicationId = A.applicationId "\
+              " and A.applicationName = '%s'" % (application)
         
         pds = system.db.runQuery(SQL, database)
         totalRows=0
@@ -830,9 +852,13 @@ def manage(application, recalcRequested=False, database="", provider=""):
         
         # Delete active text recommendations
         SQL = "select DE.DiagnosisEntryId "\
-            "from DtTextRecommendation TR, DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A"\
-              " where TR.DiagnosisEntryId = DE.DiagnosisEntryId and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
-              " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId and A.applicationName = '%s' " % (application)
+            " from DtTextRecommendation TR, DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A"\
+            " where TR.DiagnosisEntryId = DE.DiagnosisEntryId "\
+            " and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
+            " and FD.DiagramId = D.DiagramId "\
+            " and D.FamilyId = F.FamilyId "\
+            " and F.ApplicationId = A.applicationId "\
+            " and A.applicationName = '%s' " % (application)
 
         pds = system.db.runQuery(SQL, database)
         totalRows=0
@@ -849,10 +875,14 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
         SQL = "update DtDiagnosisEntry set RecommendationStatus = '%s'"\
             "where Status = 'Active' and RecommendationStatus = '%s' "\
-            " and FinalDiagnosisId in (select FD.FinalDiagnosisId "\
-            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
-            "where DE.Status = 'Active' and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
-            " and FD.FamilyId =F.FamilyId and F.ApplicationId = A.applicationId "\
+            " and FinalDiagnosisId in "\
+            "(select FD.FinalDiagnosisId "\
+            " from DtDiagnosisEntry DE, DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A "\
+            " where DE.Status = 'Active' "\
+            " and DE.FinalDiagnosisId = FD.FinalDiagnosisId "\
+            " and FD.DiagramId = D.DiagramId "\
+            " and D.FamilyId = F.FamilyId "\
+            " and F.ApplicationId = A.applicationId "\
             " and A.ApplicationName = '%s')" % (RECOMMENDATION_RESCINDED, RECOMMENDATION_REC_MADE, application)
         logSQL.trace(SQL)
         rows = system.db.runUpdateQuery(SQL, database)
@@ -895,8 +925,9 @@ def manage(application, recalcRequested=False, database="", provider=""):
         SQL = "UPDATE DtDiagnosisEntry "\
             " SET Multiplier = 1.0 "\
             " WHERE Status = 'Active' and FinalDiagnosisId in (select FD.FinalDiagnosisId "\
-            " from DtFinalDiagnosis FD, DtFamily F, DtApplication A "\
-            " where Fd.FamilyId = F.FamilyId "\
+            " from DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A "\
+            " where FD.DiagramId = D.DiagramId "\
+            " and D.FamilyId = F.familyId "\
             " and F.ApplicationId = A.ApplicationId "\
             " and A.ApplicationName = '%s')" % (applicationName)
         rows = system.db.runUpdateQuery(SQL)
@@ -931,8 +962,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
 
     log.tracef("The active diagnosis are: ")
     for record in pds:
-        log.tracef("  Family: %s, Final Diagnosis: %s, Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s, Group Ramp Method: %s", 
-                  record["FamilyName"], record["FinalDiagnosisName"], str(record["Constant"]), str(record["FamilyPriority"]), 
+        log.tracef("  Family: %s, Diagram: %s, Final Diagnosis: %s, Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s, Group Ramp Method: %s", 
+                  record["FamilyName"], record["DiagramName"], record["FinalDiagnosisName"], str(record["Constant"]), str(record["FamilyPriority"]), 
                    str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"]), record['GroupRampMethod'] )
     
     # Sort out the families with the highest family priorities - this works because the records are fetched in 
@@ -947,8 +978,8 @@ def manage(application, recalcRequested=False, database="", provider=""):
     # Calculate the recommendations for each final diagnosis
     log.trace("The families / final diagnosis with the highest priorities are: ")
     for record in list2:
-        log.tracef("  Family: %s, Final Diagnosis: %s (%d), Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s, Group Ramp Method: %s",
-                  record["FamilyName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], str(record["Constant"]), 
+        log.tracef("  Family: %s, Diagram: %s, Final Diagnosis: %s (%d), Constant: %s, Family Priority: %s, FD Priority: %s, Diagnosis Entry id: %s, Group Ramp Method: %s",
+                  record["FamilyName"], record["DiagramName"], record["FinalDiagnosisName"],record["FinalDiagnosisId"], str(record["Constant"]), 
                    str(record["FamilyPriority"]), str(record["FinalDiagnosisPriority"]), str(record["DiagnosisEntryId"]), record['GroupRampMethod'] )
     
     log.trace("Checking if there has been a change in the highest priority final diagnosis...")

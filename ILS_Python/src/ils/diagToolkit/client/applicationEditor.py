@@ -114,7 +114,7 @@ def stashQuantOutputCallback(event):
             system.gui.messageBox("You must specify a tag path for the output!")
             return
         
-        print "Checking that the name is unique for a new input"
+        log.infof("Checking that the name is unique for a new input")
         ds = rootContainer.quantOutputNames
         for row in range(ds.rowCount):
             if ds.getValueAt(row, 0) == container.quantOutputName:
@@ -239,7 +239,7 @@ def refresh(rootContainer):
         rootContainer.groupRampMethodName = record["GroupRampMethodName"]
         
         pds = fetchOutputsForApplication(applicationName, db)
-        print "fetched %d outputs..." % (len(pds))
+        log.infof("fetched %d outputs...", len(pds))
         ds = system.dataset.toDataSet(pds)
         rootContainer.quantOutputs = ds
 
@@ -249,7 +249,7 @@ def refresh(rootContainer):
         ds = system.dataset.toDataSet(["QuantOutput"], quantOutputNames)
         rootContainer.quantOutputNames = ds
     else:
-        print "Editing a new application"
+        log.infof("Editing a new application")
         rootContainer.applicationName = ""
         rootContainer.description = ""
         rootContainer.unitName = ""
@@ -287,25 +287,25 @@ def save(rootContainer, db):
     notificationStrategy = "ocAlert"
     
     if applicationId == -1:
-        print "Insert a new application"
+        log.infof("Insert a new application")
         SQL = "insert  DtApplication (ApplicationName, Description, MessageQueueId, GroupRampMethodId, NotificationStrategy, UnitId, Managed) "\
             "values(?, ?, ?, ?, ?, ?, ?)"
         vals = [applicationName, description, messageQueueId, groupRampMethodId, notificationStrategy, unitId, managed]
         applicationId = system.db.runPrepUpdate(SQL, vals, database=db, getKey=True)
         rootContainer.applicationId = applicationId
-        print "Inserted application with id #%d" % (applicationId)
+        log.infof("Inserted application with id #%d", applicationId)
     else:
-        print "Update an existing application..."
+        log.infof("Update an existing application...")
         SQL = "update DtApplication set ApplicationName = ?, Description = ?, MessageQueueId = ?, GroupRampMethodId = ?, NotificationStrategy = ?, "\
             "UnitId = ?, Managed = ? where ApplicationId = ?"
         rows = system.db.runPrepUpdate(SQL, [applicationName, description, messageQueueId, groupRampMethodId, notificationStrategy, unitId, managed, applicationId], database=db)
-        print "Updated %d rows" % (rows)
+        log.infof("Updated %d rows", rows)
         
     ''' 
     Update, insert, and delete the quant outputs 
     In order to do the delete, I need to check if there is a quantOutput in the database that is not in the table, use QuantOutputIds rather than names.
     '''
-    print "Updating Quant Outputs..."
+    log.infof("Updating Quant Outputs...")
     SQL = "SELECT QuantOutputId from DtQuantOutputDefinitionView where ApplicationName = '%s'" % (applicationName)
     pds = system.db.runQuery(SQL, database=db)
     quantOutputIdsInDatabase = []
@@ -316,10 +316,10 @@ def save(rootContainer, db):
     for row in range(ds.rowCount):
         quantOutputId = ds.getValueAt(row, "QuantOutputId")
         if quantOutputId in quantOutputIdsInDatabase:
-            print "Removing %s from the database list.." % (str(quantOutputId))
+            log.infof("Removing %s from the database list..", str(quantOutputId))
             quantOutputIdsInDatabase.remove(quantOutputId)
         quantOutputName = ds.getValueAt(row, "QuantOutputName")
-        print "Saving %s..." % (quantOutputName)
+        log.infof("Saving %s...", quantOutputName)
         tagPath = ds.getValueAt(row, "TagPath")
         mostNegativeIncrement = ds.getValueAt(row, "MostNegativeIncrement")
         mostPositiveIncrement = ds.getValueAt(row, "MostPositiveIncrement")
@@ -338,21 +338,21 @@ def save(rootContainer, db):
             vals = [applicationId, quantOutputName, tagPath, mostNegativeIncrement, mostPositiveIncrement, ignoreMinimumIncrement, minimumIncrement, setpointHighLimit, 
                     setpointLowLimit, incrementalOutput, feedbackMethodId]
             quantOutputId = system.db.runPrepUpdate(SQL, vals, database=db, getKey=True)
-            print "...inserted new quant output <%s> and assigned id: %d!" % (quantOutputName, quantOutputId)
+            log.infof("...inserted new quant output <%s> and assigned id: %d!", quantOutputName, quantOutputId)
         else:
             SQL = "update DtQuantOutput set QuantOutputName=?, TagPath=?, MostNegativeIncrement=?, MostPositiveIncrement=?, IgnoreMinimumIncrement=?, "\
                 " MinimumIncrement=?, SetpointHighLimit=?, SetpointLowLimit=?, IncrementalOutput=?, FeedbackMethodId=? where quantOutputId = ?"
             vals = [quantOutputName, tagPath, mostNegativeIncrement, mostPositiveIncrement, ignoreMinimumIncrement, minimumIncrement, setpointHighLimit, 
                     setpointLowLimit, incrementalOutput, feedbackMethodId, quantOutputId]
             rows = system.db.runPrepUpdate(SQL, vals, database=db)
-            print "...updated %d rows" % (rows)
+            log.infof("...updated %d rows", rows)
     
     ''' Now remove any quant outputs from the database that were removed from editor '''
     for quantOutputId in quantOutputIdsInDatabase:
-        print "Delete %s from the database..." % str(quantOutputId)
+        log.infof("Delete %s from the database...", str(quantOutputId))
         SQL = "delete from DtQuantOutput where QuantOutputId = %d" % (quantOutputId)
-        rows = system.db.runUpdateQuery(SQL, databasr=db)
-        print "...deleted %d rows!" % (rows)
+        rows = system.db.runUpdateQuery(SQL, database=db)
+        log.infof("...deleted %d rows!", rows)
 
     return True
         

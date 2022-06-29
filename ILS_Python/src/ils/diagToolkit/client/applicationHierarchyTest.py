@@ -15,7 +15,8 @@ BLACK = "color(0,0,0,255)"
 MUSTARD = "color(250,214,138,255)"
 
 def resetDatabase():
-    tables = ["DtTextRecommendation", "DtDiagnosisEntry", "DtRecommendation", "DtRecommendationDefinition", "DtSQCDiagnosis", "DtFinalDiagnosis", "DtDiagram", "DtFamily", "DtApplication"]
+    tables = ["DtTextRecommendation", "DtDiagnosisEntry", "DtRecommendation", "DtRecommendationDefinition", "DtSQCDiagnosis", "DtFinalDiagnosis", 
+              "DtDiagram", "DtFamily", "DtApplication"]
     for table in tables:
         SQL = "delete from %s" % (table)
         rows = system.db.runUpdateQuery(SQL)

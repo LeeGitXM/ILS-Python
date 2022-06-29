@@ -91,7 +91,7 @@ class Unit(object):
             try:
                 system.db.runUpdateQuery(SQL, )
             except:
-                logger.errorf("Unit insert failed: %s", SQL)
+                log.errorf("Unit insert failed: %s", SQL)
                 
         for key in Unit.unitsByName.keys():
             unit = Unit.unitsByName[key]
@@ -100,7 +100,7 @@ class Unit(object):
                     SQL = "insert into UnitAliases(alias, name) values('%s', '%s')" % (key, unit.name)
                     system.db.runUpdateQuery(SQL, )
                 except:
-                    logger.errorf("Failed Alias insert: %s", SQL)
+                    log.errorf("Failed Alias insert: %s", SQL)
     
     @staticmethod
     def getUnitTypes():
@@ -145,7 +145,7 @@ class Unit(object):
         unit = Unit.unitsByName.get(name)
         if unit == None:
             # should use a logger here
-            logger.errorf('Failed to find unit: %s', name)
+            log.errorf('Failed to find unit: %s', name)
         return unit
 
     def getInsertStatement(self):
@@ -172,7 +172,7 @@ class Unit(object):
     @staticmethod
     def lazyInitialize(db):
         if len(Unit.unitsByName.keys()) == 0:
-            logger.info("Initializing the units object...")
+            log.info("Initializing the units object...")
             Unit.readFromDb(db)
             
     @staticmethod
@@ -180,9 +180,9 @@ class Unit(object):
         '''read unit info from the project's default '''
 
         try:
-            logger.info("Loading units...")
+            log.info("Loading units...")
             results = system.db.runQuery("select * from Units", database=db)
-            logger.infof("...read %d units...", len(results))
+            log.infof("...read %d units...", len(results))
             # Read the units
             Unit.clearUnits()
             newUnits = dict()
@@ -200,16 +200,16 @@ class Unit(object):
             # Read the aliases
             newUnits = dict()
             results = system.db.runQuery("select * from UnitAliases", database=db)
-            logger.infof("...read %d aliases...", len(results))
+            log.infof("...read %d aliases...", len(results))
             for row in results:
                 realUnit = Unit.getUnit(string.upper(row["name"]))
                 if realUnit != None:
                     newUnits[string.upper(row["alias"])] = realUnit
             Unit.addUnits(newUnits)
-            logger.infof("...done loading units!")
+            log.infof("...done loading units!")
         except:
             errorTxt = catchError("Error fetching Units")
-            logger.errorf(errorTxt)
+            log.errorf(errorTxt)
 
 def getUnits():
     return Unit.getUnits()
@@ -235,7 +235,7 @@ def unitsOfSameType(unitName):
     if unit != None:
         return Unit.getUnitsOfType(unit.type)
     else:
-        logger.warnf('No unit named %s', unitName)
+        log.warnf('No unit named %s', unitName)
         return None
 
 # Read a unit file and convert it into Unit objects
@@ -307,7 +307,7 @@ def parseUnitFile(unitfile):
     
 # If this is run from a client or the designer, then we probably don't need a db string
 def convert(fromUnitName, toUnitName, value, db=""):
-    logger.tracef("Converting %s from %s to %s", str(value), fromUnitName, toUnitName)
+    log.tracef("Converting %s from %s to %s", str(value), fromUnitName, toUnitName)
     lazyInitialize(db)
     return Unit.convert(string.upper(fromUnitName), string.upper(toUnitName), value)
 

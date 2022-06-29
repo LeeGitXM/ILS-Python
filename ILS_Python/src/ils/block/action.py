@@ -3,8 +3,8 @@
 
 from ils.common.error import catchError
 import string, system
-from com.inductiveautomation.ignition.common.util import LogUtil
-log = LogUtil.getLogger(__name__)
+
+from ils.log import getLogger
 
 def getClassName():
     return "Action"
@@ -19,15 +19,17 @@ class Action(basicblock.BasicBlock):
     def __init__(self):
         basicblock.BasicBlock.__init__(self)
         self.initialize()
+        self.log = getLogger(__name__)
         
     # Set attributes custom to this class.
     # Default the trigger to TRUE
     def initialize(self):
         self.className = 'ils.block.action.Action'
-        self.properties['Script'] = {'value':'ils.actions.demo.act','editable':'True'}
-        self.properties['Trigger'] = {'value':'TRUE','editable':'True','type':'TRUTHVALUE'}
-        self.inports = [{'name':'in','type':'truthvalue'}]
-        self.outports= [{'name':'out','type':'truthvalue'}]
+        self.properties['Script'] = {'value':'ils.demo.diagToolkit.actions.defaultAction', 'editable':'True'}
+        self.properties['Trigger'] = {'value':'TRUE', 'editable':'True', 'type':'TRUTHVALUE'}
+        
+        self.inports = [{'name':'in','type':'TRUTHVALUE','allowMultiple':False}]
+        self.outports= [{'name':'out','type':'TRUTHVALUE'}]
         
     # Return a dictionary describing how to draw an icon
     # in the palette and how to create a view from it.
@@ -54,33 +56,44 @@ class Action(basicblock.BasicBlock):
     # then evaluate the function. The output retains the 
     # timestamp of the input.
     def acceptValue(self,port,value,quality,time):
-        log.infof("In %s.acceptValue()", __name__)
+        self.log.infof("In %s.acceptValue()", __name__)
         
         handler = self.handler
-        database = handler.getDefaultDatabase(self.parentuuid)
-        provider = handler.getDefaultTagProvider(self.parentuuid)
+        self.log.infof("...parent UUID: %s", self.parentuuid)
+        
+        print "*************************"
+        print "*    HARDCORE HERE      *"
+        print "*************************"
+        
+        #database = handler.getDefaultDatabase(self.parentuuid)
+        database = "XOM_Dev"
+        self.log.infof("The default database is: %s", database)
+        
+        #provider = handler.getDefaultTagProvider(self.parentuuid)
+        provider = "Dev"
+        self.log.infof("The default provider is: %s", provider)
         
         block = handler.getBlock(self.parentuuid, self.uuid)
         blockName = block.getName()
-        log.tracef("Action Block Name: %s", blockName)
+        self.log.infof("Action Block Name: %s", blockName)
         
         trigger = self.properties.get('Trigger',{}).get("value","").lower()
         text = str(value).lower()
         if text == trigger:
-            log.infof("...processing a trigger...")
+            self.log.infof("...processing a trigger...")
             self.state = "TRUE"
             function = self.properties.get('Script',{}).get("value","")
 
             if len(function) > 0:
-                log.tracef("...there is a function: <%s>", function)
+                self.log.tracef("...there is a function: <%s>", function)
                 
                 ''' If they specify shared or project scope, then we don't need to do this '''
                 if not(string.find(function, "project") == 0 or string.find(function, "shared") == 0):
                     # The method contains a full python path, including the method name
-                    log.tracef("...it is external...")
+                    self.log.tracef("...it is external...")
                     packName = self.packageFromFunctionPath(function)
                     funcName = self.functionFromFunctionPath(function)
-                    log.tracef("   ...using External Python, the package is: <%s>.<%s>", packName, funcName)
+                    self.log.tracef("   ...using External Python, the package is: <%s>.<%s>", packName, funcName)
                     exec("import %s" % (packName))
                     exec("from %s import %s" % (packName,funcName))
             

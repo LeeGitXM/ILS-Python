@@ -61,11 +61,11 @@ def refresh(rootContainer):
     '''
     availableOutputPds = fetchOutputNamesForApplication(applicationName, db)
     availableOutputDs = system.dataset.toDataSet(availableOutputPds)
-    print "Fetched %d outputs for this application." % (len(availableOutputPds))
+    log.infof("Fetched %d outputs for this application.", len(availableOutputPds))
     
     selectedOutputPds = fetchOutputNamesForFinalDiagnosisId(finalDiagnosisId, db)
     selectedOutputDs = system.dataset.toDataSet(selectedOutputPds)
-    print "Fetched %d outputs for this final diagnosis." % (len(selectedOutputPds))
+    log.infof( "Fetched %d outputs for this final diagnosis.", len(selectedOutputPds))
     
     ''' Remove the used outputs from the available outputs '''
     
@@ -74,10 +74,10 @@ def refresh(rootContainer):
         
         for availableRow in range(availableOutputDs.rowCount):
             if outputName == availableOutputDs.getValueAt(availableRow, 0):
-                print "--- found the row to remove ---"
+                log.infof("--- found the row to remove ---")
                 availableOutputDs = system.dataset.deleteRow(availableOutputDs, availableRow)
                 break
-        
+
     rootContainer.availableOutputs = availableOutputDs
     rootContainer.selectedOutputs = selectedOutputDs
 
@@ -112,11 +112,11 @@ def save(event):
               finalDiagnosisId]
 
     rows = system.db.runPrepUpdate(SQL, values, database=db)
-    print "Updated %d rows" % (rows) 
+    log.infof("Updated %d rows", rows) 
     
     SQL = "delete from DtRecommendationDefinition where FinalDiagnosisId = %d" % (finalDiagnosisId)
     rows = system.db.runUpdateQuery(SQL, database=db)
-    print "...deleted %d existing recommendation definitions..." % (rows)
+    log.infof("...deleted %d existing recommendation definitions...", rows)
     
     selectedOutputDs = rootContainer.selectedOutputs
     for row in range(selectedOutputDs.rowCount):
@@ -124,9 +124,9 @@ def save(event):
         outputId = selectedOutputDs.getValueAt(row, 1)
         SQL = "Insert into DtRecommendationDefinition(FinalDiagnosisId, QuantOutputId) values (?,?)"
         system.db.runPrepUpdate(SQL, [finalDiagnosisId, outputId], database=db)
-        print "Inserted ", outputName
+        log.infof("Inserted %s", outputName)
     log.infof("Inserted %d outputs", selectedOutputDs.rowCount)
-    
+
     
 def selectOutputCallback(event):
     ''' This is called when they press the RIGHT ARROW button to move the selected output from the left list to the right list '''

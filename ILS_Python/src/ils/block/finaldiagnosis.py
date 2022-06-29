@@ -11,7 +11,8 @@ def getClassName():
 # or other block upstream and deduces the reason for the issue.
 #
 from ils.block import basicblock
-from com.inductiveautomation.ignition.common.util import LogUtil
+from ils.log import getLogger
+
 #import ils.diagToolkit.finalDiagnosis as fd
 
 callback = "fd.evaluate"
@@ -22,7 +23,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.initialize()
         self.state = "UNKNOWN"
         self.handler.setAlerterClass(self.getClassName())
-        self.log = LogUtil.getLogger(__name__)
+        self.log = getLogger(__name__)
     
     # Set attributes custom to this class
     def initialize(self):
@@ -65,7 +66,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         
         # I'm not really using this, but I'm printing it up front just to make sure this works
         projectName = system.util.getProjectName()
-        self.log.tracef("FinalDiagnosis.acceptValue: %s (project: %s)", self.state, projectName)
+        self.log.tracef("FinalDiagnosis.acceptValue: %s (project: %s, parent UUID: %s, UUID: %s)", self.state, projectName, self.parentuuid, self.uuid)
 
         if self.state != "UNKNOWN":
             print "Clearing the watermark"

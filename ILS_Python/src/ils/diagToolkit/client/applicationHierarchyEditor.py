@@ -29,14 +29,24 @@ FAMILY_TYPE = "Family"
 DIAGRAM_TYPE = "Diagram"
 FINAL_DIAGNOSIS_TYPE = "Final Diagnosis"
 
+CLICK_THRESHOLD = 10
+
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()...", __name__)
+    rootContainer = event.source.rootContainer
+    treeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
+    treeWidget.selectedNodeType = ""
 
 
 def internalFrameActivated(event):
+    ''' This is called whenever the window regains focus '''
     log.infof("In %s.internalFrameActivated()...", __name__)
     rootContainer = event.source.rootContainer
     db = getDatabaseClient()
+    
+    # Clearing the selected Node Type makes the tree appear to be unresponsive
+    #treeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
+    #treeWidget.selectedNodeType = ""
     refreshDiagramTree(rootContainer, db)
     refreshHierarchyTree(rootContainer, db)
 
@@ -62,7 +72,7 @@ def refreshDiagramTree(rootContainer, db):
         
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
-    treeWidget = rootContainer.getComponent("Diagram Tree")
+    treeWidget = rootContainer.getComponent("Diagram Container").getComponent("Diagram Tree")
     treeWidget.data = ds
 
 def refreshHierarchyTreeCallback(rootContainer, db=""):
@@ -107,12 +117,12 @@ def refreshHierarchyTree(rootContainer, db):
         
         fdName = FD["FinalDiagnosisName"]
         parentNode = ROOT_NODE + "/" + applicationName + "/" + familyName + "/" + diagramName
-        print "Adding an application with parent: <%s>" % (parentNode)
+        log.infof("Adding an application with parent: <%s>", parentNode)
         rows.append([parentNode, fdName, FINAL_DIAGNOSIS_ICON, WHITE, BLACK, fdName, "", "", FINAL_DIAGNOSIS_ICON, MUSTARD, BLACK, "", ""])
 
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
-    treeWidget = rootContainer.getComponent("Hierarchy Tree")
+    treeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     treeWidget.data = ds
     
 def determineNodeType(event):
@@ -120,7 +130,6 @@ def determineNodeType(event):
     We could also just look at the icon to determine the node type 
     '''
     tree = event.source
-    ds = tree.data
     selectedItem = event.newValue
     
     if selectedItem == -1:
@@ -145,37 +154,37 @@ def addCallback(event):
     ''' The add button is used to create a new application or a new family '''
     log.infof("In %s.addCallback()", __name__)
     db = getDatabaseClient()
-    rootContainer = event.source.parent
-    tree = rootContainer.getComponent("Hierarchy Tree")
+    rootContainer = event.source.parent.parent
+    tree = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     selectedPath = tree.selectedPath
     tokens = selectedPath.split("/")
     nodeType = tree.selectedNodeType
-    print nodeType, selectedPath
+    log.infof("%s - %s", nodeType, selectedPath)
     
     if nodeType == ROOT_TYPE:
-        print "Selected the root node"
+        log.infof("Selected the root node")
         window = system.nav.openWindowInstance("DiagToolkit/Application Editor", {"applicationId": -1})
         system.nav.centerWindow(window)
         
     elif nodeType == APPLICATION_TYPE:
-        print "Selected an application"
+        log.infof("Selected an application")
         applicationName = tokens[1]
         applicationId = fetchApplicationId(applicationName, db)
         window = system.nav.openWindowInstance("DiagToolkit/Family Editor", {"applicationId": applicationId, "familyId": -1})
         system.nav.centerWindow(window)
     
     else:
-        print "Unsupported node type"
+        log.infof("Unsupported node type")
     
 def deleteCallback(event):
     log.infof("In %s.deleteCallback()", __name__)
     db = getDatabaseClient()
-    rootContainer = event.source.parent
-    tree = rootContainer.getComponent("Hierarchy Tree")
+    rootContainer = event.source.parent.parent
+    tree = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     selectedPath = tree.selectedPath
     tokens = selectedPath.split("/")
     nodeType = tree.selectedNodeType
-    print nodeType, selectedPath
+    log.infof("%s - %s", nodeType, selectedPath)
     
     if nodeType == APPLICATION_TYPE:
         '''
@@ -191,7 +200,7 @@ def deleteCallback(event):
         
         SQL = "delete from DtApplication where ApplicationId = %d" % (applicationId)
         rows = system.db.runUpdateQuery(SQL, database=db)
-        print "...deleted %d applications!" % (rows)
+        log.infof("...deleted %d applications!", rows)
         refreshHierarchyTree(rootContainer, db)
         
     elif nodeType == FAMILY_TYPE:
@@ -201,18 +210,18 @@ def deleteCallback(event):
         familyId = fetchFamilyId(applicationName, familyName, db)
         SQL = "update DtDiagram set FamilyId = NULL where familyId = %d" % (familyId)
         rows = system.db.runUpdateQuery(SQL, database=db)
-        print "...cleared %d diagram references to family %s..." % (rows, familyName)
+        log.infof("...cleared %d diagram references to family %s...", rows, familyName)
         
         SQL = "delete from DtFamily where FamilyId = %d" % (familyId)
         rows = system.db.runUpdateQuery(SQL, database=db)
-        print "...deleted %d families!" % (rows)
+        log.infof("...deleted %d families!", rows)
         
         refreshDiagramTree(rootContainer, db)
         refreshHierarchyTree(rootContainer, db)
         
         
 def editCallbackForDoubleClick(event):
-    ''' I don't think this is hooked up '''
+    ''' I don't think this is hooked up because a tree already has built-in behavior for a double-click. '''
     log.infof("In %s.editCallbackForDoubleClick()", __name__)
     editCallback(event)    
 
@@ -220,22 +229,22 @@ def editCallbackForDoubleClick(event):
 def editCallback(event):
     log.infof("In %s.editCallback()", __name__)
     db = getDatabaseClient()
-    rootContainer = event.source.parent
-    tree = rootContainer.getComponent("Hierarchy Tree")
+    rootContainer = event.source.parent.parent
+    tree = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     selectedPath = tree.selectedPath
     tokens = selectedPath.split("/")
     nodeType = tree.selectedNodeType
-    print nodeType, selectedPath
+    log.infof("%s - %s", nodeType, selectedPath)
     
     if nodeType == APPLICATION_TYPE:
-        log.tracef("Selected an application")
+        log.tracef("Editing an application")
         applicationName = tokens[1]
         applicationId = fetchApplicationId(applicationName, db)
         window = system.nav.openWindowInstance("DiagToolkit/Application Editor", {"applicationId": applicationId})
         system.nav.centerWindow(window)
 
     elif nodeType == FAMILY_TYPE:
-        log.tracef("Selected a family")
+        log.tracef("Editing a family")
         applicationName = tokens[1]
         familyName = tokens[2]
         familyId = fetchFamilyId(applicationName, familyName, db)
@@ -243,7 +252,7 @@ def editCallback(event):
         system.nav.centerWindow(window)
 
     elif nodeType == FINAL_DIAGNOSIS_TYPE:
-        log.tracef("Selected a final diagnosis")
+        log.tracef("Editing a final diagnosis")
         applicationName = tokens[1]
         familyName = tokens[2]
         familyId = fetchFamilyId(applicationName, familyName, db)
@@ -269,9 +278,10 @@ def getFullDiagramNameForFinalDiagnosis(rootContainer, selectedPath):
     tokens = selectedPath.split("/")
     fdName = tokens.pop(len(tokens)-1)
     diagramName = tokens.pop(len(tokens)-1)
+    log.infof("...found %s on diagram %s!", fdName, diagramName)
     parent = "/".join(tokens)
     
-    tree = rootContainer.getComponent("Hierarchy Tree")
+    tree = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     ds = tree.data
     for row in range(ds.rowCount):
         if ds.getValueAt(row, 0) == parent and ds.getValueAt(row, 1) == diagramName:
@@ -285,7 +295,7 @@ def insertDiagramCallback(event):
     log.infof("In %s.insertDiagramCallback()", __name__)
     db = getDatabaseClient()
     rootContainer = event.source.parent
-    diagramTreeWidget = rootContainer.getComponent("Diagram Tree")
+    diagramTreeWidget = rootContainer.getComponent("Diagram Container").getComponent("Diagram Tree")
     row = diagramTreeWidget.selectedItem
     
     ''' The full diagram path is in the tooltip.  Because I don't use any intermediate nodes while building this Tree, I can go directly from the selected Item into the dataset '''
@@ -294,7 +304,7 @@ def insertDiagramCallback(event):
     diagramId = fetchDiagramId(diagramName, db)
     log.infof("User selected diagram: %s - %s", diagramName, str(diagramId))
     
-    hierarchyTreeWidget = rootContainer.getComponent("Hierarchy Tree")
+    hierarchyTreeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     row = hierarchyTreeWidget.selectedItem
     ds = hierarchyTreeWidget.data
     familyName = ds.getValueAt(row, "text")
@@ -306,7 +316,7 @@ def insertDiagramCallback(event):
     '''
     1) Update the database so that the diagram is a member of the family
     2) Refresh the diagram tree (by fetching  the diagrams from the database)
-    3) Refresh the Hierarchy Tree (by fetching the data from database)
+    3) Refresh the  (by fetching the data from database)
     '''
     
     SQL = "Update DtDiagram set FamilyId = %d where DiagramId = %d" % (familyId, diagramId)
@@ -314,13 +324,14 @@ def insertDiagramCallback(event):
     refreshDiagramTree(rootContainer, db)
     refreshHierarchyTree(rootContainer, db)
 
-def removeDiagramCallback(event):
+def removeDiagramCallback(rootContainer):
+    ''' This is called from a popup. '''
+    
     log.infof("In %s.removeDiagramCallback()", __name__)
     db = getDatabaseClient()
-    rootContainer = event.source.parent
     
-    ''' The full diagram name is stored in the tooltip of the hierarchy Tree '''
-    hierarchyTreeWidget = rootContainer.getComponent("Hierarchy Tree")
+    ''' The full diagram name is stored in the tooltip of the  '''
+    hierarchyTreeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     row = hierarchyTreeWidget.selectedItem
     ds = hierarchyTreeWidget.data
     diagramName = ds.getValueAt(row, "tooltip")
@@ -329,7 +340,7 @@ def removeDiagramCallback(event):
     refreshDiagramTree(rootContainer, db)
     refreshHierarchyTree(rootContainer, db)
     
-def mousePressedCallbackForApplicationHierarchyTree(event):
+def mouseReleasedCallbackForApplicationHierarchyTree(event):
     '''
     I want to post a popup menu on a right-click because the left-click is used to select a node.      The problem with the 
     right-click is that it doesn't change the selection AND I can't determine what they right-clicked on.  So if the 5th item 
@@ -338,11 +349,41 @@ def mousePressedCallbackForApplicationHierarchyTree(event):
     from x, y coordinates to a node in the tree.
     '''
     
-    log.infof("In %s.mousePressedCallbackForApplicationHierarchyTree() - %s", __name__, event.button)
+    log.infof("In %s.mouseReleasedCallbackForApplicationHierarchyTree() - button: %s, popup: %s, click-count: %d, x: %d, y: %d", 
+              __name__, event.button, str(event.popupTrigger), event.clickCount, event.x, event.y)
+    
+    tree = event.source
+    
+    if int(event.button) == 1:
+        tree.lastSelectedMouseClickY = event.y
+
     ''' Only post the popup on the right mouse button '''
     if int(event.button) <> 3:
-        print "...not a right-click..."
+        log.infof("...not a right-click...")
         return
+
+    ''' Things I tried to get the node that they right-clicked on '''
+    #tree = event.source
+    #print tree
+    
+    #print "DIR: ", dir(tree)
+    
+    #swingTree = tree.getComponent()
+    #print "Swing Tree: ", swingTree
+    
+    #components = tree.getComponents()
+    #print "Components: ", components
+    
+    #selectedPath = tree.getPathForLocation(event.x, event.y)
+    #print "The selected Path is: ", selectedPath
+
+    if abs(event.y - tree.lastSelectedMouseClickY) > CLICK_THRESHOLD and int(tree.selectedItem) >= 0:
+        log.infof("The right-click is not close enough to the last left click")
+        return
+
+    #''' Until I figure out how to get the actual thing that they right clicked on, disable POPUPs '''
+    #log.infof("...POPUPs are not enabled...")
+    #return
     
     ''' Callbacks from the popups '''
     def addApplicationPopupCallback(event):
@@ -355,7 +396,7 @@ def mousePressedCallbackForApplicationHierarchyTree(event):
         selectedPath = tree.selectedPath
         tokens = selectedPath.split("/")
         nodeType = tree.selectedNodeType
-        print nodeType, selectedPath
+        log.infof("%s - %s", nodeType, selectedPath)
     
         applicationName = tokens[1]
         applicationId = fetchApplicationId(applicationName, db)
@@ -375,38 +416,135 @@ def mousePressedCallbackForApplicationHierarchyTree(event):
         deleteCallback(event)
 
     def disassociateDiagramCallback(event):
-        removeDiagramCallback(event)
+        removeDiagramCallback(event.source.parent.parent)
 
     def editFinalDiagnosisCallback(event):
         editCallback(event)
+        
+    def expandCallback(event):
+        '''
+        This is the callback from the popup menu
+        '''
+        log.infof("In %s.expandCallback()...", __name__)
+        treeComponent = event.source
+        from javax.swing.tree import TreePath
+        tree = treeComponent.viewport.view
+        model = tree.model
+        
+        def expand(path):
+            tree.expandPath(path)
+            node = path.lastPathComponent;
+            for i in range(model.getChildCount(node)):
+                child = model.getChild(node, i)
+                childPath = TreePath(model.getPathToRoot(child))
+                expand(childPath)
+        
+        selectedPath = tree.getSelectionPath()
+        if selectedPath != None:
+            expand(selectedPath)
 
 
     ''' The popup menu depends on the type of node that was selected '''
     tree = event.source            
     selectedNodeType = tree.selectedNodeType
-    print "Node type is: ", selectedNodeType
+    log.infof("Node type is: %s", selectedNodeType)
     if selectedNodeType == ROOT_TYPE:
-        print "Selected the root"
-        menu = system.gui.createPopupMenu(["Add Application"], [addApplicationPopupCallback])
+        log.infof("Selected the root")
+        menu = system.gui.createPopupMenu(["Expand", "Add Application"], [expandCallback, addApplicationPopupCallback])
         menu.show(event)
         
     elif selectedNodeType == APPLICATION_TYPE:
-        print "selected an application" 
-        menu = system.gui.createPopupMenu(["Edit Application", "Delete Application", "Add Family"], [editApplicationPopupCallback, deleteApplicationPopupCallback, addFamilyPopupCallback])
+        log.infof("Selected an Application") 
+        menu = system.gui.createPopupMenu(["Expand", "Edit Application", "Delete Application", "Add Family"], [expandCallback, editApplicationPopupCallback, deleteApplicationPopupCallback, addFamilyPopupCallback])
         menu.show(event)
     
     elif selectedNodeType == FAMILY_TYPE:
-        print "selected a Family" 
-        menu = system.gui.createPopupMenu(["Edit Family","Delete Family"], [editFamilyPopupCallback, deleteFamilyPopupCallback])
+        log.infof("Selected a Family")
+        menu = system.gui.createPopupMenu(["Expand", "Edit Family","Delete Family"], [expandCallback, editFamilyPopupCallback, deleteFamilyPopupCallback])
         menu.show(event)
     
     elif selectedNodeType == DIAGRAM_TYPE:
-        print "selected an application" 
-        menu = system.gui.createPopupMenu(["Disassociate from Family"], [disassociateDiagramCallback])
+        log.infof("Selected a Diagram") 
+        menu = system.gui.createPopupMenu(["Expand", "Remove from Family"], [expandCallback, disassociateDiagramCallback])
         menu.show(event)
         
     elif selectedNodeType == FINAL_DIAGNOSIS_TYPE:
-        print "selected an application" 
+        log.infof("Selected a Final Diagnosis") 
         menu = system.gui.createPopupMenu(["Edit Final Diagnosis"], [editFinalDiagnosisCallback])
         menu.show(event)
+
+    ''' 
+    This idea came from IA (Spencer Greco #50776).  It works fine if there isn't a popup!
+    As soon as I post a popup it no longer works 
+    '''
+    #from java.awt import Robot
+    #from java.awt.event import KeyEvent
+    #from java.awt.event import InputEvent
+    
+    # Robot function simulates mouse/keyboard events. 
+    # add an if statement to check if a left or right click has taken place.
+
+    #print "Simulating a left-click"
+    #robot = Robot()
+    #robot.mousePress(InputEvent.BUTTON1_DOWN_MASK)
+    
+    
+def mouseReleasedCallbackForDiagramTree(event):
+    '''
+    I want to post a popup menu on a right-click because the left-click is used to select a node.      The problem with the 
+    right-click is that it doesn't change the selection AND I can't determine what they right-clicked on.  So if the 5th item 
+    is selected, and they right-click on the 2md item, the 5th item is still the selected item and I can't determine what item 
+    they right-clicked on.  I can get the x and y coordinates, but I find them to be useless...  I can't find a way to translate
+    from x, y coordinates to a node in the tree.
+    '''
+    
+    log.infof("In %s.mouseReleasedCallbackForDiagramTree() - button: %s, popup: %s, click-count: %d, x: %d, y: %d", 
+              __name__, event.button, str(event.popupTrigger), event.clickCount, event.x, event.y)
+    
+    tree = event.source
+    
+    if int(event.button) == 1:
+        tree.lastSelectedMouseClickY = event.y
+
+    ''' Only post the popup on the right mouse button '''
+    if int(event.button) <> 3:
+        log.infof("...not a right-click...")
+        return
+
+    if abs(event.y - tree.lastSelectedMouseClickY) > CLICK_THRESHOLD and int(tree.selectedItem) >= 0:
+        log.infof("The right-click is not close enough to the last left click")
+        return
+
+    #''' Until I figure out how to get the actual thing that they right clicked on, disable POPUPs '''
+    #log.infof("...POPUPs are not enabled...")
+    #return
+    
+    ''' Callbacks from the popups '''        
+    def expandCallback(event):
+        '''
+        This is the callback from the popup menu
+        '''
+        log.infof("In %s.expandCallback()...", __name__)
+        treeComponent = event.source
+        from javax.swing.tree import TreePath
+        tree = treeComponent.viewport.view
+        model = tree.model
         
+        def expand(path):
+            tree.expandPath(path)
+            node = path.lastPathComponent;
+            for i in range(model.getChildCount(node)):
+                child = model.getChild(node, i)
+                childPath = TreePath(model.getPathToRoot(child))
+                expand(childPath)
+        
+        selectedPath = tree.getSelectionPath()
+        if selectedPath != None:
+            expand(selectedPath)
+
+
+    ''' The popup menu depends on the type of node that was selected '''
+    tree = event.source            
+
+    menu = system.gui.createPopupMenu(["Expand"], [expandCallback])
+    menu.show(event)

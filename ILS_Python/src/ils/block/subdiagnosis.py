@@ -7,12 +7,13 @@ def getClassName():
 # facilitate migration.
 #
 from ils.block import basicblock
-
+from ils.log import getLogger
 
 class SubDiagnosis(basicblock.BasicBlock):
     def __init__(self):
         basicblock.BasicBlock.__init__(self)
         self.initialize()
+        self.log = getLogger(__name__)
     
     # Set attributes custom to this class
     def initialize(self):

@@ -17,19 +17,19 @@ def build(rootContainer):
     db=readTag("[Client]Database").value
     provider=readTag("[Client]Tag Provider").value
     
-    theMap = rootContainer.getComponent("TheMap")
+    #theMap = rootContainer.getComponent("TheMap")
     diagnoses = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=db)
-    diagnoses = updateSqcFlag(diagnoses)
-    theMap.diagnoses=diagnoses
+    #diagnoses = updateSqcFlag(diagnoses)
+    rootContainer.diagnoses=diagnoses
     
     outputs=fetchQuantOutput(applicationName, quantOutputName, db, provider)
-    theMap.outputs=outputs
+    rootContainer.outputs=outputs
     
     recDefs=fetchRecDefs(diagnoses, outputs, db)
     
     recommendations, recDefs=fetchRecommendations(diagnoses, outputs, recDefs, db)
-    theMap.connections=recDefs
-    theMap.recommendations=recommendations    
+    rootContainer.connections=recDefs
+    rootContainer.recommendations=recommendations    
 
 
 def fetchQuantOutput(applicationName, quantOutputName, db, provider):
@@ -68,11 +68,12 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     log.tracef("Fetching Final Diagnosis that touch %s...", quantOutputName)
         
     SQL = "select distinct FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FinalDiagnosisUUID, FD.DiagramUUID "\
-        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtFamily F, DtApplication A "\
+        " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtDiagram D, DtFamily F, DtApplication A "\
         " where F.ApplicationId = A.ApplicationId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
         " and RD.QuantOutputId = QO.QuantOutputId "\
-        " and FD.FamilyId = F.FamilyId "\
+        " and D.FamilyId = F.FamilyId "\
+        " and FD.DiagramId = D.DiagramId "\
         " and QO.ApplicationId = A.ApplicationId "\
         " and QO.QuantOutputName = '%s' "\
         " and A.ApplicationName = '%s'"\
@@ -449,7 +450,7 @@ or a new diagnosis was made.
 ''' 
 def update(rootContainer):
     print "Updating a recommendation map..."
-    theMap = rootContainer.getComponent("TheMap")
+    #theMap = rootContainer.getComponent("TheMap")
     db=readTag("[Client]Database").value
     
     # Update the recommendations Dataset
@@ -475,7 +476,7 @@ def update(rootContainer):
     
     
     # Update the Outputs Dataset
-    ds = theMap.outputs
+    ds = rootContainer.outputs
     print "...updating the outputs dataset..."
     for row in range(ds.rowCount):
         quantOutputName = ds.getValueAt(row, "Name")
@@ -493,11 +494,11 @@ def update(rootContainer):
             ds = system.dataset.setValue(ds, row, "CurrentSetpoint", currentSetpoint)
             ds = system.dataset.setValue(ds, row, "FinalSetpoint", finalSetpoint)
             ds = system.dataset.setValue(ds, row, "Recommendation", recommendation)
-    theMap.outputs = ds
+    rootContainer.outputs = ds
     
     # Update the Final Diagnosis Dataset
     print "...updating the final diagnosis dataset..."
-    ds = theMap.diagnoses
+    ds = rootContainer.diagnoses
     for row in range(ds.rowCount):
         finalDiagnosisName = ds.getValueAt(row, "Name")
         print "  ...updating multiplier for %s..." % (finalDiagnosisName)
@@ -515,12 +516,11 @@ def update(rootContainer):
         else:
             print "  WARNING: Unexpected number of final diagnosis records: %i" % (len(pds))
 
-    theMap.diagnoses = ds
+    rootContainer.diagnoses = ds
     
-    recDefs=theMap.connections
-    recommendations, recDefs=fetchRecommendations(theMap.diagnoses, theMap.outputs, recDefs, db)
-    theMap.connections=recDefs
-    theMap.recommendations=recommendations
+    recommendations, recDefs=fetchRecommendations(rootContainer.diagnoses, rootContainer.outputs, rootContainer, db)
+    rootContainer.connections=recDefs
+    rootContainer.recommendations=recommendations
     
 '''
 Recommendation callbacks

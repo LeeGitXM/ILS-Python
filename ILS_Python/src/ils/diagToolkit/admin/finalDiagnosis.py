@@ -5,14 +5,18 @@ Created on Dec 12, 2016
 '''
 
 import system
+
+from ils.log import getLogger
+log = getLogger(__name__)
+
 from ils.io.util import readTag
 from ils.common.util import getDate, formatDateTime
 
 def internalFrameOpened(rootContainer):
-    print "In internalFrameOpened()"
+    log.infof("In %s.internalFrameOpened()", __name__)
     database=readTag("[Client]Database").value
 
-    print "The database is: ", database
+    log.infof("The database is: %s", database)
     
     SQL = "select ApplicationName, FamilyName, FinalDiagnosisName, FamilyPriority, FinalDiagnosisPriority, Constant, "\
         " Active, LastRecommendationTime, TimeOfMostRecentRecommendationImplementation, DiagramUUID, FinalDiagnosisUUID, "\
@@ -30,7 +34,7 @@ def runTest(rootContainer):
     import system.ils.blt.diagram as diagram
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
        
-    print "In runTest()"
+    log.infof("In %s.runTest()", __name__)
 
     table = rootContainer.getComponent("Power Table")
     ds = table.data
@@ -41,7 +45,7 @@ def runTest(rootContainer):
         fdName = record["FinalDiagnosisName"]
         fdUUID = record["FinalDiagnosisUUID"]
     
-        print "Getting info for Final Diagnosis named: <%s> with id: <%s>" % (fdName, fdUUID)
+        log.infof("Getting info for Final Diagnosis named: <%s> with id: <%s>", fdName, fdUUID)
    
         diagramDescriptor=diagram.getDiagramForBlock(fdUUID)
         if diagramDescriptor == None:

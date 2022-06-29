@@ -43,13 +43,13 @@ def saveCallback(event):
     familyPriority = rootContainer.familyPriority
     
     if familyId == -1:
-        print "Insert a new family"
+        log.infof("Insert a new family")
         SQL = "insert  DtFamily (FamilyName, ApplicationId, Description, FamilyPriority) values(?, ?, ?, ?)"
         familyId = system.db.runPrepUpdate(SQL, [familyName, applicationId, description, familyPriority], database=db)
         rootContainer.familyId = familyId
     else:
-        print "Updating..."
+        log.infof("Updating...")
         SQL = "update DtFamily set FamilyName = ?, Description = ?, FamilyPriority = ? where FamilyId = ?"
         rows = system.db.runPrepUpdate(SQL, [familyName, description, familyPriority, familyId], database=db)
-        print "Updated %d rows" % (rows)
+        log.infof("Updated %d rows", rows)
         

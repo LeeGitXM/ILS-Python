@@ -193,7 +193,7 @@ def fetchWindowState(windowId, database):
     pds = system.db.runQuery(SQL, database)
     
     if len(pds) == 0:
-        return "Error", 0
+        return "Error", "Error", 0
     
     guiState = pds[0]["GuiState"]
     stepState = pds[0]["StepState"]

@@ -56,14 +56,15 @@ def internalFrameOpened(rootContainer):
             "ORDER BY FinalDiagnosisName"
     else:
         SQL = "SELECT FD.FinalDiagnosisName as Label, FD.FinalDiagnosisName, FD.FinalDiagnosisLabel, FD.FinalDiagnosisUUID, FD.DiagramUUID, FD.FinalDiagnosisId "\
-            "FROM DtFinalDiagnosis FD, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
-            "WHERE FD.FamilyId = F.FamilyId "\
-            "AND F.ApplicationId = A.ApplicationId "\
-            "AND A.UnitId = U.UnitId "\
-            "AND U.PostId = P.PostId "\
-            "AND P.Post = '%s' "\
-            "AND FD.Constant = 0 "\
-            "AND FD.ManualMoveAllowed = 1 "\
+            "FROM DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A, TkUnit U, TkPost P "\
+            "WHERE FD.DiagramId = D.DiagramId "\
+            "and F.FamilyId = D.FamilyId "\
+            "and F.ApplicationId = A.ApplicationId "\
+            "and A.UnitId = U.UnitId "\
+            "and U.PostId = P.PostId "\
+            "and P.Post = '%s' "\
+            "and FD.Constant = 0 "\
+            "and FD.ManualMoveAllowed = 1 "\
             "ORDER BY FD.FinalDiagnosisName" % (post)
 
     print SQL
