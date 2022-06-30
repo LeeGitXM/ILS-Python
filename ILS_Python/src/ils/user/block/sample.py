@@ -50,9 +50,9 @@ class Sample(basicblock.BasicBlock):
 
         # the next lines just show accessing some available objects        
         handler = self.handler
-        database = handler.getDefaultDatabase(self.parentuuid)
-        provider = handler.getDefaultTagProvider(self.parentuuid)
-        block = handler.getBlock(self.parentuuid, self.uuid)
+        database = handler.getDefaultDatabase(self.resourcePath)
+        provider = handler.getDefaultTagProvider(self.resourcePath)
+        block = handler.getBlock(self.resourcePath, self.uuid)
         blockName = block.getName()
         
 

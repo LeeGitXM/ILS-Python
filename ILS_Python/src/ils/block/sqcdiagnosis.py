@@ -67,9 +67,9 @@ class SQCDiagnosis(basicblock.BasicBlock):
         self.postValue('out',value,quality,time)
                 
         handler = self.handler
-        database = handler.getDefaultDatabase(self.parentuuid)
+        database = handler.getDefaultDatabase(self.project,self.resource)
         
-        sqcDiagnosis = handler.getBlock(self.parentuuid, self.uuid)
+        sqcDiagnosis = handler.getBlock(self.project,self.resource, self.uuid)
         sqcDiagnosisName = sqcDiagnosis.getName()
         
         # If the block got through migration and still has a '-GDA' as part of its name strip it off
@@ -89,7 +89,7 @@ class SQCDiagnosis(basicblock.BasicBlock):
             # The block Id could not be found - see if the block name exists.
             self.log.trace("...that didn't work, try updating by name...")
             SQL = "update DtSQCDiagnosis set SQCDiagnosisUUID = '%s', DiagramUUID = '%s', Status = '%s' where SQCDiagnosisName = '%s'" \
-                % (str(self.uuid), str(self.parentuuid), str(value), sqcDiagnosisName)
+                % (str(self.uuid), str(self.resource), str(value), sqcDiagnosisName)
             print SQL
             rows=system.db.runUpdateQuery(SQL, database)
             if rows > 0:
@@ -111,7 +111,7 @@ class SQCDiagnosis(basicblock.BasicBlock):
             print "Application: %s\nFamily: %s (%d)" % (applicationName, familyName, familyId)
         
             SQL = "insert into DtSQCDiagnosis (SQCDiagnosisUUID, DiagramUUID, Status, SQCDiagnosisName, FamilyId) "\
-                "values ('%s', '%s', '%s', %s)" % (str(self.uuid), str(self.parentuuid), str(value), sqcDiagnosisName, str(familyId))
+                "values ('%s', '%s', '%s', %s)" % (str(self.uuid), str(self.resource), str(value), sqcDiagnosisName, str(familyId))
             rows=system.db.runUpdateQuery(SQL, database)
             if rows > 0:
                 print "...success"

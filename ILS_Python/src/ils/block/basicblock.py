@@ -37,7 +37,10 @@ class BasicBlock():
         self.outports = []
         # Each block has a unique id that matches its proxy object
         self.uuid = ""
-        self.parentuuid=""
+        # Name of the project to whih the diagram beolngs
+        self.project=""
+        # Path to the project resource containing the parent diagram
+        self.resource=""
         # This is the handler that takes care of injecting results
         # into the execution engine.
         self.handler = PythonRequestHandler()
@@ -99,7 +102,7 @@ class BasicBlock():
         pass
     # Report to the engine that a new value has appeared at an output port
     def postValue(self,port,value,quality,time):
-        self.handler.postValue(self.parentuuid,self.uuid,port,value,quality,long(time))
+        self.handler.postValue(self.project,self.resource,self.uuid,port,value,quality,long(time))
     # Reset the block. This default implementation
     # sends notifications on all output connections.
     def reset(self):
@@ -139,10 +142,12 @@ class BasicBlock():
     # Set the block's UUID (a string)
     def setUUID(self,uid):
         self.uuid = uid
-    # Set the block's parent's UUID (a string)
-    def setParentUUID(self,uid):
-        self.parentuuid = uid  
-           
+    # Set the name of the project containing the block
+    def setProject(self,proj):
+        self.project = proj  
+    # Set the path of the project resource associated with the block's parent diagram
+    def setResource(self,path):
+        self.resource = path     
     
     # Convenience method to extract the package name from a function
     # Use this for the import

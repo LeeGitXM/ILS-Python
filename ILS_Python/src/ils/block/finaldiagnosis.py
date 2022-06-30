@@ -22,7 +22,6 @@ class FinalDiagnosis(basicblock.BasicBlock):
         basicblock.BasicBlock.__init__(self)
         self.initialize()
         self.state = "UNKNOWN"
-        self.handler.setAlerterClass(self.getClassName())
         self.log = getLogger(__name__)
     
     # Set attributes custom to this class
@@ -79,16 +78,16 @@ class FinalDiagnosis(basicblock.BasicBlock):
             self.state = "UNKNOWN"
             return
 
-        database = self.handler.getDefaultDatabase(self.parentuuid)
-        provider = self.handler.getDefaultTagProvider(self.parentuuid)
+        database = self.handler.getDefaultDatabase(self.project,self.resource)
+        provider = self.handler.getDefaultTagProvider(self.project,self.resource)
         
         print "Using database: %s and tag provider: %s " % (database, provider)
         
-        applicationName = self.handler.getApplication(self.parentuuid).getName()
-        familyName = self.handler.getFamily(self.parentuuid).getName()
+        applicationName = self.handler.getApplication(self.project,self.resource).getName()
+        familyName = self.handler.getFamily(self.project,self.resource).getName()
         print "Application: %s\nFamily: %s" % (applicationName, familyName)
         
-        theFinalDiagnosis = self.handler.getBlock(self.parentuuid, self.uuid)
+        theFinalDiagnosis = self.handler.getBlock(self.project,self.resource, self.uuid)
         finalDiagnosisName = theFinalDiagnosis.getName()
         print "Final Diagnosis: %s" % (finalDiagnosisName)        
 
@@ -137,13 +136,13 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.log.infof("In finalDiagnosis.getAuxData() with %s", str(aux))
 
         
-        db = self.handler.getDefaultDatabase(self.parentuuid)
-        provider = self.handler.getDefaultTagProvider(self.parentuuid)
+        db = self.handler.getDefaultDatabase(self.project,self.resource)
+        provider = self.handler.getDefaultTagProvider(self.project,self.resource)
         
         self.log.tracef("Using database: %s and tag provider: %s ", db, provider)
         
         applicationName = self.handler.getApplication(self.parentuuid).getName()
-        familyName = self.handler.getFamily(self.parentuuid).getName()
+        familyName = self.handler.getFamily(self.project,self.resource).getName()
         finalDiagnosisName = self.name
             
         self.log.tracef("Application: %s", applicationName)
@@ -238,16 +237,16 @@ class FinalDiagnosis(basicblock.BasicBlock):
         '''
         self.log.infof("In finalDiagnosis.setAuxData() with %s", str(data))
         
-        diagramUUID = self.parentuuid
+        diagramUUID = self.project+self.resource
         finalDiagnosisUUID = self.uuid
         
-        db = self.handler.getDefaultDatabase(self.parentuuid)
-        provider = self.handler.getDefaultTagProvider(self.parentuuid)
+        db = self.handler.getDefaultDatabase(self.project,self.resource)
+        provider = self.handler.getDefaultTagProvider(self.project,self.resource)
         
         self.log.tracef("Using database: %s and tag provider: %s ", db, provider)
         
-        applicationName = self.handler.getApplication(self.parentuuid).getName()
-        familyName = self.handler.getFamily(self.parentuuid).getName()
+        applicationName = self.handler.getApplication(self.project,self.resource).getName()
+        familyName = self.handler.getFamily(self.project,self.resource).getName()
         finalDiagnosisName = self.name
 
         self.log.tracef("Application: %s", applicationName)
