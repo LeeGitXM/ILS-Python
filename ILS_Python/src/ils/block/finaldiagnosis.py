@@ -23,6 +23,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.initialize()
         self.state = "UNKNOWN"
         self.log = getLogger(__name__)
+        self.log.infof("Initializing a FinalDiagnosis in project %s", self.project)
     
     # Set attributes custom to this class
     def initialize(self):
@@ -57,6 +58,7 @@ class FinalDiagnosis(basicblock.BasicBlock):
     # Called when a value has arrived on one of our input ports
     # It is our diagnosis. Set the property then evaluate.
     def acceptValue(self,port,value,quality,ts):
+        print "In %s.accepyValue" % (__name__)
         newState = str(value).upper()
         if newState == self.state:
             return
@@ -64,45 +66,45 @@ class FinalDiagnosis(basicblock.BasicBlock):
         self.state = newState
         
         # I'm not really using this, but I'm printing it up front just to make sure this works
-        projectName = system.util.getProjectName()
-        self.log.tracef("FinalDiagnosis.acceptValue: %s (project: %s, parent UUID: %s, UUID: %s)", self.state, projectName, self.parentuuid, self.uuid)
+        self.log.infof("FinalDiagnosis.acceptValue: %s (project: %s, UUID: %s)", self.state, self.project, self.uuid)
 
         if self.state != "UNKNOWN":
             print "Clearing the watermark"
-            system.ils.blt.diagram.clearWatermark(self.parentuuid)
+#TODO Uncomment this
+#            system.ils.blt.diagram.clearWatermark(self.parentuuid)
         
         # On startup, it is possible for a block to get a value before
         # all resources (like the parent application) have been loaded. 
-        if self.handler.getApplication(self.parentuuid)==None or self.handler.getFamily(self.parentuuid)==None:
-            print "FinalDiagnosis.acceptValue: Parent application or family not loaded yet, ignoring state change"
-            self.state = "UNKNOWN"
-            return
+#        if self.handler.getApplication(self.parentuuid)==None or self.handler.getFamily(self.parentuuid)==None:
+#            print "FinalDiagnosis.acceptValue: Parent application or family not loaded yet, ignoring state change"
+#            self.state = "UNKNOWN"
+#            return
 
-        database = self.handler.getDefaultDatabase(self.project,self.resource)
-        provider = self.handler.getDefaultTagProvider(self.project,self.resource)
+        database = self.handler.getDefaultDatabase(self.project, self.resource)
+        provider = self.handler.getDefaultTagProvider(self.project, self.resource)
         
         print "Using database: %s and tag provider: %s " % (database, provider)
         
-        applicationName = self.handler.getApplication(self.project,self.resource).getName()
-        familyName = self.handler.getFamily(self.project,self.resource).getName()
-        print "Application: %s\nFamily: %s" % (applicationName, familyName)
+#        applicationName = self.handler.getApplication(self.project,self.resource).getName()
+#        familyName = self.handler.getFamily(self.project,self.resource).getName()
+#        print "Application: %s\nFamily: %s" % (applicationName, familyName)
         
-        theFinalDiagnosis = self.handler.getBlock(self.project,self.resource, self.uuid)
+        theFinalDiagnosis = self.handler.getBlock(self.project, self.resource, self.uuid)
         finalDiagnosisName = theFinalDiagnosis.getName()
         print "Final Diagnosis: %s" % (finalDiagnosisName)        
 
         if self.state == "TRUE":
             print "The diagnosis just became TRUE"
-            def work(fd=self,applicationName=applicationName,familyName=familyName,finalDiagnosisName=finalDiagnosisName,database=database,provider=provider):
+#            def work(fd=self,applicationName=applicationName,familyName=familyName,finalDiagnosisName=finalDiagnosisName,database=database,provider=provider):
                 # Notify inhibit blocks to temporarily halt updates to SQC
                 # handler.sendTimestampedSignal(self.parentuuid, "inhibit", "", "",time)
-                from ils.diagToolkit.finalDiagnosis import postDiagnosisEntry
-                postDiagnosisEntry(applicationName, familyName, finalDiagnosisName, fd.uuid, fd.parentuuid, database, provider)
-            system.util.invokeAsynchronous(work)
+#                from ils.diagToolkit.finalDiagnosis import postDiagnosisEntry
+#                postDiagnosisEntry(applicationName, familyName, finalDiagnosisName, fd.uuid, fd.parentuuid, database, provider)
+#            system.util.invokeAsynchronous(work)
         else:
             print "The diagnosis just became FALSE"
-            from ils.diagToolkit.finalDiagnosis import clearDiagnosisEntry
-            clearDiagnosisEntry(applicationName, familyName, finalDiagnosisName, database, provider)
+ #           from ils.diagToolkit.finalDiagnosis import clearDiagnosisEntry
+ #           clearDiagnosisEntry(applicationName, familyName, finalDiagnosisName, database, provider)
 
         # Pass the input through to the output
         self.value = value

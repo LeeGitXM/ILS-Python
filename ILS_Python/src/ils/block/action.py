@@ -56,24 +56,18 @@ class Action(basicblock.BasicBlock):
     # then evaluate the function. The output retains the 
     # timestamp of the input.
     def acceptValue(self,port,value,quality,time):
-        self.log.infof("In %s.acceptValue()", __name__)
+        self.log.infof("In %s.acceptValue(), project: %s, resource: %s, state: %s", __name__, self.project, self.resource, self.state)
         
         handler = self.handler
-        self.log.infof("...parent UUID: %s", self.parentuuid)
+        self.log.infof("...UUID: %s", self.uuid)
         
-        print "*************************"
-        print "*    HARDCORE HERE      *"
-        print "*************************"
-        
-        #database = handler.getDefaultDatabase(self.parentuuid)
-        database = "XOM_Dev"
+        database = handler.getDefaultDatabase(self.project, self.resource)
         self.log.infof("The default database is: %s", database)
         
-        #provider = handler.getDefaultTagProvider(self.parentuuid)
-        provider = "Dev"
+        provider = handler.getDefaultTagProvider(self.project, self.resource)
         self.log.infof("The default provider is: %s", provider)
         
-        block = handler.getBlock(self.parentuuid, self.uuid)
+        block = handler.getBlock(self.project, self.resource, self.uuid)
         blockName = block.getName()
         self.log.infof("Action Block Name: %s", blockName)
         

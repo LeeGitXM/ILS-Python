@@ -30,34 +30,36 @@ def initLog(db):
 #-------------------------------------------
 def initializeDatabase(db):
     rows = -99
-    applicationName = "FINAL_TEST_1"
-    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
-    applicationId = system.db.runScalarQuery(SQL, database=db)
+
     
     log.infof("Initializing the database...")
     for SQL in [
         "delete from DtFinalDiagnosisLog",
         "delete from DtRecommendation", 
         "delete from QueueDetail", 
-        "delete from DtDiagnosisEntry",
+        "delete from DtDiagnosisEntry"]:
         
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TESTQ1' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TESTQ1' and ApplicationId = %d" % (applicationId), 
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TESTQ2' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TESTQ2' and ApplicationId = %d" % (applicationId), 
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TESTQ3' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TESTQ3' and ApplicationId = %d" % (applicationId),
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q21' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q21' and ApplicationId = %d" % (applicationId),
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q22' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q22' and ApplicationId = %d" % (applicationId), 
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q23' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q23' and ApplicationId = %d" % (applicationId), 
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q24' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q24' and ApplicationId = %d" % (applicationId), 
-        "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='TEST_Q25' and ApplicationId=%d)" % (applicationId), 
-        "delete from DtQuantOutput where QuantOutputName = 'TEST_Q25' and ApplicationId = %d" % (applicationId),
-        
+        log.tracef( "   %s", SQL)
+        rows=system.db.runPrepUpdate(SQL, database=db)
+        log.tracef("   ...deleted %d rows", rows)
+    
+    applicationName = "FINAL_TEST_1"
+    SQL = "select ApplicationId from DtApplication where ApplicationName = '%s'" % (applicationName)
+    applicationId = system.db.runScalarQuery(SQL, database=db)
+    print "ApplicationId: ", applicationId
+    if applicationId != None:
+        for quantOutputName in ['TESTQ1', 'TESTQ2', 'TESTQ3', 'TESTQ21', 'TESTQ22', 'TESTQ23', 'TESTQ24', 'TESTQ25']:
+            SQL = "delete from DtRecommendationDefinition where QuantOutputId in (select QuantOutputId from DtQuantOutput where QuantOutputName='%s' and ApplicationId=%d)" % (quantOutputName, applicationId)
+            log.tracef( "   %s", SQL)
+            rows=system.db.runPrepUpdate(SQL, database=db)
+            log.tracef("   ...deleted %d rows", rows)
+             
+            SQL = "delete from DtQuantOutput where QuantOutputName = '%s' and ApplicationId = %d" % (quantOutputName, applicationId)
+            log.tracef( "   %s", SQL)
+            rows=system.db.runPrepUpdate(SQL, database=db)
+            log.tracef("   ...deleted %d rows", rows)
+
+    for SQL in [
         "delete from DtFinalDiagnosis where FinalDiagnosisName like 'FT_%'", 
         "delete from DtDiagram where DiagramName like 'FT_%'",
         "delete from DtFamily where FamilyName like 'FT_FAMILY%'", 
