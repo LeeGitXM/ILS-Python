@@ -221,7 +221,6 @@ def deleteCallback(event):
         
         
 def editCallbackForDoubleClick(event):
-    ''' I don't think this is hooked up because a tree already has built-in behavior for a double-click. '''
     log.infof("In %s.editCallbackForDoubleClick()", __name__)
     editCallback(event)    
 

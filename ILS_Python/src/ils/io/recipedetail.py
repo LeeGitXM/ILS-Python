@@ -4,11 +4,12 @@ Created on Jul 9, 2014
 @author: chuckc
 '''
 import ils.io.recipe as recipe
+from ils.io.util import readTag
 import system, string, time
 import ils.io.opcoutput as opcoutput
 import ils.io.opcconditionaloutput as opcconditionaloutput
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.io")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class RecipeDetail(recipe.Recipe):
     highLimitTag = None
@@ -40,7 +41,7 @@ class RecipeDetail(recipe.Recipe):
         for attr in ['highLimitTagName', 'lowLimitTagName','valueTagName']:
             tags.append(self.path + '/' + attr)
  
-        vals = system.tag.readAll(tags)
+        vals = system.tag.readBlocking(tags)
  
         highLimitTagName = vals[0].value
         if highLimitTagName not in ["", "0"] and newHighLimitValue not in ["", None]:
@@ -63,7 +64,7 @@ class RecipeDetail(recipe.Recipe):
         spTagName = vals[2].value
         print "The SP tag name is: <%s>" % (spTagName)
         if spTagName not in ["", "0"] and newValue not in ["", None]:
-            self.pythonClass = system.tag.read(rootPath + spTagName + "/pythonClass").value
+            self.pythonClass = readTag(rootPath + spTagName + "/pythonClass").value
             
             if self.pythonClass == "OPCOutput":
                 self.spTag = opcoutput.OPCOutput(rootPath + spTagName)
@@ -79,15 +80,15 @@ class RecipeDetail(recipe.Recipe):
         rootPath=self.path[0:self.path.rfind('/')+1]
 
         if self.writeHighLimit:
-            oldHighLimitValue = system.tag.read(self.highLimitTag.path + '/value').value             
+            oldHighLimitValue = readTag(self.highLimitTag.path + '/value').value             
             log.trace("Changing High limit from %s to %s" % (str(oldHighLimitValue), str(newHighLimitValue)))
 
         if self.writeLowLimit:
-            oldLowLimitValue = system.tag.read(self.lowLimitTag.path + '/value').value 
+            oldLowLimitValue = readTag(self.lowLimitTag.path + '/value').value 
             log.trace("Changing Low limit from %s to %s" % (str(oldLowLimitValue), str(newLowLimitValue)))
 
         if self.writeSp:
-            oldValue = system.tag.read(self.spTag.path + '/value').value
+            oldValue = readTag(self.spTag.path + '/value').value
             log.trace("Changing Value from %s to %s" % (str(oldValue), str(newValue)))
 
         highLimitWritten = False

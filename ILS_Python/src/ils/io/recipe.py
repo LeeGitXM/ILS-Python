@@ -10,11 +10,11 @@
 '''
 # NOTE: Subclasses must be added to __init__.py 
 #       for automatic import.
-import system
-import time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+import system, time
+from ils.io.util import writeTag
 
-log = LogUtil.getLogger("com.ils.io")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class Recipe():
 
@@ -34,7 +34,7 @@ class Recipe():
         log.trace("Entering Recipe.writeDatum(): %s - %s" % (tagPath, str(val)))
  
         # Record the current command being executed.
-#        system.tag.write(tagPath + '/command', 'WRITEDATUM')
+#        writeTag(tagPath + '/command', 'WRITEDATUM')
 #        writeWithNoCheck(tagPath, val)
         print "NEED TO FIGURE OUT A WRITE HERE"
                                

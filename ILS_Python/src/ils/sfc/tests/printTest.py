@@ -19,7 +19,7 @@ def test1(chart,block):
     paths.append("[%s]Configuration/SFC/CATOUT-PRINT-PATH" % (provider))
     paths.append("[%s]Configuration/SFC/CATOUT-PRINT-FILE-NAME" % (provider))
     paths.append("[%s]Configuration/SFC/CATOUT-PRINTER" % (provider))
-    values = system.tag.readAll(paths)
+    values = system.tag.readBlocking(paths)
     print values
 
     path = values[0].value

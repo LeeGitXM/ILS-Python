@@ -55,8 +55,10 @@ class Action(basicblock.BasicBlock):
     # If the value matches the trigger (case insensitive),
     # then evaluate the function. The output retains the 
     # timestamp of the input.
-    def acceptValue(self,port,value,quality,time):
+    def acceptValue(self, port, value, quality, time):
         self.log.infof("In %s.acceptValue(), project: %s, resource: %s, state: %s", __name__, self.project, self.resource, self.state)
+        
+        diagramPath = self.resource
         
         handler = self.handler
         self.log.infof("...UUID: %s", self.uuid)
@@ -69,6 +71,7 @@ class Action(basicblock.BasicBlock):
         
         block = handler.getBlock(self.project, self.resource, self.uuid)
         blockName = block.getName()
+        self.log.infof("Diagram Path: %s", diagramPath)
         self.log.infof("Action Block Name: %s", blockName)
         
         trigger = self.properties.get('Trigger',{}).get("value","").lower()
@@ -91,7 +94,7 @@ class Action(basicblock.BasicBlock):
                     exec("import %s" % (packName))
                     exec("from %s import %s" % (packName,funcName))
             
-                eval(function)(blockName, self.uuid, self.parentuuid, provider, database)
+                eval(function)(block, diagramPath, blockName, self.uuid, provider, database)
 #                eval(function)(block)
 
         else:

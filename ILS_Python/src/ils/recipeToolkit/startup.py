@@ -5,9 +5,9 @@ Created on Sep 10, 2014
 '''
 
 import system
-
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger(__name__)
+from ils.io.util import writeTag
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def gateway(tagProvider, isolationTagProvider):
     
@@ -26,9 +26,7 @@ def gateway(tagProvider, isolationTagProvider):
     createTags("[" + isolationTagProvider + "]")
 
 def client(tagProvider, database):
-    print "In recipeToolkit.startup.client()"
-    log = LogUtil.getLogger("com.ils.recipeToolkit.download")
-    log.info("Initializing the recipe toolkit")
+    log.infof("Initializing the recipe toolkit")
 
 def createTags(tagProvider):
     log.infof("Creating global constant memory tags....")
@@ -75,7 +73,7 @@ def createTags(tagProvider):
     # be reset EVERY time we restart
     import ils.common.util as util
     now = util.getDate()
-    system.tag.write(fullName, now)
+    writeTag(fullName, now)
     
     # Now make an expression tag that calculates how many seconds the gateway has been running
     name = "runningSeconds"

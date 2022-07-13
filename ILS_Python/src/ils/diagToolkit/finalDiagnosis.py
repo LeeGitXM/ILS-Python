@@ -239,37 +239,51 @@ def postDiagnosisEntryMessageHandler(payload):
     provider=payload["provider"]
     
     postDiagnosisEntry(application, family, diagram, finalDiagnosis, UUID, diagramUUID, database, provider)
-
-
-def postDiagnosisEntry(applicationName, family, diagram, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
+    
+    
+def postDiagnosisEntry(projectName, diagramPath, finalDiagnosisName, UUID, database, provider):
+    #applicationName, family, diagram, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
     '''
     This is called from the finalDiagnosis method acceptValue when the value is True.  This should only happen after we receive a False and have 
     cleared the previous diagnosis entry.  However, on a gateway restart, we may become True again.  There are two possibilities of how this could 
     be handled: 1) I could ignore the Insert a record into the diagnosis queue
     '''
-    projectName = system.util.getProjectName()
-    log.infof("In %s.postDiagnosisEntry() for project: %s with database: %s and provider: %s", __name__, projectName, database, provider)
+    log.infof("In %s.postDiagnosisEntry() for %s on diagram %s in project: %s (database: %s / provider: %s)", 
+              __name__, finalDiagnosisName, diagramPath, projectName, database, provider)
     
+    from ils.diagToolkit.common import fetchApplicationNameForDiagram
+    applicationName = fetchApplicationNameForDiagram(diagramPath, database)
+    if applicationName == None:
+        log.errorf("ERROR posting a diagnosis entry for %s - %s because an application could not be found!", diagramPath, finalDiagnosisName)
+        return
+        
     managed = fetchApplicationManaged(applicationName, database)
     
     if not(managed):
         log.warnf("Exiting postDiagnosisEntry() because %s is not a managed application!", applicationName)
         return
     
-    log.trace("Posting a diagnosis entry for project: %s, application: %s, family: %s, final diagnosis: %s" % (projectName, applicationName, family, finalDiagnosis))
+    log.tracef("Posting a diagnosis entry for %s on diagram %s in project: %s", finalDiagnosisName, diagramPath, projectName)
     
-    # Lookup the application Id
-    from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(applicationName, family, diagram, finalDiagnosis, database)
-    
-    finalDiagnosisId=record.get('FinalDiagnosisId', None)
+    from ils.diagToolkit.common import fetchFinalDiagnosisId
+    finalDiagnosisId = fetchFinalDiagnosisId(diagramPath, finalDiagnosisName, database)
     if finalDiagnosisId == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, diagram, finalDiagnosis))
+        log.errorf("ERROR posting a diagnosis entry for %s - %s because the final diagnosis was not found!", diagramPath, finalDiagnosisName)
+        return 
+    
+    # Lookup the application and family
+    from ils.diagToolkit.common import fetchApplicationAndFamilyForDiagram
+    applicationName, familyName = fetchApplicationAndFamilyForDiagram(diagramPath, database)
+    if applicationName == None or familyName == None:
+        log.errorf("ERROR posting a diagnosis entry for %s - %s because the application and family were not found!", diagramPath, finalDiagnosisName)
         return
+    
+    from ils.diagToolkit.common import fetchFinalDiagnosis
+    record = fetchFinalDiagnosis(applicationName, familyName, diagramPath, finalDiagnosisName, database)
     
     unit=record.get('UnitName',None)
     if unit == None:
-        log.error("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!" % (applicationName, family, finalDiagnosis))
+        log.errorf("ERROR posting a diagnosis entry for %s - %s - %s because we were unable to locate a unit!", applicationName, familyName, finalDiagnosisName)
         return
     
     # Reset the flag that indicates that minimum change requirements should be ignored.
@@ -279,13 +293,16 @@ def postDiagnosisEntry(applicationName, family, diagram, finalDiagnosis, UUID, d
     finalDiagnosisExplanation=record.get('Explanation','')
 
     grade=readTag("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
-    log.trace("The grade is: %s" % (str(grade)))
+    log.tracef("The grade is: %s", str(grade))
     
-    txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagnosisExplanation)
-    log.trace("The raw text of the diagnosis entry is: %s" % (txt))
+    # TODO WE NEED THIS
+    print "TODO -- OVER HERE ********"
+    #txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagnosisExplanation)
+    txt = "TODO over here"
+    log.tracef("The raw text of the diagnosis entry is: %s", txt)
     from ils.common.util import substituteScopeReferences
     txt = substituteScopeReferences(txt, provider)
-    log.trace("The updated text of the diagnosis entry is: %s" % (txt))
+    log.tracef("The updated text of the diagnosis entry is: %s", txt)
       
     # Insert an entry into the diagnosis queue
     SQL = "insert into DtDiagnosisEntry (FinalDiagnosisId, Status, Timestamp, Grade, TextRecommendation, "\
@@ -305,6 +322,10 @@ def postDiagnosisEntry(applicationName, family, diagram, finalDiagnosis, UUID, d
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
 
     # Update the UUID and DiagramUUID of the final diagnosis
+    #
+    # PETE - DO I NEED THIS????
+    #
+    '''
     SQL = "update DtFinalDiagnosis set FinalDiagnosisUUID = '%s', DiagramUUID = '%s' "\
         " where FinalDiagnosisId = %d "\
         % (UUID, diagramUUID, finalDiagnosisId)
@@ -314,6 +335,7 @@ def postDiagnosisEntry(applicationName, family, diagram, finalDiagnosis, UUID, d
         system.db.runUpdateQuery(SQL, database)
     except:
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
+    '''
 
     requestToManage(applicationName, database, provider)
     
@@ -433,16 +455,24 @@ def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagn
     return txt
     
 
-def clearDiagnosisEntry(applicationName, family, finalDiagnosis, database="", provider=""):
-    '''  Clear the final diagnosis (make the status = 'InActive') '''
-    projectName = system.util.getProjectName()
-    log.tracef("Clearing the diagnosis entry for %s - %s - %s - %s...", projectName, applicationName, family, finalDiagnosis)
+def clearDiagnosisEntry(projectName, diagramPath, finalDiagnosisName, database, provider):
+    #applicationName, family, finalDiagnosis, database="", provider=""):
+    '''  
+    Clear the final diagnosis (make the status = 'InActive')
+    This is called from the BLT module when a Final Diagnosis becomes false.
+    '''
+    log.tracef("Clearing the diagnosis entry for %s on diagram %s in project %s...", finalDiagnosisName, diagramPath, projectName)
 
-    from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(applicationName, family, finalDiagnosis, database)
-    finalDiagnosisId=record.get('FinalDiagnosisId', None)
+    from ils.diagToolkit.common import fetchApplicationNameForDiagram
+    applicationName = fetchApplicationNameForDiagram(diagramPath, database)
+    if applicationName == None:
+        log.error("ERROR clearing a diagnosis entry for %s - %s because an application could not be found!" % (diagramPath, finalDiagnosisName))
+        return
+    
+    from ils.diagToolkit.common import fetchFinalDiagnosisId
+    finalDiagnosisId = fetchFinalDiagnosisId(diagramPath, finalDiagnosisName, database)
     if finalDiagnosisId == None:
-        log.error("ERROR clearing a diagnosis entry for %s - %s - %s because the final diagnosis was not found!" % (applicationName, family, finalDiagnosis))
+        log.error("ERROR clearing a diagnosis entry for %s - %s because the final diagnosis was not found!" % (diagramPath, finalDiagnosisName))
         return    
 
     # If there was an active diagnosis entry then set its recommendation status to RESCINDED and its state to INACTIVE

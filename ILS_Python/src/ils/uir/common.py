@@ -5,12 +5,13 @@ Created on Jul 1, 2019
 '''
 
 import system
+from ils.io.util import readTag
 
 def findFromAddress(post):
     '''
     Get the from address and the pile prefix for the specified post from the email configuration dataset tag
     '''
-    ds = system.tag.read("[XOM]Configuration/UIR/fromList").value
+    ds = readTag("[XOM]Configuration/UIR/fromList").value
 
     fromEmail = "UIR"
     filePrefix = ""

@@ -4,14 +4,15 @@ Created on Jun 15, 2015
 @author: Pete
 '''
 import system, time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.labData.common import parseTagPath
 from ils.labData.common import getDatabaseForTag
 from ils.common.util import formatDateTime
 from ils.io import recipe
+from ils.io.util import writeTag
 from system.date import secondsBetween
 
-log = LogUtil.getLogger("com.ils.labData.unitParameters")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 '''
 This will reset app of the unit parameters for a given unit.  It relies on the standard naming convention of
@@ -120,7 +121,7 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
             tagPathRoot + '/configurationChangeTime',
             tagPathRoot + '/ignoreSampleTime',
             "[%s]Configuration/LabData/unitParameterSyncSeconds" % (tagProvider)]
-    vals=system.tag.readAll(tags)
+    vals=system.tag.readBlocking(tags)
 
     numberOfPoints = vals[0].value
     bufferIndex = vals[1].value
@@ -241,6 +242,6 @@ def valueChanged(tagPath, currentValue, sampleTime, initialChange, threadName):
     
     # Store the mean into the UnitParameter Final Value
     # These are writing to memory tags so they should be very fast
-    system.tag.write(tagPathRoot + '/filteredValue', filteredValue, 1)
-    system.tag.write(tagPathRoot + '/bufferIndex', bufferIndex, 1)
+    writeTag(tagPathRoot + '/filteredValue', filteredValue, 1)
+    writeTag(tagPathRoot + '/bufferIndex', bufferIndex, 1)
     log.tracef("Successfully wrote the filtered value <%s> to <%s>", str(filteredValue), tagPath)

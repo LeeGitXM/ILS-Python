@@ -5,6 +5,7 @@ Created on Sep 10, 2014
 '''
 
 import system, string
+from ils.io.util import readTag
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -68,9 +69,9 @@ def refresher(familyName, ds, downloadType, provider, database=""):
     from ils.recipeToolkit.update import recipeFamilyStatus
     recipeFamilyStatus(familyName, "Refreshing", database)
 
-    localWriteAlias = string.upper(system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
-    recipeMinimumDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
-    recipeMinimumRelativeDifference = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
+    localWriteAlias = string.upper(readTag("[" + provider + "]/Configuration/RecipeToolkit/localWriteAlias").value)
+    recipeMinimumDifference = readTag("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumDifference").value
+    recipeMinimumRelativeDifference = readTag("[" + provider + "]/Configuration/RecipeToolkit/recipeMinimumRelativeDifference").value
 
     log.trace("recipeMinimumDifference: %s" %  (str(recipeMinimumDifference)))
     log.trace("recipeMinimumRelativeDifference: %s" % (str(recipeMinimumRelativeDifference)))
@@ -118,7 +119,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
         tags.append(tagName + '/value')
     log.trace("OPC tag names: %s" % (str(tags)))
 
-    values = system.tag.readAll(tags)
+    values = system.tag.readBlocking(tags)
 #    print values
 
     # Now the local tags - convert *local* tagnames from SQL*Server format to Ignition format...
@@ -129,7 +130,7 @@ def refresher(familyName, ds, downloadType, provider, database=""):
         tags.append(tagName)
 
     log.trace("Local tag names: %s" % (str(tags)))
-    localValues = system.tag.readAll(tags)
+    localValues = system.tag.readBlocking(tags)
 
     # We have now read all of the tags, merge the values back into the Python dataset
     log.trace("  ...updating table dataset....")

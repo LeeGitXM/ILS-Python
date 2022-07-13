@@ -4,9 +4,9 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.common.config import getProductionTagProvider
-log = LogUtil.getLogger("com.ils.recipeToolkit")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 
 def createUDT(UDTType, provider, path, dataType, tagName, serverName, scanClass, itemId, modeAttribute, modeAttributeValue, conditionalDataType):

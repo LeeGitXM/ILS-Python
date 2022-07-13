@@ -4,11 +4,11 @@ Created on Mar 29, 2015
 @author: Pete
 '''
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from java.util import Calendar
 from java.util import Date
 import time
-log = LogUtil.getLogger("com.ils.labData.SQL")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # Lookup the id of an interface given its name
 def fetchInterfaceId(interfaceName, database=""):

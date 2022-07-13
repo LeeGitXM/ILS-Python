@@ -6,6 +6,7 @@ Created on Mar 29, 2018
 
 
 import system, string, time
+from ils.io.util import writeTag
 import ils.io.tdccontroller as tdccontroller
 import ils.io.opcoutput as opcoutput
 from ils.log import getLogger
@@ -77,8 +78,8 @@ class TDCRampController(tdccontroller.TDCController):
         # Check the basic configuration of the tag we are trying to write to.
         success, errorMessage = self.checkConfig(valuePathRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
         
@@ -89,21 +90,21 @@ class TDCRampController(tdccontroller.TDCController):
             log.warnf("Warning: TDC Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!", self.path, modeValue)
 
         log.infof("Ramping the %s of TDC controller <%s> to %s over %s minutes", valType, self.path, str(val), str(rampTime))
-        system.tag.write(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
+        writeTag(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
 
         log.trace("...writing PRESET to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", PRESET)            
+        writeTag(self.path + "/sp/rampState", PRESET)            
         time.sleep(self.OPC_LATENCY_TIME)
 
         '''   ramp time must always be in minutes '''
         
         log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
-        system.tag.write(self.path + "/sp/rampTime", rampTime)
-        system.tag.write(self.path + "/sp/setpointTargetValue", val)
+        writeTag(self.path + "/sp/rampTime", rampTime)
+        writeTag(self.path + "/sp/setpointTargetValue", val)
         time.sleep(self.OPC_LATENCY_TIME)
         
         log.trace("...writing RUN to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", RUN)
+        writeTag(self.path + "/sp/rampState", RUN)
         time.sleep(self.OPC_LATENCY_TIME)
 
         log.infof("TDC Controller <%s> done ramping!", self.path)

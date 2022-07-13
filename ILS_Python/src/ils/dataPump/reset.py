@@ -4,8 +4,9 @@ Created on Jun 20, 2017
 @author: phass
 '''
 import system
+from ils.io.util import writeTag
 
 def hardReset(tagProvider):
-    system.tag.writeToTag("%sData Pump/simulationState" % (tagProvider), "Idle")
-    system.tag.writeToTag("%sData Pump/command" % (tagProvider), "Abort")
-    system.tag.writeToTag("%sData Pump/lineNumber" % (tagProvider), -1)
+    writeTag("%sData Pump/simulationState" % (tagProvider), "Idle")
+    writeTag("%sData Pump/command" % (tagProvider), "Abort")
+    writeTag("%sData Pump/lineNumber" % (tagProvider), -1)

@@ -5,8 +5,8 @@ Created on Jan 10, 2017
 '''
 
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.sfc")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def gateway(tagProvider, isolationTagProvider):
     from ils.common.util import isWarmboot

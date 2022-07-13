@@ -5,6 +5,7 @@ Created on Mar 29, 2018
 '''
 
 import system, string, time
+from ils.io.util import writeTag
 import ils.io.pkscontroller as pkscontroller
 import ils.io.opcoutput as opcoutput
 from ils.io.util import confirmWrite
@@ -65,8 +66,8 @@ class PKSRampController(pkscontroller.PKSController):
         # Check the basic configuration of the tag we are trying to write to.
         success, errorMessage = self.checkConfig(valuePathRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", valuePathRoot, errorMessage)
             return False, errorMessage
         
@@ -77,21 +78,21 @@ class PKSRampController(pkscontroller.PKSController):
             log.warnf("Warning: EPKS Controller <%s> - the controller mode <%s> could not be confirmed, attempting to write the ramp anyway!", self.path, modeValue)
 
         log.infof("Ramping the %s of EPKS controller <%s> to %s over %s minutes", valType, self.path, str(val), str(rampTime))
-        system.tag.write(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
+        writeTag(self.path + "/writeStatus", "Ramping the %s to %s over %s minutes" % (valType, str(val), str(rampTime)))
 
 #        rampTimeSeconds = rampTime * 60.0
         '''
         log.trace("...writing PRESET to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", "PRESET")            
+        writeTag(self.path + "/sp/rampState", "PRESET")            
         time.sleep(self.OPC_LATENCY_TIME)
 
         log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
-        system.tag.write(self.path + "/sp/rampTime", rampTime)
-        system.tag.write(self.path + "/sp/targetValue", val)
+        writeTag(self.path + "/sp/rampTime", rampTime)
+        writeTag(self.path + "/sp/targetValue", val)
         time.sleep(self.OPC_LATENCY_TIME)
         
         log.trace("...writing RUN to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", "RUN")
+        writeTag(self.path + "/sp/rampState", "RUN")
         time.sleep(self.OPC_LATENCY_TIME)
         '''
         
@@ -102,21 +103,21 @@ class PKSRampController(pkscontroller.PKSController):
         PH 12/8/2021
         '''
         log.trace("...writing PRESET to the rampstate...")
-        system.tag.write(self.path + "/sp/rampState", "PRESET")
+        writeTag(self.path + "/sp/rampState", "PRESET")
         confirmed, errorMessage = confirmWrite(self.path + "/sp/rampState", "PRESET")   
 
         ''' I want to write these simultaneously, rather than write one, wait as it is confirmed, and then write the other and wait to confirm it '''
         if confirmed:
             log.tracef("...writing %f to the targetValue and %f to the ramptime...", val, rampTime)
-            system.tag.write(self.path + "/sp/rampTime", rampTime)
-            system.tag.write(self.path + "/sp/targetValue", val)
+            writeTag(self.path + "/sp/rampTime", rampTime)
+            writeTag(self.path + "/sp/targetValue", val)
             confirmed, errorMessage = confirmWrite(self.path + "/sp/rampTime", rampTime)
             if confirmed:
                 confirmed, errorMessage = confirmWrite(self.path + "/sp/targetValue", val)
         
         if confirmed:
             log.trace("...writing RUN to the rampstate...")
-            system.tag.write(self.path + "/sp/rampState", "RUN")
+            writeTag(self.path + "/sp/rampState", "RUN")
             confirmed, errorMessage = confirmWrite(self.path + "/sp/rampState", "RUN")
         
         pkscontroller.PKSController.restorePermissive(self)

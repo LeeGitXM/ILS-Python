@@ -545,7 +545,7 @@ def readInstantaneousValues(tagPaths, tagProvider, log):
     for tagPath in tagPaths:
         fullTagPaths.append("[%s]%s" % (tagProvider, tagPath))
     
-    qvs = system.tag.readAll(fullTagPaths)
+    qvs = system.tag.readBlocking(fullTagPaths)
     
     badValue = False
     for i in range(0,len(tagPaths)):
@@ -564,7 +564,7 @@ def averageTags(tagPaths, tagProvider, log):
     for tagPath in tagPaths:
         fullTagPaths.append("[%s]%s" % (tagProvider, tagPath))
     
-    qvs = system.tag.readAll(fullTagPaths)
+    qvs = system.tag.readBlocking(fullTagPaths)
     vals = []
     badValue = False
     for i in range(0,len(tagPaths)):

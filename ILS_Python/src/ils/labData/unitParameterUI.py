@@ -6,7 +6,7 @@ Created on May 16, 2017
 
 import system
 from ils.common.config import getDatabaseClient, getTagProviderClient
-from ils.io.util import splitTagPath
+from ils.io.util import splitTagPath, writeTag
 
 # Open transaction when window is opened
 def internalFrameOpened(rootContainer):
@@ -33,7 +33,7 @@ def refresh(rootContainer):
         fullTagPath = browseTag.fullPath
         print tagName, tagPath, fullTagPath
         
-        qvs = system.tag.readAll([tagPath + "/numberOfPoints", tagPath + "/ignoreSampleTime"])
+        qvs = system.tag.readBlocking([tagPath + "/numberOfPoints", tagPath + "/ignoreSampleTime"])
         numberOfPoints = qvs[0].value
         ignoreSampleTime = qvs[1].value
 
@@ -61,10 +61,10 @@ def updateTableAndUDT(table, rowIndex, colIndex, colName, oldValue, newValue):
         print "Unable to rename a tag"
         
     elif colName == "Number of Points":
-        system.tag.write(tagPath + "/numberOfPoints", newValue)
+        writeTag(tagPath + "/numberOfPoints", newValue)
         
     elif colName == "Ignore Sample Time":
-        system.tag.write(tagPath + "/ignoreSampleTime", newValue)
+        writeTag(tagPath + "/ignoreSampleTime", newValue)
         
     elif colName == "Value Source":
         if not(system.tag.exists(newValue)):

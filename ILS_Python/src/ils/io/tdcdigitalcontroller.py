@@ -7,9 +7,9 @@ Created on Nov 4, 2018
 import ils.io.controller as controller
 import system, string, time
 from ils.io.util import confirmWrite, readTag, writeTag
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
-log = LogUtil.getLogger("com.ils.io")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class TDCDigitalController(controller.Controller):
     opTag = None

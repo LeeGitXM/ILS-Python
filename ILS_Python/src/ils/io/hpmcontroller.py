@@ -6,11 +6,11 @@ Created on Jan 7, 2021
 
 import ils.io.controller as controller
 import system, string, time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
 from ils.io.util import confirmWrite, readTag, writeTag
 
-log = LogUtil.getLogger("com.ils.io")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class HPMController(controller.Controller):
     opTag = None
@@ -566,57 +566,6 @@ class HPMController(controller.Controller):
         self.reset()
         time.sleep(1)
         
-        """
-        '''
-        ----------------------
-         Set the permissive
-        ---------------------- '''
-        
-        log.trace("Writing permissive...")
-        
-        ''' Update the status to "Writing" '''
-        system.tag.write(self.path + "/writeStatus", "Writing Permissive")
- 
-        ''' Read the current permissive and save it so that we can put it back the way is was when we are done '''
-        permissiveAsFound = system.tag.read(self.path + "/permissive").value
-        log.tracef("   permisive as found: %s", permissiveAsFound)
-        
-        ''' Get from the configuration of the UDT the value to write to the permissive and whether or not it needs to be confirmed '''
-        permissiveValue = system.tag.read(self.path + "/permissiveValue").value
-        permissiveConfirmation = system.tag.read(self.path + "/permissiveConfirmation").value
-        
-        ''' Write the permissive value to the permissive tag and wait until it gets there '''
-        log.tracef("   writing permissive value: %s", permissiveValue)
-        system.tag.write(self.path + "/permissive", permissiveValue)
-        
-        ''' 
-        Confirm the permissive if necessary.  If the UDT is configured for confirmation, then it MUST be confirmed 
-        for the write to proceed.  This has nothing to do with confirming the write.
-        '''
-        if permissiveConfirmation:
-            log.trace("   confirming permissive...")
-            system.tag.write(self.path + "/writeStatus", "Confirming Permissive")
-            from ils.io.util import confirmWrite
-            confirmed, errorMessage = confirmWrite(self.path + "/permissive", permissiveValue, self.CONFIRM_TIMEOUT)
- 
-            if confirmed:
-                log.tracef("   confirmed Permissive write: %s - %s", self.path, permissiveValue)
-            else:
-                errorMessage = "Failed to confirm permissive write of <%s> to %s because %s" % (str(permissiveValue), self.path, errorMessage)
-                log.error(errorMessage)
-                system.tag.write(self.path + "/writeStatus", "Failure")
-                system.tag.write(self.path + "/writeErrorMessage", errorMessage)
-                return confirmed, errorMessage
-        else:
-            log.trace("...dwelling in lieu of permissive confirmation...")
-            time.sleep(self.PERMISSIVE_LATENCY_TIME)
-            
-        ''' 
-        If we got this far, then the permissive was successfully written (or we don't care about confirming it, so
-        write the value to the OPC tag.  WriteDatum ALWAYS does a write confirmation.  The gateway is going to confirm 
-        the write so this needs to just wait around for the answer
-        '''
-        """
         log.tracef("Writing %s to %s", str(val), tagRoot)
         writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeWithNoCheck(val, valueType)
@@ -627,21 +576,4 @@ class HPMController(controller.Controller):
             return confirmed, errorMessage
          
         ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''
-        """
-        ''' Since we didn't confirm the write above, we need to wait for a latency time to give the value a chance to '''
-        log.trace("...dwelling after the value write and before the permissive restore...")
-        time.sleep(self.PERMISSIVE_LATENCY_TIME)
-
-        log.trace("Restoring permissive")
-        system.tag.write(self.path + "/permissive", permissiveAsFound)
-        if permissiveConfirmation:
-            confirmed, confirmMessage = confirmWrite(self.path + "/permissive", permissiveAsFound, self.CONFIRM_TIMEOUT)
-            
-            if confirmed:    
-                log.tracef("Confirmed Permissive restore: %s", self.path)
-            else:
-                txt = "Failed to confirm permissive write of <%s> to %s because %s" % (str(val), self.path, confirmMessage)
-                log.error(txt)
-                system.tag.write(self.path + "/writeStatus", "Failure")
-                system.tag.write(self.path + "/writeErrorMessage", txt)
-        """
+        

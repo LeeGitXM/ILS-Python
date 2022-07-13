@@ -6,9 +6,11 @@ Created on Dec 6, 2018
 
 import ils.io.pkscontroller as pkscontroller
 import system, string, time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 import ils.io.opcoutput as opcoutput
-log = LogUtil.getLogger(__name__)
+from ils.io.util import readTag, writeTag
+
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class PKSDigitalController(pkscontroller.PKSController):
     
@@ -33,7 +35,7 @@ class PKSDigitalController(pkscontroller.PKSController):
 
         ''' Read the current values of all of the tags we need to consider to determine if the configuration is valid. '''
         tagpaths = [tagRoot + '/value', self.path + '/mode/value',  self.path + '/mode/value.OPCItemPath']
-        qvs = system.tag.readAll(tagpaths)
+        qvs = system.tag.readBlocking(tagpaths)
         
         currentValue = qvs[0]
         mode = qvs[1]
@@ -96,8 +98,8 @@ class PKSDigitalController(pkscontroller.PKSController):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
         
@@ -114,7 +116,7 @@ class PKSDigitalController(pkscontroller.PKSController):
         the write so this needs to just wait around for the answer. '''
 
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeDatum(val, valueType, confirmTagPath)
         
         ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''
@@ -136,7 +138,7 @@ class PKSDigitalController(pkscontroller.PKSController):
         However, if we are using isolation tags then we DO write to memory tags!  If we are writing to memory tags then 
         it doesn't make sense to check for an item id or OPC server.
         '''
-        tagType = system.tag.read(tagRoot + ".TagType").value
+        tagType = readTag(tagRoot + ".TagType").value
         if tagType == 1:
             return True, ""
         
@@ -169,8 +171,8 @@ class PKSDigitalController(pkscontroller.PKSController):
         ''' Check the basic configuration of the tag we are trying to write to. '''
         success, errorMessage = self.checkConfig(tagRoot + "/value")
         if not(success):
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             log.infof("Aborting write to %s, checkConfig failed due to: %s", tagRoot, errorMessage)
             return False, errorMessage
         
@@ -188,15 +190,15 @@ class PKSDigitalController(pkscontroller.PKSController):
         the write so this needs to just wait around for the answer '''
 
         log.tracef("Writing %s to %s", str(val), tagRoot)
-        system.tag.write(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
+        writeTag(self.path + "/writeStatus", "Writing %s to %s" % (str(val), tagRoot))       
         confirmed, errorMessage = targetTag.writeWithNoCheck(val, valueType)
         if not(confirmed):
             log.error(errorMessage)
-            system.tag.write(self.path + "/writeStatus", "Failure")
-            system.tag.write(self.path + "/writeErrorMessage", errorMessage)
+            writeTag(self.path + "/writeStatus", "Failure")
+            writeTag(self.path + "/writeErrorMessage", errorMessage)
             return confirmed, errorMessage
          
-        system.tag.write(self.path + "/writeStatus", "Success")
+        writeTag(self.path + "/writeStatus", "Success")
         
         ''' Return the permissive to its original value.  Don't let the success or failure of this override the result of the overall write. '''
         self.restorePermissive()

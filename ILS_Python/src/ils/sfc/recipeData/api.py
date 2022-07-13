@@ -37,7 +37,7 @@ def s88CheckPV(chartProperties, stepProperties, key, toleranceKey, scope):
 
     tagPaths = ["%s/sp/value" % (tagName), "%s/value" % (tagName)]
     logger.tracef("Reading current values from: %s", str(tagPaths))
-    qvs = system.tag.readAll(tagPaths) 
+    qvs = system.tag.readBlocking(tagPaths) 
     if not(qvs[0].quality.isGood() and qvs[1].quality.isGood()):
         return "Tag Read Error"
 

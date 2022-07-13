@@ -8,6 +8,7 @@ SfcManualDataEntryTable database table.  The gateway is reading the same table, 
 '''
 
 import system, string
+from ils.io.util import writeTag
 from ils.sfc.common.util import isEmpty
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.sfc.recipeData.api import s88SetFromStep, s88SetFromStepWithUnits
@@ -104,7 +105,7 @@ def saveData(rootContainer, timedOut):
             if string.upper(destination) == "TAG":
                 print "Writing %s to %s" % (val, keyAndAttribute)
                 tagPath = "[%s]%s" % (provider, keyAndAttribute)
-                system.tag.write(tagPath, val)
+                writeTag(tagPath, val)
             else:
                 if isEmpty(units):
                     s88SetFromStep(stepId, keyAndAttribute, val, db)

@@ -5,8 +5,8 @@ Created on Sep 10, 2014
 '''
 
 import system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.recipeToolkit.sql")
+from ils.log import getLogger
+log = getLogger(__name__)
  
 def recipeFamily(familyName, db=""):
     SQL = "select F.RecipeFamilyId, P.Post, F.RecipeFamilyName, F.RecipeUnitPrefix, F.RecipeNameAlias, ConfirmDownload, "\

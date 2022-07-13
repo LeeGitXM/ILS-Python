@@ -3,6 +3,8 @@ Created on Jun 20, 2017
 
 @author: phass
 '''
+from ils.io.util import writeTag
+
 def abort(tagProvider):
     import system
-    system.tag.writeToTag("%sData Pump/command" % (tagProvider), "Abort")
+    writeTag("%sData Pump/command" % (tagProvider), "Abort")

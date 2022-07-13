@@ -8,8 +8,9 @@ import system, time
 from ils.common.config import getTagProvider, getDatabaseClient
 from ils.io.util import readTag
 from ils.recipeToolkit.common import formatLocalTagName, formatTagName
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.recipeToolkit.download.monitor")
+
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # This is called for an automated download and runs in gateway scope.
 def automatedRunner(parentTagPath, dsProcessed, provider, recipeKey, grade, version, logId, downloadStartTime, downloadTimeout, database):

@@ -8,6 +8,7 @@ import system
 from ils.sfc.recipeData.api import s88GetEnclosingCharts
 from ils.common.config import getIsolationDatabaseFromInternalDatabase, getIsolationTagProviderFromInternalDatabase, getIsolationTimeFactorFromInternalDatabase, \
     getProductionDatabaseFromInternalDatabase, getProductionTagProviderFromInternalDatabase, getProductionTimeFactorFromInternalDatabase
+from ils.sfc.common.constants import INSTANCE_ID
 from ils.queue.commons import getQueueId, createQueue
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -97,6 +98,8 @@ def getChartParameters(chartPath, isolationMode, projectName):
             chartParameters['msgQueue'] = msgQueueName
             chartParameters['activeSteps'] = activeSteps
             chartParameters['chartPath'] = enclosingCharts.getValueAt(idx, "chartPath")
+            chartParameters[INSTANCE_ID] = 'mockId'
+            
         else:
             chartParameters['parent'] = lastChartParameters
             chartParameters['activeSteps'] = activeSteps

@@ -57,19 +57,25 @@ class FinalDiagnosis(basicblock.BasicBlock):
             
     # Called when a value has arrived on one of our input ports
     # It is our diagnosis. Set the property then evaluate.
-    def acceptValue(self,port,value,quality,ts):
-        print "In %s.accepyValue" % (__name__)
+    def acceptValue(self, port, value, quality, timestamp):
+        self.log.infof("In %s.acceptValue - value: %s", __name__, str(value))
         newState = str(value).upper()
         if newState == self.state:
             return
         
+        handler = self.handler
+        block = handler.getBlock(self.project, self.resource, self.uuid)
+        blockName = block.getName()
+        
         self.state = newState
+        diagramPath = self.resource
         
         # I'm not really using this, but I'm printing it up front just to make sure this works
-        self.log.infof("FinalDiagnosis.acceptValue: %s (project: %s, UUID: %s)", self.state, self.project, self.uuid)
+        self.log.infof("%s (project: %s, UUID: %s, block: %s, chart: %s)", self.state, self.project, self.uuid, blockName, diagramPath)
 
         if self.state != "UNKNOWN":
             print "Clearing the watermark"
+            
 #TODO Uncomment this
 #            system.ils.blt.diagram.clearWatermark(self.parentuuid)
         
@@ -94,23 +100,19 @@ class FinalDiagnosis(basicblock.BasicBlock):
         print "Final Diagnosis: %s" % (finalDiagnosisName)        
 
         if self.state == "TRUE":
-            print "The diagnosis just became TRUE"
-#            def work(fd=self,applicationName=applicationName,familyName=familyName,finalDiagnosisName=finalDiagnosisName,database=database,provider=provider):
-                # Notify inhibit blocks to temporarily halt updates to SQC
-                # handler.sendTimestampedSignal(self.parentuuid, "inhibit", "", "",time)
-#                from ils.diagToolkit.finalDiagnosis import postDiagnosisEntry
-#                postDiagnosisEntry(applicationName, familyName, finalDiagnosisName, fd.uuid, fd.parentuuid, database, provider)
-#            system.util.invokeAsynchronous(work)
+            print "The diagnosis just became TRUE, posting a diagnosis entry..."
+            from ils.diagToolkit.finalDiagnosis import postDiagnosisEntry
+            postDiagnosisEntry(self.project, diagramPath, finalDiagnosisName, self.uuid, database, provider)
         else:
-            print "The diagnosis just became FALSE"
- #           from ils.diagToolkit.finalDiagnosis import clearDiagnosisEntry
- #           clearDiagnosisEntry(applicationName, familyName, finalDiagnosisName, database, provider)
+            print "The diagnosis just became FALSE, clearing existing diagnosis entries..."
+            from ils.diagToolkit.finalDiagnosis import clearDiagnosisEntry
+            clearDiagnosisEntry(self.project, diagramPath, finalDiagnosisName, database, provider)
 
         # Pass the input through to the output
         self.value = value
         self.quality=quality
-        self.time = ts
-        self.postValue('out',value,quality,ts)
+        self.time = timestamp
+        self.postValue('out', value, quality, timestamp)
         
         print "FinalDiagnosis.acceptValue: COMPLETE"
     

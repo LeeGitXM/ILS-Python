@@ -3,6 +3,7 @@ Created on Dec, 2015
 
 @author: Jeff
 '''
+from ils.io.util import readTag, writeTag
 
 def setValues(udtTagPath):
     import system
@@ -12,25 +13,25 @@ def setValues(udtTagPath):
     log.trace("Inside external ils.opcDatasetCollector.triggerTag.setValues")
     # Get the dataset of tagpaths
     log.tracef("UDT Tagpath: %s", str(udtTagPath))
-    dsTagPaths = system.tag.read(udtTagPath + "/Dataset Tags").value  # Recall a qualified value so need .value
+    dsTagPaths = readTag(udtTagPath + "/Dataset Tags").value  # Recall a qualified value so need .value
     pyDsTagPaths = system.dataset.toPyDataSet(dsTagPaths)  # Easier to work with py dataset for tagpaths
     # Get the dataset of values.  Datasets are immutable so this is just a copy not actual dataset
-    dsTagValues = system.tag.read(udtTagPath + "/Dataset Values").value  # Recall a qualified value so need .value
+    dsTagValues = readTag(udtTagPath + "/Dataset Values").value  # Recall a qualified value so need .value
     # Next we iterate through dataset of tagpaths and assign to the dataset of tag values
     # Need a counter to track for first row
-    alignTimestamps = system.tag.read(udtTagPath + "/Align Timestamps").value
-    alignWindowMinutes = system.tag.read(udtTagPath + "/Align Window Minutes").value
+    alignTimestamps = readTag(udtTagPath + "/Align Timestamps").value
+    alignWindowMinutes = readTag(udtTagPath + "/Align Window Minutes").value
     # Read the trigger tag first, need the timestamp for comparison
-    triggerTagPath = system.tag.read(udtTagPath + "/Trigger Tagpath").value  # This is the Trigger Tag path
+    triggerTagPath = readTag(udtTagPath + "/Trigger Tagpath").value  # This is the Trigger Tag path
     # Don't need to check if tag exists because would not get into code if it did not exist -- << Not true
     if triggerTagPath==None:
         log.warnf("opcDatasetCollector: Null trigger tagpath: for %s", str(udtTagPath))
         return
     
     log.tracef("Trigger Tagpath: %s", triggerTagPath)
-    triggerTagQv = system.tag.read(triggerTagPath)
+    triggerTagQv = readTag(triggerTagPath)
     # Read maximum # of rows to read
-    maxRowNumberToRead = system.tag.read(udtTagPath + "/Maximum Row Number to Read").value 
+    maxRowNumberToRead = readTag(udtTagPath + "/Maximum Row Number to Read").value 
     # Check if quality good, otherwise leave
     if triggerTagQv.quality.isGood():
         epochTriggerTimestampMinutes = (triggerTagQv.timestamp.getTime() / 1000 / 60) 
@@ -40,8 +41,8 @@ def setValues(udtTagPath):
     # Initialize timestamps aligned to True, 
     timestampsAligned = True
     #This is the count of consecutive scans that had at least one bad quality tag
-    fallbackCntr = system.tag.read(udtTagPath + "/Fallback Scan Counter").value
-    fallbackMaxScans = system.tag.read(udtTagPath + "/Fallback Max Number of Scans").value
+    fallbackCntr = readTag(udtTagPath + "/Fallback Scan Counter").value
+    fallbackMaxScans = readTag(udtTagPath + "/Fallback Max Number of Scans").value
     # Increment Last Good Value counter once per scan eg only a single increment for scan even if > 1 bad tag
     incrementedFallbackForScan = False
     # A flag to say its OK to update dataset
@@ -67,7 +68,7 @@ def setValues(udtTagPath):
                 tagExists = system.tag.exists(tagPath)
                 if tagExists:
                     # Read tag value            
-                    qv = system.tag.read(tagPath)
+                    qv = readTag(tagPath)
                 else:
                     # Print a statement regarding not finding a tag
                     log.trace("OPC Dataset Collector - could not find a tag:")
@@ -135,10 +136,10 @@ def setValues(udtTagPath):
                     incrementedFallbackForScan = True
     #Update fallback counter - if none of the tags were bad then we reset the counter to 0
     if not(incrementedFallbackForScan):
-        system.tag.write(udtTagPath + "/Fallback Scan Counter", 0)
+        writeTag(udtTagPath + "/Fallback Scan Counter", 0)
         fallbackCntr = 0
     else:
-        system.tag.write(udtTagPath + "/Fallback Scan Counter", fallbackCntr)
+        writeTag(udtTagPath + "/Fallback Scan Counter", fallbackCntr)
     #Next check max # of scans with a bad value
     if fallbackMaxScans > 0 and fallbackCntr > fallbackMaxScans:
         updateDs = False
@@ -149,10 +150,10 @@ def setValues(udtTagPath):
     if updateDs:  
         if alignTimestamps:
             if timestampsAligned:
-                system.tag.write(udtTagPath + "/Dataset Values", dsTagValues)
-                system.tag.write(udtTagPath + "/Last Update Time", now)
+                writeTag(udtTagPath + "/Dataset Values", dsTagValues)
+                writeTag(udtTagPath + "/Last Update Time", now)
         else:
-            system.tag.write(udtTagPath + "/Dataset Values", dsTagValues)
-            system.tag.write(udtTagPath + "/Last Update Time", now)
-    system.tag.write(udtTagPath + "/Last Trigger Time", now)
+            writeTag(udtTagPath + "/Dataset Values", dsTagValues)
+            writeTag(udtTagPath + "/Last Update Time", now)
+    writeTag(udtTagPath + "/Last Trigger Time", now)
 

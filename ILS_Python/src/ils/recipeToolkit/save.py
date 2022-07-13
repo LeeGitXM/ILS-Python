@@ -4,12 +4,13 @@ Created on Oct 5, 2014
 @author: Pete
 '''
 import sys, traceback, system
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
+from ils.io.util import readTag
 from ils.recipeToolkit.fetch import fetchFamilyId
 from ils.recipeToolkit.common import checkForUncommentedChanges
 from ils.common.error import catchError
 from ils.common.config import getDatabaseClient
-log = LogUtil.getLogger("com.ils.recipeToolkit.ui")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 def callback(event):
     log.infof("Saving the modified recipe (%s.callback)", __name__)
@@ -20,7 +21,7 @@ def callback(event):
     version = rootContainer.version
     
     provider = rootContainer.getPropertyValue("provider")
-    requireComments = system.tag.read("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
+    requireComments = readTag("[" + provider + "]/Configuration/RecipeToolkit/requireCommentsForChangedValues").value
     if requireComments:
         uncommentedChanges = checkForUncommentedChanges(rootContainer)
         if uncommentedChanges:

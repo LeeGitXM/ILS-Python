@@ -6,6 +6,7 @@ Created on Jun 20, 2017
 
 import system, time, string
 from ils.common.cast import toDateTime
+from ils.io.util import writeTag, readTag
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -20,10 +21,10 @@ def pumpData(rootContainer):
     # Write the data from the table to a dataset tag
     table = rootContainer.getComponent("Table")
     ds = table.data
-    system.tag.write("%sData Pump/data" % (tagProvider), ds)
+    writeTag("%sData Pump/data" % (tagProvider), ds)
     
     # Write the PLAY command to the command tag
-    system.tag.write("%sData Pump/command" % (tagProvider), "PLAY")
+    writeTag("%sData Pump/command" % (tagProvider), "PLAY")
     
 
 def commandHandler(tagPath, command):
@@ -43,24 +44,24 @@ def player(commandTagpath):
     
     dataPumpPath, tagName, provider = parseTagPath(commandTagpath)
     
-    ds = system.tag.getTagValue("%s/data" % (dataPumpPath))
+    ds = readTag("%s/data" % (dataPumpPath)).value
     pds = system.dataset.toPyDataSet(ds)
     log.tracef("There are %d rows in the dataset...", len(pds))
 
-    system.tag.writeToTag("%s/simulationState" % (dataPumpPath), "Running")
+    writeTag("%s/simulationState" % (dataPumpPath), "Running")
     
     # We have to give these writes a chance to get there
     time.sleep(1)    
     
     i = 0
     for row in pds:
-        command = system.tag.getTagValue("%s/command" % (dataPumpPath))
+        command = readTag("%s/command" % (dataPumpPath)).value
 
         if command == "Abort":
             log.infof("*** ABORTING THE DATAPUMP ***")
             break
 
-        system.tag.writeToTag("%s/lineNumber" % (dataPumpPath), i)
+        writeTag("%s/lineNumber" % (dataPumpPath), i)
         
         if row[0][0] == "#":
             log.tracef("Found a comment...")
@@ -83,23 +84,23 @@ def player(commandTagpath):
                         val = toDateTime(val)
     
                     if val <> "":
-                        status = system.tag.write(fullTagPath, val)
-                        log.tracef("Tag: %s, Value: %s, Status: %s", fullTagPath, str(val), str(status) )
+                        writeTag(fullTagPath, val)
+                        log.tracef("Tag: %s, Value: %s", fullTagPath, str(val))
     
                 j = j + 1
 
         # I don't want to go into a long wait state because I won't be able to react to a command if I do
         startTime = system.date.now()
-        delay = system.tag.getTagValue("%s/timeDelay" % (dataPumpPath))
+        delay = readTag("%s/timeDelay" % (dataPumpPath)).value
         while system.date.addSeconds(startTime, delay) > system.date.now():
             time.sleep(1)
-            delay = system.tag.getTagValue("%s/timeDelay" % (dataPumpPath))
+            delay = readTag("%s/timeDelay" % (dataPumpPath)).value
 
         i = i + 1
 
     log.infof("Done Pumping!")
-    system.tag.writeToTag("%s/simulationState" % (dataPumpPath), "Idle")
-    system.tag.writeToTag("%s/command" % (dataPumpPath), "Stop")
+    writeTag("%s/simulationState" % (dataPumpPath), "Idle")
+    writeTag("%s/command" % (dataPumpPath), "Stop")
 
 # The tagPath must begin with the provider surrounded by square brackets
 def parseTagPath(tagPath):

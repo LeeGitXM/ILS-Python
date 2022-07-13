@@ -5,8 +5,8 @@ Created on Sep 10, 2014
 '''
 
 import system, string
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
-log = LogUtil.getLogger("com.ils.recipeToolkit.download")
+from ils.log import getLogger
+log = getLogger(__name__)
 
 
 def logMaster(familyId, grade, version, downloadType = "Manual", database = ""):

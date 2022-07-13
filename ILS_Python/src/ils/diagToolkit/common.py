@@ -334,6 +334,31 @@ def fetchApplicationManaged(applicationName, database=""):
     managed = system.db.runScalarQuery(SQL, database)
     return managed
 
+def fetchApplicationNameForDiagram(diagramName, database=""):
+    ''' Lookup the application name for the diagram '''
+    log.tracef("In %s.fetchApplicationNameForDiagram()...", __name__)
+    SQL = "select ApplicationName from DtApplicationHierarchyView where DiagramName = '%s'" % (diagramName)
+    log.tracef("%s.fetchApplicationforDiagram(): %s", __name__, SQL)
+    applicationName = system.db.runScalarQuery(SQL, database)
+    return applicationName
+
+def fetchApplicationAndFamilyForDiagram(diagramName, database=""):
+    ''' Lookup the application name for the diagram '''
+    log.tracef("In %s.fetchApplicationAndFamilyForDiagram()...", __name__)
+    SQL = "select ApplicationName, FamilyName from DtApplicationHierarchyView where DiagramName = '%s'" % (diagramName)
+    log.tracef("%s.fetchApplicationAndFamilyForDiagram(): %s", __name__, SQL)
+    pds = system.db.runQuery(SQL, database)
+    if len(pds) == 1:
+        record = pds[0]
+        applicationName = record["ApplicationName"]
+        familyName = record["FamilyName"]
+    else:
+        log.errorf("Error fetching application and family information for diagram %s", diagramName)
+        applicationName = None
+        familyName = None
+        
+    return applicationName, familyName
+
 # Lookup the application Id given the name
 def fetchApplicationId(applicationName, database=""):
     log.tracef("In %s.fetchApplicationId()...", __name__)
@@ -635,7 +660,7 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
 # We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
 # or 2) At the time we want to know the SQC blocks, we could query the diagram.
 def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName, database=""):
-    log.tracef("In %s.fetchSQCRootCauseForFinalDiagnosis() - Searching for SQC blocks for %s", __name__, finalDiagnosisName)
+    log.infof("In %s.fetchSQCRootCauseForFinalDiagnosis() - Searching for SQC blocks for %s", __name__, finalDiagnosisName)
     sqcRootCauses=[]
 
     import system.ils.blt.diagram as diagram

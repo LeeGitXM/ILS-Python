@@ -5,10 +5,11 @@ Created on Sep 10, 2014
 '''
 import system
 import ils.recipeToolkit.update as update
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.common.config import getDatabaseClient
 from ils.recipeToolkit.log import logDetail
-log = LogUtil.getLogger("com.ils.recipeToolkit.download")
+
+from ils.log import getLogger
+log = getLogger(__name__)
 
 # This is called once it is deemed that the download is complete.  
 # It summarizes the results of the download.

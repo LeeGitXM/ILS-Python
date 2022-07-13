@@ -6,6 +6,8 @@
 # 
 import system
 from ils.block import basicblock
+from com.inductiveautomation.ignition.common.project.resource import ResourceType
+from com.inductiveautomation.ignition.common.project.resource import ProjectResourceId
 # NOTE: We need the next two imports in order to get the classes generically.
 # We require the "wild" imports so that we can iterate over classes
 # NOTE: __init__.py defines the modules
@@ -13,10 +15,22 @@ from ils.block import basicblock
 import ils.block
 from ils.block import *
 from ils.user.block import *
-from com.inductiveautomation.ignition.common.util import LogUtil
-from __builtin__ import None
-log = LogUtil.getLogger(__name__)
 
+from __builtin__ import None
+from ils.log import getLogger
+log = getLogger(__name__)
+
+
+
+def getResourceId(projectName, diagramName):
+    log.tracef("In %s.getResourceId() -getting a project resource Id for %s - %s", __name__, projectName, diagramName)
+
+    resourceType = ResourceType("block", "blt.diagram")
+    log.tracef("   got Resource Type: %s", str(resourceType))
+
+    projectResourceId = ProjectResourceId(projectName, resourceType, "bar")
+    log.tracef("   got Project Resource Id: %s", str(projectResourceId))
+    return projectResourceId
 
 
 def acceptValue(block,port,value,quality,time):

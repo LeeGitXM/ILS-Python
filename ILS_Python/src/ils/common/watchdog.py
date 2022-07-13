@@ -14,7 +14,7 @@ log = getLogger(__name__)
 This is called from a gateway timer script. 
 '''
 def scanLabDataWatchdogs(projectName):    
-    log.infof("Scanning Lab Data watchdogs for project <%s>...", projectName)
+    log.tracef("Scanning Lab Data watchdogs for project <%s>...", projectName)
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
     
@@ -73,7 +73,7 @@ def labDataWatchdog(tagProvider, udtPath):
 This is called from a gateway timer script.
 '''
 def scanOpcReadWatchdogs(projectName):    
-    log.infof("Scanning OPC Read watchdogs for project <%s>...", projectName)
+    log.tracef("Scanning OPC Read watchdogs for project <%s>...", projectName)
     
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
@@ -156,7 +156,7 @@ def opcReadWatchdog(tagProvider, udtPath):
 This is called from a gateway timer script.
 '''
 def scanOpcWriteWatchdogs(projectName):
-    log.infof("Scanning OPC write watchdogs for project <%s>...", projectName)
+    log.tracef("Scanning OPC write watchdogs for project <%s>...", projectName)
 
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)
@@ -241,7 +241,7 @@ def opcWriteWatchdog(tagProvider, udtPath):
 This is called from a gateway timer script. 
 '''
 def scanHdaReadWatchdogs(projectName):    
-    log.infof("Scanning HDA Read watchdogs for project <%s>...", projectName)
+    log.tracef("Scanning HDA Read watchdogs for project <%s>...", projectName)
     
     tagProvider = getProductionTagProviderFromInternalDatabase(projectName)
     parentPath = "[%s]Site/Watchdogs" % (tagProvider)

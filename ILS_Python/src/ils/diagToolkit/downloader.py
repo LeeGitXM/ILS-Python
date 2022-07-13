@@ -184,7 +184,7 @@ class Downloader():
     def downloadMessage(self, messageType="download"):
         '''
         Because this is a pretty complicated logbook message I am formatting it using HTML, but be careful to keep the HTML pretty simple.
-        I tried to use a tabl to display the quant output contribution for multiple final diagnosis but the report viewer widget didn't support it
+        I tried to use a table to display the quant output contribution for multiple final diagnosis but the report viewer widget didn't support it
         even though I could put the same HTML into chrome and it looked great!
         '''
         from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis

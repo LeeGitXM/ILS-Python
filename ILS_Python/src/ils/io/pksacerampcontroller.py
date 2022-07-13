@@ -5,6 +5,7 @@ Created on Mar 29, 2018
 '''
 
 import system
+from ils.io.util import readTag, writeTag
 import ils.io.pkscontroller as pkscontroller
 import ils.io.pksacecontroller as pksacecontroller
 import ils.io.pksrampcontroller as pksrampcontroller
@@ -25,7 +26,7 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         log.tracef("%s.writeDatum() %s - %s - %s", __name__, self.path, str(val), valueType)
         
         # Read the value that we want to write to the Processing command
-        processingCommandWait = system.tag.read(self.path + "/processingCommandWait").value
+        processingCommandWait = readTag(self.path + "/processingCommandWait").value
 
         log.trace("Calling PKSRampController.writeDatum() for a PKS-ACE controller...")
         status, errorMessage = pksrampcontroller.PKSRampController.writeDatum(self, val, valueType)
@@ -37,7 +38,7 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # Write the new delay - no need to confirm this.  The is a delay in seconds.  The DCS will reset it to 0 or none after it has been processed,
         # so I don't need to reset it.
         log.tracef("Writing wait value %s to the processing command...", str(processingCommandWait))
-        system.tag.write(self.path + "/processingCommand", processingCommandWait)
+        writeTag(self.path + "/processingCommand", processingCommandWait)
 
         return status, errorMessage
     
@@ -46,7 +47,7 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         log.tracef("%s.writeWithNoCheck() %s - %s - %s", __name__, self.path, str(val), valueType)
         
         # Read the value that we want to write to the Processing command
-        processingCommandWait = system.tag.read(self.path + "/processingCommandWait").value
+        processingCommandWait = readTag(self.path + "/processingCommandWait").value
 
         log.trace("Calling PKSRampController.writeWithNoCheck() for a PKS-ACE controller...")
         status, errorMessage = pksrampcontroller.PKSRampController.writeWithNoCheck(self, val, valueType)
@@ -58,7 +59,7 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # Write the new delay - no need to confirm this.  The is a delay in seconds.  The DCS will reset it to 0 or none after it has been processed,
         # so I don't need to reset it.
         log.tracef("Writing wait value %s to the processing command...", str(processingCommandWait))
-        system.tag.write(self.path + "/processingCommand", processingCommandWait)
+        writeTag(self.path + "/processingCommand", processingCommandWait)
 
         return status, errorMessage
     
@@ -66,7 +67,7 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         log.tracef("%s.writeRamp() %s - %s - %s", __name__, self.path, str(val), valueType)
         
         # Read the value that we want to write to the Processing command
-        processingCommandWait = system.tag.read(self.path + "/processingCommandWait").value
+        processingCommandWait = readTag(self.path + "/processingCommandWait").value
 
         log.tracef("Calling PKSRampController.writeRamp() for a PKS ACE Ramp controller...")
         status, errorMessage = pksrampcontroller.PKSRampController.writeRamp(self, val, valueType, rampTime, updateFrequency, writeConfirm)
@@ -78,6 +79,6 @@ class PKSACERampController(pksrampcontroller.PKSRampController):
         # Write the new delay - no need to confirm this.  The is a delay in seconds.  The DCS will reset it to 0 or none after it has been processed,
         # so I don't need to reset it.
         log.tracef("Writing wait value %s to the processing command...", str(processingCommandWait))
-        system.tag.write(self.path + "/processingCommand", processingCommandWait)
+        writeTag(self.path + "/processingCommand", processingCommandWait)
         
         return status, errorMessage

@@ -12,11 +12,10 @@ import ils.io.opctag as basicio
 import string
 import system
 import time
-import com.inductiveautomation.ignition.common.util.LogUtil as LogUtil
 from ils.io.util import confirmWrite, readTag, getProviderFromTagPath
 
-log = LogUtil.getLogger("com.ils.io")
-
+from ils.log import getLogger
+log = getLogger(__name__)
 
 class OPCConditionalOutput(opcoutput.OPCOutput):
     PERMISSIVE_LATENCY_TIME = 0.0
