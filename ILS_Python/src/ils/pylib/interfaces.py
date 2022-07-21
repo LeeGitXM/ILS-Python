@@ -160,11 +160,6 @@ def listSourcesForSink(common,dpath,blockId):
 
 	common['result'] = lst 
 
-# Return the navigation path to a block or diagram
-def pathForBlock(common,dpath,bname):
-	diagid = getDiagram(dpath).getSelf().toString()
-	path = script.pathForBlock(diagid,bname)
-	common['result'] = path 
 
 # Propagate a signal to any receivers on the diagram
 def sendLocalSignal(common,dpath,command,message,arg):

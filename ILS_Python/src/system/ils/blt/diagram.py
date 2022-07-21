@@ -109,9 +109,6 @@ def listSinksForSource(diagramId,blockId):
     
 def listSourcesForSink(diagramId,blockId):
     '''Return a list of serializable block state descriptors corresponding to source associated with the specified sink'''
-
-def pathForBlock(diagid,bname):
-     '''Return a nav-tree path for the named block '''
      
 def propagateBlockState(diagId,blockId):
     '''Tell the block to propagate its latest values '''
