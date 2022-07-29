@@ -24,6 +24,7 @@ SHOW_EXPLANATION_WITH_RECOMMENDATION = 0
 CONSTANT = 0
 MANUAL_MOVE_ALLOWED = 0
 TRAP_INSIGNIFICANT_RECOMMENDATIONS = 0
+SQC_STATUS = "UNKNOWN"
 
 def delete(path):
     log.infof("In %s.delete(), chart %s has been deleted", __name__, path)
@@ -78,6 +79,7 @@ def saver(path, json):
             handleFinalDiagnosis(diagramId, blockName, blockUUID, db)
         elif blockClass == SQC_DIAGNOSIS_CLASS:
             print "handling a SQC Diagnosis"
+            print "SQC block: ", str(block)
             handleSQCDiagnosis(diagramId, blockName, blockUUID, db)
             
 def handleDiagram(path, db):
@@ -123,17 +125,38 @@ def handleFinalDiagnosis(diagramId, finalDiagnosisName, finalDiagnosisUUID, db):
             log.infof("...the database is already up to date...")
 
 
-def handleSQCDiagnosis(diagramId, blockName, sqcDiagnosisUUID, db):
-    return
-'''
-    SQL = "select DiagramId from DtDiagram where DiagramName = '%s'" % (path)
-    diagramId = system.db.runScalarQuery(SQL, db)
+def handleSQCDiagnosis(diagramId, sqcDiagnosisName, sqcDiagnosisUUID, db):
 
-    if diagramId == None:
-        SQL = "insert into DtDiagram (DiagramName) values ('%s')" % (path)
+    SQL = "select SQCDiagnosisId, SQCDiagnosisUUID "\
+        " from DtSQCDiagnosis where DiagramId = %s "\
+        "  and SQCDiagnosisName = '%s' " % (diagramId, sqcDiagnosisName)
+    pds = system.db.runQuery(SQL, db)
+
+    '''
+    How is a copied SQC Diagnosis handled here?
+    '''
+    
+    if len(pds) == 0:
+        SQL = "insert into DtSQCDiagnosis (SQCDiagnosisName, SQCDiagnosisUUID, DiagramId, Status) "\
+            " values ('%s', '%s', %d, '%s')" % \
+            (sqcDiagnosisName, sqcDiagnosisUUID, diagramId, SQC_STATUS)
+
         log.infof("...SQL: %s,", SQL)
-        diagramId = system.db.runUpdateQuery(SQL, db, getKey=1)
-        log.infof("Inserted a new diagram with id: %d", diagramId)
-
-    return diagramId
-'''
+        finalDiagnosisId = system.db.runUpdateQuery(SQL, db, getKey=1)
+        log.infof("Inserted a new Final Diagnosis with id: %d", finalDiagnosisId)
+    else:
+        record = pds[0]
+        oldSqcDiagnosisUUID = record["SQCDiagnosisUUID"]
+        
+        ''' This handles the case where they have renamed the SQC Diagnosis '''
+        '''
+        if oldSqcDiagnosisUUID != finalDiagnosisName:
+            
+            SQL = "update DtFinalDiagnosis set FinalDiagnosisName = '%s' where FinalDiagnosisId = %d" % (finalDiagnosisName, finalDiagnosisId)
+            log.infof("...SQL: %s,", SQL)
+            rows = system.db.runUpdateQuery(SQL, db)
+            log.infof("Updated %d rows in DtFinalDiagnosis...", rows)
+        else:
+            log.infof("...the database is already up to date...")
+        '''            
+    return

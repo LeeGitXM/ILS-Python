@@ -5,4 +5,4 @@ Created on Jun 18, 2018
 '''
 
 def version():
-    return "3.1a0", "July 6, 2022"
+    return "3.1b0", "July 28, 2022"

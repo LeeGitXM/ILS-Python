@@ -8,17 +8,31 @@ import system
 from ils.diagToolkit.common import checkFreshness, fetchDiagnosisActiveTime
 from ils.io.util import readTag
 
+def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_1_1" % (__name__)
+    explanation = "Close the valve because the flow is too great and needs to be minimized to reduce flooding in the control room."
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 12.3})
+    return True, explanation, recommendations
+
+def fd1_2_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_1" % (__name__)
+    explanation = "Get a hose and spray down the tank."
+    recommendations = []
+    recommendations.append({"QuantOutput": "TESTQ1", "Value": 31.4})
+    recommendations.append({"QuantOutput": "TESTQ2", "Value": 53.4})
+    return True, explanation, recommendations
 
 def fd1_2_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_2"
+    print "In %s.fd1_2_2" % (__name__)
     explanation = "Turn down the flame and open the window."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ2", "Value": 5.4})
-    recommendations.append({"QuantOutput": "TESTQ3", "Value": -20.4})
+    recommendations.append({"QuantOutput": "TESTQ3", "Value": -2.4})
     return True, explanation, recommendations
 
 def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_3 "
+    print "In %s.fd1_2_3" % (__name__)
     explanation = "Turn down the flame and open the window."
     recommendations = []
     recommendations.append({"QuantOutput": "TESTQ1", "Value": 6.8})
@@ -28,7 +42,7 @@ def fd1_2_3(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
 
 # A text recommendations
 def fd1_2_5(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_5"
+    print "In %s.fd1_2_5" % (__name__)
     recommendations = []
     import random
     
@@ -54,7 +68,7 @@ def fd1_2_5(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
 
 # A text recommendations
 def fd1_2_6(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_2_6"
+    print "In %s.fd1_2_6" % (__name__)
     recommendations = []
     return True, "Turn up the heat", recommendations
 
@@ -62,12 +76,7 @@ def fd1_2_6(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
 *****************************************************************************
 '''
 
-def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
-    print "In fd1_1_1"
-    explanation = "Close the valve because the flow is too great and needs to be minimized to reduce flooding in the control room."
-    recommendations = []
-    recommendations.append({"QuantOutput": "TESTQ1", "Value": 12.3})
-    return True, explanation, recommendations
+
 
 
 

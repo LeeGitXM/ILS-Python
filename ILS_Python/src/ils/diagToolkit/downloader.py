@@ -128,9 +128,9 @@ class Downloader():
                     
                     if diagToolkitWriteEnabled:
                         log.infof( "Row %d - Downloading %s to Output %s - Tag %s, Ramp time: %s", row, str(newSetpoint), quantOutput, tagPath, str(rampTime))
-                        
+
                         # From the tagpath determine if we are writing directly to an OPC tag or to a controller
-                        UDTType, tagPath = getOuterUDT(tagPath)
+                        UDTType, strippedTagPath = getOuterUDT(tagPath)
                         
                         downloadThread = DownloadThread(self, row, quantOutputId, tagPath, newSetpoint, rampTime, writeConfirm=True, valueType='setpoint')
                         downloadThread.start()
@@ -244,6 +244,7 @@ class Downloader():
                 finalDiagnosisIds = []
                 for finalDiagnosisRecord in pds:
                     print "...working..."
+                    diagramName = finalDiagnosisRecord['DiagramName']
                     finalDiagnosisId = finalDiagnosisRecord['FinalDiagnosisId']
                     recommendationPDS = self.fetchRecommendationsForFinalDiagnosis(finalDiagnosisId)
                     finalDiagnosisName = finalDiagnosisRecord['FinalDiagnosisName']
@@ -259,7 +260,7 @@ class Downloader():
                     if recommendationErrorText != None:
                         fdText += "%s" % (recommendationErrorText) 
         
-                    rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName)
+                    rootCauseList=fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosisName)
                     for rootCause in rootCauseList:
                         fdText += "%s" % (rootCause)
             

@@ -19,9 +19,13 @@ def internalFrameOpened(rootContainer):
     print gradeTags
     vals=[]
     for gradeTag in gradeTags.getResults():
-        print gradeTag
-        vals.append([gradeTag])
-    ds=system.dataset.toDataSet(["tag"], vals)
+        fullPath = str(gradeTag.get("fullPath"))
+        print "Fullpath: ", fullPath
+        unitName = system.tag.readBlocking([fullPath + "/unitName"])[0].value
+        print "Unitname: ", unitName
+        vals.append([fullPath, unitName])
+
+    ds=system.dataset.toDataSet(["unit", "tag"], vals)
     dropdown=rootContainer.getComponent("Dropdown")
     dropdown.data = ds
     
@@ -52,7 +56,7 @@ def refresh(rootContainer):
     
     print "Fetching history for: ", gradeTag
     
-    # Strip off the tag provider and add the history tag provider
+    ''' Strip off the tag provider and add the history tag provider '''
     
     gradeTag = gradeTag[gradeTag.find("]")+ 1:]
     print "Modified Grade Tag: ", gradeTag
@@ -84,6 +88,4 @@ def refresh(rootContainer):
     ds = system.dataset.sort(ds, 0, False)
     table = rootContainer.getComponent("Power Table")
     table.data = ds
-    
-    
- 
+

@@ -17,6 +17,8 @@ from ils.io.util import readTag
 from ils.queue.message import insertPostMessage
 from ils.queue.constants import QUEUE_INFO
 
+from ils.blt.api import listBlocksGloballyUpstreamOf, setWatermark, resetBlock, setBlockState, propagateBlockState, sendSignal
+
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -283,12 +285,13 @@ def writeFile(rootContainer, filepath):
         from ils.diagToolkit.common import fetchActiveDiagnosis
         finalDiagnosisPDS=fetchActiveDiagnosis(application)
         for finalDiagnosisRecord in finalDiagnosisPDS:
-            family=finalDiagnosisRecord['FamilyName']
-            finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
-            finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
-            multiplier=finalDiagnosisRecord['Multiplier']
+            family = finalDiagnosisRecord['FamilyName']
+            finalDiagnosis = finalDiagnosisRecord['FinalDiagnosisName']
+            diagramName = finalDiagnosisRecord['DiagramName']
+            finalDiagnosisId = finalDiagnosisRecord['FinalDiagnosisId']
+            multiplier = finalDiagnosisRecord['Multiplier']
             recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
-            log.tracef("Final Diagnosis: %s - %d - %s", finalDiagnosis, finalDiagnosisId, recommendationErrorText)
+            log.tracef("Final Diagnosis: %s - %d - %s on Diagram: %s", finalDiagnosis, finalDiagnosisId, recommendationErrorText, diagramName)
             
             if multiplier < 0.99 or multiplier > 1.01:
                 system.file.writeFile(filepath, "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosis, multiplier), True)
@@ -299,7 +302,7 @@ def writeFile(rootContainer, filepath):
                 system.file.writeFile(filepath, "       %s\n\n" % (recommendationErrorText), True) 
 
             from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
-            rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
+            rootCauseList=fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosis)
             for rootCause in rootCauseList:
                 log.tracef("Root cause: %s", str(rootCause))
 
@@ -746,12 +749,15 @@ rate change final diagnosis.  So when any one of them is active and the operator
 which collects all FDs in RLA3 and resets them all.  Part of resetting a FD is to call its postProcessingFinalDiagnosis... and so on and so on!
 So I'm not sure if it is really appropriate to do this here or not, seems like there might be a better place to call this from, but I don't want to break a 
 bunch of stuff, so I am going to add an optional argument: enablePostProcessingCallback with a default value of True
+
+July 20, 2022 - This is called from client and gateway scope.  Client scope calls it when No Download is pressed.  Gateway scope when the an automatic No Download 
+is performed which happens when the calculation method does not yield any recommendations.
 '''
 def resetApplication(post, application, families, finalDiagnosisIds, quantOutputIds, actionMessage, recommendationStatus, database, provider, enablePostProcessingCallback=True):
     log.infof("In %s.resetApplication() resetting application %s because %s - %s", __name__, application, actionMessage, recommendationStatus)
-    log.trace("  Families: %s" % (str(families)))
-    log.trace("  Final Diagnosis Ids: %s" % (str(finalDiagnosisIds)))
-    log.trace("  Quant Output Ids: %s" % (str(quantOutputIds)))
+    log.tracef("  Families: %s", str(families))
+    log.tracef("  Final Diagnosis Ids: %s", str(finalDiagnosisIds))
+    log.tracef("  Quant Output Ids: %s", str(quantOutputIds))
 
     # Post a message to the applications queue documenting what we are doing to the active families    
     postSetpointSpreadsheetActionMessage(post, families, finalDiagnosisIds, actionMessage, recommendationStatus, database)
@@ -928,97 +934,99 @@ def resetDiagnosisEntry(applicationName, actionMessage, finalDiagnosisIds, recom
 
 # Reset the BLT diagram in response to a No-Download or Download.  This runs in the client in response to an operator action.
 def resetDiagram(finalDiagnosisIds, database):
-#    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
-    import system.ils.blt.diagram as diagram
     log.infof("In %s.resetDiagram() - Resetting BLT diagrams...", __name__)
     
     for finalDiagnosisId in finalDiagnosisIds:
         log.info("...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
-        SQL = "select FinalDiagnosisName, DiagramUUID, FinalDiagnosisUUID from DtFinalDiagnosis "\
-            "where FinalDiagnosisId = %s and DiagramUUID != 'DIAGRAM_UUID'" % (str(finalDiagnosisId))
+        SQL = "select FD.FinalDiagnosisName, D.DiagramName "\
+            " from DtFinalDiagnosis FD, DtDiagram D "\
+            " where FD.DiagramId = D.DiagramId and FinalDiagnosisId = %s" % (str(finalDiagnosisId))
         pds = system.db.runQuery(SQL, database)
         
         for record in pds:
-            finalDiagnosisName=record["FinalDiagnosisName"]
-            diagramUUID=record["DiagramUUID"]
-            finalDiagnosisUUID=record["FinalDiagnosisUUID"]
-            
-            log.info("... resetting the final diagnosis: %s <%s>, FD: <%s>" % (finalDiagnosisName, str(diagramUUID), str(finalDiagnosisUUID)))
+            finalDiagnosisName = record["FinalDiagnosisName"]
+            diagramName = record["DiagramName"]
 
-            # Resetting a block sets its state to UNSET, which does not propagate. 
-            system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
+            log.infof("...resetting the final diagnosis: %s on %s", finalDiagnosisName, diagramName)
+
+            ''' Resetting a block sets its state to UNSET, which does not propagate. ''' 
+            resetBlock(diagramName, finalDiagnosisName)
             
-            # Now set the state to UNKNOWN and propagate it
-            system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
-            system.ils.blt.diagram.propagateBlockState(diagramUUID, finalDiagnosisUUID)
+            ''' Now set the state to UNKNOWN and propagate it (I'm not sure if the propagate step is needed, I think UNKNOWN propagates automatically) '''
+            setBlockState(diagramName, finalDiagnosisName, "UNKNOWN")
+            propagateBlockState(diagramName, finalDiagnosisName)
                         
             log.info("... fetching upstream blocks ...")
+            blocks=listBlocksGloballyUpstreamOf(diagramName, finalDiagnosisName)
+            log.infof("...found %d upstream blocks!", len(blocks))
 
-            if diagramUUID != None and finalDiagnosisUUID != None:
-                blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
-
-                upstreamBlocks = []
-                blockUUIDUpstreamOfLatch = []
-                for block in blocks:
-                    blockName=block.getName()
-                    blockClass=stripClassPrefix(block.getClassName())
-                    
-                    parentUUID=block.getAttributes().get("parent")
-
-                    if blockClass in OBSERVATION_BLOCK_LIST:
-                        log.info("   ... adding a %s named: %s to the reset list..." % (blockClass, blockName))
-                        upstreamBlocks.append(block)
-
-                    elif blockClass == "Inhibitor":
-                        log.info("   ... setting a %s named: %s  to inhibit!..." % (blockClass, blockName))
-                        upstreamBlocks.append(block)
-                    
-                    elif blockClass == "LogicLatch":
-                        log.info("Found a logic latch")
-                        blocksUpstreamofLatch=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
-                        for upstreamBlock in blocksUpstreamofLatch:
-                            if upstreamBlock.getIdString() not in blockUUIDUpstreamOfLatch and stripClassPrefix(upstreamBlock.getClassName()) in OBSERVATION_BLOCK_LIST:
-                                log.tracef("Adding a %s named %s to the list of blocks upstream of a latch...", upstreamBlock.getClassName(), upstreamBlock.getName())
-                                blockUUIDUpstreamOfLatch.append(upstreamBlock.getIdString())
-
-                    else:
-                        log.tracef("   ...skipping a %s...", blockClass)
+            upstreamBlocks = []
+            blocksUpstreamOfLatch = []
+            for block in blocks:
+                blockName = block.getName()
+                blockClass = stripClassPrefix(block.getClassName())
+                log.infof("Found %s, a %s...", blockName, blockClass)
                 
-                ''' Remove the upstream blocks from the main list '''
-                log.infof("Removing %d blocks upstream of a latch from the list of %d blocks to reset...", len(blockUUIDUpstreamOfLatch), len(upstreamBlocks))
-                blocksToReset = []
-                for block in upstreamBlocks:
-                    UUID=block.getIdString()
-                    if UUID not in blockUUIDUpstreamOfLatch:
-                        blocksToReset.append(block)
-                    else:
-                        log.tracef("Removing a %s - %s that is in the latch list from the reset list...", block.getClassName(), block.getName())
+                # The block may not be on the same diagram as the final diagnosis
+                blockAttributes = block.getAttributes()
+                print "Attributes: ", blockAttributes
+                print "Properties: ", block.getProperties()
+    
+                parentDiagramName = blockAttributes.get("parent", None)
+                print "Parent Diagram Name: %s" % (parentDiagramName)
 
-                ''' Now reset what is left '''        
-                for block in blocksToReset:
-                    UUID=block.getIdString()
-                    blockName=block.getName()
-                    blockClass=stripClassPrefix(block.getClassName())
-                    blockId=block.getIdString()
-                    parentUUID=block.getAttributes().get("parent")
+                if blockClass in OBSERVATION_BLOCK_LIST:
+                    log.info("   ... adding a %s named: %s to the reset list..." % (blockClass, blockName))
+                    upstreamBlocks.append(block)
 
-                    if blockClass in OBSERVATION_BLOCK_LIST:
-                        log.info("   ... resetting a %s named: %s..." % (blockClass, blockName))
-                        
-                        # Resetting a block sets its state to UNSET, which does not propagate. 
-                        system.ils.blt.diagram.resetBlock(parentUUID, blockName)
-                        
-                        # Now set the state to UNKNOWN, then propagate
-                        system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
-                        system.ils.blt.diagram.propagateBlockState(parentUUID, blockId)
+                elif blockClass == "Inhibitor":
+                    log.info("   ... setting a %s named: %s  to inhibit!..." % (blockClass, blockName))
+                    upstreamBlocks.append(block)
+                
+                elif blockClass == "LogicLatch":
+                    log.info("Found a logic latch")
+                    blocks2 = listBlocksGloballyUpstreamOf(parentDiagramName, blockName)
+                    for upstreamBlock in blocks2:
+                        if upstreamBlock not in blocksUpstreamOfLatch and stripClassPrefix(upstreamBlock.getClassName()) in OBSERVATION_BLOCK_LIST:
+                            log.tracef("Adding a %s named %s to the list of blocks upstream of a latch...", upstreamBlock.getClassName(), upstreamBlock.getName())
+                            blocksUpstreamOfLatch.append(upstreamBlock)
 
-                    elif blockClass == "Inhibitor":
-                        log.info("   ... setting a %s named: %s  to inhibit! (%s  %s)..." % (blockClass,blockName,diagramUUID, UUID))
-                        system.ils.blt.diagram.sendSignal(parentUUID, blockName,"INHIBIT","")
-                        
-                    else:
-                        log.tracef("   ...skipping a %s...", blockClass)
+                else:
+                    log.tracef("   ...skipping a %s...", blockClass)
+            
+            ''' Remove the upstream blocks from the main list '''
+            log.infof("Removing %d blocks upstream of a latch from the list of %d blocks to reset...", len(blocksUpstreamOfLatch), len(upstreamBlocks))
+            blocksToReset = []
+            for block in upstreamBlocks:
+                if block not in blocksUpstreamOfLatch:
+                    blocksToReset.append(block)
+                else:
+                    log.infof("Removing a %s - %s that is in the latch list from the reset list...", block.getClassName(), block.getName())
+
+            ''' Now reset what is left '''        
+            for block in blocksToReset:
+                blockName=block.getName()
+                blockAttributes = block.getAttributes()
+                parentDiagramName = blockAttributes.get("parent", None)
+                blockClass=stripClassPrefix(block.getClassName())
+
+                if blockClass in OBSERVATION_BLOCK_LIST:
+                    log.info("   ... resetting a %s named: %s..." % (blockClass, blockName))
+                    
+                    # Resetting a block sets its state to UNSET, which does not propagate. 
+                    resetBlock(diagramName, blockName)
+                    
+                    # Now set the state to UNKNOWN, then propagate
+                    setBlockState(diagramName, blockName, "UNKNOWN")
+                    propagateBlockState(diagramName, blockName)
+
+                elif blockClass == "Inhibitor":
+                    log.infof("   ... setting a <%s> named <%s> on <%s> to inhibit!", blockClass, blockName, diagramName)
+                    sendSignal(diagramName, blockName, "INHIBIT", "")
+                    
+                else:
+                    log.tracef("   ...skipping a %s...", blockClass)
                         
             else:
                 log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
@@ -1028,35 +1036,40 @@ def resetDiagram(finalDiagnosisIds, database):
 def partialResetDiagram(finalDiagnosisIds, database):
     log.info("   ... performing a *partial* reset of the BLT diagrams ...")
     
-    diagramUUIDs = []
+    diagramNames = []
     for finalDiagnosisId in finalDiagnosisIds:
         log.info("      ...resetting final diagnosis Id: %s" % (str(finalDiagnosisId)))
         
-        SQL = "select FinalDiagnosisName, DiagramUUID, FinalDiagnosisUUID from DtFinalDiagnosis "\
-            "where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
+        SQL = "select FinalDiagnosisName, DiagramName, FinalDiagnosisUUID "\
+            " from DtFinalDiagnosisView "\
+            " where FinalDiagnosisId = %s " % (str(finalDiagnosisId))
         pds = system.db.runQuery(SQL, database)
         
         for record in pds:
             finalDiagnosisName=record["FinalDiagnosisName"]
-            diagramUUID=record["DiagramUUID"]
+            diagramName=record["DiagramName"]
             
-            if diagramUUID not in diagramUUIDs:
-                diagramUUIDs.append(diagramUUID)
-                
-            finalDiagnosisUUID=record["FinalDiagnosisUUID"]
+            if diagramName not in diagramNames:
+                diagramNames.append(diagramName)
             
-            log.infof("   Diagram: <%s>, FD: <%s>", str(diagramUUID), str(finalDiagnosisUUID))           
-            log.infof("   ... Resetting the final diagnosis: %s  %s...", finalDiagnosisName, diagramUUID)
+            log.infof("   ... resetting final diagnosis: %s on diagram %s...", finalDiagnosisName, diagramName)
             
-            system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
-            system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
-            system.ils.blt.diagram.propagateBlockState(diagramUUID, diagramUUID)
+            print "************************"
+            print "**  TODO over here    **"
+            print "************************"
+            
+            #system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
+            #system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
+            #system.ils.blt.diagram.propagateBlockState(diagramUUID, diagramUUID)
                         
-            log.infof("Fetching upstream blocks for diagram <%s> - final diagnosis <%s>...", str(diagramUUID), finalDiagnosisName)
+            log.infof("Fetching upstream blocks for final diagnosis <%s> on diagram <%s>...", finalDiagnosisName, diagramName)
 
+            '''
+            Remember that an upstream block could be on another diagram.
+            '''
             downstreamBlocks=[]
-            if diagramUUID != None and finalDiagnosisUUID != None:
-                blocks=system.ils.blt.diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
+            if diagramName != None and finalDiagnosisName != None:
+                blocks = listBlocksGloballyUpstreamOf(diagramName, finalDiagnosisName)
 
                 for block in blocks:
                     UUID=block.getIdString()
@@ -1064,14 +1077,15 @@ def partialResetDiagram(finalDiagnosisIds, database):
                     blockClass=stripClassPrefix(block.getClassName())
                     blockId=block.getIdString()
                     parentUUID=block.getAttributes().get("parent")
+                    
 
                     # I'm not exactly sure why we choose to do a full reset on the logic filter block, but the 
                     # reason from G2 was to allow high-frequency data to flow through the diagrams, and possibly
                     # trigger other diagnosis, but the diagnosis connected to this logic-filter will effectively
                     # be inhibited from firing based on the configuration of the logic filter. 
                     if blockClass == "LogicFilter":
-                        log.infof("   ... found a logic filter named: %s  %s  %s...", blockName,diagramUUID, UUID)
-                        system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
+                        log.infof("   ... found a logic filter named: %s  (%s) on  %s...", blockName, UUID, diagramName)
+                        system.ils.blt.diagram.resetBlock(diagramName, blockName)
                     
                     elif blockClass in ["SQC", "SQCDiagnosis", "TrendDetector"]:
                         # Set the state to UNKNOWN, then propagate
@@ -1079,8 +1093,8 @@ def partialResetDiagram(finalDiagnosisIds, database):
                         system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
                         system.ils.blt.diagram.propagateBlockState(parentUUID, UUID)
  
-                        if parentUUID not in diagramUUIDs:
-                            diagramUUIDs.append(parentUUID)
+                        if parentUUID not in diagramNames:
+                            diagramNames.append(parentUUID)
 
                         '''
                         We do NOT want to send a signal to the block to evaluate in order to get the signal 
@@ -1104,9 +1118,9 @@ def partialResetDiagram(finalDiagnosisIds, database):
     I'm not 100% sure how this worked in G2, do I put the watermark just on the diagram that has the final diagnosis or on all diagrams that have a block that 
     we set to unknown.  The key is making sure that the watermark disappears when the next datapoint arrives.
     '''
-    for diagramUUID in diagramUUIDs:
-        log.infof("Setting the watermark on %s", diagramUUID)
-        system.ils.blt.diagram.setWatermark(diagramUUID,"Wait For New Data")
+    for diagramName in diagramNames:
+        log.infof("Setting the watermark on %s", diagramName)
+        setWatermark(diagramName)
 
 
 def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, newValue):

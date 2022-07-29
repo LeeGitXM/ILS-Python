@@ -7,6 +7,7 @@ import system
 from java.util import Calendar
 from java.util import Date
 import time
+from ils.common.config import getProductionDatabase, getIsolationDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 

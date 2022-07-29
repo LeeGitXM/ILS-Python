@@ -4,102 +4,87 @@ Created on May 16, 2017
 @author: phass
 '''
 
-import system
+import system, time
 from ils.common.config import getDatabaseClient, getTagProviderClient
 from ils.io.util import splitTagPath, writeTag
+
+from ils.log import getLogger
+log = getLogger(__name__)
+
+EDIT = "edit"
+CREATE = "create"
 
 # Open transaction when window is opened
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()..."
+    #refresh(rootContainer)
+    
+def internalFrameActivated(rootContainer):
+    print "In internalFrameActivated()..."
     refresh(rootContainer)
 
-'''
-
-'''
 def refresh(rootContainer):
     print "...refreshing..."
     provider = getTagProviderClient()
     
-    parentPath = "[%s]" % (provider)
-#    parentPath = ""
-    print "Browsing %s" % (parentPath)
-    browseTags = system.tag.browseTags(parentPath=parentPath, udtParentType="Lab Data/Unit Parameter", recursive=True)
+    path = "[%s]" % (provider)
+    print "Browsing %s" % (path)
+    filters = {'tagType':'UdtInstance', 'typeId':"Lab Data/Unit Parameter", 'recursive':True}
+    results = system.tag.browse(path=path, filter=filters)
 
-    header = ["Unit Parameter", "Number of Points", "Ignore Sample Time", "Value Source", "Sample Time Source"]
+    header = ["Unit Parameter", "Filtered Value", "Number of Points", "Ignore Sample Time", "Value Source", "Sample Time Source"]
     vals = []
-    for browseTag in browseTags:
-        tagPath = browseTag.path
-        tagName = browseTag.name
-        fullTagPath = browseTag.fullPath
-        print tagName, tagPath, fullTagPath
-        
-        qvs = system.tag.readBlocking([tagPath + "/numberOfPoints", tagPath + "/ignoreSampleTime"])
+    for result in results:
+        tagName = result['name']
+        fullTagPath = str(result['fullPath'])
+
+        qvs = system.tag.readBlocking(
+                    [fullTagPath + "/numberOfPoints", 
+                     fullTagPath + "/ignoreSampleTime",
+                     fullTagPath + "/rawValue.sourceTagPath",
+                     fullTagPath + "/sampleTime.sourceTagPath",
+                     fullTagPath + "/filteredValue"
+                    ])
+
         numberOfPoints = qvs[0].value
         ignoreSampleTime = qvs[1].value
+        valueReference = qvs[2].value
+        sampleTimeReference = qvs[3].value
+        filteredValue = qvs[4].value
 
         if ignoreSampleTime == None:
             ignoreSampleTime = False
-        
-        valueExpression = system.tag.getAttribute(fullTagPath + "/rawValue", "Expression")
-        sampleTimeExpression = system.tag.getAttribute(fullTagPath + "/sampleTime", "Expression")
-        vals.append([fullTagPath, numberOfPoints, ignoreSampleTime, valueExpression, sampleTimeExpression])
+
+        vals.append([fullTagPath, filteredValue, numberOfPoints, ignoreSampleTime, valueReference, sampleTimeReference])
     
     ds = system.dataset.toDataSet(header, vals)
     ds = system.dataset.sort(ds, "Unit Parameter")
     table = rootContainer.getComponent("Unit Parameter Power Table")
     table.data = ds
-    print "Done!"
-        
-
-def updateTableAndUDT(table, rowIndex, colIndex, colName, oldValue, newValue):
-    print "In %s.updateTableAndUDT" % (__name__)
     
-    ds = table.data
-    tagPath = ds.getValueAt(rowIndex, "Unit Parameter")
+    selectedRow = table.selectedRow
+    time.sleep(0.25)
+    table.selectedRow = -1
+    time.sleep(0.25)
+    table.selectedRow = selectedRow
     
-    if colName == "Unit Parameter":
-        print "Unable to rename a tag"
-        
-    elif colName == "Number of Points":
-        writeTag(tagPath + "/numberOfPoints", newValue)
-        
-    elif colName == "Ignore Sample Time":
-        writeTag(tagPath + "/ignoreSampleTime", newValue)
-        
-    elif colName == "Value Source":
-        if not(system.tag.exists(newValue)):
-            system.gui.errorBox("Error: The value tag named <%s> does not exist!" % (newValue))
-            return
-
-        system.tag.editTag(tagPath, overrides={"rawValue": {"Expression":newValue}})
-        
-    elif colName == "Sample Time Source":
-        if not(system.tag.exists(newValue)):
-            system.gui.errorBox("Error: The sample time tag named <%s> does not exist!" % (newValue))
-            return
-        
-        system.tag.editTag(tagPath, overrides={"sampleTime": {"Expression":newValue}})
-        
-    else:
-        print "Unexpected column: ", colName
+    table = rootContainer.getComponent("Unit Parameter Buffer Table")
+    system.db.refresh(table, "data")
     
 
 def updateBufferTable(unitParameterTable, rowIndex):
-    db = getDatabaseClient()
+    log.infof("In %s.updateBufferTable()...", __name__)
     rootContainer = unitParameterTable.parent
     
     ds = unitParameterTable.data
     unitParameterTagName = ds.getValueAt(rowIndex, "Unit Parameter")
     print "Selected Unit Parameter: ", unitParameterTagName
     
-    SQL = "select BufferIndex, RawValue, SampleTime, ReceiptTime "\
-        " from TkUnitParameter P, TkUnitParameterBuffer B "\
-        " where P.UnitParameterId = B.UnitParameterId "\
-        " and UnitParameterTagName = '%s' " % (unitParameterTagName)
-
-    pds = system.db.runQuery(SQL, database=db)
+    vals = system.tag.readBlocking([unitParameterTagName + "/buffer"])
+    buffer = vals[0].value
+    
     table = rootContainer.getComponent("Unit Parameter Buffer Table")
-    table.data = pds
+    table.data = buffer
 
 
 def clearBufferTable(rootContainer):
@@ -109,87 +94,113 @@ def clearBufferTable(rootContainer):
     ds = clearDataset(ds)
     table.data = ds
 
-'''
-This is called when they press the "+" button on the browser window
-'''
-def launchNewUnitParameterPopup(event):
-    print "Launching the new unit parameter popup"
+
+def createUnitParameter(event):
+    '''
+    This is called when they press the "+" button on the browser window
+    '''
+    log.infof("In %s.launchNewUnitParameterPopup()...", __name__)
     window = system.gui.getParentWindow(event)
     table = event.source.parent.getComponent("Unit Parameter Power Table")
     header = ["window", "table"]
     rows = [[window, table]]
     args = system.dataset.toDataSet(header, rows)
-    payload = {"args": args}
+    payload = {"args": args, "mode": CREATE}
+    window = system.nav.openWindow("Lab Data/Unit Parameter Popup", payload)
+    system.nav.centerWindow(window)
+    
+
+def editUnitParameter(event):
+    '''
+    This is called when they press the "+" button on the browser window
+    '''
+    log.infof("In %s.launchNewUnitParameterPopup()...", __name__)
+
+    table = event.source.parent.getComponent("Unit Parameter Power Table")
+    
+    row = table.selectedRow
+    data = table.data
+    
+    unitParameterName = data.getValueAt(row, "Unit Parameter")
+    numberOfPoints = data.getValueAt(row, "Number Of Points")
+    ignoreSampleTime = data.getValueAt(row, "Ignore Sample Time")
+    valueSource = data.getValueAt(row, "Value Source")
+    sampleTimeSource = data.getValueAt(row, "Sample Time Source")
+    
+    payload = {"mode": EDIT, "unitParameterName": unitParameterName, "numberOfPoints": numberOfPoints, "ignoreSampleTime": ignoreSampleTime, "valueSource": valueSource, "sampleTimeSource": sampleTimeSource}
+
     window = system.nav.openWindow("Lab Data/Unit Parameter Popup", payload)
     system.nav.centerWindow(window)
 
-'''
-This is called when they press the "Save" button on the popup 
-'''
+
 def saveNewUnitParameter(event):
+    '''
+    This is called when they press the "Save" button on the popup 
+    '''
+    
+    log.infof("In %s.saveNewUnitParameter()", __name__)
     rootContainer = event.source.parent
+    mode = rootContainer.mode
     
-    print "Validating..."
+    log.infof("Validating...")
     unitParameterName = rootContainer.getComponent("Unit Parameter").text
+    if unitParameterName == "":
+        system.gui.errorBox("The unit parameter name is required!")
+        return
     
-    if system.tag.exists(unitParameterName):
+    if mode == CREATE and system.tag.exists(unitParameterName):
         system.gui.errorBox("Error: A tag named %s already exists!" % (unitParameterName))
         return
     
-    valueSourceTag = rootContainer.getComponent("Value Source").text
-    if not(system.tag.exists(valueSourceTag)):
-        system.gui.errorBox("Error: The value tag named <%s> does not exist!" % (valueSourceTag))
-        return
-    
-    sampleTimeSourceTag = rootContainer.getComponent("Sample Time Source").text
-    if not(system.tag.exists(sampleTimeSourceTag)):
-        system.gui.errorBox("Error: The value tag named <%s> does not exist!" % (sampleTimeSourceTag))
+    valueSourceTagPath = rootContainer.getComponent("Value Source").text
+    if not(system.tag.exists(valueSourceTagPath)):
+        system.gui.errorBox("Error: The value tag named <%s> does not exist!" % (valueSourceTagPath))
         return
 
     numberOfPoints = rootContainer.getComponent("Number Of Points").intValue
     ignoreSampleTime = rootContainer.getComponent("Ignore Sample Time").selected
     
-    print "Creating UDT..."
+    log.infof("Creating/updating UDT...")
     
-    rawValueExpression = "{%s}" % (valueSourceTag)
     parentPath, tagName = splitTagPath(unitParameterName)
+    print "The parent path is <%s>" % (parentPath)
     
     if ignoreSampleTime:
-        sampleTimeExpression = ""
-        system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
-            attributes={"UDTParentType": "Lab Data/Unit Parameter"}, 
-            overrides={"numberOfPoints": {"Value":numberOfPoints}, 
-                       "rawValue": {"Expression":rawValueExpression},
-                       "ignoreSampleTime": {"Value":ignoreSampleTime}
-                       })
+        sampleTimeSourceTagPath = ""
     else:
-        sampleTimeExpression = "{%s}" % (sampleTimeSourceTag)
-        system.tag.addTag(parentPath=parentPath, name=tagName, tagType="UDT_INST", 
-            attributes={"UDTParentType": "Lab Data/Unit Parameter"}, 
-            overrides={"numberOfPoints": {"Value":numberOfPoints}, 
-                       "rawValue": {"Expression":rawValueExpression},
-                       "sampleTime": {"Expression":sampleTimeExpression},
-                       "ignoreSampleTime": {"Value":ignoreSampleTime}
-                       })
-    
-    print "Updating table..."
-    
-    args = rootContainer.args
-    table = args.getValueAt(0, "table")
-    
-    ds = table.data
-    ds = system.dataset.addRow(ds, 0, [unitParameterName, numberOfPoints, ignoreSampleTime, rawValueExpression, sampleTimeExpression])
-    table.data = ds
-    
+        sampleTimeSourceTagPath = rootContainer.getComponent("Sample Time Source").text
+        if not(system.tag.exists(sampleTimeSourceTagPath)):
+            system.gui.errorBox("Error: The value tag named <%s> does not exist!" % (sampleTimeSourceTagPath))
+            return
+        
+    tag = {
+           "name": tagName,
+           "tagType": "UdtInstance",
+           "typeId": "Lab Data/Unit Parameter",
+           "tags": [
+                {"name": "ignoreSampleTime", "value": ignoreSampleTime},
+                {"name": "numberOfPoints", "value": numberOfPoints},
+                {"name": "sampleTime", "sourceTagPath": sampleTimeSourceTagPath},
+                {"name": "rawValue", "sourceTagPath": valueSourceTagPath}
+                ]
+           }
+    print "Tag Configuration: ", tag
+        
+    result = system.tag.configure(parentPath, tags=[tag])
+    print "Result: ", result
+        
+    print "Done!"    
     system.nav.closeParentWindow(event)
 
-'''
-This is called when they press the "Delete" button on the browser window
-'''
+
 def deleteUnitParameter(event):
-    db = getDatabaseClient()
-    print "Launching the new unit parameter popup"
-    table = event.source.parent.getComponent("Unit Parameter Power Table")
+    '''
+    This is called when they press the "Delete" button on the browser window
+    '''
+    log.infof("In %s.deleteUnitParameter()", __name__)
+
+    rootContainer = event.source.parent
+    table = rootContainer.getComponent("Unit Parameter Power Table")
     row = table.selectedRow
     ds = table.data
     unitParameterTagPath = ds.getValueAt(row, 0)
@@ -200,18 +211,29 @@ def deleteUnitParameter(event):
     '''
     tagExists = system.tag.exists(unitParameterTagPath)
     if tagExists:
-        system.tag.removeTag(unitParameterTagPath)
+        system.tag.deleteTags([unitParameterTagPath])
     
+    ''' Update the UI '''
+    refresh(rootContainer)
+
+def setRoot(event):
     '''
-    Clean up the TkUnitParameter and TkUnitParameterBuffer tables.
+    This is called by the propertyChange event handler on all 3 of the tag fields on the window.
     '''
-    SQL = "delete from TkUnitParameter where UnitParameterTagName = '%s'" % (unitParameterTagPath)
-    rows = system.db.runUpdateQuery(SQL, db)
-    print "Deleted %d rows from TkUnitParameter" % (rows)
+    print "In %s.setRoot" % (__name__)
+    tagPath = event.newValue
     
-    '''
-    Update the UI - delete the row from the table
-    '''
-    ds = system.dataset.deleteRow(ds, row)
-    table.data = ds
+    configuration = system.tag.getConfiguration(tagPath, False)
+    print configuration
+    tagDict = configuration[0]
+    tagType = tagDict.get("tagType", "Unknown")
+    print "Tag type: ", tagType
     
+    if str(tagType) in ["Unknown"]:
+        print "...bailing..."
+        return 
+    
+    folder = tagDict.get("path", "")
+    
+    rootContainer = event.source.parent
+    rootContainer.folder = folder

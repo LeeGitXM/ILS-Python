@@ -17,6 +17,7 @@ SYMBOLIC_AI_ICON = "Custom/blt/NavTree/symbolicAi.png"       # "Block/icons/navt
 APPLICATION_ICON = "Custom/blt/NavTree/application.png"       # "Block/icons/navtree/application.png"
 FAMILY_ICON = "Custom/blt/NavTree/family.png"
 DIAGRAM_ICON = "Custom/blt/NavTree/diagram.png"           # "Block/icons/navtree/diagram.png"
+DIAGRAM_REFERENCED_ICON = "Custom/blt/NavTree/diagramReferenced.png"           # "Block/icons/navtree/diagram.png"
 FINAL_DIAGNOSIS_ICON = "Custom/blt/NavTree/finalDiagnosis.png"
 
 WHITE = "color(255,255,255,255)"
@@ -58,16 +59,33 @@ def refreshDiagramTreeCallback(rootContainer):
 def refreshDiagramTree(rootContainer, db):
     log.infof("In %s.refreshDiagramTree()...", __name__)
     
-    SQL = "select DiagramName from DtDiagram where FamilyId is NULL"
-    pds = system.db.runQuery(SQL, database=db)
+    diagramContainer = rootContainer.getComponent("Diagram Container")
+    mode = diagramContainer.getComponent("2 State Toggle").text
+    
+    print "The mode is: ", mode
+    
+    if mode == "All Diagrams":
+        SQL = "select DiagramName, FamilyId from DtDiagram"
+        pds = system.db.runQuery(SQL, database=db)
+        statusMessage = "%d total diagrams" % (len(pds))
+    else:
+        SQL = "select DiagramName, FamilyId from DtDiagram where FamilyId is NULL"
+        pds = system.db.runQuery(SQL, database=db)
+        statusMessage = "%d unreferenced diagrams" % (len(pds))
+    
+    diagramContainer.statusMessage = statusMessage
     
     rows = []
     rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, MUSTARD, BLACK, "", ""])
     for record in pds:
         fullDiagramName = record["DiagramName"]
+        familyId = record["FamilyId"]
         parent, diagramName = parseResourcePath(fullDiagramName)
         parent = ROOT_NODE + "/" + parent 
-        row = [parent,diagramName,DIAGRAM_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",DIAGRAM_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
+        if familyId == None:
+            row = [parent,diagramName,DIAGRAM_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",DIAGRAM_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
+        else:
+            row = [parent,diagramName,DIAGRAM_REFERENCED_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",DIAGRAM_REFERENCED_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
         rows.append(row)
         
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
@@ -547,3 +565,19 @@ def mouseReleasedCallbackForDiagramTree(event):
 
     menu = system.gui.createPopupMenu(["Expand"], [expandCallback])
     menu.show(event)
+
+def propertyChangedForDiagramTree(event):
+    print "*** the selected path has changed to: ", event.newValue
+    tree = event.source
+    if event.newValue == -1:
+        tree.selectedDiagramStatus = "Folder"
+    elif event.newValue == -1:
+        tree.selectedDiagramStatus = "Root"
+    else:
+        ds = tree.data
+        icon = ds.getValueAt(event.newValue, "icon")
+        if icon == DIAGRAM_REFERENCED_ICON:
+            tree.selectedDiagramStatus = "Referenced"
+        else:
+            tree.selectedDiagramStatus = "Stand-Alone"
+            

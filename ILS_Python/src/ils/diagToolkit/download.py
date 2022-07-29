@@ -296,11 +296,12 @@ def constructDownloadLogbookMessage(post, applicationName, db):
         txt += "    The individual contributions from each diagnosis are:\n"
         finalDiagnosisIds = []
         for finalDiagnosisRecord in pds:
-            finalDiagnosisName=finalDiagnosisRecord['FinalDiagnosisName']
-            finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
+            diagramName = finalDiagnosisRecord['DiagramName']
+            finalDiagnosisName = finalDiagnosisRecord['FinalDiagnosisName']
+            finalDiagnosisId = finalDiagnosisRecord['FinalDiagnosisId']
             finalDiagnosisIds.append(finalDiagnosisId)
-            multiplier=finalDiagnosisRecord['Multiplier']
-            recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
+            multiplier = finalDiagnosisRecord['Multiplier']
+            recommendationErrorText = finalDiagnosisRecord['RecommendationErrorText']
             
             if multiplier < 0.99 or multiplier > 1.01:
                 txt += "       Diagnosis -- %s (multiplier = %f)\n" % (finalDiagnosisName, multiplier)
@@ -310,7 +311,7 @@ def constructDownloadLogbookMessage(post, applicationName, db):
             if recommendationErrorText != None:
                 txt += "       %s\n\n" % (recommendationErrorText) 
 
-            rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName)
+            rootCauseList=fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosisName)
             for rootCause in rootCauseList:
                 txt += "      %s\n" % (rootCause)
 
@@ -345,10 +346,11 @@ def constructDownloadLogbookMessage(post, applicationName, db):
         
         txt += "<UL>"
         for finalDiagnosisRecord in pds:
-            family=finalDiagnosisRecord['FamilyName']
-            finalDiagnosis=finalDiagnosisRecord['FinalDiagnosisName']
-            finalDiagnosisId=finalDiagnosisRecord['FinalDiagnosisId']
-            multiplier=finalDiagnosisRecord['Multiplier']
+            diagramName = finalDiagnosisRecord['DiagramName']
+            family = finalDiagnosisRecord['FamilyName']
+            finalDiagnosis = finalDiagnosisRecord['FinalDiagnosisName']
+            finalDiagnosisId = finalDiagnosisRecord['FinalDiagnosisId']
+            multiplier = finalDiagnosisRecord['Multiplier']
             recommendationErrorText=finalDiagnosisRecord['RecommendationErrorText']
             print "Final Diagnosis: ", finalDiagnosis, finalDiagnosisId, recommendationErrorText
                 
@@ -360,7 +362,7 @@ def constructDownloadLogbookMessage(post, applicationName, db):
             if recommendationErrorText != None:
                 txt += "  --  %s" % (recommendationErrorText) 
     
-            rootCauseList=fetchSQCRootCauseForFinalDiagnosis(finalDiagnosis)
+            rootCauseList = fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosis)
             for rootCause in rootCauseList:
                 txt += "  --  %s" % (rootCause)
     

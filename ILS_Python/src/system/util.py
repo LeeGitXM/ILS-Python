@@ -5,6 +5,9 @@ def getClientId():
 def getGlobals():
     pass
 
+def getLocale():
+    pass
+
 def getLogger(path):
     pass
 
@@ -40,7 +43,10 @@ def sendRequest(project, handler, payload, scope):
 
 def sendRequestAsync(project, messageHandler, payload, timeoutSec):
     handler=1.0
-    return handler    
+    return handler
+
+def setLocale(locale):
+    pass
 
 def setLoggingLevel(loggerName, logLevel):
     pass

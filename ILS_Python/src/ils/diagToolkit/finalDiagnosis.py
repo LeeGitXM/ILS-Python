@@ -5,15 +5,14 @@ Created on Sep 12, 2014
 '''
 
 import system, string
-import system.ils.blt.diagram as scriptingInterface
 from ils.diagToolkit.common import fetchPostForApplication, fetchNotificationStrategy,fetchApplicationManaged, fetchActiveOutputsForPost
 from ils.diagToolkit.setpointSpreadsheet import resetApplication
 from ils.diagToolkit.api import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
-    RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD, RECOMMENDATION_TEXT_POSTED
+    RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
 from ils.io.util import getOutputForTagPath
 from ils.common.config import getProductionDatabase, getProductionTagProvider, getIsolationDatabase, getIsolationTagProvider, getProductionDatabaseFromInternalDatabase
-from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
+from ils.queue.constants import QUEUE_INFO
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML, escapeSqlQuotes
 from ils.common.database import lookup
@@ -295,10 +294,8 @@ def postDiagnosisEntry(projectName, diagramPath, finalDiagnosisName, UUID, datab
     grade=readTag("[%s]Site/%s/Grade/Grade" % (provider,unit)).value
     log.tracef("The grade is: %s", str(grade))
     
-    # TODO WE NEED THIS
-    print "TODO -- OVER HERE ********"
-    #txt = mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagnosisExplanation)
-    txt = "TODO over here"
+    txt = mineExplanationFromDiagram(finalDiagnosisName, diagramPath, UUID, finalDiagnosisExplanation)
+
     log.tracef("The raw text of the diagnosis entry is: %s", txt)
     from ils.common.util import substituteScopeReferences
     txt = substituteScopeReferences(txt, provider)
@@ -439,13 +436,14 @@ def _scanner(database, tagProvider, projectName):
     log.tracef("...done managing for database: %s!", database)
 
 
-def mineExplanationFromDiagram(finalDiagnosisName, diagramUUID, UUID, finalDiagnosisExplanation):
-    log.tracef("Mining explanation for %s - <%s> <%s>", finalDiagnosisName, str(diagramUUID), str(UUID)) 
+def mineExplanationFromDiagram(finalDiagnosisName, diagramPath, UUID, finalDiagnosisExplanation):
+    log.tracef("Mining explanation for <%s> on <%s>", finalDiagnosisName, diagramPath) 
 
     try:
-        explanation=system.ils.blt.diagram.getExplanation(diagramUUID, UUID)
+        from ils.blt.api import getExplanation
+        explanation=getExplanation(diagramPath, finalDiagnosisName)
 
-        if finalDiagnosisExplanation == "":
+        if finalDiagnosisExplanation in ["", None]:
             txt = "%s is TRUE because %s" % (finalDiagnosisName, explanation)
         else:
             txt = "%s because %s" % (finalDiagnosisExplanation, explanation)

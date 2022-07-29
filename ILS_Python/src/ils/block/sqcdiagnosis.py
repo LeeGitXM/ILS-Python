@@ -49,9 +49,9 @@ class SQCDiagnosis(basicblock.BasicBlock):
             
     # Called when a value has arrived on one of our input ports
     # For now we record it to a tag and pass it through to the output
-    def acceptValue(self,port,value,quality,time):
+    def acceptValue(self, port, value, quality, time):
         if not self.state==str(value):
-            self.log.trace("Accepting a new value <%s> for an SQC diagnosis block..." % (str(value)))
+            self.log.infof("Accepting a new value <%s> for an SQC diagnosis block...", str(value))
             self.state = str(value)
         
             # Write to the tag, if it exists
@@ -69,17 +69,24 @@ class SQCDiagnosis(basicblock.BasicBlock):
         handler = self.handler
         database = handler.getDefaultDatabase(self.project,self.resource)
         
+        diagramPath = self.resource
+        SQL = "select DiagramId from DtDiagram where DiagramName = '%s'" % diagramPath
+        diagramId = system.db.runScalarQuery(SQL, database)
+        self.log.infof("Fetched diagram id <%d> for diagram <%s>", diagramId, diagramPath)
+
         sqcDiagnosis = handler.getBlock(self.project,self.resource, self.uuid)
         sqcDiagnosisName = sqcDiagnosis.getName()
+        
+        self.log.infof("Processing SQC Diagnosis named <%s> on diagram <%s>", sqcDiagnosisName, diagramPath)
         
         # If the block got through migration and still has a '-GDA' as part of its name strip it off
         tokens=sqcDiagnosisName.split('-GDA')
         sqcDiagnosisName=tokens[0]
         
         # If we can find the block by UUID then the name and the parent have got to be correct
-        self.log.trace("Updating a SQC diagnosis by uuid...")
-        SQL = "update DtSQCDiagnosis set SQCDiagnosisName = '%s', Status = '%s', DiagramUUID = '%s' where SQCDiagnosisUUID = '%s'"\
-             % (sqcDiagnosisName, str(value), str(self.parentuuid), str(self.uuid))
+        self.log.info("Updating the state of the SQC diagnosis...")
+        SQL = "update DtSQCDiagnosis set Status = '%s' where SQCDiagnosisName = '%s' and DiagramId = %d"\
+             % (str(value), sqcDiagnosisName, diagramId)
         try:
             rows=system.db.runUpdateQuery(SQL, database)
             if rows > 0:
@@ -87,7 +94,7 @@ class SQCDiagnosis(basicblock.BasicBlock):
                 return
         
             # The block Id could not be found - see if the block name exists.
-            self.log.trace("...that didn't work, try updating by name...")
+            self.log.info("...that didn't work, try updating by name...")
             SQL = "update DtSQCDiagnosis set SQCDiagnosisUUID = '%s', DiagramUUID = '%s', Status = '%s' where SQCDiagnosisName = '%s'" \
                 % (str(self.uuid), str(self.resource), str(value), sqcDiagnosisName)
             print SQL
@@ -138,9 +145,11 @@ class SQCDiagnosis(basicblock.BasicBlock):
         try:
             basicblock.BasicBlock.reset(self)
             handler = self.handler
-            database = handler.getDefaultDatabase(self.parentuuid)
-            sqcDiagnosis = handler.getBlock(self.parentuuid, self.uuid)
+            database = self.handler.getDefaultDatabase(self.project, self.resource)
+            handler = self.handler
+            sqcDiagnosis = handler.getBlock(self.project, self.resource, self.uuid)
             sqcDiagnosisName = sqcDiagnosis.getName()
+            diagramPath = self.resource
             
             self.log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (sqcDiagnosisName))
             SQL = "update DtSQCDiagnosis set LastResetTime = getdate(), Status = 'UNKNOWN' where SQCDiagnosisUUID = '%s'" % (str(self.uuid))

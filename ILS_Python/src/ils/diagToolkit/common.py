@@ -478,7 +478,7 @@ def fetchFinalDiagnosisNameFromId(finalDiagnosisId, database=""):
 # low numbers are higher priority than high numbers. 
 def fetchHighestActiveDiagnosis(applicationName, database=""):
     log.tracef("In %s.fetchHighestActiveDiagnosis()...", __name__)
-    SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
+    SQL = "select A.ApplicationName, F.FamilyName, F.FamilyId, D.DiagramName, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, FD.FinalDiagnosisId, "\
         " FD.Constant, DE.DiagnosisEntryId, F.FamilyPriority, DE.Multiplier, "\
         " DE.RecommendationErrorText, FD.PostTextRecommendation, FD.PostProcessingCallback, FD.TextRecommendation, FD.CalculationMethod  "\
         " from DtApplication A, DtFamily F, DtDiagram D, DtFinalDiagnosis FD, DtDiagnosisEntry DE "\
@@ -659,29 +659,24 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
 # Fetch the SQC blocks that led to a Final Diagnosis becoming true.
 # We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
 # or 2) At the time we want to know the SQC blocks, we could query the diagram.
-def fetchSQCRootCauseForFinalDiagnosis(finalDiagnosisName, database=""):
-    log.infof("In %s.fetchSQCRootCauseForFinalDiagnosis() - Searching for SQC blocks for %s", __name__, finalDiagnosisName)
+def fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosisName):
+    log.infof("In %s.fetchSQCRootCauseForFinalDiagnosis() - Searching for SQC blocks for %s on %s", __name__, finalDiagnosisName, diagramName)
     sqcRootCauses=[]
 
-    import system.ils.blt.diagram as diagram
-    import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
-    
-    SQL = "select DiagramUUID from DtFinalDiagnosis where FinalDiagnosisName = '%s'" % (finalDiagnosisName)
-    diagramUUID = system.db.runScalarQuery(SQL, database)
-    print "  Diagram UUID: %s" % (str(diagramUUID))
+    # Get the upstream blocks, make sure to jump connections
+    from ils.blt.api import listBlocksGloballyUpstreamOf
+    blocks = listBlocksGloballyUpstreamOf(diagramName, finalDiagnosisName)
         
-    if diagramUUID != None: 
-        # Get the upstream blocks, make sure to jump connections
-        blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
-            
-        log.tracef("...found %d upstream blocks...", len(blocks))
-    
-        for block in blocks:
-            if block.getClassName() == "com.ils.block.SQC":
-                log.tracef("   ... found a SQC block...")
-                blockId=block.getIdString()
-                blockName=block.getName()
-                log.tracef("Found: %s - %s", str(blockId), str(blockName))
+    log.infof("...found %d upstream blocks...", len(blocks))
+
+    for block in blocks:
+        if block.getClassName() == "com.ils.block.SQC":
+            blockName=block.getName()            
+            blockAttributes = block.getAttributes()
+            blockState = blockAttributes.get("State", None)
+
+            log.infof("Found: %s - %s", str(blockName), str(blockState))
+            sqcRootCauses.append(block)
 
     return sqcRootCauses
 

@@ -88,7 +88,7 @@ class Arithmetic(basicblock.BasicBlock):
             elif function == 'TO_RADIAN':
                 value = 0.0174532925*value;
             
-            log.tracef("Arithmetic.acceptValue: %s(%s) = %s",function,str(invalue),str(value))
+            self.log.infof("Arithmetic.acceptValue: %s(%s) = %s", function, str(invalue), str(value))
             
             self.value = value
             self.quality=quality
