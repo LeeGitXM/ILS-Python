@@ -5,14 +5,14 @@ Created on Jan 4, 2019
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sqc.plot import configureChartSQCLimit
 from ils.log import getLogger
 log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     configureChart(rootContainer, db)
 
 def internalFrameActivated(rootContainer):
@@ -21,7 +21,7 @@ def internalFrameActivated(rootContainer):
 def configureChart(rootContainer, db):
     log.tracef("In %s.configureChart()...", __name__)
     
-    db = getDatabaseClient()
+    db = getDatabase()
     
     lowerLimit = rootContainer.lowerLimit
     upperLimit = rootContainer.upperLimit

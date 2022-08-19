@@ -41,21 +41,25 @@ def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
         log.tracef("Ignoring a grade change which is deemed to not be legit because: %s", status)
         return
     
-    log.infof( "Handling common grade change logic for  a change from %s to %s for %s...", str(previousValue.value), str(currentValue.value), tagPath)
+    log.infof( "Handling common grade change logic for a change from %s to %s for %s...", str(previousValue.value), str(currentValue.value), tagPath)
+    
+    tagPathRoot = tagPath[:tagPath.rfind('/')+ 1]
+    projectName = readTag(tagPathRoot + "/projectName").value
+    if projectName == "":
+        log.warnf("Unable to process the grade change because the project has not been set in the Grade UDT <%s>", tagPathRoot)
+        return
     
     from ils.io.util import getProviderFromTagPath
     tagProvider = getProviderFromTagPath(tagPath)
-    
-    from ils.common.config import getTagProvider, getDatabase, getIsolationDatabase
-    productionTagProvider = getTagProvider()
-    
+
+    from ils.config.common import getTagProvider, getDatabase, getIsolationDatabase
+    productionTagProvider = getTagProvider(projectName)
+
     if tagProvider == productionTagProvider:
-        db = getDatabase()
+        db = getDatabase(projectName)
     else:
-        db = getIsolationDatabase()
-        
-    tagPathRoot = tagPath[:tagPath.rfind('/')+ 1]
-        
+        db = getIsolationDatabase(projectName)
+
     '''
     Get the unit out of the tagPath which points to the grade tag within the grade UDT
     '''

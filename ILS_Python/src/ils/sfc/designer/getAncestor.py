@@ -6,7 +6,7 @@ Created on Jan 7, 2022
 
 import system
 from ils.sfc.recipeData.api import s88GetAncestors, s88GetEnclosingCharts
-from ils.common.config import getIsolationDatabaseFromInternalDatabase, getIsolationTagProviderFromInternalDatabase, getIsolationTimeFactorFromInternalDatabase, \
+from ils.config.common import getIsolationDatabaseFromInternalDatabase, getIsolationTagProviderFromInternalDatabase, getIsolationTimeFactorFromInternalDatabase, \
     getProductionDatabaseFromInternalDatabase, getProductionTagProviderFromInternalDatabase, getProductionTimeFactorFromInternalDatabase
     
 def main(chartPath, scope):

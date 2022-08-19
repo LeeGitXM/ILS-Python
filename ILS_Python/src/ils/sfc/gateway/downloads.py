@@ -60,7 +60,7 @@ def writeValue(chartScope, stepScope, config, logger, providerName, recipeDataSc
     def _writeValue(chartScope=chartScope, stepScope=stepScope, config=config, logger=logger, providerName=providerName, 
                     recipeDataScope=recipeDataScope, tagPath=tagPath, outputType=outputType):
         from ils.io.api import write, writeRamp
-        from ils.common.config import getTagProvider
+        from ils.config.common import getTagProvider
         from ils.sfc.gateway.api import postToQueue, getIsolationMode
         from ils.sfc.common.constants import MSG_STATUS_INFO, MSG_STATUS_WARNING, MSG_STATUS_ERROR
         from ils.sfc.common.constants import STEP_DOWNLOADING, STEP_SUCCESS, STEP_FAILURE, RAMP_TIME, RAMP_UPDATE_FREQUENCY

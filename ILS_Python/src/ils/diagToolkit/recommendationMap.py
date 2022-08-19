@@ -18,23 +18,23 @@ def build(rootContainer):
     provider=readTag("[Client]Tag Provider").value
     
     #theMap = rootContainer.getComponent("TheMap")
-    diagnoses = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=db)
+    diagnosis = fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=db)
     #diagnoses = updateSqcFlag(diagnoses)
-    rootContainer.diagnoses=diagnoses
+    rootContainer.diagnosis=diagnosis
     
     outputs=fetchQuantOutput(applicationName, quantOutputName, db, provider)
     rootContainer.outputs=outputs
     
-    recDefs=fetchRecDefs(diagnoses, outputs, db)
+    recDefs=fetchRecDefs(diagnosis, outputs, db)
     
-    recommendations, recDefs=fetchRecommendations(diagnoses, outputs, recDefs, db)
+    recommendations, recDefs=fetchRecommendations(diagnosis, outputs, recDefs, db)
     rootContainer.connections=recDefs
     rootContainer.recommendations=recommendations    
 
 
 def fetchQuantOutput(applicationName, quantOutputName, db, provider):
     log.tracef("Fetching the quant output...")
-    SQL = "select QuantOutputName, TagPath, convert(decimal(10,4),CurrentSetpoint) as CurrentSetpoint, Active, "\
+    SQL = "select QuantOutputId, QuantOutputName, TagPath, convert(decimal(10,4),CurrentSetpoint) as CurrentSetpoint, Active, "\
         " convert(decimal(10,4),FinalSetpoint) as FinalSetpoint, convert(decimal(10,4),DisplayedRecommendation) as DisplayedRecommendation "\
         " from DtQuantOutput QO, DtApplication A "\
         " where QO.QuantOutputName = '%s' "\
@@ -44,12 +44,12 @@ def fetchQuantOutput(applicationName, quantOutputName, db, provider):
     pds = system.db.runQuery(SQL, database=db)
     log.tracef("  ...fetched %d Quant Outputs...", len(pds))
 
-    headers=["Name","CurrentSetpoint","FinalSetpoint","Recommendation","Target"]
+    headers=["Id", "Name","CurrentSetpoint","FinalSetpoint","Recommendation","Target"]
     data = []
     for record in pds:
         log.tracef("Active: %s", str(record["Active"]))
         if record["Active"] in [1, True]:
-            data.append([record["QuantOutputName"],record["CurrentSetpoint"],record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
+            data.append([record["QuantOutputId"], record["QuantOutputName"],record["CurrentSetpoint"],record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
         else:
             log.tracef("Need to read current SP")
             tagPath = '[' + provider + ']' + record['TagPath']
@@ -58,16 +58,16 @@ def fetchQuantOutput(applicationName, quantOutputName, db, provider):
                 sp = sp.value
             else:
                 sp = "Bad Value"
-            data.append([record["QuantOutputName"],sp,record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
+            data.append([record[QuantOutputId], record["QuantOutputName"],sp,record["FinalSetpoint"],record["DisplayedRecommendation"],record["TagPath"]])
             
     ds = system.dataset.toDataSet(headers, data)
     return ds
 
 def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     ''' '''
-    log.tracef("Fetching Final Diagnosis that touch %s...", quantOutputName)
+    log.tracef("In fetchDiagnosisForQuantOutput() - Fetching Final Diagnosis that touch %s...", quantOutputName)
         
-    SQL = "select distinct FD.FinalDiagnosisId, FD.FinalDiagnosisName, FD.FinalDiagnosisUUID, FD.DiagramUUID "\
+    SQL = "select distinct FD.FinalDiagnosisId, FD.Active, FD.FinalDiagnosisName, FD.FinalDiagnosisUUID, FD.DiagramUUID "\
         " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtDiagram D, DtFamily F, DtApplication A "\
         " where F.ApplicationId = A.ApplicationId "\
         " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
@@ -83,14 +83,14 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
     pds = system.db.runQuery(SQL, database=db)
     log.tracef("  ...fetched %d Final Diagnoses...", len(pds))
     
-    headers=["Name","Problem","Multiplier", "hasSQC", "UUID", "DiagramUUID", "SqcUUID", "SqcName"]
+    headers=["Id", "Active", "Name", "Multiplier", "hasSQC", "UUID", "DiagramUUID", "SqcUUID", "SqcName"]
     data = []
     for record in pds:
         log.tracef("Looking for the multiplier for %s...", record["FinalDiagnosisName"])
         SQL = "select Multiplier from DtDiagnosisEntry where FinalDiagnosisId = %d and Status = 'Active'" % (record["FinalDiagnosisId"]) 
         multiplier = system.db.runScalarQuery(SQL)
         log.tracef( "The multiplier is: %s", str(multiplier))
-        data.append([record["FinalDiagnosisName"], record["FinalDiagnosisName"], multiplier, False, record["FinalDiagnosisUUID"], record["DiagramUUID"], None, None])
+        data.append([record["FinalDiagnosisId"], record["Active"], record["FinalDiagnosisName"], multiplier, False, record["FinalDiagnosisUUID"], record["DiagramUUID"], None, None])
     
     ds = system.dataset.toDataSet(headers, data)
     return ds
@@ -100,7 +100,7 @@ def fetchDiagnosisForQuantOutput(applicationName, quantOutputName, db=""):
 def updateSqcFlag(diagnoses):
     import system.ils.blt.diagram as diagram
     import com.ils.blt.common.serializable.SerializableBlockStateDescriptor
-    log.tracef( "Now updating the hasSQC flag for each final diagnosis...")
+    log.tracef("In updateSqcFlag() - updating the hasSQC flag for each final diagnosis...")
     for row in range(diagnoses.rowCount):
         finalDiagnosisName = diagnoses.getValueAt(row, "Name")
         log.tracef("  FD Name: %s:", finalDiagnosisName)
@@ -125,7 +125,7 @@ def updateSqcFlag(diagnoses):
     return diagnoses
 
 def fetchQuantOutputForDiagnosis(finalDiagnosisName, db=""):
-    log.tracef( "Fetching all of the quant outputs for Final Diagnosis %s ...", finalDiagnosisName)
+    log.tracef("In fetchQuantOutputForDiagnosis() - Fetching all of the quant outputs for Final Diagnosis %s ...", finalDiagnosisName)
     
     SQL = "select QO.QuantOutputName, QO.TagPath, convert(decimal(10,4),CurrentSetpoint) as CurrentSetpoint, "\
         " convert(decimal(10,4),FinalSetpoint) as FinalSetpoint, convert(decimal(10,4),DisplayedRecommendation) as DisplayedRecommendation "\
@@ -142,7 +142,7 @@ def fetchQuantOutputForDiagnosis(finalDiagnosisName, db=""):
 
 
 def fetchRecDefs(diagnoses, outputs, db):
-    print "Fetching QuantRecDefs..."
+    log.tracef("In fetchRecDefs() - Fetching QuantRecDefs...")
     
     fdNames=[]
     for row in range(diagnoses.rowCount):
@@ -178,7 +178,7 @@ def fetchRecDefs(diagnoses, outputs, db):
     return ds
 
 def fetchRecommendations(diagnoses, outputs, recDefs, db):
-    print "Fetching Recommendations..."
+    log.tracef("In fetchRecommendations() - fetching Recommendations...")
     
     fdNames=[]
     for row in range(diagnoses.rowCount):
@@ -190,7 +190,7 @@ def fetchRecommendations(diagnoses, outputs, recDefs, db):
         outputNames.append(outputs.getValueAt(row, "Name"))
     outputNames="','".join(map(str,outputNames))
 
-    SQL = "select FD.FinalDiagnosisName, QO.QuantOutputName, RD.RecommendationDefinitionId, R.AutoOrManual, R.RecommendationId, "\
+    SQL = "select FD.FinalDiagnosisId, FD.FinalDiagnosisName, QO.QuantOutputId, QO.QuantOutputName, RD.RecommendationDefinitionId, R.AutoOrManual, R.RecommendationId, "\
         " convert(decimal(10,4), R.Recommendation) as Recommendation, "\
         " convert(decimal(10,4), R.AutoRecommendation) as AutoRecommendation, "\
         " convert(decimal(10,4), R.ManualRecommendation) as ManualRecommendation "\
@@ -201,14 +201,16 @@ def fetchRecommendations(diagnoses, outputs, recDefs, db):
         " and FD.FinalDiagnosisName in ('%s')" \
         " and QO.QuantOutputName in ('%s')" % (fdNames, outputNames)
     
-    print SQL
+    #print SQL
     pds = system.db.runQuery(SQL, database=db)
-    print "  ...fetched %i recommendations!" % (len(pds))
+    log.tracef("  ...fetched %d recommendations!", len(pds))
     
-    headers=["DiagnosisId","OutputId","Auto", "Manual", "AutoOrManual", "RecommendationId"]
+    headers=["FdId", "OutputId", "DiagnosisIdx","OutputIdx","Auto", "Manual", "AutoOrManual", "RecommendationId"]
     data = []
     for record in pds:
+        finalDiagnosisId = record["FinalDiagnosisId"]
         finalDiagnosisName = record["FinalDiagnosisName"]
+        quantOutputId = record["QuantOutputId"]
         quantOutputName = record["QuantOutputName"]
         recommendation = record["AutoRecommendation"]
         manual = record["ManualRecommendation"]
@@ -217,7 +219,7 @@ def fetchRecommendations(diagnoses, outputs, recDefs, db):
         
         diagnosisIdx=lookupIdx(diagnoses, "Name", finalDiagnosisName)
         outputIdx=lookupIdx(outputs, "Name", quantOutputName)
-        data.append([diagnosisIdx, outputIdx, recommendation, manual, autoOrManual, recommendationId])
+        data.append([finalDiagnosisId, quantOutputId, diagnosisIdx, outputIdx, recommendation, manual, autoOrManual, recommendationId])
         
         recDefs=setActiveRecDef(recDefs,diagnosisIdx, outputIdx)
         

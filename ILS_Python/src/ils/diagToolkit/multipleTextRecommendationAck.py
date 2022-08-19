@@ -4,7 +4,7 @@ Created on Nov 19, 2018
 @author: phass
 '''
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.util import stripHTML
 from ils.diagToolkit.common import fetchActiveTextRecommendationsForPost
 from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
@@ -16,7 +16,7 @@ def internalFrameOpened(rootContainer):
     
 def refresh(rootContainer):
     print "In %s.refresh()" % (__name__)
-    database = getDatabaseClient()
+    database = getDatabase()
     post = rootContainer.post
     pds = fetchActiveTextRecommendationsForPost(post, database)
     ackVals = [False] * len(pds)
@@ -39,7 +39,7 @@ def refresh(rootContainer):
 def ack(event):
     print "In %s.ack()" % (__name__)
     rootContainer = event.source.parent
-    database = getDatabaseClient()
+    database = getDatabase()
     post = rootContainer.post
     provider = rootContainer.provider
 

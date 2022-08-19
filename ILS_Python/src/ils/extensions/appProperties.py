@@ -4,7 +4,7 @@
 import system
 
 from ils.common.database import getUnitName, getPostForUnitId, lookupKeyFromId
-from ils.common.config import getProductionDatabase
+from ils.config.common import getProductionDatabase
 from ils.queue.commons import getQueueForDiagnosticApplication
 
 from com.ils.common.log import LogMaker

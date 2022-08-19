@@ -18,7 +18,7 @@ get the globals and at the end I stash them.
 
 import sys, system, string, traceback
 from ils.io.util import readTag, writeTag
-from ils.common.config import getTagProvider, getIsolationTagProvider, getDatabase, getIsolationDatabase
+from ils.config.common import getTagProvider, getIsolationTagProvider, getDatabase, getIsolationDatabase
 from ils.labData.common import postMessage
 from java.util import Calendar
 from ils.common.database import toDateString
@@ -47,18 +47,19 @@ def scanner():
     triggerCache= iaGlobals.get(TRIGGER_CACHE, {})
     derivedCalculationCache = iaGlobals.get(DERIVED_CALCULATION_CACHE, {})
 
-    database = getDatabase()
-    isolationDatabase = getIsolationDatabase()
-    tagProvider = getTagProvider()
-    tagProviderIsolation = getIsolationTagProvider()
+    projectName = system.util.getProjectName()
+    database = getDatabase(projectName)
+    isolationDatabase = getIsolationDatabase(projectName)
+    tagProvider = getTagProvider(projectName)
+    tagProviderIsolation = getIsolationTagProvider(projectName)
     
     if readTag("[%s]Configuration/LabData/pollingEnabled" % (tagProvider)).value == True:
-        lastValueCache, triggerCache, derivedCalculationCache = main(database, tagProvider, lastValueCache, triggerCache, derivedCalculationCache)
+        lastValueCache, triggerCache, derivedCalculationCache = main(projectName, database, tagProvider, lastValueCache, triggerCache, derivedCalculationCache)
     else:
         log.tracef("Lab data polling is disabled") 
 
     if readTag("[%s]Configuration/LabData/pollingEnabledIsolation" % (tagProvider)).value == True:
-        lastValueCache, triggerCache, derivedCalculationCache = main(isolationDatabase, tagProviderIsolation, lastValueCache, triggerCache, derivedCalculationCache)
+        lastValueCache, triggerCache, derivedCalculationCache = main(projectName, isolationDatabase, tagProviderIsolation, lastValueCache, triggerCache, derivedCalculationCache)
         
     ''' Tickle the watchdogs '''
     tagPath = "[%s]Site/Watchdogs/Lab Data Watchdog/currentValue" % (tagProvider)
@@ -76,7 +77,7 @@ def scanner():
     system.util.getGlobals()[TRIGGER_CACHE] = triggerCache
     system.util.getGlobals()[DERIVED_CALCULATION_CACHE] = derivedCalculationCache
 
-def main(database, tagProvider, lastValueCache, triggerCache, derivedCalculationCache):
+def main(projectName, database, tagProvider, lastValueCache, triggerCache, derivedCalculationCache):
     log.tracef("Scanning for lab data (%s, %s)...", database, tagProvider)
 
     log.trace("Last Value Cache: %s" % (str(lastValueCache)))
@@ -112,7 +113,7 @@ def main(database, tagProvider, lastValueCache, triggerCache, derivedCalculation
     writeTags=[]
     writeTagValues=[] 
     triggerCache, derivedCalculationCache = checkForDerivedValueTriggers(database, triggerCache, derivedCalculationCache)
-    derivedCalculationCache, writeTags, writeTagValues = checkDerivedCalculations(derivedCalculationCache, database, tagProvider, writeTags, writeTagValues, simulateHDA)
+    derivedCalculationCache, writeTags, writeTagValues = checkDerivedCalculations(projectName, derivedCalculationCache, database, tagProvider, writeTags, writeTagValues, simulateHDA)
     log.debug("Writing %i new derived lab values to local lab data tags" % (len(writeTags)))
     tagWriter(writeTags, writeTagValues, mode=writeMode)
     if len(writeTags) > 0:
@@ -266,7 +267,7 @@ def checkForDerivedValueTriggers(database, triggerCache, derivedCalculationCache
 # The logic that drives the derived calculations is a little different here than in the old system.  In the old system each 
 # calculation procedure had the responsibility to collect consistent lab data.  In the new framework, the engine will collect
 # all of the necessary information and then call the calculation method.
-def checkDerivedCalculations(derivedCalculationCache, database, tagProvider, writeTags, writeTagValues, simulateHDA):
+def checkDerivedCalculations(projectName, derivedCalculationCache, database, tagProvider, writeTags, writeTagValues, simulateHDA):
     derivedLog.tracef("Checking the derived calculations...")
     
     def writeToPHD(resultServerName, resultItemId, newVal, sampleTime, simulateHDA):
@@ -282,7 +283,7 @@ def checkDerivedCalculations(derivedCalculationCache, database, tagProvider, wri
     cal = Calendar.getInstance()
     labDataWriteEnabled=readTag("[" + tagProvider + "]" + "Configuration/LabData/labDataWriteEnabled").value
     globalWriteEnabled=readTag("[" + tagProvider + "]/Configuration/Common/writeEnabled").value
-    productionProviderName = getTagProvider()   # Get the Production tag provider
+    productionProviderName = getTagProvider(projectName)   # Get the Production tag provider
     writeEnabled = tagProvider != productionProviderName or (labDataWriteEnabled and globalWriteEnabled)
     
     for d in derivedCalculationCache.values():

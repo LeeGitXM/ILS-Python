@@ -5,13 +5,13 @@ Created on Jan 5, 2016
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 
 def internalFrameOpened(event):
     print "In internalDrameOpened()" 
     rootContainer = event.source.rootContainer
     windowId = rootContainer.windowId
-    db = getDatabaseClient()
+    db = getDatabase()
     
     SQL = "select message, ackRequired from SfcDialogMessage where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database=db)
@@ -30,7 +30,7 @@ def okActionPerformed(event):
     print "Processing OK action"
     rootContainer = event.source.parent
     windowId = rootContainer.windowId
-    db = getDatabaseClient()
+    db = getDatabase()
 
     # Updating the database communicates with the running step in the gateway which may or may not be waiting for an acknowledgement and
     # it communicates with other clients that are displaying the same notification.  One ACK dismisses all of them.
@@ -45,7 +45,7 @@ def okActionPerformed(event):
     system.nav.closeParentWindow(event)
 
 def checkWindowStatus(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     windowId = rootContainer.windowId
     SQL = "select acknowledged from sfcDialogMessage where windowId = '%s'" % (windowId)

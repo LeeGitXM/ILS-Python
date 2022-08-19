@@ -6,7 +6,7 @@ Created on Mar 8, 2022
 
 import system, math
 from ils.log import getLogger
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.util import formatDate, formatDateTime
 log =getLogger(__name__)
 
@@ -76,7 +76,7 @@ def formatRunningTime(rt):
     return runningTime
 
 def fetchUnitProcedure(rootContainer):
-    db = getDatabaseClient()
+    db = getDatabase()
     startDate = system.date.addDays(system.date.now(), -1)
     SQL = "select chartPath, StartTime from SfcRunLog where StepType = 'Unit Procedure' and Status is NULL and startTime > ?"
     pds = system.db.runPrepQuery(SQL, [startDate], database=db)

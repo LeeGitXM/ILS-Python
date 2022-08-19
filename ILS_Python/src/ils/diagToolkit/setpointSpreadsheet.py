@@ -6,7 +6,7 @@ Created on Sep 9, 2014
 
 import system, string
 from ils.sfc.common.constants import SQL
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.common.constants import CR
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import dsToText
@@ -17,7 +17,7 @@ from ils.io.util import readTag
 from ils.queue.message import insertPostMessage
 from ils.queue.constants import QUEUE_INFO
 
-from ils.blt.api import listBlocksGloballyUpstreamOf, setWatermark, resetBlock, setBlockState, propagateBlockState, sendSignal
+from ils.blt.api import  listBlocksGloballyUpstreamOf, setWatermark, resetBlock, setBlockState, propagateBlockState, sendSignal
 
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -166,8 +166,8 @@ def checkIfDownloadComplete(event):
         
         ''' Make a logbook message for the download BEFORE we reset the FDs in the DB '''
         post = rootContainer.post
-        db = getDatabaseClient()
-        tagProvider = getTagProviderClient()
+        db = getDatabase()
+        tagProvider = getTagProvider()
         
         from ils.diagToolkit.downloader import Downloader
         downloader = Downloader(post, ds, tagProvider, db)
@@ -176,9 +176,7 @@ def checkIfDownloadComplete(event):
         
         ''' Now get to work '''
         rootContainer.downloadActive = False
-        db=readTag("[Client]Database").value
-        db=getDatabaseClient()
-        tagProvider=getTagProviderClient()
+        tagProvider=getTagProvider()
         updateDownloadActiveFlag(rootContainer.post, False, db)
         
         # If all of the downloads were successful, then dismiss the setpoint spreadsheet
@@ -485,7 +483,7 @@ def recalcTimer(event):
     if rootContainer.downloadActive:
         return
 
-    db=getDatabaseClient()
+    db=getDatabase()
     projectName=system.util.getProjectName()
     repeater=rootContainer.getComponent("Template Repeater")
     
@@ -551,8 +549,8 @@ def waitCallback(event):
     rootContainer=event.source.parent
     post = rootContainer.post
 
-    db=getDatabaseClient()
-    tagProvider=getTagProviderClient()
+    db=getDatabase()
+    tagProvider=getTagProvider()
     repeater=rootContainer.getComponent("Template Repeater")
     logAction("WAIT", repeater)
     
@@ -581,8 +579,8 @@ def noDownloadCallback(event):
     
     hideDetailMap()
 
-    db=getDatabaseClient()
-    tagProvider=getTagProviderClient()
+    db=getDatabase()
+    tagProvider=getTagProvider()
     repeater=rootContainer.getComponent("Template Repeater")
     logAction("NO DOWNLOAD", repeater)
     
@@ -970,11 +968,11 @@ def resetDiagram(finalDiagnosisIds, database):
                 
                 # The block may not be on the same diagram as the final diagnosis
                 blockAttributes = block.getAttributes()
-                print "Attributes: ", blockAttributes
-                print "Properties: ", block.getProperties()
+                log.tracef("  Block Attributes: %s", str(blockAttributes))
+                log.tracef("  Block Properties: %s", str(block.getProperties()))
     
                 parentDiagramName = blockAttributes.get("parent", None)
-                print "Parent Diagram Name: %s" % (parentDiagramName)
+                log.tracef("Parent Diagram Name: %s", parentDiagramName)
 
                 if blockClass in OBSERVATION_BLOCK_LIST:
                     log.info("   ... adding a %s named: %s to the reset list..." % (blockClass, blockName))
@@ -1027,9 +1025,6 @@ def resetDiagram(finalDiagnosisIds, database):
                     
                 else:
                     log.tracef("   ...skipping a %s...", blockClass)
-                        
-            else:
-                log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
 
 
 # Reset the BLT diagram in response to a Wait-For-More-Data
@@ -1054,65 +1049,39 @@ def partialResetDiagram(finalDiagnosisIds, database):
             
             log.infof("   ... resetting final diagnosis: %s on diagram %s...", finalDiagnosisName, diagramName)
             
-            print "************************"
-            print "**  TODO over here    **"
-            print "************************"
-            
-            #system.ils.blt.diagram.resetBlock(diagramUUID, finalDiagnosisName)
-            #system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "UNKNOWN")
-            #system.ils.blt.diagram.propagateBlockState(diagramUUID, diagramUUID)
+            resetBlock(diagramName, finalDiagnosisName)
+            setBlockState(diagramName, finalDiagnosisName, "UNKNOWN")
+            propagateBlockState(diagramName, finalDiagnosisName)
                         
             log.infof("Fetching upstream blocks for final diagnosis <%s> on diagram <%s>...", finalDiagnosisName, diagramName)
 
             '''
             Remember that an upstream block could be on another diagram.
             '''
-            downstreamBlocks=[]
-            if diagramName != None and finalDiagnosisName != None:
-                blocks = listBlocksGloballyUpstreamOf(diagramName, finalDiagnosisName)
-
-                for block in blocks:
-                    UUID=block.getIdString()
-                    blockName=block.getName()
-                    blockClass=stripClassPrefix(block.getClassName())
-                    blockId=block.getIdString()
-                    parentUUID=block.getAttributes().get("parent")
-                    
-
-                    # I'm not exactly sure why we choose to do a full reset on the logic filter block, but the 
-                    # reason from G2 was to allow high-frequency data to flow through the diagrams, and possibly
-                    # trigger other diagnosis, but the diagnosis connected to this logic-filter will effectively
-                    # be inhibited from firing based on the configuration of the logic filter. 
-                    if blockClass == "LogicFilter":
-                        log.infof("   ... found a logic filter named: %s  (%s) on  %s...", blockName, UUID, diagramName)
-                        system.ils.blt.diagram.resetBlock(diagramName, blockName)
-                    
-                    elif blockClass in ["SQC", "SQCDiagnosis", "TrendDetector"]:
-                        # Set the state to UNKNOWN, then propagate
-                        log.infof("   ... setting a %s named: %s to UNKNOWN (%s  %s)...", blockClass, blockName, parentUUID, UUID)
-                        system.ils.blt.diagram.setBlockState(parentUUID, blockName, "UNKNOWN")
-                        system.ils.blt.diagram.propagateBlockState(parentUUID, UUID)
- 
-                        if parentUUID not in diagramNames:
-                            diagramNames.append(parentUUID)
-
-                        '''
-                        We do NOT want to send a signal to the block to evaluate in order to get the signal 
-                        to propagate because the EVALUATE signal will cause the block to reevaluate the history
-                        buffer and reach the same conclusion that we just cleared.
-                        '''
-                        
-#                        tList=system.ils.blt.diagram.listBlocksDownstreamOf(diagramUUID, blockName)
-#                        for tBlock in tList:
-#                            tBlockName=tBlock.getName()
-#                            if tBlockName not in downstreamBlocks and tBlockName != finalDiagnosisName:
-#                                downstreamBlocks.append(tBlockName)
+            blocks = listBlocksGloballyUpstreamOf(diagramName, finalDiagnosisName)
+            
+            for block in blocks:
+                blockName=block.getName()
+                blockClass=stripClassPrefix(block.getClassName())
+            
+                '''
+                I'm not exactly sure why we choose to do a full reset on the logic filter block, but the 
+                reason from G2 was to allow high-frequency data to flow through the diagrams, and possibly
+                trigger other diagnosis, but the diagnosis connected to this logic-filter will effectively
+                be inhibited from firing based on the configuration of the logic filter. 
+                '''
+                if blockClass == "LogicFilter":
+                    log.infof("   ... found a logic filter named: %s on  %s...", blockName, diagramName)
+                    resetBlock(diagramName, blockName)
                 
-#                print "The blocks between the observations and the final diagnosis that need to be reset are: ", downstreamBlocks
-#                for blockName in downstreamBlocks:
-#                    system.ils.blt.diagram.resetBlock(diagramUUID, blockName)
-            else:
-                log.error("Skipping diagram reset because the diagram or FD UUID is Null!")
+                elif blockClass in ["SQC", "SQCDiagnosis", "TrendDetector"]:
+                    # Set the state to UNKNOWN, then propagate
+                    log.infof("   ... setting a %s named: %s to UNKNOWN...", blockClass, blockName)
+                    setBlockState(diagramName, blockName, "UNKNOWN")
+                    propagateBlockState(diagramName, blockName)
+            
+                    if diagramName not in diagramNames:
+                        diagramNames.append(diagramName)
     
     '''
     I'm not 100% sure how this worked in G2, do I put the watermark just on the diagram that has the final diagnosis or on all diagrams that have a block that 
@@ -1131,8 +1100,8 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     log.infof("In %s.manualEdit()", __name__)
     valid=True
     
-    database=getDatabaseClient()
-    tagProvider=getTagProviderClient()
+    database=getDatabase()
+    tagProvider=getTagProvider()
     projectName = system.util.getProjectName()
     
     SQL = "update DtQuantOutput set ManualOverride = 1, FeedbackOutputManual = %f "\

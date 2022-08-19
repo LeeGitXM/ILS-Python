@@ -154,14 +154,6 @@ class Downloader():
             time.sleep(1)
         
         log.infof("All of the downloads are complete")
-        
-        ''' Now make a logbook message for the download '''
-#        self.downloadMessage()
-        
-#        from ils.common.operatorLogbook import insertForPost
-#        log.tracef("Logging logbook message: %s", self.logbookMessage)
-#        insertForPost(self.post, self.logbookMessage, self.db)
-
 
     def updateQuantOutputDownloadStatus(self, quantOutputId, downloadStatus):
         ''' Update the database, which will drive th GUI om the client '''
@@ -189,9 +181,9 @@ class Downloader():
         '''
         from ils.diagToolkit.common import fetchSQCRootCauseForFinalDiagnosis
         from ils.diagToolkit.common import fetchHighestActiveDiagnosis
-        print "============================================================================="
-        log.tracef("In %s.downloadMessage(), messageType: %s", __name__, str(messageType))
-        print "The download status dictionary is: ", self.downloadStatus
+
+        log.infof("In %s.downloadMessage(), creating a <%s> logbook message", __name__, str(messageType))
+        log.tracef("The download status dictionary is: %s", str(self.downloadStatus))
 
         noteText = ""
         fdText = "" 
@@ -208,7 +200,7 @@ class Downloader():
             txt = ""
             for col in range(ds.getColumnCount()):
                 txt += "%s ," % (ds.getValueAt(row,col))
-            print row, txt
+            log.tracef("Row: %d: %s", row, txt)
         
         ''' Process the contents of the repeater row by row'''
         for row in range(ds.getRowCount()):
@@ -243,7 +235,7 @@ class Downloader():
                 finalDiagnosisRecommendations = {}
                 finalDiagnosisIds = []
                 for finalDiagnosisRecord in pds:
-                    print "...working..."
+                    log.tracef("Processing a Final Diagnosis Record...")
                     diagramName = finalDiagnosisRecord['DiagramName']
                     finalDiagnosisId = finalDiagnosisRecord['FinalDiagnosisId']
                     recommendationPDS = self.fetchRecommendationsForFinalDiagnosis(finalDiagnosisId)
@@ -259,10 +251,16 @@ class Downloader():
             
                     if recommendationErrorText != None:
                         fdText += "%s" % (recommendationErrorText) 
-        
-                    rootCauseList=fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosisName)
-                    for rootCause in rootCauseList:
-                        fdText += "%s" % (rootCause)
+                    
+                    log.tracef("*** The preliminary fdText is: <%s>", fdText)
+                    
+                    log.tracef("Fetching SQC root causes...")
+                    sqcBlockNames=fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosisName)
+                    for sqcBlockName in sqcBlockNames:
+                        log.tracef("*** The root cause is: <%s>", sqcBlockName)
+                        
+                    if len(sqcBlockNames) > 0:
+                        fdText += " - SQC Violations: %s" % (", ".join(sqcBlockNames))
             
                     ''' Start an embedded list of individual recommendations for this Final Diagnosis '''
                     fdText += "<UL>"
@@ -273,11 +271,17 @@ class Downloader():
                         outputName = recRecord["QuantOutputName"]
                         tagPath = recRecord["TagPath"]
                         autoRecommendation = recRecord["AutoRecommendation"]
-                        fdText += "<li>desired change in %s = %f</li>" % (tagPath, autoRecommendation)
+                        rampTime = recRecord["RampTime"]
+                        
+                        if rampTime == None:
+                            fdText += "<li>desired change in %s = %f</li>" % (tagPath, autoRecommendation)
+                        else:
+                            fdText += "<li>desired ramp in %s = %f over %s minutes</li>" % (tagPath, autoRecommendation, str(rampTime))
+                        
                     fdText += "</UL>"
                 fdText += "</UL>"
                 
-                print "Done processing an APP row: ", fdText
+                log.tracef("Done processing an APP row: %s", fdText)
 
                 writeResultsText = "<LI>Download Results:<UL>"
                 
@@ -294,15 +298,17 @@ class Downloader():
                     
                     quantOutputName = record['QuantOutputName']
                     quantOutputId = record['QuantOutputId']
-                    print "%s - %s" % (str(quantOutputId), quantOutputName)
+                    log.tracef("Quant Output: %s - %s", str(quantOutputId), quantOutputName)
                     tagPath = record['TagPath']
                     feedbackOutput=record['FeedbackOutput']
+                    feedbackMethod=record['FeedbackMethod']
                     feedbackOutputManual=record['FeedbackOutputManual']
                     feedbackOutputConditioned = record['FeedbackOutputConditioned']
                     manualOverride=record['ManualOverride']
                     outputLimited=record['OutputLimited']
                     outputLimitedStatus=record['OutputLimitedStatus']
-                    print "Manual Override: ", manualOverride
+                    log.tracef("Manual Override: %s", str(manualOverride))
+                    log.tracef("  Feedback Method: %s", feedbackMethod)
                     
                     if manualOverride or (outputLimited and feedbackOutput != 0.0):
                         if manualOverride:
@@ -313,10 +319,26 @@ class Downloader():
                         
                     ''' There is a combined section for the results of the write '''
                     if string.upper(messageType) == "DOWNLOAD":
+                        '''
+                        If there were multiple recommendations for this output, then show how the multiple recommendations were combined.
+                        We are just showing the final value here, the individual contributions (by final diagnosis) were listed above.
+                        '''
+                        recCntr, feedbackMethod = self.fetchRecommendationsForQuantOutput(quantOutputId)      
+                        log.tracef("# recommendations: %d, Feedback Method: %s", recCntr, feedbackMethod) 
+                        
                         tag = self.ds.getValueAt(row, "tag")
                         newSetpoint = self.ds.getValueAt(row, "finalSetpoint")
+                        oldSetpoint = self.ds.getValueAt(row, "setpoint")
                         tagPath="[%s]%s" % (self.tagProvider, tag)
-                        writeResultsText += "<LI>download of %.4f to %s was %s" % (newSetpoint, tagPath, downloadStatus)
+                        
+                        if string.upper(downloadStatus) == 'SUCCESS':
+                            statusMsg = "Successfully wrote"
+                        else:
+                            statusMsg = "Error writing"
+                        
+                        writeResultsText += "<LI>%s %.4f (was %.4f) to %s" % (statusMsg, newSetpoint, oldSetpoint, tagPath)
+                        if recCntr > 1:
+                            writeResultsText += " (multiple recommendations were combined using %s feedback method)" % (feedbackMethod)
             
         self.logbookMessage += fdText
         if noteText != "":
@@ -328,8 +350,7 @@ class Downloader():
         if string.upper(messageType) == "DOWNLOAD":
             self.logbookMessage += writeResultsText
             
-        print self.logbookMessage
-        print "============================================================================="
+        log.tracef("The final logbook message is: %s", self.logbookMessage)
 
     
     '''
@@ -341,7 +362,7 @@ class Downloader():
         SQL = "select QO.QuantOutputName, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
             " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
             " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement, "\
-            " R.Recommendation, R.AutoRecommendation, R.ManualRecommendation, R.AutoOrManual "\
+            " R.Recommendation, R.AutoRecommendation, R.ManualRecommendation, R.AutoOrManual, R.RampTime  "\
             " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R, Lookup L "\
             " where L.LookupTypeCode = 'FeedbackMethod'"\
             " and L.LookupId = QO.FeedbackMethodId "\
@@ -353,30 +374,32 @@ class Downloader():
         log.trace(SQL)
         pds = system.db.runQuery(SQL, self.db)
         return pds
-
+    
     '''
-    Fetch the outputs for a final diagnosis and return them as a list of dictionaries
+    Fetch the recommendations for a specific Quant Output.
     I'm not sure who the clients for this will be so I am returning all of the attributes of a quantOutput.  This includes the attributes 
     that are used when calculating/managing recommendations and the output of those recommendations.
     '''
-    def fetchOutputsForListOfFinalDiagnosis(self, finalDiagnosisIdList):
-        ids = ','.join(str(t) for t in finalDiagnosisIdList)
-        SQL = "select distinct QO.QuantOutputName, QO.QuantOutputId, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
-            " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
-            " QO.FeedbackOutput, QO.FeedbackOutputManual, QO.FeedbackOutputConditioned, QO.ManualOverride, QO.QuantOutputId, QO.IgnoreMinimumIncrement "\
-            " from DtFinalDiagnosis FD, DtRecommendationDefinition RD, DtQuantOutput QO, Lookup L "\
+    def fetchRecommendationsForQuantOutput(self, quantOutputId):
+        SQL = "select L.LookupName FeedbackMethod, R.Recommendation "\
+            " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R, Lookup L "\
             " where L.LookupTypeCode = 'FeedbackMethod'"\
             " and L.LookupId = QO.FeedbackMethodId "\
-            " and FD.FinalDiagnosisId = RD.FinalDiagnosisId "\
             " and RD.QuantOutputId = QO.QuantOutputId "\
-            " and QO.Active = 1 "\
-            " and FD.FinalDiagnosisId in (%s) "\
-            " order by QuantOutputName"  % ( ids )
-        print SQL
+            " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
+            " and QO.QuantOutputId = %s "\
+            " order by QuantOutputName"  % ( str(quantOutputId))
         log.trace(SQL)
         pds = system.db.runQuery(SQL, self.db)
-        return pds
-    
+        
+        cnt = len(pds)
+        if cnt <= 0:
+            feedbackMethod = "UNKNOWN"
+        else:
+            feedbackMethod = pds[0]["FeedbackMethod"]
+        
+        return cnt, feedbackMethod
+
     def fetchQuantOutput(self, qoId):
         SQL = "select distinct QO.QuantOutputName, QO.QuantOutputId, QO.TagPath, QO.MostNegativeIncrement, QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, "\
             " QO.SetpointLowLimit, L.LookupName FeedbackMethod, QO.OutputLimitedStatus, QO.OutputLimited, QO.OutputPercent, QO.IncrementalOutput, "\
@@ -385,7 +408,6 @@ class Downloader():
             " where L.LookupTypeCode = 'FeedbackMethod'"\
             " and L.LookupId = QO.FeedbackMethodId "\
             " and QO.QuantOutputId = %d" % ( qoId )
-        print SQL
         log.trace(SQL)
         pds = system.db.runQuery(SQL, self.db)
         

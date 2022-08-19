@@ -6,13 +6,13 @@ Created on Feb 17, 2018
 
 import xml.etree.ElementTree as ET
 import system, os
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.error import notifyError
 from ils.log import getLogger
 log = getLogger(__name__)
 
 def importRecipeDataCallback(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent.parent
     folder = rootContainer.importExportFolder
     filename = system.file.openFile(".xml", folder)
@@ -26,7 +26,7 @@ def importRecipeDataCallback(event):
 def importStepRecipeDataCallback(event):
     
     try:
-        db = getDatabaseClient()
+        db = getDatabase()
         log.infof("In %s.importStepRecipeDataCallback()...", __name__)
         
         stepContainer = event.source.parent

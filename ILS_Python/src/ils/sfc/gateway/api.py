@@ -496,7 +496,6 @@ def getChartLogger(chartScope):
     '''
     Get the logger associated with this chart
     '''
-    
     pypath = getChartPath(chartScope).replace("/",".")
     return getLogger(pypath)
 

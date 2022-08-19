@@ -5,7 +5,7 @@ Created on Jul 26, 2018
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 
 def internalFrameOpened(rootContainer):
     print "In %s.internalFrameOpened()..." % (__name__)
@@ -57,7 +57,7 @@ def deleteOpcServer(event):
     rootContainer = event.source.parent
     print "In %s.deleteOpcServers()" % (__name__)
 
-    db = getDatabaseClient()
+    db = getDatabase()
     table = rootContainer.getComponent("OPC Servers")
     ds = table.data
     selectedRow = table.selectedRow
@@ -78,17 +78,17 @@ def deleteOpcServer(event):
     
 def insertOpcServer(serverName):
     SQL = "insert into LtOpcInterface (InterfaceName) values ('%s')" % (serverName)
-    db = getDatabaseClient()
+    db = getDatabase()
     system.db.runUpdateQuery(SQL, db)
     
 def removeOpcServer(serverName):
     SQL = "delete from LtOpcInterface where InterfaceName = '%s'" % (serverName)
-    db = getDatabaseClient()
+    db = getDatabase()
     system.db.runUpdateQuery(SQL, db)
 
 def refreshOpcServers(rootContainer):
     SQL = "select InterfaceId, InterfaceName from LtOpcInterface order by InterfaceName"
-    db = getDatabaseClient()
+    db = getDatabase()
     pds = system.db.runQuery(SQL, db)
     table = rootContainer.getComponent("OPC Servers")
     table.data = pds
@@ -127,7 +127,7 @@ def addHdaServer(event):
         refreshHdaServers(rootContainer)
     
 def deleteHdaServer(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     print "In %s.deleteHdaServers()" % (__name__)
 
@@ -152,17 +152,17 @@ def deleteHdaServer(event):
     
 def insertHdaServer(serverName):
     SQL = "insert into LtHdaInterface (InterfaceName) values ('%s')" % (serverName)
-    db = getDatabaseClient()
+    db = getDatabase()
     system.db.runUpdateQuery(SQL, db)
 
 def removeHdaServer(serverName):
     SQL = "delete from LtHdaInterface where InterfaceName = '%s'" % (serverName)
-    db = getDatabaseClient()
+    db = getDatabase()
     system.db.runUpdateQuery(SQL, db)
 
 def refreshHdaServers(rootContainer):
     SQL = "select InterfaceId, InterfaceName from LtHdaInterface order by InterfaceName"
-    db = getDatabaseClient()
+    db = getDatabase()
     pds = system.db.runQuery(SQL, db)
     table = rootContainer.getComponent("HDA Servers")
     table.data = pds

@@ -5,8 +5,10 @@ Created on Oct 31, 2014
 '''
 import system.util, time
 from ils.io.util import readTag
-from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.sfc.common.constants import CLIENT_DONE, CHART_SCOPE, STEP_SCOPE, PROJECT, ISOLATION_MODE, \
+    CONTROL_PANEL_NAME, CONTROL_PANEL_ID, ORIGINATOR, MESSAGE_QUEUE, DEFAULT_MESSAGE_QUEUE, DATABASE, TAG_PROVIDER, TIME_FACTOR
+from ils.sfc.common.util import chartIsRunning
+from ils.config.client import getDatabase, getTagProvider, getTimeFactor
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 from ils.sfc.recipeData.api import s88GetStepInfoFromId
 from ils.log import getLogger
@@ -48,7 +50,7 @@ def setClientResponse(rootContainer, response):
     
     else:
         targetStepId = rootContainer.targetStepId
-        db = getDatabaseClient()
+        db = getDatabase()
         
         '''
         An optimization is to assume that the attribute is ".value" if they did not enter an attribute.
@@ -90,6 +92,86 @@ def sendResponse(messageId, response):
     replyPayload[WINDOW_ID] = messageId    
     project = system.util.getProjectName()
     sendMessageToGateway(project, 'sfcResponse', replyPayload)  
+
+
+''' 
+We need to get the queue name out of the unit procedure and use that as the default message queue, but
+unlike in the old system, where we ran a unit procedure, here we are running a chart, and the chart had
+better have a unit procedure on the top chart.  However all this method has is a chart path, it has no
+way of knowing about the unit procedure block.  So when the unit procedure block runs we will update the 
+record in the SfcControlParameter table. 
+
+1/28/22 - I am now assuming that this is only called from a client.  If there is some mechanism to call this from the gateway
+          then it needs to check scope.
+'''
+def startChart(chartPath, controlPanelName, project, originator, isolationMode, chartParams={}):
+    print "Starting a chart: <%s>, control panel: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, controlPanelName, project, originator, str(isolationMode))
+    if chartIsRunning(chartPath, isolationMode):
+        print "Exiting because the chart is already running!"
+        return
+    
+    db = getDatabase()
+    tagProvider = getTagProvider()
+    timeFactor = getTimeFactor()
+
+    from ils.sfc.client.windows.controlPanel import createControlPanel, getControlPanelIdForName
+    controlPanelId = getControlPanelIdForName(controlPanelName, db)
+    if controlPanelId == None:
+        controlPanelId = createControlPanel(controlPanelName, db)
+    
+    initialChartParams = dict()
+    initialChartParams[PROJECT] = project
+    initialChartParams[ISOLATION_MODE] = isolationMode
+    initialChartParams[CONTROL_PANEL_NAME] = controlPanelName
+    initialChartParams[CONTROL_PANEL_ID] = controlPanelId
+    initialChartParams[ORIGINATOR] = originator
+    initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
+    initialChartParams[DATABASE] = db
+    initialChartParams[TAG_PROVIDER] = tagProvider
+    initialChartParams[TIME_FACTOR] = timeFactor
+
+    # What does this do??? (PH 12/21/2021
+    initialChartParams.update(chartParams)
+
+    print "Starting a chart with: ", initialChartParams
+    runId = system.sfc.startChart(chartPath, initialChartParams)
+    
+    if isolationMode:
+        isolationFlag = 1
+    else:
+        isolationFlag = 0
+    
+    updateSql = "Update SfcControlPanel set chartRunId = '%s', originator = '%s', project = '%s', isolationMode = %d, "\
+        "EnableCancel = 1, EnablePause = 1, EnableReset = 1, EnableResume = 1, EnableStart = 1 "\
+        "where controlPanelId = %s" % (runId, originator, project, isolationFlag, str(controlPanelId))
+    print "SQL: ", updateSql
+    system.db.runUpdateQuery(updateSql, database=db)
+    print "...done..."
+    return runId
+
+def startChartWithoutControlPanel(chartPath, project, originator, isolationMode, chartParams={}):
+    print "Starting a chart: <%s>, project: <%s>, originator: <%s>, isolation: <%s>" % (chartPath, project, originator, str(isolationMode))
+    if chartIsRunning(chartPath, isolationMode):
+        print "Exiting because the chart is already running!"
+        return
+    
+    db = getDatabase()
+    tagProvider = getTagProvider()
+    
+    initialChartParams = dict()
+    initialChartParams[PROJECT] = project
+    initialChartParams[ISOLATION_MODE] = isolationMode
+    initialChartParams[ORIGINATOR] = originator
+    initialChartParams[MESSAGE_QUEUE] = DEFAULT_MESSAGE_QUEUE
+    initialChartParams[DATABASE] = db
+    initialChartParams[TAG_PROVIDER] = tagProvider
+    
+    initialChartParams.update(chartParams)
+    
+    print "Starting a chart with: ", initialChartParams
+    runId = system.sfc.startChart(chartPath, initialChartParams)
+    
+    return runId
 
 def testQuery(query, isolationMode):
     from java.lang import Exception
@@ -205,14 +287,6 @@ def getStartInIsolationMode():
        CAUTION: this does not relate to any particular chart run and is only meaningful
        at the moment a chart is started.'''
     return readTag('[Client]/Isolation Mode').value
-
-def getDatabase():
-    '''Get the database name, taking isolation mode into account'''
-    return getDatabaseClient()
-
-def getTagProvider():
-    '''Get the tag provider name, taking isolation mode into account'''
-    return getTagProviderClient()
 
 def sendMessageToGateway(project, handler, payload):
     '''Send a message to the gateway'''

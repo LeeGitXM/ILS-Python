@@ -5,7 +5,7 @@ Created on Apr 15, 2022
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.queue.commons import getQueueId
 from ils.common.database import lookupIdFromKey, getUnitId
 from ils.diagToolkit.common import fetchOutputsForApplication
@@ -43,14 +43,14 @@ Page 1 button callbacks.
 '''
 def saveCallback(event):
     log.infof("In %s.saveCallback()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     saved = save(event.source.parent.parent, db)
     if saved:
         system.nav.closeParentWindow(event)
 
 def applyCallback(event):
     log.infof("In %s.apply()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     save(event.source.parent.parent, db)
     
 '''
@@ -219,7 +219,7 @@ def refresh(rootContainer):
     '''
     Generally only called on internalFrameOpened() 
     '''
-    db = getDatabaseClient()
+    db = getDatabase()
     applicationId = rootContainer.applicationId
     if applicationId > 0:
         SQL = "select ApplicationName, Description, UnitName, QueueKey, Managed, GroupRampMethodName "\

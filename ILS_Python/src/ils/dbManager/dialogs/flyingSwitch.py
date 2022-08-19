@@ -9,7 +9,7 @@ Scripts in support of the "Flying Switch" dialog
 import system
 from ils.common.util import getRootContainer
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -35,7 +35,7 @@ def internalFrameActivated(rootContainer):
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("flyingswitch.requery ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
     
@@ -53,7 +53,7 @@ def requery(component):
 # By deleting a row, we are deleting a flying switch grade transition.
 def deleteRow(button):
     log.info("flyingswitch.deleteRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -90,7 +90,7 @@ def addRow(button):
 # Update database for a cell edit.  Can do an insert or update!
 def update(table,row):
     log.info("flyingswitch.update (row %d)..." % (row))
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     rowId = ds.getValueAt(row,'Id')

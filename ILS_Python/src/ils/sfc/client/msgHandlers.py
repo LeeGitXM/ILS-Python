@@ -3,12 +3,12 @@ All SFC Client Message Handlers.
 These message handlers all run in the client (the client receives the message from the gateway)
 '''
 
-import system, string
+import system
 from ils.sfc.common.constants import WINDOW, WINDOW_PATH, WINDOW_ID, CONTROL_PANEL_NAME, ORIGINATOR, MESSAGE, SCALE, POSITION, \
     IS_SFC_WINDOW, DATABASE, CONTROL_PANEL_ID, CONTROL_PANEL_WINDOW_PATH
 from ils.sfc.client.windowUtil import shouldShowWindow, fetchWindowInfo
 from ils.common.windowUtil import positionWindow, openWindowInstance
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -165,7 +165,7 @@ def sfcOpenControlPanel(payload):
     controlPanelId = payload.get(CONTROL_PANEL_ID, -1)
     originator = payload.get(ORIGINATOR, "")
     database = payload.get(DATABASE, "")
-    clientDatabase = getDatabaseClient()
+    clientDatabase = getDatabase()
     
     log.tracef("...checking if the control panel should be shown on this client...")
     if not(shouldShowWindow(payload)):
@@ -183,7 +183,7 @@ def sfcCloseWindow(payload):
     log.infof("In %s.sfcCloseWindow() with %s", __name__, str(payload))
     windowId = payload[WINDOW_ID]
     database = payload[DATABASE]
-    clientDatabase = getDatabaseClient()
+    clientDatabase = getDatabase()
     if database <> clientDatabase:
         log.tracef("Ignoring closeWindow message because database does not match (%s vs %s)", database, clientDatabase)
         

@@ -5,7 +5,7 @@ Created on Apr 12, 2022
 '''
 import system
 from ils.common.util import parseResourcePath
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.diagToolkit.common import fetchApplicationId, fetchFamilyId, fetchApplications, fetchFamilies, fetchDiagrams, fetchFinalDiagnosisList, fetchDiagramId, fetchFinalDiagnosisId
 
 from ils.log import getLogger
@@ -35,6 +35,7 @@ CLICK_THRESHOLD = 10
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()...", __name__)
     rootContainer = event.source.rootContainer
+    rootContainer.getComponent("Diagram Container").buttonValue = 1
     treeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     treeWidget.selectedNodeType = ""
 
@@ -43,7 +44,7 @@ def internalFrameActivated(event):
     ''' This is called whenever the window regains focus '''
     log.infof("In %s.internalFrameActivated()...", __name__)
     rootContainer = event.source.rootContainer
-    db = getDatabaseClient()
+    db = getDatabase()
     
     # Clearing the selected Node Type makes the tree appear to be unresponsive
     #treeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
@@ -53,7 +54,7 @@ def internalFrameActivated(event):
 
 def refreshDiagramTreeCallback(rootContainer):
     log.infof("In %s.refreshDiagramTreeCallback()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     refreshDiagramTree(rootContainer, db)
 
 def refreshDiagramTree(rootContainer, db):
@@ -94,7 +95,7 @@ def refreshDiagramTree(rootContainer, db):
     treeWidget.data = ds
 
 def refreshHierarchyTreeCallback(rootContainer, db=""):
-    db = getDatabaseClient()
+    db = getDatabase()
     refreshHierarchyTree(rootContainer, db)
     
 def refreshHierarchyTree(rootContainer, db):
@@ -171,7 +172,7 @@ def determineNodeType(event):
 def addCallback(event):
     ''' The add button is used to create a new application or a new family '''
     log.infof("In %s.addCallback()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent.parent
     tree = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     selectedPath = tree.selectedPath
@@ -196,7 +197,7 @@ def addCallback(event):
     
 def deleteCallback(event):
     log.infof("In %s.deleteCallback()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent.parent
     tree = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     selectedPath = tree.selectedPath
@@ -245,7 +246,7 @@ def editCallbackForDoubleClick(event):
     
 def editCallback(event):
     log.infof("In %s.editCallback()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent.parent
     tree = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     selectedPath = tree.selectedPath
@@ -310,7 +311,7 @@ def getFullDiagramNameForFinalDiagnosis(rootContainer, selectedPath):
     
 def insertDiagramCallback(event):
     log.infof("In %s.insertDiagramCallback()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     diagramTreeWidget = rootContainer.getComponent("Diagram Container").getComponent("Diagram Tree")
     row = diagramTreeWidget.selectedItem
@@ -345,7 +346,7 @@ def removeDiagramCallback(rootContainer):
     ''' This is called from a popup. '''
     
     log.infof("In %s.removeDiagramCallback()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     
     ''' The full diagram name is stored in the tooltip of the  '''
     hierarchyTreeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
@@ -408,7 +409,7 @@ def mouseReleasedCallbackForApplicationHierarchyTree(event):
         system.nav.centerWindow(window)
 
     def addFamilyPopupCallback(event):
-        db = getDatabaseClient()
+        db = getDatabase()
         tree = event.source
         selectedPath = tree.selectedPath
         tokens = selectedPath.split("/")

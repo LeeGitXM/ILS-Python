@@ -7,7 +7,7 @@ Created on Dec 3, 2014
 import system, string, time
 from java.util import Date
 from ils.common.util import isText
-from ils.common.config import getTagProvider, getIsolationTagProvider,  getDatabase, getIsolationDatabase
+from ils.config.common import getTagProvider, getIsolationTagProvider,  getDatabase, getIsolationDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -419,27 +419,24 @@ def waitForWriteComplete(tagRoot, timeout=60, frequency=1):
 
 def getDatabaseFromTagPath(tagPath):
     '''
-    This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
-    provider without the brackets.  If a tag provider is not included in the tag path then the production tag provider is returned.
+    There isn't a generic way to get a database from a tag path.
+    In the previous architecture where there was only production / isolation set of interfaces, it was possible but now in Ignition 8
+    where we are embracing multiple projects (like every Ignition gateway), each with their own set of production and isolation providers
+    this is impossible.  Since this thread is generally called from a UDT, the suggested upgrade is to add a "database property / tag to the UDT
+    and then configure each UDT with the database name.
     '''
-    provider = getProviderFromTagPath(tagPath)
-    productionProvider = getTagProvider()
-    
-    if provider == productionProvider:
-        db = getDatabase()
-    else:
-        db = getIsolationDatabase()
-
+    db = ""
     return db
 
 
 def getProviderFromTagPath(tagPath):
     '''
     This parses a full tagpath, which includes the provider at the beginning in square brackets, and returns the 
-    provider without the brackets.  If a tag provider is not included in the tag path then the production tag provider is returned.
+    provider without the brackets.  If a tag provider is not included in the tag path then this will return the default provider which
+    doesn't have any meaning in gateway scope.
     '''
     if tagPath.find("[") < 0 or tagPath.find("]") < 0:
-        provider = getTagProvider()
+        provider = "[]"
     else:
         provider=tagPath[1:tagPath.find(']')]
     return provider
@@ -453,10 +450,12 @@ def getProviderAndDatabaseFromTagPath(tagPath):
     tagProvider = getProviderFromTagPath(tagPath)
     productionTagProvider = getTagProvider()
     
+    # TODO resolve hardcode
+    projectName = "XOM_Dev"
     if tagProvider == productionTagProvider:
-        db = getDatabase()
+        db = getDatabase(projectName)
     else:
-        db = getIsolationDatabase()
+        db = getIsolationDatabase(projectName)
 
     return tagProvider, db
 

@@ -10,12 +10,12 @@ Currently, when editing recipe data in the Designer, we are alway editing the Pr
 
 import system, string
 from ils.common.database import toDictList
-from ils.common.config import getDatabaseClient 
+from ils.config.client import getDatabase 
 
 def getRecipeDataList(stepUUID):
     print "Fetching recipe data for step %s" % (stepUUID)
     
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeData = []
     
     pds = system.db.runQuery("select * from SfcRecipeDataSimpleValueView where stepUUID = '%s'" % (stepUUID), db)

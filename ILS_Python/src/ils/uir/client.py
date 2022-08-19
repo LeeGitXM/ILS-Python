@@ -5,7 +5,7 @@ Created on Dec 27, 2018
 '''
 import system
 from ils.common.database import getConsoleWindowNameForPost
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -27,7 +27,7 @@ def uirNotifyHandler(payload):
     '''This runs in a client when it receives a uirNotify message.  It determines if the window should be opened based on the console window for the specified post being open. '''
 
     print "In %s.uirNotifyHandler() - payload: %s" % (__name__, str(payload))
-    db = getDatabaseClient()
+    db = getDatabase()
     windowName = payload["windowName"]
     post = payload["post"]
     consoleWindowName = getConsoleWindowNameForPost(post, db)

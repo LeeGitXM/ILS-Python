@@ -6,7 +6,7 @@ Created on May 10, 2021
 
 import system
 import xml.etree.ElementTree as ET
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sfc.recipeData.export import Exporter
 from ils.sfc.recipeData.importer import Importer
 
@@ -215,7 +215,7 @@ def importCallback(event):
 
     
 def getInfo(event):
-    db = getDatabaseClient()
+    db = getDatabase()
 
     chartList = event.source.parent.getComponent("Chart Table")
     chartPath = chartList.selectedChart

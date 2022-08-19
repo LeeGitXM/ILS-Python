@@ -66,19 +66,17 @@ def fd1_2_5(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     
     return True, txt, recommendations
 
+'''
+*****************************************************************************
+             NOTHING BELOW HERE IS USED
+*****************************************************************************
+'''
+
 # A text recommendations
 def fd1_2_6(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In %s.fd1_2_6" % (__name__)
     recommendations = []
     return True, "Turn up the heat", recommendations
-
-'''
-*****************************************************************************
-'''
-
-
-
-
 
 def fd1_2_3a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In fd1_2_3a - returning a 0.0 recommendation "

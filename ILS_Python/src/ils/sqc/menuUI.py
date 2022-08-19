@@ -5,7 +5,7 @@ Created on Dec 10, 2015
 '''
 
 import system, string
-from ils.common.config import getDatabaseClient, getTagProvider
+from ils.config.client import getDatabase, getTagProvider
 from ils.io.util import readTag
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -129,7 +129,7 @@ def openSQCPlots(sqcDiagnosisNames):
     '''
     This is called by the predefined SQC plots button which is a shortcut for preconfiguring buttons to show a whole group of SQC plots. 
     '''
-    db = getDatabaseClient()
+    db = getDatabase()
     pds =system.db.runQuery("select SQCDiagnosisName, SQCDiagnosisLabel, SQCDiagnosisUUID from DtSQCDiagnosis", db)
     
     for sqcDiagnosisName in sqcDiagnosisNames:

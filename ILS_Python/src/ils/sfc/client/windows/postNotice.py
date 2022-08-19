@@ -5,14 +5,14 @@ Created on Jul 18, 2017
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 
 def internalFrameOpened(event):
     print "In internalFrameOpened()" 
     rootContainer = event.source.rootContainer
     windowId = rootContainer.windowId
     
-    db = getDatabaseClient()
+    db = getDatabase()
     
     SQL = "select message, ackRequired from SfcDialogMessage where windowId = '%s'" % (windowId)
     pds = system.db.runQuery(SQL, database=db)

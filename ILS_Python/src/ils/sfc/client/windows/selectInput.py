@@ -5,14 +5,14 @@ Created on Jan 15, 2015
 '''
 import system
 from ils.sfc.recipeData.api import s88GetFromStep
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sfc.client.util import setClientDone, setClientResponse
 from ils.log import getLogger
 log = getLogger(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.rootContainer
     windowId = rootContainer.windowId
 

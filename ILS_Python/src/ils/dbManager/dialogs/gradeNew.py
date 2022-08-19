@@ -6,7 +6,7 @@ Created on Mar 21, 2017
 
 import system
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -18,7 +18,7 @@ def internalFrameActivated(rootContainer):
 
 def createGrade(rootContainer):
     print "In createGrade..."
-    db = getDatabaseClient()
+    db = getDatabase()
     newGrade = rootContainer.getComponent("GradeTextField").text
     oldGrade = rootContainer.oldGrade
     oldVersion = rootContainer.oldVersion

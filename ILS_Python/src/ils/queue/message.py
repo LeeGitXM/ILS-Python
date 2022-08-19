@@ -6,7 +6,8 @@ Created on Sep 9, 2014
 import  system, string
 from ils.queue.constants import QUEUE_DETAIL_MESSAGE_LENGTH
 from ils.common.error import catchError
-from ils.common.config import getDatabaseClient, getProductionDatabase
+from ils.config.client import getDatabase
+from ils.config.common import getProductionDatabase
 from ils.common.windowUtil import positionWindow
 from ils.common.user import isAE, isOperator, isAdmin
 from ils.log import getLogger
@@ -161,7 +162,7 @@ This is called in client scope, generally from a button
 '''
 def view(queueKey, useCheckpoint=False, silent=False, position="", scale=1.0):
     
-    db = getDatabaseClient()
+    db = getDatabase()
     
     if position == "":
         SQL = "select Position from QueueMaster where QueueKey = '%s'" % (queueKey)
@@ -295,7 +296,7 @@ def handleMessage(payload):
         projectName = system.util.getProjectName()
         db = getProductionDatabase(projectName)
 
-    clientDB = getDatabaseClient()
+    clientDB = getDatabase()
     if clientDB <> db:
         print "Not showing the queue because the client database does not match the queue database!"
         return

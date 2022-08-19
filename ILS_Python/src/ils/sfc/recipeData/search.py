@@ -5,7 +5,7 @@ Created on Feb 12, 2020
 '''
 
 import system, string
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sfc.recipeData.hierarchyWithBrowser import deleteRecipeData, deleteRecipeDataGroup
 from ils.common.util import clearDataset
 from ils.log import getLogger
@@ -38,7 +38,7 @@ def internalFrameOpened(rootContainer):
     
 def searchForKeyCallback(container):
     log.infof("In %s.searchForKeyCallback", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     key = container.getComponent("Key Field").text
     
     SQL = "select RecipeDataId, StepId, RecipeDataFolderId, RecipeDataKey, ChartPath, StepName, RecipeDataType from SfcRecipeDataView "\
@@ -76,7 +76,7 @@ def editCallback(event):
     
 def deleteCallback(event):
     log.infof("In %s.deleteCallback()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     
     stepId, recipeDataType, recipeDataId, recipeDataKey, recipeDataFolderId = getSelectedInfo(event)
     deleteRecipeData(recipeDataType, recipeDataId, db)
@@ -85,7 +85,7 @@ def deleteCallback(event):
 
 def deleteFolderCallback(event):
     log.infof("In %s.deleteFolderCallback()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     
     container = event.source.parent
     table = container.getComponent("Power Table")
@@ -126,7 +126,7 @@ def getSelectedInfo(event):
 def searchForReferenceCallback(container):
     TEST_MODE = False
     log.infof("In %s.searchForReferenceCallback", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     key = container.getComponent("Key Field").text
     log.tracef("Searching for: %s", key)
     

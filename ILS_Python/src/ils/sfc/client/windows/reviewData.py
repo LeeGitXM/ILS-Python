@@ -7,12 +7,12 @@ This step caused some problems because of the brilliant decision to have an impl
 '''
 
 import system, string
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sfc.recipeData.api import s88GetStepInfoFromId
 from ils.sfc.recipeData.core import splitKey, setRecipeData
 
 def internalFrameOpened(rootContainer):
-    database = getDatabaseClient()
+    database = getDatabase()
     
     windowId = rootContainer.windowId
     
@@ -76,7 +76,7 @@ def cancelActionPerformed(event):
 
 def actionPerformed(event, response):
     print "In %s.sctionPerformed(), the response is: %s" % (__name__, response)
-    db = getDatabaseClient()
+    db = getDatabase()
     window=system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     targetStepID = rootContainer.targetStepID

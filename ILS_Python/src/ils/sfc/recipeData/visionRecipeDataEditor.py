@@ -8,7 +8,7 @@ import system, string
 from ils.common.cast import toBit
 from ils.common.error import catchError, notifyError
 from ils.sfc.recipeData.core import fetchRecipeDataTypeId, recipeDataExistsForStepId
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.util import escapeSqlQuotes
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -17,7 +17,7 @@ from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, OU
 
 # The chart path is passed as a property when the window is opened.  Look up the chartId, refresh the Steps table and clear the RecipeData Table
 def internalFrameOpened(rootContainer):
-    db = getDatabaseClient()
+    db = getDatabase()
     log.infof("In %s.internalFrameOpened(), db: %s", __name__, db)
     rootContainer.initialized = False
     
@@ -893,7 +893,7 @@ def validateKey(source):
         3) is unique
     '''
     
-    db = getDatabaseClient()
+    db = getDatabase()
     key = source.text
     
     ''' Validate for an empty key '''
@@ -940,7 +940,7 @@ def saveGroup(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     recipeDataFolderId = rootContainer.recipeDataFolderId
@@ -992,7 +992,7 @@ def saveSimpleValue(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1084,7 +1084,7 @@ def saveInput(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1154,7 +1154,7 @@ def saveOutput(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1263,7 +1263,7 @@ def saveOutputRamp(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1384,7 +1384,7 @@ def saveTimerValue(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1441,7 +1441,7 @@ def saveSqcValue(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1500,7 +1500,7 @@ def saveRecipe(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1572,7 +1572,7 @@ def saveArray(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId
@@ -1682,7 +1682,7 @@ def saveMatrix(event):
     if not(validateKey(rootContainer.getComponent("Key"))):
         return
 
-    db = getDatabaseClient()
+    db = getDatabase()
     recipeDataId = rootContainer.recipeDataId
     stepId = rootContainer.stepId
     folderId = rootContainer.recipeDataFolderId

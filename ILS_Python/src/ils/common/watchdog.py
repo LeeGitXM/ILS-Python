@@ -5,7 +5,7 @@ Created on Apr 11, 2017
 '''
 
 import system
-from ils.common.config import getProductionTagProviderFromInternalDatabase
+from ils.config.common import getProductionTagProviderFromInternalDatabase
 from ils.io.util import readTag, writeTag
 from ils.log import getLogger
 log = getLogger(__name__)

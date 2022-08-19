@@ -5,7 +5,7 @@ Created on Feb 23, 2020
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sfc.recipeData.hierarchyWithBrowser import deleteRecipeData
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -18,7 +18,7 @@ def editCallback(event):
     
 def deleteCallback(event):
     log.infof("In %s.deleteCallback()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     stepId, recipeDataType, recipeDataId, recipeDataKey, recipeDataFolderId = getSelectedInfo(event)
     deleteRecipeData(recipeDataType, recipeDataId, db)
     refreshCallback(event)

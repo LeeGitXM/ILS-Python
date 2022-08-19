@@ -31,27 +31,6 @@ def getScope():
 
     return None
 
-def isolationModeChangeHandler(newValue):
-    '''
-    This is called from the tag change handler on a client tag.
-    '''
-    isolationMode = newValue.value
-    log.infof("In %s.isolationModeChangeHandler(), new isolation mode: %s", __name__, str(isolationMode))
-    projectName = system.util.getProjectName()
-
-    payload = {"project": projectName, "isolationMode": isolationMode}
-    log.infof("Payload: %s", payload)
-    
-    tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
-    log.infof("   Tag Provider: %s", tagProvider)
-    
-    timeFactor = system.util.sendRequest(projectName, "getTimeFactor", payload)
-    log.infof("   Time Factor: %s", timeFactor)
-
-    database = system.util.sendRequest(projectName, "getDatabase", payload)
-    log.infof("   Database: %s", database)
-    
-    system.tag.writeBlocking(['[Client]Tag Provider', '[Client]Time Factor', '[Client]Database'], [tagProvider, timeFactor, database])
 
 
 def getUserLibDir(projectName):
@@ -71,48 +50,6 @@ def getHistoryProvider():
     return 'XOMhistory'
 
 
-def readTag(tagPath):
-    '''
-    This reads a single tag using a blocking read and returns a single qualified value.
-    This just saves the caller the task of packing and unpacking the results when migrating
-    to Ignition 8. 
-    '''
-    qvs = system.tag.readBlocking([tagPath])
-    qv = qvs[0]
-    return qv
-
-
-'''
-These should be used only by a client.  They respect the isolation mode settings that are in force for the client.
-'''
-def getHistoryTagProviderClient():
-    tagProvider=readTag("[Client]History Tag Provider").value
-    return tagProvider
-
-def getTagProviderClient():
-    tagProvider=readTag("[Client]Tag Provider").value
-    return tagProvider
-
-def getTimeFactorClient():
-    timeFactor=readTag("[Client]Time Factor").value
-    return timeFactor
-
-def getDatabaseClient():
-    database=readTag("[Client]Database").value
-    return database
-
-def getIsolationModeClient():
-    isolationMode=readTag("[Client]Isolation Mode").value
-    return isolationMode
-
-def getTagProvidersClient():
-    print "In %s.getTagProvidersClient()" % (__name__)
-    projectName = system.util.getProjectName()
-    payload = {}
-    print "Sending request..."
-    tagProviderNames = system.util.sendRequest(projectName, "getTagProviders", payload)
-    log.infof("   Tag Providers: %s", str(tagProviderNames))
-    return tagProviderNames
 
 '''
 This set of APIs go all the way to the source (the internal database) and can be used from any scope although it might be faster 
@@ -128,7 +65,7 @@ def getProductionTagProviderFromInternalDatabase(projectName):
     scope = getScope()
     
     if scope == GATEWAY:
-        from ils.common.configGateway import getTagProviderHandler
+        from ils.config.gateway import getTagProviderHandler
         tagProvider = getTagProviderHandler(payload)
     else:
         tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
@@ -140,7 +77,7 @@ def getIsolationTagProviderFromInternalDatabase(projectName):
     scope = getScope()
 
     if scope == GATEWAY:
-        from ils.common.configGateway import getTagProviderHandler
+        from ils.config.gateway import getTagProviderHandler
         tagProvider = getTagProviderHandler(payload)
     else:
         tagProvider = system.util.sendRequest(projectName, "getTagProvider", payload)
@@ -157,7 +94,7 @@ def getProductionDatabaseFromInternalDatabase(projectName):
     scope = getScope()
     
     if scope == GATEWAY:
-        from ils.common.configGateway import getDatabaseHandler
+        from ils.config.gateway import getDatabaseHandler
         db = getDatabaseHandler(payload)
     else:
         db = system.util.sendRequest(projectName, "getDatabase", payload)
@@ -170,7 +107,7 @@ def getIsolationDatabaseFromInternalDatabase(projectName):
     scope = getScope()
     
     if scope == GATEWAY:
-        from ils.common.configGateway import getDatabaseHandler
+        from ils.config.gateway import getDatabaseHandler
         db = getDatabaseHandler(payload)
     else:
         db = system.util.sendRequest(projectName, "getDatabase", payload)
@@ -187,7 +124,7 @@ def getProductionTimeFactorFromInternalDatabase(projectName):
     scope = getScope()
     
     if scope == GATEWAY:
-        from ils.common.configGateway import getTimeFactorHandler
+        from ils.config.gateway import getTimeFactorHandler
         db = getTimeFactorHandler(payload)
     else:
         db = system.util.sendRequest(projectName, "getTimeFactor", payload)
@@ -200,7 +137,7 @@ def getIsolationTimeFactorFromInternalDatabase(projectName):
     scope = getScope()
     
     if scope == GATEWAY:
-        from ils.common.configGateway import getTimeFactorHandler
+        from ils.config.gateway import getTimeFactorHandler
         db = getTimeFactorHandler(payload)
     else:
         db = system.util.sendRequest(projectName, "getTimeFactor", payload)
@@ -259,7 +196,7 @@ def getIsolationTagProvider(projectName):
     return tagProvider
 
 def getDatabase(projectName):
-    db = getProductionDatabase()
+    db = getProductionDatabase(projectName)
     return db
     
 def getProductionDatabase(projectName):

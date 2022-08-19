@@ -4,7 +4,7 @@ Created on May 29, 2015
 @author: rforbes
 '''
 import system, string
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.io.util import readTag
 from ils.sfc.recipeData.api import s88GetFromId, s88GetRecordFromId, s88SetFromId
 from ils.sfc.recipeData.constants import TIMER
@@ -29,8 +29,8 @@ def internalFrameOpened(event):
     window = event.source
     log.infof("In monitorDownloads.internalFrameOpened()")
 
-    database = getDatabaseClient()
-    provider = getTagProviderClient()
+    database = getDatabase()
+    provider = getTagProvider()
     windowId = rootContainer.windowId
     rootContainer.startTime = None
     
@@ -106,8 +106,8 @@ def update(rootContainer):
     windowId = rootContainer.windowId
     timerRecipeDataId = rootContainer.timerRecipeDataId
     secondarySortKey = rootContainer.secondarySortKey
-    database = getDatabaseClient()
-    tagProvider = getTagProviderClient()
+    database = getDatabase()
+    tagProvider = getTagProvider()
     
     guiState, stepState, secondsSinceLastUpdate = fetchWindowState(windowId, database)
     
@@ -173,7 +173,7 @@ def updateButtonState(rootContainer):
     rootContainer.chartStatus = chartStatus
     
     # Fetch the enable/disable state of the control panel command buttons.
-    database = getDatabaseClient()
+    database = getDatabase()
     SQL = "Select * from SfcControlPanel where chartRunId = '%s'" % (chartRunId)
     pds = system.db.runPrepQuery(SQL, database=database)
     
@@ -477,7 +477,7 @@ def resumeChart(event):
     
 def getChartRunId(rootContainer):
     windowId = rootContainer.windowId
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select chartRunId from sfcWindow where windowId = '%s'" % (windowId)
     print SQL
     chartRunId = system.db.runScalarQuery(SQL, database=db)
@@ -485,7 +485,7 @@ def getChartRunId(rootContainer):
 
 def handleTimer(rootContainer, command):
     print command + "ing the timer"
-    db = getDatabaseClient()
+    db = getDatabase()
     timerRecipeDataId = rootContainer.timerRecipeDataId
     s88SetFromId(timerRecipeDataId, TIMER, "command", command, db)
 

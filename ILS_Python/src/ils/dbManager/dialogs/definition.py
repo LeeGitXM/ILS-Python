@@ -14,7 +14,7 @@ from ils.dbManager.sql import idForFamily
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -35,7 +35,7 @@ def internalFrameActivated(component):
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("definiton.requery ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
     whereExtension = getWhereExtension()
@@ -77,7 +77,7 @@ def refresh(component):
 # for the following rows. Button must requery to sync display.
 def deleteRow(button):
     log.info("definiton.deleteRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -116,7 +116,7 @@ def deleteRow(button):
 # When complete, the button will re-query
 def duplicateRow(button):
     log.info("definiton.duplicateRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -198,7 +198,7 @@ def moveRows(table,rows,rowData,dropIndex):
     if dropOrder>maxOrder:
         dropOrder = dropOrder - 1
 
-    db = getDatabaseClient()
+    db = getDatabase()
     tx = system.db.beginTransaction(database=db)
 
     try:
@@ -237,7 +237,7 @@ def showWindow():
 # Update database for a cell edit.
 def update(table,row,colname,value):
     log.info("definiton.update (%d:%s)=%s ..." %(row,colname,str(value)))
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     # All editable columns are strings.
     familyid = ds.getValueAt(row,"RecipeFamilyId")
@@ -267,7 +267,7 @@ def update(table,row,colname,value):
 
 def validate(rootContainer):
     print "In %s.validate()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     family = getUserDefaults("FAMILY")
     
     SQL = "select VD.valueId, RF.RecipeFamilyId "\
@@ -307,7 +307,7 @@ def validate(rootContainer):
         system.gui.messageBox("<HTML>%d grades were updated - consult the client console log for details.  <br>Please review the recommended values for these new detail records." % repairCounter, "Recipe Maintenance Notification") 
 
 def repairGrade(recipeFamilyId, grade, version, masterValueIds):
-    db = getDatabaseClient()    
+    db = getDatabase()    
     SQL = "select ValueId "\
         " from RtGradeDetail "\
         " where RecipeFamilyId = %d "\
@@ -334,7 +334,7 @@ def repairGrade(recipeFamilyId, grade, version, masterValueIds):
 
    
 def exportCallback(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")
     
     if entireTable:

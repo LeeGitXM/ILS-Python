@@ -10,7 +10,7 @@ the database.
 import system, string
 import xml.etree.ElementTree as ET
 from ils.sfc.recipeData.core import fetchChartIdFromChartPath, fetchStepIdFromChartIdAndStepName, fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.cast import toBit, isFloat
 from ils.common.error import catchError
 
@@ -24,7 +24,7 @@ def storeToDatabase(chartPath, chartXML):
     log.infof("***************  PYTHON  *******************")
     log.infof("In %s.storeToDatabase(), saving recipe data for chart: %s", __name__, chartPath)
     
-    db = getDatabaseClient()
+    db = getDatabase()
     tx = system.db.beginTransaction(database=db, timeout=86400000)    # timeout is one day
     
     try:

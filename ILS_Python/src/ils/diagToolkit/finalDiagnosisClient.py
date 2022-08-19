@@ -5,7 +5,7 @@ Created on Jun 30, 2015
 '''
 import system, string
 from ils.diagToolkit.constants import RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, RECOMMENDATION_ERROR
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.diagToolkit.common import fetchApplicationsForPost, fetchActiveTextRecommendationsForPost
 from ils.diagToolkit.setpointSpreadsheet import acknowledgeTextRecommendationProcessing
 
@@ -15,7 +15,7 @@ log = getLogger(__name__)
 # Not sure if this is used in production, but it is needed for testing
 def postDiagnosisEntry(projectName, application, family, diagram, finalDiagnosis, UUID, diagramUUID, database="", provider=""):
     log.infof("Sending a message to post a diagnosis entry...")
-    payload={"application": application, "family": family, "diagram": diagram, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database, "provider":provider}
+    payload={"projectName":projectName, "application": application, "family": family, "diagram": diagram, "finalDiagnosis": finalDiagnosis, "UUID": UUID, "diagramUUID": diagramUUID, "database": database, "provider":provider}
     system.util.sendMessage(projectName, "postDiagnosisEntry", payload, "G")
 
 
@@ -37,8 +37,8 @@ def openSetpointSpreadsheetCallback(post):
 
     noTextRecommendations = False
     noQuantRecommendations = False
-    database=getDatabaseClient()
-    provider=getTagProviderClient()
+    database=getDatabase()
+    provider=getTagProvider()
 
     # Check if there is a text recommendation for this post
     pds = fetchActiveTextRecommendationsForPost(post, database)
@@ -118,7 +118,7 @@ def handleNotification(payload):
     numOutputs=payload.get('numOutputs', 1)
     callback="ils.diagToolkit.finalDiagnosisClient.postSpreadsheet"
     gatewayDatabase=payload.get("gatewayDatabase")
-    clientDatabase=getDatabaseClient()
+    clientDatabase=getDatabase()
     if gatewayDatabase <> clientDatabase:
         print "Exiting handleNotification() because the gateway database does not match the client database"
         return
@@ -281,7 +281,7 @@ def handleTextRecommendationNotification(payload):
     diagnosisEntryId=payload.get('diagnosisEntryId', '')
     
     gatewayDatabase=payload.get("gatewayDatabase")
-    clientDatabase=getDatabaseClient()
+    clientDatabase=getDatabase()
     if gatewayDatabase <> clientDatabase:
         print "Exiting handleTextRecommendationNotification() because the gateway database does not match the client database"
         return
@@ -370,7 +370,7 @@ def handleTextNotification(payload):
     
     notificationText=payload.get('notificationText', '')
     database=payload.get('database', '')
-    clientDatabase=getDatabaseClient()
+    clientDatabase=getDatabase()
     
     if database != "" and database <> clientDatabase:
         print "Exiting handleTextNotification() because the gateway database does not match the client database"

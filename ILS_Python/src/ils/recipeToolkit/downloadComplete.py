@@ -5,7 +5,7 @@ Created on Sep 10, 2014
 '''
 import system
 import ils.recipeToolkit.update as update
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.recipeToolkit.log import logDetail
 
 from ils.log import getLogger
@@ -22,7 +22,7 @@ def downloadComplete(rootContainer):
     downloadType = rootContainer.getPropertyValue("downloadType")
     table = rootContainer.getComponent("Power Table")
     mode = rootContainer.getPropertyValue("mode")
-    database = getDatabaseClient()
+    database = getDatabase()
 
     ds = table.processedData
 

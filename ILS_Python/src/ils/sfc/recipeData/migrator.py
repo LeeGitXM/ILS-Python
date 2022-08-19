@@ -12,7 +12,7 @@ from ils.sfc.recipeData.structureManager import getTxId
 from ils.common.error import catchError
 from ils.common.cast import toBit, isFloat
 from ils.sfc.recipeData.core import fetchValueTypeId, fetchOutputTypeId, fetchRecipeDataTypeId, fetchStepIdFromUUID
-from ils.common.config import getTagProvider, getDatabase
+from ils.config.common import getTagProvider, getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 

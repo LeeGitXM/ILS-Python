@@ -5,7 +5,7 @@ Created on Mar 7, 2016
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened"
@@ -15,7 +15,7 @@ def internalFrameOpened(rootContainer):
 
 # This is called from a timer on the window and is called to keep the transaction open.
 def refreshTransaction(rootContainer):
-    db=getDatabaseClient()
+    db=getDatabase()
     print "Refreshing the database transaction..."
     SQL = "select count(*) from SfcRecipeDataKeyMaster"
     rows=system.db.runScalarQuery(SQL,db) 
@@ -26,7 +26,7 @@ def refreshMaster(rootContainer):
     print "...refreshing master..."
     SQL = "SELECT KeyName FROM SfcRecipeDataKeyMaster ORDER BY KeyName"
     print SQL
-    db=getDatabaseClient()
+    db=getDatabase()
     pds=system.db.runQuery(SQL, db)
     masterList=rootContainer.getComponent("Left List")
     masterList.data=pds
@@ -36,7 +36,7 @@ def addMaster(rootContainer):
     if masterKey == None or masterKey == "":
         return
     
-    db=getDatabaseClient()
+    db=getDatabase()
     SQL = "insert into SFCRecipeDataKeyMaster (KeyName) values ('%s')" % (masterKey)
     print SQL
     system.db.runUpdateQuery(SQL, db)
@@ -51,7 +51,7 @@ def deleteMaster(rootContainer):
     ds=masterList.data
     selectedKey=ds.getValueAt(masterList.selectedIndex, 0)
     
-    db=getDatabaseClient()
+    db=getDatabase()
     SQL = "delete from SFCRecipeDataKeyMaster where KeyName = '%s'" % (selectedKey)
     print SQL
     
@@ -71,7 +71,7 @@ def refreshDetails(rootContainer):
     if masterList.selectedIndex < 0:
         return
     
-    db=getDatabaseClient()
+    db=getDatabase()
     ds=masterList.data
     selectedKey=ds.getValueAt(masterList.selectedIndex, 0)
     print "The user selected:", selectedKey
@@ -91,7 +91,7 @@ def addDetail(rootContainer):
     if keyValue == None or keyValue == "":
         return
     
-    db=getDatabaseClient()
+    db=getDatabase()
     
     # Get the Id for the family - there should be something selected.
     masterList=rootContainer.getComponent("Left List")
@@ -122,7 +122,7 @@ def deleteDetail(rootContainer):
     if detailList.selectedIndex < 0:
         return
     
-    db=getDatabaseClient()
+    db=getDatabase()
     
     # Get the id of the family key
     ds=masterList.data
@@ -150,7 +150,7 @@ def moveUp(rootContainer):
     if detailList.selectedIndex < 1:
         return
 
-    db=getDatabaseClient()
+    db=getDatabase()
 
     # Get the id of the family key
     ds=masterList.data
@@ -190,7 +190,7 @@ def moveDown(rootContainer):
     if detailList.selectedIndex < 0 or detailList.selectedIndex > detailList.data.rowCount - 2:
         return
 
-    db=getDatabaseClient()
+    db=getDatabase()
 
     # Get the id of the family key
     ds=masterList.data

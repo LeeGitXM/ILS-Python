@@ -4,7 +4,7 @@ Created on May 3, 2015
 @author: rforbes
 '''
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sfc.common.constants import SFC_WINDOW_LIST, DATABASE
 
 def getWindowId(window):
@@ -64,7 +64,7 @@ def shouldShowWindow(payload):
     post = payload.get(POST, "")
     showOverride = payload.get("showOverride", False)
     database = payload.get(DATABASE, "")
-    clientDatabase = getDatabaseClient()
+    clientDatabase = getDatabase()
     
     if showOverride and database == clientDatabase:
         print "...the window should be shown because the showOverride flag is True and isolation mode matches!"
@@ -101,7 +101,7 @@ def openDbWindow(windowId):
     reopenWindow(windowId)
     
 def fetchWindowInfo(windowId):
-    database = getDatabaseClient()
+    database = getDatabase()
     SQL = "select * from SfcWindow, SfcControlPanel where SfcWindow.windowId = '%s' "\
         " and SfcControlPanel.controlPanelId = SfcWindow.controlPanelId" % (windowId)
     pds = system.db.runQuery(SQL, database)
@@ -118,7 +118,7 @@ def reopenWindow(windowId):
     
     print "In %s.reopenWindow(), the windowId is: %s" % (__name__, windowId)
 
-    database = getDatabaseClient()
+    database = getDatabase()
     SQL = "select * from SfcWindow where windowId = '%s' " % (windowId)
     pds = system.db.runQuery(SQL, database)
     if len(pds) == 0:
@@ -164,7 +164,7 @@ def sendCloseWindow(window, table):
     from ils.sfc.client.util import sendMessageToGateway
     import system.util
     windowId = window.getRootContainer().windowId
-    database = getDatabaseClient()
+    database = getDatabase()
     project = system.util.getProjectName()
     payload = {WINDOW_ID:windowId, DATABASE: database, TABLE: table, PROJECT: project}
     sendMessageToGateway(project, 'sfcCloseWindow', payload)

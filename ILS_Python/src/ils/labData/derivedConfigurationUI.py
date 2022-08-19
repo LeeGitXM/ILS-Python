@@ -4,7 +4,7 @@ Created on Jul 1, 2015
 @author: Pete
 '''
 import system, string
-from ils.common.config import getTagProviderClient, getDatabaseClient
+from ils.config.client import getTagProvider, getDatabase
 from ils.common.constants import CR
 from ils.labData.synchronize import createLabValue, deleteLabValue, createLabLimit, deleteLabLimit, createDcsTag, deleteDcsLabValue, updateLabValueUdt
 from ils.labData.configurationUI import updateLimit
@@ -14,7 +14,7 @@ log = getLogger(__name__)
 #open transaction when window is opened
 def internalFrameOpened(rootContainer):    
     # initialize datasets
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "SELECT ValueId, ValueName FROM LtValue ORDER BY ValueName"
     pds = system.db.runQuery(SQL, database=db)
     rootContainer.triggerValueNameDataset = pds
@@ -37,7 +37,7 @@ def internalFrameOpened(rootContainer):
     
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
-    db = getDatabaseClient()
+    db = getDatabase()
     print "Calling update() from internalFrameActivated()..."
     update(rootContainer, db)
     print "Calling updateRelatedTable() from internalFrameActivated()..."
@@ -147,7 +147,7 @@ def updateDatabaseXXX(rootContainer):
 #update the database when user directly changes table 
 def cellEdited(table, rowIndex, colName, newValue):
     print "A cell has been edited (%s) so update the database..." % (colName)
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     valueId =  ds.getValueAt(rowIndex, "ValueId")
     
@@ -219,7 +219,7 @@ def removeRow(event):
     unitName = dropDown.selectedStringValue
     table = rootContainer.getComponent("Power Table")
     ds = table.data
-    db = getDatabaseClient()
+    db = getDatabase()
     
     row = table.selectedRow
     valueId = ds.getValueAt(row, "ValueId")
@@ -283,7 +283,7 @@ def insertDataRow(event):
     UDT as everything else)). 
     '''
     rootContainer = event.source.parent
-    db = getDatabaseClient()
+    db = getDatabase()
 
     newName = rootContainer.getComponent("name").text
     if newName == "":
@@ -356,7 +356,7 @@ def insertRelatedDataRow(event):
 #remove the selected row
 def removeRelatedDataRow(event):
     rootContainer = event.source.parent
-    db = getDatabaseClient()
+    db = getDatabase()
     relatedTable = rootContainer.getComponent("relatedLabDataTable")
     row = relatedTable.selectedRow
     ds = relatedTable.data
@@ -374,7 +374,7 @@ def removeRelatedDataRow(event):
 #update the database when user directly changes table 
 def relatedDataCellEdited(table, rowIndex, colName, newValue):
     print "A related data cell has been edited so update the database..."
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = table.parent
     ds = table.data
     valueId = ds.getValueAt(rowIndex, "ValueId")
@@ -480,8 +480,8 @@ def validate(rootContainer):
     #--------------------------------------------------------------------------------------
         
     log.infof("In %s.validate()", __name__)
-    db = getDatabaseClient()
-    tagProvider = getTagProviderClient()
+    db = getDatabase()
+    tagProvider = getTagProvider()
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     txt = ""
     

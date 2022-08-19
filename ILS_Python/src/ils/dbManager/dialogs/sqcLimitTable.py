@@ -7,7 +7,7 @@ Created on Apr 19, 2019
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForParameter
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -58,7 +58,7 @@ def requery(rootContainer):
             table.setColumnWidth(col, 110)
     
 def fetchColumns(recipeFamilyName):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select  P.Parameter "\
         "from RtSQCParameter P,  RtRecipeFamily F "\
         "where P.RecipeFamilyId = F.RecipeFamilyId "\
@@ -74,7 +74,7 @@ def fetchColumns(recipeFamilyName):
     return columns
     
 def fetchRows(recipeFamilyName):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select distinct GM.Grade "\
         " from RtGradeMaster GM,  RtRecipeFamily RF "\
         " where RF.RecipeFamilyName = '%s' and GM.RecipeFamilyId = RF.RecipeFamilyId order by Grade" % (recipeFamilyName)
@@ -91,7 +91,7 @@ def fetchRows(recipeFamilyName):
     return grades
 
 def fetchData(recipeFamilyName):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select Grade, Parameter, UpperLimit, LowerLimit "\
         " from RtSQCLimitView "\
         " where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
@@ -123,7 +123,7 @@ def mergeData(rootContainer, grades, columns, pds):
 
 def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     print "Setting the new value to <%s>" % (newValue)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = self.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     familyId = idForFamily(familyName)
@@ -165,7 +165,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
 
 def deleteColumns(event):
     print "In %s.deleteColumns()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     recipeFamilyId = idForFamily(familyName)
@@ -182,7 +182,7 @@ def deleteColumns(event):
     requery(rootContainer)
 
 def exportCallback(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     where = ""
     
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")

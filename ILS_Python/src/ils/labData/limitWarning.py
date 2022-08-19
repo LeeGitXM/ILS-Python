@@ -9,7 +9,7 @@ from ils.labData.common import postMessage
 from ils.common.ocAlert import sendAlert
 from ils.common.util import isUserConnected
 from ils.common.message.client import sendCloseWindowMessage
-from ils.common.config import getDatabaseClient, getIsolationModeClient
+from ils.config.client import getDatabase, getIsolationMode
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -179,8 +179,8 @@ def acceptValue(event, timeout=False):
     sampleTime=rootContainer.sampleTime
     tagProvider=rootContainer.tagProvider
     unitName=rootContainer.unitName
-    database=getDatabaseClient()
-    isolationMode=getIsolationModeClient()
+    database=getDatabase()
+    isolationMode=getIsolationMode()
     
     if timeout:
         postMessage("The value was accepted because of a timeout waiting for an operator response %s - %s, which failed validity limit checks, sample time: %s" % (str(valueName), str(rawValue), str(sampleTime)))
@@ -251,7 +251,7 @@ def rejectValue(event):
     sampleTime=rootContainer.sampleTime
     tagProvider=rootContainer.tagProvider
     unitName=rootContainer.unitName
-    isolationMode=getIsolationModeClient()
+    isolationMode=getIsolationMode()
 
     sendCloseWindowMessage(projectName=system.util.getProjectName(), windowName=windowName, isolationMode=isolationMode, payload={})
 

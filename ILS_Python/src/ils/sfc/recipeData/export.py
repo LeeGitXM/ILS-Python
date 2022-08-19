@@ -6,7 +6,7 @@ Created on May 31, 2017
 
 import system, os, string
 from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.error import notifyError
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -16,7 +16,7 @@ def exportCallback(event):
     This is called by the button on the SFC recipe data browser. 
     '''
     try:
-        db = getDatabaseClient()
+        db = getDatabase()
         log.infof("In %s.exportCallback()...", __name__)
         treeWidget = event.source.parent.getComponent("Tree View")
         
@@ -54,7 +54,7 @@ def exportCallback(event):
 def exportStepCallback(event):
     
     try:
-        db = getDatabaseClient()
+        db = getDatabase()
         log.infof("In %s.exportCallback()...", __name__)
         stepContainer = event.source.parent
         rootContainer = event.source.parent.parent

@@ -9,7 +9,7 @@ for common configuration of widgets in the UI.
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.cast import toBit
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 
 # When the window is closed, make sure that any open transaction
 # is cleaned up (rolled-back and closed). 
@@ -24,7 +24,7 @@ def handleWindowOpened(window):
 # Populate  combo-box with a dataset of containing names
 # of parameters available for a grade.
 def populateParameterForGradeDropdown(dropdown):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "Select Name from RtSQCParameters "
     pds = system.db.runQuery(SQL, database=db)
     # Create a new dataset using only the Name column
@@ -51,7 +51,7 @@ def populateParameterForGradeDropdown(dropdown):
 # of grades available to a unit. Do not rollback on a change
 def populateGradeForFamilyDropdown(dropdown):
     print "In %s.populateGradeForFamilyDropdown()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     family = getUserDefaults("FAMILY")
     active = getUserDefaults("ACTIVE")
     activeBit = toBit(str(active))
@@ -88,7 +88,7 @@ def populateGradeForFamilyDropdown(dropdown):
 # of recipe Families, plus "". Select the current UNIT
 def populateRecipeFamilyDropdown(dropdown, includeAll=True):
     print "In %s.populateRecipeFamilyDropdown()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "Select RecipeFamilyName from RtRecipeFamily order by RecipeFamilyName"
     pds = system.db.runQuery(SQL, database=db)
     
@@ -118,7 +118,7 @@ def populateRecipeFamilyDropdown(dropdown, includeAll=True):
 # available for a grade on a unit. Custom grade component assumed.
 def populateVersionForGradeDropdown(dropdown):
     print "In %s.populateVersionForGradeDropdown()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "SELECT DISTINCT Version from RtGradeMaster "
     family = getUserDefaults("FAMILY")
     grade = getUserDefaults("GRADE") 

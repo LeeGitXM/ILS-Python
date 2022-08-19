@@ -5,7 +5,7 @@ Created on May 16, 2017
 '''
 
 import system, time
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.io.util import splitTagPath, writeTag
 
 from ils.log import getLogger
@@ -25,7 +25,7 @@ def internalFrameActivated(rootContainer):
 
 def refresh(rootContainer):
     print "...refreshing..."
-    provider = getTagProviderClient()
+    provider = getTagProvider()
     
     path = "[%s]" % (provider)
     print "Browsing %s" % (path)

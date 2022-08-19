@@ -8,7 +8,7 @@ from ils.recipeToolkit.tagFactory import createUDT
 from ils.recipeToolkit.fetch import fetchHighestVersion
 from ils.io.util import readTag, isUDT 
 from sys import path
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -23,7 +23,7 @@ screen with the new grade selected.  It is up to the operator to press the Downl
 '''
 def semiAutomatedDownloadCallback(event, payload):
     print "In %s.automatedDownloadMessageHandler(), the payload is %s" % (__name__, payload)
-    db = getDatabaseClient()
+    db = getDatabase()
     system.nav.closeParentWindow(event)
     
     targetPost = payload.get("post", "None")
@@ -65,7 +65,7 @@ def semiAutomatedDownloadCallback(event, payload):
 
 def showCurrentRecipeCallback(familyName):
     log.infof("In %s.showCurrentRecipeCallback() ", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     # Fetch the grade and type from the recipe map table. The grade looks like an int, 
     # but it is probably a string
     SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
@@ -93,7 +93,7 @@ def showCurrentRecipeCallback(familyName):
 
 def showMidRunRecipeCallback(familyName):
     print "In project.recipe.viewRecipe.showCurrentRecipeCallback()"
-    db = getDatabaseClient()
+    db = getDatabase()
     #   Fetch the grade and type from the recipe map table. The grade looks like an int, but it is probably a string
     SQL = "select CurrentGrade from RtRecipeFamily where RecipeFamilyName = '%s'" % (familyName)
     print "SQL: ", SQL
@@ -158,9 +158,9 @@ def initialize(rootContainer):
         table.setPropertyValue("recipeMinimumRelativeDifference", val)
     #=======================================================================================
         
-    from ils.common.config import getTagProviderClient
-    provider = getTagProviderClient()
-    db = getDatabaseClient()
+    from ils.config.client import getTagProvider
+    provider = getTagProvider()
+    db = getDatabase()
     rootContainer.provider = provider
     familyName = rootContainer.familyName
     grade = rootContainer.grade

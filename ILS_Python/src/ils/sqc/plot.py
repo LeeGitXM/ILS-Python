@@ -4,7 +4,7 @@ Created on Dec 10, 2015
 @author: Pete
 '''
 import system, string, math
-from ils.common.config import getTagProviderClient, getDatabaseClient
+from ils.config.client import getTagProvider, getDatabase
 from ils.io.util import readTag
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -12,8 +12,8 @@ log = getLogger(__name__)
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__)
     
-    tagProvider = getTagProviderClient()
-    db = getDatabaseClient()
+    tagProvider = getTagProvider()
+    db = getDatabase()
     log.tracef("Using database <%s> and tag provider <%s>", db, tagProvider)
     
     # Reset the tab strip so the plot tab is selected

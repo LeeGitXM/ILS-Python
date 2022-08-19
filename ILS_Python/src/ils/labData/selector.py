@@ -5,7 +5,7 @@ Created on Mar 29, 2015
 '''
 import system
 from ils.common.error import catchError
-from ils.common.config import getDatabase
+from ils.config.common import getDatabase
 from ils.io.util import readTag, writeTag
 from ils.log import getLogger
 log = getLogger(__name__)

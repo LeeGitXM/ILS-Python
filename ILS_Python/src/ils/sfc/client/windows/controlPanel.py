@@ -5,9 +5,9 @@ Created on Dec 9, 2015
 '''
 
 import system
-from ils.common.config import getDatabaseClient, getIsolationModeClient
-from ils.sfc.client.util import getStartInIsolationMode
-from ils.sfc.common.util import startChart, chartIsRunning, getChartStatus
+from ils.config.client import getDatabase, getIsolationMode
+from ils.sfc.client.util import getStartInIsolationMode, startChart
+from ils.sfc.common.util import chartIsRunning, getChartStatus
 from ils.sfc.common.constants import HANDLER, WINDOW
 from ils.common.windowUtil import positionWindow
 from ils.sfc.client.windowUtil import getWindowPath
@@ -30,8 +30,8 @@ def internalFrameOpened(event):
     
 def openControlPanel(controlPanelName, controlPanelId, startImmediately, position="CENTER"):
     log.infof("In %s.openControlPanel()...", __name__)
-    db = getDatabaseClient()
-    isolationMode = getIsolationModeClient()
+    db = getDatabase()
+    isolationMode = getIsolationMode()
     chartPath = getControlPanelChartPath(controlPanelName, db)
     print "...the chart path for this control panel is: ", chartPath
     if not chartIsRunning(chartPath, isolationMode):
@@ -70,7 +70,7 @@ def openControlPanel(controlPanelName, controlPanelId, startImmediately, positio
 
 def startChartFromControlPanel(rootContainer):
     controlPanelName = rootContainer.controlPanelName
-    db = getDatabaseClient()
+    db = getDatabase()
     chartPath = getControlPanelChartPath(controlPanelName, db)
     originator = system.security.getUsername()
     project = system.util.getProjectName()
@@ -92,7 +92,7 @@ def updateChartStatus(event):
     '''Get the status of this panel's chart run and set the status field appropriately.
        Will show None if the chart is not running.'''
 
-    db = getDatabaseClient()
+    db = getDatabase()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     
@@ -137,7 +137,7 @@ def updateChartStatus(event):
 
 def updateMessageCenter(rootContainer):
     # print "Updating the message center... "
-    db = getDatabaseClient()
+    db = getDatabase()
     controlPanelId = rootContainer.controlPanelId
     selectedMessage = rootContainer.selectedMessage
     SQL = "select id, createTime, message, priority, ackRequired, priority + CAST(ackRequired as varchar(5)) as state "\
@@ -169,7 +169,7 @@ def updateSelectedMessageText(rootContainer):
 
 def reset(event):
     print "In %s.reset()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     window = system.gui.getParentWindow(event)
     rootContainer = window.getRootContainer()
     rootContainer.selectedMessage = 0
@@ -207,7 +207,7 @@ def closeAllPopups():
     
 def resetControlPanel(controlPanelName):
     print "Resetting the database for control panel: ", controlPanelName
-    db = getDatabaseClient()
+    db = getDatabase()
     system.db.runUpdateQuery("update SfcControlPanel set chartRunId = '', operation = '', enablePause = 1, enableResume = 1, "\
         " enableCancel = 1 where controlPanelName = '%s'" % (controlPanelName), database=db)
 
@@ -264,7 +264,7 @@ def setControlPanelChartPath(controlPanelId, chartPath, db):
 def showMsgQueue(window):
     rootContainer = window.getRootContainer()
     controlPanelId = rootContainer.controlPanelId
-    db = getDatabaseClient()
+    db = getDatabase()
     
     SQL = "Select MsgQueue from SfcControlPanel where ControlPanelId = %s" % (str(controlPanelId))
     queueKey=system.db.runScalarQuery(SQL, database=db)
@@ -279,7 +279,7 @@ def showRecipeDataBrowser():
 
 def ackMessage(window):
     ''' Called from a pushbutton on the control panel.   '''
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = window.getRootContainer()
     selectedMessage = rootContainer.selectedMessage
     msgId = rootContainer.messages.getValueAt(selectedMessage, 'id')
@@ -300,7 +300,7 @@ def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, posit
     This should only be called from a client. 
     '''
     # First, check for an existing panel associated with this chart:
-    db = getDatabaseClient()
+    db = getDatabase()
     
     # check for an existing panel with the given name, creating if not found:
     log.infof("In %s.openDynamicControlPanel() - looking for a control panel named %s", __name__, controlPanelName)
@@ -327,7 +327,7 @@ def openDynamicControlPanelOriginal(chartPath, startImmediately, controlPanelNam
     This should only be called from a client. 
     '''
     # First, check for an existing panel associated with this chart:
-    db = getDatabaseClient()
+    db = getDatabase()
     controlPanelId = getControlPanelIdForChartPath(chartPath, db)
 
     if controlPanelId == None:

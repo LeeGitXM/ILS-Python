@@ -5,7 +5,6 @@ Created on Nov 5, 2016
 '''
 
 import system
-from ils.common.config import getDatabase, getIsolationDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -15,18 +14,11 @@ def notifyError(project, message, payload, post, db, isolationMode):
     notifier(project, message, payload, post, db, isolationMode)
 
 
-def notifyText(project, notificationText, post, isolationMode):
+def notifyText(project, notificationText, post, db, isolationMode):
     log.infof("In %s.notifyText(), Sending <%s> message to project: <%s>, post: <%s>", __name__, str(notificationText), str(project), str(post), str(isolationMode))
     
     message = "consoleManager"
-
     payload = {'type': "textNotification", 'notificationText': notificationText}
-
-    if isolationMode:
-        db = getIsolationDatabase()
-    else:
-        db = getDatabase()
-    
     notifier(project, message, payload, post, db, isolationMode)
         
 

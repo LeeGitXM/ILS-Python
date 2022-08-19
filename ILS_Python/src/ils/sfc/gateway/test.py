@@ -28,7 +28,7 @@ def runTests(originator, isolationMode, project, reportFile, testPattern, timeou
     '''Run test charts'''
     from system.ils.sfc import getMatchingCharts, getDatabaseName, \
     initializeTests, testsAreRunning, timeoutRunningTests
-    from ils.sfc.common.util import startChart
+    from ils.sfc.client.util import startChart
     import system.db, time
     testCharts = getMatchingCharts(testPattern)
     initializeTests(reportFile)

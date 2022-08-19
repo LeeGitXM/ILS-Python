@@ -9,7 +9,7 @@ allowed.
 
 import system
 from ils.common.cast import toBit
-from ils.common.config import getHistoryProvider
+from ils.config.common import getHistoryProvider
 from ils.common.error import catchError
 from ils.common.util import substituteProvider
 from ils.io.util import readTag, writeTag
@@ -310,7 +310,7 @@ def biasControlInUse():
 
 
 def writeBiasToExternalSystem(tagProvider, tagRoot, biasName, biasValue, sampleTime):
-    from ils.common.config import getTagProvider
+    from ils.config.common import getTagProvider
     productionProviderName = getTagProvider()   # Get the Production tag provider
     
     log.tracef("Writing %s for %s", str(biasValue), biasName)

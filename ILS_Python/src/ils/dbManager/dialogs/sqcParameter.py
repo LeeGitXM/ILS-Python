@@ -9,7 +9,7 @@ Scripts in support of the "SQC Parameter" dialog
 import string, system
 from ils.dbManager.sql import idForFamily
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -26,7 +26,7 @@ def internalFrameActivated(rootContainer):
 # By adding a new parameter, we are adding a new parameter for every grade for the family
 # Will get an error if the row exists.
 def insertRow(rootContainer):
-    db = getDatabaseClient()
+    db = getDatabase()
     # Family
     family = rootContainer.family
     if family == "" or string.upper(family) == "ALL":

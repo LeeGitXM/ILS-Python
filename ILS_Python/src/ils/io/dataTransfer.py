@@ -6,9 +6,9 @@ Created on Dec 20, 2017
 
 import system, time
 from ils.queue.message import insert
-from ils.io.util import getDatabaseFromTagPath, readTag, writeTag
+from ils.io.util import readTag, writeTag
 from ils.queue.constants import QUEUE_ERROR, QUEUE_WARNING, QUEUE_INFO
-from ils.common.config import getTagProvider
+from ils.config.common import getTagProvider
 
 MAX_TRIES = 3
 from ils.log import getLogger
@@ -39,9 +39,8 @@ def dataTransferCore(tagPath, currentValue, initialChange):
     provider = getTagProvider()
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
-    if messageQueue != "":
-        db = getDatabaseFromTagPath(tagPath)
-        
+    db = readTag("[.]database").value
+
     permissive = readTag("[.]permissive").value
     if permissive:
         tries = 0
@@ -57,7 +56,7 @@ def dataTransferCore(tagPath, currentValue, initialChange):
                 txt = "Successfully wrote %s to %s at %s" % (str(currentValue.value), itemId, str(system.date.now()))
                 log.infof(txt)
                 writeTag("[.]status", txt)
-                if messageQueue != "":
+                if messageQueue != "" and db != "":
                     insert(messageQueue, QUEUE_INFO, txt, db)
                 break
 
@@ -65,7 +64,7 @@ def dataTransferCore(tagPath, currentValue, initialChange):
             txt = "Write of %s to %s (%s) failed after %d tries" % (str(currentValue.value), itemId, tagPath, MAX_TRIES)
             log.errorf(txt)
             writeTag("[.]status", txt)
-            if messageQueue != "":
+            if messageQueue != "" and db != "":
                 insert(messageQueue, QUEUE_ERROR, txt, db)
     else:
         writeTag("[.]status", "Skipping write because the permissive is false")
@@ -95,8 +94,7 @@ def dataTransferWithCountCore(tagPath, currentValue, initialChange):
     provider = getTagProvider()
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
-    if messageQueue != "":
-        db = getDatabaseFromTagPath(tagPath)
+    db = readTag("[.]database").value
 
     permissive = readTag("[.]permissive").value
     count = readTag("[.]countDestination").value
@@ -116,7 +114,7 @@ def dataTransferWithCountCore(tagPath, currentValue, initialChange):
                 txt = "Successfully wrote %s to %s at %s" % (str(currentValue.value), itemId, str(system.date.now()))
                 log.infof(txt)
                 writeTag("[.]status", txt)
-                if messageQueue != "":
+                if messageQueue != "" and db != "":
                     insert(messageQueue, QUEUE_INFO, txt, db)
                 break        
 
@@ -124,7 +122,7 @@ def dataTransferWithCountCore(tagPath, currentValue, initialChange):
             txt = "Write of %s to %s (%s) failed after %d tries" % (str(currentValue.value), itemId, tagPath, MAX_TRIES)
             log.errorf(txt)
             writeTag("[.]status", txt)
-            if messageQueue != "":
+            if messageQueue != "" and db != "":
                 insert(messageQueue, QUEUE_ERROR, txt, db)
 
     else:
@@ -154,8 +152,7 @@ def dataTransferWithTimeCore(tagPath, currentValue, initialChange):
     provider = getTagProvider()
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
-    if messageQueue != "":
-        db = getDatabaseFromTagPath(tagPath)
+    db = readTag("[.]database").value
 
     from ils.common.util import unixTime
     ut = unixTime(currentValue.timestamp)
@@ -176,7 +173,7 @@ def dataTransferWithTimeCore(tagPath, currentValue, initialChange):
                 txt = "Successfully wrote %s to %s at %s" % (str(currentValue.value), itemId, str(system.date.now()))
                 log.infof(txt)
                 writeTag("[.]status", txt)
-                if messageQueue != "":
+                if messageQueue != "" and db != "":
                     insert(messageQueue, QUEUE_INFO, txt, db)
                 break
 
@@ -184,7 +181,7 @@ def dataTransferWithTimeCore(tagPath, currentValue, initialChange):
             txt = "Write of %s to %s (%s) failed after %d tries" % (str(currentValue.value), itemId, tagPath, MAX_TRIES)
             log.errorf(txt)
             writeTag("[.]status", txt)
-            if messageQueue != "":
+            if messageQueue != "" and db != "":
                 insert(messageQueue, QUEUE_ERROR, txt, db)
 
 
@@ -233,8 +230,7 @@ def writeToHDA(tagPath, previousValue, currentValue, initialChange, missedEvents
     provider = getTagProvider()
     latency = readTag("[%s]Configuration/Common/opcTagLatencySeconds" % (provider)).value
     messageQueue = readTag("[.]messageQueue").value
-    if messageQueue != "":
-        db = getDatabaseFromTagPath(tagPath)
+    db = readTag("[.]database").value
 
     hdaServer = readTag("[.]hdaServer").value
     itemId = readTag("[.]hdaItemId").value
@@ -244,7 +240,7 @@ def writeToHDA(tagPath, previousValue, currentValue, initialChange, missedEvents
         txt = "Write of %s to %s (%s) skipped because server not available" % (str(currentValue.value), itemId, tagPath)
         log.errorf(txt)
         writeTag("[.]status", txt)
-        if messageQueue != "":
+        if messageQueue != "" and db != "":
             insert(messageQueue, QUEUE_ERROR, txt, db)
         return
 
@@ -252,7 +248,7 @@ def writeToHDA(tagPath, previousValue, currentValue, initialChange, missedEvents
         txt = "Write of %s to %s (%s) skipped because the source value is bad." % (str(currentValue.value), itemId, tagPath)
         log.errorf(txt)
         writeTag("[.]status", txt)
-        if messageQueue != "":
+        if messageQueue != "" and db != "":
             insert(messageQueue, QUEUE_ERROR, txt, db)
         return
     
@@ -271,7 +267,7 @@ def writeToHDA(tagPath, previousValue, currentValue, initialChange, missedEvents
             txt = "Successfully wrote %s to %s (%s)" % (str(currentValue.value), itemId, tagPath)
             log.infof(txt)
             writeTag("[.]status", txt)
-            if messageQueue != "":
+            if messageQueue != "" and db != "":
                 insert(messageQueue, QUEUE_INFO, txt, db)
             break
 
@@ -279,7 +275,7 @@ def writeToHDA(tagPath, previousValue, currentValue, initialChange, missedEvents
         txt = "Write of %s to %s (%s) failed after %d tries" % (str(currentValue.value), itemId, tagPath, MAX_TRIES)
         log.errorf(txt)
         writeTag("[.]status", txt)
-        if messageQueue != "":
+        if messageQueue != "" and db != "":
             insert(messageQueue, QUEUE_ERROR, txt, db)
 
 '''

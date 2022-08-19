@@ -8,13 +8,13 @@ from ils.io.util import readTag
 from ils.recipeToolkit.fetch import fetchFamilyId
 from ils.recipeToolkit.common import checkForUncommentedChanges
 from ils.common.error import catchError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
 def callback(event):
     log.infof("Saving the modified recipe (%s.callback)", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     familyName = rootContainer.familyName
     grade = rootContainer.grade

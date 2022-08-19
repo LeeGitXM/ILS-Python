@@ -5,7 +5,7 @@ Created on Mar 29, 2015
 '''
 import system, string
 import ils.common.util as util
-from ils.common.config import getTagProviderClient
+from ils.config.client import getTagProvider
 from ils.io.util import readTag
 from ils.labData.scanner import simulateReadRaw
 from ils.log import getLogger
@@ -222,7 +222,7 @@ even though it can only work for data that comes from PHD.  It can't work for DC
 def fetchHistory(container):
     valueName=container.LabValueName
     valueId=container.ValueId
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     
     log.tracef("In labData.viewer.fetchHistory(), fetching missing data for %s - %d", valueName, valueId)
     
@@ -311,7 +311,7 @@ def fetchHistory(container):
             return
     
     # Use the current grade for all of the missing values
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     from ils.common.grade import getGradeForUnit
     grade=getGradeForUnit(unitName, tagProvider)
 

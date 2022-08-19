@@ -6,7 +6,8 @@ Created on Mar 31, 2015
 
 import system, string, sys, traceback
 from ils.common.notification import notifyError
-from ils.common.config import getIsolationModeClient, getProductionTagProviderFromInternalDatabase, getIsolationTagProviderFromInternalDatabase
+from ils.config.client import getIsolationMode
+from ils.config.common import getProductionTagProviderFromInternalDatabase, getIsolationTagProviderFromInternalDatabase
 from ils.sfc.common.constants import CLIENT_DONE, NORMAL, LARGE_TEXT
 from ils.io.util import readTag
 from ils.log import getLogger
@@ -113,7 +114,7 @@ def handleMessage(payload):
     
     if payload.has_key('isolationMode'):
         messageIsolationMode = payload["isolationMode"]
-        clientIsolationMode = getIsolationModeClient()
+        clientIsolationMode = getIsolationMode()
         if messageIsolationMode <> clientIsolationMode:
             log.infof("Ignoring the message because the isolation mode of the message does not match the isolation mode of the client")
             return

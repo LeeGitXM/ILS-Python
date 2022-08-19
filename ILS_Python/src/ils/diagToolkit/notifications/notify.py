@@ -34,8 +34,12 @@ def delete(path):
         txt = catchError(__name__ + ".delete", "Caught an exception while deleting")
         log.errorf(txt)
 
-def deleter(path):
-    log.infof("In %s.deleter(), chart %s has been deleted", __name__, path)
+def deleter(path, db=""):
+    log.infof("In %s.deleter() with chart %s...", __name__, path)
+    SQL = "delete from DtDiagram where DiagramName = '%s'" % (path)
+    log.infof("...SQL: %s,", SQL)
+    rows = system.db.runUpdateQuery(SQL, db)
+    log.infof("...deleted %d rows!", rows)
 
 def rename(oldPath, newPath):
     log.infof("In %s.rename(), chart %s has been renamed to %s", __name__, oldPath, newPath)
@@ -61,25 +65,25 @@ def save(path, json):
     
 
 def saver(path, json):
+    log.infof("In %s.saver() with chart: %s...", __name__, path)
     db = ""
     diagramId = handleDiagram(path, db)
     x = system.util.jsonDecode(json)
-    print "Decoded JSON: ", x
+    log.tracef("Decoded JSON: %s", str(x))
     blocks = x.get("blocks", [])
-    log.infof("Found %d blocks", len(blocks))
+    log.infof("...found %d blocks", len(blocks))
     for block in blocks:
         blockClass = block.get("className", None)
         blockName = block.get("name", None)
         blockUUID = block.get("id", None)
-        log.infof("  found %s, a %s", blockName, blockClass)
+        log.tracef("  found %s, a %s", blockName, blockClass)
         
         ''' Look for interesting blocks '''
         if blockClass == FINAL_DIAGNOSIS_CLASS:
-            print "handling a final diagnosis"
+            log.tracef("...handling a final diagnosis")
             handleFinalDiagnosis(diagramId, blockName, blockUUID, db)
         elif blockClass == SQC_DIAGNOSIS_CLASS:
-            print "handling a SQC Diagnosis"
-            print "SQC block: ", str(block)
+            log.tracef("...handling a SQC Diagnosis: %s...", str(block))
             handleSQCDiagnosis(diagramId, blockName, blockUUID, db)
             
 def handleDiagram(path, db):

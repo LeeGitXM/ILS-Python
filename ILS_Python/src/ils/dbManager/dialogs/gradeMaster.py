@@ -12,7 +12,7 @@ from ils.dbManager.ui import populateRecipeFamilyDropdown
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -37,7 +37,7 @@ def internalFrameActivated(component):
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("grademaster.requery ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = getRootContainer(component)
     table = rootContainer.getComponent("DatabaseTable")
 
@@ -72,7 +72,7 @@ def refreshPopup(component):
 # Called from a button on the Grade Master screen
 # (I don't think this is ever called)
 def deleteGrade(component):
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(component)
     dropbox = container.getComponent("GradeDeletionDropdown")
     grade = dropbox.selectedStringValue
@@ -101,7 +101,7 @@ def deleteGrade(component):
 # By deleting a row, we are deleting a version for the grade.
 def deleteRow(button):
     log.info("grademaster.deleteRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -148,7 +148,7 @@ def deleteRow(button):
 # When complete, the button will re-query
 def duplicateRow(button):
     log.info("grademaster.duplicateRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
     rownum = table.selectedRow
@@ -187,7 +187,7 @@ def duplicateRow(button):
         system.gui.messageBox("The new version was created as Inactive - in order to see it you must uncheck the 'Active Only' checkbox.")
 
 def nextVersion(familyId,grade):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "SELECT MAX(Version) FROM RtGradeMaster WHERE Grade='"+str(grade)+"' AND RecipeFamilyId="+str(familyId)
     val = system.db.runScalarQuery(SQL, database=db)
     val = val + 1
@@ -207,7 +207,7 @@ Cell does a re-query
 '''
 def update(table,row,colname,value):
     log.info("grademaster.update, row:%d, column:%s, value:%s ..." % (row, colname, str(value)))
-    db = getDatabaseClient()    
+    db = getDatabase()    
     ds = table.data
     recipeFamilyId = ds.getValueAt(row,"RecipeFamilyId")
     grade = ds.getValueAt(row,"Grade")
@@ -233,7 +233,7 @@ def update(table,row,colname,value):
 
 def exportCallback(event):
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family and active flag.  <br>Would you like to export the <b>entire</b> table?")
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     
     andWhere = ""

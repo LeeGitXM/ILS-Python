@@ -15,7 +15,7 @@ import ils.recipeToolkit.update as recipeToolkit_update
 import ils.recipeToolkit.viewRecipe as recipeToolkit_viewRecipe
 from ils.io.client import writeWithNoChecks, writeRecipeDetails, writeDatums
 from ils.io.util import getTagSuffix
-from ils.common.config import getDatabaseClient, getIsolationModeClient
+from ils.config.client import getDatabase, getIsolationMode
 from ils.common.ocAlert import sendAlert
 from ils.io.util import getProviderFromTagPath, readTag
 from ils.log import getLogger
@@ -214,7 +214,7 @@ def downloadCallback(rootContainer):
     
     # Save the grade and type to the recipe family table.
     # grade looks like an int, but it is probably a string
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "update RtRecipeFamily set CurrentGrade = '%s', CurrentVersion = %s, Status = 'Initializing', "\
         "Timestamp = getdate() where RecipeFamilyName = '%s'" % (str(grade), version, familyName)
     rows = system.db.runUpdateQuery(SQL, database=db)
@@ -226,8 +226,8 @@ def downloadCallback(rootContainer):
 def download(rootContainer):
     project = system.util.getProjectName()
     provider = rootContainer.getPropertyValue("provider")
-    database = getDatabaseClient()
-    isolationMode = getIsolationModeClient()
+    database = getDatabase()
+    isolationMode = getIsolationMode()
     familyName = rootContainer.getPropertyValue("familyName")
     mode = rootContainer.getPropertyValue("mode")
     table = rootContainer.getComponent("Power Table")

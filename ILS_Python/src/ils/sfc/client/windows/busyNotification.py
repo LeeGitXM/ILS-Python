@@ -5,12 +5,12 @@ Created on Jul 18, 2017
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 
 
 def internalFrameOpened(event):
     print "In %s.internalFrameOpened()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.rootContainer
     windowId = rootContainer.windowId
     
@@ -26,7 +26,7 @@ def internalFrameOpened(event):
 This is called from a timer on the window.
 '''
 def refresh(rootContainer):
-    db = getDatabaseClient()
+    db = getDatabase()
     windowId = rootContainer.windowId
     
     SQL = "select message from SfcBusyNotification where windowId = '%s'" % (windowId)

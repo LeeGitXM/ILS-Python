@@ -11,7 +11,7 @@ from ils.diagToolkit.api import insertApplicationQueueMessage
 from ils.diagToolkit.constants import RECOMMENDATION_RESCINDED, RECOMMENDATION_NONE_MADE, RECOMMENDATION_NO_SIGNIFICANT_RECOMMENDATIONS, \
     RECOMMENDATION_REC_MADE, RECOMMENDATION_ERROR, RECOMMENDATION_POSTED, AUTO_NO_DOWNLOAD
 from ils.io.util import getOutputForTagPath
-from ils.common.config import getProductionDatabase, getProductionTagProvider, getIsolationDatabase, getIsolationTagProvider, getProductionDatabaseFromInternalDatabase
+from ils.config.common import getProductionDatabase, getProductionTagProvider, getIsolationDatabase, getIsolationTagProvider, getProductionDatabaseFromInternalDatabase
 from ils.queue.constants import QUEUE_INFO
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import addHTML, escapeSqlQuotes
@@ -228,16 +228,14 @@ def postDiagnosisEntryMessageHandler(payload):
     '''
     log.tracef("In %s.postDiagnosisEntryMessageHandler(), the payload is: %s", __name__, str(payload))
 
-    application=payload["application"]
-    family=payload["family"]
-    diagram=payload["diagram"]
-    finalDiagnosis=payload["finalDiagnosis"]
+    projectName=payload["projectName"]
+    diagramPath=payload["diagram"]
+    finalDiagnosisName=payload["finalDiagnosis"]
     UUID=payload["UUID"]
-    diagramUUID=payload["diagramUUID"]
     database=payload["database"]
     provider=payload["provider"]
     
-    postDiagnosisEntry(application, family, diagram, finalDiagnosis, UUID, diagramUUID, database, provider)
+    postDiagnosisEntry(projectName, diagramPath, finalDiagnosisName, UUID, database, provider)
     
     
 def postDiagnosisEntry(projectName, diagramPath, finalDiagnosisName, UUID, database, provider):
@@ -437,16 +435,22 @@ def _scanner(database, tagProvider, projectName):
 
 
 def mineExplanationFromDiagram(finalDiagnosisName, diagramPath, UUID, finalDiagnosisExplanation):
-    log.tracef("Mining explanation for <%s> on <%s>", finalDiagnosisName, diagramPath) 
+    log.tracef("Mining explanation for <%s> on <%s> (Final Diagnosis Explanation: <%s>)", finalDiagnosisName, diagramPath, finalDiagnosisExplanation)
 
     try:
         from ils.blt.api import getExplanation
         explanation=getExplanation(diagramPath, finalDiagnosisName)
 
         if finalDiagnosisExplanation in ["", None]:
-            txt = "%s is TRUE because %s" % (finalDiagnosisName, explanation)
+            if explanation in ["", None]:
+                txt = "%s is TRUE for an unknown reason (explanation mining failed)" % (finalDiagnosisName)
+            else:
+                txt = "%s is TRUE because %s" % (finalDiagnosisName, explanation)
         else:
-            txt = "%s because %s" % (finalDiagnosisExplanation, explanation)
+            if explanation in ["", None]:
+                txt = finalDiagnosisExplanation
+            else:
+                txt = "%s because %s" % (finalDiagnosisExplanation, explanation)
 
     except:
         txt = "%s is TRUE for an unknown reason (explanation mining failed)" % (finalDiagnosisName)
@@ -635,7 +639,7 @@ def resetRecommendations(applicationName, log, database):
     log.trace("...deleted %d text recommendations..." % (rows))
 
 
-# Delete the quant outputs for an applicatuon.
+# Update the quant outputs for an applicatuon.
 def resetOutputs(applicationName, log, database):
     log.tracef("Resetting QuantOutputs for application %s", applicationName)
     
@@ -831,7 +835,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 " (select DiagnosisEntryId from DtDiagnosisEntry "\
                 " where Status = 'Active' and RecommendationStatus = '%s' "\
                 " and FinalDiagnosisId = %d)" % (RECOMMENDATION_REC_MADE, fdId)
-            logSQL.trace(SQL)
+            logSQL.trace("      %s", SQL)
             rows=system.db.runUpdateQuery(SQL, database)
             log.tracef("      ... deleted %d quantitative recommendations...", rows)
             
@@ -839,7 +843,7 @@ def manage(application, recalcRequested=False, database="", provider=""):
                 " (select DiagnosisEntryId from DtDiagnosisEntry "\
                 " where Status = 'Active' and RecommendationStatus = '%s' "\
                 " and FinalDiagnosisId = %d)" % (RECOMMENDATION_REC_MADE, fdId)
-            logSQL.trace(SQL)
+            logSQL.trace("      %s", SQL)
             rows=system.db.runUpdateQuery(SQL, database)
             log.tracef("      ... deleted %d text recommendations...", rows)
 

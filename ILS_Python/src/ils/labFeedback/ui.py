@@ -5,7 +5,7 @@ Created on Mar 22, 2017
 '''
 import system
 from ils.common.util import formatDateTime
-from ils.common.config import getTagProviderClient
+from ils.config.client import getTagProvider
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -20,7 +20,7 @@ def internalFrameActivated(rootContainer):
 
 def refreshCallback(rootContainer):
     log.infof("In %s.refreshCallback()...", __name__)
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     
     path = "[%s]LabData" % (tagProvider)        
     if not(system.tag.exists(path)):
@@ -91,7 +91,7 @@ def createCallback(event):
 def deleteCallback(event):
     log.infof("In %s.deleteCallback()...", __name__)
     
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     rootContainer = event.source.parent
     table = rootContainer.getComponent("Table")
     selectedRow = table.selectedRow

@@ -10,7 +10,7 @@ import system
 from ils.common.util import getRootContainer
 from ils.dbManager.sql import idForPost
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -25,7 +25,7 @@ def internalFrameActivated(component):
 
 # Re-query the database and update the screen accordingly.
 def requery(component):
-    db = getDatabaseClient()
+    db = getDatabase()
     log.info("unit.requery ...")
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
@@ -42,7 +42,7 @@ def requery(component):
 # Delete the selected row.  The family is a primary key for many of the other recipe tables.  This delete works using cascade deletes.
 def deleteRow(button):
     log.info("recipeFamily.deleteRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -70,7 +70,7 @@ def showWindow():
 # Update database for a cell edit
 def update(table, row, colname, value):
     log.info("%s.update (%d:%s)=%s ..." % (__name__, row, colname, str(value)))
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     writeLocationId = ds.getValueAt(row,0)
     
@@ -98,7 +98,7 @@ def addCallback(event):
     table.data = ds
     
 def exportCallback(event):
-    db = getDatabaseClient()      
+    db = getDatabase()      
     SQL = "SELECT WriteLocationId, Alias, ServerName, ScanClass FROM TkWriteLocation ORDER by Alias"
     pds = system.db.runQuery(SQL, database=db)
     csv = system.dataset.toCSV(pds)

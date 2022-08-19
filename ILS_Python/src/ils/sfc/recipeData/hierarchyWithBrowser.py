@@ -4,11 +4,10 @@ Created on Feb 10, 2017
 @author: phass
 '''
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.common.windowUtil import clearTable, clearTree
 from ils.io.util import readTag, writeTag
 from ils.sfc.recipeData.constants import ARRAY, GROUP, INPUT, MATRIX, OUTPUT, SIMPLE_VALUE
-from ils.common.config import getTagProviderClient
 from sys import path
 from __builtin__ import True
 from ils.sfc.common.constants import SQL
@@ -103,7 +102,7 @@ def viewStateChanged(rootContainer):
 
 def updateSfcs(rootContainer, db):
     log.infof("In %s.updateSfcs(), Updating the SFC Tree and Table Widgets...", __name__)
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     sfcRecipeDataShowProductionOnly = readTag("[%s]Configuration/SFC/sfcRecipeDataShowProductionOnly" % (tagProvider)).value
     chartPath = "%"
     updateSfcTable(rootContainer, sfcRecipeDataShowProductionOnly, chartPath, db)
@@ -982,7 +981,7 @@ def getValueDescription(record, desc, recipeType, recipeDesc):
 
 def deleteCallback(event):
     log.tracef("Deleting a recipe data...")
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent.parent
 
     recipeDataTree = rootContainer.getComponent("Recipe Data Container").getComponent("Tree View")
@@ -1107,7 +1106,7 @@ def editCallbackForDoubleClick(event):
 
             
 def editCallback(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     container = event.source.parent
     tree = container.getComponent("Tree View")
     path = tree.selectedPath
@@ -1130,7 +1129,7 @@ def editCallback(event):
 
 def addCallback(event):
     log.tracef("In %s.addCallback()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent.parent
     table = rootContainer.getComponent("Step Container").getComponent("Steps")
     ds = table.data
@@ -1252,7 +1251,7 @@ def mousePressedCallbackForTree(event):
         '''
         This is the callback from the popup menu
         '''
-        db = getDatabaseClient()
+        db = getDatabase()
         treeWidget = event.source
         chartId = getChartIdForSelectedNode(treeWidget, db)
         if chartId == None:

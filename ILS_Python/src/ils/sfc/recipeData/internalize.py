@@ -9,7 +9,7 @@ didn't want any dependencies on it.
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.util import escapeJSON
 
 from ils.log import getLogger
@@ -30,7 +30,7 @@ def internalize(chartPath, chartXML):
     log.infof("In %s.internalize() for chart: %s", __name__, chartPath)
 
     log.tracef("The initial chart XML is: %s", chartXML)
-    db = getDatabaseClient()
+    db = getDatabase()
     chartInfo, chartPaths, folderInfo = getChartInfo(db)
     chartXML = internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, folderInfo, db)
     log.tracef("The processed chart XML is: %s", chartXML)
@@ -43,7 +43,7 @@ This is meant to be called from a Vision window for debugging and simulates the 
 def internalizeCallback(chartPath, chartXML):
     log.infof("In %s.internalizeCallback() with %s", __name__, chartPath)
     
-    db = getDatabaseClient()
+    db = getDatabase()
     chartInfo, chartPaths, folderInfo = getChartInfo(db)
     chartXML = internalizeRecipeDataForChart(chartPath, chartXML, chartPaths, chartInfo, folderInfo, db)
 

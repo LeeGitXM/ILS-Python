@@ -10,7 +10,7 @@ Created on Mar 21, 2017
 # for querying and updating the Recipe database
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -35,7 +35,7 @@ def getTableNames(database):
     return names
 
 def fetchPostsForCombo():
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select Post from TkPost order by Post" 
     pds = system.db.runQuery(SQL, database=db)
     posts=[]
@@ -44,7 +44,7 @@ def fetchPostsForCombo():
     return posts
 
 def fetchAnyPost():
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select PostId, Post from TkPost order by Post" 
     pds = system.db.runQuery(SQL, database=db)
     for record in pds:
@@ -54,14 +54,14 @@ def fetchAnyPost():
 
 # Given the family name, return the Id
 def idForFamily(name):
-    db = getDatabaseClient()
+    db = getDatabase()
     familyid=system.db.runScalarQuery("SELECT RecipeFamilyId FROM RtRecipeFamily "\
         "WHERE RecipeFamilyName like '"+name+"'", database=db)
     return familyid
 
 # Given the family and SQC parameter name, return the Id of the SQC parameter
 def idForParameter(familyId, parameterName):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "SELECT ParameterId FROM RtSQCParameter "\
         "WHERE RecipeFamilyId = %d and Parameter = '%s'"   % (familyId, parameterName)
     parameterId=system.db.runScalarQuery(SQL, database=db)
@@ -69,7 +69,7 @@ def idForParameter(familyId, parameterName):
 
 # Given the family and Gain parameter name, return the Id of the Gain parameter
 def idForGain(familyId, parameterName):
-    db = getDatabaseClient() 
+    db = getDatabase() 
     SQL = "SELECT ParameterId FROM RtGain "\
         "WHERE RecipeFamilyId = %d and Parameter = '%s'"   % (familyId, parameterName)
     parameterId=system.db.runScalarQuery(SQL, database=db)
@@ -77,12 +77,12 @@ def idForGain(familyId, parameterName):
 
 # Given the post name, return the Id
 def idForPost(post):
-    db = getDatabaseClient() 
+    db = getDatabase() 
     postId = system.db.runScalarQuery("SELECT PostId FROM TkPost WHERE Post like '"+post+"'", database=db)
     return postId
 
 def initializeRecipeDatabase():
-    db = getDatabaseClient() 
+    db = getDatabase() 
     tables = ["RtDownloadDetail", "RtDownloadMaster", "RtValueDefinition", "RtGradeDetail", "RtGradeMaster",
         "RtGainGrade", "RtGain", "RtEvent", "RtEventParameter",  
         "RtSQCLimit", "RtSQCParameter", "RtAllowedFlyingSwitch", "RtWatchDog", "RtRecipeFamily"]

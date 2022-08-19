@@ -5,7 +5,7 @@ Created on Apr 30, 2015
 '''
 import system
 from ils.io.util import readTag
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -23,7 +23,7 @@ def launchChooser(rootContainer):
 def chooserInitialization(rootContainer):
     print "In ils.labData.manualEntry.chooserInitialization()..."
     post = rootContainer.post
-    db = getDatabaseClient()
+    db = getDatabase()
     
     def appendDatasets(ds, pds):
         for record in pds:
@@ -97,7 +97,7 @@ def launchEntryForm(rootContainer):
 def entryFormInitialization(rootContainer):
     print "In ils.labData.manualEntry.entryFormInitialization()..."
     
-    db = getDatabaseClient()
+    db = getDatabase()
     valueId = rootContainer.valueId
     valueName = rootContainer.valueName
     
@@ -183,14 +183,14 @@ def refreshRecentValues(rootContainer, valueId, db):
     
 
 # This is called when the operator presses the 'Enter' button on the Manual Entry screen
-def entryFormEnterData(rootContainer, db = ""):
+def entryFormEnterData(rootContainer, db=""):
     print "In ils.labData.limits.manualEntry.entryFormEnterData()"
     
-    from ils.common.config import getTagProviderClient
-    provider = getTagProviderClient()
+    from ils.config.client import getTagProvider
+    provider = getTagProvider()
     
-    from ils.common.config import getTagProvider
-    productionProvider = getTagProvider()
+    from ils.config.common import getProductionTagProvider
+    productionProvider = getProductionTagProvider()
     
     sampleTime = rootContainer.getComponent("Sample Time").date
     sampleValue = rootContainer.getComponent("Lab Value Field").floatValue

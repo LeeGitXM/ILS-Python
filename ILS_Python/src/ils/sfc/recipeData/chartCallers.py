@@ -4,13 +4,13 @@ Created on Dec 17, 2019
 @author: phass
 '''
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened()", __name__) 
-    db = getDatabaseClient()
+    db = getDatabase()
     chartId = rootContainer.chartId
     
     chartPath = system.db.runScalarQuery("select chartPath from SfcChart where ChartId = %d" % (chartId), db)

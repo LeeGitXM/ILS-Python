@@ -4,7 +4,7 @@ Created on Sep 10, 2014
 @author: Pete
 '''
 import system, string
-from ils.common.config import getProductionTagProvider
+from ils.config.common import getProductionTagProvider
 from ils.log import getLogger
 log = getLogger(__name__)
 

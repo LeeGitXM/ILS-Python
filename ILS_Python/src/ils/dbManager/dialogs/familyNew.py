@@ -6,7 +6,7 @@ Created on Sep 20, 2017
 
 import system
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -18,7 +18,7 @@ def internalFrameActivated(rootContainer):
 
 def createFamily(rootContainer):
     print "In createGrade..."
-    db = getDatabaseClient()
+    db = getDatabase()
     family = rootContainer.getComponent("Family").text
     post = rootContainer.getComponent("Post").selectedStringValue
     postId = rootContainer.getComponent("Post").selectedValue

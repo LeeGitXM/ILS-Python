@@ -5,14 +5,14 @@ Created on Jun 17, 2020
 '''
 
 import system, string
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.common.util import parseFilename
 from ils.log import getLogger
 log = getLogger(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.rootContainer
     windowId = rootContainer.windowId
     

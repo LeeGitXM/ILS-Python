@@ -4,7 +4,7 @@ Created on Jun 15, 2015
 @author: Pete
 '''
 import system, string
-from ils.common.config import getTagProviderClient, getDatabaseClient
+from ils.config.client import getTagProvider, getDatabase
 from ils.common.constants import CR
 from ils.io.util import readTag, writeTag
 from ils.labData.limits import calcSQCLimits
@@ -15,7 +15,7 @@ log = getLogger(__name__)
 def internalFrameOpened(rootContainer):
     log.infof("In %s.internalFrameOpened(), reserving a cursor...", __name__)
     
-    db = getDatabaseClient()
+    db = getDatabase()
     unitDropdown = rootContainer.getComponent("UnitName")
     unitDropdown.selectedValue = -1
     unitDropdown.selectedStringValue = "<Select One>"
@@ -50,7 +50,7 @@ def internalFrameOpened(rootContainer):
 #refresh when window is activated
 def internalFrameActivated(rootContainer):
     log.infof("In %s.internaFrameActived()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     
     log.tracef("Calling update() from internalFrameActivated()")
     update(rootContainer, db)
@@ -69,7 +69,7 @@ def removeDataRow(event):
     rootContainer = event.source.parent.parent.parent
     tab = rootContainer.getComponent("Tab Strip").selectedTab
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
-    db = getDatabaseClient()
+    db = getDatabase()
     
     #get valueId of the data to be deleted
     valueId = rootContainer.selectedValueId
@@ -175,7 +175,7 @@ def removeDataRow(event):
 def insertDataRow(rootContainer):
     log.infof("In %s.insertDataRow", __name__)
     labDataType = rootContainer.labDataType
-    db = getDatabaseClient()
+    db = getDatabase()
             
     newName = rootContainer.getComponent("name").text
     if newName == "":
@@ -428,8 +428,8 @@ def validate(rootContainer):
     #--------------------------------------------------------------------------------------
         
     log.infof("In %s.validate()", __name__)
-    db = getDatabaseClient()
-    tagProvider = getTagProviderClient()
+    db = getDatabase()
+    tagProvider = getTagProvider()
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
     dataType = rootContainer.dataType
     log.infof("...validating %s...", dataType)
@@ -507,7 +507,7 @@ def dataCellEdited(table, rowIndex, colName, oldValue, newValue):
     log.infof("In %s.dataCellEdited() - A cell has been edited so update the database (and the tag)...", __name__)
     log.tracef("Row: %s, Column: %s, Value: %s (was %s)", str(rowIndex), colName, str(newValue), str(oldValue))
     rootContainer = table.parent.parent
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     valueId =  ds.getValueAt(rowIndex, "ValueId")
     dataType = rootContainer.dataType
@@ -579,7 +579,7 @@ This is called from a button alongside the bottom limit table when a row is sele
 '''
 def removeLimitRow(event):
     log.infof("In %s.removeLimitRow()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent.parent.parent
     
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
@@ -607,7 +607,7 @@ of the attributes of the limit - they can't change the type or the source of of 
 '''
 def saveLimitRow(table, row, colName, oldValue, newValue):
     log.infof("In %s.saveLimitRow(), updating %s from %s to %s..", __name__, colName, str(oldValue), str(newValue))
-    db = getDatabaseClient()
+    db = getDatabase()
     
     rootContainer = table.parent
     unitName = rootContainer.getComponent("UnitName").selectedStringValue
@@ -632,7 +632,7 @@ def updateLimitTag(unitName, valueName, limitType, colName, newValue):
         '''
         Now update the UDT - This should be called when they edit a cell in the table, AND when a new limit is created.
         '''
-        tagProvider = getTagProviderClient()
+        tagProvider = getTagProvider()
     
         if limitType == 'SQC':
             suffix='-SQC'
@@ -703,7 +703,7 @@ def createLimit(event):
         return False
     
     log.infof("In %s.createLimit()...", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     unitId = rootContainer.unitId
     unitName = rootContainer.unitName

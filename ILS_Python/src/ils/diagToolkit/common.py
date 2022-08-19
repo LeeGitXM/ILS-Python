@@ -656,12 +656,14 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
     pds = system.db.runQuery(SQL, database)
     return pds
 
-# Fetch the SQC blocks that led to a Final Diagnosis becoming true.
-# We could implement this in one of two ways: 1) we could insert something into the database when the FD becomes true
-# or 2) At the time we want to know the SQC blocks, we could query the diagram.
+
 def fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosisName):
+    '''
+    Fetch the SQC blocks that led to a Final Diagnosis becoming true.
+    Implement this be looking for SQC blocks upstream of the final diagnosis whose state is TRUE.
+    '''
     log.infof("In %s.fetchSQCRootCauseForFinalDiagnosis() - Searching for SQC blocks for %s on %s", __name__, finalDiagnosisName, diagramName)
-    sqcRootCauses=[]
+    sqcBlockNames=[]
 
     # Get the upstream blocks, make sure to jump connections
     from ils.blt.api import listBlocksGloballyUpstreamOf
@@ -676,9 +678,10 @@ def fetchSQCRootCauseForFinalDiagnosis(diagramName, finalDiagnosisName):
             blockState = blockAttributes.get("State", None)
 
             log.infof("Found: %s - %s", str(blockName), str(blockState))
-            sqcRootCauses.append(block)
+            if str(blockState) == "TRUE":
+                sqcBlockNames.append(blockName)
 
-    return sqcRootCauses
+    return sqcBlockNames
 
 def fetchTagPathForQuantOutputName(quantOutputName, database=""):
     log.tracef("In %s.fetchTagPathForQuantOutputName()...", __name__)

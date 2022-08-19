@@ -5,7 +5,7 @@ Created on Mar 8, 2020
 '''
 
 import system
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.common.constants import CR
 from ils.common.database import toDateString
 from ils.io.util import readTag
@@ -27,8 +27,8 @@ SQL = [
 def pruneClient(event):
     log.infof("In %s.pruneClient", __name__)
 
-    db = getDatabaseClient()
-    provider = getTagProviderClient()
+    db = getDatabase()
+    provider = getTagProvider()
     pruneDays = readTag("[%s]Configuration/Common/dbPruneDays" % (provider)).value
     log.tracef("Pruning to %d days", pruneDays)
     pruneDate = system.date.addDays(system.date.now(), -1 * pruneDays)

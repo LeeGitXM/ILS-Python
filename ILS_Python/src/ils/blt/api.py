@@ -8,10 +8,9 @@ Unless noted otherwise, all of these functions run from a client
 '''
 
 import system
-from ils.common.config import getScope
+from ils.config.common import getScope
 
 import com.ils.blt.common.ApplicationRequestHandler as ApplicationRequestHandler
-
 
 from ils.common.constants import GATEWAY, DESIGNER, CLIENT
 
@@ -24,16 +23,6 @@ log = getLogger(__name__)
 MODULE_ID = "block"
 TYPE_ID = "blt.diagram"
 WATERMARK_TEXT = "Wait For New Data"
-
-'''
-                    setBlockState(diagramName, blockName, "UNKNOWN")
-                    propagateBlockState(diagramName, blockName)
-
-                elif blockClass == "Inhibitor":
-                    log.infof("   ... setting a <%s> named <%s> on <%s> to inhibit!", blockClass, blockName, diagramName)
-                    sendSignal(diagramName, blockName, "INHIBIT", "")
-'''
-
 
     
 def sendSignal(diagramName):
@@ -62,7 +51,7 @@ def getExplanation(diagramName, blockName):
     '''
     projectResourceId = getProjectResourceId(diagramName)
     scope = getScope()
-    print "Getting explanation for %s on %s" % (blockName, diagramName)
+    log.infof("In %s.getExplanation() - Getting explanation for %s on %s", __name__, blockName, diagramName)
     if scope == GATEWAY:
         import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
         handler = ControllerRequestHandler.getInstance()
@@ -73,9 +62,10 @@ def getExplanation(diagramName, blockName):
     return explanation
 
 def fetchSQCRootCause(diagramName, finalDiagnosisName):
+    log.infof("In %s.fetchSQCRootCause(), looking for SQC blocks upstream of %s on %s...", __name__, finalDiagnosisName, diagramName)
     blocks = listBlocksGloballyUpstreamOf(diagramName, finalDiagnosisName)
     
-    log.infof("...found %d upstream blocks...", len(blocks))
+    log.tracef("...found %d upstream blocks...", len(blocks))
     sqcRootCauses=[]
     for block in blocks:
         if block.getClassName() == "com.ils.block.SQC":
@@ -83,7 +73,7 @@ def fetchSQCRootCause(diagramName, finalDiagnosisName):
             blockAttributes = block.getAttributes()
             blockState = blockAttributes.get("State", None)
 
-            log.infof("Found: %s - %s", str(blockName), str(blockState))
+            log.tracef("Found: %s - %s", str(blockName), str(blockState))
             sqcRootCauses.append(block)
 
     return sqcRootCauses

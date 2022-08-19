@@ -6,7 +6,7 @@ Created on Apr 19, 2019
 import system
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.dbManager.sql import idForFamily, idForGain
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -29,7 +29,7 @@ def internalFrameOpened(rootContainer):
 # The "active" dropdown is always initialized to "TRUE"
 def internalFrameActivated(rootContainer):
     log.infof("In %s.InternalFrameActivated", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     requery(rootContainer)
     dropdown = rootContainer.getComponent("FamilyDropdown")
 
@@ -83,7 +83,7 @@ def requery(rootContainer):
             table.setColumnWidth(col, 110)
     
 def fetchColumns(recipeFamilyName):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select  G.Parameter "\
         "from RtGain G,  RtRecipeFamily F "\
         "where G.RecipeFamilyId = F.RecipeFamilyId "\
@@ -98,7 +98,7 @@ def fetchColumns(recipeFamilyName):
     return columns
     
 def fetchRows(recipeFamilyName, activeOnly):
-    db = getDatabaseClient()
+    db = getDatabase()
     if activeOnly:
         SQL = "select distinct GM.Grade "\
             " from RtGradeMaster GM,  RtRecipeFamily RF "\
@@ -119,7 +119,7 @@ def fetchRows(recipeFamilyName, activeOnly):
     return rows
 
 def fetchData(recipeFamilyName):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "select Grade, Parameter, Gain "\
         " from RtGainView "\
         "where RecipeFamilyName = '%s' order by Grade, Parameter" % (recipeFamilyName)
@@ -153,7 +153,7 @@ def mergeData(rootContainer, grades, columns, pds):
 
 def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     print "Setting the new value to <%s>" % (newValue)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = self.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     familyId = idForFamily(familyName)
@@ -188,7 +188,7 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
 
 def deleteColumn(event):
     print "In %s.deleteColumn()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     familyName  = rootContainer.getComponent("FamilyDropdown").selectedStringValue
     recipeFamilyId = idForFamily(familyName)
@@ -211,7 +211,7 @@ def deleteColumn(event):
 
 def addGainParameter(button, parameter):
     rootContainer = button.parent
-    db = getDatabaseClient()
+    db = getDatabase()
     
     # Family
     family = rootContainer.getComponent("FamilyDropdown").selectedStringValue
@@ -230,7 +230,7 @@ def addGainParameter(button, parameter):
         system.gui.messageBox("Please enter a parameter name!")
 
 def exportCallback(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     where = ""
     
     entireTable = system.gui.confirm("<HTML>You can export the entire table or just the selected family.  <br>Would you like to export the <b>entire</b> table?")

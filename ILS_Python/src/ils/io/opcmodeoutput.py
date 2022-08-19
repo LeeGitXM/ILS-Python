@@ -18,7 +18,7 @@ import ils
 import ils.io
 import ils.io.opcoutput as opcoutput
 import system, string, time
-from ils.common.config import getTagProvider
+from ils.config.common import getTagProvider
 from ils.io.util import readTag, writeTag
 
 from ils.log import getLogger

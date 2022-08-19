@@ -5,7 +5,7 @@ Created on Jan 13, 2019
 '''
 
 import system
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.diagToolkit.finalDiagnosis import manageFinalDiagnosis
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -17,7 +17,7 @@ def okAction(event):
     rootContainer = event.source.parent
     log.infof("In %s.okAction()", __name__)
     
-    db = getDatabaseClient()
+    db = getDatabase()
     finalDiagnosisId = rootContainer.finalDiagnosisId
     
     SQL = "select ApplicationName, FamilyName from DtFinalDiagnosisView where FinalDiagnosisId = %s" % str(finalDiagnosisId)
@@ -40,8 +40,8 @@ def okAction(event):
     finalDiagnosisName = rootContainer.finalDiagnosisName
     applicationName = record["ApplicationName"]
     familyName = record["FamilyName"]
-    database = getDatabaseClient()
-    provider = getTagProviderClient()
+    database = getDatabase()
+    provider = getTagProvider()
     textRecommendation = "Manual Move - operator supplied error: %s" % (str(manualMove))
     
     manageFinalDiagnosis(applicationName, familyName, finalDiagnosisName, textRecommendation, database, provider)

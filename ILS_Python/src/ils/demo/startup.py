@@ -10,9 +10,9 @@ Created on Jun 18, 2018
 '''
 
 import system
-from ils.common.config import getHistoryProvider
-from ils.common.config import getProductionDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase
-from ils.common.config import getProductionTagProviderFromInternalDatabase, getIsolationTagProviderFromInternalDatabase
+from ils.config.common import getHistoryProvider
+from ils.config.common import getProductionDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase
+from ils.config.common import getProductionTagProviderFromInternalDatabase, getIsolationTagProviderFromInternalDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 

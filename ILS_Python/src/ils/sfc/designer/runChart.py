@@ -6,7 +6,7 @@ Created on Apr 29, 2022
 
 import system
 from ils.sfc.recipeData.api import s88GetEnclosingCharts
-from ils.common.config import getIsolationDatabaseFromInternalDatabase, getIsolationTagProviderFromInternalDatabase, getIsolationTimeFactorFromInternalDatabase, \
+from ils.config.common import getIsolationDatabaseFromInternalDatabase, getIsolationTagProviderFromInternalDatabase, getIsolationTimeFactorFromInternalDatabase, \
     getProductionDatabaseFromInternalDatabase, getProductionTagProviderFromInternalDatabase, getProductionTimeFactorFromInternalDatabase
 from ils.sfc.common.constants import INSTANCE_ID
 from ils.queue.commons import getQueueId, createQueue

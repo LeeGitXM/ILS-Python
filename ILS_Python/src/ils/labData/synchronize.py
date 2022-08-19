@@ -5,14 +5,14 @@ Created on Jul 17, 2015
 '''
 
 import system, string
-from ils.common.config import getTagProviderClient
+from ils.config.client import getTagProvider
 from ils.common.util import append
 from ils.log import getLogger
 log = getLogger(__name__)
 LAB_DATA_ROOT = "LabData"
 
 def createLabValue(unitName, valueName):
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     udtType='Lab Data/Lab Value'
     path = LAB_DATA_ROOT + "/" + unitName
     parentPath = "[%s]%s" % (tagProvider, path)  
@@ -31,7 +31,7 @@ def createLabValue(unitName, valueName):
         system.tag.configure(parentPath, tags=[tag])
 
 def createLabLimit(unitName, valueName, limitType):
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     parentPath = "[%s]LabData/%s" % (tagProvider, unitName)
     if string.upper(limitType) == 'SQC':
         udtType='Lab Data/Lab Limit SQC'
@@ -59,7 +59,7 @@ def createLabLimit(unitName, valueName, limitType):
         system.tag.configure(parentPath, tags=[tag])
 
 def createDcsTag(unitName, valueName, interfaceName, itemId):
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     path = "LabData/%s/DCS-Lab-Values" % (unitName)
     parentPath = "[%s]%s" % (tagProvider, path)  
     tagPath = parentPath + "/" + valueName
@@ -81,7 +81,7 @@ def createDcsTag(unitName, valueName, interfaceName, itemId):
         system.tag.configure(parentPath, tags=[tag])
 
 def createLabSelector(unitName, valueName):
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     udtType='Lab Data/Lab Selector Value'
     path = LAB_DATA_ROOT + "/" + unitName
     parentPath = "[%s]%s" % (tagProvider, path)  
@@ -103,7 +103,7 @@ def createLabSelector(unitName, valueName):
 
 def deleteLabValue(unitName, valueName):
     log.infof("Deleting lab data UDT for %s - %s", unitName, valueName)
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     tagPath = "[%s]%s/%s/%s" % (tagProvider, LAB_DATA_ROOT, unitName, valueName) 
     tagExists = system.tag.exists(tagPath)
     if tagExists:
@@ -113,7 +113,7 @@ def deleteLabValue(unitName, valueName):
         print "%s (%s) does not exist!" % (valueName, tagPath)
         
 def deleteDcsLabValue(unitName, valueName):
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     path = "LabData/%s/DCS-Lab-Values" % (unitName)
     parentPath = "[%s]%s" % (tagProvider, path)  
     tagPath = parentPath + "/" + valueName
@@ -125,7 +125,7 @@ def deleteDcsLabValue(unitName, valueName):
         print "%s (%s) does not exist!" % (valueName, tagPath)
 
 def deleteLabLimit(unitName, valueName, limitType):
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     
     if string.upper(limitType) == 'SQC':
         suffix='-SQC'
@@ -146,7 +146,7 @@ def deleteLabLimit(unitName, valueName, limitType):
 
 
 def deleteLabSelector(unitName, valueName):
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     path = LAB_DATA_ROOT + "/" +  unitName
     parentPath = "[%s]%s" % (tagProvider, path) 
      
@@ -335,7 +335,7 @@ def synchronize(provider, unitName, repair):
 
 def updateLabValueUdt(unitName, dataType, labValueName, colName, newValue):
     log.infof("Updating lab value UDT for %s - %s, a %s", unitName, labValueName, dataType)
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     
     if colName == "ValueName":
         print "Renaming a Lab Data UDT"

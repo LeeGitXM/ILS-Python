@@ -5,7 +5,7 @@ Created on Sep 10, 2014
 '''
 
 import system, time
-from ils.common.config import getTagProvider, getDatabaseClient
+from ils.config.client import getTagProvider, getDatabase
 from ils.io.util import readTag
 from ils.recipeToolkit.common import formatLocalTagName, formatTagName
 
@@ -74,7 +74,7 @@ def runner(rootContainer):
     from ils.recipeToolkit.downloadComplete import downloadComplete
     
     # Check the status of pending downloads
-    database = getDatabaseClient()
+    database = getDatabase()
     provider = rootContainer.getPropertyValue("provider")
     familyName = rootContainer.getPropertyValue("familyName")
     logId = rootContainer.logId

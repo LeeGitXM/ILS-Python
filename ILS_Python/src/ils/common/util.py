@@ -5,7 +5,7 @@ Created on Sep 10, 2014
 '''
 
 import system, string, re
-from ils.common.config import getTagProvider
+from ils.config.common import getTagProvider
 from ils.common.constants import CR, TAG
 from ils.log import getLogger
 log = getLogger(__name__)

@@ -6,12 +6,12 @@ Created on May 9, 2018
 
 import system
 from ils.io.util import readTag
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 
 def internalFrameOpened(rootContainer):
     print "In %s.internalFrameOpened" % (__name__)
-    database = getDatabaseClient()
-    tagProvider = getTagProviderClient()
+    database = getDatabase()
+    tagProvider = getTagProvider()
     
     browseTags = system.tag.browseTags(
         parentPath="[%s]Site" % (tagProvider), 
@@ -51,7 +51,7 @@ def refreshGrade(rootContainer):
     This is called when the user selects a recipe family from the recipe family dropdown.  
     This goes out and reads the current grade for the family that was selected.
     '''
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     familyDropdown = rootContainer.getComponent("Recipe Family Dropdown")
     gradeField = rootContainer.getComponent("Grade Field")
     
@@ -72,8 +72,8 @@ def updateCallback(rootContainer):
     '''
     This is called when the user presses the button on the "Update Lab Limits From Recipe"
     '''
-    tagProvider = getTagProviderClient()
-    database = getDatabaseClient()
+    tagProvider = getTagProvider()
+    database = getDatabase()
     
     familyDropdown = rootContainer.getComponent("Recipe Family Dropdown")
     gradeField = rootContainer.getComponent("Grade Field")

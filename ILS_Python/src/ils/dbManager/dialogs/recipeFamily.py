@@ -10,7 +10,7 @@ import system
 from ils.common.util import getRootContainer
 from ils.dbManager.sql import idForPost
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -27,7 +27,7 @@ def internalFrameActivated(component):
 # If we get an exception, then rollback the transaction.
 def requery(component):
     log.info("unit.requery ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(component)
     table = container.getComponent("DatabaseTable")
     
@@ -43,7 +43,7 @@ def requery(component):
 # Delete the selected row.  The family is a primary key for many of the other recipe tables.  This delete works using cascade deletes.
 def deleteRow(button):
     log.info("recipeFamily.deleteRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
 
@@ -69,7 +69,7 @@ def showWindow():
 # Update database for a cell edit
 def update(table,row,colname,value):
     log.info("recipeFamily.update (%d:%s)=%s ..." %(row,colname,str(value)))
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     familyId = ds.getValueAt(row,0)
     
@@ -89,7 +89,7 @@ def update(table,row,colname,value):
     system.db.runUpdateQuery(SQL, database=db)
     
 def exportCallback(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     SQL = "SELECT F.RecipeFamilyId, F.RecipeFamilyName, P.Post, F.RecipeUnitPrefix, F.RecipeNameAlias, F.HasGains, F.HasSQC, F.Comment "\
         " FROM RtRecipeFamily F, TkPost P "\
         " WHERE F.PostId = P.PostId ORDER by RecipeFamilyName"

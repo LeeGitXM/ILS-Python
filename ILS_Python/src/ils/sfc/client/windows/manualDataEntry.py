@@ -10,11 +10,11 @@ SfcManualDataEntryTable database table.  The gateway is reading the same table, 
 import system, string
 from ils.io.util import writeTag
 from ils.sfc.common.util import isEmpty
-from ils.common.config import getDatabaseClient, getTagProviderClient
+from ils.config.client import getDatabase, getTagProvider
 from ils.sfc.recipeData.api import s88SetFromStep, s88SetFromStepWithUnits
 
 def internalFrameOpened(rootContainer):
-    db=getDatabaseClient()
+    db=getDatabase()
     rootContainer.database = db
     print "In %s.InternalFrameOpened..." % (__name__)
 
@@ -81,8 +81,8 @@ def okCallback(rootContainer, timedOut=False):
 # This actually does the work of saving the data to the database.
 def saveData(rootContainer, timedOut):
     print "In %s.saveData(), saving the data..." % (__name__)
-    db=getDatabaseClient()
-    provider=getTagProviderClient()
+    db=getDatabase()
+    provider=getTagProvider()
     windowId = rootContainer.windowId
 
     table = rootContainer.getComponent('Power Table')

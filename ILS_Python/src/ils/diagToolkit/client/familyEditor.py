@@ -5,14 +5,14 @@ Created on Apr 15, 2022
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 
 from ils.log import getLogger
 log = getLogger(__name__)
 
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.rootContainer
     SQL = "select FamilyName, Description, FamilyPriority from DtFamily where FamilyId = %d" % (rootContainer.familyId)
     pds = system.db.runQuery(SQL, database=db)
@@ -33,7 +33,7 @@ def internalFrameOpened(event):
 
 def saveCallback(event):
     log.infof("In %s.internalFrameOpened()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     
     applicationId = rootContainer.applicationId

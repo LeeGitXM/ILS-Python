@@ -5,7 +5,7 @@ Created on Sep 5, 2016
 
 '''
 import system, string
-from ils.common.config import getDatabaseClient, getIsolationModeClient
+from ils.config.client import getDatabase, getIsolationMode
 from ils.common.windowUtil import positionWindow
 from ils.common.database import getConsoleWindowNameForConsole
 from ils.io.util import readTag
@@ -84,7 +84,7 @@ def closeWindowHandler(payload):
     '''
     print "Closing:", payload
     isolationMode = payload["isolationMode"]
-    if isolationMode != getIsolationModeClient():
+    if isolationMode != getIsolationMode():
         print "--- exiting because the isolation mode does not match ---"
         return
     

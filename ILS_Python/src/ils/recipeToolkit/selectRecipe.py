@@ -5,12 +5,12 @@ Created on Sep 10, 2014
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.recipeToolkit.common import RECIPE_VALUES_INDEX, PROCESS_VALUES_INDEX
 
 def initialize(rootContainer):
     print "In recipeToolkit.selectRecipe.initialize()..."
-    db = getDatabaseClient()
+    db = getDatabase()
     familyName = rootContainer.familyName
     print "Recipe Family Name: %s" % (familyName)
 

@@ -4,12 +4,13 @@ Created on Apr 8, 2016
 @author: ils
 '''
 import system, datetime
-from ils.common.config import getTagProviderClient, getHistoryTagProviderClient
+from ils.config.client import getHistoryTagProvider
+from ils.config.common import getTagProvider
 
 # Open transaction when window is opened
 def internalFrameOpened(rootContainer):
     print "In internalFrameOpened()..."
-    tagProvider=getTagProviderClient()
+    tagProvider=getTagProvider()
     
     # Browse for all of the Grade UDTs
     parentPath="[" + tagProvider + "]" + 'Site'
@@ -48,7 +49,7 @@ def refresh(rootContainer):
 
     dropdown=rootContainer.getComponent("Dropdown")
     gradeTag = dropdown.selectedStringValue
-    historyTagProvider = getHistoryTagProviderClient()
+    historyTagProvider = getHistoryTagProvider()
 
     if gradeTag == "":
         print "Please select a grade tag first!"

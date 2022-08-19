@@ -84,7 +84,7 @@ def activate(scopeContext, stepProperties, state):
         unscaledDelaySeconds=delaySeconds
         timeFactor = getTimeFactor(chartScope)
         delaySeconds = delaySeconds * timeFactor
-        log.tracef("Unscaled Time delay: %f, time factor: %f, scaled time delay: %f", unscaledDelaySeconds, timeFactor, delaySeconds)
+        log.tracef("Unscaled Time delay: %s, time factor: %s, scaled time delay: %s", str(unscaledDelaySeconds), str(timeFactor), str(delaySeconds))
 
         stepScope['tooltip'] = "Starting a %s second delay" % (str(unscaledDelaySeconds))
         

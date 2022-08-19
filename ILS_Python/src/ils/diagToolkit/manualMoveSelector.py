@@ -5,7 +5,7 @@ Created on Jan 11, 2019
 '''
 
 import system, string
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.io.util import readTag
 from com.jidesoft.grid import Row
 
@@ -46,7 +46,7 @@ def internalFrameOpened(rootContainer):
     post = rootContainer.post
     checkPost = rootContainer.checkPost
     
-    db = getDatabaseClient()
+    db = getDatabase()
     
     if post == "" or not(checkPost):
         SQL = "SELECT FinalDiagnosisName as Label, FinalDiagnosisName, FinalDiagnosisLabel, FinalDiagnosisUUID, DiagramUUID, FinalDiagnosisId "\

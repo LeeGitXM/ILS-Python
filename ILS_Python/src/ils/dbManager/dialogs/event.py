@@ -10,7 +10,7 @@ from ils.dbManager.sql import idForFamily
 from ils.common.util import getRootContainer
 from ils.dbManager.userdefaults import get as getUserDefaults
 from ils.common.error import notifyError
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
@@ -25,7 +25,7 @@ def showWindow():
 # If we get an exception, then rollback the transaction.
 def requery(rootContainer):
     log.info("event.requery ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     table = rootContainer.getComponent("DatabaseTable")
     whereExtension = getWhereExtension(rootContainer)
     SQL = "SELECT F.RecipeFamilyName, E.Grade, EP.Parameter, E.Value, EP.ParameterId " \
@@ -43,7 +43,7 @@ def requery(rootContainer):
 # By deleting a row, we are deleting the parameter for every grade for the family.
 def deleteRow(button):
     log.info("event.deleteRow ...")
-    db = getDatabaseClient()
+    db = getDatabase()
     container = getRootContainer(button)
     table = container.getComponent("DatabaseTable")
     
@@ -111,7 +111,7 @@ def internalFrameActivated(rootContainer):
 # Update database for a cell edit. We only allow edits of parameter name or limits.
 def update(table,row,colname,value):
     log.info("event.update (%d:%s)=%s ..." %(row,colname,str(value)))
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     paramid=ds.getValueAt(row,"ParameterId")
@@ -124,7 +124,7 @@ def update(table,row,colname,value):
 # By adding a new parameter, we are adding a new parameter for every grade for the family
 # Will get an error if the row exists.
 def addParameter(button, parameter):
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = getRootContainer(button)
     
     # Family

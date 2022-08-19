@@ -5,7 +5,7 @@ Created on Apr 15, 2022
 '''
 
 import system
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.diagToolkit.common import fetchApplicationId, \
     fetchOutputNamesForApplication,\
     fetchOutputNamesForFinalDiagnosisId
@@ -20,7 +20,7 @@ def internalFrameOpened(event):
     
 def refresh(rootContainer):
     log.infof("In %s.refresh()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     
     applicationName = rootContainer.applicationName
     applicationId = fetchApplicationId(applicationName, db)
@@ -96,7 +96,7 @@ def save(event):
     Symbolic Ai context.  We also cannot rename a Final Diagnosis - that also can only happen in Designer.
     '''
     log.infof("In %s.save()", __name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     finalDiagnosisId = rootContainer.finalDiagnosisId
     

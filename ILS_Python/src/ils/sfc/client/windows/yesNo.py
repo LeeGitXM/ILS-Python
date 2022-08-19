@@ -5,7 +5,7 @@ Created on Dec 3, 2015
 '''
 import system
 from ils.sfc.common.constants import YES_RESPONSE, NO_RESPONSE
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.sfc.client.util import setClientDone, setClientResponse
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -14,7 +14,7 @@ def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()", __name__) 
     rootContainer = event.source.rootContainer
     windowId = rootContainer.windowId
-    db = getDatabaseClient()
+    db = getDatabase()
     
     title = system.db.runScalarQuery("select title from sfcWindow where windowId = '%s'" % (windowId), db)
     rootContainer.title = title

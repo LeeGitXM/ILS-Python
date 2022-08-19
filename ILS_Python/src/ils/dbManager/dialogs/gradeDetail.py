@@ -9,11 +9,11 @@ import system
 from ils.io.util import readTag							   
 from ils.dbManager.ui import populateRecipeFamilyDropdown, populateGradeForFamilyDropdown, populateVersionForGradeDropdown
 from ils.dbManager.userdefaults import get as getUserDefaults
-from ils.common.config import getDatabaseClient
+from ils.config.client import getDatabase
 from ils.log import getLogger
 log = getLogger(__name__)
 
-def internalFrameOpened(rootContainer):
+def internalFrameOpened(rootContainer): 
     print "In %s.InternalFrameOpened()" % (__name__)
 
 def internalFrameActivated(rootContainer):
@@ -36,7 +36,7 @@ If we get an exception, then rollback the transaction.
 '''
 def requery(rootContainer):
     print "In %s.requery()" % (__name__)
-    db = getDatabaseClient()
+    db = getDatabase()
     table = rootContainer.getComponent("DatabaseTable")
     print table
     
@@ -91,7 +91,7 @@ def showWindow():
 # limits.
 def update(table,row,colname,value):
     print "In %s.update() - row:%d, col: %s, value: <%s> ..." % (__name__, row, colname, str(value))
-    db = getDatabaseClient()
+    db = getDatabase()
     ds = table.data
     #column is LowerLimit or UpperLimit. Others are not editable.
     familyid = ds.getValueAt(row,"RecipeFamilyId")
@@ -138,7 +138,7 @@ def update(table,row,colname,value):
 
 
 def exportCallback(event):
-    db = getDatabaseClient()
+    db = getDatabase()
     rootContainer = event.source.parent
     andWhere = ""
     

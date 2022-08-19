@@ -5,7 +5,7 @@ Created on Nov 18, 2014
 '''
 
 import system, string, time
-from ils.common.config import getTagProviderFromInternalDatabase, getDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase, getUserLibDir
+from ils.config.common import getTagProviderFromInternalDatabase, getDatabaseFromInternalDatabase, getIsolationDatabaseFromInternalDatabase, getUserLibDir
 from ils.common.user import isOperator
 from ils.common.menuBar import getMenuBar, clearConsoles, removeNonOperatorMenus, removeUnwantedMenus, ConsoleMenus
 from ils.common.error import catchError

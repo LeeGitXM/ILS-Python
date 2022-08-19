@@ -8,7 +8,7 @@ PID = "PID"
 EDIT_MODE = "edit"
 
 import system
-from ils.common.config import getTagProviderClient
+from ils.config.client import getTagProvider
 from ils.common.cast import extendedPropertiesToDictionary
 from ils.io.util import readTag, writeTag
 from ils.log import getLogger
@@ -99,7 +99,7 @@ def okCallback(event):
     
     oldBiasName = rootContainer.biasName
     mode = rootContainer.mode
-    tagProvider = getTagProviderClient()
+    tagProvider = getTagProvider()
     
     unitName = rootContainer.getComponent("Unit Name").selectedStringValue
     if unitName == "":

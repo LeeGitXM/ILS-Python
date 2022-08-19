@@ -4,7 +4,8 @@ Created on Dec 20, 2021
 @author: ils
 '''
 
-import system
+import system, sys
+from ils.common.error import catchError
 
 '''
 TOOLKIT_PROPERTY_BE_DATABASE         = "BatchExpertDatabase"; //Database for BatchExpert
@@ -29,6 +30,8 @@ PRODUCTION_TAG_PROVIDER = "Provider"
 ISOLATION_TAG_PROVIDER = "SecondaryProvider"
 PRODUCTION_TIME_FACTOR = "TimeFactor"
 ISOLATION_TIME_FACTOR = "SecondaryTimeFactor"
+
+
 
 def getDatabaseHandler(payload):
     '''
@@ -57,7 +60,7 @@ def setDatabaseHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.tracef("In setDatabaseHandler: %s", str(payload))
+    log.infof("In %s.setDatabaseHandler: %s", __name__, str(payload))
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     val = payload.get("val", None)
@@ -74,7 +77,8 @@ def setDatabaseHandler(payload):
         else:
             handler.setToolkitProjectProperty(project, PRODUCTION_DATABASE, val)
     except:
-        print "Caught an exception"
+        txt = catchError("setDatabaseHandler", str(payload))
+        log.errorf(txt)
         status = "failure"
     else:
         status = "success"
@@ -118,7 +122,7 @@ def setTagProviderHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.tracef("In setTagProviderHandler: %s", payload)
+    log.infof("In %s.setTagProviderHandler: %s", __name__, payload)
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     val = payload.get("val", None)
@@ -135,7 +139,8 @@ def setTagProviderHandler(payload):
         else:
             handler.setToolkitProjectProperty(project, PRODUCTION_TAG_PROVIDER, val)
     except:
-        print "Caught an exception"
+        txt = catchError("setTagProviderHandler", str(payload))
+        log.errorf(txt)
         status = "failure"
     else:
         status = "success"
@@ -171,7 +176,7 @@ def setTimeFactorHandler(payload):
     '''
     This runs in the gateway in response to a message sent from a client.
     '''
-    log.tracef("In setTimeFactorHandler: %s", payload)
+    log.infof("In %s.setTimeFactorHandler: %s", __name__, str(payload))
     project = payload.get("project", None)
     isolationMode = payload.get("isolationMode", None)
     val = payload.get("val", None)
@@ -188,7 +193,8 @@ def setTimeFactorHandler(payload):
         else:
             handler.setToolkitProjectProperty(project, PRODUCTION_TIME_FACTOR, val)
     except:
-        print "Caught an exception"
+        txt = catchError("setTimeFactorHandler", str(payload))
+        log.errorf(txt)
         status = "failure"
     else:
         status = "success"
