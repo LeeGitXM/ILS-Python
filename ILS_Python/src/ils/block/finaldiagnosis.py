@@ -1,6 +1,6 @@
 #  Copyright 2014 ILS Automation
 #
-import system
+import system   
 from ils.common.cast import toBit
 from ils.common.database import toDateString
 

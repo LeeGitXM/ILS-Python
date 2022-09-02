@@ -112,7 +112,7 @@ def getStepInfoFromId(stepId, db):
 
 def getStepInfoFromUUID(stepUUID, db):
     '''  Return the chartPath and stepName from the stepUUID. '''
-    SQL = "select ChartPath, StepName from SfcStepView where StepUUID = %d" % (stepUUID)
+    SQL = "select ChartPath, StepName from SfcStepView where StepUUID = '%s'" % (stepUUID)
     pds = system.db.runQuery(SQL, db)
     if len(pds) == 0:
         logger.errorf("Unable to find a step with step UUID: %s", stepUUID)
@@ -1422,15 +1422,19 @@ def copyFolderValues(fromStepId, fromFolder, toStepId, toFolder, recursive, cate
         i = i + 1
 #    keys = s88GetKeysForNamedBlock(fromChartPath, fromStepName, "%", db)
 
-def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
-    # 1) Ensure that the types of recipe data are the same.
-    # 2) Call a copy method that knows which attributes of recipe data need to be copied
+def copyRecipeDatum(sourceId, sourceKey, targetId, targetKey, db):
+    '''
+    Ensure that the types of recipe data are the same.
+    Call a copy method that knows which attributes of recipe data need to be copied.
+    '''
     
+    logger.infof("In %s.copyRecipeDatum()", __name__)
+
     tokens = sourceKey.split(".")
     if len(tokens) > 1:
         sourceFolder = sourceKey[:sourceKey.rfind(".")]
         sourceKey = sourceKey[sourceKey.rfind(".")+1:]
-        sourceFolderId = getFolderForStep(sourceUUID, sourceFolder, db)
+        sourceFolderId = getFolderForStep(sourceId, sourceFolder, db)
         logger.tracef("Source: <%s>.<%s>", sourceFolder, sourceKey)
     else:
         sourceFolderId = None
@@ -1439,16 +1443,16 @@ def copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
     if len(tokens) > 1:
         targetFolder = targetKey[:targetKey.rfind(".")]
         targetKey = targetKey[targetKey.rfind(".")+1:]
-        targetFolderId = getFolderForStep(targetUUID, targetFolder, db)
+        targetFolderId = getFolderForStep(targetId, targetFolder, db)
         logger.tracef("Target: <%s>.<%s>", targetFolder, targetKey)
     else:
         targetFolderId = None
 
-    chartPath, stepName = getStepInfoFromUUID(sourceUUID, db)
-    sourceRecord = fetchRecipeDataRecord(stepName, sourceUUID, sourceFolderId, sourceKey, db)
+    sourceChartPath, sourceStepName = getStepInfoFromId(sourceId, db)
+    sourceRecord = fetchRecipeDataRecord(sourceStepName, sourceId, sourceFolderId, sourceKey, db)
     
-    chartPath, stepName = getStepInfoFromUUID(targetUUID, db)
-    targetRecord = fetchRecipeDataRecord(stepName, targetUUID, targetFolderId, targetKey, db)
+    targetChartPath, targetStepName = getStepInfoFromId(targetId, db)
+    targetRecord = fetchRecipeDataRecord(targetStepName, targetId, targetFolderId, targetKey, db)
     
     copySourceToTarget(sourceRecord, targetRecord, db)
     

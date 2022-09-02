@@ -248,15 +248,16 @@ def updateDatabaseSchema(tagProvider, db):
     log.infof("In %s.updateDatabaseSchema()", __name__)
     try:
         dbVersions = []
-        dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseData": "2020-04-01"})
-        dbVersions.append({"versionId": 2, "version": "1.2r0", "filename": "update_1.2r0.sql", "releaseData": "2020-06-22"})
-        dbVersions.append({"versionId": 3, "version": "1.3r0", "filename": "update_1.3r0.sql", "releaseData": "2020-09-14"})
-        dbVersions.append({"versionId": 4, "version": "1.4r0", "filename": "update_1.4r0.sql", "releaseData": "2020-10-25"})
-        dbVersions.append({"versionId": 5, "version": "1.5r0", "filename": "update_1.5r0.sql", "releaseData": "2021-04-15"})
-        dbVersions.append({"versionId": 6, "version": "1.6r0", "filename": "update_1.6r0.sql", "releaseData": "2021-07-04"})
-        dbVersions.append({"versionId": 7, "version": "1.7r0", "filename": "update_1.7r0.sql", "releaseData": "2021-08-31"})
-        dbVersions.append({"versionId": 8, "version": "1.8r0", "filename": "update_1.8r0.sql", "releaseData": "2021-10-08"})
-        dbVersions.append({"versionId": 9, "version": "1.9r0", "filename": "update_1.9r0.sql", "releaseData": "2022-01-24"})
+        dbVersions.append({"versionId": 1, "version": "1.1r0", "filename": "update_1.1r0.sql", "releaseDate": "2020-04-01"})
+        dbVersions.append({"versionId": 2, "version": "1.2r0", "filename": "update_1.2r0.sql", "releaseDate": "2020-06-22"})
+        dbVersions.append({"versionId": 3, "version": "1.3r0", "filename": "update_1.3r0.sql", "releaseDate": "2020-09-14"})
+        dbVersions.append({"versionId": 4, "version": "1.4r0", "filename": "update_1.4r0.sql", "releaseDate": "2020-10-25"})
+        dbVersions.append({"versionId": 5, "version": "1.5r0", "filename": "update_1.5r0.sql", "releaseDate": "2021-04-15"})
+        dbVersions.append({"versionId": 6, "version": "1.6r0", "filename": "update_1.6r0.sql", "releaseDate": "2021-07-04"})
+        dbVersions.append({"versionId": 7, "version": "1.7r0", "filename": "update_1.7r0.sql", "releaseDate": "2021-08-31"})
+        dbVersions.append({"versionId": 8, "version": "1.8r0", "filename": "update_1.8r0.sql", "releaseDate": "2021-10-08"})
+        dbVersions.append({"versionId": 9, "version": "1.9r0", "filename": "update_1.9r0.sql", "releaseDate": "2022-01-24"})
+        dbVersions.append({"versionId": 12, "version": "2.2r0", "filename": "update_2.1r0.sql", "releaseDate": "2022-09-01"})
         
         projectName = system.util.getProjectName()
         log.infof("In %s.updateDatabaseSchema()for %s - %s", __name__, projectName, db)
@@ -281,7 +282,7 @@ def updateDatabaseSchema(tagProvider, db):
             version = dbVersion.get("version", None)
             filename = dbVersion.get("filename", None)
             filename = homeDir + filename
-            releaseDate = dbVersion.get("releaseData", None)
+            releaseDate = dbVersion.get("releaseDate", None)
             
             if currentId < versionId:
                 installDbUpdate(versionId, version, filename, releaseDate, strategy, db)

@@ -5,7 +5,6 @@ Created on May 31, 2017
 '''
 
 import system, os, string
-from ils.sfc.recipeData.hierarchyWithBrowser import fetchHierarchy
 from ils.config.client import getDatabase
 from ils.common.error import notifyError
 from ils.log import getLogger
@@ -55,7 +54,7 @@ def exportStepCallback(event):
     
     try:
         db = getDatabase()
-        log.infof("In %s.exportCallback()...", __name__)
+        log.infof("In %s.exportStepCallback()...", __name__)
         stepContainer = event.source.parent
         rootContainer = event.source.parent.parent
         treeContainer = rootContainer.getComponent("Tree Container")
@@ -102,7 +101,7 @@ def exportStepCallback(event):
         folder = os.path.dirname(filename)
         rootContainer.importExportFolder = folder
         
-        exporter = Exporter(db)
+        exporter = Exporter(db=db)
         keyTxt = ""
         #keyTxt = exportKeysForChart(chartId, db)
         recipeFolderTxt = exporter.exportRecipeDataFoldersForStep(stepId, stepName)
@@ -116,24 +115,42 @@ def exportStepCallback(event):
     except:
         notifyError("%s.exportCallback()" % (__name__), "Check the console log for details.")
         
+def exportRecipeData(stepId, stepName, txId):
+    log.infof("In %s.exportRecipeData()...", __name__)
+        
+    exporter = Exporter(txId=txId)
+    keyTxt = ""
+    #keyTxt = exportKeysForChart(chartId, db)
+    recipeFolderTxt = exporter.exportRecipeDataFoldersForStep(stepId, stepName)
+    recipeDataTxt = exporter.exportRecipeDataForStep(stepId, stepName)
+    
+    txt = "<data>\n" + keyTxt + recipeFolderTxt + recipeDataTxt + "</data>"
+
+    return txt
+        
+
 class Exporter():
     sfcRecipeDataShowProductionOnly = False
-    db = None
+    txId = None
     hierarchyPDS = None
     chartPDS = None
     deep = None
 
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, db=None, txId=None):
+
+        if txId == None:
+            self.txId = system.db.beginTransaction(database=db, timeout=86400000)
+        else:
+            self.txId = txId
         
-        self.hierarchyPDS = fetchHierarchy("%", self.sfcRecipeDataShowProductionOnly, self.db)
+        self.hierarchyPDS = self.fetchHierarchy()
         log.tracef("Selected all %d chart hierarchy records...", len(self.hierarchyPDS))
         
-        self.chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", self.db)
+        self.chartPDS = system.db.runQuery("Select ChartId, ChartPath from SfcChart order by ChartId", tx=self.txId)
         log.tracef("Selected info for all %d charts...", len(self.chartPDS))
         
         SQL = "Select * from SfcRecipeDataFolder"
-        self.folderPDS = system.db.runQuery(SQL, self.db)
+        self.folderPDS = system.db.runQuery(SQL, tx=self.txId)
 
     def export(self, chartPath, deep):
         self.chartPath = chartPath
@@ -141,7 +158,7 @@ class Exporter():
         log.infof("In %s.export()", __name__)
         
         SQL = "select chartId from SfcChart where chartPath = '%s'" % (self.chartPath)
-        self.chartId = system.db.runScalarQuery(SQL, self.db) 
+        self.chartId = system.db.runScalarQuery(SQL, tx=self.txId) 
         log.tracef("...fetched chart id: %s", str(self.chartId))
         if self.chartId == None:
             return ""
@@ -180,12 +197,12 @@ class Exporter():
         keys = []
         for chartId in chartIds:
             SQL = "select RecipeDataId from SfcRecipeDataView where chartId = %d and RecipeDataType = 'Matrix'" % (chartId)
-            pds = system.db.runQuery(SQL, self.db)
+            pds = system.db.runQuery(SQL, tx=self.txId)
             
             for record in pds:
                 log.tracef("Found matrix id: %s", str(record["RecipeDataId"]))
                 SQL = "select RowIndexKeyId, ColumnIndexKeyId from SfcRecipeDataMatrix where RecipeDataId = %d" % (record["RecipeDataId"])
-                keyPds = system.db.runQuery(SQL, self.db)
+                keyPds = system.db.runQuery(SQL, tx=self.txId)
                 for record in keyPds:
                     if record["RowIndexKeyId"] != None and record["RowIndexKeyId"] not in keys:
                         log.tracef("Found a new Matrix row key: %s", str(record["RowIndexKeyId"]))
@@ -195,12 +212,12 @@ class Exporter():
                         keys.append(record["ColumnIndexKeyId"])
             
             SQL = "select RecipeDataId from SfcRecipeDataView where chartId = %d and RecipeDataType = 'Array'" % (chartId)
-            pds = system.db.runQuery(SQL, self.db)
+            pds = system.db.runQuery(SQL, tx=self.txId)
             
             for record in pds:
                 log.tracef("Found array id: %s", str(record["RecipeDataId"]))
                 SQL = "select IndexKeyId from SfcRecipeDataArray where RecipeDataId = %d and IndexKeyId is not null" % (record["RecipeDataId"])
-                keyPds = system.db.runQuery(SQL, self.db)
+                keyPds = system.db.runQuery(SQL, tx=self.txId)
                 for record in keyPds:
                     if record["IndexKeyId"] not in keys:
                         log.tracef("Found a new Array key: %s", str(record["IndexKeyId"]))
@@ -212,7 +229,7 @@ class Exporter():
         cnt = 0
         for key in keys:
             SQL = "select * from SfcRecipeDataKeyView where KeyId = %d order by KeyIndex" % (key)
-            pds = system.db.runQuery(SQL, self.db)
+            pds = system.db.runQuery(SQL, tx=self.txId)
             row = 1
             for record in pds:
                 if row == 1:
@@ -265,7 +282,13 @@ class Exporter():
                 return chart["ChartPath"]
         return ""
 
-
+    def fetchHierarchy(self):
+        log.tracef("Fetching the entire chart hierarchy...")
+        SQL = "select * from SfcHierarchyView order by ChartPath"
+        pds = system.db.runQuery(SQL, tx=self.txId)
+        log.tracef("...fetched %d charts", len(pds))
+        return pds
+                   
     def fetchChildren(self, chartId, visitedCharts, parentChildList):
         log.tracef("Looking for the children of chart %d", chartId)
         
@@ -306,7 +329,7 @@ class Exporter():
         log.infof("...exporting chart steps...")
         
         SQL = "select stepId, stepName, stepUUID, stepType from SfcStepView where chartId = %d" % (chartId)
-        pds = system.db.runQuery(SQL, self.db)
+        pds = system.db.runQuery(SQL, tx=self.txId)
         
         stepTxt = ""
         
@@ -326,7 +349,7 @@ class Exporter():
         txt = ""
     
         SQL = "Select RecipeDataKey, RecipeDataFolderId, ParentRecipeDataFolderId, Description, Label from SfcRecipeDataFolder where stepId = %d" % (stepId)
-        pds = system.db.runQuery(SQL, self.db)
+        pds = system.db.runQuery(SQL, tx=self.txId)
         
         for record in pds:
             txt = txt + "<recipeFolder recipeDataKey='%s' folderId='%s' parentFolderId='%s' description='%s' label='%s'/>\n" % \
@@ -338,12 +361,12 @@ class Exporter():
         log.infof("   ...exporting recipe data for step %s - %s", stepName, str(stepId))
         
         def fetchFirstRecord(SQL):
-            pds = system.db.runQuery(SQL, self.db)
+            pds = system.db.runQuery(SQL, tx=self.txId)
             record = pds[0]
             return record
         
         SQL = "select chartPath, stepName, recipeDataId, recipeDataKey, recipeDataType, label, description, advice, units, recipeDataFolderId from SfcRecipeDataView where stepId = %d" % (stepId)
-        pds = system.db.runQuery(SQL, self.db)
+        pds = system.db.runQuery(SQL, tx=self.txId)
         
         recipeDataTxt = ""
         
@@ -490,7 +513,7 @@ class Exporter():
                 the index key is only used as a convenience in the UI and API.
                 '''
                 SQL = "select arrayIndex, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataArrayElementView where RecipeDataId = %d" % (recipeDataId)
-                pds = system.db.runQuery(SQL, self.db)
+                pds = system.db.runQuery(SQL, tx=self.txId)
                 for record in pds:
                     if valueType == "Float":
                         recipeDataTxt = recipeDataTxt + "<element> %s %s </element>\n" % (mkEL("arrayIndex", str(record["arrayIndex"])), mkEL("value", str(record['floatValue'])))
@@ -519,7 +542,7 @@ class Exporter():
                 the index key is only used as a convenience in the UI and API.
                 '''
                 SQL = "select rowIndex, columnIndex, floatValue, integerValue, stringValue, booleanValue from SfcRecipeDataMatrixElementView where RecipeDataId = %d" % (recipeDataId)
-                pds = system.db.runQuery(SQL, self.db)
+                pds = system.db.runQuery(SQL, tx=self.txId)
                 for record in pds:
                     if valueType == "Float":
                         recipeDataTxt = recipeDataTxt + "<element> %s %s %s </element>\n" % (mkEL("rowIndex", str(record["rowIndex"])), mkEL("columnIndex", str(record["columnIndex"])), mkEL("value", str(record['floatValue'])))

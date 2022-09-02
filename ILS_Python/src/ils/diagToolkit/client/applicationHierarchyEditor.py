@@ -35,7 +35,10 @@ CLICK_THRESHOLD = 10
 def internalFrameOpened(event):
     log.infof("In %s.internalFrameOpened()...", __name__)
     rootContainer = event.source.rootContainer
-    rootContainer.getComponent("Diagram Container").buttonValue = 1
+
+    diagramContainer = rootContainer.getComponent("Diagram Container")
+    diagramContainer.showAllDiagrams = True
+
     treeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     treeWidget.selectedNodeType = ""
 
@@ -61,11 +64,9 @@ def refreshDiagramTree(rootContainer, db):
     log.infof("In %s.refreshDiagramTree()...", __name__)
     
     diagramContainer = rootContainer.getComponent("Diagram Container")
-    mode = diagramContainer.getComponent("2 State Toggle").text
+    showAllDiagrams = diagramContainer.showAllDiagrams
     
-    print "The mode is: ", mode
-    
-    if mode == "All Diagrams":
+    if showAllDiagrams:
         SQL = "select DiagramName, FamilyId from DtDiagram"
         pds = system.db.runQuery(SQL, database=db)
         statusMessage = "%d total diagrams" % (len(pds))

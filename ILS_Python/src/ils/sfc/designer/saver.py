@@ -194,7 +194,7 @@ class Compiler():
         chartPath = record["ChartPath"]
         chartId = record["ChartId"]
         
-        '''
+        ''' 
         There is a problem here where a deleted chart is named "n/a".  
         The problem is that the "/" is also a path delimiter
         '''
@@ -428,6 +428,7 @@ class Compiler():
         
         stepsToDelete = []            
         for chart in self.charts:
+            log.tracef("Processing steps for chart %s", chart.chartPath)
             stepsToDelete = chart.updateChartSteps(stepsToDelete)
         self.stepsToDelete = stepsToDelete
 
@@ -444,14 +445,14 @@ class Chart():
     compiler = None
 
     def __init__(self, resource, resourceId, compiler, txId):
-        log.tracef("Creating a new chart() with txId: %s...", txId)
+        log.tracef("In %s.Cart.__init__() Creating a new Chart object to hold the chart and step data (using txId: %s)...", __name__, txId)
         self.resource = resource
         self.resourceId = resourceId
         self.txId = txId
         self.chartPath = resource["chartPath"]
         self.chartXml = resource["chartXml"]
         self.compiler = compiler
-        log.tracef("Processing  a new chart <%s> with txId: %s...", self.chartPath, txId)
+        log.tracef("...processing a chart <%s>...", self.chartPath)
         
     def parseXml(self):
         parseLog.infof("In %s.parseXml()", __name__)
@@ -670,7 +671,8 @@ class Chart():
                             log.tracef("...the stepType has been changed from %s to %s", str(self.databaseStepsDataset.getValueAt(idx,"StepTypeId")), str(stepTypeId))
                             updateIt = True
                         if stepName <> str(self.databaseStepsDataset.getValueAt(idx,"StepName")):
-                            log.tracef("...the step has been renamed slightly from %s to %s", stepName, str(self.databaseStepsDataset.getValueAt(idx,"StepName") ))
+                            ''' I don't think that this will ever be reached.  If we get through checkIfStepIsInDatabase90 then the stepNames match. '''
+                            log.tracef("...the step has been renamed from %s to %s", stepName, str(self.databaseStepsDataset.getValueAt(idx,"StepName") ))
                             updateIt = True
     
                         if updateIt:
@@ -692,36 +694,52 @@ class Chart():
                         self.databaseStepsDataset = system.dataset.deleteRow(self.databaseStepsDataset, idx)
         
                     else:
-                        ''' Before we insert a step, check for the possibility of a moved step.  Search for a steo with the same UUID and step type anywhere.  '''
-                        log.tracef("...checking if step has been moved...")
-                        SQL = "select * from SfcStep where StepUUID = '%s' and StepTypeId = %d" % (stepUUID, stepTypeId)
-    
+                        ''' 
+                        Before we insert a step, check for a step that was cut and pasted in which case it will have the same name but a different UUID.
+                        Search for a step with the same name but a different UUID on the same chart. The whole point of this is to maintain / copy
+                        recipe data.  If they cut (or copied) a step, pasted it on the same diagram, and then renamed it BEFORE SAVING then they 
+                        are screwed.  A common use case is to move a step into a parallel transition due to refactoring.  The only way to do this 
+                        is by cutting and pasting the step.  To us, it looks like a new step.  
+                        '''
+                        log.tracef("...checking if step has been cut and pasted...")
+                        SQL = "select * from SfcStep where StepName = '%s' "\
+                            "and StepUUID != '%s' and StepTypeId = %d and chartId = %d" % (stepName, stepUUID, stepTypeId, chartId)
+                        log.tracef(SQL)
                         pds = system.db.runQuery(SQL, tx=self.txId)
-                        if len(pds) == 0 or len(pds) > 1: 
-                            log.tracef("...%d records were found, step has not been moved!", len(pds))
+                        log.tracef("...%d step records were found...", len(pds))
+                        
+                        if len(pds) == 0 or len(pds) > 1:     
                             log.tracef("...inserting a new step <%s>, a %s with UUID %s into the database...", stepName, stepType, stepUUID)
                             SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepName, stepUUID, stepTypeId, chartId)
                             stepId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
                             log.tracef("...inserted a %s step with id: %d", stepType, stepId)
                             insertCntr = insertCntr + 1
                         else:
-                            log.tracef("...the step has been moved!")
+                            log.tracef("...the step has been cut and pasted!")
+                            SQL = "insert into SfcStep (StepName, StepUUID, StepTypeId, ChartId) values ('%s', '%s', %d, %d)" % (stepName, stepUUID, stepTypeId, chartId)
+                            stepId = system.db.runUpdateQuery(SQL, tx=self.txId, getKey=True)
+                            log.tracef("...inserted a %s step with id: %d", stepType, stepId)
+                            
                             record = pds[0]
-                            stepId = record["StepId"]
+                            oldStepId = record["StepId"]
                             oldChartId = record["ChartId"]
-                            log.tracef("Moving a step with id %d from chart %d to chart %d", stepId, oldChartId, chartId)
-                            SQL = "update SfcStep set StepName = '%s', ChartId = %d where StepId = %d" % (stepName, chartId, stepId)
-                            rows = system.db.runUpdateQuery(SQL, tx=self.txId)
-                            log.tracef("...updated %d existing steps", rows)
-                            moveCntr = moveCntr + rows
-    
+
+                            log.infof("******* NEED TO COPY RECIPE DATA HERE ********")                            
+                            log.tracef("...copy recipe data from step id: %d to step id: %d", oldStepId, stepId)
+                            from ils.sfc.recipeData.api import s88CopyRecipeData
+                            s88CopyRecipeData(oldStepId, stepId, self.chartPath, stepName, txId=self.txId)
+#                            SQL = "update SfcStep set StepName = '%s', ChartId = %d where StepId = %d" % (stepName, chartId, stepId)
+#                            rows = system.db.runUpdateQuery(SQL, tx=self.txId)
+#                            log.tracef("...updated %d existing steps", rows)
+                            moveCntr = moveCntr + 1
+            
             log.tracef("...%d steps were inserted...", insertCntr)
             log.tracef("...%d steps were renamed...", renameCntr)
             log.tracef("...%d steps were updated...", updateCntr)
             log.tracef("...%d steps were moved...", moveCntr)
             
             '''
-            Anything that is left in the list of steps that we originally fetched from the database should be deleted from tyhe database because as we found the step in the chart XML we removed
+            Anything that is left in the list of steps that we originally fetched from the database should be deleted from the database because as we found the step in the chart XML we removed
             it from this dataset.  Defer the delete of steps so that we have a chance of supporting a moved step from one chart to another.  If we delete the step before we move the step then
             we will automatically lose the recipe data.
             '''

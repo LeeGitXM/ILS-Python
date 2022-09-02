@@ -538,10 +538,46 @@ def s88GetRootForChart(chartPath, db):
     print "Found root: ", chartPath
     return chartPath, chartId
 
+def s88CopyRecipeData(sourceStepId, targetStepId, chartPath, stepName, db=None, txId=None):
+    '''
+    chartPath and stepName are only used for error reporting 
+    '''
+    logger.infof("In %s.s88CopyRecipeData() copying recipe data from %d to %d", __name__, sourceStepId, targetStepId)
+    closeTransaction = False
+    if txId == None:
+        closeTransaction = True
+        if db == None:
+            txId = system.db.beginTransaction(timeout=86400000)    # timeout is one day
+        else:
+            txId = system.db.beginTransaction(database=db, timeout=86400000)    # timeout is one day
+    
+    try:
+        sourceStepName = system.db.runScalarQuery("select StepName from SfcStep where StepId = %d" % (sourceStepId), tx=txId)
+    
+        from ils.sfc.recipeData.export import exportRecipeData
+        recipeDataAsXML = exportRecipeData(sourceStepId, sourceStepName, txId=txId)
+
+        from ils.sfc.recipeData.importer import pasteRecipeData
+        cntr = pasteRecipeData(targetStepId, chartPath, stepName, recipeDataAsXML, txId) 
+
+    except:
+        from ils.common.error import catchError
+        errorText = catchError("%s.%s" % (__name__, s88CopyRecipeData), "")
+        print errorText
+            
+    system.db.commitTransaction(txId)
+    if closeTransaction:
+        logger.tracef("*** Closing Transaction (3) ***")
+        system.db.closeTransaction(txId)
+    return cntr
     
 def s88CopyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db):
     logger.tracef("In %s.s88CopyRecipeDatum() copying recipe datum from %s.%s to %s.%s", __name__, sourceUUID, sourceKey, targetUUID, targetKey)
-    copyRecipeDatum(sourceUUID, sourceKey, targetUUID, targetKey, db)
+    
+    sourceStepId = system.db.runScalarQuery("Select stepId from SfcStep where StepUUID = '%s' " % (sourceUUID), db)
+    targetStepId = system.db.runScalarQuery("Select stepId from SfcStep where StepUUID = '%s' " % (targetUUID), db)
+    
+    copyRecipeDatum(sourceStepId, sourceKey, targetStepId, targetKey, db)
     
 '''
 Utilities for dealing with folders

@@ -189,6 +189,30 @@ def internalFrameOpened(rootContainer):
             if len(pds) <> 1:
                 raise ValueError, "Unable to fetch an Input recipe data with id: %s" % (str(recipeDataId))
             record = pds[0]
+            ds = system.dataset.toDataSet(pds)
+
+            if ds.getValueAt(0, "TargetFloatValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetFloatValue", 0.0)
+            if ds.getValueAt(0, "TargetIntegerValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetIntegerValue", 0)
+            if ds.getValueAt(0, "TargetStringValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetStringValue", "")
+            if ds.getValueAt(0, "TargetBooleanValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetBooleanValue", False)
+                
+            if ds.getValueAt(0, "PVFloatValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVFloatValue", 0.0)
+            if ds.getValueAt(0, "PVIntegerValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVIntegerValue", 0)
+            if ds.getValueAt(0, "PVStringValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVStringValue", "")
+            if ds.getValueAt(0, "PVBooleanValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVBooleanValue", False)
+                
+            if ds.getValueAt(0, "PVMonitorActive") == None:
+                ds = system.dataset.setValue(ds, 0, "PVMonitorActive", False)
+            
+            pds = system.dataset.toPyDataSet(ds)
             rootContainer.inputDataset = pds
 
         elif recipeDataType == OUTPUT:
@@ -197,7 +221,35 @@ def internalFrameOpened(rootContainer):
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
                 raise ValueError, "Unable to fetch an Output recipe data with id: %s" % (str(recipeDataId))
+            
             record = pds[0]
+            ds = system.dataset.toDataSet(pds)
+            
+            if ds.getValueAt(0, "WriteConfirmed") == None:
+                ds = system.dataset.setValue(ds, 0, "WriteConfirmed", False)
+
+            if ds.getValueAt(0, "TargetFloatValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetFloatValue", 0.0)
+            if ds.getValueAt(0, "TargetIntegerValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetIntegerValue", 0)
+            if ds.getValueAt(0, "TargetStringValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetStringValue", "")
+            if ds.getValueAt(0, "TargetBooleanValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetBooleanValue", False)
+                
+            if ds.getValueAt(0, "PVFloatValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVFloatValue", 0.0)
+            if ds.getValueAt(0, "PVIntegerValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVIntegerValue", 0)
+            if ds.getValueAt(0, "PVStringValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVStringValue", "")
+            if ds.getValueAt(0, "PVBooleanValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVBooleanValue", False)
+                
+            if ds.getValueAt(0, "PVMonitorActive") == None:
+                ds = system.dataset.setValue(ds, 0, "PVMonitorActive", False)
+            
+            pds = system.dataset.toPyDataSet(ds)
             rootContainer.outputDataset = pds            
         
         elif recipeDataType == OUTPUT_RAMP:
@@ -206,8 +258,36 @@ def internalFrameOpened(rootContainer):
             pds = system.db.runQuery(SQL, db)
             if len(pds) <> 1:
                 raise ValueError, "Unable to fetch an Output Ramp recipe data with id: %s" % (str(recipeDataId))
+
             record = pds[0]
-            print "The output type is: ", record["OutputType"]
+            ds = system.dataset.toDataSet(pds)
+            
+            if ds.getValueAt(0, "WriteConfirmed") == None:
+                ds = system.dataset.setValue(ds, 0, "WriteConfirmed", False)
+
+            if ds.getValueAt(0, "TargetFloatValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetFloatValue", 0.0)
+            if ds.getValueAt(0, "TargetIntegerValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetIntegerValue", 0)
+            if ds.getValueAt(0, "TargetStringValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetStringValue", "")
+            if ds.getValueAt(0, "TargetBooleanValue") == None:
+                ds = system.dataset.setValue(ds, 0, "TargetBooleanValue", False)
+                
+            if ds.getValueAt(0, "PVFloatValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVFloatValue", 0.0)
+            if ds.getValueAt(0, "PVIntegerValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVIntegerValue", 0)
+            if ds.getValueAt(0, "PVStringValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVStringValue", "")
+            if ds.getValueAt(0, "PVBooleanValue") == None:
+                ds = system.dataset.setValue(ds, 0, "PVBooleanValue", False)
+                
+            if ds.getValueAt(0, "PVMonitorActive") == None:
+                ds = system.dataset.setValue(ds, 0, "PVMonitorActive", False)
+            
+            pds = system.dataset.toPyDataSet(ds)
+
             rootContainer.outputRampDataset = pds
         
         elif recipeDataType == RECIPE:

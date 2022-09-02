@@ -7,10 +7,15 @@
 #          Could it be from the import * in util.py? 
 # NOTE: Subclasses must be added to __init__.py.
 #
-import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+
+# Changed by PH 8/22/22
+#import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
+#import system.ils.blt.diagram as script
+
 import java.lang.Double as Double
 import java.lang.String as String
 import com.ils.common.GeneralPurposeDataContainer as GeneralPurposeDataContainer
+import com.ils.blt.gateway.PythonRequestHandler as PythonRequestHandler
 import time
 
 
@@ -43,7 +48,12 @@ class BasicBlock():
         self.resource=""
         # This is the handler that takes care of injecting results
         # into the execution engine.
+        
+        # Changed by Pete 8/22/22
+        print "In %s.__init__(), getting a script handler..." % (__name__)
         self.handler = PythonRequestHandler()
+        #self.handler = script.getHandler()
+        
         self.initialize()
     
     # Set the default properties and connection ports

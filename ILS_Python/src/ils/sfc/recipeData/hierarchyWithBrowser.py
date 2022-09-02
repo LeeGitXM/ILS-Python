@@ -388,6 +388,23 @@ def setSelectedChartRow(selectedRow):
     
 def setSelectedStep(selectedRow):
     writeTag("[Client]SFC Browser/Selected Step", selectedRow)
+    
+def getSelectedChartPath(rootContainer):
+    '''
+    The selected chart is dependent on View State.
+    '''
+    log.debugf("In %s.refreshSteps() - Updating the list of steps...", __name__)
+    treeWidget = rootContainer.getComponent("Tree Container").getComponent("Tree View")
+    chartTable = rootContainer.getComponent("Tree Container").getComponent("Power Table")
+    
+    if rootContainer.chartViewState == TREE_MODE:
+        chartPath = treeWidget.selectedPath
+    else:
+        selectedRow = chartTable.selectedRow
+        ds = chartTable.data
+        chartPath = ds.getValueAt(selectedRow, 1)
+        
+    return chartPath
 
 '''
 These methods have to do with the list of steps
@@ -980,6 +997,9 @@ def getValueDescription(record, desc, recipeType, recipeDesc):
 
 
 def deleteCallback(event):
+    '''
+    This is called from the delete button in the "Recipe Data" pane.
+    '''
     log.tracef("Deleting a recipe data...")
     db = getDatabase()
     rootContainer = event.source.parent.parent
@@ -1007,9 +1027,12 @@ def deleteCallback(event):
         deleteRecipeDataGroup(recipeDataId, db)
     else:
         deleteRecipeData(recipeDataType, recipeDataId, db)
+      
+    ''' Now refresh the UI '''
+    refreshSteps(rootContainer, db)
     
-    ''' Update the recipe data Tree '''
-    updateRecipeDataTree(rootContainer, db)
+    ''' This forces an update of the recipe data tree '''
+    stepTable.selectedRow = selectedRow
 
 
 def deleteRecipeDataGroup(recipeDataFolderId, db):
@@ -1285,8 +1308,53 @@ def mousePressedCallbackForTree(event):
     
     menu = system.gui.createPopupMenu(["Show Chart Callers","Expand"], [showChartCallerCallback, expandCallback])
     menu.show(event)
+
+'''
+I can't implement a true CUT function because I'd need to delete the recipe button BEFORE I do the paste.
+This won't work because all I do is cache the step id when I do the cut and copy.  So the recipe data needs to 
+exist on the source at the time I do the paste.
+'''
+
+def copyRecipeDataCallback(event):
+    log.infof("In %s.copyRecipeDataCallback()...", __name__)
+    container = event.source.parent
+    table = container.getComponent("Steps")
+    ds = table.data
+    row = table.selectedRow
+    sourceStepId = ds.getValueAt(row,"StepId")
+    recipeRefs = ds.getValueAt(row,"myRefs")
     
-     
+    if recipeRefs > 0:
+        container.sourceStepId = sourceStepId
+    else:
+        stepName = ds.getValueAt(row,"StepName")
+        system.gui.warningBox("Step <%s> does not have any recipe data!" % (stepName))
+    
+def pasteRecipeDataCallback(event):
+    log.infof("In %s.pasteRecipeDataCallback()...", __name__)
+    db = getDatabase()
+    container = event.source.parent
+    rootContainer = container.parent
+    table = container.getComponent("Steps")
+    ds = table.data
+    row = table.selectedRow
+    targetStepId = ds.getValueAt(row,"StepId")
+    targetStepName = ds.getValueAt(row,"StepName")
+    sourceStepId = container.sourceStepId
+    
+    chartPath = getSelectedChartPath(rootContainer)
+    
+    from ils.sfc.recipeData.api import s88CopyRecipeData
+    cntr = s88CopyRecipeData(sourceStepId, targetStepId, chartPath, targetStepName, db)
+    
+    ''' Now refresh the UI '''
+    refreshSteps(rootContainer, db)
+    
+    ''' This forces an update of the recipe data tree '''
+    table.selectedRow = row
+    
+    system.gui.messageBox("Successfully imported %d recipe datums!" % (cntr))
+
 '''
 This is just a good text book example of recursion.
 '''    
