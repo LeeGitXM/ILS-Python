@@ -35,11 +35,11 @@ def delete(path):
         log.errorf(txt)
 
 def deleter(path, db=""):
-    log.infof("In %s.deleter() with chart %s...", __name__, path)
+    log.tracef("In %s.deleter() with chart %s...", __name__, path)
     SQL = "delete from DtDiagram where DiagramName = '%s'" % (path)
-    log.infof("...SQL: %s,", SQL)
+    log.tracef("...SQL: %s,", SQL)
     rows = system.db.runUpdateQuery(SQL, db)
-    log.infof("...deleted %d rows!", rows)
+    log.tracef("...deleted %d rows!", rows)
 
 def rename(oldPath, newPath):
     log.infof("In %s.rename(), chart %s has been renamed to %s", __name__, oldPath, newPath)
@@ -56,7 +56,7 @@ def renamer(oldPath, newPath):
 
 def save(path, json):
     log.infof("In %s.save(), chart %s has been saved", __name__, path)
-    log.infof("JSON: %s", json)
+    log.tracef("JSON: %s", json)
     try:
         saver(path, json)
     except:
@@ -65,13 +65,13 @@ def save(path, json):
     
 
 def saver(path, json):
-    log.infof("In %s.saver() with chart: %s...", __name__, path)
+    log.tracef("In %s.saver() with chart: %s...", __name__, path)
     db = ""
     diagramId = handleDiagram(path, db)
     x = system.util.jsonDecode(json)
     log.tracef("Decoded JSON: %s", str(x))
     blocks = x.get("blocks", [])
-    log.infof("...found %d blocks", len(blocks))
+    log.tracef("...found %d blocks", len(blocks))
     for block in blocks:
         blockClass = block.get("className", None)
         blockName = block.get("name", None)
@@ -92,7 +92,7 @@ def handleDiagram(path, db):
 
     if diagramId == None:
         SQL = "insert into DtDiagram (DiagramName) values ('%s')" % (path)
-        log.infof("...SQL: %s,", SQL)
+        log.tracef("...SQL: %s,", SQL)
         diagramId = system.db.runUpdateQuery(SQL, db, getKey=1)
         log.infof("Inserted a new diagram with id: %d", diagramId)
 
@@ -111,7 +111,7 @@ def handleFinalDiagnosis(diagramId, finalDiagnosisName, finalDiagnosisUUID, db):
             (finalDiagnosisName, finalDiagnosisUUID, diagramId, FINAL_DIAGNOSIS_PRIORITY, POST_TEXT_RECOMMENDATION, REFRESH_RATE, ACTIVE, 
              SHOW_EXPLANATION_WITH_RECOMMENDATION, CONSTANT, MANUAL_MOVE_ALLOWED, TRAP_INSIGNIFICANT_RECOMMENDATIONS)
 
-        log.infof("...SQL: %s,", SQL)
+        log.tracef("...SQL: %s,", SQL)
         finalDiagnosisId = system.db.runUpdateQuery(SQL, db, getKey=1)
         log.infof("Inserted a new Final Diagnosis with id: %d", finalDiagnosisId)
     else:
@@ -122,11 +122,11 @@ def handleFinalDiagnosis(diagramId, finalDiagnosisName, finalDiagnosisUUID, db):
         if oldFinalDiagnosisName != finalDiagnosisName:
             ''' This handles the case where they have renamed the Final Diagnosis '''
             SQL = "update DtFinalDiagnosis set FinalDiagnosisName = '%s' where FinalDiagnosisId = %d" % (finalDiagnosisName, finalDiagnosisId)
-            log.infof("...SQL: %s,", SQL)
+            log.tracef("...SQL: %s,", SQL)
             rows = system.db.runUpdateQuery(SQL, db)
-            log.infof("Updated %d rows in DtFinalDiagnosis...", rows)
+            log.tracef("Updated %d rows in DtFinalDiagnosis...", rows)
         else:
-            log.infof("...the database is already up to date...")
+            log.tracef("...the database is already up to date...")
 
 
 def handleSQCDiagnosis(diagramId, sqcDiagnosisName, sqcDiagnosisUUID, db):
@@ -145,9 +145,9 @@ def handleSQCDiagnosis(diagramId, sqcDiagnosisName, sqcDiagnosisUUID, db):
             " values ('%s', '%s', %d, '%s')" % \
             (sqcDiagnosisName, sqcDiagnosisUUID, diagramId, SQC_STATUS)
 
-        log.infof("...SQL: %s,", SQL)
+        log.tracef("...SQL: %s,", SQL)
         finalDiagnosisId = system.db.runUpdateQuery(SQL, db, getKey=1)
-        log.infof("Inserted a new Final Diagnosis with id: %d", finalDiagnosisId)
+        log.tracef("Inserted a new Final Diagnosis with id: %d", finalDiagnosisId)
     else:
         record = pds[0]
         oldSqcDiagnosisUUID = record["SQCDiagnosisUUID"]
@@ -157,10 +157,10 @@ def handleSQCDiagnosis(diagramId, sqcDiagnosisName, sqcDiagnosisUUID, db):
         if oldSqcDiagnosisUUID != finalDiagnosisName:
             
             SQL = "update DtFinalDiagnosis set FinalDiagnosisName = '%s' where FinalDiagnosisId = %d" % (finalDiagnosisName, finalDiagnosisId)
-            log.infof("...SQL: %s,", SQL)
+            log.tracef("...SQL: %s,", SQL)
             rows = system.db.runUpdateQuery(SQL, db)
-            log.infof("Updated %d rows in DtFinalDiagnosis...", rows)
+            log.tracef("Updated %d rows in DtFinalDiagnosis...", rows)
         else:
-            log.infof("...the database is already up to date...")
+            log.tracef("...the database is already up to date...")
         '''            
     return

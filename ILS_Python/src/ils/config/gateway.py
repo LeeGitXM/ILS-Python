@@ -44,6 +44,15 @@ def getDatabaseHandler(payload):
         log.errorf("Missing required arguments!")
         return None
     
+    db = getDatabase(project, isolationMode)
+    return db
+
+def getDatabase(project, isolationMode):
+    '''
+    This runs in the gateway in response to a message sent from a client.
+    '''
+    log.tracef("In %s.getDatabase() for %s - %s", __name__, project, str(isolationMode))
+    
     context = IgnitionGateway.get()
     handler = ToolkitProjectRecordHandler(context)
     
@@ -53,7 +62,6 @@ def getDatabaseHandler(payload):
         db = handler.getToolkitProjectProperty(project, PRODUCTION_DATABASE)
 
     log.tracef("Returning database: %s", db)
-    
     return db
 
 def setDatabaseHandler(payload):
@@ -97,6 +105,14 @@ def getTagProviderHandler(payload):
         log.errorf("Missing required arguments!")
         return None
     
+    tp = getTagProvider(project, isolationMode)
+
+    return tp
+
+def getTagProvider(project, isolationMode):
+    '''
+    This runs in the gateway and can be called directly from a tag change script.
+    '''
     context = IgnitionGateway.get()
     handler = ToolkitProjectRecordHandler(context)
 

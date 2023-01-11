@@ -28,7 +28,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
     if constantFD == True:
         log.tracef("Detected a CONSTANT Final Diagnosis")
         
-        SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_POSTED, diagnosisEntryId)
+        SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %d " % (RECOMMENDATION_POSTED, diagnosisEntryId)
         logSQL.trace(SQL)
         system.db.runUpdateQuery(SQL, database)
 
@@ -120,7 +120,7 @@ def makeRecommendation(application, familyName, finalDiagnosisName, finalDiagnos
             requestToManage(application, database, provider)
             return [], "", RECOMMENDATION_NONE_MADE
         else:
-            SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %i " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
+            SQL = "Update DtDiagnosisEntry set RecommendationStatus = '%s' where DiagnosisEntryId = %d " % (RECOMMENDATION_REC_MADE, diagnosisEntryId)
             logSQL.trace(SQL)
             system.db.runUpdateQuery(SQL, database)
     
@@ -154,20 +154,20 @@ def insertAutoRecommendation(finalDiagnosisId, diagnosisEntryId, quantOutputName
     SQL = "select RecommendationDefinitionId "\
         "from DtRecommendationDefinition RD, DtQuantOutput QO "\
         "where RD.QuantOutputID = QO.QuantOutputId "\
-        " and RD.FinalDiagnosisId = %i "\
+        " and RD.FinalDiagnosisId = %d "\
         " and QO.QuantOutputName = '%s'" % (finalDiagnosisId, quantOutputName)
     logSQL.trace(SQL)
     recommendationDefinitionId = system.db.runScalarQuery(SQL, database)
     
     if recommendationDefinitionId == None:
-        log.error("Unable to fetch a recommendation definition for output <%s> for finalDiagnosis with id: %i" % (quantOutputName, finalDiagnosisId))
+        log.error("Unable to fetch a recommendation definition for output <%s> for finalDiagnosis with id: %d" % (quantOutputName, finalDiagnosisId))
         return -1
     
     if rampTime == None:
         rampTime = "NULL"
     
     SQL = "insert into DtRecommendation (RecommendationDefinitionId, DiagnosisEntryId, Recommendation, AutoRecommendation, AutoOrManual, RampTime) "\
-        "values (%i, %i, %f, %f, 'Auto', %s)" % (recommendationDefinitionId, diagnosisEntryId, val, val, str(rampTime))
+        "values (%d, %d, %f, %f, 'Auto', %s)" % (recommendationDefinitionId, diagnosisEntryId, val, val, str(rampTime))
     logSQL.trace(SQL)
     recommendationId = system.db.runUpdateQuery(SQL,getKey=True, database=database)
     log.tracef("      ...inserted recommendation id: %s for recommendation definition id: %s", recommendationId, str(recommendationDefinitionId))
@@ -300,7 +300,7 @@ def test(applicationName, familyName, finalDiagnosisName, calculationMethod, dat
     fdDict=fetchFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
     finalDiagnosisId = fdDict.get("FinalDiagnosisId")
     
-    log.infof("Testing %s (%i) - %s", finalDiagnosisName, finalDiagnosisId, calculationMethod)
+    log.infof("Testing %s (%d) - %s", finalDiagnosisName, finalDiagnosisId, calculationMethod)
 
 #    if string.upper(calculationMethod) == "CONSTANT":
 #        print "Bypassing calculations for a CONSTANT calculation method!"

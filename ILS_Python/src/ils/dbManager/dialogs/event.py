@@ -53,15 +53,15 @@ def deleteRow(button):
     
     tx = system.db.beginTransaction(database=db)
     try:
-        SQL = "DELETE FROM RtEvent WHERE ParameterId = %i" % (pid)
+        SQL = "DELETE FROM RtEvent WHERE ParameterId = %d" % (pid)
         log.trace(SQL)
         rows = system.db.runUpdateQuery(SQL,tx=tx)
-        log.info("Deleted %i rows from RtEvent" % (rows))
+        log.infof("Deleted %d rows from RtEvent", rows)
             
         SQL = "DELETE FROM RtEventParameter WHERE ParameterId = %i" % (pid)
         log.trace(SQL)
         rows = system.db.runUpdateQuery(SQL,tx=tx)
-        log.info("Deleted %i rows from RtEventParameter" % (rows))
+        log.infof("Deleted %d rows from RtEventParameter", rows)
     except:
         system.db.rollbackTransaction(tx)
         notifyError(__name__, "Deleting Events")
@@ -116,7 +116,7 @@ def update(table,row,colname,value):
     #column is LowerLimit or UpperLimit. Others are not editable.
     paramid=ds.getValueAt(row,"ParameterId")
     grade=ds.getValueAt(row,"Grade")
-    SQL = "UPDATE RtEvent SET value = %s WHERE ParameterId = %i and Grade = '%s'" % (str(value), paramid, grade)
+    SQL = "UPDATE RtEvent SET value = %s WHERE ParameterId = %d and Grade = '%s'" % (str(value), paramid, grade)
     log.trace(SQL)
     system.db.runUpdateQuery(SQL, database=db)
     
@@ -139,16 +139,16 @@ def addParameter(button, parameter):
         tx = system.db.beginTransaction(database=db)
         
         try:
-            SQL = "INSERT INTO RtEventParameter (RecipeFamilyId, Parameter) VALUES (%i, '%s')" % (familyId, parameter)
+            SQL = "INSERT INTO RtEventParameter (RecipeFamilyId, Parameter) VALUES (%d, '%s')" % (familyId, parameter)
             log.trace(SQL)
             parameterId = system.db.runUpdateQuery(SQL,tx=tx,getKey=True)
                 
             # Now add a new limit row for each grade
             SQL = "INSERT INTO RtEvent (ParameterId, Grade) " \
-                " SELECT DISTINCT %i, Grade FROM RtGradeMaster WHERE RecipeFamilyId = %i " % (parameterId, familyId)
+                " SELECT DISTINCT %d, Grade FROM RtGradeMaster WHERE RecipeFamilyId = %d " % (parameterId, familyId)
             log.trace(SQL)
             rows=system.db.runUpdateQuery(SQL,tx=tx)
-            log.info("Inserted %i rows into RtEvent" % (rows))
+            log.infof("Inserted %d rows into RtEvent", rows)
         except:
             system.db.rollbackTransaction(tx)
             notifyError(__name__, "Inserting an event")

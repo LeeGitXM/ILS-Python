@@ -102,7 +102,7 @@ def bookkeeping(ds):
             if string.upper(command) == 'GO' and string.upper(downloadStatus) in ['', 'ERROR']:
                 cnt=cnt+1
                 workToDo=True
-    log.infof("...there are %i outputs to write", cnt)
+    log.infof("...there are %d outputs to write", cnt)
     return workToDo
 
 
@@ -159,13 +159,13 @@ def checkIfOkToDownload(repeater, ds, post, tagProvider, db):
                             okToDownload=False
                             unreachableCnt=unreachableCnt+1
                             ds=system.dataset.setValue(ds, row, "downloadStatus", "Config Error")
-                            log.arnf("Row %i - Output %s - Tag %s is not reachable", row, quantOutput, tag)
+                            log.warnf("Row %d - Output %s - Tag %s is not reachable", row, quantOutput, tag)
                             insertPostMessage(post, "Error", "Controller %s is not reachable because %s (tag: %s)" % (itemId, msg, tagPath), db)
     
     if okToDownload:
         log.infof("It is OK to download")
     else:
-        log.infof("It is *NOT* OK to download - %i outputs are unreachable.", unreachableCnt)
+        log.infof("It is *NOT* OK to download - %d outputs are unreachable.", unreachableCnt)
         repeater.templateParams=ds
 
     return okToDownload

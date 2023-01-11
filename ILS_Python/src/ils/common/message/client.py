@@ -26,7 +26,7 @@ def handle(payload):
         windows=system.gui.getOpenedWindowNames()
         reply = ",".join(map(str,windows))
         SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
-            " values (%i, '%s', getdate(), '%s', %d)"\
+            " values (%d, '%s', getdate(), '%s', %d)"\
              % (requestId, reply, clientId, isolationMode)
         print SQL
         system.db.runUpdateQuery(SQL, database=requestDatabase)
@@ -35,7 +35,7 @@ def handle(payload):
         isolationMode = readTag("[Client]Isolation Mode").value
         username = readTag("[System]Client/User/Username").value
         SQL = "Insert into TkMessageReply (RequestId, Reply, ReplyTime, ClientId, IsolationMode)"\
-            " values (%i, '%s', getdate(), '%s', %d)"\
+            " values (%d, '%s', getdate(), '%s', %d)"\
              % (requestId, username, clientId, isolationMode)
         print SQL
         system.db.runUpdateQuery(SQL, database=requestDatabase)

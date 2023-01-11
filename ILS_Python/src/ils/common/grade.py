@@ -52,13 +52,13 @@ def handleGradeChange(tagPath, previousValue, currentValue, initialChange):
     from ils.io.util import getProviderFromTagPath
     tagProvider = getProviderFromTagPath(tagPath)
 
-    from ils.config.common import getTagProvider, getDatabase, getIsolationDatabase
-    productionTagProvider = getTagProvider(projectName)
+    from ils.config.gateway import getTagProvider, getDatabase
+    productionTagProvider = getTagProvider(projectName, False)
 
     if tagProvider == productionTagProvider:
-        db = getDatabase(projectName)
+        db = getDatabase(projectName, False)
     else:
-        db = getIsolationDatabase(projectName)
+        db = getDatabase(projectName, True)
 
     '''
     Get the unit out of the tagPath which points to the grade tag within the grade UDT

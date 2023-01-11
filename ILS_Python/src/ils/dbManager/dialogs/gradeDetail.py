@@ -103,7 +103,7 @@ def update(table,row,colname,value):
         if value == "":
             msg = "Database Error."
             SQL = "UPDATE RtGradeDetail SET %s = NULL " \
-                " WHERE RecipeFamilyId=%i and Grade='%s' and Version = %d and ValueId = %d" \
+                " WHERE RecipeFamilyId=%d and Grade='%s' and Version = %d and ValueId = %d" \
                 % (colname, familyid, str(gradeid), version, vid)
         else:
             if colname == "RowActive":

@@ -2,11 +2,25 @@
 Created on Jul 11, 2022
 
 @author: ils
+
+These calculation methods are used by the ad-hoc Manual Test diagrams!
 '''
 
 import system
 from ils.diagToolkit.common import checkFreshness, fetchDiagnosisActiveTime
 from ils.io.util import readTag
+
+def sqa_fd_2(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.sqa_fd_2" % (__name__)
+    
+    import random    
+    rand = (random.random() - 0.5) * 10.0
+
+    explanation = "We got this!"
+    recommendations = []
+    recommendations.append({"QuantOutput": "TC101", "Value": rand})
+    return True, explanation, recommendations
+
 
 def fd1_1_1(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In %s.fd1_1_1" % (__name__)

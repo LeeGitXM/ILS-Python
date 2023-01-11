@@ -159,7 +159,7 @@ class Downloader():
         ''' Update the database, which will drive th GUI om the client '''
         print "Updating the download status for %s to %s" % (str(quantOutputId), downloadStatus)
         
-        SQL = "update DtQuantOutput set DownloadStatus = '%s' where QuantOutputId = %i " % (downloadStatus, quantOutputId)
+        SQL = "update DtQuantOutput set DownloadStatus = '%s' where QuantOutputId = %d " % (downloadStatus, quantOutputId)
         log.trace(SQL)
         system.db.runUpdateQuery(SQL, self.db)
         

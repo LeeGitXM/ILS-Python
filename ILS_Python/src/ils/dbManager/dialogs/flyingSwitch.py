@@ -62,7 +62,7 @@ def deleteRow(button):
     rowId = ds.getValueAt(rownum,'Id')
     if id > 0:
         try:
-            SQL = "DELETE FROM RtAllowedFlyingSwitch WHERE id = %i" % (rowId)
+            SQL = "DELETE FROM RtAllowedFlyingSwitch WHERE id = %d" % (rowId)
             log.trace(SQL)
             rows = system.db.runUpdateQuery(SQL, database=db)
             log.trace("%d rows were deleted" % (rows))

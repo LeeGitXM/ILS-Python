@@ -125,12 +125,9 @@ def tileWindow(window, scale=1.0):
     mainWidth = mainWindow.getWidth()
     mainHeight = mainWindow.getHeight()
     thisWindowPath=window.getPath()
-    print "==========="
-    print "Main window size: %i X %i" % (mainWidth, mainHeight)
     
     width = window.getWidth()
     height = window.getHeight()
-    print "User window size: %i X %i" % (width, height)
 
     # The origin is used to compensate for a west docked window
     originX=0
@@ -151,7 +148,6 @@ def tileWindow(window, scale=1.0):
             print "Resetting the origin for a WEST docked window..."
             originX = w.getWidth()
 #            originY = w.getHeight()
-#            print "The console is %i X %i (W X H)" % (w.getWidth(), w.getHeight())
         elif dockPosition == 1: 
             print "Resetting the origin for a North docked window..."
             originY = w.getHeight()
@@ -159,7 +155,7 @@ def tileWindow(window, scale=1.0):
     if originX != 0 or originY != 0:
         mainWidth = mainWidth - originX
         mainHeight = mainHeight - originY
-        print "The main window size adjusted for docked windows is : %i X %i" % (mainWidth, mainHeight)
+        print "The main window size adjusted for docked windows is : %d X %d" % (mainWidth, mainHeight)
 
     # The first window is always centered.    
     if instanceCount == 1:
@@ -183,12 +179,12 @@ def tileWindow(window, scale=1.0):
         ''' Figure out a grid based on the main window size and the child window size '''
         rows = math.floor(mainHeight / (height * scale))
         cols = math.floor(mainWidth / (width * scale))
-        print "The main window has room for %i rows by %i columns" % (rows, cols) 
+        print "The main window has room for %d rows by %d columns" % (rows, cols) 
 
         row = math.ceil(instanceCount / cols)
         col = instanceCount - ((row - 1) * cols)
         
-        print "This window should be placed in row: %i, column %i" % (row, col)
+        print "This window should be placed in row: %d, column %d" % (row, col)
         ulx=originX + (col - 1) * width * scale
         uly=originY + (row - 1) * height * scale
         

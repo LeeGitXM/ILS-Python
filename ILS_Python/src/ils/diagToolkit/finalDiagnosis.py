@@ -54,9 +54,13 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
     
     log.tracef("In %s._manageFinalDiagnosis()", __name__)
  
-    ''' Lookup the application Id '''
+    ''' Lookup the diagram - this is not guaranteed to be unique, but it should be '''
+    from ils.diagToolkit.common import fetchDiagramForFinalDiagnosis
+    diagramName = fetchDiagramForFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
+    log.infof("Fetched the diagram named: %s", str(diagramName))
+    
     from ils.diagToolkit.common import fetchFinalDiagnosis
-    record = fetchFinalDiagnosis(applicationName, familyName, finalDiagnosisName, database)
+    record = fetchFinalDiagnosis(applicationName, familyName, diagramName, finalDiagnosisName, database)
     
     finalDiagnosisId=record.get('FinalDiagnosisId', None)
     if finalDiagnosisId == None:
@@ -93,10 +97,13 @@ def _manageFinalDiagnosis(projectName, applicationName, familyName, finalDiagnos
         log.errorf("postDiagnosisEntry. Failed ... update to %s (%s)",database,SQL)
     
     ''' Set the output state of the Final diagnosis and propagate its value '''
-    diagramUUID = record.get("DiagramUUID")
-    finalDiagnosisUUID = record.get("FinalDiagnosisUUID")
-    system.ils.blt.diagram.setBlockState(diagramUUID, finalDiagnosisName, "TRUE")
+    from ils.blt.api import setBlockState
+    setBlockState(diagramName, finalDiagnosisName, "TRUE")
+    
+    '''
+    I think that with the Ignition 8 migration that teh block state automatically propagates - Pete 9/8/22 
     system.ils.blt.diagram.propagateBlockState(diagramUUID, finalDiagnosisUUID)
+    '''
     
     notificationText, activeOutputs, postTextRecommendation, noChange = manage(applicationName, recalcRequested=False, database=database, provider=provider)
     log.trace("...back from manage!")

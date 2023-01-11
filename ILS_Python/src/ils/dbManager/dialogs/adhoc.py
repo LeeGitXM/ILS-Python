@@ -105,10 +105,10 @@ def deleteRow(event):
     # The row being deleted may or may not be in the database, they could have 
     # started to add a row and then deleted it before it was added to the database
     if id > 0:
-        SQL = "DELETE FROM %s WHERE Id = %i" % (tableName, theId)
+        SQL = "DELETE FROM %s WHERE Id = %d" % (tableName, theId)
         log.trace(SQL)
         rows = system.db.runUpdateQuery(SQL)
-        log.info("Deleted %i rows from %s" % (rows, tableName))
+        log.infof("Deleted %d rows from %s", rows, tableName)
 
     ds = system.dataset.deleteRow(ds,rownum)
     table.data = ds
@@ -136,7 +136,7 @@ def update(table,row,colname,value):
             
         log.trace(SQL)
         recordId=system.db.runUpdateQuery(SQL, getKey=True)
-        log.info("Inserted a new row with id = %i" % (recordId))
+        log.infof("Inserted a new row with id = %d", recordId)
         ds = system.dataset.setValue(ds, row, "Id", recordId)
         table.data = ds
     else:
@@ -144,13 +144,13 @@ def update(table,row,colname,value):
         # datatype in the database is float or int
         try:
             x = float(value)
-            SQL = "UPDATE %s SET %s = %s WHERE Id = %i" % (tableName, colname, str(value), recordId)
+            SQL = "UPDATE %s SET %s = %s WHERE Id = %d" % (tableName, colname, str(value), recordId)
         except:
-            SQL = "UPDATE %s SET %s = '%s' WHERE Id = %i" % (tableName, colname, str(value), recordId)
+            SQL = "UPDATE %s SET %s = '%s' WHERE Id = %d" % (tableName, colname, str(value), recordId)
         
         log.trace(SQL)
         rows=system.db.runUpdateQuery(SQL)
-        log.info("Updated %i rows" % (rows))
+        log.infof("Updated %d rows", rows)
     
     requery(rootContainer)  
     

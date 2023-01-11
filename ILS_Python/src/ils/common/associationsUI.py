@@ -56,7 +56,7 @@ def deleteRowCallback(rootContainer):
             
     #remove the selected row
     SQL = "DELETE FROM TkAssociation "\
-        " WHERE AssociationId = %i "\
+        " WHERE AssociationId = %d "\
         % (associationId)
     system.db.runUpdateQuery(SQL, tx=txId)
     

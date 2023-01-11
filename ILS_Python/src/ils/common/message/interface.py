@@ -81,7 +81,7 @@ def getConsoleClientIdsForPost(post, project, db, isolationMode):
     
     SQL = "select C.WindowName from TkConsole C, TkPost P where C.PostId = P.PostId and P.Post = '%s'" % (post)
     consoleWindows=system.db.runQuery(SQL, database=db)
-    log.trace("  ...(there are %i console windows)" % (len(consoleWindows)))
+    log.tracef("  ...(there are %d console windows)", len(consoleWindows))
 
     # If we don't have a window name then we'll never find a client!
     if len(consoleWindows) == 0:

@@ -373,6 +373,29 @@ def fetchDiagrams(db):
     log.infof("Fetched %d applications." % (len(pds)))
     return pds
 
+
+# Look up the final diagnosis id given the application, family, and final Diagnosis names
+def fetchDiagramForFinalDiagnosis(application, family, finalDiagnosis, database=""):
+    log.tracef("In %s.fetchFinalDiagnosis()...", __name__)
+    SQL = "select D.DiagramName "\
+        " from TkUnit U, DtFinalDiagnosis FD, DtDiagram D, DtFamily F, DtApplication A"\
+        " where U.UnitId = A.UnitId "\
+        " and A.ApplicationId = F.ApplicationId "\
+        " and F.FamilyId = D.FamilyId "\
+        " and FD.DiagramId = D.DiagramId "\
+        " and A.ApplicationName = '%s'" \
+        " and F.FamilyName = '%s'" \
+        " and FD.FinalDiagnosisName = '%s'" % (application, family, finalDiagnosis)
+    log.tracef("%s.fetchFinalDiagnosis(): %s", __name__, SQL)
+    try:
+        diagramName = system.db.runScalarQuery(SQL, database)
+    except:
+        log.errorf("fetchDiagramForFinalDiagnosis: SQL error in %s for (%s)",database,SQL)
+        diagramName = None
+    
+    return diagramName
+
+
 def fetchDiagramId(diagramName, db):
     log.tracef("In %s.fetchDiagramId()...", __name__)
     diagramId = system.db.runScalarQuery("select DiagramId from DtDiagram where DiagramName = '%s'" % (diagramName), database=db)
@@ -420,7 +443,7 @@ def fetchFinalDiagnosisDiagramUUID(finalDiagnosisId, database=""):
     log.tracef("In %s.fetchFinalDiagnosisDiagramUUID()...", __name__)
     SQL = "select DiagramUUID "\
         " from DtFinalDiagnosis "\
-        " where FinalDiagnosisId = %i" % (finalDiagnosisId)
+        " where FinalDiagnosisId = %d" % (finalDiagnosisId)
     log.tracef("%s.fetchFinalDiagnosisDiagramUUID(): %s", __name__, SQL)
     diagramUUID = system.db.runScalarQuery(SQL, database)
     return diagramUUID
@@ -635,7 +658,7 @@ def fetchQuantOutput(quantOutputId, database=""):
         " QO.MostPositiveIncrement, QO.MinimumIncrement, QO.SetpointHighLimit, QO.SetpointLowLimit, L.LookupName FeedbackMethod, "\
         " QO.IgnoreMinimumIncrement "\
         " from DtQuantOutput QO, Lookup L "\
-        " where QO.QuantOutputId = %i "\
+        " where QO.QuantOutputId = %d "\
         " and QO.FeedbackMethodId = L.LookupId"  % (quantOutputId)
     log.tracef("%s.fetchQuantOutput(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
@@ -649,7 +672,7 @@ def fetchRecommendationsForOutput(QuantOutputId, database=""):
         " R.AutoOrManual, QO.QuantOutputName, QO.TagPath "\
         " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
         " where RD.QuantOutputId = QO.QuantOutputId "\
-        " and QO.QuantOutputId = %i "\
+        " and QO.QuantOutputId = %d "\
         " and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
         " order by QO.QuantOutputName"  % (QuantOutputId)
     log.tracef("%s.fetchRecommendationsForOutput(): %s", __name__, SQL)
@@ -703,14 +726,14 @@ def updateBoundRecommendationPercent(quantOutputId, outputPercent, database):
             log.trace("Scaling auto recommendation: %s" % (str(record["AutoRecommendation"])))
             recommendation = record["AutoRecommendation"]
         recommendation = recommendation * outputPercent / 100.0
-        SQL = "update DtRecommendation set Recommendation = %s where RecommendationId = %i" % (str(recommendation), recommendationId)
+        SQL = "update DtRecommendation set Recommendation = %s where RecommendationId = %d" % (str(recommendation), recommendationId)
         log.trace(SQL)
         system.db.runUpdateQuery(SQL, database)
 
 # Update the application priority
 def updateFamilyPriority(familyName, familyPriority, database=""):
     log.tracef("In %s.updateFamilyPriority()...", __name__)
-    SQL = "update DtFamily set FamilyPriority = %i where FamilyName = '%s'" % (familyPriority, familyName)
+    SQL = "update DtFamily set FamilyPriority = %d where FamilyName = '%s'" % (familyPriority, familyName)
     log.tracef("%s.updateFamilyPriority(): %s", __name__, SQL)
     rows = system.db.runUpdateQuery(SQL, database)
     log.trace("Updated %i rows" % (rows))
@@ -721,7 +744,7 @@ def resetFinalDiagnosis(log, database):
     SQL = "update DtFinalDiagnosis set Active = 0 where Active = 1"
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
-    log.info("...reset %i finalDiagnosis" % (rows))
+    log.infof("...reset %d finalDiagnosis", rows)
 
 # Delete the quant outputs for an applicatuon.
 def resetDiagnosisEntries(log, database):
@@ -729,7 +752,7 @@ def resetDiagnosisEntries(log, database):
     SQL = "update DtDiagnosisEntry set Status = 'InActive', RecommendationStatus = 'Restart' where Status = 'Active' "
     log.trace(SQL)
     rows=system.db.runUpdateQuery(SQL, database)
-    log.info("...reset %i Diagnosis Entries!" % (rows))
+    log.infof("...reset %d Diagnosis Entries!", rows)
     
 def stripClassPrefix(className):
     className = className[className.rfind(".")+1:]

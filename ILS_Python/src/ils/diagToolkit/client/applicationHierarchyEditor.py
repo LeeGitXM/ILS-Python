@@ -37,7 +37,7 @@ def internalFrameOpened(event):
     rootContainer = event.source.rootContainer
 
     diagramContainer = rootContainer.getComponent("Diagram Container")
-    diagramContainer.showAllDiagrams = True
+    diagramContainer.showAllDiagrams = False
 
     treeWidget = rootContainer.getComponent("Hierarchy Container").getComponent("Hierarchy Tree")
     treeWidget.selectedNodeType = ""
@@ -89,7 +89,27 @@ def refreshDiagramTree(rootContainer, db):
         else:
             row = [parent,diagramName,DIAGRAM_REFERENCED_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",DIAGRAM_REFERENCED_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
         rows.append(row)
+    
+    ''' Now add the Final Diagnosis '''
+    if showAllDiagrams:
+        SQL = "select D.DiagramName, D.FamilyId, FD.FinalDiagnosisName from DtDiagram D, DtFinalDiagnosis FD where D.DiagramId = FD.DiagramId"
+        print SQL
+        pds = system.db.runQuery(SQL, database=db)
+        statusMessage = "%d final diagnosis" % (len(pds))
+    else:
+        SQL = "select D.DiagramName, D.FamilyId, FD.FinalDiagnosisName from DtDiagram D, DtFinalDiagnosis FD where FamilyId is NULL and D.DiagramId = FD.DiagramId"
+        print SQL
+        pds = system.db.runQuery(SQL, database=db)
+        statusMessage = "%d unreferenced final diagnosis" % (len(pds))
         
+    for record in pds:
+        fullDiagramName = record["DiagramName"]
+        finalDiagnosisName = record["FinalDiagnosisName"]
+
+        row = [ROOT_NODE + "/" +fullDiagramName,finalDiagnosisName,FINAL_DIAGNOSIS_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName + "-" + finalDiagnosisName,"","",DIAGRAM_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
+        rows.append(row)
+    
+    
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
     treeWidget = rootContainer.getComponent("Diagram Container").getComponent("Diagram Tree")

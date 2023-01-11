@@ -154,7 +154,7 @@ class SQCDiagnosis(basicblock.BasicBlock):
             self.log.info("   ... setting the lastResetTime for SQC diagnosis named: %s" % (sqcDiagnosisName))
             SQL = "update DtSQCDiagnosis set LastResetTime = getdate(), Status = 'UNKNOWN' where SQCDiagnosisUUID = '%s'" % (str(self.uuid))
             rows = system.db.runUpdateQuery(SQL, database)
-            self.log.info("      ...updated %i rows" % (rows))
+            self.log.infof("      ...updated %d rows", rows)
         except:
             from ils.common.error import catchError
             txt=catchError(__name__, "Error resetting a SQC Diagnosis")

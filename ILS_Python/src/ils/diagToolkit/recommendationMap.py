@@ -111,7 +111,7 @@ def updateSqcFlag(diagnoses):
             # Get the upstream blocks, make sure to jump connections
             blocks=diagram.listBlocksGloballyUpstreamOf(diagramUUID, finalDiagnosisName)
             
-            log.tracef("...found %i upstream blocks...", len(blocks))
+            log.tracef("...found %d upstream blocks...", len(blocks))
     
             for block in blocks:
                 if not(string.find(block.getClassName(),"sqcdiagnosis.SQCDiagnosis") == 0):
@@ -162,7 +162,7 @@ def fetchRecDefs(diagnoses, outputs, db):
         " and QO.QuantOutputName in ('%s')" % (fdNames, outputNames)
     print SQL
     pds = system.db.runQuery(SQL, database=db)
-    print "  ...fetched %i QuantRecDefs!" % (len(pds))
+    print "  ...fetched %d QuantRecDefs!" % (len(pds))
     
     headers=["DiagnosisId","OutputId","Active"]
     data = []
@@ -267,7 +267,7 @@ def expandFinalDiagnosis(theMap, diagnosisIdx):
     ds = theMap.outputs
     
     pds = fetchQuantOutputForDiagnosis(finalDiagnosisName)
-    print "Fetched %i outputs" % (len(pds))
+    print "Fetched %d outputs" % (len(pds))
     
     # Merge the fetched dataset with the datset that is in the widget
     addedOutput = False
@@ -344,7 +344,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
             "(select FinalDiagnosisId from DtFinalDiagnosis where FinalDiagnosisName = '%s')" % (newMultiplier, finalDiagnosisName)
         print SQL
         rows = system.db.runUpdateQuery(SQL, db)
-        print "Updated %i Final Diagnosis Entries" % (rows)
+        print "Updated %d Final Diagnosis Entries" % (rows)
         
         # Update each recommendation connected to the final diagnosis
         if float(newMultiplier) == 1.0:
@@ -363,7 +363,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
                 "where RD.FinalDiagnosisId = FD.FinalDiagnosisId and FD.FinalDiagnosisName = '%s')" % (newMultiplier, newMultiplier, finalDiagnosisName)
         print SQL
         rows = system.db.runUpdateQuery(SQL, db)
-        print "Updated %i recommendations" % (rows)
+        print "Updated %d recommendations" % (rows)
         
         # If there are no current recommendations then why did the user change the multiplier?  It doesn't make any sense, but 
         # regardless the outputs don't need to be updated.
@@ -397,7 +397,7 @@ def changeMultiplier(theMap, finalDiagnosisIdx):
                         " where QuantOutputId = %s" % (recommendation, recommendation, recommendation, record["QuantOutputId"])
                 print SQL
                 rows = system.db.runUpdateQuery(SQL, db)
-                print "Updated %i quant outputs" % (rows)
+                print "Updated %d quant outputs" % (rows)
 
         # Update the recommendation map on this client
         update(rootContainer)
@@ -460,7 +460,7 @@ def update(rootContainer):
     ds = theMap.recommendations
     for row in range(ds.rowCount):
         recommendationId = ds.getValueAt(row, "RecommendationId")
-        print "Row: %i, RecommendationId: %s" % (row, str(recommendationId))
+        print "Row: %d, RecommendationId: %s" % (row, str(recommendationId))
         SQL = "select AutoRecommendation, ManualRecommendation, AutoOrManual from DtRecommendation "\
             "where RecommendationId = %s" % (recommendationId)
         pds = system.db.runQuery(SQL, db)
@@ -514,9 +514,9 @@ def update(rootContainer):
             record = pds[0]
             multiplier = record["Multiplier"]
             ds = system.dataset.setValue(ds, row, "Multiplier", multiplier)
-            print "  ...updated %i rows with %s" % (len(pds), str(multiplier))
+            print "  ...updated %d rows with %s" % (len(pds), str(multiplier))
         else:
-            print "  WARNING: Unexpected number of final diagnosis records: %i" % (len(pds))
+            print "  WARNING: Unexpected number of final diagnosis records: %d" % (len(pds))
 
     rootContainer.diagnoses = ds
     
@@ -562,13 +562,13 @@ def manualRecommendation(theMap, recommendationIdx):
     SQL = "Update DtRecommendation set ManualRecommendation = %s, AutoOrManual = 'Manual' where RecommendationId = %s" % (newManualRecommendation, recommendationId)
     print SQL
     rows = system.db.runUpdateQuery(SQL, db)
-    print "Updated %i rows in Final Diagnosis" % (rows)
+    print "Updated %d rows in Final Diagnosis" % (rows)
 
 '''
 Quant Output callbacks
 '''
 def hideOutput(theMap, outputIdx):
-    print "In hideOutput, the index is %i..." % (outputIdx)
+    print "In hideOutput, the index is %d..." % (outputIdx)
 
     outputDs = theMap.outputs
     outputDs = system.dataset.deleteRow(outputDs, outputIdx)
@@ -583,7 +583,7 @@ def hideOutput(theMap, outputIdx):
     theMap.recommendations = ds
 
 def expandOutput(theMap, outputIdx):
-    print "In expandOutput, the index is %i..." % (outputIdx)
+    print "In expandOutput, the index is %d..." % (outputIdx)
     # Get the production/isolation database 
     db=readTag("[Client]Database").value
     rootContainer = theMap.parent
@@ -598,7 +598,7 @@ def expandOutput(theMap, outputIdx):
     for diagnosisRow in range(0, diagnosesDS.rowCount):
         print "Checking diagnosis idx: ", diagnosisRow
         finalDiagnosisName = diagnosesDS.getValueAt(diagnosisRow, "Name")
-        print "  ...fetched %s (record %i)..." % (finalDiagnosisName, diagnosisRow)
+        print "  ...fetched %s (record %d)..." % (finalDiagnosisName, diagnosisRow)
         
         foundFinalDiagnosis = False
         for row in range(0, ds.rowCount):

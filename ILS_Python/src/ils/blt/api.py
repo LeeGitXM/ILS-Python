@@ -143,6 +143,20 @@ def setWatermark(diagramName):
         handler.setWatermark(projectResourceId, WATERMARK_TEXT)
     log.tracef("...waterMark has been set!")
 
+def getDiagramForBlock(blockId):
+    log.tracef("In %s.getDiagramForBlock() with %s", __name__, blockId)
+    projectResourceId = getProjectResourceId(diagramName)
+    scope = getScope()
+    if scope == GATEWAY:
+        import com.ils.blt.gateway.ControllerRequestHandler as ControllerRequestHandler
+        handler = ControllerRequestHandler.getInstance()
+        handler.setWatermark(projectResourceId, WATERMARK_TEXT)
+    else:    
+        handler = ApplicationRequestHandler()
+        handler.setWatermark(projectResourceId, WATERMARK_TEXT)
+    log.tracef("...waterMark has been set!")
+    
+    
 '''
 Helper functions
 '''

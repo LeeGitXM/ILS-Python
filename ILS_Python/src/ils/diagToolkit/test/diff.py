@@ -2,6 +2,9 @@
 Created on Sep 13, 2016
 
 @author: ils
+
+This is used exclusively by the SQA Final Test and should NOT be used (or at least
+modified for any other purpose).
 '''
 
 def diff(resultFilename, goldenFilename, logger, dateColumn=False, verbose=False):

@@ -30,13 +30,13 @@ def resetApplication(unit, database, tagProvider):
         " where U.UnitId = A.UnitId "\
         " and U.UnitName = '%s'" % (unit)
     pds = system.db.runQuery(SQL, database)
-    log.info("Fetched %i applications" % (len(pds)))
+    log.infof("Fetched %d applications", len(pds))
     
     descriptorList=[]
     blocks=[]
     for record in pds:
         applicationName = record['ApplicationName']
-        log.info("Fetching descriptors for %s" % (applicationName))
+        log.infof("Fetching descriptors for %s", applicationName)
 
         # Fetch all of the diagrams for the application
         try:
@@ -68,7 +68,7 @@ def resetApplication(unit, database, tagProvider):
                     if block not in blocks:
                         blocks.append(block)
 
-    log.info("...there are %i unique blocks to consider..." % (len(blocks)))
+    log.infof("...there are %d unique blocks to consider...", len(blocks))
 
     # We now have a list of all blocks, now look through the list for SQC Diagnosis and Trend Diagnosis blocks and 
     # collect the blocks downstream of them.
@@ -109,7 +109,7 @@ def resetApplication(unit, database, tagProvider):
 
     # Now reset Final diagnosis downstream from an SQC diagnosis or a trend diagnosis and collect all of the 
     # blocks upstream of them.
-    log.info("...resetting non-constant final diagnosis that are downstream of SQC diagnosis blocks (there are %i downstream blocks)..." % (len(downstreamBlocks)))
+    log.infof("...resetting non-constant final diagnosis that are downstream of SQC diagnosis blocks (there are %d downstream blocks)...", len(downstreamBlocks))
     upstreamBlocks=[]
     for block in downstreamBlocks:
         blockClass=stripPrefix(block.getClassName())
@@ -146,13 +146,12 @@ def resetApplication(unit, database, tagProvider):
             else:
                 log.info("   ... skipping a constant final diagnosis: %s..." % (blockName))
 
-
-    log.trace("...collected %i blocks upstream of unit %s final diagnosis..." % (len(upstreamBlocks), unit))
+    log.tracef("...collected %d blocks upstream of unit %s final diagnosis...", len(upstreamBlocks), unit)
 
     # Remove latched blocks and blocks upstream of the latched blocks from our list of blocks. 
-    log.info("There are %i upstream blocks..." % (len(upstreamBlocks)))
+    log.infof("There are %d upstream blocks...", len(upstreamBlocks))
     upstreamBlocks = removeLatchedBlocks(upstreamBlocks)
-    log.info("   ...there are %i upstream blocks after removing upstream blocks..." % (len(upstreamBlocks)))
+    log.infof("   ...there are %d upstream blocks after removing upstream blocks...", len(upstreamBlocks))
     
     '''
     Now that we have the list of blocks upstream from all of the non-constant final diagnosis that are not upstream of a 
@@ -198,23 +197,23 @@ def resetAndPropagate(block):
 Remove latched blocks and blocks upstream of latched blocks from the list of blocks
 '''
 def removeLatchedBlocks(upstreamBlocks):
-    log.info("   ...removing blocks upstream of latches...")
+    log.infof("   ...removing blocks upstream of latches...")
     blocksUpstreamOfLatches=[]
     for block in upstreamBlocks:
         blockClass=stripPrefix(block.getClassName())
         
         if blockClass in ["LogicLatch"]:
             blockName=block.getName()
-            log.info("      Found a latch named %s..." % (blockName))
+            log.infof("      Found a latch named %s...", blockName)
             parentUUID=block.getAttributes().get("parent")
             blocks=diagram.listBlocksGloballyUpstreamOf(parentUUID, blockName)
-            log.info("      ...there are %i blocks upstream of it..." % (len(blocks)))
+            log.infof("      ...there are %d blocks upstream of it...", len(blocks))
             for block in blocks:
                 if block not in blocksUpstreamOfLatches:
-                    log.trace("         Removing an upstream %s named %s" % (blockClass, blockName))
+                    log.tracef("         Removing an upstream %s named %s", blockClass, blockName)
                     blocksUpstreamOfLatches.append(block)
 
-    log.info("There are a total of %i blocks upstream of latches..." % (len(blocksUpstreamOfLatches)))
+    log.infof("There are a total of %d blocks upstream of latches...", len(blocksUpstreamOfLatches))
 
     # Remove the blocks upstream latches from the list of all upstream blocks
     for block in blocksUpstreamOfLatches:

@@ -47,15 +47,15 @@ def delete(rootContainer):
     ds = table.data
     logbookId = ds.getValueAt(row,0)
     if logbookId > 0:
-        SQL = "delete from TkLogbook where LogbookId = %i" % (logbookId)
+        SQL = "delete from TkLogbook where LogbookId = %d" % (logbookId)
         rows = system.db.runUpdateQuery(SQL,tx=txId)
-        print "Deleted %i rows" % (rows)
+        print "Deleted %d rows" % (rows)
     ds = system.dataset.deleteRow(ds, row)
     table.data = ds
 
 # This is not called when a row id added or deleted.
 def cellEdited(table, row, col, colName, oldValue, newValue):
-    print "In cellEdited(), edited row: %i, col: %i" % (row, col)
+    print "In cellEdited(), edited row: %d, col: %d" % (row, col)
     rootContainer = table.parent
     txId = rootContainer.txId
     ds = table.data

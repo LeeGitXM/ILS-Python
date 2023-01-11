@@ -2,6 +2,9 @@
 Created on Sep 13, 2016
 
 @author: ils
+
+This is used exclusively by the SQA Final Test and should NOT be used (or at least
+modified for any other purpose).
 '''
 
 import system, time, string
@@ -103,7 +106,7 @@ def run():
     def logTextRecommendations(post, filename, db):
         SQL = "select count(*) from DtTextRecommendation"
         rows = system.db.runScalarQuery(SQL)
-        log.trace("There are %i Text recommendations..." % (rows))
+        log.tracef("There are %d Text recommendations...", rows)
     
         SQL = "select F.FamilyName, F.FamilyPriority, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, DE.Status,"\
             " DE.RecommendationStatus, R.TextRecommendation "\
@@ -115,13 +118,13 @@ def run():
             " order by FamilyName, FinalDiagnosisName "
             
         pds = system.db.runQuery(SQL, database=db)
-        log.trace("   fetched %i Text recommendation..." % (len(pds)))
+        log.tracef("   fetched %d Text recommendation...", len(pds))
 
         header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
             'RecommendationStatus,TextRecommendation,'\
             'A,B,C,D,E,F,G,H,I,J,K,L,M,N'
         
-        log.trace("   writing results to filename: %s" % (filename))
+        log.tracef("   writing results to filename: %s", filename)
         system.file.writeFile(filename, header, False)
         
         for record in pds:
@@ -131,7 +134,7 @@ def run():
                 (record['FamilyName'], str(record['FamilyPriority']), record['FinalDiagnosisName'], \
                 str(record['FinalDiagnosisPriority']), record['Status'], record['RecommendationStatus'], \
                 textRecommendation)
-            log.trace("%s" % (txt))
+            log.tracef("%s", txt)
             system.file.writeFile(filename, txt, True)
     
     
@@ -139,7 +142,7 @@ def run():
         log.tracef("In %s.logRecommendations()", __name__)
         SQL = "select count(*) from DtRecommendation"
         rows = system.db.runScalarQuery(SQL, database=db)
-        log.trace("There are %i recommendations..." % (rows))
+        log.tracef("There are %d recommendations...", rows)
         
         SQL = "select F.FamilyName, F.FamilyPriority, FD.FinalDiagnosisName, FD.FinalDiagnosisPriority, DE.Status, "\
             " DE.RecommendationStatus, DE.TextRecommendation, QO.QuantOutputName, QO.TagPath, R.Recommendation, "\
@@ -155,13 +158,13 @@ def run():
             "   and RD.RecommendationDefinitionId = R.RecommendationDefinitionId "\
             " order by FamilyName, FinalDiagnosisName"
         pds = system.db.runQuery(SQL, database=db)
-        log.trace("   fetched %i recommendation..." % (len(pds)))
+        log.tracef("   fetched %d recommendation...", len(pds))
 
         header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
             'RecommendationStatus,TextRecommendation,QuantOutput, TagPath,Recommendation,'\
             'AutoRecommendation,ManualRecommendation,A,B,C,D,E,F,G,H,I'
         
-        log.trace("   writing results to filename: %s" % (filename))
+        log.tracef("   writing results to filename: %s", filename)
         system.file.writeFile(filename, header, False)
 
         for record in pds:
@@ -172,14 +175,14 @@ def run():
                 str(record['FinalDiagnosisPriority']), record['Status'], record['RecommendationStatus'], \
                 textRecommendation, record['QuantOutputName'], record['TagPath'],\
                 str(record['Recommendation']), str(record['AutoRecommendation']), str(record['ManualRecommendation']))
-            log.trace("%s" % (txt))
+            log.tracef("%s", txt)
             system.file.writeFile(filename, txt, True)
             
     def logRecommendationsExtended(post, filename, db):
-        print "In logRecommendationsExtended()..."
+        log.infof("In logRecommendationsExtended()...")
         SQL = "select count(*) from DtRecommendation"
         rows = system.db.runScalarQuery(SQL, database=db)
-        log.trace("There are %i recommendations..." % (rows))
+        log.tracef("There are %d recommendations...", rows)
             
         SQL = "SELECT     DtFamily.FamilyName, DtFamily.FamilyPriority, DtFinalDiagnosis.FinalDiagnosisName, DtFinalDiagnosis.FinalDiagnosisPriority, DtDiagnosisEntry.Status, "\
             " DtDiagnosisEntry.RecommendationStatus, DtDiagnosisEntry.TextRecommendation, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, "\
@@ -196,13 +199,13 @@ def run():
             
         print SQL
         pds = system.db.runQuery(SQL, database=db)
-        log.trace("   fetched %i recommendation..." % (len(pds)))
+        log.tracef("   fetched %d recommendation...", len(pds))
 
         header = 'Family,FamilyPriority,FinalDiagnosis,FinalDiagnosisPriority,Status,'\
             'RecommendationStatus,TextRecommendation,QuantOutput, TagPath,Recommendation,'\
             'AutoRecommendation,ManualRecommendation,Ramp,B,C,D,E,F,G,H,I'
         
-        log.trace("   writing results to filename: %s" % (filename))
+        log.tracef("   writing results to filename: %s", filename)
         system.file.writeFile(filename, header, False)
 
         for record in pds:
@@ -213,7 +216,7 @@ def run():
                 str(record['FinalDiagnosisPriority']), record['Status'], record['RecommendationStatus'], \
                 textRecommendation, record['QuantOutputName'], record['TagPath'],\
                 str(record['Recommendation']), str(record['AutoRecommendation']), str(record['ManualRecommendation']), str(record['Ramp']) )
-            log.trace("%s" % (txt))
+            log.tracef("%s", txt)
             system.file.writeFile(filename, txt, True)
             
     #----------------------------------------------------
@@ -237,7 +240,7 @@ def run():
             " order by QuantOutputName" % (post, applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
-        log.trace("   fetched %i  QuantOutputs..." % (len(pds)))
+        log.tracef("   fetched %d  QuantOutputs...", len(pds))
 
         header = "\nQuantOutput,TagPath,MostNegativeIncrement,MostPositiveIncrement,"\
             "MinimumIncrement,SetpointHighLimit,SetpointLowLimit,FeedbackMethod,"\
@@ -259,7 +262,7 @@ def run():
                 str(record['ManualOverride']), str(record['Active']), str(record['CurrentSetpoint']), \
                 str(record['FinalSetpoint']),str(record['DisplayedRecommendation']) )
 
-            log.trace("%s" % (txt))
+            log.tracef("%s", txt)
             system.file.writeFile(filename, txt, True)
 
     #----------------------------------------------------
@@ -276,7 +279,7 @@ def run():
             " order by FD.FinalDiagnosisName" % (applicationName)
 
         pds = system.db.runQuery(SQL, database=db)
-        log.trace("   fetched %i Diagnosis..." % (len(pds)))
+        log.tracef("   fetched %d Diagnosis...", len(pds))
 
         header = "\nFinalDiagnosis,Status,TextRecommendation,RecommendationStatus, "\
             "Multiplier,Constant,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O"
@@ -290,25 +293,25 @@ def run():
                 record['RecommendationStatus'], \
                 str(record['Multiplier']),str(record['Constant']))
 
-            log.trace("%s" % (txt))
+            log.tracef("%s", txt)
             system.file.writeFile(filename, txt, True)
 
     #-------------------------------------------
     def compareResults(outputFilename, goldFilename, ds, row):
-        log.info("...analyzing the results...")
+        log.infof("...analyzing the results...")
     
         # Check if the Gold file exists
         if not(system.file.fileExists(goldFilename)):
-            log.info("  The gold file <%s> does not exist!" % (goldFilename))
-            log.info("Complete ........................... FAILED")
+            log.infof("  The gold file <%s> does not exist!", goldFilename)
+            log.infof("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
             writeTag(FINAL_TEST_PATH + "/Table", ds)
             return ds
         
         # Check if the output file exists
         if not(system.file.fileExists(outputFilename)):
-            log.info("  The output file <%s> does not exist!" % (outputFilename))
-            log.info("Complete ........................... FAILED")
+            log.infof("  The output file <%s> does not exist!", outputFilename)
+            log.infof("Complete ........................... FAILED")
             ds = system.dataset.setValue(ds, row, 'result', 'Failed')
             writeTag(FINAL_TEST_PATH + "/Table", ds)
             return ds
@@ -319,16 +322,16 @@ def run():
                 
         if result:
             txt = 'Passed'
-            log.info("Complete ........................... Passed")
+            log.infof("Complete ........................... Passed")
         else:
             txt = 'Failed'
-            log.info("Complete ........................... FAILED")
+            log.infof("Complete ........................... FAILED")
                 
         # Try to update the status row of the table
         ds = system.dataset.setValue(ds, row, 'result', txt)
         writeTag(FINAL_TEST_PATH + "/Table", ds)
     
-        log.trace("Done analyzing results!")
+        log.tracef("Done analyzing results!")
         return ds
     #-------------------------------------------
     
@@ -358,10 +361,10 @@ def run():
             time.sleep(2)
             
             # Run a specific test
-            log.trace("...calling %s..." % (functionName))
+            log.tracef("...calling %s...", functionName)
             from ils.diagToolkit.test import tests
             applicationName = eval("tests." + functionName)(db)
-            log.trace("...done! (application = %s)" % (applicationName))
+            log.tracef("...done! (application = %s)", applicationName)
             
             time.sleep(60)
             ds = system.dataset.setValue(ds, row, 'result', 'Analyzing')
@@ -372,7 +375,7 @@ def run():
             goldFilename = os.path.join(path, functionName + "-gold.csv")
             
             # Fetch the results from the database
-            log.tracef("...fetching results... (filename=%s, database=%s)",outputFilename, db)
+            log.tracef("...fetching results... (filename=%s, database=%s)", outputFilename, db)
             
             resultsMode = ds.getValueAt(row, 'Results')
             log.tracef("The results mode is: %s", resultsMode)
@@ -391,7 +394,7 @@ def run():
             
             # Compare the results of this run to the Master results
             log.trace("Comparing results...")
-            log.info("Test: %s" % (functionName))
+            log.infof("Test: %s", functionName)
             ds=compareResults(outputFilename, goldFilename, ds, row)
             time.sleep(2)
 

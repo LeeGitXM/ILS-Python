@@ -176,9 +176,9 @@ def saveData(self, rowIndex, colIndex, colName, oldValue, newValue):
     if rows == 0:
         print "   --- no rows were updated, try to insert ---"
         if newValue == "":
-            SQL = "INSERT INTO RtGainGrade (ParameterId, Grade) VALUES (%i, '%s')" % (parameterId, grade)
+            SQL = "INSERT INTO RtGainGrade (ParameterId, Grade) VALUES (%d, '%s')" % (parameterId, grade)
         else:
-            SQL = "INSERT INTO RtGainGrade (ParameterId, Grade, Gain) VALUES (%i, '%s', %s)" % (parameterId, grade, str(newValue))
+            SQL = "INSERT INTO RtGainGrade (ParameterId, Grade, Gain) VALUES (%d, '%s', %s)" % (parameterId, grade, str(newValue))
         print SQL
         rows = system.db.runUpdateQuery(SQL, database=db)
         if rows == 0:
@@ -223,7 +223,7 @@ def addGainParameter(button, parameter):
 
     # Parameter
     if parameter!=None and len(parameter)>0:
-        SQL = "INSERT INTO RtGain (RecipeFamilyId, Parameter) VALUES (%i, '%s')" % (familyId, parameter)
+        SQL = "INSERT INTO RtGain (RecipeFamilyId, Parameter) VALUES (%d, '%s')" % (familyId, parameter)
         log.trace(SQL)
         system.db.runUpdateQuery(SQL, database=db)
     else:

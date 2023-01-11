@@ -362,7 +362,7 @@ class Compiler():
     
             elif len(pds) == 0:
                 ''' When charts are deleted via the designer, the chartPath doesn't exist so if we can't find it by the resource id then we are screwed!'''
-                log.warnf("...unable to find the chart by resource id, this chart will need to be manually deleted from SQL*Server...")
+                log.warnf("...unable to find the chart by resource id (%s), this chart will need to be manually deleted from SQL*Server...", str(resourceId))
             
             elif len(pds) > 1:
                 log.warnf("Multiple charts were found for the same resourceId")

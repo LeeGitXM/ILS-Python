@@ -11,4 +11,4 @@ Created on Jul 9, 2014
 
 # This is a simple integration test of the Eclipse/Python to Ignition framework
 def hello():
-    print "Hello World"
+    print "In %s.hello() - Hello World" % (__name__)

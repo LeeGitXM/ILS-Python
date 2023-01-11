@@ -128,22 +128,19 @@ def clientCommon():
     from javax.swing import ToolTipManager
     ToolTipManager.sharedInstance().setDismissDelay(30000)
     ToolTipManager.sharedInstance().setInitialDelay(300)
-
-    #tagProvider = getTagProvider()
-    #isolationTagProvider = getIsolationTagProvider()
-    #historyProvider = getHistoryProvider()
-    #database = getDatabase()
     
     isolationMode = system.tag.readBlocking(["[Client]Isolation Mode"])[0].value
-    print "The currentIsolationMode is: ", isolationMode
+    log.infof("The currentIsolationMode is: %s", str(isolationMode))
     
     if isolationMode:
         ''' This should trigger the tag change handler which will read the values from the Internal database '''
-        log.infof("   ...ticling the Isolation Mode client tag...")
+        log.infof("   ...tickling the Isolation Mode client tag...")
         system.tag.writeBlocking(["[Client]Isolation Mode"], [False])
     else:
-        ''' Isolation Mode is set correctly, but that doesn't mean that the tag provider and database 
-            tags are set correctly.  So set them without touching the isolation mode. '''
+        ''' 
+        Isolation Mode is set correctly, but that doesn't mean that the tag provider and database 
+        tags are set correctly.  So set them without touching the isolation mode. 
+        '''
              
         projectName = system.util.getProjectName()
 
@@ -165,9 +162,14 @@ def clientCommon():
     else:
         writeTag ("[Client]Post", "Test")
 
+    window=None
     SQL = "select C.WindowName from TkConsole C, TkPost P where P.PostId = C.PostId and P.Post = '%s' order by C.priority" % (username)
     pds = system.db.runPrepQuery(SQL)
-    window=None
+
+    if len(pds) == 0:
+        ''' log the fact that we didn't find a console window '''
+        log.infof("Unable to find a console window for user <%s>", username)
+
     for record in pds:
         windowName=record['WindowName']
         print "Opening the ", windowName

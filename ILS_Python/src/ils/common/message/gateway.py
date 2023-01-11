@@ -32,14 +32,14 @@ def sendAndReceive(command, project, db, timeout=30):
     requestId=send(command, project, db)
     
     # Poll for a reply
-    SQL = "select Reply, ReplyTime, ClientId, IsolationMode from TkMessageReply where RequestId = %i" % requestId
+    SQL = "select Reply, ReplyTime, ClientId, IsolationMode from TkMessageReply where RequestId = %d" % requestId
     pds = system.db.runQuery(SQL, database=db)
     startTime = system.date.now()
     timeout = system.date.addSeconds(startTime, timeout)
     
     while len(pds) <> numClients and system.date.now() < timeout:
         time.sleep(1)
-        log.trace("   ...checking for %i replies..." % (numClients)) 
+        log.tracef("   ...checking for %d replies...", numClients) 
         pds = system.db.runQuery(SQL, database=db)
     
     if len(pds) <> numClients:
@@ -60,7 +60,7 @@ def sendAndReceiveToAClient(command, project, clientSessionId, db, timeout=30):
     requestId=send(command, project, db, clientSessionId)
     
     # Poll for a reply
-    SQL = "select Reply, ReplyTime, ClientId from TkMessageReply where RequestId = %i" % requestId
+    SQL = "select Reply, ReplyTime, ClientId from TkMessageReply where RequestId = %d" % requestId
     pds = system.db.runQuery(SQL, database=db)
     startTime = system.date.now()
     timeout = system.date.addSeconds(startTime, timeout)

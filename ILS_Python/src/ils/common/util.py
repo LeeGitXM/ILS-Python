@@ -44,21 +44,16 @@ def parseRecords(records):
             header = line.split(',')
             
             numTokens=len(header)
-            print "Header: ", header
         else:
             tokens = line.split(',')
-            print "Data: ", tokens
             if len(tokens) == numTokens:
                 data.append(tokens[:numTokens])
             else:
                 print "Ignoring record due to incorrect number of tokens"
         
         i = i + 1
-
-    print "Data: ", data
     
     ds = system.dataset.toDataSet(header, data)
-    print "   ...parsed %i records!" % (len(data))
     return ds
 
 def parseFilename(filename):
@@ -166,19 +161,19 @@ def isWarmboot(tagProvider):
     return False
         
 def getRunHours(tagProvider):
-    tagPath = "[%s]Site/Watchdogs/Ignition Uptime Minutes" % (tagProvider)
+    tagPath = "[system]Gateway/UptimeSeconds"
     exists = system.tag.exists(tagPath)
     if exists:
         vals = system.tag.readBlocking([tagPath])
-        runMinutes = vals[0]
-        if runMinutes.quality.isGood():
-            runHours = runMinutes / 60.0
+        runSeconds = vals[0]
+        if runSeconds.quality.isGood():
+            runHours = runSeconds.value / 3600.0
         else:
             runHours = 0.0
             
     else:
         runHours = 0.0
-        print "WARNING: the Ignition uptime counter tag (%s) does not exist!" % (tagPath)
+        print "WARNING: the system uptime tag (%s) does not exist!" % (tagPath)
     return runHours
     
 def checkIfPrintingAllowed(providerName):

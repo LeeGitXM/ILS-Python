@@ -2,6 +2,11 @@
 Created on Feb 12, 2020
 
 @author: phass
+
+This module contains functions to search recipe data.  There are two ways to search recipe data:
+    1) From a client using the search button on the recipe data browser.
+    2) From Designer using the extensible Ignition search utility.  The search facility is extended in 
+       ils.sfc.designer.search package.  
 '''
 
 import system, string
@@ -59,12 +64,6 @@ def refreshRecipeDataListCallback(event):
     container = event.source.parent
     table = container.getComponent("Power Table")
     system.db.refresh(table, "data")
-    
-# chartIds are resource Ids of charts to consider
-def getSearchResults(chartIds):
-    print "Fetching recipe data to be used for searching" 
-    recipeData = []
-    return recipeData
 
     
 def editCallback(event):
@@ -159,10 +158,11 @@ def searchForReferenceCallback(container):
 
 def getSearchResults(chartPath):
     '''
-    This is called by the Ignition Find and Replace utility.  Chuck has extended it through Java to support SFCs and this is called if they elect to search for recipe data.
-    This needs to return the recipe data for the selected chart as a big text string.
+    This is called by the Ignition Find and Replace utility.  Chuck has extended it through Java to support SFCs and this is called 
+    if they elect to search for recipe data.  This needs to return the recipe data for the selected chart as a big text string.  
+    This will be called once for every chart that is in the list of candidate charts.
     '''
-    log.tracef("In %s.getSearchResults() - searching Chart Path: %s", __name__, chartPath)
+    log.infof("In %s.getSearchResults() - searching Chart Path: %s", __name__, chartPath)
     
     ignitionGlobals  = system.util.getGlobals()
     searchResults = ignitionGlobals.get('searchResults', None)
@@ -172,8 +172,15 @@ def getSearchResults(chartPath):
     else:
         queryTime = searchResults.get("queryTime", None)
 
+    '''
+    Because this is called for once for every chart that in the search candidate list and because
+    the query takes roughly the same amount of time regardless of how many charts are searched I do some 
+    optimization to just hit the database once and then cache the results.  It there are 100 charts, and they
+    opt to search all charts, then when they press "Find" this will be called 100 times.  So this optimization
+    will reduce the # of queries from 100 to 1.  It may make s search of a single chart a little longer.
+    '''
+
     if queryTime == None or (system.date.secondsBetween(queryTime, system.date.now()) > 60 ):
-        
         searchCandidates = []
         searchCandidates = getSearchCandidates("%", searchCandidates)
         log.tracef("Fetched %d **FRESH** search candidates...", len(searchCandidates))
@@ -182,12 +189,12 @@ def getSearchResults(chartPath):
     else:
         searchCandidates = searchResults.get("searchCandidates", None)
         log.tracef("... using %d cached searchCandidates...", len(searchCandidates))
-        
+
     searchCandidatesForThisChart = []
     for searchCandidate in searchCandidates:
         if chartPath == searchCandidate.get("PATH", ""):
             searchCandidatesForThisChart.append(searchCandidate)
-    
+
     log.tracef("Returning: %s", str(searchCandidatesForThisChart))
     return searchCandidatesForThisChart
 

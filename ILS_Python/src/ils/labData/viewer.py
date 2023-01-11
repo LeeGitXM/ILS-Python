@@ -5,7 +5,7 @@ Created on Mar 29, 2015
 '''
 import system, string
 import ils.common.util as util
-from ils.config.client import getTagProvider
+from ils.config.client import getTagProvider, getDatabase
 from ils.io.util import readTag
 from ils.labData.scanner import simulateReadRaw
 from ils.log import getLogger
@@ -70,6 +70,7 @@ This runs in client scope and is called from a client message handler...
 '''
 def newLabDataMessageHandler(payload):
     log.tracef("In %s.newLabDataMessageHandler() - Handling a new lab data message...", __name__)
+    db = getDatabase()
     
     windows = system.gui.getOpenedWindows()
     for window in windows:
@@ -85,10 +86,10 @@ def newLabDataMessageHandler(payload):
             
             for template in templateList:
                 log.tracef("  Processing %s", template.LabValueName)
-                configureLabDatumTable(template)
-    
+                configureLabDatumTable(template, db)
+
 #  This configures the table inside the template that is in the repeater.  It is called by the container AND by the timer 
-def configureLabDatumTable(container):
+def configureLabDatumTable(container, db):
     username = system.security.getUsername()
     log.tracef("In %s.configureLabDatumTable(), checking for lab data viewed by %s", __name__, username)
     valueName=container.LabValueName
@@ -97,17 +98,17 @@ def configureLabDatumTable(container):
     log.tracef("Configuring the Lab Datum Viewer table for %s", valueName)
     
     from ils.labData.common import fetchValueId
-    valueId = fetchValueId(valueName)
+    valueId = fetchValueId(valueName, db)
         
     SQL = "select top 13 RawValue as '%s', SampleTime, ReportTime, HistoryId "\
         " from LtHistory "\
         " where ValueId = %i "\
         " order by SampleTime desc" % (valueName, valueId)
     log.tracef(SQL)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     SQL = "Select ViewTime from LtValueViewed where ValueId = %i and Username = '%s'" % (valueId, username)
-    lastViewedTime = system.db.runScalarQuery(SQL)
+    lastViewedTime = system.db.runScalarQuery(SQL, database=db)
 
     header = [str(valueDescription), 'seen', 'historyId']
     log.tracef("Fetched %d rows, the header is %s", len(pds),  str(header))
@@ -223,6 +224,7 @@ def fetchHistory(container):
     valueName=container.LabValueName
     valueId=container.ValueId
     tagProvider = getTagProvider()
+    db = getDatabase()
     
     log.tracef("In labData.viewer.fetchHistory(), fetching missing data for %s - %d", valueName, valueId)
     
@@ -237,7 +239,7 @@ def fetchHistory(container):
     For now, "Get History" is not supported for derived lab values
     '''
     SQL = "Select * from LtDerivedValueView where ValueId = %i" % (valueId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     if len(pds) > 0:
         log.tracef("The selected lab data is a derived value, Get History is not supported")
@@ -248,7 +250,7 @@ def fetchHistory(container):
     Handle Selectors by redirecting the query to the source value
     '''
     SQL = "Select SourceValueId, SourceValueName from LtSelectorView where ValueId = %i" % (valueId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     if len(pds) > 0:
         valueName = pds[0]["SourceValueName"]
@@ -259,7 +261,7 @@ def fetchHistory(container):
             return
     
     SQL = "Select InterfaceName, ItemId, UnitName from LtPHDValueView where ValueId = %i" % (valueId)
-    pds = system.db.runQuery(SQL)
+    pds = system.db.runQuery(SQL, database=db)
     
     if len(pds) == 0:
         system.gui.warningBox("This lab data does not have history because it's source is not PHD!")
@@ -337,13 +339,13 @@ def fetchHistory(container):
         if isGood:
             # Before we insert it, see if it already exists
             SQL = "select HistoryId from LtHistory where ValueId = ? and RawValue = ? and SampleTime = ?"
-            pds = system.db.runPrepQuery(SQL, [valueId, rawValue, sampleTime]) 
+            pds = system.db.runPrepQuery(SQL, [valueId, rawValue, sampleTime], database=db) 
             if len(pds) == 0:
                 log.tracef("...Inserting a missing value: %s - %s - %s - %s", valueName, itemId, str(rawValue), str(sampleTime))
                 
                 # Insert the value into the lab history table.
                 from ils.labData.scanner import insertHistoryValue
-                success,insertedRows = insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade)    
+                success,insertedRows = insertHistoryValue(valueName, valueId, rawValue, sampleTime, grade, log, db)    
                 if success:
                     rows = rows + insertedRows
         else:
@@ -352,5 +354,5 @@ def fetchHistory(container):
     if rows == 0:
         system.gui.messageBox("No new data was found!")
     else:
-        configureLabDatumTable(container)
+        configureLabDatumTable(container, db)
         system.gui.messageBox("%i new values were loaded!" % (rows))

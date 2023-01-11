@@ -3,10 +3,12 @@ Created on May 5, 2017
 
 @author: phass
 
-The pupose of this test module is to test the configuration of the the test mthods for a final 
+These calculation methods are used exclusively by the SQA Final Test and should NOT be used (or at least
+modified for any other purpose).
+
+The purpose of this test module is to test the configuration of the the test methods for a final 
 diagnosis and to perform a basic sanity check on the calculation method.  Essentially does it run,
 it does not do any validation that the number is correct.  Numbers in & numbers out.
-
 '''
 
 import system, sys, string, traceback
