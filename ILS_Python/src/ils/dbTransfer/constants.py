@@ -21,6 +21,47 @@ INTEGER = "integer"
 
 config = [
     {
+        "table": "QueueMaster", 
+        "selectQuery": "select * from QueueMaster ORDER BY QueueKey",
+        "primaryKey": "QueueId",
+        "columnsToCompareAndUpdate": [
+                {"columnName": "QueueKey", "dataType": STRING},
+                {"columnName": "Title", "dataType": STRING},
+                {"columnName": "AutoViewSeverityThreshold", "dataType": FLOAT},
+                {"columnName": "Position", "dataType": STRING},
+                {"columnName": "AutoViewAdmin", "dataType": BOOLEAN},
+                {"columnName": "AutoViewAE", "dataType": BOOLEAN},
+                {"columnName": "AutoViewOperator", "dataType": BOOLEAN}
+                ],
+        "uniqueColumns": ["QueueKey"]
+        },
+          
+    {
+        "table": "LookupType", 
+        "selectQuery": "select LookupTypeCode, LookupTypeName, LookupTypeDescription from LookupType ORDER BY LookupTypeCode",
+        "primaryKey": "LookupTypeCode",
+        "columnsToCompareAndUpdate": [
+                {"columnName": "LookupTypeCode", "dataType": STRING},
+                {"columnName": "LookupTypeName", "dataType": STRING},
+                {"columnName": "LookupTypeDescription", "dataType": STRING}
+                ],
+        "uniqueColumns": ["LookupTypeCode"]
+        },
+          
+    {
+        "table": "Lookup", 
+        "selectQuery": "select LookupId, LookupTypeCode, LookupName, LookupDescription, Active from Lookup ORDER BY LookupTypeCode, LookupName",
+        "primaryKey": "LookupId",
+        "columnsToCompareAndUpdate": [
+                {"columnName": "LookupTypeCode", "dataType": STRING},
+                {"columnName": "LookupName", "dataType": STRING},
+                {"columnName": "LookupDescription", "dataType": STRING},
+                {"columnName": "Active", "dataType": BOOLEAN}
+                ],
+        "uniqueColumns": []
+        },
+          
+    {
         "table": "DtApplication", 
         "selectQueryName": "DB Transfer/DtApplication", 
         "primaryKey": "ApplicationId",
@@ -51,11 +92,22 @@ config = [
         },
           
     {
+        "table": "DtDiagram", 
+        "selectQueryName": "DB Transfer/DtDiagram",
+        "primaryKey": "DiagramId",
+        "columnsToCompareAndUpdate": [
+            {"columnName": "FamilyName", "dataType": LOOKUP},
+            {"columnName": "DiagramName", "dataType": STRING}
+            ],
+        "uniqueColumns": ["FamilyName", "DiagramName"]
+        },
+          
+    {
         "table": "DtFinalDiagnosis", 
         "selectQueryName": "DB Transfer/DtFinalDiagnosis",
         "primaryKey": "FinalDiagnosisId",
         "columnsToCompareAndUpdate": [
-            {"columnName": "FamilyName", "dataType": LOOKUP},
+            {"columnName": "DiagramName", "dataType": LOOKUP},
             {"columnName": "FinalDiagnosisName", "dataType": STRING},
             {"columnName": "FinalDiagnosisLabel", "dataType": STRING},
             {"columnName": "FinalDiagnosisPriority", "dataType": FLOAT},
@@ -542,6 +594,12 @@ lookups = [
         "name": "ChildChartPath",
         "sql": "select chartId from SfcChart where ChartPath = ",
         "idColumnName": "ChildChartId"
+        },
+           
+        {
+        "name": "DiagramName",
+        "sql": "select diagramId from DtDiagram where DiagramName = ",
+        "idColumnName": "DiagramId"
         },
 
         {

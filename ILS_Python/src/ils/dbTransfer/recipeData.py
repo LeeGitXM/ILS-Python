@@ -141,7 +141,7 @@ class RecipeData():
             valueId = dsDestination.getValueAt(row, attrPrefix +"ValueId")
             vals = ",".join(columnValues)
             SQL = "update SfcRecipeDataValue set %s where ValueId = %d" % (vals, valueId)
-            self.log.tracef("SQL: %s", SQL)
+            self.log.infof("SQL: %s", SQL)
             rows = system.db.runUpdateQuery(SQL, database=dbDestination)
             self.log.tracef("...updated %d rows!", rows)
         

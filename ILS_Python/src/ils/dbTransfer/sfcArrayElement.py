@@ -8,6 +8,7 @@ import system
 from ils.dbTransfer.constants import VALUE_ID 
 from ils.dbTransfer.common import getIndexKeyId, getRecipeDataId
 from ils.common.cast import toBool
+from ils.common.util import escapeSqlQuotes
 
 import ils.dbTransfer.recipeData as recipeData
 
@@ -70,15 +71,28 @@ class SfcArrayElement(recipeData.RecipeData):
                 sourceValue = dsSource.getValueAt(row, columnName)
                 destinationValue = dsDestination.getValueAt(row, columnName)
         
-                if sourceValue <> destinationValue:
-                    columnValues.append("%s = %s" % (columnName, sourceValue))
+                if sourceValue <> destinationValue:                   
+                    if columnName == "FloatValue":
+                        columnValues.append("%s = %f" % (columnName, sourceValue))
+                    elif columnName == "IntegerValue":
+                        columnValues.append("%s = %d" % (columnName, sourceValue))
+                    elif columnName == "StringValue":
+                        sourceValue = escapeSqlQuotes(sourceValue)
+                        columnValues.append("%s = '%s'" % (columnName, sourceValue))
+                    elif columnName == "BooleanValue":
+                        columnValues.append("%s = %d" % (columnName, sourceValue))
+                    else:
+                        system.gui.errorBox("Unexpected column name: %s" % (columnName))
+                        return
             
             if len(columnValues) > 0:            
                 valueId = dsDestination.getValueAt(row, VALUE_ID)
                 vals = ",".join(columnValues)
                 SQL = "update SfcRecipeDataValue set %s where ValueId = %d" % (vals, valueId)
-                self.log.tracef("SQL: %s", SQL)
-                system.db.runUpdateQuery(SQL, database=dbDestination)
+                self.log.infof("SQL: %s", SQL)
+                rows = system.db.runUpdateQuery(SQL, database=dbDestination)
+                if rows != 1:
+                    self.log.errorf("Error updating SfcRecipeDataValue for an array element.  SQL: %s", SQL)
                 columnValues = []
 
 

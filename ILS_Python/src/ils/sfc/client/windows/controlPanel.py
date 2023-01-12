@@ -255,11 +255,11 @@ def getControlPanelIdForChartPath(chartPath, db):
     else:
         return None
 
-def setControlPanelChartPath(controlPanelId, chartPath, db):
+def setControlPanelChartPath(controlPanelId, chartPath, msgQueueKey, db):
     '''set the name of the SFC chart associated with the given control panel.
        this will fail if there is already a control panel for that chart.
        use getControlPanelForChartPath() to check'''
-    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s' where controlPanelId = %d" % (chartPath, controlPanelId), database=db)
+    system.db.runUpdateQuery("update SfcControlPanel set chartPath = '%s', msgQueue = '%s' where controlPanelId = %d" % (chartPath, msgQueueKey, controlPanelId), database=db)
 
 def showMsgQueue(window):
     rootContainer = window.getRootContainer()
@@ -269,7 +269,12 @@ def showMsgQueue(window):
     SQL = "Select MsgQueue from SfcControlPanel where ControlPanelId = %s" % (str(controlPanelId))
     queueKey=system.db.runScalarQuery(SQL, database=db)
 
-    print "The queue is: ", queueKey
+    print "The queue for control panel %d is %s" % (controlPanelId, queueKey)
+    
+    if queueKey == None:
+        print "Using the default queue named: SFC in leue of an unspecified queue"
+        queueKey = "SFC"
+    
     from ils.queue.message import view
     view(queueKey, useCheckpoint=True)
     
@@ -292,7 +297,7 @@ def findOpenControlPanel(controlPanelName):
             return window
     return None
 
-def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, position="CENTER"):
+def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, msgQueueKey="SFC", position="CENTER"):
     '''
     Open a control panel to run the given chart, starting the chart if startImmediately is true. If no control panel is associated 
     with the given chart, use the one with the given name (creating it if it doesn't exist).
@@ -312,33 +317,8 @@ def openDynamicControlPanel(chartPath, startImmediately, controlPanelName, posit
         log.infof("...the new control panel id is: %s", str(controlPanelId))
     
     # reset the panel's chart to the desired one:
-    setControlPanelChartPath(controlPanelId, chartPath, db)
+    setControlPanelChartPath(controlPanelId, chartPath, msgQueueKey, db)
     
     log.infof("Opening a control panel named <%s> with id: %s", controlPanelName, str(controlPanelId)) 
     openControlPanel(controlPanelName, controlPanelId, startImmediately, position)
     
-def openDynamicControlPanelOriginal(chartPath, startImmediately, controlPanelName, position="CENTER"):
-    '''
-       I'm not sure why I look for a control panel using the chart path, I think priority should be given to the control panel name.
-       
-    Open a control panel to run the given chart, starting the chart if startImmediately is true. If no control panel is associated 
-    with the given chart, use the one with the given name (creating it if it doesn't exist).
-    This method is useful for development where a "scratch" control panel is used to run many different ad-hoc charts.
-    This should only be called from a client. 
-    '''
-    # First, check for an existing panel associated with this chart:
-    db = getDatabase()
-    controlPanelId = getControlPanelIdForChartPath(chartPath, db)
-
-    if controlPanelId == None:
-        # next, check for an existing panel with the given name, creating if not found:
-        controlPanelId = getControlPanelIdForName(controlPanelName, db)
-        print "The control panel id for chart %s is %s" % (controlPanelName, str(controlPanelId))
-        if controlPanelId == None:
-            print "Creating a control panel..."
-            controlPanelId = createControlPanel(controlPanelName, db)
-        # re-set the panel's chart to the desired one:
-        setControlPanelChartPath(controlPanelId, chartPath, db)
-    
-    print "Opening a control panel named: ", controlPanelName
-    openControlPanel(controlPanelName, controlPanelId, startImmediately, position)

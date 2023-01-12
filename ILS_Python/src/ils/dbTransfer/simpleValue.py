@@ -46,8 +46,10 @@ class SimpleValue(recipeData.RecipeData):
                 valueTypeId = self.getValueTypeId(sourceValueType, dbDestination)
                 recipeDataId = dsDestination.getValueAt(row, "RecipeDataId")
                 SQL = "Update SfcRecipeDataSimpleValue set ValueTypeId = %d where RecipeDataId = %d" % (valueTypeId, recipeDataId)
-                self.log.tracef("SQL: %s", SQL)
-                system.db.runUpdateQuery(SQL, dbDestination)
+                self.log.infof("SQL: %s", SQL)
+                rows = system.db.runUpdateQuery(SQL, dbDestination)
+                if rows != 1:
+                    self.log.errorf("Error updating SfcRecipeDataSimpleValue: %s", SQL)
 
 
     def delete(self, ds, selectedRow, db):

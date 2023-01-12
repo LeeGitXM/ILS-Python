@@ -5,12 +5,11 @@ Created on Aug 21, 2020
 '''
 
 import system
-from system.ils.sfc import getDatabaseName
-from ils.dbTransfer.constants import config, PRODUCTION, ISOLATION
+from ils.config.common import getProductionDatabase, getIsolationDatabase
+from ils.dbTransfer.constants import config, FLOAT, STRING
 from ils.dbTransfer.common import updateFolderPath, getSelectedTableStructure, createClass, dsToList
 
-from ils.common.util import clearDataset, escapeSqlQuotes
-from ils.sfc.recipeData.core import getFolderPath
+from ils.common.util import clearDataset
 
 from ils.log import getLogger
 log = getLogger(__name__)
@@ -30,12 +29,12 @@ def internalFrameOpened(rootContainer):
     tableList.selectedIndex = -1
     tableList.data = ds
     
-    ''' Get both the production and client database names and store them in rootContainer properties. '''
-    dbIsolation = getDatabaseName(True)
-    rootContainer.isolationDatabase = dbIsolation
+    ''' Get both the production and client database names and store them in rootContainer properties. ''' 
+    projectName = system.project.getProjectName()
+    rootContainer.isolationDatabase = getIsolationDatabase(projectName)
+    rootContainer.productionDatabase = getProductionDatabase(projectName)
     
-    dbProduction = getDatabaseName(False)
-    rootContainer.productionDatabase = dbProduction
+    rootContainer.result = ""
 
 def configureCell(self, value, textValue, selected, rowIndex, colIndex, colName, rowView, colView):
     extra = False
@@ -137,7 +136,8 @@ def compare(rootContainer, tableList, tableStructure, productionTable, isolation
     extraProductionRows, extraIsolationRows = compareExtraRows(tableStructure, dsProduction, numProductionRows, dsIsolation, numIsolationRows)
         
     if len(extraProductionRows) > 0 or len(extraIsolationRows) > 0:
-        system.gui.messageBox("The production and isolation tables have different numbers of rows!")
+        #system.gui.messageBox("The production and isolation tables have different numbers of rows!")
+        rootContainer.result = "DIFFERENT"
         
         dsExtraRows = system.dataset.toDataSet(["row"], extraProductionRows)
         productionTable.extraRows = dsExtraRows
@@ -155,15 +155,30 @@ def compare(rootContainer, tableList, tableStructure, productionTable, isolation
             for columnDict in columnsToCompare:
                 column = columnDict.get("columnName", None)
                 compare = columnDict.get("compare", True)
+                dataType = columnDict.get("dataType", STRING)
                 if compare:                    
                     productionValue = dsProduction.getValueAt(row, column)
                     isolationValue = dsIsolation.getValueAt(row, column)
-                    if isolationValue <> productionValue:
-                        log.tracef("      *** MISMATCH ***")
-                        badCells.append([row, column])
-                        dataIsTheSame = False
-                        if row + 1 not in badRows:
-                            badRows.append(row + 1)
+                    if dataType == FLOAT and productionValue != None and isolationValue != None:
+                        ''' If the data type is a FLOAT, then we need to accept Java roundoff errors.  I will use a 5% margin or error '''
+                        if productionValue < 1.0:
+                            errorValue = 0.1
+                        else:
+                            errorValue = productionValue * 0.05
+                        
+                        if not(isolationValue > productionValue - errorValue and isolationValue < productionValue + errorValue):
+                            log.tracef("      *** MISMATCH ***")
+                            badCells.append([row, column])
+                            dataIsTheSame = False
+                            if row + 1 not in badRows:
+                                badRows.append(row + 1)
+                    else:
+                        if isolationValue <> productionValue:
+                            log.tracef("      *** MISMATCH ***")
+                            badCells.append([row, column])
+                            dataIsTheSame = False
+                            if row + 1 not in badRows:
+                                badRows.append(row + 1)
     
         dsBadCells = system.dataset.toDataSet(["row", "columnName"],badCells)
         productionTable = rootContainer.getComponent("Production Container").getComponent("Production Table")
@@ -175,9 +190,11 @@ def compare(rootContainer, tableList, tableStructure, productionTable, isolation
         isolationTable.data = isolationTable.data     # This causes the configureCell extension function to run on each cell that animates the background
     
         if dataIsTheSame:
-            system.gui.messageBox("The production and isolation data match!")
+            rootContainer.result = "MATCH"
+            #system.gui.messageBox("The production and isolation data match!")
         else:
-            system.gui.messageBox("Warning: The production and isolation data DO NOT match!  Rows %s do not match" % str(badRows))
+            rootContainer.result = "DIFFERENT"
+            #system.gui.messageBox("Warning: The production and isolation data DO NOT match!  Rows %s do not match" % str(badRows))
 
 
 def compareExtraRows(tableStructure, dsProduction, numProductionRows, dsIsolation, numIsolationRows):
@@ -280,36 +297,63 @@ def updateCallback(event):
     numIsolationRows = dsIsolation.getRowCount()
     
     if event.source.name == "Update Isolation From Production Button":
-        updateDatabaseTable(tableStructure, tableProduction, dsProduction, numProductionRows, dbProduction, tableIsolation, dsIsolation, numIsolationRows, dbIsolation)
+        updateDatabaseTable(rootContainer, tableStructure, tableProduction, dsProduction, numProductionRows, dbProduction, tableIsolation, dsIsolation, numIsolationRows, dbIsolation)
     else:
-        updateDatabaseTable(tableStructure, tableIsolation, dsIsolation, numIsolationRows, dbIsolation, tableProduction, dsProduction, numProductionRows, dbProduction)
+        updateDatabaseTable(rootContainer, tableStructure, tableIsolation, dsIsolation, numIsolationRows, dbIsolation, tableProduction, dsProduction, numProductionRows, dbProduction)
+    
+    ''' Need to wait for the asynchronous thread to finish before refreshing '''
+        
+def refreshWatcher(event):
+    log.infof("In %s.refreshWatcher() refreshing because the work is done...", __name__)
+    rootContainer = event.source
+    dbProduction = rootContainer.productionDatabase
+    dbIsolation = rootContainer.isolationDatabase
+    tableList = rootContainer.getComponent("Table Container").getComponent("Table List")
+    tableStructure = getSelectedTableStructure(tableList)
+    
+    if tableStructure == None:
+        return
+    
+    tableProduction = rootContainer.getComponent("Production Container").getComponent("Production Table") 
+    tableIsolation = rootContainer.getComponent("Isolation Container").getComponent("Isolation Table")
     
     refreshPowerTables(rootContainer, tableList, tableStructure, tableProduction, tableIsolation, dbProduction, dbIsolation)
     compare(rootContainer, tableList, tableStructure, tableProduction, tableIsolation)
 
 
-def updateDatabaseTable(tableStructure, tableSource, dsSource, numSourceRows, dbSource, tableDestination, dsDestination, numDestinationRows, dbDestination):
-    tableName = tableStructure.get("table", None)
-    if tableName == None:
-        system.gui.errorBox("Unknown table name!")
-        return
-
-    log.infof("In %s.updateDatabaseTable() updating %s from %s to %s...", __name__, tableName, dbSource, dbDestination)
-
-    dbTable = createClass(tableStructure)
+def updateDatabaseTable(rootContainer, tableStructure, tableSource, dsSource, numSourceRows, dbSource, tableDestination, dsDestination, numDestinationRows, dbDestination):
     
-    if tableName == "SfcRecipeDataFolder":
-        system.gui.messageBox("Depending on the nature of the missing folders, it may take several iteations to completely and accurately transfer folders!")
+    def worker(rootContainer=rootContainer, tableStructure=tableStructure, tableSource=tableSource, dsSource=dsSource, numSourceRows=numSourceRows, dbSource=dbSource, 
+               tableDestination=tableDestination, dsDestination=dsDestination, numDestinationRows=numDestinationRows, dbDestination=dbDestination):
+        print "Starting worker asynchronously..."
+        rootContainer.result = "WORKING"
+        tableName = tableStructure.get("table", None)
+        if tableName == None:
+            system.gui.errorBox("Unknown table name!")
+            return
     
-    ''' First get the number of rows in sync '''
-    extraSourceRows = dsToList(tableSource.extraRows)
+        log.infof("In %s.updateDatabaseTable() updating %s from %s to %s...", __name__, tableName, dbSource, dbDestination)
     
-    print "The extra rows are: ", extraSourceRows 
-
-    if len(extraSourceRows) > 0:
-        ''' insert a row into the destination for every extra source row ''' 
-        dbTable.insert(extraSourceRows, dsSource, dbDestination)
-    else:
-        ''' Update the values of each row '''
-        dbTable.update(numSourceRows, dsSource, dbSource, dsDestination, dbDestination)
+        dbTable = createClass(tableStructure)
+        
+        if tableName == "SfcRecipeDataFolder":
+            system.gui.messageBox("Depending on the nature of the missing folders, it may take several iteations to completely and accurately transfer folders!")
+        
+        ''' First get the number of rows in sync '''
+        extraSourceRows = dsToList(tableSource.extraRows)
+        
+        print "The extra rows are: ", extraSourceRows 
+    
+        if len(extraSourceRows) > 0:
+            ''' insert a row into the destination for every extra source row ''' 
+            dbTable.insert(extraSourceRows, dsSource, dbDestination)
+        else:
+            ''' Update the values of each row '''
+            dbTable.update(numSourceRows, dsSource, dbSource, dsDestination, dbDestination)
+        
+        rootContainer.result = "DONE"
+        print "Finished asynchronous work!"
+    
+    print "Calling worker() asynchronously..."
+    system.util.invokeAsynchronous(worker)
         

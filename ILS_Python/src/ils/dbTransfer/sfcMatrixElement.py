@@ -9,6 +9,7 @@ import system
 from ils.dbTransfer.constants import VALUE_ID 
 from ils.dbTransfer.common import getIndexKeyId, getRecipeDataId
 from ils.common.cast import toBool
+from ils.common.util import escapeSqlQuotes
 
 import ils.dbTransfer.recipeData as recipeData
 
@@ -74,7 +75,18 @@ class SfcMatrixElement(recipeData.RecipeData):
                 destinationValue = dsDestination.getValueAt(row, columnName)
         
                 if sourceValue <> destinationValue:
-                    columnValues.append("%s = %s" % (columnName, sourceValue))
+                    if columnName == "FloatValue":
+                        columnValues.append("%s = %f" % (columnName, sourceValue))
+                    elif columnName == "IntegerValue":
+                        columnValues.append("%s = %d" % (columnName, sourceValue))
+                    elif columnName == "StringValue":
+                        sourceValue = escapeSqlQuotes(sourceValue)
+                        columnValues.append("%s = '%s'" % (columnName, sourceValue))
+                    elif columnName == "BooleanValue":
+                        columnValues.append("%s = %d" % (columnName, sourceValue))
+                    else:
+                        system.gui.errorBox("Unexpected column name: %s" % (columnName))
+                        return
             
             if len(columnValues) > 0:            
                 valueId = dsDestination.getValueAt(row, VALUE_ID)
@@ -89,9 +101,10 @@ class SfcMatrixElement(recipeData.RecipeData):
         self.log.infof("In %s.delete(), deleting row %d...", __name__, selectedRow)
         
         recipeDataId = ds.getValueAt(selectedRow, "RecipeDataId")
-        arrayIndex = ds.getValueAt(selectedRow, "ArrayIndex")
+        rowIndex = ds.getValueAt(selectedRow, "RowIndex")
+        columnIndex = ds.getValueAt(selectedRow, "ColumnIndex")
         
-        SQL = "delete from SfcRecipeDataArrayElement where RecipeDataId = %d and ArrayIndex = %d" % (recipeDataId, arrayIndex)
+        SQL = "delete from SfcRecipeDataMatrixElement where RecipeDataId = %d and RowIndex = %d and ColumnIndex = %d" % (recipeDataId, rowIndex, columnIndex)
         self.log.tracef("SQL: %s", SQL)
         rows = system.db.runUpdateQuery(SQL, db)
         self.log.tracef("...deleted %d rows!", rows)
