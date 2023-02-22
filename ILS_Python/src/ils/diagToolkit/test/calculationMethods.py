@@ -317,6 +317,13 @@ def fd1_2_6(applicationName, finalDiagnosisName, finalDiagnosisId, provider, dat
     recommendations = []
     return True, "Turn up the heat", recommendations
 
+# A ramp recommendations
+def fd1_2_7(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
+    print "In %s.fd1_2_7" % (__name__)
+    recommendations = []
+    recommendations.append({"QuantOutput": "TC100", "Value": 80.0, "RampTime": 0.5})
+    return True, "Turn up the heat", recommendations
+
 def fd2_1_1a(applicationName, finalDiagnosisName, finalDiagnosisId, provider, database):
     print "In %s.fd2_1_1a - returning recommendations for outputs and controllers" % (__name__)
     explanation = "Returning recommendations for outputs and controllers"

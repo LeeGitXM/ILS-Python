@@ -89,6 +89,9 @@ def gateway():
         import ils.sfc.startup as sfcStartup
         sfcStartup.gateway(tagProvider, isolationTagProvider)
         
+        import ils.diagToolkit.startup as diagToolkitStartup
+        diagToolkitStartup.gateway(tagProvider, isolationTagProvider, database)
+        
         import ils.dataPump.startup as dataPumpStartup
         dataPumpStartup.gateway(tagProvider, isolationTagProvider)
 

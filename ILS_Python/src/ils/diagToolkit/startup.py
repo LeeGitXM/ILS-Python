@@ -20,8 +20,9 @@ def gateway(tagProvider, isolationTagProvider, database):
     
     from ils.diagToolkit.version import version
     version, revisionDate = version()
+    projectName = system.project.getProjectName()
     log.info("---------------------------------------------------------")
-    log.info("Starting Symbolic AI gateway version %s - %s" % (version, revisionDate))
+    log.info("Starting Symbolic AI version %s - %s for project <%s>" % (version, revisionDate, projectName))
     log.info("---------------------------------------------------------")
     
     createTags("[" + tagProvider + "]")

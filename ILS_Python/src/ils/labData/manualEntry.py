@@ -184,13 +184,10 @@ def refreshRecentValues(rootContainer, valueId, db):
 
 # This is called when the operator presses the 'Enter' button on the Manual Entry screen
 def entryFormEnterData(rootContainer, db=""):
-    print "In ils.labData.limits.manualEntry.entryFormEnterData()"
+    log.infof("In %s.entryFormEnterData()", __name__)
     
     from ils.config.client import getTagProvider
     provider = getTagProvider()
-    
-    from ils.config.common import getProductionTagProvider
-    productionProvider = getProductionTagProvider()
     
     sampleTime = rootContainer.getComponent("Sample Time").date
     sampleValue = rootContainer.getComponent("Lab Value Field").floatValue
@@ -221,7 +218,7 @@ def entryFormEnterData(rootContainer, db=""):
     # Check for an exact duplicate with the same value and time
     SQL = "select count(*) from LtHistory where ValueId = ? and SampleTime = ? and rawValue = ?" 
     print SQL
-    pds = system.db.runPrepQuery(SQL, [valueId, sampleTime, sampleValue])
+    pds = system.db.runPrepQuery(SQL, [valueId, sampleTime, sampleValue], database=db)
     count = pds[0][0]
     if count > 0:
         system.gui.warningBox("This result has already been entered!")
@@ -246,7 +243,7 @@ def entryFormEnterData(rootContainer, db=""):
         " where LV.ValueId = %s "\
         " and LV.InterfaceId = PHD.InterfaceId" % (str(valueId))
  
-    pds = system.db.runQuery(SQL, db)
+    pds = system.db.runQuery(SQL, database=db)
     if len(pds) != 0:
         record = pds[0]
         itemId = record["ItemId"]
@@ -255,9 +252,9 @@ def entryFormEnterData(rootContainer, db=""):
         # Check if writing is enabled
         labDataWriteEnabled= readTag("[" + provider + "]Configuration/LabData/labDataWriteEnabled").value
         globalWriteEnabled = readTag("[" + provider + "]Configuration/Common/writeEnabled").value
-        writeEnabled = provider != productionProvider or (labDataWriteEnabled and globalWriteEnabled)
+        writeEnabled = labDataWriteEnabled and globalWriteEnabled
         
-        if writeEnabled:
+        if writeEnabled and itemId not in ["", None] and serverName not in ["", None]:
             print "Writing local value %s for %s to %s..." % (str(sampleValue), valueName, itemId)
             returnQuality = system.opchda.insertReplace(serverName, itemId, sampleValue, sampleTime, 192)
             print "...the returnQuality is: %s" % (str(returnQuality))
@@ -267,6 +264,5 @@ def entryFormEnterData(rootContainer, db=""):
         print "Skipping write of manual lab data because it is not LOCAL (%s %s)" % (str(sampleValue), valueName)
     
     # There is a cache of last values but we can't update it from here because the cache is in the gateway...
-    
     system.gui.messageBox("Lab value of %s has been stored for %s!" % (str(sampleValue), valueName))
     

@@ -196,11 +196,12 @@ def endHandlerRunner(chartPath, chartScope, handler=""):
         payload = {"callerChartScope": chartScope}
     else:
         payload = {"callerChartScope": chartScope, "handler": handler}
-        
-    sfcId = system.sfc.startChart(chartPath, payload)
     
-    log.tracef("The calling chart scope is: %s", str(chartScope))
-    log.tracef("...started a chart with run Id: %s", sfcId)
+    projectName = system.project.getProjectName()
+    sfcId = system.sfc.startChart(projectName, chartPath, payload)
+
+    log.infof("The calling chart scope is: %s", str(chartScope))
+    log.infof("...started a chart with run Id: %s", sfcId)
 
     '''
     Wait until the chart completes.

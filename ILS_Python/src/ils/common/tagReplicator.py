@@ -271,7 +271,9 @@ class Replicater():
                         '''
                         Ignition is smart enough to use the Isolation UDT for the Isolation tag provider.  This will work as long as we have a parallel 
                         set of UDTs.  Note that the tag provider is not part of the UDT name anyway, so we don't need to replace the tag provider with 
-                        the isolation tag provider in the UDT name. 
+                        the isolation tag provider in the UDT name.
+                        
+                        If the UDT does not exist in the destination provider then it seems like it magically creates a folder with all of the tags in it 
                         '''
                         udtType = str(browseTag['typeId'])
                         self.log.tracef("...creating a <%s> UDT for %s", udtType, sourceTagPath)

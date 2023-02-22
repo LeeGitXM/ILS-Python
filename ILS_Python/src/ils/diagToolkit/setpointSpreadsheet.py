@@ -11,7 +11,7 @@ from ils.common.constants import CR
 from ils.common.operatorLogbook import insertForPost
 from ils.common.util import dsToText
 from ils.diagToolkit.api import resetManualMove
-from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix
+from ils.diagToolkit.common import fetchFamilyNameForFinalDiagnosisId, stripClassPrefix, fetchRecommendationsForOutput
 from ils.diagToolkit.constants import WAIT_FOR_MORE_DATA, AUTO_NO_DOWNLOAD, DOWNLOAD, NO_DOWNLOAD, OBSERVATION_BLOCK_LIST
 from ils.io.util import readTag
 from ils.queue.message import insertPostMessage
@@ -1130,6 +1130,20 @@ def manualEdit(rootContainer, post, applicationName, quantOutputId, tagName, new
     quantOutput, madeSignificantRecommendation = checkBounds(applicationName, quantOutput, quantOutputName, database, tagProvider)
     
     log.tracef("After: %s", str(quantOutput))
+    
+    '''
+    We need to make sure we have enough information here to determine that the recommendation is for a ramp 
+    '''
+    quantOutputId = quantOutput["QuantOutputId"]
+    pds = fetchRecommendationsForOutput(quantOutputId, database)
+    recommendations = []
+    rampTime = None
+    for record in pds:
+        recommendations.append({"RampTime": record["RampTime"]})
+        rampTime = record["RampTime"]
+    
+    quantOutput["Recommendations"] = recommendations
+    quantOutput["Ramp"] = rampTime
     
     from ils.diagToolkit.finalDiagnosis import updateQuantOutput
     updateQuantOutput(quantOutput, database, tagProvider)

@@ -418,6 +418,6 @@ def createNewQuantOutput(event):
     page3Container.minimumIncrement = 0.5
     page3Container.setpointHighLimit = 1000.0
     page3Container.setpointLowLimit = -1000.0
-    page3Container.incrementalOutput = False
+    page3Container.incrementalOutput = True
     page3Container.feedbackMethod = "Average"
     

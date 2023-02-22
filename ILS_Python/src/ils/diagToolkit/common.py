@@ -369,7 +369,10 @@ def fetchApplicationId(applicationName, database=""):
 
 def fetchDiagrams(db):
     log.tracef("In %s.fetchDiagrams()...", __name__)
-    pds = system.db.runQuery("Select ApplicationName, FamilyName, DiagramName from DtApplicationHierarchyView order by ApplicationName, FamilyName, DiagramName", database=db)
+    SQL = "Select ApplicationName, FamilyName, FamilyPriority, DiagramName "\
+        "from DtApplicationHierarchyView "\
+        "order by ApplicationName, FamilyName, DiagramName"
+    pds = system.db.runQuery(SQL, database=db)
     log.infof("Fetched %d applications." % (len(pds)))
     return pds
 
@@ -412,7 +415,11 @@ def fetchDiagnosisActiveTime(finalDiagnosisId, database = ""):
 
 def fetchFamilies(db):
     log.tracef("In %s.fetchFamilies()...", __name__)
-    pds = system.db.runQuery("Select ApplicationName, FamilyName from DtApplicationFamilyView order by ApplicationName, FamilyName", database=db)
+    SQL = "Select A.ApplicationName, F.FamilyName, F.FamilyPriority "\
+        "from DtApplication A, DtFamily F "\
+        "where A.ApplicationId = F.ApplicationId "\
+        "order by ApplicationName, FamilyName"
+    pds = system.db.runQuery(SQL, database=db)
     log.infof("Fetched %d applications." % (len(pds)))
     return pds
 
@@ -434,7 +441,10 @@ def fetchFamilyId(applicationName, familyName, database=""):
 
 def fetchFinalDiagnosisList(db):
     log.tracef("In %s.fetchFinalDiagnosisList()...", __name__)
-    pds = system.db.runQuery("Select ApplicationName, FamilyName, DiagramId, DiagramName, FinalDiagnosisName from DtFinalDiagnosisView order by ApplicationName, FamilyName, DiagramName, FinalDiagnosisName", database=db)
+    SQL = "Select ApplicationName, FamilyName, FamilyPriority, DiagramId, DiagramName, FinalDiagnosisName, FinalDiagnosisPriority "\
+        "from DtFinalDiagnosisView "\
+        "order by ApplicationName, FamilyName, DiagramName, FinalDiagnosisName"
+    pds = system.db.runQuery(SQL, database=db)
     log.infof("Fetched %d final diagnosis." % (len(pds)))
     return pds
 
@@ -660,6 +670,17 @@ def fetchQuantOutput(quantOutputId, database=""):
         " from DtQuantOutput QO, Lookup L "\
         " where QO.QuantOutputId = %d "\
         " and QO.FeedbackMethodId = L.LookupId"  % (quantOutputId)
+        
+    SQL = "SELECT DtQuantOutput.QuantOutputId, DtQuantOutput.QuantOutputName, DtQuantOutput.TagPath, DtQuantOutput.OutputLimitedStatus, DtQuantOutput.OutputLimited, "\
+        "DtQuantOutput.OutputPercent, DtQuantOutput.FeedbackOutput, DtQuantOutput.FeedbackOutputManual, DtQuantOutput.FeedbackOutputConditioned, "\
+        "DtQuantOutput.ManualOverride, DtQuantOutput.IncrementalOutput, DtQuantOutput.CurrentSetpoint, DtQuantOutput.FinalSetpoint, DtQuantOutput.DisplayedRecommendation, "\
+        "DtQuantOutput.MostNegativeIncrement, DtQuantOutput.MostPositiveIncrement, DtQuantOutput.MinimumIncrement, DtQuantOutput.SetpointHighLimit, "\
+        "DtQuantOutput.SetpointLowLimit, Lookup.LookupName AS FeedbackMethod, DtQuantOutput.IgnoreMinimumIncrement, 0 as TrapInsignificantRecommendations "\
+        "FROM DtQuantOutput INNER JOIN "\
+        "Lookup ON DtQuantOutput.FeedbackMethodId = Lookup.LookupId LEFT OUTER JOIN "\
+        "DtQuantOutputRamp ON DtQuantOutput.QuantOutputId = DtQuantOutputRamp.QuantOutputId "\
+        "WHERE (DtQuantOutput.QuantOutputId = %d) " % (quantOutputId)
+    
     log.tracef("%s.fetchQuantOutput(): %s", __name__, SQL)
     pds = system.db.runQuery(SQL, database)
     return pds
@@ -669,7 +690,7 @@ def fetchQuantOutput(quantOutputId, database=""):
 def fetchRecommendationsForOutput(QuantOutputId, database=""):
     log.tracef("In %s.fetchRecommendationsForOutput()...", __name__)
     SQL = "select R.RecommendationId, R.Recommendation, R.AutoRecommendation, R.AutoRecommendation, R.ManualRecommendation, "\
-        " R.AutoOrManual, QO.QuantOutputName, QO.TagPath "\
+        " R.AutoOrManual, R.RampTime, QO.QuantOutputName, QO.TagPath "\
         " from DtRecommendationDefinition RD, DtQuantOutput QO, DtRecommendation R "\
         " where RD.QuantOutputId = QO.QuantOutputId "\
         " and QO.QuantOutputId = %d "\

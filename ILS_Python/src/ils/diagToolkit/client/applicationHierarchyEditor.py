@@ -23,6 +23,7 @@ FINAL_DIAGNOSIS_ICON = "Custom/blt/NavTree/finalDiagnosis.png"
 WHITE = "color(255,255,255,255)"
 BLACK = "color(0,0,0,255)"
 MUSTARD = "color(250,214,138,255)"
+RED = "color(255,0,0,255)"
 
 ROOT_TYPE = "Root"
 APPLICATION_TYPE = "Application"
@@ -78,16 +79,16 @@ def refreshDiagramTree(rootContainer, db):
     diagramContainer.statusMessage = statusMessage
     
     rows = []
-    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, MUSTARD, BLACK, "", ""])
+    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, WHITE, BLACK, "", RED])
     for record in pds:
         fullDiagramName = record["DiagramName"]
         familyId = record["FamilyId"]
         parent, diagramName = parseResourcePath(fullDiagramName)
         parent = ROOT_NODE + "/" + parent 
         if familyId == None:
-            row = [parent,diagramName,DIAGRAM_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",DIAGRAM_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
+            row = [parent,diagramName,DIAGRAM_ICON,WHITE,BLACK,fullDiagramName,"","",DIAGRAM_ICON,WHITE,BLACK,"",RED]
         else:
-            row = [parent,diagramName,DIAGRAM_REFERENCED_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName,"","",DIAGRAM_REFERENCED_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
+            row = [parent,diagramName,DIAGRAM_REFERENCED_ICON,WHITE,BLACK,fullDiagramName,"","",DIAGRAM_REFERENCED_ICON,WHITE,BLACK,"",RED]
         rows.append(row)
     
     ''' Now add the Final Diagnosis '''
@@ -106,7 +107,7 @@ def refreshDiagramTree(rootContainer, db):
         fullDiagramName = record["DiagramName"]
         finalDiagnosisName = record["FinalDiagnosisName"]
 
-        row = [ROOT_NODE + "/" +fullDiagramName,finalDiagnosisName,FINAL_DIAGNOSIS_ICON,"color(255,255,255,255)","color(0,0,0,255)",fullDiagramName + "-" + finalDiagnosisName,"","",DIAGRAM_ICON,"color(250,214,138,255)","color(0,0,0,255)","",""]
+        row = [ROOT_NODE + "/" +fullDiagramName,finalDiagnosisName,FINAL_DIAGNOSIS_ICON,WHITE,BLACK,fullDiagramName + "-" + finalDiagnosisName,"","",FINAL_DIAGNOSIS_ICON,WHITE,BLACK,"",RED]
         rows.append(row)
     
     
@@ -121,44 +122,54 @@ def refreshHierarchyTreeCallback(rootContainer, db=""):
     
 def refreshHierarchyTree(rootContainer, db):
     rows = []
-    rows.append(["", "Symbolic Ai", SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, MUSTARD, BLACK, "", ""])
+    rows.append(["", ROOT_NODE, SYMBOLIC_AI_ICON, WHITE, BLACK, "", "", "", SYMBOLIC_AI_ICON, WHITE, BLACK, "", RED])
     
     applications = fetchApplications(db)
     for application in applications:
         applicationName = application["ApplicationName"]
-        rows.append([ROOT_NODE, applicationName, APPLICATION_ICON, WHITE, BLACK, "", "", "", APPLICATION_ICON, MUSTARD, BLACK, "", ""])
+        rows.append([ROOT_NODE, applicationName, APPLICATION_ICON, WHITE, BLACK, "", "", "", APPLICATION_ICON, WHITE, BLACK, "", RED])
         
     families = fetchFamilies(db)
     for family in families:
-        applicationName = ROOT_NODE + "/" + family["ApplicationName"]
+        applicationName = family["ApplicationName"]
         familyName = family["FamilyName"]
-        rows.append([applicationName, familyName, FAMILY_ICON, WHITE, BLACK, "", "", "", FAMILY_ICON, MUSTARD, BLACK, "", ""])
+        familyPriority = family["FamilyPriority"]
+        familyTxt = appendPriority(familyName, familyPriority)
+        applicationName = ROOT_NODE + "/" + applicationName
+        rows.append([applicationName, familyTxt, FAMILY_ICON, WHITE, BLACK, "", "", "", FAMILY_ICON, WHITE, BLACK, "", RED])
         
     diagrams = fetchDiagrams(db)
     for diagram in diagrams:
         applicationName = diagram["ApplicationName"]
         familyName = diagram["FamilyName"]
+        familyPriority = diagram["FamilyPriority"]
+        familyTxt = appendPriority(familyName, familyPriority)
         
         ''' For diagrams, the name in the databaset is the diagram path in the project tree.  For our display purposes, we just want the 
             name, the full path will be in the tooltip.  '''
         fullDiagramName = diagram["DiagramName"]
         tokens = fullDiagramName.split("/")
         diagramName = tokens[len(tokens)-1]
-        rows.append([ROOT_NODE + "/" + applicationName + "/" + familyName, diagramName, DIAGRAM_ICON, WHITE, BLACK, fullDiagramName, "", "", DIAGRAM_ICON, MUSTARD, BLACK, "", ""])
+        rows.append([ROOT_NODE + "/" + applicationName + "/" + familyTxt, diagramName, DIAGRAM_ICON, WHITE, BLACK, fullDiagramName, "", "", DIAGRAM_ICON, WHITE, BLACK, "", RED])
 
     FDs = fetchFinalDiagnosisList(db)
     for FD in FDs:
         applicationName = FD["ApplicationName"]
         familyName = FD["FamilyName"]
+        familyPriority = FD["FamilyPriority"]
+        familyTxt = appendPriority(familyName, familyPriority)
 
         fullDiagramName = FD["DiagramName"]
         tokens = fullDiagramName.split("/")
         diagramName = tokens[len(tokens)-1]
         
         fdName = FD["FinalDiagnosisName"]
-        parentNode = ROOT_NODE + "/" + applicationName + "/" + familyName + "/" + diagramName
+        fdPriority = FD["FinalDiagnosisPriority"]
+        
+        parentNode = ROOT_NODE + "/" + applicationName + "/" + familyTxt + "/" + diagramName
         log.infof("Adding an application with parent: <%s>", parentNode)
-        rows.append([parentNode, fdName, FINAL_DIAGNOSIS_ICON, WHITE, BLACK, fdName, "", "", FINAL_DIAGNOSIS_ICON, MUSTARD, BLACK, "", ""])
+        fdText = appendPriority(fdName, fdPriority)
+        rows.append([parentNode, fdText, FINAL_DIAGNOSIS_ICON, WHITE, BLACK, fdName, "", "", FINAL_DIAGNOSIS_ICON, WHITE, BLACK, "", RED])
 
     header = ["path", "text", "icon", "background", "foreground", "tooltip", "border", "selectedText", "selectedIcon", "selectedBackground", "selectedForeground", "selectedTooltip", "selectedBorder"]
     ds = system.dataset.toDataSet(header, rows)
@@ -286,6 +297,7 @@ def editCallback(event):
         log.tracef("Editing a family")
         applicationName = tokens[1]
         familyName = tokens[2]
+        familyName = stripPriority(familyName)
         familyId = fetchFamilyId(applicationName, familyName, db)
         window = system.nav.openWindowInstance("DiagToolkit/Family Editor", {"familyId": familyId})
         system.nav.centerWindow(window)
@@ -298,6 +310,7 @@ def editCallback(event):
         diagramName = getFullDiagramNameForFinalDiagnosis(rootContainer, selectedPath)
         diagramNameShort = tokens[3]
         fdName = tokens[4]
+        fdName = stripPriority(fdName)
         log.tracef("   application: %s    ", applicationName)
         log.tracef("   family: %s         ", familyName)
         log.tracef("   family id: %s      ", str(familyId))
@@ -593,13 +606,27 @@ def propertyChangedForDiagramTree(event):
     tree = event.source
     if event.newValue == -1:
         tree.selectedDiagramStatus = "Folder"
-    elif event.newValue == -1:
+    elif event.newValue == 0:
         tree.selectedDiagramStatus = "Root"
     else:
         ds = tree.data
         icon = ds.getValueAt(event.newValue, "icon")
+
         if icon == DIAGRAM_REFERENCED_ICON:
             tree.selectedDiagramStatus = "Referenced"
-        else:
+        elif icon == DIAGRAM_ICON:
             tree.selectedDiagramStatus = "Stand-Alone"
-            
+        else:
+            tree.selectedDiagramStatus = "FinalDiagnosis"
+
+def appendPriority(txt, priority):
+    txtOut = "%s (%.2f)" % (txt, priority)
+    return txtOut
+       
+def stripPriority(txtIn):
+    '''
+    Strip the trailing < (%f)> from the text string that is passed in.
+    '''
+    pos = txtIn.rfind(" (")
+    txtOut = txtIn[:pos]
+    return txtOut
