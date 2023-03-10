@@ -58,14 +58,21 @@ def activate(scopeContext, stepProperties, state):
             logger.trace("*** A deactivate has been detected ***")
             writeComplete=True
             writeConfirmComplete = True
+            
         elif state == PAUSED:
             logger.trace("The writeOutput was paused")
-            timerRecipeDataId = stepScope["timerRecipeDataId"]
-            handleTimer(timerRecipeDataId, PAUSE_TIMER, logger, db)
+            timerNeeded=stepScope[TIMER_NEEDED]
+            if timerNeeded:
+                timerRecipeDataId = stepScope["timerRecipeDataId"]
+                handleTimer(timerRecipeDataId, PAUSE_TIMER, logger, db)
+                
         elif state == RESUMED:
-            logger.trace("The writeOutput was paused")
-            timerRecipeDataId = stepScope["timerRecipeDataId"]
-            handleTimer(timerRecipeDataId, RESUME_TIMER, logger, db)
+            logger.trace("The writeOutput was resumed")
+            timerNeeded=stepScope[TIMER_NEEDED]
+            if timerNeeded:
+                timerRecipeDataId = stepScope["timerRecipeDataId"]
+                handleTimer(timerRecipeDataId, RESUME_TIMER, logger, db)
+                
         elif not initialized:
             stepScope[INITIALIZED]=True
             stepScope[ERROR_COUNT_LOCAL] = 0
