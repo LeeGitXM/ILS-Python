@@ -72,6 +72,8 @@ def saver(path, json):
     log.tracef("Decoded JSON: %s", str(x))
     blocks = x.get("blocks", [])
     log.tracef("...found %d blocks", len(blocks))
+    fdList = []
+    sqcList = []
     for block in blocks:
         blockClass = block.get("className", None)
         blockName = block.get("name", None)
@@ -82,9 +84,13 @@ def saver(path, json):
         if blockClass == FINAL_DIAGNOSIS_CLASS:
             log.tracef("...handling a final diagnosis")
             handleFinalDiagnosis(diagramId, blockName, blockUUID, db)
+            fdList.append(blockName)
         elif blockClass == SQC_DIAGNOSIS_CLASS:
             log.tracef("...handling a SQC Diagnosis: %s...", str(block))
             handleSQCDiagnosis(diagramId, blockName, blockUUID, db)
+            sqcList.append(blockName)
+    
+    handleDeletedBlocks(diagramId, fdList, sqcList, db)
             
 def handleDiagram(path, db):
     SQL = "select DiagramId from DtDiagram where DiagramName = '%s'" % (path)
@@ -99,8 +105,13 @@ def handleDiagram(path, db):
     return diagramId
 
 def handleFinalDiagnosis(diagramId, finalDiagnosisName, finalDiagnosisUUID, db):
-    SQL = "select FinalDiagnosisId, FinalDiagnosisName, DiagramId from DtFinalDiagnosis where DiagramId = '%s' "\
-        "and FinalDiagnosisUUID = '%s' " % (diagramId, finalDiagnosisUUID)
+    '''
+    This handles inserting a new final diagnosis and renaming an existing final diagnosis.
+    '''
+    SQL = "select FinalDiagnosisId, FinalDiagnosisName, DiagramId "\
+        " from DtFinalDiagnosis "\
+        " where DiagramId = '%s' "\
+        " and FinalDiagnosisUUID = '%s' " % (diagramId, finalDiagnosisUUID)
     pds = system.db.runQuery(SQL, db)
     oldFinalDiagnosisName = system.db.runScalarQuery(SQL, db)
 
@@ -123,22 +134,21 @@ def handleFinalDiagnosis(diagramId, finalDiagnosisName, finalDiagnosisUUID, db):
             ''' This handles the case where they have renamed the Final Diagnosis '''
             SQL = "update DtFinalDiagnosis set FinalDiagnosisName = '%s' where FinalDiagnosisId = %d" % (finalDiagnosisName, finalDiagnosisId)
             log.tracef("...SQL: %s,", SQL)
-            rows = system.db.runUpdateQuery(SQL, db)
-            log.tracef("Updated %d rows in DtFinalDiagnosis...", rows)
+            system.db.runUpdateQuery(SQL, db)
+            log.infof("Renamed an existing Final Diagnosis from %s to %s!", oldFinalDiagnosisName, finalDiagnosisName)
         else:
             log.tracef("...the database is already up to date...")
 
 
 def handleSQCDiagnosis(diagramId, sqcDiagnosisName, sqcDiagnosisUUID, db):
-
-    SQL = "select SQCDiagnosisId, SQCDiagnosisUUID "\
-        " from DtSQCDiagnosis where DiagramId = %s "\
-        "  and SQCDiagnosisName = '%s' " % (diagramId, sqcDiagnosisName)
+    '''
+    This handles inserting a new SQC diagnosis and renaming an existing SQC diagnosis.
+    '''
+    SQL = "select SQCDiagnosisId, SQCDiagnosisName, DiagramId "\
+        " from DtSQCDiagnosis "\
+        " where DiagramId = %s "\
+        " and SQCDiagnosisUUID = '%s' " % (diagramId, sqcDiagnosisUUID)
     pds = system.db.runQuery(SQL, db)
-
-    '''
-    How is a copied SQC Diagnosis handled here?
-    '''
     
     if len(pds) == 0:
         SQL = "insert into DtSQCDiagnosis (SQCDiagnosisName, SQCDiagnosisUUID, DiagramId, Status) "\
@@ -146,21 +156,54 @@ def handleSQCDiagnosis(diagramId, sqcDiagnosisName, sqcDiagnosisUUID, db):
             (sqcDiagnosisName, sqcDiagnosisUUID, diagramId, SQC_STATUS)
 
         log.tracef("...SQL: %s,", SQL)
-        finalDiagnosisId = system.db.runUpdateQuery(SQL, db, getKey=1)
-        log.tracef("Inserted a new Final Diagnosis with id: %d", finalDiagnosisId)
+        sqcDiagnosisId = system.db.runUpdateQuery(SQL, db, getKey=1)
+        log.tracef("Inserted a new SQC Diagnosis with id: %d", sqcDiagnosisId)
     else:
         record = pds[0]
-        oldSqcDiagnosisUUID = record["SQCDiagnosisUUID"]
-        
-        ''' This handles the case where they have renamed the SQC Diagnosis '''
-        '''
-        if oldSqcDiagnosisUUID != finalDiagnosisName:
-            
-            SQL = "update DtFinalDiagnosis set FinalDiagnosisName = '%s' where FinalDiagnosisId = %d" % (finalDiagnosisName, finalDiagnosisId)
+        sqcDiagnosisId = record["SQCDiagnosisId"]
+        oldSqcDiagnosisName = record["SQCDiagnosisName"]
+
+        if oldSqcDiagnosisName != sqcDiagnosisName:
+            ''' This handles the case where they have renamed the SQC Diagnosis '''
+            SQL = "update DtSQCDiagnosis set SQCDiagnosisName = '%s' where SQCDiagnosisId = %d" % (sqcDiagnosisName, sqcDiagnosisId)
             log.tracef("...SQL: %s,", SQL)
             rows = system.db.runUpdateQuery(SQL, db)
-            log.tracef("Updated %d rows in DtFinalDiagnosis...", rows)
+            log.tracef("Updated %d rows in DtSQCDiagnosis...", rows)
         else:
             log.tracef("...the database is already up to date...")
-        '''            
-    return
+
+
+def handleDeletedBlocks(diagramId, fdList, sqcList, db):
+
+    ''' 
+    --- Handle Final Diagnosis ---
+    Select all of the FDs on this diagram in the DB and compare it to the list of FDs on the diagram.
+    Anything in the DB but not on the diagram should be deleted.
+    '''
+    SQL = "select FinalDiagnosisId, FinalDiagnosisName from DtFinalDiagnosis where DiagramId = %d" % (diagramId)
+    pds = system.db.runQuery(SQL, db)
+    for record in pds:
+        fdName = record["FinalDiagnosisName"]
+        if fdName not in fdList:
+            log.infof("Deleting final diagnosis named: %s" % (fdName))
+            fdId = record["FinalDiagnosisId"]
+            SQL = "Delete from DtFinalDiagnosis where FinalDiagnosisId = %d" % (fdId)
+            rows = system.db.runUpdateQuery(SQL, db)
+            log.tracef("...deleted %d rows!", rows)
+            
+    ''' 
+    --- Handle SQC Diagnosis ---
+    Select all of the SQC Diagnosis on this diagram in the DB and compare it to the list of SQC Diagnosis on the diagram.
+    Anything in the DB but not on the diagram should be deleted.
+    '''
+    SQL = "select SQCDiagnosisId, SQCDiagnosisName from DtSQCDiagnosis where DiagramId = %d" % (diagramId)
+    pds = system.db.runQuery(SQL, db)
+    for record in pds:
+        sqcName = record["SQCDiagnosisName"]
+        if sqcName not in sqcList:
+            log.infof("Deleting SQC diagnosis named: %s" % (sqcName))
+            sqcId = record["SQCDiagnosisId"]
+            SQL = "Delete from DtSQCDiagnosis where SQCDiagnosisId = %d" % (sqcId)
+            rows = system.db.runUpdateQuery(SQL, db)
+            log.tracef("...deleted %d rows!", rows)
+
